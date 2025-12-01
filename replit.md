@@ -62,6 +62,12 @@ The application follows a monorepo pattern with shared code:
 - Admin module routes require admin.* permissions
 - All roles have restricted access by default (principle of least privilege)
 
+**Frontend Permission System:**
+- AuthContext provides reactive hasPermission() and isAdmin using useMemo
+- Sidebar conditionally displays admin menu based on admin.view permission
+- RegisterUser type (separate from InsertUser) ensures only allowed fields are submitted during registration
+- Auth endpoints return user with role object for frontend permission checks
+
 ### Data Model & Business Logic
 
 **Core Business Entities:**
