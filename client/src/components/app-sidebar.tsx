@@ -113,7 +113,7 @@ const adminMenuItems = [
 
 export function AppSidebar() {
   const [location] = useLocation();
-  const { user, logoutMutation } = useAuth();
+  const { user, logoutMutation, hasPermission } = useAuth();
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
@@ -131,7 +131,7 @@ export function AppSidebar() {
           <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary text-primary-foreground">
             <Fuel className="h-5 w-5" />
           </div>
-          <span className="text-lg font-semibold">АвиаТопливо</span>
+          <span className="text-lg font-semibold">АвиаСервис</span>
         </Link>
       </SidebarHeader>
       
@@ -201,27 +201,29 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Администрирование</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {adminMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={isActive(item.url)}
-                    data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {hasPermission("admin", "view") && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Администрирование</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton 
+                      asChild 
+                      isActive={isActive(item.url)}
+                      data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
+                    >
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">

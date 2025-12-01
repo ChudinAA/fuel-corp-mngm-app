@@ -1,20 +1,24 @@
-import { createContext, ReactNode, useContext } from "react";
+import { createContext, ReactNode, useContext, useMemo } from "react";
 import {
   useQuery,
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { User, LoginCredentials, InsertUser } from "@shared/schema";
+import { User, LoginCredentials, RegisterUser, Role } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
+type UserWithRole = User & { role: Role | null };
+
 type AuthContextType = {
-  user: User | null;
+  user: UserWithRole | null;
   isLoading: boolean;
   error: Error | null;
-  loginMutation: UseMutationResult<User, Error, LoginCredentials>;
+  loginMutation: UseMutationResult<UserWithRole, Error, LoginCredentials>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<User, Error, InsertUser>;
+  registerMutation: UseMutationResult<UserWithRole, Error, RegisterUser>;
+  hasPermission: (module: string, action: string) => boolean;
+  isAdmin: boolean;
 };
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -26,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     data: user,
     error,
     isLoading,
-  } = useQuery<User | undefined, Error>({
+  } = useQuery<UserWithRole | undefined, Error>({
     queryKey: ["/api/auth/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
@@ -36,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/auth/login", credentials);
       return await res.json();
     },
-    onSuccess: (user: User) => {
+    onSuccess: (user: UserWithRole) => {
       queryClient.setQueryData(["/api/auth/user"], user);
       toast({
         title: "Вход выполнен",
@@ -53,11 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (credentials: InsertUser) => {
+    mutationFn: async (credentials: RegisterUser) => {
       const res = await apiRequest("POST", "/api/auth/register", credentials);
       return await res.json();
     },
-    onSuccess: (user: User) => {
+    onSuccess: (user: UserWithRole) => {
       queryClient.setQueryData(["/api/auth/user"], user);
       toast({
         title: "Регистрация успешна",
@@ -93,6 +97,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const isAdmin = useMemo(() => {
+    if (!user?.role) return false;
+    return user.role.name === "Админ" || user.role.name === "Ген.дир";
+  }, [user]);
+
+  const hasPermission = useMemo(() => {
+    return (module: string, action: string): boolean => {
+      if (!user?.role) return false;
+      if (user.role.name === "Админ" || user.role.name === "Ген.дир") return true;
+      const permission = `${module}.${action}`;
+      return user.role.permissions?.includes(permission) || false;
+    };
+  }, [user]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -102,6 +120,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginMutation,
         logoutMutation,
         registerMutation,
+        hasPermission,
+        isAdmin,
       }}
     >
       {children}

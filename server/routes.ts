@@ -164,9 +164,9 @@ export async function registerRoutes(
       });
       req.session.userId = user.id;
       
-      // Return user without password
+      // Return user without password, include role for frontend permission checks
       const { password, ...safeUser } = user;
-      res.status(201).json(safeUser);
+      res.status(201).json({ ...safeUser, role: roleToAssign || null });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
@@ -192,8 +192,14 @@ export async function registerRoutes(
       await storage.updateLastLogin(user.id);
       req.session.userId = user.id;
       
+      // Include role for frontend permission checks
+      let role = null;
+      if (user.roleId) {
+        role = await storage.getRole(user.roleId);
+      }
+      
       const { password: _, ...safeUser } = user;
-      res.json(safeUser);
+      res.json({ ...safeUser, role });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });

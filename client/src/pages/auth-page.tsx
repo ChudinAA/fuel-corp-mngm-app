@@ -110,7 +110,7 @@ export default function AuthPage() {
           <CardHeader className="space-y-1 text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
               <Fuel className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-semibold">АвиаТопливо</span>
+              <span className="text-2xl font-semibold">АвиаСервис</span>
             </div>
             <CardTitle className="text-xl">
               {activeTab === "login" ? "Вход в систему" : "Регистрация"}
