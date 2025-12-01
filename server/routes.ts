@@ -4,6 +4,7 @@ import session from "express-session";
 import { storage } from "./storage";
 import {
   loginSchema,
+  registerUserSchema,
   insertUserSchema,
   insertRoleSchema,
   insertDirectoryWholesaleSchema,
@@ -136,10 +137,7 @@ export async function registerRoutes(
   // Register
   app.post("/api/auth/register", async (req, res) => {
     try {
-      const registerSchema = insertUserSchema.extend({
-        confirmPassword: z.string().optional(),
-      });
-      const data = registerSchema.parse(req.body);
+      const data = registerUserSchema.parse(req.body);
       
       // Check if email already exists
       const existingUser = await storage.getUserByEmail(data.email);
@@ -156,9 +154,13 @@ export async function registerRoutes(
       const adminRole = roles.find(r => r.name === "Админ");
       const roleToAssign = allUsers.length === 0 && adminRole ? adminRole : defaultRole;
 
+      // Remove confirmPassword before creating user
+      const { confirmPassword, ...userData } = data;
+      
       const user = await storage.createUser({
-        ...data,
+        ...userData,
         roleId: roleToAssign?.id || null,
+        isActive: true,
       });
       req.session.userId = user.id;
       
@@ -210,7 +212,7 @@ export async function registerRoutes(
     });
   });
 
-  // Get current user
+  // Get current user with role info
   app.get("/api/auth/user", async (req, res) => {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Не авторизован" });
@@ -221,8 +223,14 @@ export async function registerRoutes(
       return res.status(404).json({ message: "Пользователь не найден" });
     }
 
+    // Include role information for permission checks
+    let role = null;
+    if (user.roleId) {
+      role = await storage.getRole(user.roleId);
+    }
+
     const { password, ...safeUser } = user;
-    res.json(safeUser);
+    res.json({ ...safeUser, role });
   });
 
   // ============ ROLES ROUTES ============

@@ -282,7 +282,19 @@ export const insertRoleSchema = createInsertSchema(roles).omit({ id: true });
 export const insertPermissionSchema = createInsertSchema(permissions).omit({ id: true });
 export const insertRolePermissionSchema = createInsertSchema(rolePermissions).omit({ id: true });
 
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
+// Registration schema - for public registration (roleId assigned automatically)
+export const registerUserSchema = z.object({
+  email: z.string().email("Некорректный email"),
+  password: z.string().min(6, "Пароль должен быть не менее 6 символов"),
+  firstName: z.string().min(1, "Введите имя"),
+  lastName: z.string().min(1, "Введите фамилию"),
+  patronymic: z.string().optional(),
+  confirmPassword: z.string().optional(),
+});
+
+// Admin user creation schema - roleId can be specified by admin
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, lastLoginAt: true });
+
 export const loginSchema = z.object({
   email: z.string().email("Некорректный email"),
   password: z.string().min(6, "Пароль должен быть не менее 6 символов"),
@@ -315,6 +327,7 @@ export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type RegisterUser = z.infer<typeof registerUserSchema>;
 export type LoginCredentials = z.infer<typeof loginSchema>;
 
 export type DirectoryWholesale = typeof directoryWholesale.$inferSelect;
