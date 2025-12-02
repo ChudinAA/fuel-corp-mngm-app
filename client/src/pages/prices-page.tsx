@@ -19,7 +19,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle } from "@/components/ui/alert";
 import { 
   CalendarIcon,
   Plus, 
@@ -483,7 +482,7 @@ function PricesTable({ priceType, counterpartyType }: { priceType: "purchase" | 
                       {price.productType === "kerosine" ? "Керосин" : price.productType === "pvkj" ? "ПВКЖ" : price.productType === "service" ? "Услуга" : price.productType === "agent" ? "Агентские" : "Хранение"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right font-medium">{formatNumber(price.price)} ₽</TableCell>
+                  <TableCell className="text-right font-medium">{formatNumber(price.priceValues?.[0] ? JSON.parse(price.priceValues[0]).price : "—")} ₽</TableCell>
                   <TableCell className="text-right">{formatNumber(price.soldVolume)}</TableCell>
                   <TableCell>
                     {price.dateCheckWarning === "error" && (

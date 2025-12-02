@@ -492,7 +492,16 @@ export async function registerRoutes(
 
   app.post("/api/prices", requireAuth, async (req, res) => {
     try {
-      const data = insertPriceSchema.parse(req.body);
+      const body = req.body;
+      // Преобразуем priceValues из массива объектов в JSON строки для хранения
+      const processedData = {
+        ...body,
+        priceValues: body.priceValues?.map((pv: { price: string }) => JSON.stringify({ price: parseFloat(pv.price) })),
+        volume: body.volume ? parseFloat(body.volume) : null,
+        counterpartyId: parseInt(body.counterpartyId),
+      };
+      
+      const data = insertPriceSchema.parse(processedData);
       const item = await storage.createPrice(data);
       res.status(201).json(item);
     } catch (error) {

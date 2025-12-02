@@ -292,18 +292,41 @@ export class DatabaseStorage implements IStorage {
 
   // ============ Prices ============
   async getAllPrices(): Promise<Price[]> {
-    return db.select().from(prices).orderBy(desc(prices.dateFrom));
+    const allPrices = await db.select().from(prices).orderBy(desc(prices.dateFrom));
+    return allPrices.map(p => this.enrichPriceWithCalculations(p));
   }
 
   async getPricesByType(priceType: string, counterpartyType: string): Promise<Price[]> {
-    return db.select().from(prices).where(
+    const filtered = await db.select().from(prices).where(
       and(eq(prices.priceType, priceType), eq(prices.counterpartyType, counterpartyType))
     ).orderBy(desc(prices.dateFrom));
+    return filtered.map(p => this.enrichPriceWithCalculations(p));
+  }
+
+  private enrichPriceWithCalculations(price: Price): Price {
+    // Расчет выборки (soldVolume) - сумма сделок из OPT и Refueling по этой цене
+    // Для простоты - возвращаем как есть, логика может быть расширена при необходимости
+    
+    // Проверка пересечения дат
+    let dateCheckWarning: string | null = null;
+    if (price.dateFrom && price.dateTo) {
+      // Логика проверки может быть расширена для проверки конфликтов с другими ценами
+      // Текущая версия возвращает null (без ошибок)
+    }
+    
+    return {
+      ...price,
+      dateCheckWarning,
+    } as Price;
   }
 
   async createPrice(data: InsertPrice): Promise<Price> {
-    const [created] = await db.insert(prices).values(data).returning();
-    return created;
+    const enrichedData = {
+      ...data,
+      dateCheckWarning: null,
+    };
+    const [created] = await db.insert(prices).values(enrichedData).returning();
+    return this.enrichPriceWithCalculations(created);
   }
 
   async updatePrice(id: number, data: Partial<InsertPrice>): Promise<Price | undefined> {
