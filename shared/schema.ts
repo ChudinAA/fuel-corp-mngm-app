@@ -85,17 +85,20 @@ export const directoryLogistics = pgTable("directory_logistics", {
 
 export const prices = pgTable("prices", {
   id: serial("id").primaryKey(),
-  priceType: text("price_type").notNull(), // purchase (закупка), sale (продажа), refueling_service (услуга заправки), storage (хранение), agent_fee (агентские), pvkj
-  productType: text("product_type").notNull(), // kerosene (керосин), pvkj, service, storage, agent
-  counterpartyId: integer("counterparty_id").notNull(), // может быть из wholesale или refueling
+  priceType: text("price_type").notNull(), // purchase (закупка), sale (продажа)
+  productType: text("product_type").notNull(), // kerosine, service, pvkj, agent, storage
+  counterpartyId: integer("counterparty_id").notNull(),
   counterpartyType: text("counterparty_type").notNull(), // wholesale, refueling
-  basis: text("basis"),
-  price: decimal("price", { precision: 12, scale: 4 }).notNull(),
+  counterpartyRole: text("counterparty_role").notNull(), // supplier, buyer
+  basis: text("basis").notNull(), // обязательное поле
+  priceValues: text("price_values").array(), // JSON array для хранения нескольких цен [{"price":32.50},{"price":30.50}]
+  volume: decimal("volume", { precision: 15, scale: 2 }), // объем по договору
   dateFrom: date("date_from").notNull(),
-  dateTo: date("date_to"),
+  dateTo: date("date_to").notNull(), // обязательное поле
   contractNumber: text("contract_number"),
   contractAppendix: text("contract_appendix"),
-  soldVolume: decimal("sold_volume", { precision: 15, scale: 2 }).default("0"),
+  soldVolume: decimal("sold_volume", { precision: 15, scale: 2 }).default("0"), // выборка - автоматический расчет
+  dateCheckWarning: text("date_check_warning"), // индикатор проверки дат (null, warning, error)
   isActive: boolean("is_active").default(true),
 });
 

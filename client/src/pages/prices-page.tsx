@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -19,6 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertCircle } from "@/components/ui/alert";
 import { 
   CalendarIcon,
   Plus, 
@@ -27,19 +28,25 @@ import {
   Loader2,
   Search,
   DollarSign,
-  TrendingUp
+  TrendingUp,
+  AlertTriangle,
+  X
 } from "lucide-react";
 import type { Price, DirectoryWholesale, DirectoryRefueling } from "@shared/schema";
 
 const priceFormSchema = z.object({
   dateFrom: z.date({ required_error: "Укажите дату начала" }),
-  dateTo: z.date().optional(),
+  dateTo: z.date({ required_error: "Укажите дату окончания" }),
   priceType: z.enum(["purchase", "sale"]),
   counterpartyType: z.enum(["wholesale", "refueling"]),
+  counterpartyRole: z.enum(["supplier", "buyer"]),
   counterpartyId: z.string().min(1, "Выберите контрагента"),
-  productType: z.string().min(1, "Выберите продукт"),
-  price: z.string().min(1, "Укажите цену"),
-  basis: z.string().optional(),
+  productType: z.enum(["kerosine", "service", "pvkj", "agent", "storage"]),
+  basis: z.string().min(1, "Выберите базис"),
+  volume: z.string().optional(),
+  priceValues: z.array(z.object({
+    price: z.string().min(1, "Укажите цену")
+  })).min(1, "Добавьте хотя бы одну цену"),
   contractNumber: z.string().optional(),
 });
 
@@ -53,17 +60,34 @@ function AddPriceDialog() {
     resolver: zodResolver(priceFormSchema),
     defaultValues: {
       dateFrom: new Date(),
+      dateTo: new Date(),
       priceType: "purchase",
       counterpartyType: "wholesale",
+      counterpartyRole: "supplier",
       counterpartyId: "",
-      productType: "kerosene",
-      price: "",
+      productType: "kerosine",
       basis: "",
+      volume: "",
+      priceValues: [{ price: "" }],
       contractNumber: "",
     },
   });
 
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "priceValues"
+  });
+
   const watchCounterpartyType = form.watch("counterpartyType");
+  const watchBasis = form.watch("basis");
+
+  const { data: optBases } = useQuery<DirectoryWholesale[]>({
+    queryKey: ["/api/directories/wholesale", "basis"],
+  });
+
+  const { data: refuelingBases } = useQuery<DirectoryRefueling[]>({
+    queryKey: ["/api/directories/refueling", "basis"],
+  });
 
   const { data: optContractors } = useQuery<DirectoryWholesale[]>({
     queryKey: ["/api/directories/wholesale", "all"],
@@ -73,6 +97,7 @@ function AddPriceDialog() {
     queryKey: ["/api/directories/refueling", "all"],
   });
 
+  const bases = watchCounterpartyType === "wholesale" ? optBases : refuelingBases;
   const contractors = watchCounterpartyType === "wholesale" ? optContractors : refuelingContractors;
 
   const createMutation = useMutation({
@@ -82,10 +107,12 @@ function AddPriceDialog() {
         productType: data.productType,
         counterpartyId: parseInt(data.counterpartyId),
         counterpartyType: data.counterpartyType,
-        price: data.price,
+        counterpartyRole: data.counterpartyRole,
+        basis: data.basis,
+        volume: data.volume ? parseFloat(data.volume) : null,
+        priceValues: data.priceValues,
         dateFrom: format(data.dateFrom, "yyyy-MM-dd"),
-        dateTo: data.dateTo ? format(data.dateTo, "yyyy-MM-dd") : null,
-        basis: data.basis || null,
+        dateTo: format(data.dateTo, "yyyy-MM-dd"),
         contractNumber: data.contractNumber || null,
       };
       const res = await apiRequest("POST", "/api/prices", payload);
@@ -110,7 +137,7 @@ function AddPriceDialog() {
           Добавить цену
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Новая цена</DialogTitle>
           <DialogDescription>Добавление цены покупки или продажи</DialogDescription>
@@ -123,7 +150,7 @@ function AddPriceDialog() {
                 name="dateFrom"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Дата начала</FormLabel>
+                    <FormLabel>Срок действия ОТ</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -141,6 +168,32 @@ function AddPriceDialog() {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="dateTo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Срок действия ДО</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="input-date-to">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(field.value, "dd.MM.yyyy", { locale: ru }) : "Выберите"}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} locale={ru} />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
               <FormField
                 control={form.control}
                 name="priceType"
@@ -162,9 +215,7 @@ function AddPriceDialog() {
                   </FormItem>
                 )}
               />
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="counterpartyType"
@@ -186,21 +237,22 @@ function AddPriceDialog() {
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
-                name="productType"
+                name="counterpartyRole"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Продукт</FormLabel>
+                    <FormLabel>Роль контрагента</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger data-testid="select-product-type">
+                        <SelectTrigger data-testid="select-counterparty-role">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="kerosene">Керосин</SelectItem>
-                        <SelectItem value="pvkj">ПВКЖ</SelectItem>
+                        <SelectItem value="supplier">Поставщик</SelectItem>
+                        <SelectItem value="buyer">Покупатель</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -209,51 +261,88 @@ function AddPriceDialog() {
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="counterpartyId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Контрагент</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-counterparty">
-                        <SelectValue placeholder="Выберите контрагента" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {contractors?.map((c) => (
-                        <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
-                      )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="price"
+                name="counterpartyId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Цена за кг (₽)</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.0001" placeholder="0.0000" data-testid="input-price-value" {...field} />
-                    </FormControl>
+                    <FormLabel>Контрагент</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-counterparty">
+                          <SelectValue placeholder="Выберите контрагента" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {contractors?.map((c) => (
+                          <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                        )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="productType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Тип продукта</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-product-type">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="kerosine">Керосин</SelectItem>
+                        <SelectItem value="service">Услуга</SelectItem>
+                        <SelectItem value="pvkj">ПВКЖ</SelectItem>
+                        <SelectItem value="agent">Агентские</SelectItem>
+                        <SelectItem value="storage">Хранение</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="basis"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Базис</FormLabel>
+                    <FormLabel>Базис (место поставки)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-basis">
+                          <SelectValue placeholder="Выберите базис" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {bases?.map((b) => (
+                          <SelectItem key={b.id} value={b.basis || b.name}>{b.basis || b.name}</SelectItem>
+                        )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="volume"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Объем по договору (кг)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Базис (опционально)" data-testid="input-basis" {...field} />
+                      <Input type="number" step="0.01" placeholder="Объем поставки" data-testid="input-volume" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -261,14 +350,56 @@ function AddPriceDialog() {
               />
             </div>
 
+            <div className="space-y-3">
+              <FormLabel>Цены (добавьте одну или несколько)</FormLabel>
+              {fields.map((field, index) => (
+                <div key={field.id} className="flex gap-2 items-end">
+                  <FormField
+                    control={form.control}
+                    name={`priceValues.${index}.price`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormControl>
+                          <Input type="number" step="0.0001" placeholder="Цена за кг (₽)" data-testid={`input-price-${index}`} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {fields.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => remove(index)}
+                      data-testid={`button-remove-price-${index}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {index === fields.length - 1 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => append({ price: "" })}
+                      data-testid="button-add-price-field"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+
             <FormField
               control={form.control}
               name="contractNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Номер договора</FormLabel>
+                  <FormLabel>Номер договора (опционально)</FormLabel>
                   <FormControl>
-                    <Input placeholder="№ договора (опционально)" data-testid="input-contract-number" {...field} />
+                    <Input placeholder="№ договора" data-testid="input-contract-number" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -324,33 +455,53 @@ function PricesTable({ priceType, counterpartyType }: { priceType: "purchase" | 
         <Input placeholder="Поиск по базису..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
       </div>
 
-      <div className="border rounded-lg">
+      <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Дата начала</TableHead>
+              <TableHead>Период</TableHead>
               <TableHead>Базис</TableHead>
               <TableHead>Продукт</TableHead>
               <TableHead className="text-right">Цена (₽/кг)</TableHead>
+              <TableHead className="text-right">Выборка (кг)</TableHead>
+              <TableHead>Статус</TableHead>
               <TableHead className="w-[80px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredPrices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Нет данных</TableCell>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Нет данных</TableCell>
               </TableRow>
             ) : (
               filteredPrices.map((price) => (
                 <TableRow key={price.id}>
-                  <TableCell>{formatDate(price.dateFrom)}</TableCell>
+                  <TableCell className="text-sm">{formatDate(price.dateFrom)} - {formatDate(price.dateTo)}</TableCell>
                   <TableCell>{price.basis || "—"}</TableCell>
                   <TableCell>
                     <Badge variant="outline">
-                      {price.productType === "kerosene" ? "Керосин" : "ПВКЖ"}
+                      {price.productType === "kerosine" ? "Керосин" : price.productType === "pvkj" ? "ПВКЖ" : price.productType === "service" ? "Услуга" : price.productType === "agent" ? "Агентские" : "Хранение"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right font-medium">{formatNumber(price.price)} ₽</TableCell>
+                  <TableCell className="text-right">{formatNumber(price.soldVolume)}</TableCell>
+                  <TableCell>
+                    {price.dateCheckWarning === "error" && (
+                      <Badge variant="destructive" className="flex items-center gap-1 w-fit">
+                        <AlertTriangle className="h-3 w-3" />
+                        Пересечение
+                      </Badge>
+                    )}
+                    {price.dateCheckWarning === "warning" && (
+                      <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                        <AlertTriangle className="h-3 w-3" />
+                        Внимание
+                      </Badge>
+                    )}
+                    {!price.dateCheckWarning && (
+                      <Badge variant="outline" className="bg-green-50 text-green-700">ОК</Badge>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4" /></Button>
@@ -375,7 +526,7 @@ export default function PricesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Цены</h1>
-          <p className="text-muted-foreground">Управление ценами покупки и продажи</p>
+          <p className="text-muted-foreground">Управление ценами покупки и продажи с проверкой пересечения диапазонов</p>
         </div>
         <AddPriceDialog />
       </div>

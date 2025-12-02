@@ -322,7 +322,7 @@ export default function AuthPage() {
       <div className="hidden lg:flex flex-1 bg-primary p-12 items-center justify-center">
         <div className="max-w-lg text-primary-foreground">
           <h1 className="text-4xl font-semibold mb-4">
-            Система управления авиатопливом
+            Система управления бизнес-процессами
           </h1>
           <p className="text-lg opacity-90 mb-8">
             Комплексное решение для учета оптовой торговли, заправки воздушных судов, 
