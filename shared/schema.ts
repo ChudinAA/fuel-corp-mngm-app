@@ -85,11 +85,11 @@ export const directoryLogistics = pgTable("directory_logistics", {
 
 export const prices = pgTable("prices", {
   id: serial("id").primaryKey(),
-  priceType: text("price_type").notNull(), // purchase (закупка), sale (продажа)
+  priceType: text("price_type"), // устаревшее, не используется
   productType: text("product_type").notNull(), // kerosine, service, pvkj, agent, storage
   counterpartyId: integer("counterparty_id").notNull(),
   counterpartyType: text("counterparty_type").notNull(), // wholesale, refueling
-  counterpartyRole: text("counterparty_role").notNull(), // supplier, buyer
+  counterpartyRole: text("counterparty_role").notNull(), // supplier, buyer - определяет покупка это или продажа
   basis: text("basis").notNull(), // обязательное поле
   priceValues: text("price_values").array(), // JSON array для хранения нескольких цен [{"price":32.50},{"price":30.50}]
   volume: decimal("volume", { precision: 15, scale: 2 }), // объем по договору

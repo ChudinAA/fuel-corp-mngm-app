@@ -481,9 +481,9 @@ export async function registerRoutes(
   // ============ PRICES ROUTES ============
 
   app.get("/api/prices", requireAuth, async (req, res) => {
-    const { priceType, counterpartyType } = req.query;
-    if (priceType && counterpartyType) {
-      const data = await storage.getPricesByType(priceType as string, counterpartyType as string);
+    const { counterpartyRole, counterpartyType } = req.query;
+    if (counterpartyRole && counterpartyType) {
+      const data = await storage.getPricesByRole(counterpartyRole as string, counterpartyType as string);
       return res.json(data);
     }
     const data = await storage.getAllPrices();
@@ -494,11 +494,12 @@ export async function registerRoutes(
     try {
       const body = req.body;
       // Преобразуем priceValues из массива объектов в JSON строки для хранения
+      // volume должен быть строкой для decimal типа
       const processedData = {
         ...body,
         priceValues: body.priceValues?.map((pv: { price: string }) => JSON.stringify({ price: parseFloat(pv.price) })),
-        volume: body.volume ? parseFloat(body.volume) : null,
-        counterpartyId: parseInt(body.counterpartyId),
+        volume: body.volume ? String(body.volume) : null,
+        counterpartyId: typeof body.counterpartyId === 'string' ? parseInt(body.counterpartyId) : body.counterpartyId,
       };
       
       const data = insertPriceSchema.parse(processedData);
@@ -508,6 +509,7 @@ export async function registerRoutes(
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
       }
+      console.error("Price creation error:", error);
       res.status(500).json({ message: "Ошибка создания цены" });
     }
   });
@@ -532,6 +534,56 @@ export async function registerRoutes(
       res.json({ message: "Цена удалена" });
     } catch (error) {
       res.status(500).json({ message: "Ошибка удаления цены" });
+    }
+  });
+
+  // Расчет выборки - сумма сделок из ОПТ и Заправка ВС
+  app.get("/api/prices/calculate-selection", requireAuth, async (req, res) => {
+    try {
+      const { counterpartyId, counterpartyType, basis, dateFrom, dateTo } = req.query;
+      
+      if (!counterpartyId || !counterpartyType || !basis || !dateFrom || !dateTo) {
+        return res.status(400).json({ message: "Не указаны обязательные параметры" });
+      }
+
+      const totalVolume = await storage.calculatePriceSelection(
+        parseInt(counterpartyId as string),
+        counterpartyType as string,
+        basis as string,
+        dateFrom as string,
+        dateTo as string
+      );
+
+      res.json({ totalVolume: totalVolume.toFixed(2) });
+    } catch (error) {
+      console.error("Selection calculation error:", error);
+      res.status(500).json({ message: "Ошибка расчета выборки" });
+    }
+  });
+
+  // Проверка пересечения диапазонов дат
+  app.get("/api/prices/check-date-overlaps", requireAuth, async (req, res) => {
+    try {
+      const { counterpartyId, counterpartyType, counterpartyRole, basis, dateFrom, dateTo, excludeId } = req.query;
+      
+      if (!counterpartyId || !counterpartyType || !counterpartyRole || !basis || !dateFrom || !dateTo) {
+        return res.status(400).json({ message: "Не указаны обязательные параметры" });
+      }
+
+      const result = await storage.checkPriceDateOverlaps(
+        parseInt(counterpartyId as string),
+        counterpartyType as string,
+        counterpartyRole as string,
+        basis as string,
+        dateFrom as string,
+        dateTo as string,
+        excludeId ? parseInt(excludeId as string) : undefined
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error("Date overlap check error:", error);
+      res.status(500).json({ message: "Ошибка проверки дат" });
     }
   });
 

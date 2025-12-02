@@ -96,10 +96,12 @@ export interface IStorage {
 
   // Prices
   getAllPrices(): Promise<Price[]>;
-  getPricesByType(priceType: string, counterpartyType: string): Promise<Price[]>;
+  getPricesByRole(counterpartyRole: string, counterpartyType: string): Promise<Price[]>;
   createPrice(data: InsertPrice): Promise<Price>;
   updatePrice(id: number, data: Partial<InsertPrice>): Promise<Price | undefined>;
   deletePrice(id: number): Promise<boolean>;
+  calculatePriceSelection(counterpartyId: number, counterpartyType: string, basis: string, dateFrom: string, dateTo: string): Promise<number>;
+  checkPriceDateOverlaps(counterpartyId: number, counterpartyType: string, counterpartyRole: string, basis: string, dateFrom: string, dateTo: string, excludeId?: number): Promise<{ status: string; message: string; overlaps?: { id: number; dateFrom: string; dateTo: string }[] }>;
 
   // Delivery Cost
   getAllDeliveryCosts(): Promise<DeliveryCost[]>;
@@ -296,9 +298,9 @@ export class DatabaseStorage implements IStorage {
     return allPrices.map(p => this.enrichPriceWithCalculations(p));
   }
 
-  async getPricesByType(priceType: string, counterpartyType: string): Promise<Price[]> {
+  async getPricesByRole(counterpartyRole: string, counterpartyType: string): Promise<Price[]> {
     const filtered = await db.select().from(prices).where(
-      and(eq(prices.priceType, priceType), eq(prices.counterpartyType, counterpartyType))
+      and(eq(prices.counterpartyRole, counterpartyRole), eq(prices.counterpartyType, counterpartyType))
     ).orderBy(desc(prices.dateFrom));
     return filtered.map(p => this.enrichPriceWithCalculations(p));
   }
@@ -337,6 +339,128 @@ export class DatabaseStorage implements IStorage {
   async deletePrice(id: number): Promise<boolean> {
     await db.delete(prices).where(eq(prices.id, id));
     return true;
+  }
+
+  // Расчет выборки - сумма сделок из ОПТ и Заправка ВС
+  async calculatePriceSelection(
+    counterpartyId: number,
+    counterpartyType: string,
+    basis: string,
+    dateFrom: string,
+    dateTo: string
+  ): Promise<number> {
+    let totalVolume = 0;
+
+    if (counterpartyType === "wholesale") {
+      // Суммируем из таблицы opt - сделки где контрагент это либо поставщик, либо покупатель
+      const optDealsSupplier = await db.select({
+        total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`
+      }).from(opt).where(
+        and(
+          eq(opt.supplierId, counterpartyId),
+          eq(opt.basis, basis),
+          sql`${opt.dealDate} >= ${dateFrom}`,
+          sql`${opt.dealDate} <= ${dateTo}`
+        )
+      );
+
+      const optDealsBuyer = await db.select({
+        total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`
+      }).from(opt).where(
+        and(
+          eq(opt.buyerId, counterpartyId),
+          eq(opt.basis, basis),
+          sql`${opt.dealDate} >= ${dateFrom}`,
+          sql`${opt.dealDate} <= ${dateTo}`
+        )
+      );
+
+      totalVolume += parseFloat(optDealsSupplier[0]?.total || "0");
+      totalVolume += parseFloat(optDealsBuyer[0]?.total || "0");
+    } else if (counterpartyType === "refueling") {
+      // Суммируем из таблицы aircraftRefueling
+      const refuelingDealsSupplier = await db.select({
+        total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`
+      }).from(aircraftRefueling).where(
+        and(
+          eq(aircraftRefueling.supplierId, counterpartyId),
+          eq(aircraftRefueling.basis, basis),
+          sql`${aircraftRefueling.refuelingDate} >= ${dateFrom}`,
+          sql`${aircraftRefueling.refuelingDate} <= ${dateTo}`
+        )
+      );
+
+      const refuelingDealsBuyer = await db.select({
+        total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`
+      }).from(aircraftRefueling).where(
+        and(
+          eq(aircraftRefueling.buyerId, counterpartyId),
+          eq(aircraftRefueling.basis, basis),
+          sql`${aircraftRefueling.refuelingDate} >= ${dateFrom}`,
+          sql`${aircraftRefueling.refuelingDate} <= ${dateTo}`
+        )
+      );
+
+      totalVolume += parseFloat(refuelingDealsSupplier[0]?.total || "0");
+      totalVolume += parseFloat(refuelingDealsBuyer[0]?.total || "0");
+    }
+
+    return totalVolume;
+  }
+
+  // Проверка пересечения диапазонов дат
+  async checkPriceDateOverlaps(
+    counterpartyId: number,
+    counterpartyType: string,
+    counterpartyRole: string,
+    basis: string,
+    dateFrom: string,
+    dateTo: string,
+    excludeId?: number
+  ): Promise<{ status: string; message: string; overlaps?: { id: number; dateFrom: string; dateTo: string }[] }> {
+    // Ищем цены с пересекающимися диапазонами дат для того же контрагента и базиса
+    const conditions = [
+      eq(prices.counterpartyId, counterpartyId),
+      eq(prices.counterpartyType, counterpartyType),
+      eq(prices.counterpartyRole, counterpartyRole),
+      eq(prices.basis, basis),
+      eq(prices.isActive, true),
+      // Проверка пересечения дат: (A.start <= B.end) AND (A.end >= B.start)
+      sql`${prices.dateFrom} <= ${dateTo}`,
+      sql`${prices.dateTo} >= ${dateFrom}`
+    ];
+
+    if (excludeId) {
+      conditions.push(sql`${prices.id} != ${excludeId}`);
+    }
+
+    const overlappingPrices = await db.select({
+      id: prices.id,
+      dateFrom: prices.dateFrom,
+      dateTo: prices.dateTo
+    }).from(prices).where(and(...conditions));
+
+    if (overlappingPrices.length > 0) {
+      // Обновляем статус проверки дат для всех пересекающихся цен
+      for (const price of overlappingPrices) {
+        await db.update(prices).set({ dateCheckWarning: "error" }).where(eq(prices.id, price.id));
+      }
+
+      return {
+        status: "error",
+        message: `Обнаружено пересечение дат с ${overlappingPrices.length} ценами. При пересечении цены будут суммироваться!`,
+        overlaps: overlappingPrices.map(p => ({
+          id: p.id,
+          dateFrom: p.dateFrom,
+          dateTo: p.dateTo || p.dateFrom
+        }))
+      };
+    }
+
+    return {
+      status: "ok",
+      message: "Пересечений не обнаружено"
+    };
   }
 
   // ============ Delivery Cost ============
