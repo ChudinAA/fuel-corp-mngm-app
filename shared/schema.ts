@@ -85,7 +85,6 @@ export const directoryLogistics = pgTable("directory_logistics", {
 
 export const prices = pgTable("prices", {
   id: serial("id").primaryKey(),
-  priceType: text("price_type"), // устаревшее, не используется
   productType: text("product_type").notNull(), // kerosine, service, pvkj, agent, storage
   counterpartyId: integer("counterparty_id").notNull(),
   counterpartyType: text("counterparty_type").notNull(), // wholesale, refueling
