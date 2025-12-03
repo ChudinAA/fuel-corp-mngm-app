@@ -288,36 +288,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Быстрые действия</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-2">
-            <a href="/opt" className="flex items-center gap-3 p-3 rounded-md hover-elevate cursor-pointer" data-testid="link-quick-opt">
-              <ShoppingCart className="h-5 w-5 text-primary" />
-              <div>
-                <p className="text-sm font-medium">Новая оптовая сделка</p>
-                <p className="text-xs text-muted-foreground">Создать запись в ОПТ</p>
-              </div>
-            </a>
-            <a href="/refueling" className="flex items-center gap-3 p-3 rounded-md hover-elevate cursor-pointer" data-testid="link-quick-refueling">
-              <Plane className="h-5 w-5 text-primary" />
-              <div>
-                <p className="text-sm font-medium">Новая заправка</p>
-                <p className="text-xs text-muted-foreground">Записать заправку ВС</p>
-              </div>
-            </a>
-            <a href="/movement" className="flex items-center gap-3 p-3 rounded-md hover-elevate cursor-pointer" data-testid="link-quick-movement">
-              <Package className="h-5 w-5 text-primary" />
-              <div>
-                <p className="text-sm font-medium">Перемещение</p>
-                <p className="text-xs text-muted-foreground">Перемещение между складами</p>
-              </div>
-            </a>
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg">Статистика за неделю</CardTitle>
