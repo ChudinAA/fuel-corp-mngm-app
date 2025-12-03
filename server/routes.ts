@@ -7,9 +7,18 @@ import {
   registerUserSchema,
   insertUserSchema,
   insertRoleSchema,
-  insertDirectoryWholesaleSchema,
-  insertDirectoryRefuelingSchema,
-  insertDirectoryLogisticsSchema,
+  insertCustomerSchema,
+  insertWholesaleSupplierSchema,
+  insertWholesaleBaseSchema,
+  insertRefuelingProviderSchema,
+  insertRefuelingBaseSchema,
+  insertRefuelingServiceSchema,
+  insertLogisticsCarrierSchema,
+  insertLogisticsDeliveryLocationSchema,
+  insertLogisticsVehicleSchema,
+  insertLogisticsTrailerSchema,
+  insertLogisticsDriverSchema,
+  insertLogisticsWarehouseSchema,
   insertPriceSchema,
   insertDeliveryCostSchema,
   insertWarehouseSchema,
@@ -115,7 +124,6 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Session configuration
   app.use(
     session({
       secret: process.env.SESSION_SECRET || "aviation-fuel-secret-key",
@@ -124,37 +132,31 @@ export async function registerRoutes(
       cookie: {
         secure: process.env.NODE_ENV === "production",
         httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        maxAge: 24 * 60 * 60 * 1000,
       },
     })
   );
 
-  // Seed default roles on startup
   await seedDefaultRoles();
 
   // ============ AUTH ROUTES ============
 
-  // Register
   app.post("/api/auth/register", async (req, res) => {
     try {
       const data = registerUserSchema.parse(req.body);
       
-      // Check if email already exists
       const existingUser = await storage.getUserByEmail(data.email);
       if (existingUser) {
         return res.status(400).json({ message: "Пользователь с таким email уже существует" });
       }
 
-      // Get default role for new users
       const roles = await storage.getAllRoles();
       const defaultRole = roles.find(r => r.isDefault) || roles.find(r => r.name === "Менеджер");
       
-      // If this is the first user, make them admin
       const allUsers = await storage.getAllUsers();
       const adminRole = roles.find(r => r.name === "Админ");
       const roleToAssign = allUsers.length === 0 && adminRole ? adminRole : defaultRole;
 
-      // Remove confirmPassword before creating user
       const { confirmPassword, ...userData } = data;
       
       const user = await storage.createUser({
@@ -164,7 +166,6 @@ export async function registerRoutes(
       });
       req.session.userId = user.id;
       
-      // Return user without password, include role for frontend permission checks
       const { password, ...safeUser } = user;
       res.status(201).json({ ...safeUser, role: roleToAssign || null });
     } catch (error) {
@@ -175,7 +176,6 @@ export async function registerRoutes(
     }
   });
 
-  // Login
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = loginSchema.parse(req.body);
@@ -192,7 +192,6 @@ export async function registerRoutes(
       await storage.updateLastLogin(user.id);
       req.session.userId = user.id;
       
-      // Include role for frontend permission checks
       let role = null;
       if (user.roleId) {
         role = await storage.getRole(user.roleId);
@@ -208,7 +207,6 @@ export async function registerRoutes(
     }
   });
 
-  // Logout
   app.post("/api/auth/logout", (req, res) => {
     req.session.destroy((err) => {
       if (err) {
@@ -218,7 +216,6 @@ export async function registerRoutes(
     });
   });
 
-  // Get current user with role info
   app.get("/api/auth/user", async (req, res) => {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Не авторизован" });
@@ -229,7 +226,6 @@ export async function registerRoutes(
       return res.status(404).json({ message: "Пользователь не найден" });
     }
 
-    // Include role information for permission checks
     let role = null;
     if (user.roleId) {
       role = await storage.getRole(user.roleId);
@@ -332,149 +328,633 @@ export async function registerRoutes(
     }
   });
 
-  // ============ DIRECTORIES ROUTES ============
+  // ============ CUSTOMERS (Unified for Wholesale and Refueling) ============
 
-  // Wholesale
-  app.get("/api/directories/wholesale", requireAuth, async (req, res) => {
-    const type = req.query.type as string | undefined;
-    const data = await storage.getDirectoryWholesale(type);
+  app.get("/api/customers", requireAuth, async (req, res) => {
+    const module = req.query.module as string | undefined;
+    const data = await storage.getAllCustomers(module);
     res.json(data);
   });
 
-  app.get("/api/directories/wholesale/:type", requireAuth, async (req, res) => {
-    const data = await storage.getDirectoryWholesale(req.params.type);
-    res.json(data);
+  app.get("/api/customers/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const customer = await storage.getCustomer(id);
+    if (!customer) {
+      return res.status(404).json({ message: "Покупатель не найден" });
+    }
+    res.json(customer);
   });
 
-  app.post("/api/directories/wholesale", requireAuth, async (req, res) => {
+  app.post("/api/customers", requireAuth, async (req, res) => {
     try {
-      const data = insertDirectoryWholesaleSchema.parse(req.body);
-      const item = await storage.createDirectoryWholesale(data);
+      const data = insertCustomerSchema.parse(req.body);
+      const item = await storage.createCustomer(data);
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
       }
-      res.status(500).json({ message: "Ошибка создания записи" });
+      res.status(500).json({ message: "Ошибка создания покупателя" });
     }
   });
 
-  app.patch("/api/directories/wholesale/:id", requireAuth, async (req, res) => {
+  app.patch("/api/customers/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const item = await storage.updateDirectoryWholesale(id, req.body);
+      const item = await storage.updateCustomer(id, req.body);
       if (!item) {
-        return res.status(404).json({ message: "Запись не найдена" });
+        return res.status(404).json({ message: "Покупатель не найден" });
       }
       res.json(item);
     } catch (error) {
-      res.status(500).json({ message: "Ошибка обновления записи" });
+      res.status(500).json({ message: "Ошибка обновления покупателя" });
     }
   });
 
-  app.delete("/api/directories/wholesale/:id", requireAuth, async (req, res) => {
+  app.delete("/api/customers/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteDirectoryWholesale(id);
-      res.json({ message: "Запись удалена" });
+      await storage.deleteCustomer(id);
+      res.json({ message: "Покупатель удален" });
     } catch (error) {
-      res.status(500).json({ message: "Ошибка удаления записи" });
+      res.status(500).json({ message: "Ошибка удаления покупателя" });
     }
   });
 
-  // Refueling
-  app.get("/api/directories/refueling", requireAuth, async (req, res) => {
-    const type = req.query.type as string | undefined;
-    const data = await storage.getDirectoryRefueling(type);
+  // ============ WHOLESALE SUPPLIERS ============
+
+  app.get("/api/wholesale/suppliers", requireAuth, async (req, res) => {
+    const data = await storage.getAllWholesaleSuppliers();
     res.json(data);
   });
 
-  app.get("/api/directories/refueling/:type", requireAuth, async (req, res) => {
-    const data = await storage.getDirectoryRefueling(req.params.type);
-    res.json(data);
+  app.get("/api/wholesale/suppliers/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const supplier = await storage.getWholesaleSupplier(id);
+    if (!supplier) {
+      return res.status(404).json({ message: "Поставщик не найден" });
+    }
+    res.json(supplier);
   });
 
-  app.post("/api/directories/refueling", requireAuth, async (req, res) => {
+  app.post("/api/wholesale/suppliers", requireAuth, async (req, res) => {
     try {
-      const data = insertDirectoryRefuelingSchema.parse(req.body);
-      const item = await storage.createDirectoryRefueling(data);
+      const data = insertWholesaleSupplierSchema.parse(req.body);
+      const item = await storage.createWholesaleSupplier(data);
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
       }
-      res.status(500).json({ message: "Ошибка создания записи" });
+      res.status(500).json({ message: "Ошибка создания поставщика" });
     }
   });
 
-  app.patch("/api/directories/refueling/:id", requireAuth, async (req, res) => {
+  app.patch("/api/wholesale/suppliers/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const item = await storage.updateDirectoryRefueling(id, req.body);
+      const item = await storage.updateWholesaleSupplier(id, req.body);
       if (!item) {
-        return res.status(404).json({ message: "Запись не найдена" });
+        return res.status(404).json({ message: "Поставщик не найден" });
       }
       res.json(item);
     } catch (error) {
-      res.status(500).json({ message: "Ошибка обновления записи" });
+      res.status(500).json({ message: "Ошибка обновления поставщика" });
     }
   });
 
-  app.delete("/api/directories/refueling/:id", requireAuth, async (req, res) => {
+  app.delete("/api/wholesale/suppliers/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteDirectoryRefueling(id);
-      res.json({ message: "Запись удалена" });
+      await storage.deleteWholesaleSupplier(id);
+      res.json({ message: "Поставщик удален" });
     } catch (error) {
-      res.status(500).json({ message: "Ошибка удаления записи" });
+      res.status(500).json({ message: "Ошибка удаления поставщика" });
     }
   });
 
-  // Logistics
-  app.get("/api/directories/logistics", requireAuth, async (req, res) => {
-    const type = req.query.type as string | undefined;
-    const data = await storage.getDirectoryLogistics(type);
+  // ============ WHOLESALE BASES ============
+
+  app.get("/api/wholesale/bases", requireAuth, async (req, res) => {
+    const supplierId = req.query.supplierId ? parseInt(req.query.supplierId as string) : undefined;
+    const data = await storage.getAllWholesaleBases(supplierId);
     res.json(data);
   });
 
-  app.get("/api/directories/logistics/:type", requireAuth, async (req, res) => {
-    const data = await storage.getDirectoryLogistics(req.params.type);
-    res.json(data);
+  app.get("/api/wholesale/bases/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const base = await storage.getWholesaleBase(id);
+    if (!base) {
+      return res.status(404).json({ message: "Базис не найден" });
+    }
+    res.json(base);
   });
 
-  app.post("/api/directories/logistics", requireAuth, async (req, res) => {
+  app.post("/api/wholesale/bases", requireAuth, async (req, res) => {
     try {
-      const data = insertDirectoryLogisticsSchema.parse(req.body);
-      const item = await storage.createDirectoryLogistics(data);
+      const data = insertWholesaleBaseSchema.parse(req.body);
+      const item = await storage.createWholesaleBase(data);
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
       }
-      res.status(500).json({ message: "Ошибка создания записи" });
+      res.status(500).json({ message: "Ошибка создания базиса" });
     }
   });
 
-  app.patch("/api/directories/logistics/:id", requireAuth, async (req, res) => {
+  app.patch("/api/wholesale/bases/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const item = await storage.updateDirectoryLogistics(id, req.body);
+      const item = await storage.updateWholesaleBase(id, req.body);
       if (!item) {
-        return res.status(404).json({ message: "Запись не найдена" });
+        return res.status(404).json({ message: "Базис не найден" });
       }
       res.json(item);
     } catch (error) {
-      res.status(500).json({ message: "Ошибка обновления записи" });
+      res.status(500).json({ message: "Ошибка обновления базиса" });
     }
   });
 
-  app.delete("/api/directories/logistics/:id", requireAuth, async (req, res) => {
+  app.delete("/api/wholesale/bases/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteDirectoryLogistics(id);
-      res.json({ message: "Запись удалена" });
+      await storage.deleteWholesaleBase(id);
+      res.json({ message: "Базис удален" });
     } catch (error) {
-      res.status(500).json({ message: "Ошибка удаления записи" });
+      res.status(500).json({ message: "Ошибка удаления базиса" });
+    }
+  });
+
+  // ============ REFUELING PROVIDERS ============
+
+  app.get("/api/refueling/providers", requireAuth, async (req, res) => {
+    const data = await storage.getAllRefuelingProviders();
+    res.json(data);
+  });
+
+  app.get("/api/refueling/providers/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const provider = await storage.getRefuelingProvider(id);
+    if (!provider) {
+      return res.status(404).json({ message: "Аэропорт/Поставщик не найден" });
+    }
+    res.json(provider);
+  });
+
+  app.post("/api/refueling/providers", requireAuth, async (req, res) => {
+    try {
+      const data = insertRefuelingProviderSchema.parse(req.body);
+      const item = await storage.createRefuelingProvider(data);
+      res.status(201).json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Ошибка создания аэропорта/поставщика" });
+    }
+  });
+
+  app.patch("/api/refueling/providers/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const item = await storage.updateRefuelingProvider(id, req.body);
+      if (!item) {
+        return res.status(404).json({ message: "Аэропорт/Поставщик не найден" });
+      }
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка обновления аэропорта/поставщика" });
+    }
+  });
+
+  app.delete("/api/refueling/providers/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteRefuelingProvider(id);
+      res.json({ message: "Аэропорт/Поставщик удален" });
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка удаления аэропорта/поставщика" });
+    }
+  });
+
+  // ============ REFUELING BASES ============
+
+  app.get("/api/refueling/bases", requireAuth, async (req, res) => {
+    const providerId = req.query.providerId ? parseInt(req.query.providerId as string) : undefined;
+    const data = await storage.getAllRefuelingBases(providerId);
+    res.json(data);
+  });
+
+  app.get("/api/refueling/bases/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const base = await storage.getRefuelingBase(id);
+    if (!base) {
+      return res.status(404).json({ message: "Базис заправки не найден" });
+    }
+    res.json(base);
+  });
+
+  app.post("/api/refueling/bases", requireAuth, async (req, res) => {
+    try {
+      const data = insertRefuelingBaseSchema.parse(req.body);
+      const item = await storage.createRefuelingBase(data);
+      res.status(201).json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Ошибка создания базиса заправки" });
+    }
+  });
+
+  app.patch("/api/refueling/bases/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const item = await storage.updateRefuelingBase(id, req.body);
+      if (!item) {
+        return res.status(404).json({ message: "Базис заправки не найден" });
+      }
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка обновления базиса заправки" });
+    }
+  });
+
+  app.delete("/api/refueling/bases/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteRefuelingBase(id);
+      res.json({ message: "Базис заправки удален" });
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка удаления базиса заправки" });
+    }
+  });
+
+  // ============ REFUELING SERVICES ============
+
+  app.get("/api/refueling/services", requireAuth, async (req, res) => {
+    const data = await storage.getAllRefuelingServices();
+    res.json(data);
+  });
+
+  app.get("/api/refueling/services/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const service = await storage.getRefuelingService(id);
+    if (!service) {
+      return res.status(404).json({ message: "Услуга не найдена" });
+    }
+    res.json(service);
+  });
+
+  app.post("/api/refueling/services", requireAuth, async (req, res) => {
+    try {
+      const data = insertRefuelingServiceSchema.parse(req.body);
+      const item = await storage.createRefuelingService(data);
+      res.status(201).json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Ошибка создания услуги" });
+    }
+  });
+
+  app.patch("/api/refueling/services/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const item = await storage.updateRefuelingService(id, req.body);
+      if (!item) {
+        return res.status(404).json({ message: "Услуга не найдена" });
+      }
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка обновления услуги" });
+    }
+  });
+
+  app.delete("/api/refueling/services/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteRefuelingService(id);
+      res.json({ message: "Услуга удалена" });
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка удаления услуги" });
+    }
+  });
+
+  // ============ LOGISTICS CARRIERS ============
+
+  app.get("/api/logistics/carriers", requireAuth, async (req, res) => {
+    const data = await storage.getAllLogisticsCarriers();
+    res.json(data);
+  });
+
+  app.get("/api/logistics/carriers/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const carrier = await storage.getLogisticsCarrier(id);
+    if (!carrier) {
+      return res.status(404).json({ message: "Перевозчик не найден" });
+    }
+    res.json(carrier);
+  });
+
+  app.post("/api/logistics/carriers", requireAuth, async (req, res) => {
+    try {
+      const data = insertLogisticsCarrierSchema.parse(req.body);
+      const item = await storage.createLogisticsCarrier(data);
+      res.status(201).json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Ошибка создания перевозчика" });
+    }
+  });
+
+  app.patch("/api/logistics/carriers/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const item = await storage.updateLogisticsCarrier(id, req.body);
+      if (!item) {
+        return res.status(404).json({ message: "Перевозчик не найден" });
+      }
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка обновления перевозчика" });
+    }
+  });
+
+  app.delete("/api/logistics/carriers/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteLogisticsCarrier(id);
+      res.json({ message: "Перевозчик удален" });
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка удаления перевозчика" });
+    }
+  });
+
+  // ============ LOGISTICS DELIVERY LOCATIONS ============
+
+  app.get("/api/logistics/delivery-locations", requireAuth, async (req, res) => {
+    const data = await storage.getAllLogisticsDeliveryLocations();
+    res.json(data);
+  });
+
+  app.get("/api/logistics/delivery-locations/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const location = await storage.getLogisticsDeliveryLocation(id);
+    if (!location) {
+      return res.status(404).json({ message: "Место доставки не найдено" });
+    }
+    res.json(location);
+  });
+
+  app.post("/api/logistics/delivery-locations", requireAuth, async (req, res) => {
+    try {
+      const data = insertLogisticsDeliveryLocationSchema.parse(req.body);
+      const item = await storage.createLogisticsDeliveryLocation(data);
+      res.status(201).json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Ошибка создания места доставки" });
+    }
+  });
+
+  app.patch("/api/logistics/delivery-locations/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const item = await storage.updateLogisticsDeliveryLocation(id, req.body);
+      if (!item) {
+        return res.status(404).json({ message: "Место доставки не найдено" });
+      }
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка обновления места доставки" });
+    }
+  });
+
+  app.delete("/api/logistics/delivery-locations/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteLogisticsDeliveryLocation(id);
+      res.json({ message: "Место доставки удалено" });
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка удаления места доставки" });
+    }
+  });
+
+  // ============ LOGISTICS VEHICLES ============
+
+  app.get("/api/logistics/vehicles", requireAuth, async (req, res) => {
+    const carrierId = req.query.carrierId ? parseInt(req.query.carrierId as string) : undefined;
+    const data = await storage.getAllLogisticsVehicles(carrierId);
+    res.json(data);
+  });
+
+  app.get("/api/logistics/vehicles/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const vehicle = await storage.getLogisticsVehicle(id);
+    if (!vehicle) {
+      return res.status(404).json({ message: "Транспорт не найден" });
+    }
+    res.json(vehicle);
+  });
+
+  app.post("/api/logistics/vehicles", requireAuth, async (req, res) => {
+    try {
+      const data = insertLogisticsVehicleSchema.parse(req.body);
+      const item = await storage.createLogisticsVehicle(data);
+      res.status(201).json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Ошибка создания транспорта" });
+    }
+  });
+
+  app.patch("/api/logistics/vehicles/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const item = await storage.updateLogisticsVehicle(id, req.body);
+      if (!item) {
+        return res.status(404).json({ message: "Транспорт не найден" });
+      }
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка обновления транспорта" });
+    }
+  });
+
+  app.delete("/api/logistics/vehicles/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteLogisticsVehicle(id);
+      res.json({ message: "Транспорт удален" });
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка удаления транспорта" });
+    }
+  });
+
+  // ============ LOGISTICS TRAILERS ============
+
+  app.get("/api/logistics/trailers", requireAuth, async (req, res) => {
+    const carrierId = req.query.carrierId ? parseInt(req.query.carrierId as string) : undefined;
+    const data = await storage.getAllLogisticsTrailers(carrierId);
+    res.json(data);
+  });
+
+  app.get("/api/logistics/trailers/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const trailer = await storage.getLogisticsTrailer(id);
+    if (!trailer) {
+      return res.status(404).json({ message: "Прицеп не найден" });
+    }
+    res.json(trailer);
+  });
+
+  app.post("/api/logistics/trailers", requireAuth, async (req, res) => {
+    try {
+      const data = insertLogisticsTrailerSchema.parse(req.body);
+      const item = await storage.createLogisticsTrailer(data);
+      res.status(201).json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Ошибка создания прицепа" });
+    }
+  });
+
+  app.patch("/api/logistics/trailers/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const item = await storage.updateLogisticsTrailer(id, req.body);
+      if (!item) {
+        return res.status(404).json({ message: "Прицеп не найден" });
+      }
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка обновления прицепа" });
+    }
+  });
+
+  app.delete("/api/logistics/trailers/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteLogisticsTrailer(id);
+      res.json({ message: "Прицеп удален" });
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка удаления прицепа" });
+    }
+  });
+
+  // ============ LOGISTICS DRIVERS ============
+
+  app.get("/api/logistics/drivers", requireAuth, async (req, res) => {
+    const carrierId = req.query.carrierId ? parseInt(req.query.carrierId as string) : undefined;
+    const data = await storage.getAllLogisticsDrivers(carrierId);
+    res.json(data);
+  });
+
+  app.get("/api/logistics/drivers/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const driver = await storage.getLogisticsDriver(id);
+    if (!driver) {
+      return res.status(404).json({ message: "Водитель не найден" });
+    }
+    res.json(driver);
+  });
+
+  app.post("/api/logistics/drivers", requireAuth, async (req, res) => {
+    try {
+      const data = insertLogisticsDriverSchema.parse(req.body);
+      const item = await storage.createLogisticsDriver(data);
+      res.status(201).json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Ошибка создания водителя" });
+    }
+  });
+
+  app.patch("/api/logistics/drivers/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const item = await storage.updateLogisticsDriver(id, req.body);
+      if (!item) {
+        return res.status(404).json({ message: "Водитель не найден" });
+      }
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка обновления водителя" });
+    }
+  });
+
+  app.delete("/api/logistics/drivers/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteLogisticsDriver(id);
+      res.json({ message: "Водитель удален" });
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка удаления водителя" });
+    }
+  });
+
+  // ============ LOGISTICS WAREHOUSES/BASES ============
+
+  app.get("/api/logistics/warehouses", requireAuth, async (req, res) => {
+    const data = await storage.getAllLogisticsWarehouses();
+    res.json(data);
+  });
+
+  app.get("/api/logistics/warehouses/:id", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const warehouse = await storage.getLogisticsWarehouse(id);
+    if (!warehouse) {
+      return res.status(404).json({ message: "Склад/Базис не найден" });
+    }
+    res.json(warehouse);
+  });
+
+  app.post("/api/logistics/warehouses", requireAuth, async (req, res) => {
+    try {
+      const data = insertLogisticsWarehouseSchema.parse(req.body);
+      const item = await storage.createLogisticsWarehouse(data);
+      res.status(201).json(item);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: "Ошибка создания склада/базиса" });
+    }
+  });
+
+  app.patch("/api/logistics/warehouses/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const item = await storage.updateLogisticsWarehouse(id, req.body);
+      if (!item) {
+        return res.status(404).json({ message: "Склад/Базис не найден" });
+      }
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка обновления склада/базиса" });
+    }
+  });
+
+  app.delete("/api/logistics/warehouses/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteLogisticsWarehouse(id);
+      res.json({ message: "Склад/Базис удален" });
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка удаления склада/базиса" });
     }
   });
 
@@ -493,8 +973,6 @@ export async function registerRoutes(
   app.post("/api/prices", requireAuth, async (req, res) => {
     try {
       const body = req.body;
-      // Преобразуем priceValues из массива объектов в JSON строки для хранения
-      // volume должен быть строкой для decimal типа
       const processedData = {
         ...body,
         priceValues: body.priceValues?.map((pv: { price: string }) => JSON.stringify({ price: parseFloat(pv.price) })),
@@ -537,7 +1015,6 @@ export async function registerRoutes(
     }
   });
 
-  // Расчет выборки - сумма сделок из ОПТ и Заправка ВС
   app.get("/api/prices/calculate-selection", requireAuth, async (req, res) => {
     try {
       const { counterpartyId, counterpartyType, basis, dateFrom, dateTo } = req.query;
@@ -561,7 +1038,6 @@ export async function registerRoutes(
     }
   });
 
-  // Проверка пересечения диапазонов дат
   app.get("/api/prices/check-date-overlaps", requireAuth, async (req, res) => {
     try {
       const { counterpartyId, counterpartyType, counterpartyRole, basis, dateFrom, dateTo, excludeId } = req.query;

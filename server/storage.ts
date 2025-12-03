@@ -5,9 +5,18 @@ import {
   roles,
   permissions,
   rolePermissions,
-  directoryWholesale,
-  directoryRefueling,
-  directoryLogistics,
+  customers,
+  wholesaleSuppliers,
+  wholesaleBases,
+  refuelingProviders,
+  refuelingBases,
+  refuelingServices,
+  logisticsCarriers,
+  logisticsDeliveryLocations,
+  logisticsVehicles,
+  logisticsTrailers,
+  logisticsDrivers,
+  logisticsWarehouses,
   prices,
   deliveryCost,
   warehouses,
@@ -21,12 +30,30 @@ import {
   type Role,
   type InsertRole,
   type Permission,
-  type DirectoryWholesale,
-  type InsertDirectoryWholesale,
-  type DirectoryRefueling,
-  type InsertDirectoryRefueling,
-  type DirectoryLogistics,
-  type InsertDirectoryLogistics,
+  type Customer,
+  type InsertCustomer,
+  type WholesaleSupplier,
+  type InsertWholesaleSupplier,
+  type WholesaleBase,
+  type InsertWholesaleBase,
+  type RefuelingProvider,
+  type InsertRefuelingProvider,
+  type RefuelingBase,
+  type InsertRefuelingBase,
+  type RefuelingService,
+  type InsertRefuelingService,
+  type LogisticsCarrier,
+  type InsertLogisticsCarrier,
+  type LogisticsDeliveryLocation,
+  type InsertLogisticsDeliveryLocation,
+  type LogisticsVehicle,
+  type InsertLogisticsVehicle,
+  type LogisticsTrailer,
+  type InsertLogisticsTrailer,
+  type LogisticsDriver,
+  type InsertLogisticsDriver,
+  type LogisticsWarehouse,
+  type InsertLogisticsWarehouse,
   type Price,
   type InsertPrice,
   type DeliveryCost,
@@ -78,21 +105,89 @@ export interface IStorage {
   updateRole(id: number, data: Partial<InsertRole>): Promise<Role | undefined>;
   deleteRole(id: number): Promise<boolean>;
 
-  // Directories
-  getDirectoryWholesale(type?: string): Promise<DirectoryWholesale[]>;
-  createDirectoryWholesale(data: InsertDirectoryWholesale): Promise<DirectoryWholesale>;
-  updateDirectoryWholesale(id: number, data: Partial<InsertDirectoryWholesale>): Promise<DirectoryWholesale | undefined>;
-  deleteDirectoryWholesale(id: number): Promise<boolean>;
+  // Customers (unified for wholesale and refueling)
+  getAllCustomers(module?: string): Promise<Customer[]>;
+  getCustomer(id: number): Promise<Customer | undefined>;
+  createCustomer(data: InsertCustomer): Promise<Customer>;
+  updateCustomer(id: number, data: Partial<InsertCustomer>): Promise<Customer | undefined>;
+  deleteCustomer(id: number): Promise<boolean>;
 
-  getDirectoryRefueling(type?: string): Promise<DirectoryRefueling[]>;
-  createDirectoryRefueling(data: InsertDirectoryRefueling): Promise<DirectoryRefueling>;
-  updateDirectoryRefueling(id: number, data: Partial<InsertDirectoryRefueling>): Promise<DirectoryRefueling | undefined>;
-  deleteDirectoryRefueling(id: number): Promise<boolean>;
+  // Wholesale Suppliers
+  getAllWholesaleSuppliers(): Promise<WholesaleSupplier[]>;
+  getWholesaleSupplier(id: number): Promise<WholesaleSupplier | undefined>;
+  createWholesaleSupplier(data: InsertWholesaleSupplier): Promise<WholesaleSupplier>;
+  updateWholesaleSupplier(id: number, data: Partial<InsertWholesaleSupplier>): Promise<WholesaleSupplier | undefined>;
+  deleteWholesaleSupplier(id: number): Promise<boolean>;
 
-  getDirectoryLogistics(type?: string): Promise<DirectoryLogistics[]>;
-  createDirectoryLogistics(data: InsertDirectoryLogistics): Promise<DirectoryLogistics>;
-  updateDirectoryLogistics(id: number, data: Partial<InsertDirectoryLogistics>): Promise<DirectoryLogistics | undefined>;
-  deleteDirectoryLogistics(id: number): Promise<boolean>;
+  // Wholesale Bases
+  getAllWholesaleBases(supplierId?: number): Promise<WholesaleBase[]>;
+  getWholesaleBase(id: number): Promise<WholesaleBase | undefined>;
+  createWholesaleBase(data: InsertWholesaleBase): Promise<WholesaleBase>;
+  updateWholesaleBase(id: number, data: Partial<InsertWholesaleBase>): Promise<WholesaleBase | undefined>;
+  deleteWholesaleBase(id: number): Promise<boolean>;
+
+  // Refueling Providers
+  getAllRefuelingProviders(): Promise<RefuelingProvider[]>;
+  getRefuelingProvider(id: number): Promise<RefuelingProvider | undefined>;
+  createRefuelingProvider(data: InsertRefuelingProvider): Promise<RefuelingProvider>;
+  updateRefuelingProvider(id: number, data: Partial<InsertRefuelingProvider>): Promise<RefuelingProvider | undefined>;
+  deleteRefuelingProvider(id: number): Promise<boolean>;
+
+  // Refueling Bases
+  getAllRefuelingBases(providerId?: number): Promise<RefuelingBase[]>;
+  getRefuelingBase(id: number): Promise<RefuelingBase | undefined>;
+  createRefuelingBase(data: InsertRefuelingBase): Promise<RefuelingBase>;
+  updateRefuelingBase(id: number, data: Partial<InsertRefuelingBase>): Promise<RefuelingBase | undefined>;
+  deleteRefuelingBase(id: number): Promise<boolean>;
+
+  // Refueling Services
+  getAllRefuelingServices(): Promise<RefuelingService[]>;
+  getRefuelingService(id: number): Promise<RefuelingService | undefined>;
+  createRefuelingService(data: InsertRefuelingService): Promise<RefuelingService>;
+  updateRefuelingService(id: number, data: Partial<InsertRefuelingService>): Promise<RefuelingService | undefined>;
+  deleteRefuelingService(id: number): Promise<boolean>;
+
+  // Logistics Carriers
+  getAllLogisticsCarriers(): Promise<LogisticsCarrier[]>;
+  getLogisticsCarrier(id: number): Promise<LogisticsCarrier | undefined>;
+  createLogisticsCarrier(data: InsertLogisticsCarrier): Promise<LogisticsCarrier>;
+  updateLogisticsCarrier(id: number, data: Partial<InsertLogisticsCarrier>): Promise<LogisticsCarrier | undefined>;
+  deleteLogisticsCarrier(id: number): Promise<boolean>;
+
+  // Logistics Delivery Locations
+  getAllLogisticsDeliveryLocations(): Promise<LogisticsDeliveryLocation[]>;
+  getLogisticsDeliveryLocation(id: number): Promise<LogisticsDeliveryLocation | undefined>;
+  createLogisticsDeliveryLocation(data: InsertLogisticsDeliveryLocation): Promise<LogisticsDeliveryLocation>;
+  updateLogisticsDeliveryLocation(id: number, data: Partial<InsertLogisticsDeliveryLocation>): Promise<LogisticsDeliveryLocation | undefined>;
+  deleteLogisticsDeliveryLocation(id: number): Promise<boolean>;
+
+  // Logistics Vehicles
+  getAllLogisticsVehicles(carrierId?: number): Promise<LogisticsVehicle[]>;
+  getLogisticsVehicle(id: number): Promise<LogisticsVehicle | undefined>;
+  createLogisticsVehicle(data: InsertLogisticsVehicle): Promise<LogisticsVehicle>;
+  updateLogisticsVehicle(id: number, data: Partial<InsertLogisticsVehicle>): Promise<LogisticsVehicle | undefined>;
+  deleteLogisticsVehicle(id: number): Promise<boolean>;
+
+  // Logistics Trailers
+  getAllLogisticsTrailers(carrierId?: number): Promise<LogisticsTrailer[]>;
+  getLogisticsTrailer(id: number): Promise<LogisticsTrailer | undefined>;
+  createLogisticsTrailer(data: InsertLogisticsTrailer): Promise<LogisticsTrailer>;
+  updateLogisticsTrailer(id: number, data: Partial<InsertLogisticsTrailer>): Promise<LogisticsTrailer | undefined>;
+  deleteLogisticsTrailer(id: number): Promise<boolean>;
+
+  // Logistics Drivers
+  getAllLogisticsDrivers(carrierId?: number): Promise<LogisticsDriver[]>;
+  getLogisticsDriver(id: number): Promise<LogisticsDriver | undefined>;
+  createLogisticsDriver(data: InsertLogisticsDriver): Promise<LogisticsDriver>;
+  updateLogisticsDriver(id: number, data: Partial<InsertLogisticsDriver>): Promise<LogisticsDriver | undefined>;
+  deleteLogisticsDriver(id: number): Promise<boolean>;
+
+  // Logistics Warehouses
+  getAllLogisticsWarehouses(): Promise<LogisticsWarehouse[]>;
+  getLogisticsWarehouse(id: number): Promise<LogisticsWarehouse | undefined>;
+  createLogisticsWarehouse(data: InsertLogisticsWarehouse): Promise<LogisticsWarehouse>;
+  updateLogisticsWarehouse(id: number, data: Partial<InsertLogisticsWarehouse>): Promise<LogisticsWarehouse | undefined>;
+  deleteLogisticsWarehouse(id: number): Promise<boolean>;
 
   // Prices
   getAllPrices(): Promise<Price[]>;
@@ -223,72 +318,323 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
 
-  // ============ Directory Wholesale ============
-  async getDirectoryWholesale(type?: string): Promise<DirectoryWholesale[]> {
-    if (type && type !== "all") {
-      return db.select().from(directoryWholesale).where(eq(directoryWholesale.type, type)).orderBy(asc(directoryWholesale.name));
+  // ============ Customers ============
+  async getAllCustomers(module?: string): Promise<Customer[]> {
+    if (module && module !== "all") {
+      return db.select().from(customers).where(
+        or(eq(customers.module, module), eq(customers.module, "both"))
+      ).orderBy(asc(customers.name));
     }
-    return db.select().from(directoryWholesale).orderBy(asc(directoryWholesale.name));
+    return db.select().from(customers).orderBy(asc(customers.name));
   }
 
-  async createDirectoryWholesale(data: InsertDirectoryWholesale): Promise<DirectoryWholesale> {
-    const [created] = await db.insert(directoryWholesale).values(data).returning();
+  async getCustomer(id: number): Promise<Customer | undefined> {
+    const [customer] = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
+    return customer;
+  }
+
+  async createCustomer(data: InsertCustomer): Promise<Customer> {
+    const [created] = await db.insert(customers).values(data).returning();
     return created;
   }
 
-  async updateDirectoryWholesale(id: number, data: Partial<InsertDirectoryWholesale>): Promise<DirectoryWholesale | undefined> {
-    const [updated] = await db.update(directoryWholesale).set(data).where(eq(directoryWholesale.id, id)).returning();
+  async updateCustomer(id: number, data: Partial<InsertCustomer>): Promise<Customer | undefined> {
+    const [updated] = await db.update(customers).set(data).where(eq(customers.id, id)).returning();
     return updated;
   }
 
-  async deleteDirectoryWholesale(id: number): Promise<boolean> {
-    await db.delete(directoryWholesale).where(eq(directoryWholesale.id, id));
+  async deleteCustomer(id: number): Promise<boolean> {
+    await db.delete(customers).where(eq(customers.id, id));
     return true;
   }
 
-  // ============ Directory Refueling ============
-  async getDirectoryRefueling(type?: string): Promise<DirectoryRefueling[]> {
-    if (type && type !== "all") {
-      return db.select().from(directoryRefueling).where(eq(directoryRefueling.type, type)).orderBy(asc(directoryRefueling.name));
-    }
-    return db.select().from(directoryRefueling).orderBy(asc(directoryRefueling.name));
+  // ============ Wholesale Suppliers ============
+  async getAllWholesaleSuppliers(): Promise<WholesaleSupplier[]> {
+    return db.select().from(wholesaleSuppliers).orderBy(asc(wholesaleSuppliers.name));
   }
 
-  async createDirectoryRefueling(data: InsertDirectoryRefueling): Promise<DirectoryRefueling> {
-    const [created] = await db.insert(directoryRefueling).values(data).returning();
+  async getWholesaleSupplier(id: number): Promise<WholesaleSupplier | undefined> {
+    const [supplier] = await db.select().from(wholesaleSuppliers).where(eq(wholesaleSuppliers.id, id)).limit(1);
+    return supplier;
+  }
+
+  async createWholesaleSupplier(data: InsertWholesaleSupplier): Promise<WholesaleSupplier> {
+    const [created] = await db.insert(wholesaleSuppliers).values(data).returning();
     return created;
   }
 
-  async updateDirectoryRefueling(id: number, data: Partial<InsertDirectoryRefueling>): Promise<DirectoryRefueling | undefined> {
-    const [updated] = await db.update(directoryRefueling).set(data).where(eq(directoryRefueling.id, id)).returning();
+  async updateWholesaleSupplier(id: number, data: Partial<InsertWholesaleSupplier>): Promise<WholesaleSupplier | undefined> {
+    const [updated] = await db.update(wholesaleSuppliers).set(data).where(eq(wholesaleSuppliers.id, id)).returning();
     return updated;
   }
 
-  async deleteDirectoryRefueling(id: number): Promise<boolean> {
-    await db.delete(directoryRefueling).where(eq(directoryRefueling.id, id));
+  async deleteWholesaleSupplier(id: number): Promise<boolean> {
+    await db.delete(wholesaleSuppliers).where(eq(wholesaleSuppliers.id, id));
     return true;
   }
 
-  // ============ Directory Logistics ============
-  async getDirectoryLogistics(type?: string): Promise<DirectoryLogistics[]> {
-    if (type && type !== "all") {
-      return db.select().from(directoryLogistics).where(eq(directoryLogistics.type, type)).orderBy(asc(directoryLogistics.name));
+  // ============ Wholesale Bases ============
+  async getAllWholesaleBases(supplierId?: number): Promise<WholesaleBase[]> {
+    if (supplierId) {
+      return db.select().from(wholesaleBases).where(eq(wholesaleBases.supplierId, supplierId)).orderBy(asc(wholesaleBases.name));
     }
-    return db.select().from(directoryLogistics).orderBy(asc(directoryLogistics.name));
+    return db.select().from(wholesaleBases).orderBy(asc(wholesaleBases.name));
   }
 
-  async createDirectoryLogistics(data: InsertDirectoryLogistics): Promise<DirectoryLogistics> {
-    const [created] = await db.insert(directoryLogistics).values(data).returning();
+  async getWholesaleBase(id: number): Promise<WholesaleBase | undefined> {
+    const [base] = await db.select().from(wholesaleBases).where(eq(wholesaleBases.id, id)).limit(1);
+    return base;
+  }
+
+  async createWholesaleBase(data: InsertWholesaleBase): Promise<WholesaleBase> {
+    const [created] = await db.insert(wholesaleBases).values(data).returning();
     return created;
   }
 
-  async updateDirectoryLogistics(id: number, data: Partial<InsertDirectoryLogistics>): Promise<DirectoryLogistics | undefined> {
-    const [updated] = await db.update(directoryLogistics).set(data).where(eq(directoryLogistics.id, id)).returning();
+  async updateWholesaleBase(id: number, data: Partial<InsertWholesaleBase>): Promise<WholesaleBase | undefined> {
+    const [updated] = await db.update(wholesaleBases).set(data).where(eq(wholesaleBases.id, id)).returning();
     return updated;
   }
 
-  async deleteDirectoryLogistics(id: number): Promise<boolean> {
-    await db.delete(directoryLogistics).where(eq(directoryLogistics.id, id));
+  async deleteWholesaleBase(id: number): Promise<boolean> {
+    await db.delete(wholesaleBases).where(eq(wholesaleBases.id, id));
+    return true;
+  }
+
+  // ============ Refueling Providers ============
+  async getAllRefuelingProviders(): Promise<RefuelingProvider[]> {
+    return db.select().from(refuelingProviders).orderBy(asc(refuelingProviders.name));
+  }
+
+  async getRefuelingProvider(id: number): Promise<RefuelingProvider | undefined> {
+    const [provider] = await db.select().from(refuelingProviders).where(eq(refuelingProviders.id, id)).limit(1);
+    return provider;
+  }
+
+  async createRefuelingProvider(data: InsertRefuelingProvider): Promise<RefuelingProvider> {
+    const [created] = await db.insert(refuelingProviders).values(data).returning();
+    return created;
+  }
+
+  async updateRefuelingProvider(id: number, data: Partial<InsertRefuelingProvider>): Promise<RefuelingProvider | undefined> {
+    const [updated] = await db.update(refuelingProviders).set(data).where(eq(refuelingProviders.id, id)).returning();
+    return updated;
+  }
+
+  async deleteRefuelingProvider(id: number): Promise<boolean> {
+    await db.delete(refuelingProviders).where(eq(refuelingProviders.id, id));
+    return true;
+  }
+
+  // ============ Refueling Bases ============
+  async getAllRefuelingBases(providerId?: number): Promise<RefuelingBase[]> {
+    if (providerId) {
+      return db.select().from(refuelingBases).where(eq(refuelingBases.providerId, providerId)).orderBy(asc(refuelingBases.name));
+    }
+    return db.select().from(refuelingBases).orderBy(asc(refuelingBases.name));
+  }
+
+  async getRefuelingBase(id: number): Promise<RefuelingBase | undefined> {
+    const [base] = await db.select().from(refuelingBases).where(eq(refuelingBases.id, id)).limit(1);
+    return base;
+  }
+
+  async createRefuelingBase(data: InsertRefuelingBase): Promise<RefuelingBase> {
+    const [created] = await db.insert(refuelingBases).values(data).returning();
+    return created;
+  }
+
+  async updateRefuelingBase(id: number, data: Partial<InsertRefuelingBase>): Promise<RefuelingBase | undefined> {
+    const [updated] = await db.update(refuelingBases).set(data).where(eq(refuelingBases.id, id)).returning();
+    return updated;
+  }
+
+  async deleteRefuelingBase(id: number): Promise<boolean> {
+    await db.delete(refuelingBases).where(eq(refuelingBases.id, id));
+    return true;
+  }
+
+  // ============ Refueling Services ============
+  async getAllRefuelingServices(): Promise<RefuelingService[]> {
+    return db.select().from(refuelingServices).orderBy(asc(refuelingServices.name));
+  }
+
+  async getRefuelingService(id: number): Promise<RefuelingService | undefined> {
+    const [service] = await db.select().from(refuelingServices).where(eq(refuelingServices.id, id)).limit(1);
+    return service;
+  }
+
+  async createRefuelingService(data: InsertRefuelingService): Promise<RefuelingService> {
+    const [created] = await db.insert(refuelingServices).values(data).returning();
+    return created;
+  }
+
+  async updateRefuelingService(id: number, data: Partial<InsertRefuelingService>): Promise<RefuelingService | undefined> {
+    const [updated] = await db.update(refuelingServices).set(data).where(eq(refuelingServices.id, id)).returning();
+    return updated;
+  }
+
+  async deleteRefuelingService(id: number): Promise<boolean> {
+    await db.delete(refuelingServices).where(eq(refuelingServices.id, id));
+    return true;
+  }
+
+  // ============ Logistics Carriers ============
+  async getAllLogisticsCarriers(): Promise<LogisticsCarrier[]> {
+    return db.select().from(logisticsCarriers).orderBy(asc(logisticsCarriers.name));
+  }
+
+  async getLogisticsCarrier(id: number): Promise<LogisticsCarrier | undefined> {
+    const [carrier] = await db.select().from(logisticsCarriers).where(eq(logisticsCarriers.id, id)).limit(1);
+    return carrier;
+  }
+
+  async createLogisticsCarrier(data: InsertLogisticsCarrier): Promise<LogisticsCarrier> {
+    const [created] = await db.insert(logisticsCarriers).values(data).returning();
+    return created;
+  }
+
+  async updateLogisticsCarrier(id: number, data: Partial<InsertLogisticsCarrier>): Promise<LogisticsCarrier | undefined> {
+    const [updated] = await db.update(logisticsCarriers).set(data).where(eq(logisticsCarriers.id, id)).returning();
+    return updated;
+  }
+
+  async deleteLogisticsCarrier(id: number): Promise<boolean> {
+    await db.delete(logisticsCarriers).where(eq(logisticsCarriers.id, id));
+    return true;
+  }
+
+  // ============ Logistics Delivery Locations ============
+  async getAllLogisticsDeliveryLocations(): Promise<LogisticsDeliveryLocation[]> {
+    return db.select().from(logisticsDeliveryLocations).orderBy(asc(logisticsDeliveryLocations.name));
+  }
+
+  async getLogisticsDeliveryLocation(id: number): Promise<LogisticsDeliveryLocation | undefined> {
+    const [location] = await db.select().from(logisticsDeliveryLocations).where(eq(logisticsDeliveryLocations.id, id)).limit(1);
+    return location;
+  }
+
+  async createLogisticsDeliveryLocation(data: InsertLogisticsDeliveryLocation): Promise<LogisticsDeliveryLocation> {
+    const [created] = await db.insert(logisticsDeliveryLocations).values(data).returning();
+    return created;
+  }
+
+  async updateLogisticsDeliveryLocation(id: number, data: Partial<InsertLogisticsDeliveryLocation>): Promise<LogisticsDeliveryLocation | undefined> {
+    const [updated] = await db.update(logisticsDeliveryLocations).set(data).where(eq(logisticsDeliveryLocations.id, id)).returning();
+    return updated;
+  }
+
+  async deleteLogisticsDeliveryLocation(id: number): Promise<boolean> {
+    await db.delete(logisticsDeliveryLocations).where(eq(logisticsDeliveryLocations.id, id));
+    return true;
+  }
+
+  // ============ Logistics Vehicles ============
+  async getAllLogisticsVehicles(carrierId?: number): Promise<LogisticsVehicle[]> {
+    if (carrierId) {
+      return db.select().from(logisticsVehicles).where(eq(logisticsVehicles.carrierId, carrierId)).orderBy(asc(logisticsVehicles.regNumber));
+    }
+    return db.select().from(logisticsVehicles).orderBy(asc(logisticsVehicles.regNumber));
+  }
+
+  async getLogisticsVehicle(id: number): Promise<LogisticsVehicle | undefined> {
+    const [vehicle] = await db.select().from(logisticsVehicles).where(eq(logisticsVehicles.id, id)).limit(1);
+    return vehicle;
+  }
+
+  async createLogisticsVehicle(data: InsertLogisticsVehicle): Promise<LogisticsVehicle> {
+    const [created] = await db.insert(logisticsVehicles).values(data).returning();
+    return created;
+  }
+
+  async updateLogisticsVehicle(id: number, data: Partial<InsertLogisticsVehicle>): Promise<LogisticsVehicle | undefined> {
+    const [updated] = await db.update(logisticsVehicles).set(data).where(eq(logisticsVehicles.id, id)).returning();
+    return updated;
+  }
+
+  async deleteLogisticsVehicle(id: number): Promise<boolean> {
+    await db.delete(logisticsVehicles).where(eq(logisticsVehicles.id, id));
+    return true;
+  }
+
+  // ============ Logistics Trailers ============
+  async getAllLogisticsTrailers(carrierId?: number): Promise<LogisticsTrailer[]> {
+    if (carrierId) {
+      return db.select().from(logisticsTrailers).where(eq(logisticsTrailers.carrierId, carrierId)).orderBy(asc(logisticsTrailers.regNumber));
+    }
+    return db.select().from(logisticsTrailers).orderBy(asc(logisticsTrailers.regNumber));
+  }
+
+  async getLogisticsTrailer(id: number): Promise<LogisticsTrailer | undefined> {
+    const [trailer] = await db.select().from(logisticsTrailers).where(eq(logisticsTrailers.id, id)).limit(1);
+    return trailer;
+  }
+
+  async createLogisticsTrailer(data: InsertLogisticsTrailer): Promise<LogisticsTrailer> {
+    const [created] = await db.insert(logisticsTrailers).values(data).returning();
+    return created;
+  }
+
+  async updateLogisticsTrailer(id: number, data: Partial<InsertLogisticsTrailer>): Promise<LogisticsTrailer | undefined> {
+    const [updated] = await db.update(logisticsTrailers).set(data).where(eq(logisticsTrailers.id, id)).returning();
+    return updated;
+  }
+
+  async deleteLogisticsTrailer(id: number): Promise<boolean> {
+    await db.delete(logisticsTrailers).where(eq(logisticsTrailers.id, id));
+    return true;
+  }
+
+  // ============ Logistics Drivers ============
+  async getAllLogisticsDrivers(carrierId?: number): Promise<LogisticsDriver[]> {
+    if (carrierId) {
+      return db.select().from(logisticsDrivers).where(eq(logisticsDrivers.carrierId, carrierId)).orderBy(asc(logisticsDrivers.fullName));
+    }
+    return db.select().from(logisticsDrivers).orderBy(asc(logisticsDrivers.fullName));
+  }
+
+  async getLogisticsDriver(id: number): Promise<LogisticsDriver | undefined> {
+    const [driver] = await db.select().from(logisticsDrivers).where(eq(logisticsDrivers.id, id)).limit(1);
+    return driver;
+  }
+
+  async createLogisticsDriver(data: InsertLogisticsDriver): Promise<LogisticsDriver> {
+    const [created] = await db.insert(logisticsDrivers).values(data).returning();
+    return created;
+  }
+
+  async updateLogisticsDriver(id: number, data: Partial<InsertLogisticsDriver>): Promise<LogisticsDriver | undefined> {
+    const [updated] = await db.update(logisticsDrivers).set(data).where(eq(logisticsDrivers.id, id)).returning();
+    return updated;
+  }
+
+  async deleteLogisticsDriver(id: number): Promise<boolean> {
+    await db.delete(logisticsDrivers).where(eq(logisticsDrivers.id, id));
+    return true;
+  }
+
+  // ============ Logistics Warehouses ============
+  async getAllLogisticsWarehouses(): Promise<LogisticsWarehouse[]> {
+    return db.select().from(logisticsWarehouses).orderBy(asc(logisticsWarehouses.name));
+  }
+
+  async getLogisticsWarehouse(id: number): Promise<LogisticsWarehouse | undefined> {
+    const [warehouse] = await db.select().from(logisticsWarehouses).where(eq(logisticsWarehouses.id, id)).limit(1);
+    return warehouse;
+  }
+
+  async createLogisticsWarehouse(data: InsertLogisticsWarehouse): Promise<LogisticsWarehouse> {
+    const [created] = await db.insert(logisticsWarehouses).values(data).returning();
+    return created;
+  }
+
+  async updateLogisticsWarehouse(id: number, data: Partial<InsertLogisticsWarehouse>): Promise<LogisticsWarehouse | undefined> {
+    const [updated] = await db.update(logisticsWarehouses).set(data).where(eq(logisticsWarehouses.id, id)).returning();
+    return updated;
+  }
+
+  async deleteLogisticsWarehouse(id: number): Promise<boolean> {
+    await db.delete(logisticsWarehouses).where(eq(logisticsWarehouses.id, id));
     return true;
   }
 
@@ -306,16 +652,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   private enrichPriceWithCalculations(price: Price): Price {
-    // Расчет выборки (soldVolume) - сумма сделок из OPT и Refueling по этой цене
-    // Для простоты - возвращаем как есть, логика может быть расширена при необходимости
-    
-    // Проверка пересечения дат
     let dateCheckWarning: string | null = null;
-    if (price.dateFrom && price.dateTo) {
-      // Логика проверки может быть расширена для проверки конфликтов с другими ценами
-      // Текущая версия возвращает null (без ошибок)
-    }
-    
     return {
       ...price,
       dateCheckWarning,
@@ -341,7 +678,6 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
 
-  // Расчет выборки - сумма сделок из ОПТ и Заправка ВС
   async calculatePriceSelection(
     counterpartyId: number,
     counterpartyType: string,
@@ -352,7 +688,6 @@ export class DatabaseStorage implements IStorage {
     let totalVolume = 0;
 
     if (counterpartyType === "wholesale") {
-      // Суммируем из таблицы opt - сделки где контрагент это либо поставщик, либо покупатель
       const optDealsSupplier = await db.select({
         total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`
       }).from(opt).where(
@@ -378,7 +713,6 @@ export class DatabaseStorage implements IStorage {
       totalVolume += parseFloat(optDealsSupplier[0]?.total || "0");
       totalVolume += parseFloat(optDealsBuyer[0]?.total || "0");
     } else if (counterpartyType === "refueling") {
-      // Суммируем из таблицы aircraftRefueling
       const refuelingDealsSupplier = await db.select({
         total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`
       }).from(aircraftRefueling).where(
@@ -408,7 +742,6 @@ export class DatabaseStorage implements IStorage {
     return totalVolume;
   }
 
-  // Проверка пересечения диапазонов дат
   async checkPriceDateOverlaps(
     counterpartyId: number,
     counterpartyType: string,
@@ -418,14 +751,12 @@ export class DatabaseStorage implements IStorage {
     dateTo: string,
     excludeId?: number
   ): Promise<{ status: string; message: string; overlaps?: { id: number; dateFrom: string; dateTo: string }[] }> {
-    // Ищем цены с пересекающимися диапазонами дат для того же контрагента и базиса
     const conditions = [
       eq(prices.counterpartyId, counterpartyId),
       eq(prices.counterpartyType, counterpartyType),
       eq(prices.counterpartyRole, counterpartyRole),
       eq(prices.basis, basis),
       eq(prices.isActive, true),
-      // Проверка пересечения дат: (A.start <= B.end) AND (A.end >= B.start)
       sql`${prices.dateFrom} <= ${dateTo}`,
       sql`${prices.dateTo} >= ${dateFrom}`
     ];
@@ -441,7 +772,6 @@ export class DatabaseStorage implements IStorage {
     }).from(prices).where(and(...conditions));
 
     if (overlappingPrices.length > 0) {
-      // Обновляем статус проверки дат для всех пересекающихся цен
       for (const price of overlappingPrices) {
         await db.update(prices).set({ dateCheckWarning: "error" }).where(eq(prices.id, price.id));
       }
@@ -600,7 +930,7 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
 
-  // ============ Dashboard ============
+  // ============ Dashboard Stats ============
   async getDashboardStats(): Promise<{
     optDealsToday: number;
     refuelingToday: number;
@@ -608,15 +938,19 @@ export class DatabaseStorage implements IStorage {
     totalProfitMonth: number;
   }> {
     const today = new Date().toISOString().split('T')[0];
-    
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+
     const [optCount] = await db.select({ count: sql<number>`count(*)` }).from(opt).where(eq(opt.dealDate, today));
     const [refuelingCount] = await db.select({ count: sql<number>`count(*)` }).from(aircraftRefueling).where(eq(aircraftRefueling.refuelingDate, today));
     
+    const [optProfit] = await db.select({ total: sql<string>`COALESCE(SUM(${opt.profit}), 0)` }).from(opt).where(sql`${opt.dealDate} >= ${startOfMonth}`);
+    const [refuelingProfit] = await db.select({ total: sql<string>`COALESCE(SUM(${aircraftRefueling.profit}), 0)` }).from(aircraftRefueling).where(sql`${aircraftRefueling.refuelingDate} >= ${startOfMonth}`);
+
     return {
       optDealsToday: Number(optCount?.count || 0),
       refuelingToday: Number(refuelingCount?.count || 0),
-      warehouseAlerts: 2,
-      totalProfitMonth: 2450000,
+      warehouseAlerts: 0,
+      totalProfitMonth: parseFloat(optProfit?.total || "0") + parseFloat(refuelingProfit?.total || "0"),
     };
   }
 }
