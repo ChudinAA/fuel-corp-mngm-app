@@ -65,16 +65,13 @@ export const wholesaleSuppliers = pgTable("wholesale_suppliers", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  inn: text("inn"),
-  contractNumber: text("contract_number"),
   defaultBaseId: integer("default_base_id"),
   isActive: boolean("is_active").default(true),
 });
 
-// Базисы для ОПТ (связаны с поставщиками)
+// Базисы для ОПТ
 export const wholesaleBases = pgTable("wholesale_bases", {
   id: serial("id").primaryKey(),
-  supplierId: integer("supplier_id").references(() => wholesaleSuppliers.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   location: text("location"),
   isActive: boolean("is_active").default(true),
@@ -89,32 +86,15 @@ export const refuelingProviders = pgTable("refueling_providers", {
   description: text("description"),
   inn: text("inn"),
   contractNumber: text("contract_number"),
-  icaoCode: text("icao_code"),
-  iataCode: text("iata_code"),
   defaultBaseId: integer("default_base_id"),
   isActive: boolean("is_active").default(true),
 });
 
-// Базисы заправки (связаны с поставщиками)
+// Базисы заправки
 export const refuelingBases = pgTable("refueling_bases", {
   id: serial("id").primaryKey(),
-  providerId: integer("provider_id").references(() => refuelingProviders.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   location: text("location"),
-  isActive: boolean("is_active").default(true),
-});
-
-// Услуги заправки
-export const refuelingServices = pgTable("refueling_services", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  unit: text("unit"),
-  defaultPrice: decimal("default_price", { precision: 12, scale: 2 }),
-  refuelingServicePrice: decimal("refueling_service_price", { precision: 12, scale: 2 }),
-  pvkjPrice: decimal("pvkj_price", { precision: 12, scale: 2 }),
-  agentFee: decimal("agent_fee", { precision: 12, scale: 2 }),
-  storagePrice: decimal("storage_price", { precision: 12, scale: 2 }),
   isActive: boolean("is_active").default(true),
 });
 
@@ -373,13 +353,9 @@ export const warehouseTransactionsRelations = relations(warehouseTransactions, (
   warehouse: one(warehouses, { fields: [warehouseTransactions.warehouseId], references: [warehouses.id] }),
 }));
 
-export const wholesaleBasesRelations = relations(wholesaleBases, ({ one }) => ({
-  supplier: one(wholesaleSuppliers, { fields: [wholesaleBases.supplierId], references: [wholesaleSuppliers.id] }),
-}));
 
-export const refuelingBasesRelations = relations(refuelingBases, ({ one }) => ({
-  provider: one(refuelingProviders, { fields: [refuelingBases.providerId], references: [refuelingProviders.id] }),
-}));
+
+
 
 export const logisticsVehiclesRelations = relations(logisticsVehicles, ({ one }) => ({
   carrier: one(logisticsCarriers, { fields: [logisticsVehicles.carrierId], references: [logisticsCarriers.id] }),
@@ -421,7 +397,7 @@ export const insertWholesaleSupplierSchema = createInsertSchema(wholesaleSupplie
 export const insertWholesaleBaseSchema = createInsertSchema(wholesaleBases).omit({ id: true });
 export const insertRefuelingProviderSchema = createInsertSchema(refuelingProviders).omit({ id: true });
 export const insertRefuelingBaseSchema = createInsertSchema(refuelingBases).omit({ id: true });
-export const insertRefuelingServiceSchema = createInsertSchema(refuelingServices).omit({ id: true });
+
 export const insertLogisticsCarrierSchema = createInsertSchema(logisticsCarriers).omit({ id: true });
 export const insertLogisticsDeliveryLocationSchema = createInsertSchema(logisticsDeliveryLocations).omit({ id: true });
 export const insertLogisticsVehicleSchema = createInsertSchema(logisticsVehicles).omit({ id: true });
@@ -470,9 +446,6 @@ export type InsertRefuelingProvider = z.infer<typeof insertRefuelingProviderSche
 
 export type RefuelingBase = typeof refuelingBases.$inferSelect;
 export type InsertRefuelingBase = z.infer<typeof insertRefuelingBaseSchema>;
-
-export type RefuelingService = typeof refuelingServices.$inferSelect;
-export type InsertRefuelingService = z.infer<typeof insertRefuelingServiceSchema>;
 
 export type LogisticsCarrier = typeof logisticsCarriers.$inferSelect;
 export type InsertLogisticsCarrier = z.infer<typeof insertLogisticsCarrierSchema>;

@@ -12,7 +12,6 @@ import {
   insertWholesaleBaseSchema,
   insertRefuelingProviderSchema,
   insertRefuelingBaseSchema,
-  insertRefuelingServiceSchema,
   insertLogisticsCarrierSchema,
   insertLogisticsDeliveryLocationSchema,
   insertLogisticsVehicleSchema,
@@ -597,58 +596,6 @@ export async function registerRoutes(
       res.json({ message: "Базис заправки удален" });
     } catch (error) {
       res.status(500).json({ message: "Ошибка удаления базиса заправки" });
-    }
-  });
-
-  // ============ REFUELING SERVICES ============
-
-  app.get("/api/refueling/services", requireAuth, async (req, res) => {
-    const data = await storage.getAllRefuelingServices();
-    res.json(data);
-  });
-
-  app.get("/api/refueling/services/:id", requireAuth, async (req, res) => {
-    const id = parseInt(req.params.id);
-    const service = await storage.getRefuelingService(id);
-    if (!service) {
-      return res.status(404).json({ message: "Услуга не найдена" });
-    }
-    res.json(service);
-  });
-
-  app.post("/api/refueling/services", requireAuth, async (req, res) => {
-    try {
-      const data = insertRefuelingServiceSchema.parse(req.body);
-      const item = await storage.createRefuelingService(data);
-      res.status(201).json(item);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.errors[0].message });
-      }
-      res.status(500).json({ message: "Ошибка создания услуги" });
-    }
-  });
-
-  app.patch("/api/refueling/services/:id", requireAuth, async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const item = await storage.updateRefuelingService(id, req.body);
-      if (!item) {
-        return res.status(404).json({ message: "Услуга не найдена" });
-      }
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ message: "Ошибка обновления услуги" });
-    }
-  });
-
-  app.delete("/api/refueling/services/:id", requireAuth, async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      await storage.deleteRefuelingService(id);
-      res.json({ message: "Услуга удалена" });
-    } catch (error) {
-      res.status(500).json({ message: "Ошибка удаления услуги" });
     }
   });
 

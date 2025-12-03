@@ -40,7 +40,6 @@ import type {
   WholesaleBase, 
   RefuelingProvider, 
   RefuelingBase, 
-  RefuelingService,
   LogisticsCarrier,
   LogisticsDeliveryLocation,
   LogisticsVehicle,
@@ -58,7 +57,7 @@ const WHOLESALE_TYPES = [
 
 const REFUELING_TYPES = [
   { value: "provider", label: "Аэропорт/Поставщик", icon: Plane },
-  { value: "service", label: "Услуга", icon: BookOpen },
+  { value: "basis", label: "Базис заправки", icon: MapPin },
 ] as const;
 
 const LOGISTICS_TYPES = [
@@ -228,10 +227,7 @@ const wholesaleFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
-  inn: z.string().optional(),
-  contractNumber: z.string().optional(),
   defaultBaseId: z.number().optional(),
-  supplierId: z.number().optional(),
   location: z.string().optional(),
 });
 
@@ -248,10 +244,7 @@ function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleSupplier
       name: "",
       description: "",
       isActive: true,
-      inn: "",
-      contractNumber: "",
       defaultBaseId: undefined,
-      supplierId: undefined,
       location: "",
     },
   });
@@ -259,10 +252,6 @@ function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleSupplier
   const selectedType = form.watch("type");
 
   useEffect(() => {
-    form.setValue("defaultBaseId", undefined);
-    form.setValue("supplierId", undefined);
-    form.setValue("inn", "");
-    form.setValue("contractNumber", "");
     form.setValue("location", "");
   }, [selectedType, form]);
 
@@ -276,8 +265,6 @@ function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleSupplier
         payload = {
           name: data.name,
           description: data.description,
-          inn: data.inn,
-          contractNumber: data.contractNumber,
           defaultBaseId: data.defaultBaseId || null,
           isActive: data.isActive,
         };
@@ -285,7 +272,6 @@ function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleSupplier
         endpoint = "/api/wholesale/bases";
         payload = {
           name: data.name,
-          supplierId: data.supplierId || null,
           location: data.location,
           isActive: data.isActive,
         };
@@ -371,102 +357,47 @@ function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleSupplier
             />
 
             {selectedType === "supplier" && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="defaultBaseId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Базис поставки</FormLabel>
-                      <Select 
-                        onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)} 
-                        value={field.value?.toString() || ""}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-wholesale-supplier-basis">
-                            <SelectValue placeholder="Выберите базис" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {bases.map((b) => (
-                            <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="inn"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>ИНН</FormLabel>
+              <FormField
+                control={form.control}
+                name="defaultBaseId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Базис поставки</FormLabel>
+                    <Select 
+                      onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)} 
+                      value={field.value?.toString() || ""}
+                    >
                       <FormControl>
-                        <Input placeholder="ИНН" data-testid="input-wholesale-inn" {...field} />
+                        <SelectTrigger data-testid="select-wholesale-supplier-basis">
+                          <SelectValue placeholder="Выберите базис" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="contractNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Номер договора</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Номер договора" data-testid="input-wholesale-contract" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
+                      <SelectContent>
+                        {bases.map((b) => (
+                          <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
 
             {selectedType === "basis" && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="supplierId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Поставщик (владелец базиса)</FormLabel>
-                      <Select 
-                        onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)} 
-                        value={field.value?.toString() || ""}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-wholesale-basis-supplier">
-                            <SelectValue placeholder="Выберите поставщика" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {suppliers.map((s) => (
-                            <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Местоположение</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Адрес или местоположение" data-testid="input-wholesale-location" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Местоположение</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Местоположение" data-testid="input-wholesale-location" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
 
             <FormField
@@ -519,19 +450,15 @@ function RefuelingTab() {
     queryKey: ["/api/refueling/providers"],
   });
 
-  const { data: services, isLoading: servicesLoading } = useQuery<RefuelingService[]>({
-    queryKey: ["/api/refueling/services"],
-  });
-
-  const { data: bases } = useQuery<RefuelingBase[]>({
+  const { data: bases = [] } = useQuery<RefuelingBase[]>({
     queryKey: ["/api/refueling/bases"],
   });
 
-  const isLoading = providersLoading || servicesLoading;
+  const isLoading = providersLoading;
 
   const allItems = [
     ...(providers?.map(p => ({ ...p, type: "provider" as const, typeName: "Аэропорт/Поставщик" })) || []),
-    ...(services?.map(s => ({ ...s, type: "service" as const, typeName: "Услуга" })) || []),
+    ...(bases?.map(b => ({ ...b, type: "basis" as const, typeName: "Базис" })) || []),
   ];
 
   const filteredItems = allItems.filter(item => {
@@ -557,7 +484,7 @@ function RefuelingTab() {
           <Plane className="h-5 w-5" />
           Справочник Заправка ВС
         </CardTitle>
-        <CardDescription>Аэропорты, поставщики и услуги для заправки воздушных судов</CardDescription>
+        <CardDescription>Аэропорты, поставщики и базисы для заправки воздушных судов</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -621,12 +548,14 @@ function RefuelingTab() {
                         <TableCell>
                           {item.type === "provider" 
                             ? getBaseName((item as RefuelingProvider & { type: string }).defaultBaseId) 
-                            : "—"}
+                            : item.type === "basis"
+                              ? "—"
+                              : "—"}
                         </TableCell>
                         <TableCell className="text-muted-foreground max-w-xs truncate">
                           {item.type === "provider" 
                             ? (item as RefuelingProvider & { type: string }).icaoCode || "—"
-                            : (item as RefuelingService & { type: string }).unit || "—"}
+                            : (item as RefuelingBase & { type: string }).location || "—"}
                         </TableCell>
                         <TableCell>
                           {item.isActive ? (
@@ -661,15 +590,12 @@ function RefuelingTab() {
 // ============ ADD REFUELING DIALOG ============
 
 const refuelingFormSchema = z.object({
-  type: z.enum(["provider", "service"]),
-  name: z.string().min(1, "Укажите название"),
+  type: z.enum(["provider", "basis"]),
+  name: z.string().min(1, "Введите название"),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
-  icaoCode: z.string().optional(),
-  iataCode: z.string().optional(),
   defaultBaseId: z.number().optional(),
-  unit: z.string().optional(),
-  defaultPrice: z.string().optional(),
+  location: z.string().optional(),
 });
 
 type RefuelingFormData = z.infer<typeof refuelingFormSchema>;
@@ -685,22 +611,15 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
       name: "",
       description: "",
       isActive: true,
-      icaoCode: "",
-      iataCode: "",
       defaultBaseId: undefined,
-      unit: "",
-      defaultPrice: "",
+      location: "",
     },
   });
 
   const selectedType = form.watch("type");
 
   useEffect(() => {
-    form.setValue("icaoCode", "");
-    form.setValue("iataCode", "");
-    form.setValue("defaultBaseId", undefined);
-    form.setValue("unit", "");
-    form.setValue("defaultPrice", "");
+    form.setValue("location", "");
   }, [selectedType, form]);
 
   const createMutation = useMutation({
@@ -713,18 +632,14 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
         payload = {
           name: data.name,
           description: data.description,
-          icaoCode: data.icaoCode,
-          iataCode: data.iataCode,
           defaultBaseId: data.defaultBaseId || null,
           isActive: data.isActive,
         };
-      } else if (data.type === "service") {
-        endpoint = "/api/refueling/services";
+      } else if (data.type === "basis") {
+        endpoint = "/api/refueling/bases";
         payload = {
           name: data.name,
-          description: data.description,
-          unit: data.unit,
-          defaultPrice: data.defaultPrice ? parseFloat(data.defaultPrice) : null,
+          location: data.location,
           isActive: data.isActive,
         };
       }
@@ -734,7 +649,7 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/refueling/providers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/refueling/services"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/refueling/bases"] });
       toast({ title: "Запись добавлена", description: "Новая запись сохранена в справочнике" });
       form.reset();
       setOpen(false);
@@ -809,92 +724,47 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
             />
 
             {selectedType === "provider" && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="defaultBaseId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Базис заправки</FormLabel>
-                      <Select 
-                        onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)} 
-                        value={field.value?.toString() || ""}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-refueling-basis">
-                            <SelectValue placeholder="Выберите базис" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {bases.map((b) => (
-                            <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="icaoCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Код ICAO</FormLabel>
-                        <FormControl>
-                          <Input placeholder="UUEE" maxLength={4} data-testid="input-refueling-icao" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="iataCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Код IATA</FormLabel>
-                        <FormControl>
-                          <Input placeholder="SVO" maxLength={3} data-testid="input-refueling-iata" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </>
+              <FormField
+                control={form.control}
+                name="defaultBaseId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Базис заправки</FormLabel>
+                    <Select 
+                      onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)} 
+                      value={field.value?.toString() || ""}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-refueling-provider-basis">
+                          <SelectValue placeholder="Выберите базис" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {bases.map((b) => (
+                          <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
 
-            {selectedType === "service" && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="unit"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Единица измерения</FormLabel>
-                      <FormControl>
-                        <Input placeholder="л, кг, шт" data-testid="input-refueling-unit" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="defaultPrice"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Цена по умолчанию</FormLabel>
-                      <FormControl>
-                        <Input placeholder="0.00" type="number" step="0.01" data-testid="input-refueling-price" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
+            {selectedType === "basis" && (
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Местоположение</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Местоположение" data-testid="input-refueling-location" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
 
             <FormField
