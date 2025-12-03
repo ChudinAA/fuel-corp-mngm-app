@@ -53,7 +53,7 @@ import type {
 
 const WHOLESALE_TYPES = [
   { value: "supplier", label: "Поставщик", icon: Building2 },
-  { value: "basis", label: "Базис", icon: MapPin },
+  { value: "basis", label: "Базис поставки", icon: MapPin },
 ] as const;
 
 const REFUELING_TYPES = [
@@ -158,7 +158,7 @@ function WholesaleTab() {
                   <TableRow>
                     <TableHead className="w-[140px]">Тип</TableHead>
                     <TableHead>Название</TableHead>
-                    <TableHead>Базис заправки</TableHead>
+                    <TableHead>Базис поставки</TableHead>
                     <TableHead>Доп. информация</TableHead>
                     <TableHead>Статус</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
@@ -377,14 +377,14 @@ function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleSupplier
                   name="defaultBaseId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Базис заправки</FormLabel>
+                      <FormLabel>Базис поставки</FormLabel>
                       <Select 
                         onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)} 
                         value={field.value?.toString() || ""}
                       >
                         <FormControl>
                           <SelectTrigger data-testid="select-wholesale-supplier-basis">
-                            <SelectValue placeholder="Выберите базис (опционально)" />
+                            <SelectValue placeholder="Выберите базис" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -1419,7 +1419,6 @@ function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] }) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Не выбран</SelectItem>
                           {carriers.map((c) => (
                             <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
                           ))}
@@ -1491,7 +1490,6 @@ function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] }) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Не выбран</SelectItem>
                           {carriers.map((c) => (
                             <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
                           ))}
