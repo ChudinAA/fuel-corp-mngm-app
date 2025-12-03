@@ -388,7 +388,6 @@ function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleSupplier
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Не выбран</SelectItem>
                           {bases.map((b) => (
                             <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
                           ))}
@@ -445,7 +444,6 @@ function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleSupplier
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Не выбран</SelectItem>
                           {suppliers.map((s) => (
                             <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
                           ))}
@@ -828,7 +826,6 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Не выбран</SelectItem>
                           {bases.map((b) => (
                             <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
                           ))}
@@ -1200,32 +1197,30 @@ function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] }) {
         payload = {
           name: data.name,
           address: data.address,
-          coordinates: data.coordinates,
+          notes: data.coordinates,
           isActive: data.isActive,
         };
       } else if (data.type === "vehicle") {
         endpoint = "/api/logistics/vehicles";
         payload = {
-          name: data.name,
+          regNumber: data.plateNumber,
           carrierId: data.carrierId || null,
-          plateNumber: data.plateNumber,
-          vehicleType: data.vehicleType,
-          capacity: data.capacity ? parseFloat(data.capacity) : null,
+          model: data.vehicleType,
+          capacityKg: data.capacity ? parseFloat(data.capacity) : null,
           isActive: data.isActive,
         };
       } else if (data.type === "trailer") {
         endpoint = "/api/logistics/trailers";
         payload = {
-          name: data.name,
+          regNumber: data.plateNumber,
           carrierId: data.carrierId || null,
-          plateNumber: data.plateNumber,
-          capacity: data.capacity ? parseFloat(data.capacity) : null,
+          capacityKg: data.capacity ? parseFloat(data.capacity) : null,
           isActive: data.isActive,
         };
       } else if (data.type === "driver") {
         endpoint = "/api/logistics/drivers";
         payload = {
-          name: data.name,
+          fullName: data.name,
           carrierId: data.carrierId || null,
           phone: data.phone,
           licenseNumber: data.licenseNumber,
