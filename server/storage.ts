@@ -10,7 +10,6 @@ import {
   wholesaleBases,
   refuelingProviders,
   refuelingBases,
-  refuelingServices,
   logisticsCarriers,
   logisticsDeliveryLocations,
   logisticsVehicles,
@@ -451,31 +450,6 @@ export class DatabaseStorage implements IStorage {
 
   async deleteRefuelingBase(id: number): Promise<boolean> {
     await db.delete(refuelingBases).where(eq(refuelingBases.id, id));
-    return true;
-  }
-
-  // ============ Refueling Services ============
-  async getAllRefuelingServices(): Promise<RefuelingService[]> {
-    return db.select().from(refuelingServices).orderBy(asc(refuelingServices.name));
-  }
-
-  async getRefuelingService(id: number): Promise<RefuelingService | undefined> {
-    const [service] = await db.select().from(refuelingServices).where(eq(refuelingServices.id, id)).limit(1);
-    return service;
-  }
-
-  async createRefuelingService(data: InsertRefuelingService): Promise<RefuelingService> {
-    const [created] = await db.insert(refuelingServices).values(data).returning();
-    return created;
-  }
-
-  async updateRefuelingService(id: number, data: Partial<InsertRefuelingService>): Promise<RefuelingService | undefined> {
-    const [updated] = await db.update(refuelingServices).set(data).where(eq(refuelingServices.id, id)).returning();
-    return updated;
-  }
-
-  async deleteRefuelingService(id: number): Promise<boolean> {
-    await db.delete(refuelingServices).where(eq(refuelingServices.id, id));
     return true;
   }
 

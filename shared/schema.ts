@@ -84,8 +84,6 @@ export const refuelingProviders = pgTable("refueling_providers", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  inn: text("inn"),
-  contractNumber: text("contract_number"),
   defaultBaseId: integer("default_base_id"),
   isActive: boolean("is_active").default(true),
 });
