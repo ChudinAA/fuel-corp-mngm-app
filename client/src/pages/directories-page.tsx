@@ -597,6 +597,7 @@ const refuelingFormSchema = z.object({
   servicePrice: z.string().optional(),
   pvkjPrice: z.string().optional(),
   agentFee: z.string().optional(),
+  defaultBaseId: z.number().optional(),
   isActive: z.boolean().default(true),
 });
 
@@ -616,6 +617,7 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
       servicePrice: "",
       pvkjPrice: "",
       agentFee: "",
+      defaultBaseId: undefined,
       isActive: true,
     },
   });
@@ -639,6 +641,7 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
             servicePrice: data.servicePrice || null,
             pvkjPrice: data.pvkjPrice || null,
             agentFee: data.agentFee || null,
+            defaultBaseId: data.defaultBaseId || null,
             isActive: data.isActive 
           }
         : { name: data.name, location: data.location, isActive: data.isActive };
@@ -991,7 +994,7 @@ function LogisticsTab() {
                            item.type === "trailer" ? (item as LogisticsTrailer & { type: string }).capacityKg || "—" :
                            item.type === "driver" ? (item as LogisticsDriver & { type: string }).phone || "—" :
                            item.type === "delivery_location" ? (item as LogisticsDeliveryLocation & { type: string }).address || "—" :
-                           item.type === "warehouse" ? (item as LogisticsWarehouse & { type: string }).address || "—" :
+                           item.type === "warehouse" ? (item as LogisticsWarehouse & { type: string }).storageCost || "—" :
                            (item as LogisticsCarrier & { type: string }).inn || "—"}
                         </TableCell>
                         <TableCell>
