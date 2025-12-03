@@ -17,6 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Plus, 
   Pencil, 
@@ -632,11 +633,6 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
     form.setValue("servicePrice", "");
     form.setValue("pvkjPrice", "");
     form.setValue("agentFee", "");
-    if (selectedType === "provider") {
-      setShowPriceFields(true);
-    } else {
-      setShowPriceFields(false);
-    }
   }, [selectedType, form]);
 
   const createRefuelingMutation = useMutation({
@@ -736,14 +732,16 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
 
             {selectedType === "provider" && (
               <>
-                <div className="flex justify-between items-center">
-                  <FormLabel>Ценообразование</FormLabel>
-                  <Button variant="ghost" size="icon" onClick={() => setShowPriceFields(!showPriceFields)}>
-                    {showPriceFields ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </Button>
-                </div>
-                {showPriceFields && (
-                  <>
+                <Collapsible open={showPriceFields} onOpenChange={setShowPriceFields}>
+                  <div className="flex justify-between items-center">
+                    <FormLabel>Ценообразование</FormLabel>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="icon" type="button">
+                        {showPriceFields ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                  <CollapsibleContent className="space-y-4">
                     <FormField
                       control={form.control}
                       name="servicePrice"
@@ -783,8 +781,8 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
                         </FormItem>
                       )}
                     />
-                  </>
-                )}
+                  </CollapsibleContent>
+                </Collapsible>
                 <FormField
                   control={form.control}
                   name="defaultBaseId"
