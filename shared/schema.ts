@@ -85,6 +85,9 @@ export const refuelingProviders = pgTable("refueling_providers", {
   name: text("name").notNull(),
   description: text("description"),
   defaultBaseId: integer("default_base_id"),
+  servicePrice: decimal("service_price", { precision: 12, scale: 2 }),
+  pvkjPrice: decimal("pvkj_price", { precision: 12, scale: 2 }),
+  agentFee: decimal("agent_fee", { precision: 12, scale: 2 }),
   isActive: boolean("is_active").default(true),
 });
 

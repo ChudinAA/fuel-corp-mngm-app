@@ -591,11 +591,13 @@ function RefuelingTab() {
 
 const refuelingFormSchema = z.object({
   type: z.enum(["provider", "basis"]),
-  name: z.string().min(1, "Введите название"),
-  description: z.string().optional(),
-  isActive: z.boolean().default(true),
-  defaultBaseId: z.number().optional(),
+  name: z.string().min(1, "Укажите название"),
   location: z.string().optional(),
+  description: z.string().optional(),
+  servicePrice: z.string().optional(),
+  pvkjPrice: z.string().optional(),
+  agentFee: z.string().optional(),
+  isActive: z.boolean().default(true),
 });
 
 type RefuelingFormData = z.infer<typeof refuelingFormSchema>;
@@ -609,10 +611,12 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
     defaultValues: {
       type: "provider",
       name: "",
-      description: "",
-      isActive: true,
-      defaultBaseId: undefined,
       location: "",
+      description: "",
+      servicePrice: "",
+      pvkjPrice: "",
+      agentFee: "",
+      isActive: true,
     },
   });
 
@@ -620,29 +624,24 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
 
   useEffect(() => {
     form.setValue("location", "");
+    form.setValue("servicePrice", "");
+    form.setValue("pvkjPrice", "");
+    form.setValue("agentFee", "");
   }, [selectedType, form]);
 
-  const createMutation = useMutation({
+  const createRefuelingMutation = useMutation({
     mutationFn: async (data: RefuelingFormData) => {
-      let endpoint = "";
-      let payload: Record<string, unknown> = {};
-
-      if (data.type === "provider") {
-        endpoint = "/api/refueling/providers";
-        payload = {
-          name: data.name,
-          description: data.description,
-          defaultBaseId: data.defaultBaseId || null,
-          isActive: data.isActive,
-        };
-      } else if (data.type === "basis") {
-        endpoint = "/api/refueling/bases";
-        payload = {
-          name: data.name,
-          location: data.location,
-          isActive: data.isActive,
-        };
-      }
+      const endpoint = data.type === "provider" ? "/api/refueling/providers" : "/api/refueling/bases";
+      const payload = data.type === "provider" 
+        ? { 
+            name: data.name, 
+            description: data.description, 
+            servicePrice: data.servicePrice || null,
+            pvkjPrice: data.pvkjPrice || null,
+            agentFee: data.agentFee || null,
+            isActive: data.isActive 
+          }
+        : { name: data.name, location: data.location, isActive: data.isActive };
 
       const res = await apiRequest("POST", endpoint, payload);
       return res.json();
@@ -680,7 +679,7 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
           <DialogDescription>Добавление записи в справочник заправки воздушных судов</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+          <form onSubmit={form.handleSubmit((data) => createRefuelingMutation.mutate(data))} className="space-y-4">
             <FormField
               control={form.control}
               name="type"
@@ -724,31 +723,72 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
             />
 
             {selectedType === "provider" && (
-              <FormField
-                control={form.control}
-                name="defaultBaseId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Базис заправки</FormLabel>
-                    <Select 
-                      onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)} 
-                      value={field.value?.toString() || ""}
-                    >
+              <>
+                <FormField
+                  control={form.control}
+                  name="servicePrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Стоимость услуги</FormLabel>
                       <FormControl>
-                        <SelectTrigger data-testid="select-refueling-provider-basis">
-                          <SelectValue placeholder="Выберите базис" />
-                        </SelectTrigger>
+                        <Input placeholder="0.00" type="number" step="0.01" data-testid="input-service-price" {...field} />
                       </FormControl>
-                      <SelectContent>
-                        {bases.map((b) => (
-                          <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="pvkjPrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Стоимость ПВКЖ</FormLabel>
+                      <FormControl>
+                        <Input placeholder="0.00" type="number" step="0.01" data-testid="input-pvkj-price" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="agentFee"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Агентские/прочие</FormLabel>
+                      <FormControl>
+                        <Input placeholder="0.00" type="number" step="0.01" data-testid="input-agent-fee" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="defaultBaseId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Базис заправки</FormLabel>
+                      <Select 
+                        onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)} 
+                        value={field.value?.toString() || ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-refueling-provider-basis">
+                            <SelectValue placeholder="Выберите базис" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {bases.map((b) => (
+                            <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
             )}
 
             {selectedType === "basis" && (
@@ -796,8 +836,8 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
 
             <div className="flex justify-end gap-4 pt-4">
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Отмена</Button>
-              <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-refueling">
-                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : "Создать"}
+              <Button type="submit" disabled={createRefuelingMutation.isPending} data-testid="button-save-refueling">
+                {createRefuelingMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : "Создать"}
               </Button>
             </div>
           </form>
@@ -990,18 +1030,19 @@ const logisticsFormSchema = z.object({
   type: z.enum(["carrier", "delivery_location", "vehicle", "trailer", "driver", "warehouse"]),
   name: z.string().min(1, "Укажите название"),
   description: z.string().optional(),
-  isActive: z.boolean().default(true),
-  inn: z.string().optional(),
-  contactPerson: z.string().optional(),
-  phone: z.string().optional(),
   address: z.string().optional(),
-  coordinates: z.string().optional(),
+  inn: z.string().optional(),
   carrierId: z.number().optional(),
   plateNumber: z.string().optional(),
   vehicleType: z.string().optional(),
-  capacity: z.string().optional(),
+  capacityKg: z.string().optional(),
+  fullName: z.string().optional(),
+  phone: z.string().optional(),
   licenseNumber: z.string().optional(),
   licenseExpiry: z.string().optional(),
+  storageCost: z.string().optional(),
+  notes: z.string().optional(),
+  isActive: z.boolean().default(true),
 });
 
 type LogisticsFormData = z.infer<typeof logisticsFormSchema>;
@@ -1025,9 +1066,11 @@ function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] }) {
       carrierId: undefined,
       plateNumber: "",
       vehicleType: "",
-      capacity: "",
+      capacityKg: "",
       licenseNumber: "",
       licenseExpiry: "",
+      storageCost: "",
+      notes: "",
     },
   });
 
@@ -1042,9 +1085,11 @@ function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] }) {
     form.setValue("carrierId", undefined);
     form.setValue("plateNumber", "");
     form.setValue("vehicleType", "");
-    form.setValue("capacity", "");
+    form.setValue("capacityKg", "");
     form.setValue("licenseNumber", "");
     form.setValue("licenseExpiry", "");
+    form.setValue("storageCost", "");
+    form.setValue("notes", "");
   }, [selectedType, form]);
 
   const createMutation = useMutation({
@@ -1076,7 +1121,7 @@ function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] }) {
           regNumber: data.plateNumber,
           carrierId: data.carrierId || null,
           model: data.vehicleType,
-          capacityKg: data.capacity ? parseFloat(data.capacity) : null,
+          capacityKg: data.capacityKg ? parseFloat(data.capacityKg) : null,
           isActive: data.isActive,
         };
       } else if (data.type === "trailer") {
@@ -1084,7 +1129,7 @@ function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] }) {
         payload = {
           regNumber: data.plateNumber,
           carrierId: data.carrierId || null,
-          capacityKg: data.capacity ? parseFloat(data.capacity) : null,
+          capacityKg: data.capacityKg ? parseFloat(data.capacityKg) : null,
           isActive: data.isActive,
         };
       } else if (data.type === "driver") {
@@ -1099,11 +1144,12 @@ function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] }) {
         };
       } else if (data.type === "warehouse") {
         endpoint = "/api/logistics/warehouses";
-        payload = {
-          name: data.name,
-          address: data.address,
-          capacity: data.capacity ? parseFloat(data.capacity) : null,
-          isActive: data.isActive,
+        payload = { 
+          name: data.name, 
+          description: data.description, 
+          address: data.address, 
+          storageCost: data.storageCost || null,
+          isActive: data.isActive 
         };
       }
 
@@ -1257,7 +1303,7 @@ function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] }) {
                 />
                 <FormField
                   control={form.control}
-                  name="coordinates"
+                  name="notes"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Координаты</FormLabel>
@@ -1272,74 +1318,76 @@ function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] }) {
             )}
 
             {(selectedType === "vehicle" || selectedType === "trailer") && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="carrierId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Перевозчик</FormLabel>
-                      <Select 
-                        onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)} 
-                        value={field.value?.toString() || ""}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-logistics-carrier">
-                            <SelectValue placeholder="Выберите перевозчика" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {carriers.map((c) => (
-                            <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="plateNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Гос. номер</FormLabel>
+              <FormField
+                control={form.control}
+                name="carrierId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Перевозчик</FormLabel>
+                    <Select 
+                      onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)} 
+                      value={field.value?.toString() || ""}
+                    >
                       <FormControl>
-                        <Input placeholder="А123БВ777" data-testid="input-logistics-plate" {...field} />
+                        <SelectTrigger data-testid="select-logistics-carrier">
+                          <SelectValue placeholder="Выберите перевозчика" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {selectedType === "vehicle" && (
-                  <FormField
-                    control={form.control}
-                    name="vehicleType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Тип транспорта</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Бензовоз, Цистерна" data-testid="input-logistics-vehicle-type" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      <SelectContent>
+                        {carriers.map((c) => (
+                          <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
                 )}
-                <FormField
-                  control={form.control}
-                  name="capacity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Вместимость (л)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="20000" type="number" data-testid="input-logistics-capacity" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
+              />
+            )}
+            {(selectedType === "vehicle" || selectedType === "trailer") && (
+              <FormField
+                control={form.control}
+                name="plateNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Гос. номер</FormLabel>
+                    <FormControl>
+                      <Input placeholder="А123БВ777" data-testid="input-logistics-plate" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            {selectedType === "vehicle" && (
+              <FormField
+                control={form.control}
+                name="vehicleType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Тип транспорта</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Бензовоз, Цистерна" data-testid="input-logistics-vehicle-type" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            {(selectedType === "vehicle" || selectedType === "trailer") && (
+              <FormField
+                control={form.control}
+                name="capacityKg"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Вместимость (кг)</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="Вместимость" data-testid="input-logistics-capacity" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
 
             {selectedType === "driver" && (
@@ -1428,12 +1476,12 @@ function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] }) {
                 />
                 <FormField
                   control={form.control}
-                  name="capacity"
+                  name="storageCost"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Вместимость (л)</FormLabel>
+                      <FormLabel>Стоимость хранения (₽)</FormLabel>
                       <FormControl>
-                        <Input placeholder="100000" type="number" data-testid="input-logistics-warehouse-capacity" {...field} />
+                        <Input type="number" step="0.01" placeholder="0.00" data-testid="input-storage-cost" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
