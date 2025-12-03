@@ -53,13 +53,11 @@ import type {
 
 const WHOLESALE_TYPES = [
   { value: "supplier", label: "Поставщик", icon: Building2 },
-  { value: "buyer", label: "Покупатель", icon: Users },
   { value: "basis", label: "Базис", icon: MapPin },
 ] as const;
 
 const REFUELING_TYPES = [
   { value: "provider", label: "Аэропорт/Поставщик", icon: Plane },
-  { value: "buyer", label: "Покупатель", icon: Users },
   { value: "service", label: "Услуга", icon: BookOpen },
 ] as const;
 
@@ -86,19 +84,14 @@ function WholesaleTab() {
     queryKey: ["/api/wholesale/suppliers"],
   });
 
-  const { data: customers, isLoading: customersLoading } = useQuery<Customer[]>({
-    queryKey: ["/api/customers", { module: "wholesale" }],
-  });
-
   const { data: bases, isLoading: basesLoading } = useQuery<WholesaleBase[]>({
     queryKey: ["/api/wholesale/bases"],
   });
 
-  const isLoading = suppliersLoading || customersLoading || basesLoading;
+  const isLoading = suppliersLoading || basesLoading;
 
   const allItems = [
     ...(suppliers?.map(s => ({ ...s, type: "supplier" as const, typeName: "Поставщик" })) || []),
-    ...(customers?.map(c => ({ ...c, type: "buyer" as const, typeName: "Покупатель" })) || []),
     ...(bases?.map(b => ({ ...b, type: "basis" as const, typeName: "Базис" })) || []),
   ];
 
@@ -194,9 +187,9 @@ function WholesaleTab() {
                               : "—"}
                         </TableCell>
                         <TableCell className="text-muted-foreground max-w-xs truncate">
-                          {item.type === "supplier" ? (item as WholesaleSupplier & { type: string }).inn || "—" : 
-                           item.type === "basis" ? (item as WholesaleBase & { type: string }).location || "—" :
-                           (item as Customer & { type: string }).contactPerson || "—"}
+                          {item.type === "supplier" 
+                            ? (item as WholesaleSupplier & { type: string }).inn || "—" 
+                            : (item as WholesaleBase & { type: string }).location || "—"}
                         </TableCell>
                         <TableCell>
                           {item.isActive ? (
@@ -231,16 +224,13 @@ function WholesaleTab() {
 // ============ ADD WHOLESALE DIALOG ============
 
 const wholesaleFormSchema = z.object({
-  type: z.enum(["supplier", "buyer", "basis"]),
+  type: z.enum(["supplier", "basis"]),
   name: z.string().min(1, "Укажите название"),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
   inn: z.string().optional(),
   contractNumber: z.string().optional(),
   defaultBaseId: z.number().optional(),
-  contactPerson: z.string().optional(),
-  phone: z.string().optional(),
-  email: z.string().email("Неверный формат email").optional().or(z.literal("")),
   supplierId: z.number().optional(),
   location: z.string().optional(),
 });
@@ -261,9 +251,6 @@ function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleSupplier
       inn: "",
       contractNumber: "",
       defaultBaseId: undefined,
-      contactPerson: "",
-      phone: "",
-      email: "",
       supplierId: undefined,
       location: "",
     },
@@ -276,9 +263,6 @@ function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleSupplier
     form.setValue("supplierId", undefined);
     form.setValue("inn", "");
     form.setValue("contractNumber", "");
-    form.setValue("contactPerson", "");
-    form.setValue("phone", "");
-    form.setValue("email", "");
     form.setValue("location", "");
   }, [selectedType, form]);
 
@@ -297,17 +281,6 @@ function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleSupplier
           defaultBaseId: data.defaultBaseId || null,
           isActive: data.isActive,
         };
-      } else if (data.type === "buyer") {
-        endpoint = "/api/customers";
-        payload = {
-          name: data.name,
-          description: data.description,
-          contactPerson: data.contactPerson,
-          phone: data.phone,
-          email: data.email || null,
-          module: "wholesale",
-          isActive: data.isActive,
-        };
       } else if (data.type === "basis") {
         endpoint = "/api/wholesale/bases";
         payload = {
@@ -323,7 +296,6 @@ function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleSupplier
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/wholesale/suppliers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wholesale/bases"] });
       toast({ title: "Запись добавлена", description: "Новая запись сохранена в справочнике" });
       form.reset();
@@ -455,50 +427,6 @@ function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleSupplier
               </>
             )}
 
-            {selectedType === "buyer" && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="contactPerson"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Контактное лицо</FormLabel>
-                      <FormControl>
-                        <Input placeholder="ФИО контактного лица" data-testid="input-wholesale-contact" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Телефон</FormLabel>
-                      <FormControl>
-                        <Input placeholder="+7 (XXX) XXX-XX-XX" data-testid="input-wholesale-phone" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input placeholder="email@example.com" type="email" data-testid="input-wholesale-email" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
-            )}
-
             {selectedType === "basis" && (
               <>
                 <FormField
@@ -593,10 +521,6 @@ function RefuelingTab() {
     queryKey: ["/api/refueling/providers"],
   });
 
-  const { data: customers, isLoading: customersLoading } = useQuery<Customer[]>({
-    queryKey: ["/api/customers", { module: "refueling" }],
-  });
-
   const { data: services, isLoading: servicesLoading } = useQuery<RefuelingService[]>({
     queryKey: ["/api/refueling/services"],
   });
@@ -605,11 +529,10 @@ function RefuelingTab() {
     queryKey: ["/api/refueling/bases"],
   });
 
-  const isLoading = providersLoading || customersLoading || servicesLoading;
+  const isLoading = providersLoading || servicesLoading;
 
   const allItems = [
     ...(providers?.map(p => ({ ...p, type: "provider" as const, typeName: "Аэропорт/Поставщик" })) || []),
-    ...(customers?.map(c => ({ ...c, type: "buyer" as const, typeName: "Покупатель" })) || []),
     ...(services?.map(s => ({ ...s, type: "service" as const, typeName: "Услуга" })) || []),
   ];
 
@@ -636,7 +559,7 @@ function RefuelingTab() {
           <Plane className="h-5 w-5" />
           Справочник Заправка ВС
         </CardTitle>
-        <CardDescription>Аэропорты, поставщики, покупатели и услуги для заправки воздушных судов</CardDescription>
+        <CardDescription>Аэропорты, поставщики и услуги для заправки воздушных судов</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -705,9 +628,7 @@ function RefuelingTab() {
                         <TableCell className="text-muted-foreground max-w-xs truncate">
                           {item.type === "provider" 
                             ? (item as RefuelingProvider & { type: string }).icaoCode || "—"
-                            : item.type === "service"
-                              ? (item as RefuelingService & { type: string }).unit || "—"
-                              : (item as Customer & { type: string }).contactPerson || "—"}
+                            : (item as RefuelingService & { type: string }).unit || "—"}
                         </TableCell>
                         <TableCell>
                           {item.isActive ? (
@@ -742,16 +663,13 @@ function RefuelingTab() {
 // ============ ADD REFUELING DIALOG ============
 
 const refuelingFormSchema = z.object({
-  type: z.enum(["provider", "buyer", "service"]),
+  type: z.enum(["provider", "service"]),
   name: z.string().min(1, "Укажите название"),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
   icaoCode: z.string().optional(),
   iataCode: z.string().optional(),
   defaultBaseId: z.number().optional(),
-  contactPerson: z.string().optional(),
-  phone: z.string().optional(),
-  email: z.string().email("Неверный формат email").optional().or(z.literal("")),
   unit: z.string().optional(),
   defaultPrice: z.string().optional(),
 });
@@ -772,9 +690,6 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
       icaoCode: "",
       iataCode: "",
       defaultBaseId: undefined,
-      contactPerson: "",
-      phone: "",
-      email: "",
       unit: "",
       defaultPrice: "",
     },
@@ -786,9 +701,6 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
     form.setValue("icaoCode", "");
     form.setValue("iataCode", "");
     form.setValue("defaultBaseId", undefined);
-    form.setValue("contactPerson", "");
-    form.setValue("phone", "");
-    form.setValue("email", "");
     form.setValue("unit", "");
     form.setValue("defaultPrice", "");
   }, [selectedType, form]);
@@ -808,17 +720,6 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
           defaultBaseId: data.defaultBaseId || null,
           isActive: data.isActive,
         };
-      } else if (data.type === "buyer") {
-        endpoint = "/api/customers";
-        payload = {
-          name: data.name,
-          description: data.description,
-          contactPerson: data.contactPerson,
-          phone: data.phone,
-          email: data.email || null,
-          module: "refueling",
-          isActive: data.isActive,
-        };
       } else if (data.type === "service") {
         endpoint = "/api/refueling/services";
         payload = {
@@ -835,7 +736,6 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/refueling/providers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/refueling/services"] });
       toast({ title: "Запись добавлена", description: "Новая запись сохранена в справочнике" });
       form.reset();
@@ -969,50 +869,6 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
               </>
             )}
 
-            {selectedType === "buyer" && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="contactPerson"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Контактное лицо</FormLabel>
-                      <FormControl>
-                        <Input placeholder="ФИО контактного лица" data-testid="input-refueling-contact" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Телефон</FormLabel>
-                      <FormControl>
-                        <Input placeholder="+7 (XXX) XXX-XX-XX" data-testid="input-refueling-phone" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input placeholder="email@example.com" type="email" data-testid="input-refueling-email" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
-            )}
-
             {selectedType === "service" && (
               <>
                 <FormField
@@ -1125,8 +981,22 @@ function LogisticsTab() {
     ...(warehouses?.map(w => ({ ...w, type: "warehouse" as const, typeName: "Склад/Базис" })) || []),
   ];
 
+  const getItemDisplayName = (item: typeof allItems[number]): string => {
+    if (item.type === "vehicle") {
+      return (item as LogisticsVehicle & { type: string }).regNumber;
+    }
+    if (item.type === "trailer") {
+      return (item as LogisticsTrailer & { type: string }).regNumber;
+    }
+    if (item.type === "driver") {
+      return (item as LogisticsDriver & { type: string }).fullName;
+    }
+    return (item as { name: string }).name;
+  };
+
   const filteredItems = allItems.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
+    const displayName = getItemDisplayName(item);
+    const matchesSearch = displayName.toLowerCase().includes(search.toLowerCase());
     const matchesType = typeFilter === "all" || item.type === typeFilter;
     return matchesSearch && matchesType;
   });
@@ -1203,15 +1073,15 @@ function LogisticsTab() {
                         <TableCell>
                           <Badge variant="outline">{item.typeName}</Badge>
                         </TableCell>
-                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell className="font-medium">{getItemDisplayName(item)}</TableCell>
                         <TableCell>
                           {(item.type === "vehicle" || item.type === "trailer" || item.type === "driver") 
                             ? getCarrierName((item as any).carrierId) || "—"
                             : "—"}
                         </TableCell>
                         <TableCell className="text-muted-foreground max-w-xs truncate">
-                          {item.type === "vehicle" ? (item as LogisticsVehicle & { type: string }).plateNumber || "—" :
-                           item.type === "trailer" ? (item as LogisticsTrailer & { type: string }).plateNumber || "—" :
+                          {item.type === "vehicle" ? (item as LogisticsVehicle & { type: string }).model || "—" :
+                           item.type === "trailer" ? (item as LogisticsTrailer & { type: string }).capacityKg || "—" :
                            item.type === "driver" ? (item as LogisticsDriver & { type: string }).phone || "—" :
                            item.type === "delivery_location" ? (item as LogisticsDeliveryLocation & { type: string }).address || "—" :
                            item.type === "warehouse" ? (item as LogisticsWarehouse & { type: string }).address || "—" :
@@ -1751,10 +1621,349 @@ function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] }) {
   );
 }
 
+// ============ CUSTOMERS TAB ============
+
+function CustomersTab() {
+  const [search, setSearch] = useState("");
+
+  const { data: customers, isLoading } = useQuery<Customer[]>({
+    queryKey: ["/api/customers"],
+  });
+
+  const filteredItems = customers?.filter(item => 
+    item.name.toLowerCase().includes(search.toLowerCase())
+  ) || [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          Справочник Покупатели
+        </CardTitle>
+        <CardDescription>Единый справочник покупателей для ОПТ и Заправки ВС</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Поиск..." 
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
+                className="pl-9" 
+                data-testid="input-search-customers" 
+              />
+            </div>
+            <AddCustomerDialog />
+          </div>
+
+          {isLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+            </div>
+          ) : (
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Название</TableHead>
+                    <TableHead>Модуль</TableHead>
+                    <TableHead>Контактное лицо</TableHead>
+                    <TableHead>Телефон</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Статус</TableHead>
+                    <TableHead className="w-[80px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredItems.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        Нет данных
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredItems.map((item) => (
+                      <TableRow key={item.id} data-testid={`row-customer-${item.id}`}>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {item.module === "wholesale" ? "ОПТ" : item.module === "refueling" ? "Заправка" : "Общий"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{item.contactPerson || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{item.phone || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{item.email || "—"}</TableCell>
+                        <TableCell>
+                          {item.isActive ? (
+                            <Badge variant="outline" className="text-green-600 border-green-600">Активен</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground">Неактивен</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" data-testid={`button-edit-customer-${item.id}`}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="text-destructive" data-testid={`button-delete-customer-${item.id}`}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============ ADD CUSTOMER DIALOG ============
+
+const customerFormSchema = z.object({
+  name: z.string().min(1, "Укажите название"),
+  module: z.enum(["wholesale", "refueling", "both"]),
+  description: z.string().optional(),
+  contactPerson: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email("Неверный формат email").optional().or(z.literal("")),
+  inn: z.string().optional(),
+  contractNumber: z.string().optional(),
+  isActive: z.boolean().default(true),
+});
+
+type CustomerFormData = z.infer<typeof customerFormSchema>;
+
+function AddCustomerDialog() {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+
+  const form = useForm<CustomerFormData>({
+    resolver: zodResolver(customerFormSchema),
+    defaultValues: {
+      name: "",
+      module: "both",
+      description: "",
+      contactPerson: "",
+      phone: "",
+      email: "",
+      inn: "",
+      contractNumber: "",
+      isActive: true,
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: CustomerFormData) => {
+      const payload = {
+        name: data.name,
+        module: data.module,
+        description: data.description,
+        contactPerson: data.contactPerson,
+        phone: data.phone,
+        email: data.email || null,
+        inn: data.inn,
+        contractNumber: data.contractNumber,
+        isActive: data.isActive,
+      };
+      const res = await apiRequest("POST", "/api/customers", payload);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      toast({ title: "Покупатель добавлен", description: "Новый покупатель сохранен в справочнике" });
+      form.reset();
+      setOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) {
+      form.reset();
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button size="sm" data-testid="button-add-customer">
+          <Plus className="mr-2 h-4 w-4" />
+          Добавить
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Новый покупатель</DialogTitle>
+          <DialogDescription>Добавление покупателя в справочник</DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="module"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Модуль</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-customer-module">
+                        <SelectValue placeholder="Выберите модуль" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="both">Общий (ОПТ и Заправка)</SelectItem>
+                      <SelectItem value="wholesale">Только ОПТ</SelectItem>
+                      <SelectItem value="refueling">Только Заправка ВС</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Название</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Название покупателя" data-testid="input-customer-name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="contactPerson"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Контактное лицо</FormLabel>
+                  <FormControl>
+                    <Input placeholder="ФИО контактного лица" data-testid="input-customer-contact" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Телефон</FormLabel>
+                    <FormControl>
+                      <Input placeholder="+7 (XXX) XXX-XX-XX" data-testid="input-customer-phone" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="email@example.com" type="email" data-testid="input-customer-email" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="inn"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>ИНН</FormLabel>
+                    <FormControl>
+                      <Input placeholder="ИНН" data-testid="input-customer-inn" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="contractNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Номер договора</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Номер договора" data-testid="input-customer-contract" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Описание</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Дополнительная информация..." className="resize-none" data-testid="input-customer-description" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="isActive"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2 space-y-0">
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-customer-active" />
+                  </FormControl>
+                  <FormLabel className="font-normal cursor-pointer">Активен</FormLabel>
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end gap-4 pt-4">
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Отмена</Button>
+              <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-customer">
+                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : "Создать"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ============ MAIN PAGE ============
 
 export default function DirectoriesPage() {
-  const [activeTab, setActiveTab] = useState<"wholesale" | "refueling" | "logistics">("wholesale");
+  const [activeTab, setActiveTab] = useState<"wholesale" | "refueling" | "logistics" | "customers">("wholesale");
 
   return (
     <div className="space-y-6">
@@ -1777,6 +1986,10 @@ export default function DirectoriesPage() {
             <Truck className="h-4 w-4" />
             Логистика
           </TabsTrigger>
+          <TabsTrigger value="customers" className="flex items-center gap-2" data-testid="tab-customers">
+            <Users className="h-4 w-4" />
+            Покупатели
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="wholesale">
@@ -1789,6 +2002,10 @@ export default function DirectoriesPage() {
 
         <TabsContent value="logistics">
           <LogisticsTab />
+        </TabsContent>
+
+        <TabsContent value="customers">
+          <CustomersTab />
         </TabsContent>
       </Tabs>
     </div>

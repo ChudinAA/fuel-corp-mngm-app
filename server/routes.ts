@@ -338,6 +338,9 @@ export async function registerRoutes(
 
   app.get("/api/customers/:id", requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Неверный идентификатор" });
+    }
     const customer = await storage.getCustomer(id);
     if (!customer) {
       return res.status(404).json({ message: "Покупатель не найден" });
@@ -361,6 +364,9 @@ export async function registerRoutes(
   app.patch("/api/customers/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Неверный идентификатор" });
+      }
       const item = await storage.updateCustomer(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Покупатель не найден" });
@@ -374,6 +380,9 @@ export async function registerRoutes(
   app.delete("/api/customers/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Неверный идентификатор" });
+      }
       await storage.deleteCustomer(id);
       res.json({ message: "Покупатель удален" });
     } catch (error) {

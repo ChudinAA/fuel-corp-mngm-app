@@ -51,6 +51,9 @@ export const customers = pgTable("customers", {
   description: text("description"),
   inn: text("inn"),
   contractNumber: text("contract_number"),
+  contactPerson: text("contact_person"),
+  phone: text("phone"),
+  email: text("email"),
   module: text("module").notNull(), // "wholesale", "refueling", "both"
   isActive: boolean("is_active").default(true),
 });
@@ -106,6 +109,8 @@ export const refuelingServices = pgTable("refueling_services", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
+  unit: text("unit"),
+  defaultPrice: decimal("default_price", { precision: 12, scale: 2 }),
   refuelingServicePrice: decimal("refueling_service_price", { precision: 12, scale: 2 }),
   pvkjPrice: decimal("pvkj_price", { precision: 12, scale: 2 }),
   agentFee: decimal("agent_fee", { precision: 12, scale: 2 }),
