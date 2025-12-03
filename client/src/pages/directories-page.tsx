@@ -32,7 +32,9 @@ import {
   Car,
   Container,
   User,
-  Warehouse
+  Warehouse,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import type { 
   Customer, 
@@ -606,6 +608,7 @@ type RefuelingFormData = z.infer<typeof refuelingFormSchema>;
 function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider[]; bases: RefuelingBase[] }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [showPriceFields, setShowPriceFields] = useState(false);
 
   const form = useForm<RefuelingFormData>({
     resolver: zodResolver(refuelingFormSchema),
@@ -629,6 +632,11 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
     form.setValue("servicePrice", "");
     form.setValue("pvkjPrice", "");
     form.setValue("agentFee", "");
+    if (selectedType === "provider") {
+      setShowPriceFields(true);
+    } else {
+      setShowPriceFields(false);
+    }
   }, [selectedType, form]);
 
   const createRefuelingMutation = useMutation({
@@ -665,6 +673,7 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
     setOpen(isOpen);
     if (!isOpen) {
       form.reset();
+      setShowPriceFields(false);
     }
   };
 
@@ -727,45 +736,55 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
 
             {selectedType === "provider" && (
               <>
-                <FormField
-                  control={form.control}
-                  name="servicePrice"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Стоимость услуги</FormLabel>
-                      <FormControl>
-                        <Input placeholder="0.00" type="number" step="0.01" data-testid="input-service-price" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="pvkjPrice"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Стоимость ПВКЖ</FormLabel>
-                      <FormControl>
-                        <Input placeholder="0.00" type="number" step="0.01" data-testid="input-pvkj-price" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="agentFee"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Агентские/прочие</FormLabel>
-                      <FormControl>
-                        <Input placeholder="0.00" type="number" step="0.01" data-testid="input-agent-fee" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="flex justify-between items-center">
+                  <FormLabel>Ценообразование</FormLabel>
+                  <Button variant="ghost" size="icon" onClick={() => setShowPriceFields(!showPriceFields)}>
+                    {showPriceFields ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {showPriceFields && (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="servicePrice"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Стоимость услуги</FormLabel>
+                          <FormControl>
+                            <Input placeholder="0.00" type="number" step="0.01" data-testid="input-service-price" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="pvkjPrice"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Стоимость ПВКЖ</FormLabel>
+                          <FormControl>
+                            <Input placeholder="0.00" type="number" step="0.01" data-testid="input-pvkj-price" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="agentFee"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Агентские/прочие</FormLabel>
+                          <FormControl>
+                            <Input placeholder="0.00" type="number" step="0.01" data-testid="input-agent-fee" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
                 <FormField
                   control={form.control}
                   name="defaultBaseId"
