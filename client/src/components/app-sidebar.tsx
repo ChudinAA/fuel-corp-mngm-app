@@ -231,8 +231,9 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton 
-                  className="w-full"
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-2 px-2 h-auto py-2"
                   data-testid="button-user-menu"
                 >
                   <Avatar className="h-6 w-6">
@@ -246,7 +247,7 @@ export function AppSidebar() {
                     </span>
                   </div>
                   <ChevronUp className="h-4 w-4 ml-auto" />
-                </SidebarMenuButton>
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent 
                 side="top" 
