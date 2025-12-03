@@ -245,13 +245,14 @@ export function AppSidebar() {
                       {user ? `${user.firstName} ${user.lastName}` : "Гость"}
                     </span>
                   </div>
-                  <ChevronUp className="h-4 w-4" />
+                  <ChevronUp className="h-4 w-4 ml-auto" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent 
                 side="top" 
                 className="w-56"
-                align="start"
+                align="end"
+                sideOffset={4}
               >
                 <div className="px-2 py-1.5">
                   <p className="text-sm font-medium">
