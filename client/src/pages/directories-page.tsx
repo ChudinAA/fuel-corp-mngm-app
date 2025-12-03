@@ -741,13 +741,13 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
                       </Button>
                     </CollapsibleTrigger>
                   </div>
-                  <CollapsibleContent className="space-y-4">
+                  <CollapsibleContent className="grid grid-cols-3 gap-3">
                     <FormField
                       control={form.control}
                       name="servicePrice"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Стоимость услуги</FormLabel>
+                          <FormLabel className="text-xs">Стоимость услуги</FormLabel>
                           <FormControl>
                             <Input placeholder="0.00" type="number" step="0.01" data-testid="input-service-price" {...field} />
                           </FormControl>
@@ -760,7 +760,7 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
                       name="pvkjPrice"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Стоимость ПВКЖ</FormLabel>
+                          <FormLabel className="text-xs">Стоимость ПВКЖ</FormLabel>
                           <FormControl>
                             <Input placeholder="0.00" type="number" step="0.01" data-testid="input-pvkj-price" {...field} />
                           </FormControl>
@@ -773,7 +773,7 @@ function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider
                       name="agentFee"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Агентские/прочие</FormLabel>
+                          <FormLabel className="text-xs">Агентские/прочие</FormLabel>
                           <FormControl>
                             <Input placeholder="0.00" type="number" step="0.01" data-testid="input-agent-fee" {...field} />
                           </FormControl>
