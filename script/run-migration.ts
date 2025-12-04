@@ -1,7 +1,9 @@
 
-import { Client } from 'pg';
+import pg from 'pg';
 import * as fs from 'fs';
 import * as path from 'path';
+
+const { Client } = pg;
 
 async function runMigration() {
   const client = new Client({
