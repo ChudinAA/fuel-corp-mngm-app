@@ -296,8 +296,8 @@ function AddPriceDialog() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="supplier">Поставщик (Закупка)</SelectItem>
-                        <SelectItem value="buyer">Покупатель (Продажа)</SelectItem>
+                        <SelectItem value="supplier">Поставщик</SelectItem>
+                        <SelectItem value="buyer">Покупатель</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -362,7 +362,7 @@ function AddPriceDialog() {
                 name="basis"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Базис (место поставки)</FormLabel>
+                    <FormLabel>Базис (место поставки/заправки)</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-basis">

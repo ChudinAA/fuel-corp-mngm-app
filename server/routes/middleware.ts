@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { storage } from "../storage";
+import { storage } from "../storage/index";
 
 declare module "express-session" {
   interface SessionData {

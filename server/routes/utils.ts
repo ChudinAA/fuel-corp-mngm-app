@@ -1,5 +1,5 @@
 
-import { storage } from "../storage";
+import { storage } from "../storage/index";
 import { DEFAULT_ROLES, MODULES, ACTIONS } from "@shared/schema";
 
 export async function seedDefaultRoles() {

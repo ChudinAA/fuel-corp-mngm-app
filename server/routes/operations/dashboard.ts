@@ -1,6 +1,6 @@
 
 import type { Express } from "express";
-import { storage } from "../../storage";
+import { storage } from "../../storage/index";
 import { requireAuth } from "../middleware";
 
 export function registerDashboardRoutes(app: Express) {

@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { storage } from "../storage"; // Assuming storage is now a modular instance
+import { storage } from "../storage/index";
 import { insertUserSchema, insertRoleSchema } from "@shared/schema";
 import { z } from "zod";
 import { requirePermission } from "./middleware";
