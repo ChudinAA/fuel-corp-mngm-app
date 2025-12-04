@@ -192,7 +192,7 @@ function AddPriceDialog() {
     mutationFn: async (data: PriceFormData) => {
       const payload = {
         productType: data.productType,
-        counterpartyId: parseInt(data.counterpartyId),
+        counterpartyId: data.counterpartyId,
         counterpartyType: data.counterpartyType,
         counterpartyRole: data.counterpartyRole,
         basis: data.basis,
