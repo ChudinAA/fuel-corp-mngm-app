@@ -91,11 +91,11 @@ function AddPriceDialog() {
   const watchDateTo = form.watch("dateTo");
 
   const { data: optBases } = useQuery<DirectoryWholesale[]>({
-    queryKey: ["/api/directories/wholesale", "basis"],
+    queryKey: ["/api/wholesale/bases"],
   });
 
   const { data: refuelingBases } = useQuery<DirectoryRefueling[]>({
-    queryKey: ["/api/directories/refueling", "basis"],
+    queryKey: ["/api/refueling/bases"],
   });
 
   const { data: wholesaleSuppliers } = useQuery<DirectoryWholesale[]>({
@@ -122,7 +122,7 @@ function AddPriceDialog() {
   useEffect(() => {
     if (watchCounterpartyRole === "supplier" && watchCounterpartyId) {
       const selectedContractor = contractors.find(c => c.id.toString() === watchCounterpartyId);
-      if (selectedContractor && 'defaultBaseId' in selectedContractor && selectedContractor.defaultBaseId) {
+      if (selectedContractor && selectedContractor.defaultBaseId) {
         const defaultBase = allBases.find(b => b.id === selectedContractor.defaultBaseId);
         if (defaultBase) {
           form.setValue("basis", defaultBase.basis || defaultBase.name);
