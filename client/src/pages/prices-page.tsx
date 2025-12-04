@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -98,16 +98,38 @@ function AddPriceDialog() {
     queryKey: ["/api/directories/refueling", "basis"],
   });
 
-  const { data: optContractors } = useQuery<DirectoryWholesale[]>({
-    queryKey: ["/api/directories/wholesale", "all"],
+  const { data: wholesaleSuppliers } = useQuery<DirectoryWholesale[]>({
+    queryKey: ["/api/wholesale/suppliers"],
   });
 
-  const { data: refuelingContractors } = useQuery<DirectoryRefueling[]>({
-    queryKey: ["/api/directories/refueling", "all"],
+  const { data: refuelingProviders } = useQuery<DirectoryRefueling[]>({
+    queryKey: ["/api/refueling/providers"],
   });
 
-  const bases = watchCounterpartyType === "wholesale" ? optBases : refuelingBases;
-  const contractors = watchCounterpartyType === "wholesale" ? optContractors : refuelingContractors;
+  const { data: customers } = useQuery<{ id: number; name: string; }[]>({
+    queryKey: ["/api/customers"],
+  });
+
+  // Объединяем базисы из обеих таблиц
+  const allBases = [...(optBases || []), ...(refuelingBases || [])];
+
+  // Логика выбора контрагентов в зависимости от роли
+  const contractors = watchCounterpartyRole === "supplier" 
+    ? [...(wholesaleSuppliers || []), ...(refuelingProviders || [])]
+    : customers || [];
+
+  // Автоматическое заполнение базиса при выборе поставщика
+  useEffect(() => {
+    if (watchCounterpartyRole === "supplier" && watchCounterpartyId) {
+      const selectedContractor = contractors.find(c => c.id.toString() === watchCounterpartyId);
+      if (selectedContractor && 'defaultBaseId' in selectedContractor && selectedContractor.defaultBaseId) {
+        const defaultBase = allBases.find(b => b.id === selectedContractor.defaultBaseId);
+        if (defaultBase) {
+          form.setValue("basis", defaultBase.basis || defaultBase.name);
+        }
+      }
+    }
+  }, [watchCounterpartyRole, watchCounterpartyId, contractors, allBases, form]);
 
   const calculateSelection = async () => {
     if (!watchCounterpartyId || !watchBasis || !watchDateFrom || !watchDateTo) {
@@ -370,8 +392,8 @@ function AddPriceDialog() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {bases?.map((b) => (
-                          <SelectItem key={b.id} value={b.basis || b.name}>{b.basis || b.name}</SelectItem>
+                        {allBases?.map((b) => (
+                          <SelectItem key={`${b.id}-${b.name}`} value={b.basis || b.name}>{b.basis || b.name}</SelectItem>
                         )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
                       </SelectContent>
                     </Select>
