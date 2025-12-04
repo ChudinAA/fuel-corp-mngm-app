@@ -1,12 +1,12 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, date, boolean, timestamp, jsonb, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, date, boolean, timestamp, jsonb, serial, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // ============ ROLES & PERMISSIONS ============
 
 export const roles = pgTable("roles", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull().unique(),
   description: text("description"),
   permissions: text("permissions").array(),
@@ -15,28 +15,28 @@ export const roles = pgTable("roles", {
 });
 
 export const permissions = pgTable("permissions", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   module: text("module").notNull(),
   action: text("action").notNull(),
   description: text("description"),
 });
 
 export const rolePermissions = pgTable("role_permissions", {
-  id: serial("id").primaryKey(),
-  roleId: integer("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
-  permissionId: integer("permission_id").notNull().references(() => permissions.id, { onDelete: "cascade" }),
+  id: uuid("id").defaultRandom().primaryKey(),
+  roleId: uuid("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
+  permissionId: uuid("permission_id").notNull().references(() => permissions.id, { onDelete: "cascade" }),
 });
 
 // ============ USERS ============
 
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   patronymic: text("patronymic"),
-  roleId: integer("role_id").references(() => roles.id),
+  roleId: uuid("role_id").references(() => roles.id),
   isActive: boolean("is_active").default(true),
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -46,7 +46,7 @@ export const users = pgTable("users", {
 
 // Единая таблица покупателей (для ОПТ и Заправки ВС)
 export const customers = pgTable("customers", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
   inn: text("inn"),
@@ -62,16 +62,16 @@ export const customers = pgTable("customers", {
 
 // Поставщики для ОПТ
 export const wholesaleSuppliers = pgTable("wholesale_suppliers", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  defaultBaseId: integer("default_base_id"),
+  defaultBaseId: uuid("default_base_id"),
   isActive: boolean("is_active").default(true),
 });
 
 // Базисы для ОПТ
 export const wholesaleBases = pgTable("wholesale_bases", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   location: text("location"),
   isActive: boolean("is_active").default(true),
@@ -81,10 +81,10 @@ export const wholesaleBases = pgTable("wholesale_bases", {
 
 // Аэропорты/Поставщики для заправки ВС
 export const refuelingProviders = pgTable("refueling_providers", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  defaultBaseId: integer("default_base_id"),
+  defaultBaseId: uuid("default_base_id"),
   servicePrice: decimal("service_price", { precision: 12, scale: 2 }),
   pvkjPrice: decimal("pvkj_price", { precision: 12, scale: 2 }),
   agentFee: decimal("agent_fee", { precision: 12, scale: 2 }),
@@ -93,7 +93,7 @@ export const refuelingProviders = pgTable("refueling_providers", {
 
 // Базисы заправки
 export const refuelingBases = pgTable("refueling_bases", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   location: text("location"),
   isActive: boolean("is_active").default(true),
@@ -103,7 +103,7 @@ export const refuelingBases = pgTable("refueling_bases", {
 
 // Перевозчики
 export const logisticsCarriers = pgTable("logistics_carriers", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
   inn: text("inn"),
@@ -112,7 +112,7 @@ export const logisticsCarriers = pgTable("logistics_carriers", {
 
 // Места доставки
 export const logisticsDeliveryLocations = pgTable("logistics_delivery_locations", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   address: text("address"),
   notes: text("notes"),
@@ -121,8 +121,8 @@ export const logisticsDeliveryLocations = pgTable("logistics_delivery_locations"
 
 // Транспорт
 export const logisticsVehicles = pgTable("logistics_vehicles", {
-  id: serial("id").primaryKey(),
-  carrierId: integer("carrier_id").references(() => logisticsCarriers.id, { onDelete: "set null" }),
+  id: uuid("id").defaultRandom().primaryKey(),
+  carrierId: uuid("carrier_id").references(() => logisticsCarriers.id, { onDelete: "set null" }),
   regNumber: text("reg_number").notNull(),
   model: text("model"),
   capacityKg: decimal("capacity_kg", { precision: 12, scale: 2 }),
@@ -131,8 +131,8 @@ export const logisticsVehicles = pgTable("logistics_vehicles", {
 
 // Прицепы
 export const logisticsTrailers = pgTable("logistics_trailers", {
-  id: serial("id").primaryKey(),
-  carrierId: integer("carrier_id").references(() => logisticsCarriers.id, { onDelete: "set null" }),
+  id: uuid("id").defaultRandom().primaryKey(),
+  carrierId: uuid("carrier_id").references(() => logisticsCarriers.id, { onDelete: "set null" }),
   regNumber: text("reg_number").notNull(),
   capacityKg: decimal("capacity_kg", { precision: 12, scale: 2 }),
   isActive: boolean("is_active").default(true),
@@ -140,8 +140,8 @@ export const logisticsTrailers = pgTable("logistics_trailers", {
 
 // Водители
 export const logisticsDrivers = pgTable("logistics_drivers", {
-  id: serial("id").primaryKey(),
-  carrierId: integer("carrier_id").references(() => logisticsCarriers.id, { onDelete: "set null" }),
+  id: uuid("id").defaultRandom().primaryKey(),
+  carrierId: uuid("carrier_id").references(() => logisticsCarriers.id, { onDelete: "set null" }),
   fullName: text("full_name").notNull(),
   phone: text("phone"),
   licenseNumber: text("license_number"),
@@ -150,7 +150,7 @@ export const logisticsDrivers = pgTable("logistics_drivers", {
 
 // Склады/Базисы
 export const logisticsWarehouses = pgTable("logistics_warehouses", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
   address: text("address"),
@@ -161,9 +161,9 @@ export const logisticsWarehouses = pgTable("logistics_warehouses", {
 // ============ PRICES (Цены) ============
 
 export const prices = pgTable("prices", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   productType: text("product_type").notNull(),
-  counterpartyId: integer("counterparty_id").notNull(),
+  counterpartyId: uuid("counterparty_id").notNull(),
   counterpartyType: text("counterparty_type").notNull(),
   counterpartyRole: text("counterparty_role").notNull(),
   basis: text("basis").notNull(),
@@ -181,10 +181,10 @@ export const prices = pgTable("prices", {
 // ============ DELIVERY COST (Стоимость доставки) ============
 
 export const deliveryCost = pgTable("delivery_cost", {
-  id: serial("id").primaryKey(),
-  carrierId: integer("carrier_id").notNull(),
+  id: uuid("id").defaultRandom().primaryKey(),
+  carrierId: uuid("carrier_id").notNull(),
   basis: text("basis").notNull(),
-  deliveryLocationId: integer("delivery_location_id").notNull(),
+  deliveryLocationId: uuid("delivery_location_id").notNull(),
   tariff: decimal("tariff", { precision: 12, scale: 4 }).notNull(),
   isActive: boolean("is_active").default(true),
 });
@@ -192,7 +192,7 @@ export const deliveryCost = pgTable("delivery_cost", {
 // ============ WAREHOUSES (Склады) ============
 
 export const warehouses = pgTable("warehouses", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   type: text("type").notNull(),
   basis: text("basis"),
@@ -203,15 +203,15 @@ export const warehouses = pgTable("warehouses", {
 });
 
 export const warehouseTransactions = pgTable("warehouse_transactions", {
-  id: serial("id").primaryKey(),
-  warehouseId: integer("warehouse_id").notNull().references(() => warehouses.id),
+  id: uuid("id").defaultRandom().primaryKey(),
+  warehouseId: uuid("warehouse_id").notNull().references(() => warehouses.id),
   transactionDate: date("transaction_date").notNull(),
   transactionType: text("transaction_type").notNull(),
   quantity: decimal("quantity", { precision: 15, scale: 2 }).notNull(),
   price: decimal("price", { precision: 12, scale: 4 }),
   totalAmount: decimal("total_amount", { precision: 15, scale: 2 }),
   sourceType: text("source_type"),
-  sourceId: integer("source_id"),
+  sourceId: uuid("source_id"),
   balanceAfter: decimal("balance_after", { precision: 15, scale: 2 }),
   averageCostAfter: decimal("average_cost_after", { precision: 12, scale: 4 }),
 });
@@ -219,7 +219,7 @@ export const warehouseTransactions = pgTable("warehouse_transactions", {
 // ============ EXCHANGE (Биржа) ============
 
 export const exchange = pgTable("exchange", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   dealDate: date("deal_date").notNull(),
   dealNumber: text("deal_number"),
   counterparty: text("counterparty").notNull(),
@@ -227,22 +227,22 @@ export const exchange = pgTable("exchange", {
   quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
   pricePerKg: decimal("price_per_kg", { precision: 12, scale: 4 }).notNull(),
   totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
-  warehouseId: integer("warehouse_id").references(() => warehouses.id),
+  warehouseId: uuid("warehouse_id").references(() => warehouses.id),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
-  createdById: integer("created_by_id").references(() => users.id),
+  createdById: uuid("created_by_id").references(() => users.id),
 });
 
 // ============ MOVEMENT (Перемещение) ============
 
 export const movement = pgTable("movement", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   movementDate: date("movement_date").notNull(),
   movementType: text("movement_type").notNull(),
   productType: text("product_type").notNull(),
-  supplierId: integer("supplier_id"),
-  fromWarehouseId: integer("from_warehouse_id").references(() => warehouses.id),
-  toWarehouseId: integer("to_warehouse_id").notNull().references(() => warehouses.id),
+  supplierId: uuid("supplier_id"),
+  fromWarehouseId: uuid("from_warehouse_id").references(() => warehouses.id),
+  toWarehouseId: uuid("to_warehouse_id").notNull().references(() => warehouses.id),
   quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
   density: decimal("density", { precision: 6, scale: 4 }),
   quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
@@ -251,34 +251,34 @@ export const movement = pgTable("movement", {
   deliveryCost: decimal("delivery_cost", { precision: 15, scale: 2 }),
   totalCost: decimal("total_cost", { precision: 15, scale: 2 }),
   costPerKg: decimal("cost_per_kg", { precision: 12, scale: 4 }),
-  carrierId: integer("carrier_id"),
+  carrierId: uuid("carrier_id"),
   vehicleNumber: text("vehicle_number"),
   trailerNumber: text("trailer_number"),
   driverName: text("driver_name"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
-  createdById: integer("created_by_id").references(() => users.id),
+  createdById: uuid("created_by_id").references(() => users.id),
 });
 
 // ============ OPT (Оптовые продажи) ============
 
 export const opt = pgTable("opt", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   dealDate: date("deal_date").notNull(),
-  supplierId: integer("supplier_id").notNull(),
-  buyerId: integer("buyer_id").notNull(),
+  supplierId: uuid("supplier_id").notNull(),
+  buyerId: uuid("buyer_id").notNull(),
   basis: text("basis"),
   quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
   density: decimal("density", { precision: 6, scale: 4 }),
   quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
   purchasePrice: decimal("purchase_price", { precision: 12, scale: 4 }),
-  purchasePriceId: integer("purchase_price_id"),
+  purchasePriceId: uuid("purchase_price_id"),
   salePrice: decimal("sale_price", { precision: 12, scale: 4 }),
-  salePriceId: integer("sale_price_id"),
+  salePriceId: uuid("sale_price_id"),
   purchaseAmount: decimal("purchase_amount", { precision: 15, scale: 2 }),
   saleAmount: decimal("sale_amount", { precision: 15, scale: 2 }),
-  carrierId: integer("carrier_id"),
-  deliveryLocationId: integer("delivery_location_id"),
+  carrierId: uuid("carrier_id"),
+  deliveryLocationId: uuid("delivery_location_id"),
   deliveryTariff: decimal("delivery_tariff", { precision: 12, scale: 4 }),
   deliveryCost: decimal("delivery_cost", { precision: 15, scale: 2 }),
   profit: decimal("profit", { precision: 15, scale: 2 }),
@@ -292,27 +292,27 @@ export const opt = pgTable("opt", {
   warehouseStatus: text("warehouse_status"),
   priceStatus: text("price_status"),
   createdAt: timestamp("created_at").defaultNow(),
-  createdById: integer("created_by_id").references(() => users.id),
+  createdById: uuid("created_by_id").references(() => users.id),
 });
 
 // ============ AIRCRAFT REFUELING (Заправка ВС) ============
 
 export const aircraftRefueling = pgTable("aircraft_refueling", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   refuelingDate: date("refueling_date").notNull(),
   productType: text("product_type").notNull(),
   aircraftNumber: text("aircraft_number"),
   orderNumber: text("order_number"),
-  supplierId: integer("supplier_id").notNull(),
+  supplierId: uuid("supplier_id").notNull(),
   basis: text("basis"),
-  buyerId: integer("buyer_id").notNull(),
+  buyerId: uuid("buyer_id").notNull(),
   quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
   density: decimal("density", { precision: 6, scale: 4 }),
   quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
   purchasePrice: decimal("purchase_price", { precision: 12, scale: 4 }),
-  purchasePriceId: integer("purchase_price_id"),
+  purchasePriceId: uuid("purchase_price_id"),
   salePrice: decimal("sale_price", { precision: 12, scale: 4 }),
-  salePriceId: integer("sale_price_id"),
+  salePriceId: uuid("sale_price_id"),
   purchaseAmount: decimal("purchase_amount", { precision: 15, scale: 2 }),
   saleAmount: decimal("sale_amount", { precision: 15, scale: 2 }),
   profit: decimal("profit", { precision: 15, scale: 2 }),
@@ -323,7 +323,7 @@ export const aircraftRefueling = pgTable("aircraft_refueling", {
   warehouseStatus: text("warehouse_status"),
   priceStatus: text("price_status"),
   createdAt: timestamp("created_at").defaultNow(),
-  createdById: integer("created_by_id").references(() => users.id),
+  createdById: uuid("created_by_id").references(() => users.id),
 });
 
 // ============ RELATIONS ============
