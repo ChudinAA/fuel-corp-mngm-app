@@ -134,8 +134,8 @@ export interface IPriceStorage {
   createPrice(data: InsertPrice): Promise<Price>;
   updatePrice(id: number, data: Partial<InsertPrice>): Promise<Price | undefined>;
   deletePrice(id: number): Promise<boolean>;
-  calculatePriceSelection(counterpartyId: number, counterpartyType: string, basis: string, dateFrom: string, dateTo: string): Promise<number>;
-  checkPriceDateOverlaps(counterpartyId: number, counterpartyType: string, counterpartyRole: string, basis: string, dateFrom: string, dateTo: string, excludeId?: number): Promise<{ status: string; message: string; overlaps?: { id: number; dateFrom: string; dateTo: string }[] }>;
+  calculatePriceSelection(counterpartyId: string, counterpartyType: string, basis: string, dateFrom: string, dateTo: string): Promise<number>;
+  checkPriceDateOverlaps(counterpartyId: string, counterpartyType: string, counterpartyRole: string, basis: string, dateFrom: string, dateTo: string, excludeId?: string): Promise<{ status: string; message: string; overlaps?: { id: string; dateFrom: string; dateTo: string }[] }>;
   getAllDeliveryCosts(): Promise<DeliveryCost[]>;
   createDeliveryCost(data: InsertDeliveryCost): Promise<DeliveryCost>;
   updateDeliveryCost(id: number, data: Partial<InsertDeliveryCost>): Promise<DeliveryCost | undefined>;

@@ -24,7 +24,7 @@ export function registerPricesRoutes(app: Express) {
         ...body,
         priceValues: body.priceValues?.map((pv: { price: string }) => JSON.stringify({ price: parseFloat(pv.price) })),
         volume: body.volume ? String(body.volume) : null,
-        counterpartyId: typeof body.counterpartyId === 'string' ? parseInt(body.counterpartyId) : body.counterpartyId,
+        counterpartyId: body.counterpartyId, // Оставляем как есть, это уже UUID строка
       };
 
       const data = insertPriceSchema.parse(processedData);
@@ -71,7 +71,7 @@ export function registerPricesRoutes(app: Express) {
       }
 
       const totalVolume = await storage.prices.calculatePriceSelection(
-        parseInt(counterpartyId as string),
+        counterpartyId as string,
         counterpartyType as string,
         basis as string,
         dateFrom as string,
@@ -94,13 +94,13 @@ export function registerPricesRoutes(app: Express) {
       }
 
       const result = await storage.prices.checkPriceDateOverlaps(
-        parseInt(counterpartyId as string),
+        counterpartyId as string,
         counterpartyType as string,
         counterpartyRole as string,
         basis as string,
         dateFrom as string,
         dateTo as string,
-        excludeId ? parseInt(excludeId as string) : undefined
+        excludeId as string | undefined
       );
 
       res.json(result);

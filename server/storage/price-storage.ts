@@ -54,7 +54,7 @@ export class PriceStorage implements IPriceStorage {
   }
 
   async calculatePriceSelection(
-    counterpartyId: number,
+    counterpartyId: string,
     counterpartyType: string,
     basis: string,
     dateFrom: string,
@@ -118,14 +118,14 @@ export class PriceStorage implements IPriceStorage {
   }
 
   async checkPriceDateOverlaps(
-    counterpartyId: number,
+    counterpartyId: string,
     counterpartyType: string,
     counterpartyRole: string,
     basis: string,
     dateFrom: string,
     dateTo: string,
-    excludeId?: number
-  ): Promise<{ status: string; message: string; overlaps?: { id: number; dateFrom: string; dateTo: string }[] }> {
+    excludeId?: string
+  ): Promise<{ status: string; message: string; overlaps?: { id: string; dateFrom: string; dateTo: string }[] }> {
     const conditions = [
       eq(prices.counterpartyId, counterpartyId),
       eq(prices.counterpartyType, counterpartyType),
