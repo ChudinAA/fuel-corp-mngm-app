@@ -1,4 +1,3 @@
-
 import type { Express } from "express";
 import { storage } from "../../storage";
 import { insertMovementSchema } from "@shared/schema";
@@ -19,8 +18,8 @@ export function registerMovementRoutes(app: Express) {
         ...req.body,
         createdById: req.session.userId,
       });
-      const item = await storage.createMovement(data);
-      res.status(201).json(item);
+      const movementRecord = await storage.operations.createMovement(data);
+      res.status(201).json(movementRecord);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });

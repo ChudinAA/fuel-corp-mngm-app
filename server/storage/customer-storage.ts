@@ -1,0 +1,36 @@
+
+import { eq, or, asc } from "drizzle-orm";
+import { db } from "../db";
+import { customers, type Customer, type InsertCustomer } from "@shared/schema";
+import type { ICustomerStorage } from "./types";
+
+export class CustomerStorage implements ICustomerStorage {
+  async getAllCustomers(module?: string): Promise<Customer[]> {
+    if (module && module !== "all") {
+      return db.select().from(customers).where(
+        or(eq(customers.module, module), eq(customers.module, "both"))
+      ).orderBy(asc(customers.name));
+    }
+    return db.select().from(customers).orderBy(asc(customers.name));
+  }
+
+  async getCustomer(id: number): Promise<Customer | undefined> {
+    const [customer] = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
+    return customer;
+  }
+
+  async createCustomer(data: InsertCustomer): Promise<Customer> {
+    const [created] = await db.insert(customers).values(data).returning();
+    return created;
+  }
+
+  async updateCustomer(id: number, data: Partial<InsertCustomer>): Promise<Customer | undefined> {
+    const [updated] = await db.update(customers).set(data).where(eq(customers.id, id)).returning();
+    return updated;
+  }
+
+  async deleteCustomer(id: number): Promise<boolean> {
+    await db.delete(customers).where(eq(customers.id, id));
+    return true;
+  }
+}

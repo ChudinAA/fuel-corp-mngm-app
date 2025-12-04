@@ -1,4 +1,3 @@
-
 import type { Express } from "express";
 import { storage } from "../storage";
 import { insertPriceSchema, insertDeliveryCostSchema } from "@shared/schema";
@@ -11,10 +10,10 @@ export function registerPricesRoutes(app: Express) {
   app.get("/api/prices", requireAuth, async (req, res) => {
     const { counterpartyRole, counterpartyType } = req.query;
     if (counterpartyRole && counterpartyType) {
-      const data = await storage.getPricesByRole(counterpartyRole as string, counterpartyType as string);
+      const data = await storage.prices.getPricesByRole(counterpartyRole as string, counterpartyType as string);
       return res.json(data);
     }
-    const data = await storage.getAllPrices();
+    const data = await storage.prices.getAllPrices();
     res.json(data);
   });
 
@@ -27,9 +26,9 @@ export function registerPricesRoutes(app: Express) {
         volume: body.volume ? String(body.volume) : null,
         counterpartyId: typeof body.counterpartyId === 'string' ? parseInt(body.counterpartyId) : body.counterpartyId,
       };
-      
+
       const data = insertPriceSchema.parse(processedData);
-      const item = await storage.createPrice(data);
+      const item = await storage.prices.createPrice(data);
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -43,7 +42,7 @@ export function registerPricesRoutes(app: Express) {
   app.patch("/api/prices/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const item = await storage.updatePrice(id, req.body);
+      const item = await storage.prices.updatePrice(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Цена не найдена" });
       }
@@ -56,7 +55,7 @@ export function registerPricesRoutes(app: Express) {
   app.delete("/api/prices/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deletePrice(id);
+      await storage.prices.deletePrice(id);
       res.json({ message: "Цена удалена" });
     } catch (error) {
       res.status(500).json({ message: "Ошибка удаления цены" });
@@ -66,12 +65,12 @@ export function registerPricesRoutes(app: Express) {
   app.get("/api/prices/calculate-selection", requireAuth, async (req, res) => {
     try {
       const { counterpartyId, counterpartyType, basis, dateFrom, dateTo } = req.query;
-      
+
       if (!counterpartyId || !counterpartyType || !basis || !dateFrom || !dateTo) {
         return res.status(400).json({ message: "Не указаны обязательные параметры" });
       }
 
-      const totalVolume = await storage.calculatePriceSelection(
+      const totalVolume = await storage.prices.calculatePriceSelection(
         parseInt(counterpartyId as string),
         counterpartyType as string,
         basis as string,
@@ -89,12 +88,12 @@ export function registerPricesRoutes(app: Express) {
   app.get("/api/prices/check-date-overlaps", requireAuth, async (req, res) => {
     try {
       const { counterpartyId, counterpartyType, counterpartyRole, basis, dateFrom, dateTo, excludeId } = req.query;
-      
+
       if (!counterpartyId || !counterpartyType || !counterpartyRole || !basis || !dateFrom || !dateTo) {
         return res.status(400).json({ message: "Не указаны обязательные параметры" });
       }
 
-      const result = await storage.checkPriceDateOverlaps(
+      const result = await storage.prices.checkPriceDateOverlaps(
         parseInt(counterpartyId as string),
         counterpartyType as string,
         counterpartyRole as string,
@@ -114,14 +113,14 @@ export function registerPricesRoutes(app: Express) {
   // ============ DELIVERY COST ROUTES ============
 
   app.get("/api/delivery-costs", requireAuth, async (req, res) => {
-    const data = await storage.getAllDeliveryCosts();
+    const data = await storage.prices.getAllDeliveryCosts();
     res.json(data);
   });
 
   app.post("/api/delivery-costs", requireAuth, async (req, res) => {
     try {
       const data = insertDeliveryCostSchema.parse(req.body);
-      const item = await storage.createDeliveryCost(data);
+      const item = await storage.prices.createDeliveryCost(data);
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -134,7 +133,7 @@ export function registerPricesRoutes(app: Express) {
   app.patch("/api/delivery-costs/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const item = await storage.updateDeliveryCost(id, req.body);
+      const item = await storage.prices.updateDeliveryCost(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Тариф не найден" });
       }
@@ -147,7 +146,7 @@ export function registerPricesRoutes(app: Express) {
   app.delete("/api/delivery-costs/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteDeliveryCost(id);
+      await storage.prices.deleteDeliveryCost(id);
       res.json({ message: "Тариф удален" });
     } catch (error) {
       res.status(500).json({ message: "Ошибка удаления тарифа" });

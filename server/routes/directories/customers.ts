@@ -1,4 +1,3 @@
-
 import type { Express } from "express";
 import { storage } from "../../storage";
 import { insertCustomerSchema } from "@shared/schema";
@@ -8,7 +7,7 @@ import { requireAuth } from "../middleware";
 export function registerCustomersRoutes(app: Express) {
   app.get("/api/customers", requireAuth, async (req, res) => {
     const module = req.query.module as string | undefined;
-    const data = await storage.getAllCustomers(module);
+    const data = await storage.customers.getAllCustomers(module);
     res.json(data);
   });
 
@@ -17,7 +16,7 @@ export function registerCustomersRoutes(app: Express) {
     if (isNaN(id)) {
       return res.status(400).json({ message: "Неверный идентификатор" });
     }
-    const customer = await storage.getCustomer(id);
+    const customer = await storage.customers.getCustomer(id);
     if (!customer) {
       return res.status(404).json({ message: "Покупатель не найден" });
     }
@@ -27,7 +26,7 @@ export function registerCustomersRoutes(app: Express) {
   app.post("/api/customers", requireAuth, async (req, res) => {
     try {
       const data = insertCustomerSchema.parse(req.body);
-      const item = await storage.createCustomer(data);
+      const item = await storage.customers.createCustomer(data);
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -43,7 +42,7 @@ export function registerCustomersRoutes(app: Express) {
       if (isNaN(id)) {
         return res.status(400).json({ message: "Неверный идентификатор" });
       }
-      const item = await storage.updateCustomer(id, req.body);
+      const item = await storage.customers.updateCustomer(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Покупатель не найден" });
       }
@@ -59,7 +58,7 @@ export function registerCustomersRoutes(app: Express) {
       if (isNaN(id)) {
         return res.status(400).json({ message: "Неверный идентификатор" });
       }
-      await storage.deleteCustomer(id);
+      await storage.customers.deleteCustomer(id);
       res.json({ message: "Покупатель удален" });
     } catch (error) {
       res.status(500).json({ message: "Ошибка удаления покупателя" });

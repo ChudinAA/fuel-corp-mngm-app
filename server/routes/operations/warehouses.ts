@@ -1,4 +1,3 @@
-
 import type { Express } from "express";
 import { storage } from "../../storage";
 import { insertWarehouseSchema } from "@shared/schema";
@@ -7,13 +6,13 @@ import { requireAuth } from "../middleware";
 
 export function registerWarehousesOperationsRoutes(app: Express) {
   app.get("/api/warehouses", requireAuth, async (req, res) => {
-    const data = await storage.getAllWarehouses();
+    const data = await storage.operations.getAllWarehouses();
     res.json(data);
   });
 
   app.get("/api/warehouses/:id", requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
-    const warehouse = await storage.getWarehouse(id);
+    const warehouse = await storage.operations.getWarehouse(id);
     if (!warehouse) {
       return res.status(404).json({ message: "Склад не найден" });
     }
@@ -23,7 +22,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
   app.post("/api/warehouses", requireAuth, async (req, res) => {
     try {
       const data = insertWarehouseSchema.parse(req.body);
-      const item = await storage.createWarehouse(data);
+      const item = await storage.operations.createWarehouse(data);
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -36,7 +35,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
   app.patch("/api/warehouses/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const item = await storage.updateWarehouse(id, req.body);
+      const item = await storage.operations.updateWarehouse(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Склад не найден" });
       }
@@ -49,7 +48,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
   app.delete("/api/warehouses/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteWarehouse(id);
+      await storage.operations.deleteWarehouse(id);
       res.json({ message: "Склад удален" });
     } catch (error) {
       res.status(500).json({ message: "Ошибка удаления склада" });

@@ -1,4 +1,3 @@
-
 import type { Express } from "express";
 import { storage } from "../../storage";
 import { insertExchangeSchema } from "@shared/schema";
@@ -19,7 +18,7 @@ export function registerExchangeRoutes(app: Express) {
         ...req.body,
         createdById: req.session.userId,
       });
-      const item = await storage.createExchange(data);
+      const item = await storage.operations.createExchange(data);
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {

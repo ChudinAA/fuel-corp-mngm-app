@@ -1,4 +1,3 @@
-
 import type { Request, Response, NextFunction } from "express";
 import { storage } from "../storage";
 
@@ -22,7 +21,7 @@ export function requirePermission(module: string, action: string) {
     }
 
     try {
-      const user = await storage.getUser(req.session.userId);
+      const user = await storage.users.getUser(req.session.userId);
       if (!user) {
         return res.status(401).json({ message: "Пользователь не найден" });
       }
@@ -31,7 +30,7 @@ export function requirePermission(module: string, action: string) {
         return res.status(403).json({ message: "Нет назначенной роли" });
       }
 
-      const role = await storage.getRole(user.roleId);
+      const role = await storage.roles.getRole(user.roleId);
       if (!role) {
         return res.status(403).json({ message: "Роль не найдена" });
       }
