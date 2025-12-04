@@ -35,7 +35,7 @@ import {
   CalendarCheck,
   RefreshCw
 } from "lucide-react";
-import type { Price, DirectoryWholesale, DirectoryRefueling } from "@shared/schema";
+import type { Price, WholesaleBase, WholesaleSupplier, RefuelingProvider, RefuelingBase, Customer } from "@shared/schema";
 
 const priceFormSchema = z.object({
   dateFrom: z.date({ required_error: "Укажите дату начала" }),
@@ -90,23 +90,23 @@ function AddPriceDialog() {
   const watchDateFrom = form.watch("dateFrom");
   const watchDateTo = form.watch("dateTo");
 
-  const { data: optBases } = useQuery<DirectoryWholesale[]>({
+  const { data: optBases } = useQuery<WholesaleBase[]>({
     queryKey: ["/api/wholesale/bases"],
   });
 
-  const { data: refuelingBases } = useQuery<DirectoryRefueling[]>({
+  const { data: refuelingBases } = useQuery<RefuelingBase[]>({
     queryKey: ["/api/refueling/bases"],
   });
 
-  const { data: wholesaleSuppliers } = useQuery<DirectoryWholesale[]>({
+  const { data: wholesaleSuppliers } = useQuery<WholesaleSupplier[]>({
     queryKey: ["/api/wholesale/suppliers"],
   });
 
-  const { data: refuelingProviders } = useQuery<DirectoryRefueling[]>({
+  const { data: refuelingProviders } = useQuery<RefuelingProvider[]>({
     queryKey: ["/api/refueling/providers"],
   });
 
-  const { data: customers } = useQuery<{ id: number; name: string; }[]>({
+  const { data: customers } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
   });
 
