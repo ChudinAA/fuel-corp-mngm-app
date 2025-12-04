@@ -8,7 +8,7 @@ export function registerExchangeRoutes(app: Express) {
   app.get("/api/exchange", requireAuth, async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
-    const result = await storage.getExchangeDeals(page, pageSize);
+    const result = await storage.operations.getExchangeDeals(page, pageSize);
     res.json(result);
   });
 
@@ -31,7 +31,7 @@ export function registerExchangeRoutes(app: Express) {
   app.patch("/api/exchange/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const item = await storage.updateExchange(id, req.body);
+      const item = await storage.operations.updateExchange(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Сделка не найдена" });
       }
@@ -44,7 +44,7 @@ export function registerExchangeRoutes(app: Express) {
   app.delete("/api/exchange/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteExchange(id);
+      await storage.operations.deleteExchange(id);
       res.json({ message: "Сделка удалена" });
     } catch (error) {
       res.status(500).json({ message: "Ошибка удаления сделки" });

@@ -4,7 +4,7 @@ import { DEFAULT_ROLES, MODULES, ACTIONS } from "@shared/schema";
 
 export async function seedDefaultRoles() {
   try {
-    const existingRoles = await storage.getAllRoles();
+    const existingRoles = await storage.roles.getAllRoles();
     if (existingRoles.length === 0) {
       console.log("Seeding default roles...");
 
@@ -23,7 +23,7 @@ export async function seedDefaultRoles() {
           permissions = ["opt", "refueling", "warehouses", "directories"].flatMap(m => ["view", "create"].map(a => `${m}.${a}`));
         }
 
-        await storage.createRole({
+        await storage.roles.createRole({
           name: roleData.name,
           description: roleData.description,
           permissions,

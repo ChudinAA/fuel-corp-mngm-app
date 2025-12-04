@@ -8,7 +8,7 @@ export function registerOptRoutes(app: Express) {
   app.get("/api/opt", requireAuth, async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
-    const result = await storage.getOptDeals(page, pageSize);
+    const result = await storage.operations.getOptDeals(page, pageSize);
     res.json(result);
   });
 
@@ -20,7 +20,7 @@ export function registerOptRoutes(app: Express) {
         warehouseStatus: "OK",
         priceStatus: "OK",
       });
-      const item = await storage.createOpt(data);
+      const item = await storage.operations.createOpt(data);
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -33,7 +33,7 @@ export function registerOptRoutes(app: Express) {
   app.patch("/api/opt/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const item = await storage.updateOpt(id, req.body);
+      const item = await storage.operations.updateOpt(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Сделка не найдена" });
       }
@@ -46,7 +46,7 @@ export function registerOptRoutes(app: Express) {
   app.delete("/api/opt/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      await storage.deleteOpt(id);
+      await storage.operations.deleteOpt(id);
       res.json({ message: "Сделка удалена" });
     } catch (error) {
       res.status(500).json({ message: "Ошибка удаления сделки" });

@@ -8,7 +8,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
   app.get("/api/refueling", requireAuth, async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
-    const result = await storage.refueling.getRefuelings(page, pageSize);
+    const result = await storage.operations.getRefuelings(page, pageSize);
     res.json(result);
   });
 
