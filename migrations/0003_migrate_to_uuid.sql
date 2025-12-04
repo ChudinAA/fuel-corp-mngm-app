@@ -68,7 +68,7 @@ ALTER TABLE wholesale_suppliers ADD COLUMN new_default_base_id UUID;
 UPDATE wholesale_suppliers SET new_id = gen_random_uuid() WHERE new_id IS NULL;
 ALTER TABLE wholesale_suppliers DROP CONSTRAINT wholesale_suppliers_pkey CASCADE;
 ALTER TABLE wholesale_suppliers DROP COLUMN id, DROP COLUMN default_base_id;
-ALTERTABLE wholesale_suppliers RENAME COLUMN new_id TO id;
+ALTER TABLE wholesale_suppliers RENAME COLUMN new_id TO id;
 ALTER TABLE wholesale_suppliers RENAME COLUMN new_default_base_id TO default_base_id;
 ALTER TABLE wholesale_suppliers ALTER COLUMN id SET NOT NULL;
 ALTER TABLE wholesale_suppliers ADD PRIMARY KEY (id);

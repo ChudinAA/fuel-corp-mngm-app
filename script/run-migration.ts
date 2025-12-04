@@ -18,7 +18,24 @@ async function runMigration() {
     );
 
     console.log('Running migration...');
-    await client.query(migrationSQL);
+    console.log('This may take a few moments...');
+    
+    // Split by statement and execute one by one for better error reporting
+    const statements = migrationSQL
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+    
+    for (let i = 0; i < statements.length; i++) {
+      try {
+        console.log(`Executing statement ${i + 1}/${statements.length}...`);
+        await client.query(statements[i]);
+      } catch (error) {
+        console.error(`Error in statement ${i + 1}:`, statements[i].substring(0, 100));
+        throw error;
+      }
+    }
+    
     console.log('Migration completed successfully!');
   } catch (error) {
     console.error('Migration failed:', error);
@@ -28,4 +45,4 @@ async function runMigration() {
   }
 }
 
-runMigration();
+runMigration().catch(() => process.exit(1));
