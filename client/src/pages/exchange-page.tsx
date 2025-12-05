@@ -47,7 +47,33 @@ const exchangeFormSchema = z.object({
 
 type ExchangeFormData = z.infer<typeof exchangeFormSchema>;
 
-function AddExchangeDialog({ warehouses, editExchange }: { warehouses: Warehouse[]; editExchange: Exchange | null }) {
+const formatNumber = (value: string | number | null) => {
+  if (value === null) return "—";
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(num);
+};
+
+const formatCurrency = (value: string | number | null) => {
+  if (value === null) return "—";
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(num);
+};
+
+const formatDate = (dateStr: string) => {
+  return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
+};
+
+function AddExchangeDialog({ 
+  warehouses, 
+  editExchange, 
+  open, 
+  onOpenChange 
+}: { 
+  warehouses: Warehouse[]; 
+  editExchange: Exchange | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const { toast } = useToast();
   const isEditing = !!editExchange;
 
@@ -58,8 +84,8 @@ function AddExchangeDialog({ warehouses, editExchange }: { warehouses: Warehouse
       dealNumber: editExchange?.dealNumber || "",
       counterparty: editExchange?.counterparty || "",
       productType: editExchange?.productType || "kerosene",
-      quantityKg: editExchange?.quantityKg.toString() || "",
-      pricePerKg: editExchange?.pricePerKg.toString() || "",
+      quantityKg: editExchange?.quantityKg?.toString() || "",
+      pricePerKg: editExchange?.pricePerKg?.toString() || "",
       warehouseId: editExchange?.warehouseId || "",
       notes: editExchange?.notes || "",
     },
@@ -75,7 +101,7 @@ function AddExchangeDialog({ warehouses, editExchange }: { warehouses: Warehouse
         warehouseId: data.warehouseId || null,
         totalAmount: (quantity * price).toString(),
       };
-      const res = await apiRequest(isEditing ? "PATCH" : "POST", isEditing ? `/api/exchange/${editExchange.id}` : "/api/exchange", payload);
+      const res = await apiRequest(isEditing ? "PATCH" : "POST", isEditing ? `/api/exchange/${editExchange?.id}` : "/api/exchange", payload);
       return res.json();
     },
     onSuccess: () => {
@@ -83,6 +109,7 @@ function AddExchangeDialog({ warehouses, editExchange }: { warehouses: Warehouse
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       toast({ title: isEditing ? "Сделка обновлена" : "Сделка создана", description: isEditing ? "Биржевая сделка успешно обновлена" : "Биржевая сделка успешно сохранена" });
       form.reset();
+      onOpenChange(false);
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
@@ -97,7 +124,7 @@ function AddExchangeDialog({ warehouses, editExchange }: { warehouses: Warehouse
     : 0;
 
   return (
-    <Dialog open={!!editExchange || false} onOpenChange={() => setEditingExchange(null)}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Редактирование биржевой сделки" : "Новая биржевая сделка"}</DialogTitle>
@@ -352,29 +379,18 @@ export default function ExchangePage() {
     ? parseFloat(watchQuantity) * parseFloat(watchPrice)
     : 0;
 
-  const formatNumber = (value: string | number | null) => {
-    if (value === null) return "—";
-    const num = typeof value === "string" ? parseFloat(value) : value;
-    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(num);
-  };
-
-  const formatCurrency = (value: string | number | null) => {
-    if (value === null) return "—";
-    const num = typeof value === "string" ? parseFloat(value) : value;
-    return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(num);
-  };
-
-  const formatDate = (dateStr: string) => {
-    return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
-  };
-
   const data = exchanges?.data || [];
   const total = exchanges?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
 
   return (
     <div className="space-y-6">
-      <AddExchangeDialog warehouses={warehouses || []} editExchange={editingExchange} />
+      <AddExchangeDialog 
+        warehouses={warehouses || []} 
+        editExchange={editingExchange}
+        open={!!editingExchange}
+        onOpenChange={(open) => !open && setEditingExchange(null)}
+      />
 
       <div>
         <h1 className="text-2xl font-semibold">Биржа</h1>
@@ -576,7 +592,7 @@ export default function ExchangePage() {
                 <Input placeholder="Поиск..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-search-exchange" />
               </div>
               <Button variant="outline" size="icon"><Filter className="h-4 w-4" /></Button>
-              <Button onClick={() => setEditingExchange({} as Exchange)}>
+              <Button onClick={() => setEditingExchange({ id: '' } as Exchange)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Новая сделка
               </Button>
