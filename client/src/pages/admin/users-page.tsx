@@ -119,13 +119,32 @@ function AddUserDialog({
         isActive: editUser.isActive,
       });
       setOpen(true);
+    } else if (open) {
+      // Reset form when opening dialog for creating new user
+      form.reset({
+        email: "",
+        password: "",
+        firstName: "",
+        lastName: "",
+        patronymic: "",
+        roleId: "",
+        isActive: true,
+      });
     }
-  }, [editUser, form]);
+  }, [editUser, open, form]);
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      form.reset();
+      form.reset({
+        email: "",
+        password: "",
+        firstName: "",
+        lastName: "",
+        patronymic: "",
+        roleId: "",
+        isActive: true,
+      });
       onEditComplete();
     }
   };
