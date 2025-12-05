@@ -102,7 +102,9 @@ export function RefuelingTab() {
                 ))}
               </SelectContent>
             </Select>
-            <AddRefuelingDialog providers={providers || []} bases={bases || []} editItem={editingItem} onEditComplete={() => setEditingItem(null)} />
+            <div onClick={() => setEditingItem(null)}>
+              <AddRefuelingDialog providers={providers || []} bases={bases || []} editItem={editingItem} onEditComplete={() => setEditingItem(null)} />
+            </div>
           </div>
 
           {isLoading ? (
