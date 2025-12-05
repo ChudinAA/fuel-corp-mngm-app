@@ -42,12 +42,22 @@ export function registerPricesRoutes(app: Express) {
   app.patch("/api/prices/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.prices.updatePrice(id, req.body);
+      const body = req.body;
+      
+      // Process priceValues if they exist
+      const processedData = {
+        ...body,
+        priceValues: body.priceValues?.map((pv: { price: string }) => JSON.stringify({ price: parseFloat(pv.price) })),
+        volume: body.volume ? String(body.volume) : null,
+      };
+      
+      const item = await storage.prices.updatePrice(id, processedData);
       if (!item) {
         return res.status(404).json({ message: "Цена не найдена" });
       }
       res.json(item);
     } catch (error) {
+      console.error("Price update error:", error);
       res.status(500).json({ message: "Ошибка обновления цены" });
     }
   });
