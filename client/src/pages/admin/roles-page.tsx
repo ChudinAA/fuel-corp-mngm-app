@@ -404,33 +404,6 @@ export default function RolesPage() {
           </div>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Стандартные роли</CardTitle>
-          <CardDescription>Предустановленные роли для быстрого старта</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[
-              { name: "Администратор", desc: "Полный доступ ко всем модулям", color: "text-red-600" },
-              { name: "Менеджер ОПТ", desc: "Управление оптовыми сделками", color: "text-blue-600" },
-              { name: "Менеджер заправок", desc: "Управление заправками ВС", color: "text-green-600" },
-              { name: "Логист", desc: "Управление перемещениями и доставкой", color: "text-orange-600" },
-              { name: "Бухгалтер", desc: "Просмотр данных и отчетов", color: "text-purple-600" },
-              { name: "Оператор", desc: "Базовые операции ввода данных", color: "text-gray-600" },
-            ].map((role) => (
-              <div key={role.name} className="p-4 border rounded-lg hover-elevate">
-                <div className="flex items-center gap-2 mb-2">
-                  <Shield className={`h-4 w-4 ${role.color}`} />
-                  <span className="font-medium">{role.name}</span>
-                </div>
-                <p className="text-sm text-muted-foreground">{role.desc}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
