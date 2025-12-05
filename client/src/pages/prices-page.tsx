@@ -89,7 +89,7 @@ function AddPriceDialog({ editPrice }: { editPrice?: Price | null }) {
         productType: editPrice.productType,
         basis: editPrice.basis || "",
         volume: editPrice.volume || "",
-        priceValues: editPrice.priceValues.map(pv => ({ price: JSON.parse(pv).price })),
+        priceValues: editPrice.priceValues,
         contractNumber: editPrice.contractNumber || "",
       });
       setOpen(true);
@@ -215,7 +215,7 @@ function AddPriceDialog({ editPrice }: { editPrice?: Price | null }) {
         counterpartyRole: data.counterpartyRole,
         basis: data.basis,
         volume: data.volume || null,
-        priceValues: data.priceValues.map(pv => ({ price: parseFloat(pv.price) })),
+        priceValues: data.priceValues,
         dateFrom: format(data.dateFrom, "yyyy-MM-dd"),
         dateTo: format(data.dateTo, "yyyy-MM-dd"),
         contractNumber: data.contractNumber || null,

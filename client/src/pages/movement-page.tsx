@@ -34,7 +34,6 @@ import {
   Calculator
 } from "lucide-react";
 import type { Movement, Warehouse, DirectoryWholesale, DirectoryLogistics } from "@shared/schema";
-import { AddMovementDialog } from "./dialogs/AddMovementDialog";
 import { useAuth } from "@/hooks/use-auth";
 
 const movementFormSchema = z.object({
