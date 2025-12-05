@@ -97,6 +97,21 @@ export default function ExchangePage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/exchange/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/exchange"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      toast({ title: "Сделка удалена", description: "Биржевая сделка успешно удалена" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
+  });
+
   const watchQuantity = form.watch("quantityKg");
   const watchPrice = form.watch("pricePerKg");
 
@@ -367,8 +382,29 @@ export default function ExchangePage() {
                         <TableCell className="text-right font-medium">{formatCurrency(item.totalAmount)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8"
+                              onClick={() => {
+                                toast({ title: "В разработке", description: "Функция редактирования в разработке" });
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-destructive"
+                              onClick={() => {
+                                if (confirm("Вы уверены, что хотите удалить эту сделку?")) {
+                                  deleteMutation.mutate(item.id);
+                                }
+                              }}
+                              disabled={deleteMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
