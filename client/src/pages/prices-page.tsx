@@ -883,15 +883,6 @@ export default function PricesPage() {
   const [activeTab, setActiveTab] = useState<"wholesale" | "refueling">("wholesale");
   const [editingPrice, setEditingPrice] = useState<Price | null>(null);
 
-  const { data: prices, isLoading } = useQuery<Price[]>({ queryKey: ["/api/prices"] });
-  const { data: suppliers } = useQuery<WholesaleSupplier[]>({ queryKey: ["/api/wholesale/suppliers"] });
-  const { data: buyers } = useQuery<Customer[]>({ queryKey: ["/api/customers"] });
-  const { data: bases } = useQuery<Array<WholesaleBase | RefuelingBase>>({ queryKey: ["/api/wholesale/bases", "/api/refueling/bases"] });
-
-  const handleDialogClose = () => {
-    setEditingPrice(null);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -973,7 +964,7 @@ export default function PricesPage() {
             <CardHeader>
               <CardTitle className="text-lg">Цены продажи (Покупатели)</CardTitle>
               <CardDescription>Цены для покупателей по оптовым сделкам</CardDescription>
-            </Header>
+            </CardHeader>
             <CardContent>
               <PricesTable counterpartyRole="buyer" counterpartyType="wholesale" />
             </CardContent>

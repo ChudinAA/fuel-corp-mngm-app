@@ -271,14 +271,6 @@ export default function DeliveryPage() {
     queryKey: ["/api/delivery-costs"],
   });
 
-  const { data: carriers } = useQuery<DirectoryLogistics[]>({
-    queryKey: ["/api/directories/logistics", "carrier"],
-  });
-
-  const { data: locations } = useQuery<DirectoryLogistics[]>({
-    queryKey: ["/api/directories/logistics", "delivery_location"],
-  });
-
   const formatNumber = (value: string | number | null) => {
     if (value === null || value === undefined) return "—";
     const num = typeof value === "string" ? parseFloat(value) : value;
