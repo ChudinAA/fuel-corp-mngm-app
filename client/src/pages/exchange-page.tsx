@@ -31,7 +31,7 @@ import {
   TrendingUp
 } from "lucide-react";
 import type { Exchange, Warehouse } from "@shared/schema";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 
 const exchangeFormSchema = z.object({
