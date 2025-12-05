@@ -5,7 +5,7 @@ import { roles, type Role, type InsertRole } from "@shared/schema";
 import type { IRoleStorage } from "./types";
 
 export class RoleStorage implements IRoleStorage {
-  async getRole(id: number): Promise<Role | undefined> {
+  async getRole(id: string): Promise<Role | undefined> {
     const [role] = await db.select().from(roles).where(eq(roles.id, id)).limit(1);
     return role;
   }
@@ -19,12 +19,12 @@ export class RoleStorage implements IRoleStorage {
     return created;
   }
 
-  async updateRole(id: number, data: Partial<InsertRole>): Promise<Role | undefined> {
+  async updateRole(id: string, data: Partial<InsertRole>): Promise<Role | undefined> {
     const [updated] = await db.update(roles).set(data).where(eq(roles.id, id)).returning();
     return updated;
   }
 
-  async deleteRole(id: number): Promise<boolean> {
+  async deleteRole(id: string): Promise<boolean> {
     await db.delete(roles).where(eq(roles.id, id));
     return true;
   }

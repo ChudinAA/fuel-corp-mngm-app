@@ -25,7 +25,7 @@ export class OperationsStorage implements IOperationsStorage {
     return db.select().from(warehouses).orderBy(asc(warehouses.name));
   }
 
-  async getWarehouse(id: number): Promise<Warehouse | undefined> {
+  async getWarehouse(id: string): Promise<Warehouse | undefined> {
     const [wh] = await db.select().from(warehouses).where(eq(warehouses.id, id)).limit(1);
     return wh;
   }
@@ -35,12 +35,12 @@ export class OperationsStorage implements IOperationsStorage {
     return created;
   }
 
-  async updateWarehouse(id: number, data: Partial<InsertWarehouse>): Promise<Warehouse | undefined> {
+  async updateWarehouse(id: string, data: Partial<InsertWarehouse>): Promise<Warehouse | undefined> {
     const [updated] = await db.update(warehouses).set(data).where(eq(warehouses.id, id)).returning();
     return updated;
   }
 
-  async deleteWarehouse(id: number): Promise<boolean> {
+  async deleteWarehouse(id: string): Promise<boolean> {
     await db.delete(warehouses).where(eq(warehouses.id, id));
     return true;
   }
@@ -57,12 +57,12 @@ export class OperationsStorage implements IOperationsStorage {
     return created;
   }
 
-  async updateExchange(id: number, data: Partial<InsertExchange>): Promise<Exchange | undefined> {
+  async updateExchange(id: string, data: Partial<InsertExchange>): Promise<Exchange | undefined> {
     const [updated] = await db.update(exchange).set(data).where(eq(exchange.id, id)).returning();
     return updated;
   }
 
-  async deleteExchange(id: number): Promise<boolean> {
+  async deleteExchange(id: string): Promise<boolean> {
     await db.delete(exchange).where(eq(exchange.id, id));
     return true;
   }
@@ -79,12 +79,12 @@ export class OperationsStorage implements IOperationsStorage {
     return created;
   }
 
-  async updateMovement(id: number, data: Partial<InsertMovement>): Promise<Movement | undefined> {
+  async updateMovement(id: string, data: Partial<InsertMovement>): Promise<Movement | undefined> {
     const [updated] = await db.update(movement).set(data).where(eq(movement.id, id)).returning();
     return updated;
   }
 
-  async deleteMovement(id: number): Promise<boolean> {
+  async deleteMovement(id: string): Promise<boolean> {
     await db.delete(movement).where(eq(movement.id, id));
     return true;
   }
@@ -101,12 +101,12 @@ export class OperationsStorage implements IOperationsStorage {
     return created;
   }
 
-  async updateOpt(id: number, data: Partial<InsertOpt>): Promise<Opt | undefined> {
+  async updateOpt(id: string, data: Partial<InsertOpt>): Promise<Opt | undefined> {
     const [updated] = await db.update(opt).set(data).where(eq(opt.id, id)).returning();
     return updated;
   }
 
-  async deleteOpt(id: number): Promise<boolean> {
+  async deleteOpt(id: string): Promise<boolean> {
     await db.delete(opt).where(eq(opt.id, id));
     return true;
   }
@@ -123,12 +123,12 @@ export class OperationsStorage implements IOperationsStorage {
     return created;
   }
 
-  async updateRefueling(id: number, data: Partial<InsertAircraftRefueling>): Promise<AircraftRefueling | undefined> {
+  async updateRefueling(id: string, data: Partial<InsertAircraftRefueling>): Promise<AircraftRefueling | undefined> {
     const [updated] = await db.update(aircraftRefueling).set(data).where(eq(aircraftRefueling.id, id)).returning();
     return updated;
   }
 
-  async deleteRefueling(id: number): Promise<boolean> {
+  async deleteRefueling(id: string): Promise<boolean> {
     await db.delete(aircraftRefueling).where(eq(aircraftRefueling.id, id));
     return true;
   }

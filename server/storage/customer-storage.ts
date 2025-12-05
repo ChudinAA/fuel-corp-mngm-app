@@ -14,7 +14,7 @@ export class CustomerStorage implements ICustomerStorage {
     return db.select().from(customers).orderBy(asc(customers.name));
   }
 
-  async getCustomer(id: number): Promise<Customer | undefined> {
+  async getCustomer(id: string): Promise<Customer | undefined> {
     const [customer] = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
     return customer;
   }
@@ -24,12 +24,12 @@ export class CustomerStorage implements ICustomerStorage {
     return created;
   }
 
-  async updateCustomer(id: number, data: Partial<InsertCustomer>): Promise<Customer | undefined> {
+  async updateCustomer(id: string, data: Partial<InsertCustomer>): Promise<Customer | undefined> {
     const [updated] = await db.update(customers).set(data).where(eq(customers.id, id)).returning();
     return updated;
   }
 
-  async deleteCustomer(id: number): Promise<boolean> {
+  async deleteCustomer(id: string): Promise<boolean> {
     await db.delete(customers).where(eq(customers.id, id));
     return true;
   }

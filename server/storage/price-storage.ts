@@ -43,12 +43,12 @@ export class PriceStorage implements IPriceStorage {
     return this.enrichPriceWithCalculations(created);
   }
 
-  async updatePrice(id: number, data: Partial<InsertPrice>): Promise<Price | undefined> {
+  async updatePrice(id: string, data: Partial<InsertPrice>): Promise<Price | undefined> {
     const [updated] = await db.update(prices).set(data).where(eq(prices.id, id)).returning();
     return updated;
   }
 
-  async deletePrice(id: number): Promise<boolean> {
+  async deletePrice(id: string): Promise<boolean> {
     await db.delete(prices).where(eq(prices.id, id));
     return true;
   }
@@ -177,12 +177,12 @@ export class PriceStorage implements IPriceStorage {
     return created;
   }
 
-  async updateDeliveryCost(id: number, data: Partial<InsertDeliveryCost>): Promise<DeliveryCost | undefined> {
+  async updateDeliveryCost(id: string, data: Partial<InsertDeliveryCost>): Promise<DeliveryCost | undefined> {
     const [updated] = await db.update(deliveryCost).set(data).where(eq(deliveryCost.id, id)).returning();
     return updated;
   }
 
-  async deleteDeliveryCost(id: number): Promise<boolean> {
+  async deleteDeliveryCost(id: string): Promise<boolean> {
     await db.delete(deliveryCost).where(eq(deliveryCost.id, id));
     return true;
   }

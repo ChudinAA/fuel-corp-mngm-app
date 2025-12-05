@@ -22,7 +22,7 @@ async function verifyPassword(storedPassword: string, suppliedPassword: string):
 }
 
 export class UserStorage implements IUserStorage {
-  async getUser(id: number): Promise<User | undefined> {
+  async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
     return user;
   }
@@ -41,7 +41,7 @@ export class UserStorage implements IUserStorage {
     return user;
   }
 
-  async updateUser(id: number, data: Partial<InsertUser>): Promise<User | undefined> {
+  async updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined> {
     if (data.password) {
       data.password = await hashPassword(data.password);
     }
@@ -49,7 +49,7 @@ export class UserStorage implements IUserStorage {
     return user;
   }
 
-  async deleteUser(id: number): Promise<boolean> {
+  async deleteUser(id: string): Promise<boolean> {
     await db.delete(users).where(eq(users.id, id));
     return true;
   }
@@ -65,7 +65,7 @@ export class UserStorage implements IUserStorage {
     return isValid ? user : null;
   }
 
-  async updateLastLogin(id: number): Promise<void> {
+  async updateLastLogin(id: string): Promise<void> {
     await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, id));
   }
 }

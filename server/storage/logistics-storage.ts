@@ -28,7 +28,7 @@ export class LogisticsStorage implements ILogisticsStorage {
     return db.select().from(logisticsCarriers).orderBy(asc(logisticsCarriers.name));
   }
 
-  async getLogisticsCarrier(id: number): Promise<LogisticsCarrier | undefined> {
+  async getLogisticsCarrier(id: string): Promise<LogisticsCarrier | undefined> {
     const [carrier] = await db.select().from(logisticsCarriers).where(eq(logisticsCarriers.id, id)).limit(1);
     return carrier;
   }
@@ -38,12 +38,12 @@ export class LogisticsStorage implements ILogisticsStorage {
     return created;
   }
 
-  async updateLogisticsCarrier(id: number, data: Partial<InsertLogisticsCarrier>): Promise<LogisticsCarrier | undefined> {
+  async updateLogisticsCarrier(id: string, data: Partial<InsertLogisticsCarrier>): Promise<LogisticsCarrier | undefined> {
     const [updated] = await db.update(logisticsCarriers).set(data).where(eq(logisticsCarriers.id, id)).returning();
     return updated;
   }
 
-  async deleteLogisticsCarrier(id: number): Promise<boolean> {
+  async deleteLogisticsCarrier(id: string): Promise<boolean> {
     await db.delete(logisticsCarriers).where(eq(logisticsCarriers.id, id));
     return true;
   }
@@ -52,7 +52,7 @@ export class LogisticsStorage implements ILogisticsStorage {
     return db.select().from(logisticsDeliveryLocations).orderBy(asc(logisticsDeliveryLocations.name));
   }
 
-  async getLogisticsDeliveryLocation(id: number): Promise<LogisticsDeliveryLocation | undefined> {
+  async getLogisticsDeliveryLocation(id: string): Promise<LogisticsDeliveryLocation | undefined> {
     const [location] = await db.select().from(logisticsDeliveryLocations).where(eq(logisticsDeliveryLocations.id, id)).limit(1);
     return location;
   }
@@ -62,24 +62,24 @@ export class LogisticsStorage implements ILogisticsStorage {
     return created;
   }
 
-  async updateLogisticsDeliveryLocation(id: number, data: Partial<InsertLogisticsDeliveryLocation>): Promise<LogisticsDeliveryLocation | undefined> {
+  async updateLogisticsDeliveryLocation(id: string, data: Partial<InsertLogisticsDeliveryLocation>): Promise<LogisticsDeliveryLocation | undefined> {
     const [updated] = await db.update(logisticsDeliveryLocations).set(data).where(eq(logisticsDeliveryLocations.id, id)).returning();
     return updated;
   }
 
-  async deleteLogisticsDeliveryLocation(id: number): Promise<boolean> {
+  async deleteLogisticsDeliveryLocation(id: string): Promise<boolean> {
     await db.delete(logisticsDeliveryLocations).where(eq(logisticsDeliveryLocations.id, id));
     return true;
   }
 
-  async getAllLogisticsVehicles(carrierId?: number): Promise<LogisticsVehicle[]> {
+  async getAllLogisticsVehicles(carrierId?: string): Promise<LogisticsVehicle[]> {
     if (carrierId) {
       return db.select().from(logisticsVehicles).where(eq(logisticsVehicles.carrierId, carrierId)).orderBy(asc(logisticsVehicles.regNumber));
     }
     return db.select().from(logisticsVehicles).orderBy(asc(logisticsVehicles.regNumber));
   }
 
-  async getLogisticsVehicle(id: number): Promise<LogisticsVehicle | undefined> {
+  async getLogisticsVehicle(id: string): Promise<LogisticsVehicle | undefined> {
     const [vehicle] = await db.select().from(logisticsVehicles).where(eq(logisticsVehicles.id, id)).limit(1);
     return vehicle;
   }
@@ -89,24 +89,24 @@ export class LogisticsStorage implements ILogisticsStorage {
     return created;
   }
 
-  async updateLogisticsVehicle(id: number, data: Partial<InsertLogisticsVehicle>): Promise<LogisticsVehicle | undefined> {
+  async updateLogisticsVehicle(id: string, data: Partial<InsertLogisticsVehicle>): Promise<LogisticsVehicle | undefined> {
     const [updated] = await db.update(logisticsVehicles).set(data).where(eq(logisticsVehicles.id, id)).returning();
     return updated;
   }
 
-  async deleteLogisticsVehicle(id: number): Promise<boolean> {
+  async deleteLogisticsVehicle(id: string): Promise<boolean> {
     await db.delete(logisticsVehicles).where(eq(logisticsVehicles.id, id));
     return true;
   }
 
-  async getAllLogisticsTrailers(carrierId?: number): Promise<LogisticsTrailer[]> {
+  async getAllLogisticsTrailers(carrierId?: string): Promise<LogisticsTrailer[]> {
     if (carrierId) {
       return db.select().from(logisticsTrailers).where(eq(logisticsTrailers.carrierId, carrierId)).orderBy(asc(logisticsTrailers.regNumber));
     }
     return db.select().from(logisticsTrailers).orderBy(asc(logisticsTrailers.regNumber));
   }
 
-  async getLogisticsTrailer(id: number): Promise<LogisticsTrailer | undefined> {
+  async getLogisticsTrailer(id: string): Promise<LogisticsTrailer | undefined> {
     const [trailer] = await db.select().from(logisticsTrailers).where(eq(logisticsTrailers.id, id)).limit(1);
     return trailer;
   }
@@ -116,24 +116,24 @@ export class LogisticsStorage implements ILogisticsStorage {
     return created;
   }
 
-  async updateLogisticsTrailer(id: number, data: Partial<InsertLogisticsTrailer>): Promise<LogisticsTrailer | undefined> {
+  async updateLogisticsTrailer(id: string, data: Partial<InsertLogisticsTrailer>): Promise<LogisticsTrailer | undefined> {
     const [updated] = await db.update(logisticsTrailers).set(data).where(eq(logisticsTrailers.id, id)).returning();
     return updated;
   }
 
-  async deleteLogisticsTrailer(id: number): Promise<boolean> {
+  async deleteLogisticsTrailer(id: string): Promise<boolean> {
     await db.delete(logisticsTrailers).where(eq(logisticsTrailers.id, id));
     return true;
   }
 
-  async getAllLogisticsDrivers(carrierId?: number): Promise<LogisticsDriver[]> {
+  async getAllLogisticsDrivers(carrierId?: string): Promise<LogisticsDriver[]> {
     if (carrierId) {
       return db.select().from(logisticsDrivers).where(eq(logisticsDrivers.carrierId, carrierId)).orderBy(asc(logisticsDrivers.fullName));
     }
     return db.select().from(logisticsDrivers).orderBy(asc(logisticsDrivers.fullName));
   }
 
-  async getLogisticsDriver(id: number): Promise<LogisticsDriver | undefined> {
+  async getLogisticsDriver(id: string): Promise<LogisticsDriver | undefined> {
     const [driver] = await db.select().from(logisticsDrivers).where(eq(logisticsDrivers.id, id)).limit(1);
     return driver;
   }
@@ -143,12 +143,12 @@ export class LogisticsStorage implements ILogisticsStorage {
     return created;
   }
 
-  async updateLogisticsDriver(id: number, data: Partial<InsertLogisticsDriver>): Promise<LogisticsDriver | undefined> {
+  async updateLogisticsDriver(id: string, data: Partial<InsertLogisticsDriver>): Promise<LogisticsDriver | undefined> {
     const [updated] = await db.update(logisticsDrivers).set(data).where(eq(logisticsDrivers.id, id)).returning();
     return updated;
   }
 
-  async deleteLogisticsDriver(id: number): Promise<boolean> {
+  async deleteLogisticsDriver(id: string): Promise<boolean> {
     await db.delete(logisticsDrivers).where(eq(logisticsDrivers.id, id));
     return true;
   }
@@ -157,7 +157,7 @@ export class LogisticsStorage implements ILogisticsStorage {
     return db.select().from(logisticsWarehouses).orderBy(asc(logisticsWarehouses.name));
   }
 
-  async getLogisticsWarehouse(id: number): Promise<LogisticsWarehouse | undefined> {
+  async getLogisticsWarehouse(id: string): Promise<LogisticsWarehouse | undefined> {
     const [warehouse] = await db.select().from(logisticsWarehouses).where(eq(logisticsWarehouses.id, id)).limit(1);
     return warehouse;
   }
@@ -167,12 +167,12 @@ export class LogisticsStorage implements ILogisticsStorage {
     return created;
   }
 
-  async updateLogisticsWarehouse(id: number, data: Partial<InsertLogisticsWarehouse>): Promise<LogisticsWarehouse | undefined> {
+  async updateLogisticsWarehouse(id: string, data: Partial<InsertLogisticsWarehouse>): Promise<LogisticsWarehouse | undefined> {
     const [updated] = await db.update(logisticsWarehouses).set(data).where(eq(logisticsWarehouses.id, id)).returning();
     return updated;
   }
 
-  async deleteLogisticsWarehouse(id: number): Promise<boolean> {
+  async deleteLogisticsWarehouse(id: string): Promise<boolean> {
     await db.delete(logisticsWarehouses).where(eq(logisticsWarehouses.id, id));
     return true;
   }

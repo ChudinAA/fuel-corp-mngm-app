@@ -16,7 +16,7 @@ export class WholesaleStorage implements IWholesaleStorage {
     return db.select().from(wholesaleSuppliers).orderBy(asc(wholesaleSuppliers.name));
   }
 
-  async getWholesaleSupplier(id: number): Promise<WholesaleSupplier | undefined> {
+  async getWholesaleSupplier(id: string): Promise<WholesaleSupplier | undefined> {
     const [supplier] = await db.select().from(wholesaleSuppliers).where(eq(wholesaleSuppliers.id, id)).limit(1);
     return supplier;
   }
@@ -26,24 +26,24 @@ export class WholesaleStorage implements IWholesaleStorage {
     return created;
   }
 
-  async updateWholesaleSupplier(id: number, data: Partial<InsertWholesaleSupplier>): Promise<WholesaleSupplier | undefined> {
+  async updateWholesaleSupplier(id: string, data: Partial<InsertWholesaleSupplier>): Promise<WholesaleSupplier | undefined> {
     const [updated] = await db.update(wholesaleSuppliers).set(data).where(eq(wholesaleSuppliers.id, id)).returning();
     return updated;
   }
 
-  async deleteWholesaleSupplier(id: number): Promise<boolean> {
+  async deleteWholesaleSupplier(id: string): Promise<boolean> {
     await db.delete(wholesaleSuppliers).where(eq(wholesaleSuppliers.id, id));
     return true;
   }
 
-  async getAllWholesaleBases(supplierId?: number): Promise<WholesaleBase[]> {
+  async getAllWholesaleBases(supplierId?: string): Promise<WholesaleBase[]> {
     if (supplierId) {
       return db.select().from(wholesaleBases).where(eq(wholesaleBases.supplierId, supplierId)).orderBy(asc(wholesaleBases.name));
     }
     return db.select().from(wholesaleBases).orderBy(asc(wholesaleBases.name));
   }
 
-  async getWholesaleBase(id: number): Promise<WholesaleBase | undefined> {
+  async getWholesaleBase(id: string): Promise<WholesaleBase | undefined> {
     const [base] = await db.select().from(wholesaleBases).where(eq(wholesaleBases.id, id)).limit(1);
     return base;
   }
@@ -53,12 +53,12 @@ export class WholesaleStorage implements IWholesaleStorage {
     return created;
   }
 
-  async updateWholesaleBase(id: number, data: Partial<InsertWholesaleBase>): Promise<WholesaleBase | undefined> {
+  async updateWholesaleBase(id: string, data: Partial<InsertWholesaleBase>): Promise<WholesaleBase | undefined> {
     const [updated] = await db.update(wholesaleBases).set(data).where(eq(wholesaleBases.id, id)).returning();
     return updated;
   }
 
-  async deleteWholesaleBase(id: number): Promise<boolean> {
+  async deleteWholesaleBase(id: string): Promise<boolean> {
     await db.delete(wholesaleBases).where(eq(wholesaleBases.id, id));
     return true;
   }

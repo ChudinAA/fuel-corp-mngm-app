@@ -30,7 +30,7 @@ export function registerAdminRoutes(app: Express) {
 
   app.patch("/api/roles/:id", requirePermission("admin", "edit"), async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const role = await storage.roles.updateRole(id, req.body);
       if (!role) {
         return res.status(404).json({ message: "Роль не найдена" });
@@ -43,7 +43,7 @@ export function registerAdminRoutes(app: Express) {
 
   app.delete("/api/roles/:id", requirePermission("admin", "delete"), async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.roles.deleteRole(id);
       res.json({ message: "Роль удалена" });
     } catch (error) {
@@ -79,7 +79,7 @@ export function registerAdminRoutes(app: Express) {
 
   app.patch("/api/admin/users/:id", requirePermission("admin", "edit"), async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const user = await storage.users.updateUser(id, req.body);
       if (!user) {
         return res.status(404).json({ message: "Пользователь не найден" });
@@ -93,7 +93,7 @@ export function registerAdminRoutes(app: Express) {
 
   app.delete("/api/admin/users/:id", requirePermission("admin", "delete"), async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.users.deleteUser(id);
       res.json({ message: "Пользователь удален" });
     } catch (error) {

@@ -16,7 +16,7 @@ export class RefuelingStorage implements IRefuelingStorage {
     return db.select().from(refuelingProviders).orderBy(asc(refuelingProviders.name));
   }
 
-  async getRefuelingProvider(id: number): Promise<RefuelingProvider | undefined> {
+  async getRefuelingProvider(id: string): Promise<RefuelingProvider | undefined> {
     const [provider] = await db.select().from(refuelingProviders).where(eq(refuelingProviders.id, id)).limit(1);
     return provider;
   }
@@ -26,24 +26,24 @@ export class RefuelingStorage implements IRefuelingStorage {
     return created;
   }
 
-  async updateRefuelingProvider(id: number, data: Partial<InsertRefuelingProvider>): Promise<RefuelingProvider | undefined> {
+  async updateRefuelingProvider(id: string, data: Partial<InsertRefuelingProvider>): Promise<RefuelingProvider | undefined> {
     const [updated] = await db.update(refuelingProviders).set(data).where(eq(refuelingProviders.id, id)).returning();
     return updated;
   }
 
-  async deleteRefuelingProvider(id: number): Promise<boolean> {
+  async deleteRefuelingProvider(id: string): Promise<boolean> {
     await db.delete(refuelingProviders).where(eq(refuelingProviders.id, id));
     return true;
   }
 
-  async getAllRefuelingBases(providerId?: number): Promise<RefuelingBase[]> {
+  async getAllRefuelingBases(providerId?: string): Promise<RefuelingBase[]> {
     if (providerId) {
       return db.select().from(refuelingBases).where(eq(refuelingBases.providerId, providerId)).orderBy(asc(refuelingBases.name));
     }
     return db.select().from(refuelingBases).orderBy(asc(refuelingBases.name));
   }
 
-  async getRefuelingBase(id: number): Promise<RefuelingBase | undefined> {
+  async getRefuelingBase(id: string): Promise<RefuelingBase | undefined> {
     const [base] = await db.select().from(refuelingBases).where(eq(refuelingBases.id, id)).limit(1);
     return base;
   }
@@ -53,12 +53,12 @@ export class RefuelingStorage implements IRefuelingStorage {
     return created;
   }
 
-  async updateRefuelingBase(id: number, data: Partial<InsertRefuelingBase>): Promise<RefuelingBase | undefined> {
+  async updateRefuelingBase(id: string, data: Partial<InsertRefuelingBase>): Promise<RefuelingBase | undefined> {
     const [updated] = await db.update(refuelingBases).set(data).where(eq(refuelingBases.id, id)).returning();
     return updated;
   }
 
-  async deleteRefuelingBase(id: number): Promise<boolean> {
+  async deleteRefuelingBase(id: string): Promise<boolean> {
     await db.delete(refuelingBases).where(eq(refuelingBases.id, id));
     return true;
   }
