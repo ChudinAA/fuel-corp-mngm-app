@@ -116,7 +116,7 @@ export function AddWholesaleDialog({
         isActive: data.isActive,
       });
     }
-  }, [editItem]);
+  }, [editItem, form]);
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);

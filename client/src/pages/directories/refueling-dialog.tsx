@@ -134,7 +134,7 @@ export function AddRefuelingDialog({
         setShowPriceFields(true);
       }
     }
-  }, [editItem]);
+  }, [editItem, form]);
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);

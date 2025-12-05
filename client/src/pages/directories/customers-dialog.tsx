@@ -63,7 +63,7 @@ export function AddCustomerDialog({ editCustomer, onEditComplete }: { editCustom
         isActive: editCustomer.isActive,
       });
     }
-  }, [editCustomer]);
+  }, [editCustomer, form]);
 
   const createMutation = useMutation({
     mutationFn: async (data: CustomerFormData) => {

@@ -226,7 +226,7 @@ export function AddLogisticsDialog({
 
       form.reset(formData);
     }
-  }, [editItem]);
+  }, [editItem, form]);
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
