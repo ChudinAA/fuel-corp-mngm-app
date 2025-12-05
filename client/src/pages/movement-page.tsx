@@ -117,6 +117,21 @@ export default function MovementPage() {
     queryKey: ["/api/movement", page, search],
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/movement/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movement"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      toast({ title: "Перемещение удалено", description: "Запись успешно удалена" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
+  });
+
   const createMutation = useMutation({
     mutationFn: async (data: MovementFormData) => {
       const payload = {
@@ -492,8 +507,29 @@ export default function MovementPage() {
                       <TableCell className="text-right">{formatCurrency(item.totalCost)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={() => {
+                              toast({ title: "В разработке", description: "Функция редактирования в разработке" });
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-destructive"
+                            onClick={() => {
+                              if (confirm("Вы уверены, что хотите удалить это перемещение?")) {
+                                deleteMutation.mutate(item.id);
+                              }
+                            }}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>

@@ -674,9 +674,24 @@ function OptTable() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const pageSize = 10;
+  const { toast } = useToast();
 
   const { data: optDeals, isLoading } = useQuery<{ data: Opt[]; total: number }>({
     queryKey: ["/api/opt", page, search],
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/opt/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/opt"] });
+      toast({ title: "Сделка удалена", description: "Оптовая сделка успешно удалена" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
   });
 
   const formatNumber = (value: string | number | null) => {
@@ -774,10 +789,27 @@ function OptTable() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={() => {
+                          toast({ title: "В разработке", description: "Функция редактирования в разработке" });
+                        }}
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-destructive"
+                        onClick={() => {
+                          if (confirm("Вы уверены, что хотите удалить эту сделку?")) {
+                            deleteMutation.mutate(deal.id);
+                          }
+                        }}
+                        disabled={deleteMutation.isPending}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

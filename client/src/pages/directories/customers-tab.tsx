@@ -1,6 +1,8 @@
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,9 +15,24 @@ import { AddCustomerDialog } from "./customers-dialog";
 
 export function CustomersTab() {
   const [search, setSearch] = useState("");
+  const { toast } = useToast();
 
   const { data: customers, isLoading } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/customers/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      toast({ title: "Покупатель удален", description: "Покупатель успешно удален из справочника" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
   });
 
   const filteredItems = customers?.filter(item => 
@@ -94,10 +111,28 @@ export function CustomersTab() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" data-testid={`button-edit-customer-${item.id}`}>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              data-testid={`button-edit-customer-${item.id}`}
+                              onClick={() => {
+                                toast({ title: "В разработке", description: "Функция редактирования в разработке" });
+                              }}
+                            >
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="text-destructive" data-testid={`button-delete-customer-${item.id}`}>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-destructive" 
+                              data-testid={`button-delete-customer-${item.id}`}
+                              onClick={() => {
+                                if (confirm("Вы уверены, что хотите удалить этого покупателя?")) {
+                                  deleteMutation.mutate(item.id);
+                                }
+                              }}
+                              disabled={deleteMutation.isPending}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>

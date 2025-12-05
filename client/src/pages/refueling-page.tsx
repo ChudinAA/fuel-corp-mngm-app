@@ -579,9 +579,24 @@ function RefuelingTable() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const pageSize = 10;
+  const { toast } = useToast();
 
   const { data: refuelings, isLoading } = useQuery<{ data: AircraftRefueling[]; total: number }>({
     queryKey: ["/api/refueling", page, search],
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/refueling/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/refueling"] });
+      toast({ title: "Заправка удалена", description: "Запись о заправке успешно удалена" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
   });
 
   const formatNumber = (value: string | number | null) => {
@@ -685,10 +700,27 @@ function RefuelingTable() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={() => {
+                          toast({ title: "В разработке", description: "Функция редактирования в разработке" });
+                        }}
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-destructive"
+                        onClick={() => {
+                          if (confirm("Вы уверены, что хотите удалить эту заправку?")) {
+                            deleteMutation.mutate(item.id);
+                          }
+                        }}
+                        disabled={deleteMutation.isPending}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

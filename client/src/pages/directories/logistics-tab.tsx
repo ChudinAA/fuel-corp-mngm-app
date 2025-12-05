@@ -1,6 +1,8 @@
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,9 +26,37 @@ type LogisticsType = typeof LOGISTICS_TYPES[number]["value"];
 export function LogisticsTab() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<LogisticsType | "all">("all");
+  const { toast } = useToast();
 
   const { data: carriers, isLoading: carriersLoading } = useQuery<LogisticsCarrier[]>({
     queryKey: ["/api/logistics/carriers"],
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async ({ type, id }: { type: string; id: string }) => {
+      const endpoints: Record<string, string> = {
+        carrier: `/api/logistics/carriers/${id}`,
+        delivery_location: `/api/logistics/delivery-locations/${id}`,
+        vehicle: `/api/logistics/vehicles/${id}`,
+        trailer: `/api/logistics/trailers/${id}`,
+        driver: `/api/logistics/drivers/${id}`,
+        warehouse: `/api/logistics/warehouses/${id}`,
+      };
+      const res = await apiRequest("DELETE", endpoints[type]);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/logistics/carriers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/logistics/delivery-locations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/logistics/vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/logistics/trailers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/logistics/drivers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/logistics/warehouses"] });
+      toast({ title: "Запись удалена", description: "Запись успешно удалена из справочника" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
   });
 
   const { data: deliveryLocations, isLoading: locationsLoading } = useQuery<LogisticsDeliveryLocation[]>({
@@ -175,10 +205,28 @@ export function LogisticsTab() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" data-testid={`button-edit-${item.type}-${item.id}`}>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              data-testid={`button-edit-${item.type}-${item.id}`}
+                              onClick={() => {
+                                toast({ title: "В разработке", description: "Функция редактирования в разработке" });
+                              }}
+                            >
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="text-destructive" data-testid={`button-delete-${item.type}-${item.id}`}>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-destructive" 
+                              data-testid={`button-delete-${item.type}-${item.id}`}
+                              onClick={() => {
+                                if (confirm("Вы уверены, что хотите удалить эту запись?")) {
+                                  deleteMutation.mutate({ type: item.type, id: item.id });
+                                }
+                              }}
+                              disabled={deleteMutation.isPending}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
