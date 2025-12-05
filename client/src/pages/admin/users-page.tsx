@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -45,8 +45,9 @@ type UserFormData = z.infer<typeof userFormSchema>;
 
 function AddUserDialog({
   roles,
-  editUser
-}: { roles: Role[]; editUser: User | null }) {
+  editUser,
+  onEditComplete
+}: { roles: Role[]; editUser: User | null; onEditComplete: () => void }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
 
@@ -89,7 +90,7 @@ function AddUserDialog({
         ...data,
         roleId: data.roleId,
       };
-      const res = await apiRequest("PATCH", `/api/admin/users/${editUser.id}`, payload);
+      const res = await apiRequest("PATCH", `/api/admin/users/${editUser!.id}`, payload);
       return res.json();
     },
     onSuccess: () => {
@@ -97,7 +98,7 @@ function AddUserDialog({
       toast({ title: "Пользователь обновлен", description: "Данные пользователя успешно изменены" });
       form.reset();
       setOpen(false);
-      setEditingUser(null);
+      onEditComplete();
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
@@ -107,7 +108,7 @@ function AddUserDialog({
   const isEditing = !!editUser;
 
   // Set form values when editUser prop changes
-  useState(() => {
+  useEffect(() => {
     if (editUser) {
       form.reset({
         email: editUser.email,
@@ -117,11 +118,20 @@ function AddUserDialog({
         roleId: editUser.roleId || "",
         isActive: editUser.isActive,
       });
+      setOpen(true);
     }
-  }, [editUser, form.reset]);
+  }, [editUser, form]);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) {
+      form.reset();
+      onEditComplete();
+    }
+  };
 
   return (
-    <Dialog open={open || isEditing} onOpenChange={(isOpen) => { setOpen(isOpen); if (!isOpen) setEditingUser(null); }}>
+    <Dialog open={open || isEditing} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button data-testid="button-add-user">
           <Plus className="mr-2 h-4 w-4" />
@@ -245,10 +255,7 @@ function AddUserDialog({
               )}
             />
             <div className="flex justify-end gap-4 pt-4">
-              <Button type="button" variant="outline" onClick={() => {
-                setOpen(false);
-                setEditingUser(null);
-              }}>Отмена</Button>
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Отмена</Button>
               <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-save-user">
                 {isEditing ? (
                   createMutation.isPending || updateMutation.isPending ? (
@@ -326,7 +333,7 @@ export default function UsersPage() {
           <h1 className="text-2xl font-semibold">Пользователи</h1>
           <p className="text-muted-foreground">Управление учетными записями</p>
         </div>
-        <AddUserDialog roles={roles || []} editUser={editingUser} />
+        <AddUserDialog roles={roles || []} editUser={editingUser} onEditComplete={() => setEditingUser(null)} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
