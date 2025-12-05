@@ -48,9 +48,9 @@ export function AddCustomerDialog({ editCustomer }: { editCustomer?: Customer | 
     },
   });
 
-  // Reset form when editCustomer changes
-  useState(() => {
-    if (editCustomer && open) {
+  useEffect(() => {
+    if (editCustomer) {
+      setOpen(true);
       form.reset({
         name: editCustomer.name,
         module: editCustomer.module as "wholesale" | "refueling" | "both",
@@ -62,20 +62,8 @@ export function AddCustomerDialog({ editCustomer }: { editCustomer?: Customer | 
         contractNumber: editCustomer.contractNumber || "",
         isActive: editCustomer.isActive,
       });
-    } else if (!editCustomer && open) {
-      form.reset({
-        name: "",
-        module: "both",
-        description: "",
-        contactPerson: "",
-        phone: "",
-        email: "",
-        inn: "",
-        contractNumber: "",
-        isActive: true,
-      });
     }
-  });
+  }, [editCustomer]);
 
   const createMutation = useMutation({
     mutationFn: async (data: CustomerFormData) => {

@@ -101,6 +101,21 @@ export function AddWholesaleDialog({
     },
   });
 
+  useEffect(() => {
+    if (editItem) {
+      setOpen(true);
+      const data = editItem.data as any;
+      form.reset({
+        type: editItem.type,
+        name: data.name,
+        description: data.description || "",
+        defaultBaseId: data.defaultBaseId || undefined,
+        location: data.location || "",
+        isActive: data.isActive,
+      });
+    }
+  }, [editItem]);
+
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {

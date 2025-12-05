@@ -80,6 +80,19 @@ function AddPriceDialog({ editPrice }: { editPrice?: Price | null }) {
 
   useEffect(() => {
     if (editPrice) {
+      // Parse priceValues correctly
+      let parsedPriceValues = [{ price: "" }];
+      if (editPrice.priceValues && editPrice.priceValues.length > 0) {
+        try {
+          parsedPriceValues = editPrice.priceValues.map((pv: string) => {
+            const parsed = JSON.parse(pv);
+            return { price: String(parsed.price) };
+          });
+        } catch (e) {
+          console.error("Failed to parse priceValues:", e);
+        }
+      }
+      
       form.reset({
         dateFrom: new Date(editPrice.dateFrom),
         dateTo: new Date(editPrice.dateTo || editPrice.dateFrom),
@@ -89,7 +102,7 @@ function AddPriceDialog({ editPrice }: { editPrice?: Price | null }) {
         productType: editPrice.productType,
         basis: editPrice.basis || "",
         volume: editPrice.volume || "",
-        priceValues: editPrice.priceValues,
+        priceValues: parsedPriceValues,
         contractNumber: editPrice.contractNumber || "",
       });
       setOpen(true);

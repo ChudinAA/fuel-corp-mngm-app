@@ -62,12 +62,7 @@ export function CustomersTab() {
                 data-testid="input-search-customers" 
               />
             </div>
-            <AddCustomerDialog editCustomer={null} />
-            {editingCustomer && (
-              <AddCustomerDialog 
-                editCustomer={editingCustomer} 
-              />
-            )}
+            <AddCustomerDialog editCustomer={editingCustomer} />
           </div>
 
           {isLoading ? (

@@ -113,6 +113,27 @@ export function AddRefuelingDialog({
     },
   });
 
+  useEffect(() => {
+    if (editItem) {
+      setOpen(true);
+      const data = editItem.data as any;
+      form.reset({
+        type: editItem.type,
+        name: data.name,
+        location: data.location || "",
+        description: data.description || "",
+        servicePrice: data.servicePrice || "",
+        pvkjPrice: data.pvkjPrice || "",
+        agentFee: data.agentFee || "",
+        defaultBaseId: data.defaultBaseId || undefined,
+        isActive: data.isActive,
+      });
+      if (editItem.type === "provider" && (data.servicePrice || data.pvkjPrice || data.agentFee)) {
+        setShowPriceFields(true);
+      }
+    }
+  }, [editItem]);
+
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {

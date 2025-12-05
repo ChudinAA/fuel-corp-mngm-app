@@ -108,6 +108,14 @@ export function WholesaleTab() {
               </SelectContent>
             </Select>
             <AddWholesaleDialog suppliers={suppliers || []} bases={bases || []} editItem={editingItem} />
+            {editingItem && (
+              <AddWholesaleDialog 
+                suppliers={suppliers || []} 
+                bases={bases || []} 
+                editItem={editingItem}
+                key={`edit-${editingItem.type}-${editingItem.data.id}`}
+              />
+            )}
           </div>
 
           {isLoading ? (
