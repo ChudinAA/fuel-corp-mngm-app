@@ -29,7 +29,7 @@ const refuelingFormSchema = z.object({
   servicePrice: z.string().optional(),
   pvkjPrice: z.string().optional(),
   agentFee: z.string().optional(),
-  defaultBaseId: z.number().optional(),
+  defaultBaseId: z.string().optional(),
   isActive: z.boolean().default(true),
 });
 

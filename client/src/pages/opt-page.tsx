@@ -125,14 +125,14 @@ function OptForm({
     resolver: zodResolver(optFormSchema),
     defaultValues: {
       dealDate: editData ? new Date(editData.dealDate) : new Date(),
-      supplierId: editData?.supplierId?.toString() || "",
-      buyerId: editData?.buyerId?.toString() || "",
+      supplierId: editData?.supplierId || "",
+      buyerId: editData?.buyerId || "",
       inputMode: "liters",
       quantityLiters: editData?.quantityLiters || "",
       density: editData?.density || "",
       quantityKg: editData?.quantityKg || "",
-      carrierId: editData?.carrierId?.toString() || "",
-      deliveryLocationId: editData?.deliveryLocationId?.toString() || "",
+      carrierId: editData?.carrierId || "",
+      deliveryLocationId: editData?.deliveryLocationId || "",
       vehicleNumber: editData?.vehicleNumber || "",
       trailerNumber: editData?.trailerNumber || "",
       driverName: editData?.driverName || "",
@@ -467,7 +467,7 @@ function OptForm({
                       </FormControl>
                       <SelectContent>
                         {carriers?.map((carrier) => (
-                          <SelectItem key={carrier.id} value={carrier.id.toString()}>
+                          <SelectItem key={carrier.id} value={carrier.id}>
                             {carrier.name}
                           </SelectItem>
                         )) || (
@@ -494,7 +494,7 @@ function OptForm({
                       </FormControl>
                       <SelectContent>
                         {deliveryLocations?.map((location) => (
-                          <SelectItem key={location.id} value={location.id.toString()}>
+                          <SelectItem key={location.id} value={location.id}>
                             {location.name}
                           </SelectItem>
                         )) || (

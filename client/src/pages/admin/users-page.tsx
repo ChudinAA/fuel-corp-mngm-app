@@ -180,7 +180,7 @@ function AddUserDialog() {
                     </FormControl>
                     <SelectContent>
                       {roles?.map((role) => (
-                        <SelectItem key={role.id} value={role.id.toString()}>{role.name}</SelectItem>
+                        <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
                       )) || <SelectItem value="none" disabled>Нет ролей</SelectItem>}
                     </SelectContent>
                   </Select>
@@ -239,7 +239,7 @@ export default function UsersPage() {
       u.firstName.toLowerCase().includes(search.toLowerCase()) ||
       u.lastName.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase());
-    const matchesRole = roleFilter === "all" || u.roleId?.toString() === roleFilter;
+    const matchesRole = roleFilter === "all" || u.roleId === roleFilter;
     return matchesSearch && matchesRole;
   }) || [];
 
@@ -308,7 +308,7 @@ export default function UsersPage() {
                 <SelectContent>
                   <SelectItem value="all">Все роли</SelectItem>
                   {roles?.map((role) => (
-                    <SelectItem key={role.id} value={role.id.toString()}>{role.name}</SelectItem>
+                    <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

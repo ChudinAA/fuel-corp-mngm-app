@@ -122,10 +122,10 @@ export default function MovementPage() {
       const payload = {
         ...data,
         movementDate: format(data.movementDate, "yyyy-MM-dd"),
-        supplierId: data.supplierId ? parseInt(data.supplierId) : null,
-        fromWarehouseId: data.fromWarehouseId ? parseInt(data.fromWarehouseId) : null,
-        toWarehouseId: parseInt(data.toWarehouseId),
-        carrierId: data.carrierId ? parseInt(data.carrierId) : null,
+        supplierId: data.supplierId || null,
+        fromWarehouseId: data.fromWarehouseId || null,
+        toWarehouseId: data.toWarehouseId,
+        carrierId: data.carrierId || null,
         quantityKg: calculatedKg || data.quantityKg,
       };
       const res = await apiRequest("POST", "/api/movement", payload);
@@ -285,7 +285,7 @@ export default function MovementPage() {
                           </FormControl>
                           <SelectContent>
                             {warehouses?.map((w) => (
-                              <SelectItem key={w.id} value={w.id.toString()}>{w.name}</SelectItem>
+                              <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
                             )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
                           </SelectContent>
                         </Select>
@@ -311,7 +311,7 @@ export default function MovementPage() {
                         </FormControl>
                         <SelectContent>
                           {warehouses?.map((w) => (
-                            <SelectItem key={w.id} value={w.id.toString()}>{w.name}</SelectItem>
+                            <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
                           )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
                         </SelectContent>
                       </Select>
@@ -384,7 +384,7 @@ export default function MovementPage() {
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl><SelectTrigger data-testid="select-movement-carrier"><SelectValue placeholder="Выберите" /></SelectTrigger></FormControl>
                           <SelectContent>
-                            {carriers?.map((c) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                            {carriers?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
                           </SelectContent>
                         </Select>
                         <FormMessage />

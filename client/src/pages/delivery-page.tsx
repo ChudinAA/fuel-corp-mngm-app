@@ -139,7 +139,7 @@ function AddDeliveryCostDialog() {
                     </FormControl>
                     <SelectContent>
                       {carriers?.map((c) => (
-                        <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
                     </SelectContent>
                   </Select>

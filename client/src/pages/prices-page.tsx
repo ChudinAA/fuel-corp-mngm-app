@@ -121,11 +121,11 @@ function AddPriceDialog() {
   // Автоматическое заполнение базиса при выборе поставщика
   useEffect(() => {
     if (watchCounterpartyRole === "supplier" && watchCounterpartyId) {
-      const selectedContractor = contractors.find(c => c.id.toString() === watchCounterpartyId);
+      const selectedContractor = contractors.find(c => c.id === watchCounterpartyId);
       if (selectedContractor && selectedContractor.defaultBaseId) {
         const defaultBase = allBases.find(b => b.id === selectedContractor.defaultBaseId);
         if (defaultBase) {
-          form.setValue("basis", defaultBase.basis || defaultBase.name);
+          form.setValue("basis", defaultBase.name);
         }
       }
     }
@@ -565,12 +565,12 @@ function PricesTable({ counterpartyRole, counterpartyType }: { counterpartyRole:
     queryKey: ["/api/prices"],
   });
 
-  const { data: optContractors } = useQuery<DirectoryWholesale[]>({
-    queryKey: ["/api/directories/wholesale", "all"],
+  const { data: optContractors } = useQuery<WholesaleSupplier[]>({
+    queryKey: ["/api/wholesale/suppliers"],
   });
 
-  const { data: refuelingContractors } = useQuery<DirectoryRefueling[]>({
-    queryKey: ["/api/directories/refueling", "all"],
+  const { data: refuelingContractors } = useQuery<RefuelingProvider[]>({
+    queryKey: ["/refueling/providers"],
   });
 
   const getContractorName = (id: string, type: string) => {
@@ -614,7 +614,7 @@ function PricesTable({ counterpartyRole, counterpartyType }: { counterpartyRole:
   const calculateSelectionMutation = useMutation({
     mutationFn: async (price: Price) => {
       const params = new URLSearchParams({
-        counterpartyId: price.counterpartyId.toString(),
+        counterpartyId: price.counterpartyId,
         counterpartyType: price.counterpartyType,
         basis: price.basis || "",
         dateFrom: price.dateFrom,
@@ -635,13 +635,13 @@ function PricesTable({ counterpartyRole, counterpartyType }: { counterpartyRole:
   const checkDatesMutation = useMutation({
     mutationFn: async (price: Price) => {
       const params = new URLSearchParams({
-        counterpartyId: price.counterpartyId.toString(),
+        counterpartyId: price.counterpartyId,
         counterpartyType: price.counterpartyType,
         counterpartyRole: price.counterpartyRole,
         basis: price.basis || "",
         dateFrom: price.dateFrom,
         dateTo: price.dateTo || price.dateFrom,
-        excludeId: price.id.toString(),
+        excludeId: price.id,
       });
       const res = await apiRequest("GET", `/api/prices/check-date-overlaps?${params}`);
       return res.json();

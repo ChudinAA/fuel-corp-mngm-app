@@ -1,4 +1,3 @@
-replit_final_file>
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -26,7 +25,7 @@ const wholesaleFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
-  defaultBaseId: z.string().optional(), // Changed to string to accommodate UUID
+  defaultBaseId: z.string().optional(),
   location: z.string().optional(),
 });
 
@@ -238,4 +237,3 @@ export function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleS
     </Dialog>
   );
 }
-</replit_final_file>
