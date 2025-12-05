@@ -174,10 +174,10 @@ function OptForm({
     mutationFn: async (data: OptFormData) => {
       const payload = {
         ...data,
-        supplierId: parseInt(data.supplierId),
-        buyerId: parseInt(data.buyerId),
-        carrierId: data.carrierId ? parseInt(data.carrierId) : null,
-        deliveryLocationId: data.deliveryLocationId ? parseInt(data.deliveryLocationId) : null,
+        supplierId: data.supplierId,
+        buyerId: data.buyerId,
+        carrierId: data.carrierId || null,
+        deliveryLocationId: data.deliveryLocationId || null,
         dealDate: format(data.dealDate, "yyyy-MM-dd"),
       };
       const res = await apiRequest("POST", "/api/opt", payload);
@@ -277,7 +277,7 @@ function OptForm({
                   </FormControl>
                   <SelectContent>
                     {suppliers?.map((supplier) => (
-                      <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                      <SelectItem key={supplier.id} value={supplier.id}>
                         {supplier.name}
                       </SelectItem>
                     )) || (
@@ -304,7 +304,7 @@ function OptForm({
                   </FormControl>
                   <SelectContent>
                     {buyers?.map((buyer) => (
-                      <SelectItem key={buyer.id} value={buyer.id.toString()}>
+                      <SelectItem key={buyer.id} value={buyer.id}>
                         {buyer.name}
                       </SelectItem>
                     )) || (

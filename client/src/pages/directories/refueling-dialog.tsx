@@ -219,7 +219,7 @@ export function AddRefuelingDialog({ providers, bases }: { providers: RefuelingP
                     <FormItem>
                       <FormLabel>Базис заправки</FormLabel>
                       <Select 
-                        onValueChange={(v) => field.onChange(v || undefined)} 
+                        onValueChange={field.onChange} 
                         value={field.value || ""}
                       >
                         <FormControl>

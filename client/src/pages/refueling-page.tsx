@@ -158,8 +158,8 @@ function RefuelingForm({
     mutationFn: async (data: RefuelingFormData) => {
       const payload = {
         ...data,
-        supplierId: parseInt(data.supplierId),
-        buyerId: parseInt(data.buyerId),
+        supplierId: data.supplierId,
+        buyerId: data.buyerId,
         refuelingDate: format(data.refuelingDate, "yyyy-MM-dd"),
       };
       const res = await apiRequest("POST", "/api/refueling", payload);
@@ -325,7 +325,7 @@ function RefuelingForm({
                   </FormControl>
                   <SelectContent>
                     {suppliers?.map((supplier) => (
-                      <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                      <SelectItem key={supplier.id} value={supplier.id}>
                         {supplier.name}
                       </SelectItem>
                     )) || (
@@ -357,7 +357,7 @@ function RefuelingForm({
                   </FormControl>
                   <SelectContent>
                     {buyers?.map((buyer) => (
-                      <SelectItem key={buyer.id} value={buyer.id.toString()}>
+                      <SelectItem key={buyer.id} value={buyer.id}>
                         {buyer.name}
                       </SelectItem>
                     )) || (

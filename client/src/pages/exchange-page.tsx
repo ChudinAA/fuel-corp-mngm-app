@@ -80,7 +80,7 @@ export default function ExchangePage() {
       const payload = {
         ...data,
         dealDate: format(data.dealDate, "yyyy-MM-dd"),
-        warehouseId: data.warehouseId ? parseInt(data.warehouseId) : null,
+        warehouseId: data.warehouseId || null,
         totalAmount: (quantity * price).toString(),
       };
       const res = await apiRequest("POST", "/api/exchange", payload);
@@ -272,7 +272,7 @@ export default function ExchangePage() {
                         </FormControl>
                         <SelectContent>
                           {warehouses?.map((wh) => (
-                            <SelectItem key={wh.id} value={wh.id.toString()}>
+                            <SelectItem key={wh.id} value={wh.id}>
                               {wh.name}
                             </SelectItem>
                           )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}

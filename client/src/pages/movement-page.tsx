@@ -20,11 +20,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { 
-  CalendarIcon, 
-  Plus, 
-  Pencil, 
-  Trash2, 
+import {
+  CalendarIcon,
+  Plus,
+  Pencil,
+  Trash2,
   Loader2,
   ChevronLeft,
   ChevronRight,
@@ -262,7 +262,7 @@ export default function MovementPage() {
                           </FormControl>
                           <SelectContent>
                             {suppliers?.map((s) => (
-                              <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                             )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
                           </SelectContent>
                         </Select>

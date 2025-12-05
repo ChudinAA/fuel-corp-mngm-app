@@ -70,7 +70,7 @@ function AddDeliveryCostDialog() {
       const payload = {
         ...data,
         effectiveDate: format(data.effectiveDate, "yyyy-MM-dd"),
-        carrierId: parseInt(data.carrierId),
+        carrierId: data.carrierId,
       };
       const res = await apiRequest("POST", "/api/delivery-costs", payload);
       return res.json();

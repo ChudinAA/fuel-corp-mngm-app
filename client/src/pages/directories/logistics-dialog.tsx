@@ -323,20 +323,20 @@ export function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] 
                   <FormItem>
                     <FormLabel>Перевозчик</FormLabel>
                     <Select 
-                      onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)} 
-                      value={field.value?.toString() || ""}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-logistics-carrier">
-                          <SelectValue placeholder="Выберите перевозчика" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {carriers.map((c) => (
-                          <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                        onValueChange={field.onChange} 
+                        value={field.value || ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-logistics-carrier">
+                            <SelectValue placeholder="Выберите перевозчика" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {carriers.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     <FormMessage />
                   </FormItem>
                 )}

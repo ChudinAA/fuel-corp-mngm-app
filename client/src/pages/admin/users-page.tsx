@@ -68,7 +68,7 @@ function AddUserDialog() {
     mutationFn: async (data: UserFormData) => {
       const payload = {
         ...data,
-        roleId: parseInt(data.roleId),
+        roleId: data.roleId,
       };
       const res = await apiRequest("POST", "/api/admin/users", payload);
       return res.json();
@@ -228,7 +228,7 @@ export default function UsersPage() {
   const getInitials = (firstName: string, lastName: string) => 
     `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 
-  const getRoleName = (roleId: number | null) => 
+  const getRoleName = (roleId: string | null) => 
     roles?.find(r => r.id === roleId)?.name || "Не назначена";
 
   const formatDate = (dateStr: string | null) => 

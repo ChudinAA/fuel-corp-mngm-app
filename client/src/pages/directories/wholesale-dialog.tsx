@@ -1,3 +1,4 @@
+replit_final_file>
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -25,7 +26,7 @@ const wholesaleFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
-  defaultBaseId: z.number().optional(),
+  defaultBaseId: z.string().optional(), // Changed to string to accommodate UUID
   location: z.string().optional(),
 });
 
@@ -162,20 +163,20 @@ export function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleS
                   <FormItem>
                     <FormLabel>Базис поставки</FormLabel>
                     <Select 
-                      onValueChange={(v) => field.onChange(v || undefined)} 
-                      value={field.value || ""}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-wholesale-supplier-basis">
-                          <SelectValue placeholder="Выберите базис" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {bases.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                        onValueChange={field.onChange} 
+                        value={field.value || ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-wholesale-supplier-basis">
+                            <SelectValue placeholder="Выберите базис" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {bases.map((b) => (
+                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -237,3 +238,4 @@ export function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleS
     </Dialog>
   );
 }
+</replit_final_file>
