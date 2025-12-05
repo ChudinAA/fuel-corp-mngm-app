@@ -31,7 +31,15 @@ const wholesaleFormSchema = z.object({
 
 type WholesaleFormData = z.infer<typeof wholesaleFormSchema>;
 
-export function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleSupplier[]; bases: WholesaleBase[] }) {
+export function AddWholesaleDialog({ 
+  suppliers, 
+  bases, 
+  editItem 
+}: { 
+  suppliers: WholesaleSupplier[]; 
+  bases: WholesaleBase[]; 
+  editItem?: { type: "supplier" | "basis"; data: WholesaleSupplier | WholesaleBase } | null;
+}) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
 
@@ -59,7 +67,7 @@ export function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleS
       let payload: Record<string, unknown> = {};
 
       if (data.type === "supplier") {
-        endpoint = "/api/wholesale/suppliers";
+        endpoint = editItem ? `/api/wholesale/suppliers/${editItem.data.id}` : "/api/wholesale/suppliers";
         payload = {
           name: data.name,
           description: data.description,
@@ -67,7 +75,7 @@ export function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleS
           isActive: data.isActive,
         };
       } else if (data.type === "basis") {
-        endpoint = "/api/wholesale/bases";
+        endpoint = editItem ? `/api/wholesale/bases/${editItem.data.id}` : "/api/wholesale/bases";
         payload = {
           name: data.name,
           location: data.location,
@@ -75,13 +83,16 @@ export function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleS
         };
       }
 
-      const res = await apiRequest("POST", endpoint, payload);
+      const res = await apiRequest(editItem ? "PATCH" : "POST", endpoint, payload);
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/wholesale/suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wholesale/bases"] });
-      toast({ title: "Запись добавлена", description: "Новая запись сохранена в справочнике" });
+      toast({ 
+        title: editItem ? "Запись обновлена" : "Запись добавлена", 
+        description: editItem ? "Изменения сохранены" : "Новая запись сохранена в справочнике" 
+      });
       form.reset();
       setOpen(false);
     },
@@ -94,6 +105,16 @@ export function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleS
     setOpen(isOpen);
     if (!isOpen) {
       form.reset();
+    } else if (editItem) {
+      const data = editItem.data as any;
+      form.reset({
+        type: editItem.type,
+        name: data.name,
+        description: data.description || "",
+        defaultBaseId: data.defaultBaseId || undefined,
+        location: data.location || "",
+        isActive: data.isActive,
+      });
     }
   };
 
@@ -107,8 +128,8 @@ export function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleS
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Новая запись: ОПТ</DialogTitle>
-          <DialogDescription>Добавление записи в справочник оптовых операций</DialogDescription>
+          <DialogTitle>{editItem ? "Редактирование записи: ОПТ" : "Новая запись: ОПТ"}</DialogTitle>
+          <DialogDescription>{editItem ? "Изменение записи в справочнике" : "Добавление записи в справочник оптовых операций"}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
@@ -228,7 +249,7 @@ export function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleS
             <div className="flex justify-end gap-4 pt-4">
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Отмена</Button>
               <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-wholesale">
-                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : "Создать"}
+                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : editItem ? "Сохранить" : "Создать"}
               </Button>
             </div>
           </form>

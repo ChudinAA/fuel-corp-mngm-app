@@ -1,4 +1,3 @@
-
 import { eq, or, asc } from "drizzle-orm";
 import { db } from "../db";
 import { customers, type Customer, type InsertCustomer } from "@shared/schema";
@@ -20,13 +19,17 @@ export class CustomerStorage implements ICustomerStorage {
   }
 
   async createCustomer(data: InsertCustomer): Promise<Customer> {
-    const [created] = await db.insert(customers).values(data).returning();
-    return created;
+    const [customer] = await db.insert(customers).values(data).returning();
+    return customer;
   }
 
-  async updateCustomer(id: string, data: Partial<InsertCustomer>): Promise<Customer | undefined> {
-    const [updated] = await db.update(customers).set(data).where(eq(customers.id, id)).returning();
-    return updated;
+  async updateCustomer(id: string, data: InsertCustomer): Promise<Customer> {
+    const [customer] = await db
+      .update(customers)
+      .set(data)
+      .where(eq(customers.id, id))
+      .returning();
+    return customer;
   }
 
   async deleteCustomer(id: string): Promise<boolean> {

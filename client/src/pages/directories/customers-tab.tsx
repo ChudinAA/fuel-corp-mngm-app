@@ -15,6 +15,7 @@ import { AddCustomerDialog } from "./customers-dialog";
 
 export function CustomersTab() {
   const [search, setSearch] = useState("");
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const { toast } = useToast();
 
   const { data: customers, isLoading } = useQuery<Customer[]>({
@@ -61,7 +62,12 @@ export function CustomersTab() {
                 data-testid="input-search-customers" 
               />
             </div>
-            <AddCustomerDialog />
+            <AddCustomerDialog editCustomer={null} />
+            {editingCustomer && (
+              <AddCustomerDialog 
+                editCustomer={editingCustomer} 
+              />
+            )}
           </div>
 
           {isLoading ? (
@@ -115,9 +121,7 @@ export function CustomersTab() {
                               variant="ghost" 
                               size="icon" 
                               data-testid={`button-edit-customer-${item.id}`}
-                              onClick={() => {
-                                toast({ title: "В разработке", description: "Функция редактирования в разработке" });
-                              }}
+                              onClick={() => setEditingCustomer(item)}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>

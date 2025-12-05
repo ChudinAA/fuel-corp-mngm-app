@@ -1,4 +1,3 @@
-
 import type { Express } from "express";
 import { storage } from "../../storage/index";
 import { insertRefuelingProviderSchema, insertRefuelingBaseSchema } from "@shared/schema";
@@ -38,12 +37,20 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
   app.patch("/api/refueling/providers/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.refueling.updateRefuelingProvider(id, req.body);
+      // Assuming storage.refueling.updateRefuelingProvider can handle the update
+      // and returns the updated item or null if not found.
+      // We might need to parse and validate req.body with insertRefuelingProviderSchema here as well
+      // for consistency and security, similar to how POST is handled.
+      const data = insertRefuelingProviderSchema.parse(req.body);
+      const item = await storage.refueling.updateRefuelingProvider(id, data);
       if (!item) {
         return res.status(404).json({ message: "Аэропорт/Поставщик не найден" });
       }
       res.json(item);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
       res.status(500).json({ message: "Ошибка обновления аэропорта/поставщика" });
     }
   });
@@ -91,12 +98,17 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
   app.patch("/api/refueling/bases/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.refueling.updateRefuelingBase(id, req.body);
+      // Similar to providers, validate and parse req.body
+      const data = insertRefuelingBaseSchema.parse(req.body);
+      const item = await storage.refueling.updateRefuelingBase(id, data);
       if (!item) {
         return res.status(404).json({ message: "Базис заправки не найден" });
       }
       res.json(item);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
       res.status(500).json({ message: "Ошибка обновления базиса заправки" });
     }
   });

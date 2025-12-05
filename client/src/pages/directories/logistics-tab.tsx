@@ -26,6 +26,7 @@ type LogisticsType = typeof LOGISTICS_TYPES[number]["value"];
 export function LogisticsTab() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<LogisticsType | "all">("all");
+  const [editingItem, setEditingItem] = useState<{ type: string; data: any } | null>(null);
   const { toast } = useToast();
 
   const { data: carriers, isLoading: carriersLoading } = useQuery<LogisticsCarrier[]>({
@@ -148,7 +149,7 @@ export function LogisticsTab() {
                 ))}
               </SelectContent>
             </Select>
-            <AddLogisticsDialog carriers={carriers || []} />
+            <AddLogisticsDialog carriers={carriers || []} editItem={editingItem} />
           </div>
 
           {isLoading ? (
@@ -209,9 +210,7 @@ export function LogisticsTab() {
                               variant="ghost" 
                               size="icon" 
                               data-testid={`button-edit-${item.type}-${item.id}`}
-                              onClick={() => {
-                                toast({ title: "В разработке", description: "Функция редактирования в разработке" });
-                              }}
+                              onClick={() => setEditingItem({ type: item.type, data: item })}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>

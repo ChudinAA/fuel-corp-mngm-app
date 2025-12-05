@@ -35,7 +35,15 @@ const refuelingFormSchema = z.object({
 
 type RefuelingFormData = z.infer<typeof refuelingFormSchema>;
 
-export function AddRefuelingDialog({ providers, bases }: { providers: RefuelingProvider[]; bases: RefuelingBase[] }) {
+export function AddRefuelingDialog({ 
+  providers, 
+  bases,
+  editItem
+}: { 
+  providers: RefuelingProvider[]; 
+  bases: RefuelingBase[];
+  editItem?: { type: "provider" | "basis"; data: RefuelingProvider | RefuelingBase } | null;
+}) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [showPriceFields, setShowPriceFields] = useState(false);
@@ -66,7 +74,15 @@ export function AddRefuelingDialog({ providers, bases }: { providers: RefuelingP
 
   const createRefuelingMutation = useMutation({
     mutationFn: async (data: RefuelingFormData) => {
-      const endpoint = data.type === "provider" ? "/api/refueling/providers" : "/api/refueling/bases";
+      let endpoint = "";
+      if (editItem) {
+        endpoint = data.type === "provider" 
+          ? `/api/refueling/providers/${editItem.data.id}` 
+          : `/api/refueling/bases/${editItem.data.id}`;
+      } else {
+        endpoint = data.type === "provider" ? "/api/refueling/providers" : "/api/refueling/bases";
+      }
+      
       const payload = data.type === "provider" 
         ? { 
             name: data.name, 
@@ -79,13 +95,16 @@ export function AddRefuelingDialog({ providers, bases }: { providers: RefuelingP
           }
         : { name: data.name, location: data.location, isActive: data.isActive };
 
-      const res = await apiRequest("POST", endpoint, payload);
+      const res = await apiRequest(editItem ? "PATCH" : "POST", endpoint, payload);
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/refueling/providers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/refueling/bases"] });
-      toast({ title: "Запись добавлена", description: "Новая запись сохранена в справочнике" });
+      toast({ 
+        title: editItem ? "Запись обновлена" : "Запись добавлена", 
+        description: editItem ? "Изменения сохранены" : "Новая запись сохранена в справочнике" 
+      });
       form.reset();
       setOpen(false);
     },
@@ -99,6 +118,22 @@ export function AddRefuelingDialog({ providers, bases }: { providers: RefuelingP
     if (!isOpen) {
       form.reset();
       setShowPriceFields(false);
+    } else if (editItem) {
+      const data = editItem.data as any;
+      form.reset({
+        type: editItem.type,
+        name: data.name,
+        location: data.location || "",
+        description: data.description || "",
+        servicePrice: data.servicePrice || "",
+        pvkjPrice: data.pvkjPrice || "",
+        agentFee: data.agentFee || "",
+        defaultBaseId: data.defaultBaseId || undefined,
+        isActive: data.isActive,
+      });
+      if (editItem.type === "provider" && (data.servicePrice || data.pvkjPrice || data.agentFee)) {
+        setShowPriceFields(true);
+      }
     }
   };
 
@@ -112,8 +147,8 @@ export function AddRefuelingDialog({ providers, bases }: { providers: RefuelingP
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Новая запись: Заправка ВС</DialogTitle>
-          <DialogDescription>Добавление записи в справочник заправки воздушных судов</DialogDescription>
+          <DialogTitle>{editItem ? "Редактирование записи: Заправка ВС" : "Новая запись: Заправка ВС"}</DialogTitle>
+          <DialogDescription>{editItem ? "Изменение записи в справочнике" : "Добавление записи в справочник заправки воздушных судов"}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => createRefuelingMutation.mutate(data))} className="space-y-4">
@@ -286,7 +321,7 @@ export function AddRefuelingDialog({ providers, bases }: { providers: RefuelingP
             <div className="flex justify-end gap-4 pt-4">
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Отмена</Button>
               <Button type="submit" disabled={createRefuelingMutation.isPending} data-testid="button-save-refueling">
-                {createRefuelingMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : "Создать"}
+                {createRefuelingMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : editItem ? "Сохранить" : "Создать"}
               </Button>
             </div>
           </form>

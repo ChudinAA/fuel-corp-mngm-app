@@ -45,7 +45,13 @@ const logisticsFormSchema = z.object({
 
 type LogisticsFormData = z.infer<typeof logisticsFormSchema>;
 
-export function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] }) {
+export function AddLogisticsDialog({ 
+  carriers,
+  editItem
+}: { 
+  carriers: LogisticsCarrier[];
+  editItem?: { type: string; data: any } | null;
+}) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
 
@@ -96,7 +102,7 @@ export function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] 
       let payload: Record<string, unknown> = {};
 
       if (data.type === "carrier") {
-        endpoint = "/api/logistics/carriers";
+        endpoint = editItem ? `/api/logistics/carriers/${editItem.data.id}` : "/api/logistics/carriers";
         payload = {
           name: data.name,
           description: data.description,
@@ -106,7 +112,7 @@ export function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] 
           isActive: data.isActive,
         };
       } else if (data.type === "delivery_location") {
-        endpoint = "/api/logistics/delivery-locations";
+        endpoint = editItem ? `/api/logistics/delivery-locations/${editItem.data.id}` : "/api/logistics/delivery-locations";
         payload = {
           name: data.name,
           address: data.address,
@@ -114,7 +120,7 @@ export function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] 
           isActive: data.isActive,
         };
       } else if (data.type === "vehicle") {
-        endpoint = "/api/logistics/vehicles";
+        endpoint = editItem ? `/api/logistics/vehicles/${editItem.data.id}` : "/api/logistics/vehicles";
         payload = {
           regNumber: data.plateNumber,
           carrierId: data.carrierId || null,
@@ -123,7 +129,7 @@ export function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] 
           isActive: data.isActive,
         };
       } else if (data.type === "trailer") {
-        endpoint = "/api/logistics/trailers";
+        endpoint = editItem ? `/api/logistics/trailers/${editItem.data.id}` : "/api/logistics/trailers";
         payload = {
           regNumber: data.plateNumber,
           carrierId: data.carrierId || null,
@@ -131,7 +137,7 @@ export function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] 
           isActive: data.isActive,
         };
       } else if (data.type === "driver") {
-        endpoint = "/api/logistics/drivers";
+        endpoint = editItem ? `/api/logistics/drivers/${editItem.data.id}` : "/api/logistics/drivers";
         payload = {
           fullName: data.name,
           carrierId: data.carrierId || null,
@@ -141,7 +147,7 @@ export function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] 
           isActive: data.isActive,
         };
       } else if (data.type === "warehouse") {
-        endpoint = "/api/logistics/warehouses";
+        endpoint = editItem ? `/api/logistics/warehouses/${editItem.data.id}` : "/api/logistics/warehouses";
         payload = { 
           name: data.name, 
           description: data.description, 
@@ -151,7 +157,7 @@ export function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] 
         };
       }
 
-      const res = await apiRequest("POST", endpoint, payload);
+      const res = await apiRequest(editItem ? "PATCH" : "POST", endpoint, payload);
       return res.json();
     },
     onSuccess: () => {
@@ -161,7 +167,10 @@ export function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] 
       queryClient.invalidateQueries({ queryKey: ["/api/logistics/trailers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/logistics/drivers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/logistics/warehouses"] });
-      toast({ title: "Запись добавлена", description: "Новая запись сохранена в справочнике" });
+      toast({ 
+        title: editItem ? "Запись обновлена" : "Запись добавлена", 
+        description: editItem ? "Изменения сохранены" : "Новая запись сохранена в справочнике" 
+      });
       form.reset();
       setOpen(false);
     },
@@ -174,6 +183,48 @@ export function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] 
     setOpen(isOpen);
     if (!isOpen) {
       form.reset();
+    } else if (editItem) {
+      const data = editItem.data;
+      const formData: any = {
+        type: editItem.type,
+        isActive: data.isActive,
+      };
+
+      if (editItem.type === "carrier") {
+        formData.name = data.name;
+        formData.description = data.description || "";
+        formData.inn = data.inn || "";
+        formData.contactPerson = data.contactPerson || "";
+        formData.phone = data.phone || "";
+      } else if (editItem.type === "delivery_location") {
+        formData.name = data.name;
+        formData.address = data.address || "";
+        formData.notes = data.notes || "";
+      } else if (editItem.type === "vehicle") {
+        formData.name = "";
+        formData.plateNumber = data.regNumber;
+        formData.carrierId = data.carrierId || undefined;
+        formData.vehicleType = data.model || "";
+        formData.capacityKg = data.capacityKg || "";
+      } else if (editItem.type === "trailer") {
+        formData.name = "";
+        formData.plateNumber = data.regNumber;
+        formData.carrierId = data.carrierId || undefined;
+        formData.capacityKg = data.capacityKg || "";
+      } else if (editItem.type === "driver") {
+        formData.name = data.fullName;
+        formData.carrierId = data.carrierId || undefined;
+        formData.phone = data.phone || "";
+        formData.licenseNumber = data.licenseNumber || "";
+        formData.licenseExpiry = data.licenseExpiry || "";
+      } else if (editItem.type === "warehouse") {
+        formData.name = data.name;
+        formData.description = data.description || "";
+        formData.address = data.address || "";
+        formData.storageCost = data.storageCost || "";
+      }
+
+      form.reset(formData);
     }
   };
 
@@ -187,8 +238,8 @@ export function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] 
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Новая запись: Логистика</DialogTitle>
-          <DialogDescription>Добавление записи в справочник логистики</DialogDescription>
+          <DialogTitle>{editItem ? "Редактирование записи: Логистика" : "Новая запись: Логистика"}</DialogTitle>
+          <DialogDescription>{editItem ? "Изменение записи в справочнике" : "Добавление записи в справочник логистики"}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
@@ -520,7 +571,7 @@ export function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] 
             <div className="flex justify-end gap-4 pt-4">
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Отмена</Button>
               <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-logistics">
-                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : "Создать"}
+                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : editItem ? "Сохранить" : "Создать"}
               </Button>
             </div>
           </form>

@@ -29,7 +29,7 @@ const customerFormSchema = z.object({
 
 type CustomerFormData = z.infer<typeof customerFormSchema>;
 
-export function AddCustomerDialog() {
+export function AddCustomerDialog({ editCustomer }: { editCustomer?: Customer | null }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
 
@@ -48,6 +48,35 @@ export function AddCustomerDialog() {
     },
   });
 
+  // Reset form when editCustomer changes
+  useState(() => {
+    if (editCustomer && open) {
+      form.reset({
+        name: editCustomer.name,
+        module: editCustomer.module as "wholesale" | "refueling" | "both",
+        description: editCustomer.description || "",
+        contactPerson: editCustomer.contactPerson || "",
+        phone: editCustomer.phone || "",
+        email: editCustomer.email || "",
+        inn: editCustomer.inn || "",
+        contractNumber: editCustomer.contractNumber || "",
+        isActive: editCustomer.isActive,
+      });
+    } else if (!editCustomer && open) {
+      form.reset({
+        name: "",
+        module: "both",
+        description: "",
+        contactPerson: "",
+        phone: "",
+        email: "",
+        inn: "",
+        contractNumber: "",
+        isActive: true,
+      });
+    }
+  });
+
   const createMutation = useMutation({
     mutationFn: async (data: CustomerFormData) => {
       const payload = {
@@ -61,12 +90,21 @@ export function AddCustomerDialog() {
         contractNumber: data.contractNumber,
         isActive: data.isActive,
       };
-      const res = await apiRequest("POST", "/api/customers", payload);
-      return res.json();
+      
+      if (editCustomer) {
+        const res = await apiRequest("PATCH", `/api/customers/${editCustomer.id}`, payload);
+        return res.json();
+      } else {
+        const res = await apiRequest("POST", "/api/customers", payload);
+        return res.json();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      toast({ title: "Покупатель добавлен", description: "Новый покупатель сохранен в справочнике" });
+      toast({ 
+        title: editCustomer ? "Покупатель обновлен" : "Покупатель добавлен", 
+        description: editCustomer ? "Изменения сохранены" : "Новый покупатель сохранен в справочнике" 
+      });
       form.reset();
       setOpen(false);
     },
@@ -79,6 +117,18 @@ export function AddCustomerDialog() {
     setOpen(isOpen);
     if (!isOpen) {
       form.reset();
+    } else if (editCustomer) {
+      form.reset({
+        name: editCustomer.name,
+        module: editCustomer.module as "wholesale" | "refueling" | "both",
+        description: editCustomer.description || "",
+        contactPerson: editCustomer.contactPerson || "",
+        phone: editCustomer.phone || "",
+        email: editCustomer.email || "",
+        inn: editCustomer.inn || "",
+        contractNumber: editCustomer.contractNumber || "",
+        isActive: editCustomer.isActive,
+      });
     }
   };
 
@@ -92,8 +142,8 @@ export function AddCustomerDialog() {
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Новый покупатель</DialogTitle>
-          <DialogDescription>Добавление покупателя в справочник</DialogDescription>
+          <DialogTitle>{editCustomer ? "Редактирование покупателя" : "Новый покупатель"}</DialogTitle>
+          <DialogDescription>{editCustomer ? "Изменение данных покупателя" : "Добавление покупателя в справочник"}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
@@ -236,7 +286,7 @@ export function AddCustomerDialog() {
             <div className="flex justify-end gap-4 pt-4">
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Отмена</Button>
               <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-customer">
-                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : "Создать"}
+                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : editCustomer ? "Сохранить" : "Создать"}
               </Button>
             </div>
           </form>

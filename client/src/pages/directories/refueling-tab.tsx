@@ -24,6 +24,7 @@ type RefuelingType = typeof REFUELING_TYPES[number]["value"];
 export function RefuelingTab() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<RefuelingType | "all">("all");
+  const [editingItem, setEditingItem] = useState<{ type: "provider" | "basis"; data: any } | null>(null);
   const { toast } = useToast();
 
   const { data: providers, isLoading: providersLoading } = useQuery<RefuelingProvider[]>({
@@ -101,7 +102,7 @@ export function RefuelingTab() {
                 ))}
               </SelectContent>
             </Select>
-            <AddRefuelingDialog providers={providers || []} bases={bases || []} />
+            <AddRefuelingDialog providers={providers || []} bases={bases || []} editItem={editingItem} />
           </div>
 
           {isLoading ? (
@@ -161,9 +162,7 @@ export function RefuelingTab() {
                               variant="ghost" 
                               size="icon" 
                               data-testid={`button-edit-${item.type}-${item.id}`}
-                              onClick={() => {
-                                toast({ title: "В разработке", description: "Функция редактирования в разработке" });
-                              }}
+                              onClick={() => setEditingItem({ type: item.type, data: item })}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>

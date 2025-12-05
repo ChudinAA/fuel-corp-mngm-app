@@ -24,6 +24,7 @@ type WholesaleType = typeof WHOLESALE_TYPES[number]["value"];
 export function WholesaleTab() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<WholesaleType | "all">("all");
+  const [editingItem, setEditingItem] = useState<{ type: "supplier" | "basis"; data: any } | null>(null);
   const { toast } = useToast();
 
   const { data: suppliers, isLoading: suppliersLoading } = useQuery<WholesaleSupplier[]>({
@@ -106,7 +107,7 @@ export function WholesaleTab() {
                 ))}
               </SelectContent>
             </Select>
-            <AddWholesaleDialog suppliers={suppliers || []} bases={bases || []} />
+            <AddWholesaleDialog suppliers={suppliers || []} bases={bases || []} editItem={editingItem} />
           </div>
 
           {isLoading ? (
@@ -166,9 +167,7 @@ export function WholesaleTab() {
                               variant="ghost" 
                               size="icon" 
                               data-testid={`button-edit-${item.type}-${item.id}`}
-                              onClick={() => {
-                                toast({ title: "В разработке", description: "Функция редактирования в разработке" });
-                              }}
+                              onClick={() => setEditingItem({ type: item.type, data: item })}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
