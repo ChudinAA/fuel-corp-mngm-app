@@ -46,6 +46,7 @@ const warehouseFormSchema = z.object({
 type WarehouseFormData = z.infer<typeof warehouseFormSchema>;
 
 function WarehouseCard({ warehouse }: { warehouse: WarehouseType }) {
+  const { toast } = useToast();
   const balance = parseFloat(warehouse.currentBalance || "0");
   const cost = parseFloat(warehouse.averageCost || "0");
   const allocation = parseFloat(warehouse.monthlyAllocation || "0");
@@ -57,6 +58,20 @@ function WarehouseCard({ warehouse }: { warehouse: WarehouseType }) {
   const formatCurrency = (value: number) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 }).format(value);
 
   const getTypeLabel = (type: string) => WAREHOUSE_TYPES.find(t => t.value === type)?.label || type;
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/warehouses/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      toast({ title: "Склад удален", description: "Запись успешно удалена" });
+    },
+    onError: () => {
+      toast({ title: "Ошибка", description: "Не удалось удалить склад", variant: "destructive" });
+    },
+  });
 
   return (
     <Card className={isLow ? "border-l-4 border-l-yellow-500" : ""}>
@@ -110,7 +125,17 @@ function WarehouseCard({ warehouse }: { warehouse: WarehouseType }) {
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <Pencil className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-destructive"
+              onClick={() => {
+                if (confirm("Вы уверены, что хотите удалить этот склад?")) {
+                  deleteMutation.mutate(warehouse.id);
+                }
+              }}
+              disabled={deleteMutation.isPending}
+            >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>

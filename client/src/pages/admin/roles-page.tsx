@@ -268,6 +268,20 @@ export default function RolesPage() {
 
   const countPermissions = (permissions: string[] | null) => permissions?.length || 0;
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/roles/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/roles"] });
+      toast({ title: "Роль удалена", description: "Запись успешно удалена" });
+    },
+    onError: () => {
+      toast({ title: "Ошибка", description: "Не удалось удалить роль", variant: "destructive" });
+    },
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -365,7 +379,17 @@ export default function RolesPage() {
                           <div className="flex items-center gap-1">
                             <RoleFormDialog editRole={role} />
                             {!role.isSystem && (
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => {
+                                  if (confirm("Вы уверены, что хотите удалить эту роль?")) {
+                                    deleteMutation.mutate(role.id);
+                                  }
+                                }}
+                                disabled={deleteMutation.isPending}
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             )}

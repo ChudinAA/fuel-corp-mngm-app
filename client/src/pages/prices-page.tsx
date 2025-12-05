@@ -659,6 +659,20 @@ function PricesTable({ counterpartyRole, counterpartyType }: { counterpartyRole:
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (priceId: string) => {
+      const res = await apiRequest("DELETE", `/api/prices/${priceId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prices"] });
+      toast({ title: "Цена удалена", description: "Запись успешно удалена" });
+    },
+    onError: () => {
+      toast({ title: "Ошибка", description: "Не удалось удалить цену", variant: "destructive" });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -762,7 +776,20 @@ function PricesTable({ counterpartyRole, counterpartyType }: { counterpartyRole:
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-edit-price-${price.id}`}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" data-testid={`button-delete-price-${price.id}`}><Trash2 className="h-4 w-4" /></Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-destructive" 
+                        onClick={() => {
+                          if (confirm("Вы уверены, что хотите удалить эту цену?")) {
+                            deleteMutation.mutate(price.id);
+                          }
+                        }}
+                        disabled={deleteMutation.isPending}
+                        data-testid={`button-delete-price-${price.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
