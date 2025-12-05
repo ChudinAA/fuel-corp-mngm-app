@@ -1,3 +1,4 @@
+
 import type { Express } from "express";
 import { storage } from "../../storage/index";
 import { insertAircraftRefuelingSchema } from "@shared/schema";
@@ -32,7 +33,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
 
   app.patch("/api/refueling/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.operations.updateRefueling(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Заправка не найдена" });
@@ -45,7 +46,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
 
   app.delete("/api/refueling/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.operations.deleteRefueling(id);
       res.json({ message: "Заправка удалена" });
     } catch (error) {

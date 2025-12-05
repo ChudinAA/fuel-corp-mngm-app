@@ -1,3 +1,4 @@
+
 import type { Express } from "express";
 import { storage } from "../../storage/index";
 import { insertWholesaleSupplierSchema, insertWholesaleBaseSchema } from "@shared/schema";
@@ -13,7 +14,7 @@ export function registerWholesaleRoutes(app: Express) {
   });
 
   app.get("/api/wholesale/suppliers/:id", requireAuth, async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     const supplier = await storage.wholesale.getWholesaleSupplier(id);
     if (!supplier) {
       return res.status(404).json({ message: "Поставщик не найден" });
@@ -36,7 +37,7 @@ export function registerWholesaleRoutes(app: Express) {
 
   app.patch("/api/wholesale/suppliers/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.wholesale.updateWholesaleSupplier(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Поставщик не найден" });
@@ -49,7 +50,7 @@ export function registerWholesaleRoutes(app: Express) {
 
   app.delete("/api/wholesale/suppliers/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.wholesale.deleteWholesaleSupplier(id);
       res.json({ message: "Поставщик удален" });
     } catch (error) {
@@ -60,13 +61,13 @@ export function registerWholesaleRoutes(app: Express) {
   // ============ WHOLESALE BASES ============
 
   app.get("/api/wholesale/bases", requireAuth, async (req, res) => {
-    const supplierId = req.query.supplierId ? parseInt(req.query.supplierId as string) : undefined;
+    const supplierId = req.query.supplierId as string | undefined;
     const data = await storage.wholesale.getAllWholesaleBases(supplierId);
     res.json(data);
   });
 
   app.get("/api/wholesale/bases/:id", requireAuth, async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     const base = await storage.wholesale.getWholesaleBase(id);
     if (!base) {
       return res.status(404).json({ message: "Базис не найден" });
@@ -89,7 +90,7 @@ export function registerWholesaleRoutes(app: Express) {
 
   app.patch("/api/wholesale/bases/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.wholesale.updateWholesaleBase(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Базис не найден" });
@@ -102,7 +103,7 @@ export function registerWholesaleRoutes(app: Express) {
 
   app.delete("/api/wholesale/bases/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.wholesale.deleteWholesaleBase(id);
       res.json({ message: "Базис удален" });
     } catch (error) {

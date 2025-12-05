@@ -80,7 +80,7 @@ export function LogisticsTab() {
     return matchesSearch && matchesType;
   });
 
-  const getCarrierName = (carrierId: number | null | undefined) => {
+  const getCarrierName = (carrierId: string | null | undefined) => {
     if (!carrierId) return null;
     return carriers?.find(c => c.id === carrierId)?.name || null;
   };

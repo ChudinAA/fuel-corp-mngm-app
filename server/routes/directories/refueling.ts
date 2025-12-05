@@ -1,3 +1,4 @@
+
 import type { Express } from "express";
 import { storage } from "../../storage/index";
 import { insertRefuelingProviderSchema, insertRefuelingBaseSchema } from "@shared/schema";
@@ -13,7 +14,7 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
   });
 
   app.get("/api/refueling/providers/:id", requireAuth, async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     const provider = await storage.refueling.getRefuelingProvider(id);
     if (!provider) {
       return res.status(404).json({ message: "Аэропорт/Поставщик не найден" });
@@ -36,7 +37,7 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
 
   app.patch("/api/refueling/providers/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.refueling.updateRefuelingProvider(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Аэропорт/Поставщик не найден" });
@@ -49,7 +50,7 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
 
   app.delete("/api/refueling/providers/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.refueling.deleteRefuelingProvider(id);
       res.json({ message: "Аэропорт/Поставщик удален" });
     } catch (error) {
@@ -60,13 +61,13 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
   // ============ REFUELING BASES ============
 
   app.get("/api/refueling/bases", requireAuth, async (req, res) => {
-    const providerId = req.query.providerId ? parseInt(req.query.providerId as string) : undefined;
+    const providerId = req.query.providerId as string | undefined;
     const data = await storage.refueling.getAllRefuelingBases(providerId);
     res.json(data);
   });
 
   app.get("/api/refueling/bases/:id", requireAuth, async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     const base = await storage.refueling.getRefuelingBase(id);
     if (!base) {
       return res.status(404).json({ message: "Базис заправки не найден" });
@@ -89,7 +90,7 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
 
   app.patch("/api/refueling/bases/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.refueling.updateRefuelingBase(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Базис заправки не найден" });
@@ -102,7 +103,7 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
 
   app.delete("/api/refueling/bases/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.refueling.deleteRefuelingBase(id);
       res.json({ message: "Базис заправки удален" });
     } catch (error) {

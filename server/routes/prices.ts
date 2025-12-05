@@ -41,7 +41,7 @@ export function registerPricesRoutes(app: Express) {
 
   app.patch("/api/prices/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.prices.updatePrice(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Цена не найдена" });
@@ -54,7 +54,7 @@ export function registerPricesRoutes(app: Express) {
 
   app.delete("/api/prices/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.prices.deletePrice(id);
       res.json({ message: "Цена удалена" });
     } catch (error) {
@@ -132,7 +132,7 @@ export function registerPricesRoutes(app: Express) {
 
   app.patch("/api/delivery-costs/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.prices.updateDeliveryCost(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Тариф не найден" });
@@ -145,7 +145,7 @@ export function registerPricesRoutes(app: Express) {
 
   app.delete("/api/delivery-costs/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.prices.deleteDeliveryCost(id);
       res.json({ message: "Тариф удален" });
     } catch (error) {

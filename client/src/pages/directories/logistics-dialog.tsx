@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -398,8 +397,8 @@ export function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] 
                     <FormItem>
                       <FormLabel>Перевозчик</FormLabel>
                       <Select 
-                        onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)} 
-                        value={field.value?.toString() || ""}
+                        onValueChange={(v) => field.onChange(v || undefined)} 
+                        value={field.value || ""}
                       >
                         <FormControl>
                           <SelectTrigger data-testid="select-logistics-driver-carrier">
@@ -408,7 +407,7 @@ export function AddLogisticsDialog({ carriers }: { carriers: LogisticsCarrier[] 
                         </FormControl>
                         <SelectContent>
                           {carriers.map((c) => (
-                            <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

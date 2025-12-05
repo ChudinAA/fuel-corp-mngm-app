@@ -20,7 +20,7 @@ export function registerLogisticsRoutes(app: Express) {
   });
 
   app.get("/api/logistics/carriers/:id", requireAuth, async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     const carrier = await storage.logistics.getLogisticsCarrier(id);
     if (!carrier) {
       return res.status(404).json({ message: "Перевозчик не найден" });
@@ -43,7 +43,7 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.patch("/api/logistics/carriers/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.logistics.updateLogisticsCarrier(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Перевозчик не найден" });
@@ -56,7 +56,7 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.delete("/api/logistics/carriers/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.logistics.deleteLogisticsCarrier(id);
       res.json({ message: "Перевозчик удален" });
     } catch (error) {
@@ -72,7 +72,7 @@ export function registerLogisticsRoutes(app: Express) {
   });
 
   app.get("/api/logistics/delivery-locations/:id", requireAuth, async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     const location = await storage.logistics.getLogisticsDeliveryLocation(id);
     if (!location) {
       return res.status(404).json({ message: "Место доставки не найдено" });
@@ -95,7 +95,7 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.patch("/api/logistics/delivery-locations/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.logistics.updateLogisticsDeliveryLocation(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Место доставки не найдено" });
@@ -108,7 +108,7 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.delete("/api/logistics/delivery-locations/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.logistics.deleteLogisticsDeliveryLocation(id);
       res.json({ message: "Место доставки удалено" });
     } catch (error) {
@@ -119,13 +119,13 @@ export function registerLogisticsRoutes(app: Express) {
   // ============ LOGISTICS VEHICLES ============
 
   app.get("/api/logistics/vehicles", requireAuth, async (req, res) => {
-    const carrierId = req.query.carrierId ? parseInt(req.query.carrierId as string) : undefined;
+    const carrierId = req.query.carrierId as string | undefined;
     const data = await storage.logistics.getAllLogisticsVehicles(carrierId);
     res.json(data);
   });
 
   app.get("/api/logistics/vehicles/:id", requireAuth, async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     const vehicle = await storage.logistics.getLogisticsVehicle(id);
     if (!vehicle) {
       return res.status(404).json({ message: "Транспорт не найден" });
@@ -148,7 +148,7 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.patch("/api/logistics/vehicles/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.logistics.updateLogisticsVehicle(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Транспорт не найден" });
@@ -161,7 +161,7 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.delete("/api/logistics/vehicles/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.logistics.deleteLogisticsVehicle(id);
       res.json({ message: "Транспорт удален" });
     } catch (error) {
@@ -172,13 +172,13 @@ export function registerLogisticsRoutes(app: Express) {
   // ============ LOGISTICS TRAILERS ============
 
   app.get("/api/logistics/trailers", requireAuth, async (req, res) => {
-    const carrierId = req.query.carrierId ? parseInt(req.query.carrierId as string) : undefined;
+    const carrierId = req.query.carrierId as string | undefined;
     const data = await storage.logistics.getAllLogisticsTrailers(carrierId);
     res.json(data);
   });
 
   app.get("/api/logistics/trailers/:id", requireAuth, async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     const trailer = await storage.logistics.getLogisticsTrailer(id);
     if (!trailer) {
       return res.status(404).json({ message: "Прицеп не найден" });
@@ -201,7 +201,7 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.patch("/api/logistics/trailers/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.logistics.updateLogisticsTrailer(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Прицеп не найден" });
@@ -214,7 +214,7 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.delete("/api/logistics/trailers/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.logistics.deleteLogisticsTrailer(id);
       res.json({ message: "Прицеп удален" });
     } catch (error) {
@@ -225,13 +225,13 @@ export function registerLogisticsRoutes(app: Express) {
   // ============ LOGISTICS DRIVERS ============
 
   app.get("/api/logistics/drivers", requireAuth, async (req, res) => {
-    const carrierId = req.query.carrierId ? parseInt(req.query.carrierId as string) : undefined;
+    const carrierId = req.query.carrierId as string | undefined;
     const data = await storage.logistics.getAllLogisticsDrivers(carrierId);
     res.json(data);
   });
 
   app.get("/api/logistics/drivers/:id", requireAuth, async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     const driver = await storage.logistics.getLogisticsDriver(id);
     if (!driver) {
       return res.status(404).json({ message: "Водитель не найден" });
@@ -254,7 +254,7 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.patch("/api/logistics/drivers/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.logistics.updateLogisticsDriver(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Водитель не найден" });
@@ -267,7 +267,7 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.delete("/api/logistics/drivers/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.logistics.deleteLogisticsDriver(id);
       res.json({ message: "Водитель удален" });
     } catch (error) {
@@ -283,7 +283,7 @@ export function registerLogisticsRoutes(app: Express) {
   });
 
   app.get("/api/logistics/warehouses/:id", requireAuth, async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     const warehouse = await storage.logistics.getLogisticsWarehouse(id);
     if (!warehouse) {
       return res.status(404).json({ message: "Склад/Базис не найден" });
@@ -306,7 +306,7 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.patch("/api/logistics/warehouses/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.logistics.updateLogisticsWarehouse(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Склад/Базис не найден" });
@@ -319,7 +319,7 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.delete("/api/logistics/warehouses/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.logistics.deleteLogisticsWarehouse(id);
       res.json({ message: "Склад/Базис удален" });
     } catch (error) {

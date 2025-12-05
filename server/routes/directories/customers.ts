@@ -12,10 +12,7 @@ export function registerCustomersRoutes(app: Express) {
   });
 
   app.get("/api/customers/:id", requireAuth, async (req, res) => {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ message: "Неверный идентификатор" });
-    }
+    const id = req.params.id;
     const customer = await storage.customers.getCustomer(id);
     if (!customer) {
       return res.status(404).json({ message: "Покупатель не найден" });
@@ -38,10 +35,7 @@ export function registerCustomersRoutes(app: Express) {
 
   app.patch("/api/customers/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Неверный идентификатор" });
-      }
+      const id = req.params.id;
       const item = await storage.customers.updateCustomer(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Покупатель не найден" });
@@ -54,10 +48,7 @@ export function registerCustomersRoutes(app: Express) {
 
   app.delete("/api/customers/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Неверный идентификатор" });
-      }
+      const id = req.params.id;
       await storage.customers.deleteCustomer(id);
       res.json({ message: "Покупатель удален" });
     } catch (error) {

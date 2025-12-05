@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -163,8 +162,8 @@ export function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleS
                   <FormItem>
                     <FormLabel>Базис поставки</FormLabel>
                     <Select 
-                      onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)} 
-                      value={field.value?.toString() || ""}
+                      onValueChange={(v) => field.onChange(v || undefined)} 
+                      value={field.value || ""}
                     >
                       <FormControl>
                         <SelectTrigger data-testid="select-wholesale-supplier-basis">
@@ -173,7 +172,7 @@ export function AddWholesaleDialog({ suppliers, bases }: { suppliers: WholesaleS
                       </FormControl>
                       <SelectContent>
                         {bases.map((b) => (
-                          <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
+                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

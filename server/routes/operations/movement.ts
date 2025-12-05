@@ -1,3 +1,4 @@
+
 import type { Express } from "express";
 import { storage } from "../../storage/index";
 import { insertMovementSchema } from "@shared/schema";
@@ -30,7 +31,7 @@ export function registerMovementRoutes(app: Express) {
 
   app.patch("/api/movement/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.operations.updateMovement(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Перемещение не найдено" });
@@ -43,7 +44,7 @@ export function registerMovementRoutes(app: Express) {
 
   app.delete("/api/movement/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.operations.deleteMovement(id);
       res.json({ message: "Перемещение удалено" });
     } catch (error) {

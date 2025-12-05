@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -220,8 +219,8 @@ export function AddRefuelingDialog({ providers, bases }: { providers: RefuelingP
                     <FormItem>
                       <FormLabel>Базис заправки</FormLabel>
                       <Select 
-                        onValueChange={(v) => field.onChange(v ? parseInt(v) : undefined)} 
-                        value={field.value?.toString() || ""}
+                        onValueChange={(v) => field.onChange(v || undefined)} 
+                        value={field.value || ""}
                       >
                         <FormControl>
                           <SelectTrigger data-testid="select-refueling-provider-basis">
@@ -230,7 +229,7 @@ export function AddRefuelingDialog({ providers, bases }: { providers: RefuelingP
                         </FormControl>
                         <SelectContent>
                           {bases.map((b) => (
-                            <SelectItem key={b.id} value={b.id.toString()}>{b.name}</SelectItem>
+                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

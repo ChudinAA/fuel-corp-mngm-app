@@ -1,3 +1,4 @@
+
 import type { Express } from "express";
 import { storage } from "../../storage/index";
 import { insertWarehouseSchema } from "@shared/schema";
@@ -11,7 +12,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
   });
 
   app.get("/api/warehouses/:id", requireAuth, async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     const warehouse = await storage.operations.getWarehouse(id);
     if (!warehouse) {
       return res.status(404).json({ message: "Склад не найден" });
@@ -34,7 +35,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
 
   app.patch("/api/warehouses/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.operations.updateWarehouse(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Склад не найден" });
@@ -47,7 +48,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
 
   app.delete("/api/warehouses/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.operations.deleteWarehouse(id);
       res.json({ message: "Склад удален" });
     } catch (error) {

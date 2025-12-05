@@ -343,7 +343,7 @@ function AddPriceDialog() {
                       </FormControl>
                       <SelectContent>
                         {contractors?.map((c) => (
-                          <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                         )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
                       </SelectContent>
                     </Select>
@@ -573,7 +573,7 @@ function PricesTable({ counterpartyRole, counterpartyType }: { counterpartyRole:
     queryKey: ["/api/directories/refueling", "all"],
   });
 
-  const getContractorName = (id: number, type: string) => {
+  const getContractorName = (id: string, type: string) => {
     const contractors = type === "wholesale" ? optContractors : refuelingContractors;
     return contractors?.find(c => c.id === id)?.name || `ID: ${id}`;
   };

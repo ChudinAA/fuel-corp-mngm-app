@@ -44,12 +44,12 @@ export function WholesaleTab() {
     return matchesSearch && matchesType;
   });
 
-  const getSupplierName = (supplierId: number | null | undefined) => {
+  const getSupplierName = (supplierId: string | null | undefined) => {
     if (!supplierId) return null;
     return suppliers?.find(s => s.id === supplierId)?.name || null;
   };
 
-  const getBaseName = (baseId: number | null | undefined) => {
+  const getBaseName = (baseId: string | null | undefined) => {
     if (!baseId) return null;
     return bases?.find(b => b.id === baseId)?.name || null;
   };

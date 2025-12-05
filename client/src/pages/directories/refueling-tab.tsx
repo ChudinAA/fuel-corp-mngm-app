@@ -44,7 +44,7 @@ export function RefuelingTab() {
     return matchesSearch && matchesType;
   });
 
-  const getBaseName = (baseId: number | null | undefined) => {
+  const getBaseName = (baseId: string | null | undefined) => {
     if (!baseId) return null;
     return bases?.find(b => b.id === baseId)?.name || null;
   };

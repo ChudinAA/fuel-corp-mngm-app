@@ -1,3 +1,4 @@
+
 import type { Express } from "express";
 import { storage } from "../../storage/index";
 import { insertOptSchema } from "@shared/schema";
@@ -32,7 +33,7 @@ export function registerOptRoutes(app: Express) {
 
   app.patch("/api/opt/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.operations.updateOpt(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Сделка не найдена" });
@@ -45,7 +46,7 @@ export function registerOptRoutes(app: Express) {
 
   app.delete("/api/opt/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.operations.deleteOpt(id);
       res.json({ message: "Сделка удалена" });
     } catch (error) {

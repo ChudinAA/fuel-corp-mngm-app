@@ -1,3 +1,4 @@
+
 import type { Express } from "express";
 import { storage } from "../../storage/index";
 import { insertExchangeSchema } from "@shared/schema";
@@ -30,7 +31,7 @@ export function registerExchangeRoutes(app: Express) {
 
   app.patch("/api/exchange/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       const item = await storage.operations.updateExchange(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Сделка не найдена" });
@@ -43,7 +44,7 @@ export function registerExchangeRoutes(app: Express) {
 
   app.delete("/api/exchange/:id", requireAuth, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
       await storage.operations.deleteExchange(id);
       res.json({ message: "Сделка удалена" });
     } catch (error) {
