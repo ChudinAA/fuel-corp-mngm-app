@@ -62,9 +62,7 @@ export function CustomersTab() {
                 data-testid="input-search-customers" 
               />
             </div>
-            <div onClick={() => setEditingCustomer(null)}>
-              <AddCustomerDialog editCustomer={editingCustomer} onEditComplete={() => setEditingCustomer(null)} />
-            </div>
+            <AddCustomerDialog editCustomer={editingCustomer} onEditComplete={() => setEditingCustomer(null)} />
           </div>
 
           {isLoading ? (

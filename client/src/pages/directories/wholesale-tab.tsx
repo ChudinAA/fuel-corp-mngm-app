@@ -107,14 +107,12 @@ export function WholesaleTab() {
                 ))}
               </SelectContent>
             </Select>
-            <div onClick={() => setEditingItem(null)}>
-              <AddWholesaleDialog 
-                suppliers={suppliers || []} 
-                bases={bases || []} 
-                editItem={editingItem}
-                onEditComplete={() => setEditingItem(null)}
-              />
-            </div>
+            <AddWholesaleDialog 
+              suppliers={suppliers || []} 
+              bases={bases || []} 
+              editItem={editingItem}
+              onEditComplete={() => setEditingItem(null)}
+            />
           </div>
 
           {isLoading ? (

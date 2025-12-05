@@ -235,6 +235,27 @@ export function AddLogisticsDialog({
       if (onEditComplete) {
         onEditComplete();
       }
+    } else if (isOpen && !editItem) {
+      // Сбрасываем форму при открытии диалога для создания новой записи
+      form.reset({
+        type: "carrier",
+        name: "",
+        description: "",
+        isActive: true,
+        inn: "",
+        contactPerson: "",
+        phone: "",
+        address: "",
+        coordinates: "",
+        carrierId: undefined,
+        plateNumber: "",
+        vehicleType: "",
+        capacityKg: "",
+        licenseNumber: "",
+        licenseExpiry: "",
+        storageCost: "",
+        notes: "",
+      });
     }
   };
 

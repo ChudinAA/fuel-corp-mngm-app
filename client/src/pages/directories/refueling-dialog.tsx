@@ -144,6 +144,20 @@ export function AddRefuelingDialog({
       if (onEditComplete) {
         onEditComplete();
       }
+    } else if (isOpen && !editItem) {
+      // Сбрасываем форму при открытии диалога для создания новой записи
+      form.reset({
+        type: "provider",
+        name: "",
+        location: "",
+        description: "",
+        servicePrice: "",
+        pvkjPrice: "",
+        agentFee: "",
+        defaultBaseId: undefined,
+        isActive: true,
+      });
+      setShowPriceFields(false);
     }
   };
 

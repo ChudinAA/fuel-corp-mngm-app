@@ -108,6 +108,19 @@ export function AddCustomerDialog({ editCustomer, onEditComplete }: { editCustom
       if (onEditComplete) {
         onEditComplete();
       }
+    } else if (isOpen && !editCustomer) {
+      // Сбрасываем форму при открытии диалога для создания новой записи
+      form.reset({
+        name: "",
+        module: "both",
+        description: "",
+        contactPerson: "",
+        phone: "",
+        email: "",
+        inn: "",
+        contractNumber: "",
+        isActive: true,
+      });
     }
   };
 

@@ -149,9 +149,7 @@ export function LogisticsTab() {
                 ))}
               </SelectContent>
             </Select>
-            <div onClick={() => setEditingItem(null)}>
-              <AddLogisticsDialog carriers={carriers || []} editItem={editingItem} onEditComplete={() => setEditingItem(null)} />
-            </div>
+            <AddLogisticsDialog carriers={carriers || []} editItem={editingItem} onEditComplete={() => setEditingItem(null)} />
           </div>
 
           {isLoading ? (

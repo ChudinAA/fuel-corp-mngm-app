@@ -125,6 +125,16 @@ export function AddWholesaleDialog({
       if (onEditComplete) {
         onEditComplete();
       }
+    } else if (isOpen && !editItem) {
+      // Сбрасываем форму при открытии диалога для создания новой записи
+      form.reset({
+        type: "supplier",
+        name: "",
+        description: "",
+        isActive: true,
+        defaultBaseId: undefined,
+        location: "",
+      });
     }
   };
 
