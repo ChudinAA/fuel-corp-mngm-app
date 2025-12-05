@@ -331,6 +331,20 @@ export default function ExchangePage() {
     },
   });
 
+  const form = useForm<ExchangeFormData>({
+    resolver: zodResolver(exchangeFormSchema),
+    defaultValues: {
+      dealDate: new Date(),
+      dealNumber: "",
+      counterparty: "",
+      productType: "kerosene",
+      quantityKg: "",
+      pricePerKg: "",
+      warehouseId: "",
+      notes: "",
+    },
+  });
+
   const watchQuantity = form.watch("quantityKg");
   const watchPrice = form.watch("pricePerKg");
 
@@ -357,20 +371,6 @@ export default function ExchangePage() {
   const data = exchanges?.data || [];
   const total = exchanges?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
-
-  const form = useForm<ExchangeFormData>({
-    resolver: zodResolver(exchangeFormSchema),
-    defaultValues: {
-      dealDate: new Date(),
-      dealNumber: "",
-      counterparty: "",
-      productType: "kerosene",
-      quantityKg: "",
-      pricePerKg: "",
-      warehouseId: "",
-      notes: "",
-    },
-  });
 
   return (
     <div className="space-y-6">
