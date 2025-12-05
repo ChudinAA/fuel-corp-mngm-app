@@ -235,48 +235,6 @@ export function AddLogisticsDialog({
       if (onEditComplete) {
         onEditComplete();
       }
-    } else if (editItem) {
-      const data = editItem.data;
-      const formData: any = {
-        type: editItem.type,
-        isActive: data.isActive,
-      };
-
-      if (editItem.type === "carrier") {
-        formData.name = data.name;
-        formData.description = data.description || "";
-        formData.inn = data.inn || "";
-        formData.contactPerson = data.contactPerson || "";
-        formData.phone = data.phone || "";
-      } else if (editItem.type === "delivery_location") {
-        formData.name = data.name;
-        formData.address = data.address || "";
-        formData.notes = data.notes || "";
-      } else if (editItem.type === "vehicle") {
-        formData.name = "";
-        formData.plateNumber = data.regNumber;
-        formData.carrierId = data.carrierId || undefined;
-        formData.vehicleType = data.model || "";
-        formData.capacityKg = data.capacityKg || "";
-      } else if (editItem.type === "trailer") {
-        formData.name = "";
-        formData.plateNumber = data.regNumber;
-        formData.carrierId = data.carrierId || undefined;
-        formData.capacityKg = data.capacityKg || "";
-      } else if (editItem.type === "driver") {
-        formData.name = data.fullName;
-        formData.carrierId = data.carrierId || undefined;
-        formData.phone = data.phone || "";
-        formData.licenseNumber = data.licenseNumber || "";
-        formData.licenseExpiry = data.licenseExpiry || "";
-      } else if (editItem.type === "warehouse") {
-        formData.name = data.name;
-        formData.description = data.description || "";
-        formData.address = data.address || "";
-        formData.storageCost = data.storageCost || "";
-      }
-
-      form.reset(formData);
     }
   };
 

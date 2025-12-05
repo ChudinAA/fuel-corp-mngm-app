@@ -144,22 +144,6 @@ export function AddRefuelingDialog({
       if (onEditComplete) {
         onEditComplete();
       }
-    } else if (editItem) {
-      const data = editItem.data as any;
-      form.reset({
-        type: editItem.type,
-        name: data.name,
-        location: data.location || "",
-        description: data.description || "",
-        servicePrice: data.servicePrice || "",
-        pvkjPrice: data.pvkjPrice || "",
-        agentFee: data.agentFee || "",
-        defaultBaseId: data.defaultBaseId || undefined,
-        isActive: data.isActive,
-      });
-      if (editItem.type === "provider" && (data.servicePrice || data.pvkjPrice || data.agentFee)) {
-        setShowPriceFields(true);
-      }
     }
   };
 

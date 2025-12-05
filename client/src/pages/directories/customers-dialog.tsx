@@ -108,18 +108,6 @@ export function AddCustomerDialog({ editCustomer, onEditComplete }: { editCustom
       if (onEditComplete) {
         onEditComplete();
       }
-    } else if (editCustomer) {
-      form.reset({
-        name: editCustomer.name,
-        module: editCustomer.module as "wholesale" | "refueling" | "both",
-        description: editCustomer.description || "",
-        contactPerson: editCustomer.contactPerson || "",
-        phone: editCustomer.phone || "",
-        email: editCustomer.email || "",
-        inn: editCustomer.inn || "",
-        contractNumber: editCustomer.contractNumber || "",
-        isActive: editCustomer.isActive,
-      });
     }
   };
 

@@ -125,16 +125,6 @@ export function AddWholesaleDialog({
       if (onEditComplete) {
         onEditComplete();
       }
-    } else if (editItem) {
-      const data = editItem.data as any;
-      form.reset({
-        type: editItem.type,
-        name: data.name,
-        description: data.description || "",
-        defaultBaseId: data.defaultBaseId || undefined,
-        location: data.location || "",
-        isActive: data.isActive,
-      });
     }
   };
 
