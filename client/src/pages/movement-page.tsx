@@ -34,6 +34,8 @@ import {
   Calculator
 } from "lucide-react";
 import type { Movement, Warehouse, DirectoryWholesale, DirectoryLogistics } from "@shared/schema";
+import { AddMovementDialog } from "./dialogs/AddMovementDialog";
+import { useAuth } from "@/hooks/use-auth";
 
 const movementFormSchema = z.object({
   movementDate: z.date({ required_error: "Укажите дату" }),
@@ -70,9 +72,11 @@ function CalculatedField({ label, value, suffix = "" }: { label: string; value: 
 }
 
 export default function MovementPage() {
-  const { toast } = useToast();
+  const { user } = useAuth();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
+  const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
   const pageSize = 10;
 
@@ -157,6 +161,33 @@ export default function MovementPage() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async (data: MovementFormData & { id: string }) => {
+      const { id, ...rest } = data;
+      const payload = {
+        ...rest,
+        movementDate: format(rest.movementDate, "yyyy-MM-dd"),
+        supplierId: rest.supplierId || null,
+        fromWarehouseId: rest.fromWarehouseId || null,
+        toWarehouseId: rest.toWarehouseId,
+        carrierId: rest.carrierId || null,
+        quantityKg: calculatedKg || rest.quantityKg,
+      };
+      const res = await apiRequest("PATCH", `/api/movement/${id}`, payload);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movement"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      toast({ title: "Перемещение обновлено", description: "Запись успешно сохранена" });
+      setEditingMovement(null);
+      form.reset();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
+  });
+
   const formatNumber = (value: string | number | null) => {
     if (value === null) return "—";
     const num = typeof value === "string" ? parseFloat(value) : value;
@@ -186,13 +217,19 @@ export default function MovementPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ArrowLeftRight className="h-5 w-5" />
-            Новое перемещение
+            {editingMovement ? "Редактирование перемещения" : "Новое перемещение"}
           </CardTitle>
-          <CardDescription>Создание записи о поставке или внутреннем перемещении</CardDescription>
+          <CardDescription>{editingMovement ? "Изменение существующей записи" : "Создание записи о поставке или внутреннем перемещении"}</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
+            <form onSubmit={form.handleSubmit((data) => {
+              if (editingMovement) {
+                updateMutation.mutate({ ...data, id: editingMovement.id });
+              } else {
+                createMutation.mutate(data);
+              }
+            })} className="space-y-6">
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 <FormField
                   control={form.control}
@@ -454,9 +491,9 @@ export default function MovementPage() {
               )} />
 
               <div className="flex justify-end gap-4 pt-4 border-t">
-                <Button type="button" variant="outline" onClick={() => form.reset()}>Очистить</Button>
-                <Button type="submit" disabled={createMutation.isPending} data-testid="button-create-movement">
-                  {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : <><Plus className="mr-2 h-4 w-4" />Создать</>}
+                <Button type="button" variant="outline" onClick={() => { form.reset(); setEditingMovement(null); }}>Очистить</Button>
+                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-create-movement">
+                  {createMutation.isPending || updateMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{editingMovement ? "Обновление" : "Сохранение"}...</> : editingMovement ? <><Pencil className="mr-2 h-4 w-4" />Обновить</> : <><Plus className="mr-2 h-4 w-4" />Создать</>}
                 </Button>
               </div>
             </form>
@@ -511,9 +548,8 @@ export default function MovementPage() {
                             variant="ghost" 
                             size="icon" 
                             className="h-8 w-8"
-                            onClick={() => {
-                              toast({ title: "В разработке", description: "Функция редактирования в разработке" });
-                            }}
+                            data-testid={`button-edit-movement-${item.id}`}
+                            onClick={() => setEditingMovement(item)}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -551,6 +587,17 @@ export default function MovementPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AddMovementDialog 
+        warehouses={warehouses || []} 
+        suppliers={suppliers || []} 
+        carriers={carriers || []}
+        editMovement={editingMovement}
+        onClose={() => {
+          setEditingMovement(null);
+          form.reset();
+        }}
+      />
     </div>
   );
 }

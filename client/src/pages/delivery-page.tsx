@@ -41,19 +41,19 @@ const deliveryCostFormSchema = z.object({
 
 type DeliveryCostFormData = z.infer<typeof deliveryCostFormSchema>;
 
-function AddDeliveryCostDialog() {
+function AddDeliveryCostDialog({ editDeliveryCost }: { editDeliveryCost: DeliveryCost | null }) {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(editDeliveryCost !== null);
 
   const form = useForm<DeliveryCostFormData>({
     resolver: zodResolver(deliveryCostFormSchema),
     defaultValues: {
-      effectiveDate: new Date(),
-      carrierId: "",
-      fromLocation: "",
-      toLocation: "",
-      costPerTrip: "",
-      costPerKg: "",
+      effectiveDate: editDeliveryCost ? new Date(editDeliveryCost.effectiveDate) : new Date(),
+      carrierId: editDeliveryCost?.carrierId || "",
+      fromLocation: editDeliveryCost?.fromLocation || "",
+      toLocation: editDeliveryCost?.toLocation || "",
+      costPerTrip: editDeliveryCost?.costPerTrip.toString() || "",
+      costPerKg: editDeliveryCost?.costPerKg?.toString() || "",
     },
   });
 
@@ -86,21 +86,46 @@ function AddDeliveryCostDialog() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async (data: DeliveryCostFormData) => {
+      const payload = {
+        ...data,
+        effectiveDate: format(data.effectiveDate, "yyyy-MM-dd"),
+        carrierId: data.carrierId,
+      };
+      const res = await apiRequest("PATCH", `/api/delivery-costs/${editDeliveryCost?.id}`, payload);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/delivery-costs"] });
+      toast({ title: "Тариф обновлен", description: "Изменения тарифа доставки сохранены" });
+      form.reset();
+      setOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button data-testid="button-add-delivery-cost">
-          <Plus className="mr-2 h-4 w-4" />
-          Добавить тариф
-        </Button>
+        {editDeliveryCost ? null : (
+          <Button data-testid="button-add-delivery-cost">
+            <Plus className="mr-2 h-4 w-4" />
+            Добавить тариф
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Новый тариф доставки</DialogTitle>
-          <DialogDescription>Добавление тарифа перевозки</DialogDescription>
+          <DialogTitle>{editDeliveryCost ? "Редактировать тариф доставки" : "Новый тариф доставки"}</DialogTitle>
+          <DialogDescription>{editDeliveryCost ? "Изменение тарифа перевозки" : "Добавление тарифа перевозки"}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+          <form onSubmit={form.handleSubmit(data => editDeliveryCost ? updateMutation.mutate(data) : createMutation.mutate(data))} className="space-y-4">
             <FormField
               control={form.control}
               name="effectiveDate"
@@ -225,9 +250,9 @@ function AddDeliveryCostDialog() {
             </div>
 
             <div className="flex justify-end gap-4 pt-4">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Отмена</Button>
-              <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-delivery-cost">
-                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : "Создать"}
+              <Button type="button" variant="outline" onClick={() => { setOpen(false); setEditingDeliveryCost(null); }}>Отмена</Button>
+              <Button type="submit" disabled={isSubmitting} data-testid="button-save-delivery-cost">
+                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{editDeliveryCost ? "Сохранение..." : "Создание..."}</> : (editDeliveryCost ? "Сохранить" : "Создать")}
               </Button>
             </div>
           </form>
@@ -239,9 +264,19 @@ function AddDeliveryCostDialog() {
 
 export default function DeliveryPage() {
   const [search, setSearch] = useState("");
+  const [editingDeliveryCost, setEditingDeliveryCost] = useState<DeliveryCost | null>(null);
+  const { toast } = useToast();
 
   const { data: deliveryCosts, isLoading } = useQuery<DeliveryCost[]>({
     queryKey: ["/api/delivery-costs"],
+  });
+
+  const { data: carriers } = useQuery<DirectoryLogistics[]>({
+    queryKey: ["/api/directories/logistics", "carrier"],
+  });
+
+  const { data: locations } = useQuery<DirectoryLogistics[]>({
+    queryKey: ["/api/directories/logistics", "delivery_location"],
   });
 
   const formatNumber = (value: string | number | null) => {
@@ -278,7 +313,7 @@ export default function DeliveryPage() {
           <h1 className="text-2xl font-semibold">Доставка</h1>
           <p className="text-muted-foreground">Управление тарифами на доставку</p>
         </div>
-        <AddDeliveryCostDialog />
+        <AddDeliveryCostDialog editDeliveryCost={editingDeliveryCost} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -370,7 +405,14 @@ export default function DeliveryPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4" /></Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              data-testid={`button-edit-delivery-${cost.id}`}
+                              onClick={() => setEditingDeliveryCost(cost)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
                             <Button 
                               variant="ghost" 
                               size="icon" 

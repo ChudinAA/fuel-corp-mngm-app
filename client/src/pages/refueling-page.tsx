@@ -39,6 +39,7 @@ import {
   Plane
 } from "lucide-react";
 import type { AircraftRefueling, DirectoryRefueling } from "@shared/schema";
+import { useAuth } from "@/hooks/use-auth";
 
 const PRODUCT_TYPES = [
   { value: "kerosene", label: "Керосин" },
@@ -180,6 +181,30 @@ function RefuelingForm({
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async (data: RefuelingFormData & { id: string }) => {
+      const payload = {
+        ...data,
+        refuelingDate: format(data.refuelingDate, "yyyy-MM-dd"),
+      };
+      const res = await apiRequest("PATCH", `/api/refueling/${data.id}`, payload);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/refueling"] });
+      toast({ title: "Заправка обновлена", description: "Запись о заправке успешно обновлена" });
+      form.reset();
+      onSuccess?.();
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Ошибка", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    },
+  });
+
   const watchLiters = form.watch("quantityLiters");
   const watchDensity = form.watch("density");
   const watchKg = form.watch("quantityKg");
@@ -194,7 +219,11 @@ function RefuelingForm({
       ...data,
       quantityKg: calculatedKg || data.quantityKg,
     };
-    createMutation.mutate(submitData);
+    if (editData) {
+      updateMutation.mutate({ ...submitData, id: editData.id });
+    } else {
+      createMutation.mutate(submitData);
+    }
   };
 
   const formatNumber = (value: number | string | null) => {
@@ -548,24 +577,27 @@ function RefuelingForm({
           <Button 
             type="button" 
             variant="outline"
-            onClick={() => form.reset()}
+            onClick={() => {
+              form.reset();
+              onSuccess?.();
+            }}
           >
-            Очистить
+            {editData ? "Отмена" : "Очистить"}
           </Button>
           <Button 
             type="submit" 
-            disabled={createMutation.isPending}
-            data-testid="button-create-refueling"
+            disabled={createMutation.isPending || updateMutation.isPending}
+            data-testid="button-submit-refueling"
           >
-            {createMutation.isPending ? (
+            {createMutation.isPending || updateMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Сохранение...
+                {editData ? "Сохранение..." : "Сохранение..."}
               </>
             ) : (
               <>
                 <Plus className="mr-2 h-4 w-4" />
-                Создать запись
+                {editData ? "Сохранить изменения" : "Создать запись"}
               </>
             )}
           </Button>
@@ -580,6 +612,7 @@ function RefuelingTable() {
   const [search, setSearch] = useState("");
   const pageSize = 10;
   const { toast } = useToast();
+  const [editingRefueling, setEditingRefueling] = useState<AircraftRefueling | null>(null);
 
   const { data: refuelings, isLoading } = useQuery<{ data: AircraftRefueling[]; total: number }>({
     queryKey: ["/api/refueling", page, search],
@@ -651,6 +684,21 @@ function RefuelingTable() {
         </Button>
       </div>
 
+      <Dialog open={!!editingRefueling} onOpenChange={(isOpen) => !isOpen && setEditingRefueling(null)}>
+        <DialogContent className="sm:max-w-[800px]">
+          <DialogHeader>
+            <DialogTitle>Редактирование заправки</DialogTitle>
+            <DialogDescription>
+              Измените данные заправки и нажмите "Сохранить изменения"
+            </DialogDescription>
+          </DialogHeader>
+          <RefuelingForm 
+            editData={editingRefueling} 
+            onSuccess={() => setEditingRefueling(null)} 
+          />
+        </DialogContent>
+      </Dialog>
+
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -704,9 +752,8 @@ function RefuelingTable() {
                         variant="ghost" 
                         size="icon" 
                         className="h-8 w-8"
-                        onClick={() => {
-                          toast({ title: "В разработке", description: "Функция редактирования в разработке" });
-                        }}
+                        data-testid={`button-edit-refueling-${item.id}`}
+                        onClick={() => setEditingRefueling(item)}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -765,7 +812,19 @@ function RefuelingTable() {
 }
 
 export default function RefuelingPage() {
+  const { user } = useAuth();
+  const [search, setSearch] = useState("");
+  const [editingRefueling, setEditingRefueling] = useState<AircraftRefueling | null>(null);
+  const { toast } = useToast();
   const [isFullScreen, setIsFullScreen] = useState(false);
+
+  const { data: suppliers } = useQuery<DirectoryRefueling[]>({
+    queryKey: ["/api/directories/refueling", "airport"],
+  });
+
+  const { data: buyers } = useQuery<DirectoryRefueling[]>({
+    queryKey: ["/api/directories/refueling", "buyer"],
+  });
 
   return (
     <div className="space-y-6">
@@ -782,14 +841,17 @@ export default function RefuelingPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plane className="h-5 w-5" />
-            Новая заправка
+            {editingRefueling ? "Редактирование заправки" : "Новая заправка"}
           </CardTitle>
           <CardDescription>
-            Заполните данные для записи заправки
+            {editingRefueling ? "Измените данные заправки" : "Заполните данные для записи заправки"}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <RefuelingForm />
+          <RefuelingForm 
+            editData={editingRefueling} 
+            onSuccess={() => setEditingRefueling(null)} 
+          />
         </CardContent>
       </Card>
 

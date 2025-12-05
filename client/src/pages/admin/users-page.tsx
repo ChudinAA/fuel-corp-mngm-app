@@ -43,7 +43,10 @@ const userFormSchema = z.object({
 
 type UserFormData = z.infer<typeof userFormSchema>;
 
-function AddUserDialog() {
+function AddUserDialog({
+  roles,
+  editUser
+}: { roles: Role[]; editUser: User | null }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
 
@@ -58,10 +61,6 @@ function AddUserDialog() {
       roleId: "",
       isActive: true,
     },
-  });
-
-  const { data: roles } = useQuery<Role[]>({
-    queryKey: ["/api/roles"],
   });
 
   const createMutation = useMutation({
@@ -84,8 +83,45 @@ function AddUserDialog() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async (data: UserFormData) => {
+      const payload = {
+        ...data,
+        roleId: data.roleId,
+      };
+      const res = await apiRequest("PATCH", `/api/admin/users/${editUser.id}`, payload);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "Пользователь обновлен", description: "Данные пользователя успешно изменены" });
+      form.reset();
+      setOpen(false);
+      setEditingUser(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const isEditing = !!editUser;
+
+  // Set form values when editUser prop changes
+  useState(() => {
+    if (editUser) {
+      form.reset({
+        email: editUser.email,
+        firstName: editUser.firstName,
+        lastName: editUser.lastName,
+        patronymic: editUser.patronymic || "",
+        roleId: editUser.roleId || "",
+        isActive: editUser.isActive,
+      });
+    }
+  }, [editUser, form.reset]);
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open || isEditing} onOpenChange={(isOpen) => { setOpen(isOpen); if (!isOpen) setEditingUser(null); }}>
       <DialogTrigger asChild>
         <Button data-testid="button-add-user">
           <Plus className="mr-2 h-4 w-4" />
@@ -94,11 +130,17 @@ function AddUserDialog() {
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Новый пользователь</DialogTitle>
-          <DialogDescription>Создание учетной записи пользователя</DialogDescription>
+          <DialogTitle>{isEditing ? "Редактирование пользователя" : "Новый пользователь"}</DialogTitle>
+          <DialogDescription>{isEditing ? "Изменение учетной записи пользователя" : "Создание учетной записи пользователя"}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+          <form onSubmit={form.handleSubmit((data) => {
+            if (isEditing) {
+              updateMutation.mutate(data);
+            } else {
+              createMutation.mutate(data);
+            }
+          })} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -153,19 +195,21 @@ function AddUserDialog() {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Пароль</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••••" data-testid="input-user-password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {!isEditing && (
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Пароль</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" data-testid="input-user-password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <FormField
               control={form.control}
               name="roleId"
@@ -201,9 +245,20 @@ function AddUserDialog() {
               )}
             />
             <div className="flex justify-end gap-4 pt-4">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Отмена</Button>
-              <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-user">
-                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : "Создать"}
+              <Button type="button" variant="outline" onClick={() => {
+                setOpen(false);
+                setEditingUser(null);
+              }}>Отмена</Button>
+              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-save-user">
+                {isEditing ? (
+                  createMutation.isPending || updateMutation.isPending ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</>
+                  ) : (
+                    "Сохранить"
+                  )
+                ) : (
+                  createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : "Создать"
+                )}
               </Button>
             </div>
           </form>
@@ -216,14 +271,18 @@ function AddUserDialog() {
 export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const { toast } = useToast();
 
-  const { data: users, isLoading } = useQuery<User[]>({
-    queryKey: ["/api/admin/users"],
-  });
+  const {
+    data: users,
+    isLoading,
+    isError
+  } = useQuery<User[]>({ queryKey: ["/api/admin/users"], staleTime: 5 * 60 * 1000 });
 
-  const { data: roles } = useQuery<Role[]>({
-    queryKey: ["/api/roles"],
-  });
+  const {
+    data: roles
+  } = useQuery<Role[]>({ queryKey: ["/api/roles"], staleTime: 5 * 60 * 1000 });
 
   const getInitials = (firstName: string, lastName: string) => 
     `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
@@ -267,7 +326,7 @@ export default function UsersPage() {
           <h1 className="text-2xl font-semibold">Пользователи</h1>
           <p className="text-muted-foreground">Управление учетными записями</p>
         </div>
-        <AddUserDialog />
+        <AddUserDialog roles={roles || []} editUser={editingUser} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -345,6 +404,12 @@ export default function UsersPage() {
                     [1, 2, 3, 4, 5].map((i) => (
                       <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-12 w-full" /></TableCell></TableRow>
                     ))
+                  ) : isError ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-destructive">
+                        Ошибка загрузки пользователей
+                      </TableCell>
+                    </TableRow>
                   ) : filteredUsers.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
@@ -383,7 +448,13 @@ export default function UsersPage() {
                             <Button variant="ghost" size="icon" className="h-8 w-8">
                               <Key className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8"
+                              data-testid={`button-edit-user-${user.id}`}
+                              onClick={() => setEditingUser(user)}
+                            >
                               <Pencil className="h-4 w-4" />
                             </Button>
                             <Button 

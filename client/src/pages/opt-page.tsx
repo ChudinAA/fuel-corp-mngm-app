@@ -39,6 +39,7 @@ import {
   Filter
 } from "lucide-react";
 import type { Opt, DirectoryWholesale, DirectoryLogistics } from "@shared/schema";
+import { useAuth } from "@/hooks/use-auth";
 
 const optFormSchema = z.object({
   dealDate: z.date({ required_error: "Укажите дату сделки" }),
@@ -198,6 +199,34 @@ function OptForm({
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async (data: OptFormData & { id: string }) => {
+      const payload = {
+        ...data,
+        supplierId: data.supplierId,
+        buyerId: data.buyerId,
+        carrierId: data.carrierId || null,
+        deliveryLocationId: data.deliveryLocationId || null,
+        dealDate: format(data.dealDate, "yyyy-MM-dd"),
+      };
+      const res = await apiRequest("PATCH", `/api/opt/${data.id}`, payload);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/opt"] });
+      toast({ title: "Сделка обновлена", description: "Оптовая сделка успешно обновлена" });
+      form.reset();
+      onSuccess?.();
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Ошибка", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    },
+  });
+
   const watchLiters = form.watch("quantityLiters");
   const watchDensity = form.watch("density");
   const watchKg = form.watch("quantityKg");
@@ -211,7 +240,11 @@ function OptForm({
       ...data,
       quantityKg: calculatedKg || data.quantityKg,
     };
-    createMutation.mutate(submitData);
+    if (editData) {
+      updateMutation.mutate({ ...submitData, id: editData.id });
+    } else {
+      createMutation.mutate(submitData);
+    }
   };
 
   const formatNumber = (value: number | string | null) => {
@@ -610,7 +643,7 @@ function OptForm({
               </FormItem>
             )}
           />
-          
+
           <div className="space-y-4">
             <FormField
               control={form.control}
@@ -630,7 +663,7 @@ function OptForm({
                 </FormItem>
               )}
             />
-            
+
             <CalculatedField 
               label="Накопительно" 
               value={formatCurrency(125000)}
@@ -643,24 +676,27 @@ function OptForm({
           <Button 
             type="button" 
             variant="outline"
-            onClick={() => form.reset()}
+            onClick={() => {
+              form.reset();
+              onSuccess?.();
+            }}
           >
-            Очистить
+            {editData ? "Отмена" : "Очистить"}
           </Button>
           <Button 
             type="submit" 
-            disabled={createMutation.isPending}
-            data-testid="button-create-opt"
+            disabled={createMutation.isPending || updateMutation.isPending}
+            data-testid="button-submit-opt"
           >
-            {createMutation.isPending ? (
+            {createMutation.isPending || updateMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Сохранение...
+                {editData ? "Сохранение..." : "Создание..."}
               </>
             ) : (
               <>
                 <Plus className="mr-2 h-4 w-4" />
-                Создать сделку
+                {editData ? "Сохранить изменения" : "Создать сделку"}
               </>
             )}
           </Button>
@@ -670,9 +706,46 @@ function OptForm({
   );
 }
 
+function AddOptDialog({
+  isOpen,
+  onClose,
+  suppliers,
+  buyers,
+  carriers,
+  locations,
+  editOpt,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  suppliers: DirectoryWholesale[];
+  buyers: DirectoryWholesale[];
+  carriers: DirectoryLogistics[];
+  locations: DirectoryLogistics[];
+  editOpt: Opt | null;
+}) {
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[800px] h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{editOpt ? "Редактирование сделки" : "Новая сделка"}</DialogTitle>
+          <DialogDescription>
+            {editOpt ? "Измените данные существующей оптовой сделки" : "Заполните данные для создания новой оптовой сделки"}
+          </DialogDescription>
+        </DialogHeader>
+        <OptForm 
+          onSuccess={onClose} 
+          editData={editOpt}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function OptTable() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingOpt, setEditingOpt] = useState<Opt | null>(null);
   const pageSize = 10;
   const { toast } = useToast();
 
@@ -794,8 +867,10 @@ function OptTable() {
                         size="icon" 
                         className="h-8 w-8"
                         onClick={() => {
-                          toast({ title: "В разработке", description: "Функция редактирования в разработке" });
+                          setEditingOpt(deal);
+                          setIsEditing(true);
                         }}
+                        data-testid={`button-edit-opt-${deal.id}`}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -854,7 +929,43 @@ function OptTable() {
 }
 
 export default function OptPage() {
+  const { user } = useAuth();
+  const [search, setSearch] = useState("");
+  const [editingOpt, setEditingOpt] = useState<Opt | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const { toast } = useToast();
+
+  const { data: suppliers } = useQuery<DirectoryWholesale[]>({
+    queryKey: ["/api/directories/wholesale", "supplier"],
+  });
+
+  const { data: buyers } = useQuery<DirectoryWholesale[]>({
+    queryKey: ["/api/directories/wholesale", "buyer"],
+  });
+
+  const { data: carriers } = useQuery<DirectoryLogistics[]>({
+    queryKey: ["/api/directories/logistics", "carrier"],
+  });
+
+  const { data: locations } = useQuery<DirectoryLogistics[]>({
+    queryKey: ["/api/directories/logistics", "delivery_location"],
+  });
+
+  const handleEditClick = (opt: Opt) => {
+    setEditingOpt(opt);
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingOpt(null);
+  };
+
+  const handleOpenDialog = () => {
+    setEditingOpt(null);
+    setIsDialogOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -865,19 +976,21 @@ export default function OptPage() {
             Учет оптовых сделок с автоматическим расчетом цен
           </p>
         </div>
+        <Button onClick={handleOpenDialog} data-testid="button-add-opt">
+          <Plus className="mr-2 h-4 w-4" />
+          Новая сделка
+        </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Новая сделка</CardTitle>
-          <CardDescription>
-            Заполните данные для создания новой оптовой сделки
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <OptForm />
-        </CardContent>
-      </Card>
+      <AddOptDialog 
+        isOpen={isDialogOpen}
+        onClose={handleCloseDialog}
+        suppliers={suppliers || []} 
+        buyers={buyers || []} 
+        carriers={carriers || []} 
+        locations={locations || []}
+        editOpt={editingOpt}
+      />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">

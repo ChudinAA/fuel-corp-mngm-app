@@ -98,7 +98,7 @@ function WarehouseCard({ warehouse }: { warehouse: WarehouseType }) {
             <p className="text-lg font-medium">{formatCurrency(cost)}/кг</p>
           </div>
         </div>
-        
+
         {allocation > 0 && (
           <div className="space-y-2">
             <div className="flex justify-between text-xs">
@@ -122,7 +122,12 @@ function WarehouseCard({ warehouse }: { warehouse: WarehouseType }) {
             </span>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              data-testid={`button-edit-warehouse-${warehouse.id}`}
+              onClick={() => setEditingWarehouse(warehouse)}
+            >
               <Pencil className="h-4 w-4" />
             </Button>
             <Button 
@@ -145,34 +150,39 @@ function WarehouseCard({ warehouse }: { warehouse: WarehouseType }) {
   );
 }
 
-function AddWarehouseDialog() {
+function AddWarehouseDialog({ warehouseToEdit, onSave }: { warehouseToEdit: WarehouseType | null, onSave: () => void }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+
+  const isEditing = !!warehouseToEdit;
 
   const form = useForm<WarehouseFormData>({
     resolver: zodResolver(warehouseFormSchema),
     defaultValues: {
-      name: "",
-      type: "",
-      basis: "",
-      monthlyAllocation: "",
+      name: warehouseToEdit?.name || "",
+      type: warehouseToEdit?.type || "",
+      basis: warehouseToEdit?.basis || "",
+      monthlyAllocation: warehouseToEdit?.monthlyAllocation || "",
     },
   });
 
-  const createMutation = useMutation({
+  const mutation = useMutation({
     mutationFn: async (data: WarehouseFormData) => {
       const payload = {
         ...data,
         monthlyAllocation: data.monthlyAllocation || null,
       };
-      const res = await apiRequest("POST", "/api/warehouses", payload);
+      const url = isEditing ? `/api/warehouses/${warehouseToEdit?.id}` : "/api/warehouses";
+      const method = isEditing ? "PATCH" : "POST";
+      const res = await apiRequest(method, url, payload);
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
-      toast({ title: "Склад создан", description: "Новый склад успешно добавлен" });
+      toast({ title: isEditing ? "Склад обновлен" : "Склад создан", description: isEditing ? "Информация о складе успешно изменена" : "Новый склад успешно добавлен" });
       form.reset();
       setOpen(false);
+      onSave();
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
@@ -182,18 +192,17 @@ function AddWarehouseDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button data-testid="button-add-warehouse">
-          <Plus className="mr-2 h-4 w-4" />
-          Добавить склад
+        <Button data-testid={isEditing ? `button-edit-warehouse-${warehouseToEdit?.id}` : "button-add-warehouse"}>
+          {isEditing ? <><Pencil className="mr-2 h-4 w-4" />Редактировать</> : <><Plus className="mr-2 h-4 w-4" />Добавить склад</>}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Новый склад</DialogTitle>
-          <DialogDescription>Добавление нового склада в систему</DialogDescription>
+          <DialogTitle>{isEditing ? "Редактирование склада" : "Новый склад"}</DialogTitle>
+          <DialogDescription>{isEditing ? "Изменение информации о складе" : "Добавление нового склада в систему"}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+          <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -257,8 +266,8 @@ function AddWarehouseDialog() {
             />
             <div className="flex justify-end gap-4 pt-4">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Отмена</Button>
-              <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-warehouse">
-                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : "Создать"}
+              <Button type="submit" disabled={mutation.isPending} data-testid="button-save-warehouse">
+                {mutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isEditing ? "Сохранение..." : "Создание..."}</> : isEditing ? "Сохранить" : "Создать"}
               </Button>
             </div>
           </form>
@@ -271,6 +280,8 @@ function AddWarehouseDialog() {
 export default function WarehousesPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [editingWarehouse, setEditingWarehouse] = useState<WarehouseType | null>(null);
+  const { toast } = useToast();
 
   const { data: warehouses, isLoading } = useQuery<WarehouseType[]>({
     queryKey: ["/api/warehouses"],
@@ -285,6 +296,10 @@ export default function WarehousesPage() {
   const totalBalance = filteredWarehouses.reduce((sum, w) => sum + parseFloat(w.currentBalance || "0"), 0);
   const formatNumber = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value);
 
+  const handleSave = () => {
+    setEditingWarehouse(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -292,7 +307,7 @@ export default function WarehousesPage() {
           <h1 className="text-2xl font-semibold">Склады</h1>
           <p className="text-muted-foreground">Управление складами и мониторинг остатков</p>
         </div>
-        <AddWarehouseDialog />
+        <AddWarehouseDialog warehouseToEdit={null} onSave={handleSave} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -365,6 +380,9 @@ export default function WarehousesPage() {
           {filteredWarehouses.map((warehouse) => (
             <WarehouseCard key={warehouse.id} warehouse={warehouse} />
           ))}
+          {editingWarehouse && (
+            <AddWarehouseDialog warehouseToEdit={editingWarehouse} onSave={handleSave} />
+          )}
         </div>
       )}
     </div>

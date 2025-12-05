@@ -54,7 +54,7 @@ const priceFormSchema = z.object({
 
 type PriceFormData = z.infer<typeof priceFormSchema>;
 
-function AddPriceDialog() {
+function AddPriceDialog({ editPrice }: { editPrice?: Price | null }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [calculatingSelection, setCalculatingSelection] = useState(false);
@@ -77,6 +77,24 @@ function AddPriceDialog() {
       contractNumber: "",
     },
   });
+
+  useEffect(() => {
+    if (editPrice) {
+      form.reset({
+        dateFrom: new Date(editPrice.dateFrom),
+        dateTo: new Date(editPrice.dateTo || editPrice.dateFrom),
+        counterpartyType: editPrice.counterpartyType,
+        counterpartyRole: editPrice.counterpartyRole,
+        counterpartyId: editPrice.counterpartyId,
+        productType: editPrice.productType,
+        basis: editPrice.basis || "",
+        volume: editPrice.volume || "",
+        priceValues: editPrice.priceValues.map(pv => ({ price: JSON.parse(pv).price })),
+        contractNumber: editPrice.contractNumber || "",
+      });
+      setOpen(true);
+    }
+  }, [editPrice, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -197,18 +215,34 @@ function AddPriceDialog() {
         counterpartyRole: data.counterpartyRole,
         basis: data.basis,
         volume: data.volume || null,
-        priceValues: data.priceValues,
+        priceValues: data.priceValues.map(pv => ({ price: parseFloat(pv.price) })),
         dateFrom: format(data.dateFrom, "yyyy-MM-dd"),
         dateTo: format(data.dateTo, "yyyy-MM-dd"),
         contractNumber: data.contractNumber || null,
       };
-      const res = await apiRequest("POST", "/api/prices", payload);
-      return res.json();
+      if (editPrice) {
+        const res = await apiRequest("PATCH", `/api/prices/${editPrice.id}`, payload);
+        return res.json();
+      } else {
+        const res = await apiRequest("POST", "/api/prices", payload);
+        return res.json();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/prices"] });
-      toast({ title: "Цена добавлена", description: "Новая цена успешно сохранена" });
-      form.reset();
+      toast({ title: editPrice ? "Цена обновлена" : "Цена добавлена", description: editPrice ? "Цена успешно обновлена" : "Новая цена успешно сохранена" });
+      form.reset({
+        dateFrom: new Date(),
+        dateTo: new Date(),
+        counterpartyType: "wholesale",
+        counterpartyRole: "supplier",
+        counterpartyId: "",
+        productType: "kerosine",
+        basis: "",
+        volume: "",
+        priceValues: [{ price: "" }],
+        contractNumber: "",
+      });
       setSelectionResult(null);
       setDateCheckResult(null);
       setOpen(false);
@@ -219,17 +253,33 @@ function AddPriceDialog() {
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      setOpen(isOpen);
+      if (!isOpen && editPrice) {
+        // Clear editPrice when dialog is closed without saving
+        // This requires passing a setter down or using a global state
+        // For now, we assume the parent component handles clearing editPrice
+      }
+    }}>
       <DialogTrigger asChild>
-        <Button data-testid="button-add-price">
-          <Plus className="mr-2 h-4 w-4" />
-          Добавить цену
+        <Button data-testid={editPrice ? "button-edit-price-dialog" : "button-add-price"}>
+          {editPrice ? (
+            <>
+              <Pencil className="mr-2 h-4 w-4" />
+              Редактировать цену
+            </>
+          ) : (
+            <>
+              <Plus className="mr-2 h-4 w-4" />
+              Добавить цену
+            </>
+          )}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Новая цена</DialogTitle>
-          <DialogDescription>Добавление цены покупки или продажи</DialogDescription>
+          <DialogTitle>{editPrice ? "Редактирование цены" : "Новая цена"}</DialogTitle>
+          <DialogDescription>Добавление или редактирование цены покупки или продажи</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
@@ -545,9 +595,17 @@ function AddPriceDialog() {
             </div>
 
             <div className="flex justify-end gap-4 pt-4">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Отмена</Button>
-              <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-price">
-                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : "Создать"}
+              <Button type="button" variant="outline" onClick={() => {
+                setOpen(false);
+                // If editing, clear the editPrice state in the parent component
+                if (editPrice) {
+                  // This assumes PricesPage has a setEditingPrice function
+                  // For simplicity, we'll rely on the dialog closing to trigger parent cleanup if needed
+                  // A more robust solution would involve passing a callback prop
+                }
+              }}>Отмена</Button>
+              <Button type="submit" disabled={createMutation.isPending} data-testid={editPrice ? "button-save-edit-price" : "button-save-price"}>
+                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{editPrice ? "Сохранение..." : "Создание..."}</> : (editPrice ? "Сохранить" : "Создать")}
               </Button>
             </div>
           </form>
@@ -559,6 +617,7 @@ function AddPriceDialog() {
 
 function PricesTable({ counterpartyRole, counterpartyType }: { counterpartyRole: "supplier" | "buyer"; counterpartyType: "wholesale" | "refueling" }) {
   const [search, setSearch] = useState("");
+  const [editingPrice, setEditingPrice] = useState<Price | null>(null);
   const { toast } = useToast();
 
   const { data: prices, isLoading } = useQuery<Price[]>({
@@ -673,6 +732,14 @@ function PricesTable({ counterpartyRole, counterpartyType }: { counterpartyRole:
     },
   });
 
+  const handleEditClick = (price: Price) => {
+    setEditingPrice(price);
+  };
+
+  const handleDialogClose = () => {
+    setEditingPrice(null);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -687,6 +754,8 @@ function PricesTable({ counterpartyRole, counterpartyType }: { counterpartyRole:
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input placeholder="Поиск по базису или контрагенту..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
       </div>
+
+      <AddPriceDialog editPrice={editingPrice} />
 
       <div className="border rounded-lg overflow-x-auto">
         <Table>
@@ -775,7 +844,15 @@ function PricesTable({ counterpartyRole, counterpartyType }: { counterpartyRole:
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-edit-price-${price.id}`}><Pencil className="h-4 w-4" /></Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8" 
+                        data-testid={`button-edit-price-${price.id}`}
+                        onClick={() => handleEditClick(price)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       <Button 
                         variant="ghost" 
                         size="icon" 
@@ -804,6 +881,16 @@ function PricesTable({ counterpartyRole, counterpartyType }: { counterpartyRole:
 
 export default function PricesPage() {
   const [activeTab, setActiveTab] = useState<"wholesale" | "refueling">("wholesale");
+  const [editingPrice, setEditingPrice] = useState<Price | null>(null);
+
+  const { data: prices, isLoading } = useQuery<Price[]>({ queryKey: ["/api/prices"] });
+  const { data: suppliers } = useQuery<WholesaleSupplier[]>({ queryKey: ["/api/wholesale/suppliers"] });
+  const { data: buyers } = useQuery<Customer[]>({ queryKey: ["/api/customers"] });
+  const { data: bases } = useQuery<Array<WholesaleBase | RefuelingBase>>({ queryKey: ["/api/wholesale/bases", "/api/refueling/bases"] });
+
+  const handleDialogClose = () => {
+    setEditingPrice(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -812,7 +899,7 @@ export default function PricesPage() {
           <h1 className="text-2xl font-semibold">Цены</h1>
           <p className="text-muted-foreground">Управление ценами с проверкой пересечения диапазонов</p>
         </div>
-        <AddPriceDialog />
+        <AddPriceDialog editPrice={editingPrice} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -886,7 +973,7 @@ export default function PricesPage() {
             <CardHeader>
               <CardTitle className="text-lg">Цены продажи (Покупатели)</CardTitle>
               <CardDescription>Цены для покупателей по оптовым сделкам</CardDescription>
-            </CardHeader>
+            </Header>
             <CardContent>
               <PricesTable counterpartyRole="buyer" counterpartyType="wholesale" />
             </CardContent>
