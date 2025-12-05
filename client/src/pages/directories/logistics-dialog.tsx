@@ -47,10 +47,12 @@ type LogisticsFormData = z.infer<typeof logisticsFormSchema>;
 
 export function AddLogisticsDialog({ 
   carriers,
-  editItem
+  editItem,
+  onEditComplete
 }: { 
   carriers: LogisticsCarrier[];
   editItem?: { type: string; data: any } | null;
+  onEditComplete?: () => void;
 }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -230,6 +232,9 @@ export function AddLogisticsDialog({
     setOpen(isOpen);
     if (!isOpen) {
       form.reset();
+      if (onEditComplete) {
+        onEditComplete();
+      }
     } else if (editItem) {
       const data = editItem.data;
       const formData: any = {

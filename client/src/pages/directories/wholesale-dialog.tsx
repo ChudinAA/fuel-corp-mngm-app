@@ -34,11 +34,13 @@ type WholesaleFormData = z.infer<typeof wholesaleFormSchema>;
 export function AddWholesaleDialog({ 
   suppliers, 
   bases, 
-  editItem 
+  editItem,
+  onEditComplete
 }: { 
   suppliers: WholesaleSupplier[]; 
   bases: WholesaleBase[]; 
   editItem?: { type: "supplier" | "basis"; data: WholesaleSupplier | WholesaleBase } | null;
+  onEditComplete?: () => void;
 }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -120,6 +122,9 @@ export function AddWholesaleDialog({
     setOpen(isOpen);
     if (!isOpen) {
       form.reset();
+      if (onEditComplete) {
+        onEditComplete();
+      }
     } else if (editItem) {
       const data = editItem.data as any;
       form.reset({

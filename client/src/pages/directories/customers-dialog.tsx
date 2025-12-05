@@ -29,7 +29,7 @@ const customerFormSchema = z.object({
 
 type CustomerFormData = z.infer<typeof customerFormSchema>;
 
-export function AddCustomerDialog({ editCustomer }: { editCustomer?: Customer | null }) {
+export function AddCustomerDialog({ editCustomer, onEditComplete }: { editCustomer?: Customer | null; onEditComplete?: () => void }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
 
@@ -105,6 +105,9 @@ export function AddCustomerDialog({ editCustomer }: { editCustomer?: Customer | 
     setOpen(isOpen);
     if (!isOpen) {
       form.reset();
+      if (onEditComplete) {
+        onEditComplete();
+      }
     } else if (editCustomer) {
       form.reset({
         name: editCustomer.name,

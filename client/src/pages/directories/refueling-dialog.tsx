@@ -38,11 +38,13 @@ type RefuelingFormData = z.infer<typeof refuelingFormSchema>;
 export function AddRefuelingDialog({ 
   providers, 
   bases,
-  editItem
+  editItem,
+  onEditComplete
 }: { 
   providers: RefuelingProvider[]; 
   bases: RefuelingBase[];
   editItem?: { type: "provider" | "basis"; data: RefuelingProvider | RefuelingBase } | null;
+  onEditComplete?: () => void;
 }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -139,6 +141,9 @@ export function AddRefuelingDialog({
     if (!isOpen) {
       form.reset();
       setShowPriceFields(false);
+      if (onEditComplete) {
+        onEditComplete();
+      }
     } else if (editItem) {
       const data = editItem.data as any;
       form.reset({

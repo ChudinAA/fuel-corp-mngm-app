@@ -54,7 +54,7 @@ const priceFormSchema = z.object({
 
 type PriceFormData = z.infer<typeof priceFormSchema>;
 
-function AddPriceDialog({ editPrice }: { editPrice?: Price | null }) {
+function AddPriceDialog({ editPrice, onEditComplete }: { editPrice?: Price | null, onEditComplete?: () => void }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [calculatingSelection, setCalculatingSelection] = useState(false);
@@ -92,7 +92,7 @@ function AddPriceDialog({ editPrice }: { editPrice?: Price | null }) {
           console.error("Failed to parse priceValues:", e);
         }
       }
-      
+
       form.reset({
         dateFrom: new Date(editPrice.dateFrom),
         dateTo: new Date(editPrice.dateTo || editPrice.dateFrom),
@@ -259,6 +259,9 @@ function AddPriceDialog({ editPrice }: { editPrice?: Price | null }) {
       setSelectionResult(null);
       setDateCheckResult(null);
       setOpen(false);
+      if (onEditComplete) {
+        onEditComplete();
+      }
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
@@ -266,12 +269,26 @@ function AddPriceDialog({ editPrice }: { editPrice?: Price | null }) {
   });
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => {
+    <Dialog open={open || !!editPrice} onOpenChange={(isOpen) => {
       setOpen(isOpen);
-      if (!isOpen && editPrice) {
-        // Clear editPrice when dialog is closed without saving
-        // This requires passing a setter down or using a global state
-        // For now, we assume the parent component handles clearing editPrice
+      if (!isOpen) {
+        form.reset({
+          dateFrom: new Date(),
+          dateTo: new Date(),
+          counterpartyType: "wholesale",
+          counterpartyRole: "supplier",
+          counterpartyId: "",
+          productType: "kerosine",
+          basis: "",
+          volume: "",
+          priceValues: [{ price: "" }],
+          contractNumber: "",
+        });
+        setSelectionResult(null);
+        setDateCheckResult(null);
+        if (onEditComplete) {
+          onEditComplete();
+        }
       }
     }}>
       <DialogTrigger asChild>
@@ -610,11 +627,8 @@ function AddPriceDialog({ editPrice }: { editPrice?: Price | null }) {
             <div className="flex justify-end gap-4 pt-4">
               <Button type="button" variant="outline" onClick={() => {
                 setOpen(false);
-                // If editing, clear the editPrice state in the parent component
-                if (editPrice) {
-                  // This assumes PricesPage has a setEditingPrice function
-                  // For simplicity, we'll rely on the dialog closing to trigger parent cleanup if needed
-                  // A more robust solution would involve passing a callback prop
+                if (onEditComplete) {
+                  onEditComplete();
                 }
               }}>Отмена</Button>
               <Button type="submit" disabled={createMutation.isPending} data-testid={editPrice ? "button-save-edit-price" : "button-save-price"}>
@@ -695,7 +709,7 @@ function PricesTable({ counterpartyRole, counterpartyType }: { counterpartyRole:
       const res = await apiRequest("GET", `/api/prices/calculate-selection?${params}`);
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/prices"] });
       toast({ title: "Выборка рассчитана", description: `Общий объем: ${data.totalVolume} кг` });
     },
@@ -768,7 +782,7 @@ function PricesTable({ counterpartyRole, counterpartyType }: { counterpartyRole:
         <Input placeholder="Поиск по базису или контрагенту..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
       </div>
 
-      <AddPriceDialog editPrice={editingPrice} />
+      <AddPriceDialog editPrice={editingPrice} onEditComplete={() => setEditingPrice(null)} />
 
       <div className="border rounded-lg overflow-x-auto">
         <Table>
@@ -903,7 +917,7 @@ export default function PricesPage() {
           <h1 className="text-2xl font-semibold">Цены</h1>
           <p className="text-muted-foreground">Управление ценами с проверкой пересечения диапазонов</p>
         </div>
-        <AddPriceDialog editPrice={editingPrice} />
+        <AddPriceDialog editPrice={editingPrice} onEditComplete={() => setEditingPrice(null)} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
