@@ -1,0 +1,267 @@
+
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form } from "@/components/ui/form";
+import { Plus, Pencil, Loader2 } from "lucide-react";
+import type { WholesaleBase, WholesaleSupplier, RefuelingProvider, RefuelingBase, Customer } from "@shared/schema";
+import { priceFormSchema } from "../schemas";
+import type { PriceFormData, PriceDialogProps } from "../types";
+import { usePriceSelection } from "../hooks/use-price-selection";
+import { useDateCheck } from "../hooks/use-date-check";
+import { PriceFormFields } from "./price-form-fields";
+import { PriceChecksPanel } from "./price-checks-panel";
+
+export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+
+  const selectionCheck = usePriceSelection();
+  const dateCheck = useDateCheck();
+
+  const form = useForm<PriceFormData>({
+    resolver: zodResolver(priceFormSchema),
+    defaultValues: {
+      dateFrom: new Date(),
+      dateTo: new Date(),
+      counterpartyType: "wholesale",
+      counterpartyRole: "supplier",
+      counterpartyId: "",
+      productType: "kerosine",
+      basis: "",
+      volume: "",
+      priceValues: [{ price: "" }],
+      contractNumber: "",
+    },
+  });
+
+  useEffect(() => {
+    if (editPrice) {
+      let parsedPriceValues = [{ price: "" }];
+      if (editPrice.priceValues && editPrice.priceValues.length > 0) {
+        try {
+          parsedPriceValues = editPrice.priceValues.map((pv: string) => {
+            const parsed = JSON.parse(pv);
+            return { price: String(parsed.price) };
+          });
+        } catch (e) {
+          console.error("Failed to parse priceValues:", e);
+        }
+      }
+
+      form.reset({
+        dateFrom: new Date(editPrice.dateFrom),
+        dateTo: new Date(editPrice.dateTo || editPrice.dateFrom),
+        counterpartyType: editPrice.counterpartyType,
+        counterpartyRole: editPrice.counterpartyRole,
+        counterpartyId: editPrice.counterpartyId,
+        productType: editPrice.productType,
+        basis: editPrice.basis || "",
+        volume: editPrice.volume || "",
+        priceValues: parsedPriceValues,
+        contractNumber: editPrice.contractNumber || "",
+      });
+      setOpen(true);
+    }
+  }, [editPrice, form]);
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "priceValues"
+  });
+
+  const watchCounterpartyType = form.watch("counterpartyType");
+  const watchCounterpartyRole = form.watch("counterpartyRole");
+  const watchCounterpartyId = form.watch("counterpartyId");
+  const watchBasis = form.watch("basis");
+  const watchDateFrom = form.watch("dateFrom");
+  const watchDateTo = form.watch("dateTo");
+
+  const { data: optBases } = useQuery<WholesaleBase[]>({ queryKey: ["/api/wholesale/bases"] });
+  const { data: refuelingBases } = useQuery<RefuelingBase[]>({ queryKey: ["/api/refueling/bases"] });
+  const { data: wholesaleSuppliers } = useQuery<WholesaleSupplier[]>({ queryKey: ["/api/wholesale/suppliers"] });
+  const { data: refuelingProviders } = useQuery<RefuelingProvider[]>({ queryKey: ["/api/refueling/providers"] });
+  const { data: customers } = useQuery<Customer[]>({ queryKey: ["/api/customers"] });
+
+  const allBases = [...(optBases || []), ...(refuelingBases || [])];
+  const contractors = watchCounterpartyRole === "supplier" 
+    ? [...(wholesaleSuppliers || []), ...(refuelingProviders || [])]
+    : customers || [];
+
+  useEffect(() => {
+    if (watchCounterpartyRole === "supplier" && watchCounterpartyId) {
+      const selectedContractor = contractors.find(c => c.id === watchCounterpartyId);
+      if (selectedContractor && selectedContractor.defaultBaseId) {
+        const defaultBase = allBases.find(b => b.id === selectedContractor.defaultBaseId);
+        if (defaultBase) {
+          form.setValue("basis", defaultBase.name);
+        }
+      }
+    }
+  }, [watchCounterpartyRole, watchCounterpartyId, contractors, allBases, form]);
+
+  const handleCalculateSelection = () => {
+    if (!watchCounterpartyId || !watchBasis || !watchDateFrom || !watchDateTo) {
+      toast({ title: "Ошибка", description: "Заполните все обязательные поля", variant: "destructive" });
+      return;
+    }
+    selectionCheck.calculate({
+      counterpartyId: watchCounterpartyId,
+      counterpartyType: watchCounterpartyType,
+      basis: watchBasis,
+      dateFrom: watchDateFrom,
+      dateTo: watchDateTo,
+    });
+  };
+
+  const handleCheckDates = () => {
+    if (!watchCounterpartyId || !watchBasis || !watchDateFrom || !watchDateTo) {
+      toast({ title: "Ошибка", description: "Заполните все обязательные поля", variant: "destructive" });
+      return;
+    }
+    dateCheck.check({
+      counterpartyId: watchCounterpartyId,
+      counterpartyType: watchCounterpartyType,
+      counterpartyRole: watchCounterpartyRole,
+      basis: watchBasis,
+      dateFrom: watchDateFrom,
+      dateTo: watchDateTo,
+      excludeId: editPrice?.id,
+    });
+  };
+
+  const createMutation = useMutation({
+    mutationFn: async (data: PriceFormData) => {
+      const payload = {
+        productType: data.productType,
+        counterpartyId: data.counterpartyId,
+        counterpartyType: data.counterpartyType,
+        counterpartyRole: data.counterpartyRole,
+        basis: data.basis,
+        volume: data.volume || null,
+        priceValues: data.priceValues,
+        dateFrom: format(data.dateFrom, "yyyy-MM-dd"),
+        dateTo: format(data.dateTo, "yyyy-MM-dd"),
+        contractNumber: data.contractNumber || null,
+      };
+      if (editPrice) {
+        const res = await apiRequest("PATCH", `/api/prices/${editPrice.id}`, payload);
+        return res.json();
+      } else {
+        const res = await apiRequest("POST", "/api/prices", payload);
+        return res.json();
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prices"] });
+      toast({ title: editPrice ? "Цена обновлена" : "Цена добавлена", description: editPrice ? "Цена успешно обновлена" : "Новая цена успешно сохранена" });
+      form.reset({
+        dateFrom: new Date(),
+        dateTo: new Date(),
+        counterpartyType: "wholesale",
+        counterpartyRole: "supplier",
+        counterpartyId: "",
+        productType: "kerosine",
+        basis: "",
+        volume: "",
+        priceValues: [{ price: "" }],
+        contractNumber: "",
+      });
+      selectionCheck.setResult(null);
+      dateCheck.setResult(null);
+      setOpen(false);
+      if (onEditComplete) {
+        onEditComplete();
+      }
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Dialog open={open || !!editPrice} onOpenChange={(isOpen) => {
+      setOpen(isOpen);
+      if (!isOpen) {
+        form.reset({
+          dateFrom: new Date(),
+          dateTo: new Date(),
+          counterpartyType: "wholesale",
+          counterpartyRole: "supplier",
+          counterpartyId: "",
+          productType: "kerosine",
+          basis: "",
+          volume: "",
+          priceValues: [{ price: "" }],
+          contractNumber: "",
+        });
+        selectionCheck.setResult(null);
+        dateCheck.setResult(null);
+        if (onEditComplete) {
+          onEditComplete();
+        }
+      }
+    }}>
+      <DialogTrigger asChild>
+        <Button data-testid={editPrice ? "button-edit-price-dialog" : "button-add-price"}>
+          {editPrice ? (
+            <>
+              <Pencil className="mr-2 h-4 w-4" />
+              Редактировать цену
+            </>
+          ) : (
+            <>
+              <Plus className="mr-2 h-4 w-4" />
+              Добавить цену
+            </>
+          )}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{editPrice ? "Редактирование цены" : "Новая цена"}</DialogTitle>
+          <DialogDescription>Добавление или редактирование цены покупки или продажи</DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+            <PriceFormFields
+              control={form.control}
+              contractors={contractors}
+              allBases={allBases}
+              fields={fields}
+              remove={remove}
+              append={append}
+            />
+
+            <PriceChecksPanel
+              selectionResult={selectionCheck.result}
+              dateCheckResult={dateCheck.result}
+              onCalculateSelection={handleCalculateSelection}
+              onCheckDates={handleCheckDates}
+              isCalculating={selectionCheck.isCalculating}
+              isChecking={dateCheck.isChecking}
+            />
+
+            <div className="flex justify-end gap-4 pt-4">
+              <Button type="button" variant="outline" onClick={() => {
+                setOpen(false);
+                if (onEditComplete) {
+                  onEditComplete();
+                }
+              }}>Отмена</Button>
+              <Button type="submit" disabled={createMutation.isPending} data-testid={editPrice ? "button-save-edit-price" : "button-save-price"}>
+                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{editPrice ? "Сохранение..." : "Создание..."}</> : (editPrice ? "Сохранить" : "Создать")}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
