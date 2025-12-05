@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -20,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   CalendarIcon,
   Plus,
@@ -70,13 +72,388 @@ function CalculatedField({ label, value, suffix = "" }: { label: string; value: 
   );
 }
 
+function AddMovementDialog({
+  warehouses,
+  suppliers,
+  carriers,
+  vehicles,
+  trailers,
+  drivers,
+  editMovement,
+  open,
+  onOpenChange
+}: {
+  warehouses: Warehouse[];
+  suppliers: DirectoryWholesale[];
+  carriers: DirectoryLogistics[];
+  vehicles: DirectoryLogistics[];
+  trailers: DirectoryLogistics[];
+  drivers: DirectoryLogistics[];
+  editMovement: Movement | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { toast } = useToast();
+  const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
+  const isEditing = !!editMovement;
+
+  const form = useForm<MovementFormData>({
+    resolver: zodResolver(movementFormSchema),
+    defaultValues: {
+      movementDate: editMovement ? new Date(editMovement.movementDate) : new Date(),
+      movementType: editMovement?.movementType || "supply",
+      productType: editMovement?.productType || "kerosene",
+      supplierId: editMovement?.supplierId || "",
+      fromWarehouseId: editMovement?.fromWarehouseId || "",
+      toWarehouseId: editMovement?.toWarehouseId || "",
+      inputMode: "liters",
+      quantityLiters: editMovement?.quantityLiters || "",
+      density: editMovement?.density || "",
+      quantityKg: editMovement?.quantityKg || "",
+      carrierId: editMovement?.carrierId || "",
+      vehicleNumber: editMovement?.vehicleNumber || "",
+      trailerNumber: editMovement?.trailerNumber || "",
+      driverName: editMovement?.driverName || "",
+      notes: editMovement?.notes || "",
+    },
+  });
+
+  const watchMovementType = form.watch("movementType");
+  const watchLiters = form.watch("quantityLiters");
+  const watchDensity = form.watch("density");
+  const watchKg = form.watch("quantityKg");
+
+  const calculatedKg = inputMode === "liters" && watchLiters && watchDensity
+    ? (parseFloat(watchLiters) * parseFloat(watchDensity)).toFixed(2)
+    : watchKg;
+
+  const createMutation = useMutation({
+    mutationFn: async (data: MovementFormData) => {
+      const payload = {
+        ...data,
+        movementDate: format(data.movementDate, "yyyy-MM-dd"),
+        supplierId: data.supplierId || null,
+        fromWarehouseId: data.fromWarehouseId || null,
+        toWarehouseId: data.toWarehouseId,
+        carrierId: data.carrierId || null,
+        quantityKg: calculatedKg || data.quantityKg,
+      };
+      const res = await apiRequest(isEditing ? "PATCH" : "POST", isEditing ? `/api/movement/${editMovement?.id}` : "/api/movement", payload);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movement"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      toast({ title: isEditing ? "Перемещение обновлено" : "Перемещение создано", description: "Запись успешно сохранена" });
+      form.reset();
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const formatNumber = (value: number | string | null) => {
+    if (value === null) return null;
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(num);
+  };
+
+  const formatCurrency = (value: number | string | null) => {
+    if (value === null) return null;
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(num);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEditing ? "Редактирование перемещения" : "Новое перемещение"}</DialogTitle>
+          <DialogDescription>
+            {isEditing ? "Изменение существующей записи" : "Создание записи о поставке или внутреннем перемещении"}
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              <FormField
+                control={form.control}
+                name="movementDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Дата</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="input-movement-date">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(field.value, "dd.MM.yyyy", { locale: ru }) : "Выберите дату"}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} locale={ru} />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="movementType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Тип перемещения</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-movement-type">
+                          <SelectValue placeholder="Выберите тип" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="supply">Поставка</SelectItem>
+                        <SelectItem value="internal">Внутреннее перемещение</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="productType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Тип продукта</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-movement-product">
+                          <SelectValue placeholder="Выберите тип" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="kerosene">Керосин</SelectItem>
+                        <SelectItem value="pvkj">ПВКЖ</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {watchMovementType === "supply" ? (
+                <FormField
+                  control={form.control}
+                  name="supplierId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Поставщик</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-movement-supplier">
+                            <SelectValue placeholder="Выберите поставщика" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {suppliers?.map((s) => (
+                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                          )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="fromWarehouseId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Откуда (склад)</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-movement-from">
+                            <SelectValue placeholder="Выберите склад" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {warehouses?.map((w) => (
+                            <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                          )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+
+            <FormField
+              control={form.control}
+              name="toWarehouseId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Куда (склад)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-movement-to">
+                        <SelectValue placeholder="Выберите склад" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {warehouses?.map((w) => (
+                        <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                      )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between gap-4">
+                  <CardTitle className="text-lg">Объем</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground">Литры/Плотность</Label>
+                    <Switch checked={inputMode === "kg"} onCheckedChange={(c) => setInputMode(c ? "kg" : "liters")} data-testid="switch-movement-input" />
+                    <Label className="text-sm text-muted-foreground">КГ</Label>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {inputMode === "liters" ? (
+                    <>
+                      <FormField control={form.control} name="quantityLiters" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Литры</FormLabel>
+                          <FormControl><Input type="number" placeholder="0.00" data-testid="input-movement-liters" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="density" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Плотность</FormLabel>
+                          <FormControl><Input type="number" step="0.0001" placeholder="0.8000" data-testid="input-movement-density" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <CalculatedField label="КГ (расчет)" value={formatNumber(calculatedKg)} suffix=" кг" />
+                    </>
+                  ) : (
+                    <FormField control={form.control} name="quantityKg" render={({ field }) => (
+                      <FormItem className="md:col-span-3">
+                        <FormLabel>Количество (КГ)</FormLabel>
+                        <FormControl><Input type="number" placeholder="0.00" data-testid="input-movement-kg" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <CalculatedField label="Цена закупки" value={formatNumber(58.50)} suffix=" ₽/кг" />
+              <CalculatedField label="Доставка" value={formatCurrency(15000)} />
+              <CalculatedField label="Общая стоимость" value={formatCurrency(307500)} />
+              <CalculatedField label="Себестоимость на месте" value={formatNumber(61.50)} suffix=" ₽/кг" />
+            </div>
+
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg">Логистика</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <FormField control={form.control} name="carrierId" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Перевозчик</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger data-testid="select-movement-carrier"><SelectValue placeholder="Выберите" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          {carriers?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="vehicleNumber" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Госномер</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger data-testid="select-movement-vehicle"><SelectValue placeholder="Выберите" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          {vehicles?.map((v) => <SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="trailerNumber" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Госномер ПП</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger data-testid="select-movement-trailer"><SelectValue placeholder="Выберите" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          {trailers?.map((t) => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="driverName" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ФИО водителя</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger data-testid="select-movement-driver"><SelectValue placeholder="Выберите" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          {drivers?.map((d) => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+              </CardContent>
+            </Card>
+
+            <FormField control={form.control} name="notes" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Примечания</FormLabel>
+                <FormControl><Textarea placeholder="Дополнительная информация..." className="resize-none" data-testid="input-movement-notes" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <div className="flex justify-end gap-4 pt-4 border-t">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
+              <Button type="submit" disabled={createMutation.isPending} data-testid="button-create-movement">
+                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isEditing ? "Обновление..." : "Сохранение..."}</> : <><Plus className="mr-2 h-4 w-4" />{isEditing ? "Обновить" : "Создать"}</>}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function MovementPage() {
   const { user } = useAuth();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
-  const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
   const pageSize = 10;
 
   const formatNumber = (value: string | number | null) => {
@@ -92,36 +469,6 @@ export default function MovementPage() {
   };
 
   const formatDate = (dateStr: string) => format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
-
-  const form = useForm<MovementFormData>({
-    resolver: zodResolver(movementFormSchema),
-    defaultValues: {
-      movementDate: new Date(),
-      movementType: "supply",
-      productType: "kerosene",
-      supplierId: "",
-      fromWarehouseId: "",
-      toWarehouseId: "",
-      inputMode: "liters",
-      quantityLiters: "",
-      density: "",
-      quantityKg: "",
-      carrierId: "",
-      vehicleNumber: "",
-      trailerNumber: "",
-      driverName: "",
-      notes: "",
-    },
-  });
-
-  const watchMovementType = form.watch("movementType");
-  const watchLiters = form.watch("quantityLiters");
-  const watchDensity = form.watch("density");
-  const watchKg = form.watch("quantityKg");
-
-  const calculatedKg = inputMode === "liters" && watchLiters && watchDensity
-    ? (parseFloat(watchLiters) * parseFloat(watchDensity)).toFixed(2)
-    : watchKg;
 
   const { data: warehouses } = useQuery<Warehouse[]>({ queryKey: ["/api/warehouses"] });
   const { data: suppliers } = useQuery<DirectoryWholesale[]>({ queryKey: ["/api/directories/wholesale", "supplier"] });
@@ -149,356 +496,49 @@ export default function MovementPage() {
     },
   });
 
-  const createMutation = useMutation({
-    mutationFn: async (data: MovementFormData) => {
-      const payload = {
-        ...data,
-        movementDate: format(data.movementDate, "yyyy-MM-dd"),
-        supplierId: data.supplierId || null,
-        fromWarehouseId: data.fromWarehouseId || null,
-        toWarehouseId: data.toWarehouseId,
-        carrierId: data.carrierId || null,
-        quantityKg: calculatedKg || data.quantityKg,
-      };
-      const res = await apiRequest("POST", "/api/movement", payload);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/movement"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
-      toast({ title: "Перемещение создано", description: "Запись успешно сохранена" });
-      form.reset();
-    },
-    onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (data: MovementFormData & { id: string }) => {
-      const { id, ...rest } = data;
-      const payload = {
-        ...rest,
-        movementDate: format(rest.movementDate, "yyyy-MM-dd"),
-        supplierId: rest.supplierId || null,
-        fromWarehouseId: rest.fromWarehouseId || null,
-        toWarehouseId: rest.toWarehouseId,
-        carrierId: rest.carrierId || null,
-        quantityKg: calculatedKg || rest.quantityKg,
-      };
-      const res = await apiRequest("PATCH", `/api/movement/${id}`, payload);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/movement"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
-      toast({ title: "Перемещение обновлено", description: "Запись успешно сохранена" });
-      setEditingMovement(null);
-      form.reset();
-    },
-    onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
-    },
-  });
-
   const data = movements?.data || [];
   const total = movements?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
 
+  const handleEditClick = (movement: Movement) => {
+    setEditingMovement(movement);
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingMovement(null);
+  };
+
+  const handleOpenDialog = () => {
+    setEditingMovement(null);
+    setIsDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Перемещение</h1>
-        <p className="text-muted-foreground">Учет поставок и внутренних перемещений топлива</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Перемещение</h1>
+          <p className="text-muted-foreground">Учет поставок и внутренних перемещений топлива</p>
+        </div>
+        <Button onClick={handleOpenDialog} data-testid="button-add-movement">
+          <Plus className="mr-2 h-4 w-4" />
+          Новое перемещение
+        </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ArrowLeftRight className="h-5 w-5" />
-            {editingMovement ? "Редактирование перемещения" : "Новое перемещение"}
-          </CardTitle>
-          <CardDescription>{editingMovement ? "Изменение существующей записи" : "Создание записи о поставке или внутреннем перемещении"}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => {
-              if (editingMovement) {
-                updateMutation.mutate({ ...data, id: editingMovement.id });
-              } else {
-                createMutation.mutate(data);
-              }
-            })} className="space-y-6">
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                <FormField
-                  control={form.control}
-                  name="movementDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Дата</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="input-movement-date">
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {field.value ? format(field.value, "dd.MM.yyyy", { locale: ru }) : "Выберите дату"}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} locale={ru} />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="movementType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Тип перемещения</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-movement-type">
-                            <SelectValue placeholder="Выберите тип" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="supply">Поставка</SelectItem>
-                          <SelectItem value="internal">Внутреннее перемещение</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="productType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Тип продукта</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-movement-product">
-                            <SelectValue placeholder="Выберите тип" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="kerosene">Керосин</SelectItem>
-                          <SelectItem value="pvkj">ПВКЖ</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {watchMovementType === "supply" ? (
-                  <FormField
-                    control={form.control}
-                    name="supplierId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Поставщик</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-movement-supplier">
-                              <SelectValue placeholder="Выберите поставщика" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {suppliers?.map((s) => (
-                              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                            )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ) : (
-                  <FormField
-                    control={form.control}
-                    name="fromWarehouseId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Откуда (склад)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-movement-from">
-                              <SelectValue placeholder="Выберите склад" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {warehouses?.map((w) => (
-                              <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                            )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <FormField
-                  control={form.control}
-                  name="toWarehouseId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Куда (склад)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-movement-to">
-                            <SelectValue placeholder="Выберите склад" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {warehouses?.map((w) => (
-                            <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                          )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <Card>
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <CardTitle className="text-lg">Объем</CardTitle>
-                    <div className="flex items-center gap-2">
-                      <Label className="text-sm text-muted-foreground">Литры/Плотность</Label>
-                      <Switch checked={inputMode === "kg"} onCheckedChange={(c) => setInputMode(c ? "kg" : "liters")} data-testid="switch-movement-input" />
-                      <Label className="text-sm text-muted-foreground">КГ</Label>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    {inputMode === "liters" ? (
-                      <>
-                        <FormField control={form.control} name="quantityLiters" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Литры</FormLabel>
-                            <FormControl><Input type="number" placeholder="0.00" data-testid="input-movement-liters" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="density" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Плотность</FormLabel>
-                            <FormControl><Input type="number" step="0.0001" placeholder="0.8000" data-testid="input-movement-density" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <CalculatedField label="КГ (расчет)" value={formatNumber(calculatedKg)} suffix=" кг" />
-                      </>
-                    ) : (
-                      <FormField control={form.control} name="quantityKg" render={({ field }) => (
-                        <FormItem className="md:col-span-3">
-                          <FormLabel>Количество (КГ)</FormLabel>
-                          <FormControl><Input type="number" placeholder="0.00" data-testid="input-movement-kg" {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <CalculatedField label="Цена закупки" value={formatNumber(58.50)} suffix=" ₽/кг" />
-                <CalculatedField label="Доставка" value={formatCurrency(15000)} />
-                <CalculatedField label="Общая стоимость" value={formatCurrency(307500)} />
-                <CalculatedField label="Себестоимость на месте" value={formatNumber(61.50)} suffix=" ₽/кг" />
-              </div>
-
-              <Card>
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg">Логистика</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <FormField control={form.control} name="carrierId" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Перевозчик</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl><SelectTrigger data-testid="select-movement-carrier"><SelectValue placeholder="Выберите" /></SelectTrigger></FormControl>
-                          <SelectContent>
-                            {carriers?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="vehicleNumber" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Госномер</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl><SelectTrigger data-testid="select-movement-vehicle"><SelectValue placeholder="Выберите" /></SelectTrigger></FormControl>
-                          <SelectContent>
-                            {vehicles?.map((v) => <SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="trailerNumber" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Госномер ПП</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl><SelectTrigger data-testid="select-movement-trailer"><SelectValue placeholder="Выберите" /></SelectTrigger></FormControl>
-                          <SelectContent>
-                            {trailers?.map((t) => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="driverName" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ФИО водителя</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl><SelectTrigger data-testid="select-movement-driver"><SelectValue placeholder="Выберите" /></SelectTrigger></FormControl>
-                          <SelectContent>
-                            {drivers?.map((d) => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <FormField control={form.control} name="notes" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Примечания</FormLabel>
-                  <FormControl><Textarea placeholder="Дополнительная информация..." className="resize-none" data-testid="input-movement-notes" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-
-              <div className="flex justify-end gap-4 pt-4 border-t">
-                <Button type="button" variant="outline" onClick={() => { form.reset(); setEditingMovement(null); }}>Очистить</Button>
-                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-create-movement">
-                  {createMutation.isPending || updateMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{editingMovement ? "Обновление" : "Сохранение"}...</> : editingMovement ? <><Pencil className="mr-2 h-4 w-4" />Обновить</> : <><Plus className="mr-2 h-4 w-4" />Создать</>}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+      <AddMovementDialog
+        warehouses={warehouses || []}
+        suppliers={suppliers || []}
+        carriers={carriers || []}
+        vehicles={vehicles || []}
+        trailers={trailers || []}
+        drivers={drivers || []}
+        editMovement={editingMovement}
+        open={isDialogOpen}
+        onOpenChange={(open) => !open && handleCloseDialog()}
+      />
 
       <Card>
         <CardHeader>
@@ -548,7 +588,7 @@ export default function MovementPage() {
                             size="icon" 
                             className="h-8 w-8"
                             data-testid={`button-edit-movement-${item.id}`}
-                            onClick={() => setEditingMovement(item)}
+                            onClick={() => handleEditClick(item)}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>

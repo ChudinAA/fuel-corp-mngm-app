@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   CalendarIcon, 
   Plus, 
@@ -31,7 +32,6 @@ import {
   TrendingUp
 } from "lucide-react";
 import type { Exchange, Warehouse } from "@shared/schema";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 
 const exchangeFormSchema = z.object({
@@ -106,7 +106,6 @@ function AddExchangeDialog({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/exchange"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       toast({ title: isEditing ? "Сделка обновлена" : "Сделка создана", description: isEditing ? "Биржевая сделка успешно обновлена" : "Биржевая сделка успешно сохранена" });
       form.reset();
       onOpenChange(false);
@@ -286,8 +285,8 @@ function AddExchangeDialog({
               )}
             />
 
-            <DialogFooter className="pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => form.reset()}>Очистить</Button>
+            <div className="flex justify-end gap-4 pt-4 border-t">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
               <Button type="submit" disabled={createMutation.isPending} data-testid="button-create-exchange">
                 {createMutation.isPending ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isEditing ? "Обновление..." : "Сохранение..."}</>
@@ -295,7 +294,7 @@ function AddExchangeDialog({
                   <><Plus className="mr-2 h-4 w-4" />{isEditing ? "Обновить сделку" : "Создать сделку"}</>
                 )}
               </Button>
-            </DialogFooter>
+            </div>
           </form>
         </Form>
       </DialogContent>
@@ -308,6 +307,7 @@ export default function ExchangePage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [editingExchange, setEditingExchange] = useState<Exchange | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
   const pageSize = 10;
 
@@ -334,9 +334,10 @@ export default function ExchangePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/exchange"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       toast({ title: "Сделка создана", description: "Биржевая сделка успешно сохранена" });
-      form.reset();
+      // form.reset(); // This form instance is from ExchangePage, not AddExchangeDialog
+      // The form reset should happen within AddExchangeDialog upon successful creation/update.
+      // The dialog closing will also handle state reset.
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
@@ -383,201 +384,42 @@ export default function ExchangePage() {
   const total = exchanges?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
 
+  const handleEditClick = (exchange: Exchange) => {
+    setEditingExchange(exchange);
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingExchange(null);
+  };
+
+  const handleOpenDialog = () => {
+    setEditingExchange(null);
+    setIsDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Биржа</h1>
+          <p className="text-muted-foreground">
+            Учет биржевых сделок с автоматическим обновлением складов
+          </p>
+        </div>
+        <Button onClick={handleOpenDialog} data-testid="button-add-exchange">
+          <Plus className="mr-2 h-4 w-4" />
+          Новая сделка
+        </Button>
+      </div>
+
       <AddExchangeDialog 
         warehouses={warehouses || []} 
         editExchange={editingExchange}
-        open={!!editingExchange}
-        onOpenChange={(open) => !open && setEditingExchange(null)}
+        open={isDialogOpen}
+        onOpenChange={(open) => !open && handleCloseDialog()}
       />
-
-      <div>
-        <h1 className="text-2xl font-semibold">Биржа</h1>
-        <p className="text-muted-foreground">
-          Учет биржевых сделок с автоматическим обновлением складов
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Новая биржевая сделка
-          </CardTitle>
-          <CardDescription>
-            Заполните данные для записи сделки
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                <FormField
-                  control={form.control}
-                  name="dealDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Дата сделки</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="input-exchange-date">
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {field.value ? format(field.value, "dd.MM.yyyy", { locale: ru }) : "Выберите дату"}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} locale={ru} />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="dealNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Номер сделки</FormLabel>
-                      <FormControl>
-                        <Input placeholder="СПБ-001234" data-testid="input-exchange-number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="counterparty"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Контрагент</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Название контрагента" data-testid="input-exchange-counterparty" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="productType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Тип продукта</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-exchange-product">
-                            <SelectValue placeholder="Выберите тип" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="kerosene">Керосин</SelectItem>
-                          <SelectItem value="pvkj">ПВКЖ</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                <FormField
-                  control={form.control}
-                  name="quantityKg"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Количество (КГ)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="0.00" data-testid="input-exchange-quantity" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="pricePerKg"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Цена за кг (₽)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" placeholder="0.00" data-testid="input-exchange-price" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Сумма сделки</label>
-                  <div className="h-10 px-3 bg-muted rounded-md flex items-center">
-                    <span className="text-sm font-medium">{formatCurrency(totalAmount)}</span>
-                  </div>
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="warehouseId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Склад назначения</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-exchange-warehouse">
-                            <SelectValue placeholder="Выберите склад" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {warehouses?.map((wh) => (
-                            <SelectItem key={wh.id} value={wh.id}>
-                              {wh.name}
-                            </SelectItem>
-                          )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Примечания</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Дополнительная информация..." className="resize-none" data-testid="input-exchange-notes" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex justify-end gap-4 pt-4 border-t">
-                <Button type="button" variant="outline" onClick={() => form.reset()}>Очистить</Button>
-                <Button type="submit" disabled={createMutation.isPending} data-testid="button-create-exchange">
-                  {createMutation.isPending ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</>
-                  ) : (
-                    <><Plus className="mr-2 h-4 w-4" />Создать сделку</>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
@@ -592,10 +434,6 @@ export default function ExchangePage() {
                 <Input placeholder="Поиск..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-search-exchange" />
               </div>
               <Button variant="outline" size="icon"><Filter className="h-4 w-4" /></Button>
-              <Button onClick={() => setEditingExchange({ id: '' } as Exchange)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Новая сделка
-              </Button>
             </div>
 
             <div className="border rounded-lg">
@@ -642,7 +480,7 @@ export default function ExchangePage() {
                               size="icon" 
                               className="h-8 w-8"
                               data-testid={`button-edit-exchange-${item.id}`}
-                              onClick={() => setEditingExchange(item)}
+                              onClick={() => handleEditClick(item)}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
