@@ -1,0 +1,92 @@
+
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pencil, Trash2 } from "lucide-react";
+import type { ExchangeTableProps } from "../types";
+import { formatNumber, formatCurrency, formatDate } from "../utils";
+
+export function ExchangeTable({ 
+  data, 
+  isLoading, 
+  onEdit, 
+  onDelete, 
+  isDeletingId 
+}: ExchangeTableProps) {
+  return (
+    <div className="border rounded-lg">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Дата</TableHead>
+            <TableHead>Номер</TableHead>
+            <TableHead>Контрагент</TableHead>
+            <TableHead>Продукт</TableHead>
+            <TableHead className="text-right">КГ</TableHead>
+            <TableHead className="text-right">Цена</TableHead>
+            <TableHead className="text-right">Сумма</TableHead>
+            <TableHead className="w-[80px]"></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {isLoading ? (
+            [1, 2, 3].map((i) => (
+              <TableRow key={i}>
+                <TableCell colSpan={8}><Skeleton className="h-8 w-full" /></TableCell>
+              </TableRow>
+            ))
+          ) : data.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                Нет данных для отображения
+              </TableCell>
+            </TableRow>
+          ) : (
+            data.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>{formatDate(item.dealDate)}</TableCell>
+                <TableCell>{item.dealNumber || "—"}</TableCell>
+                <TableCell>{item.counterparty}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">
+                    {item.productType === "kerosene" ? "Керосин" : "ПВКЖ"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right font-medium">{formatNumber(item.quantityKg)}</TableCell>
+                <TableCell className="text-right">{formatNumber(item.pricePerKg)} ₽</TableCell>
+                <TableCell className="text-right font-medium">{formatCurrency(item.totalAmount)}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      data-testid={`button-edit-exchange-${item.id}`}
+                      onClick={() => onEdit(item)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-destructive"
+                      onClick={() => {
+                        if (confirm("Вы уверены, что хотите удалить эту сделку?")) {
+                          onDelete(item.id);
+                        }
+                      }}
+                      disabled={isDeletingId === item.id}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
