@@ -267,6 +267,7 @@ export const opt = pgTable("opt", {
   dealDate: date("deal_date").notNull(),
   supplierId: uuid("supplier_id").notNull(),
   buyerId: uuid("buyer_id").notNull(),
+  warehouseId: uuid("warehouse_id").references(() => warehouses.id),
   basis: text("basis"),
   quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
   density: decimal("density", { precision: 6, scale: 4 }),
