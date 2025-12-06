@@ -67,7 +67,7 @@ export function OptForm({
   });
 
   const { data: customers } = useQuery<Customer[]>({
-    queryKey: ["/api/customers", "wholesale"],
+    queryKey: ["/api/customers"],
   });
 
   const { data: warehouses } = useQuery<Warehouse[]>({
