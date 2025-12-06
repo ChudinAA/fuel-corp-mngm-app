@@ -1,106 +1,34 @@
+
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  CalendarIcon, 
-  Plus, 
-  Pencil, 
-  Trash2, 
-  AlertTriangle, 
-  CheckCircle2,
-  Calculator,
-  Loader2,
-  ChevronLeft,
-  ChevronRight,
-  Maximize2,
-  Search,
-  Filter
-} from "lucide-react";
-import type { Opt, DirectoryWholesale, DirectoryLogistics } from "@shared/schema";
-import { useAuth } from "@/hooks/use-auth";
-import { AddOptDialog } from "./opt/components/add-opt-dialog";
-import { OptTable } from "./opt/components/opt-table";
+import { CalendarIcon, Plus, Loader2 } from "lucide-react";
+import type { DirectoryWholesale, DirectoryLogistics } from "@shared/schema";
+import { CalculatedField } from "./calculated-field";
+import { optFormSchema, type OptFormData } from "../schemas";
+import { formatNumber, formatCurrency } from "../utils";
+import type { OptFormProps } from "../types";
 
-function CalculatedField({ 
-  label, 
-  value, 
-  status,
-  suffix = "",
-  isLoading = false
-}: { 
-  label: string; 
-  value: string | number | null; 
-  status?: "ok" | "error" | "warning";
-  suffix?: string;
-  isLoading?: boolean;
-}) {
-  const statusColors = {
-    ok: "text-green-600 dark:text-green-400",
-    error: "text-red-600 dark:text-red-400",
-    warning: "text-yellow-600 dark:text-yellow-400",
-  };
-
-  const statusIcons = {
-    ok: <CheckCircle2 className="h-4 w-4" />,
-    error: <AlertTriangle className="h-4 w-4" />,
-    warning: <AlertTriangle className="h-4 w-4" />,
-  };
-
-  return (
-    <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground flex items-center gap-1">
-        <Calculator className="h-3 w-3" />
-        {label}
-      </Label>
-      <div className="flex items-center gap-2 h-10 px-3 bg-muted rounded-md">
-        {isLoading ? (
-          <Skeleton className="h-5 w-20" />
-        ) : status ? (
-          <>
-            <span className={statusColors[status]}>{statusIcons[status]}</span>
-            <span className={`text-sm font-medium ${statusColors[status]}`}>
-              {value}{suffix}
-            </span>
-          </>
-        ) : (
-          <span className="text-sm font-medium">
-            {value !== null ? `${value}${suffix}` : "—"}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function OptForm({ 
+export function OptForm({ 
   onSuccess, 
   editData 
-}: { 
-  onSuccess?: () => void; 
-  editData?: Opt | null;
-}) {
+}: OptFormProps) {
   const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
 
@@ -227,18 +155,6 @@ function OptForm({
     } else {
       createMutation.mutate(submitData);
     }
-  };
-
-  const formatNumber = (value: number | string | null) => {
-    if (value === null) return null;
-    const num = typeof value === "string" ? parseFloat(value) : value;
-    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(num);
-  };
-
-  const formatCurrency = (value: number | string | null) => {
-    if (value === null) return null;
-    const num = typeof value === "string" ? parseFloat(value) : value;
-    return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(num);
   };
 
   return (
@@ -685,98 +601,5 @@ function OptForm({
         </div>
       </form>
     </Form>
-  );
-}
-
-export default function OptPage() {
-  const { user } = useAuth();
-  const [editingOpt, setEditingOpt] = useState<Opt | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isFullScreen, setIsFullScreen] = useState(false);
-  const { toast } = useToast();
-
-  const { data: suppliers } = useQuery<DirectoryWholesale[]>({
-    queryKey: ["/api/directories/wholesale", "supplier"],
-  });
-
-  const { data: buyers } = useQuery<DirectoryWholesale[]>({
-    queryKey: ["/api/directories/wholesale", "buyer"],
-  });
-
-  const { data: carriers } = useQuery<DirectoryLogistics[]>({
-    queryKey: ["/api/directories/logistics", "carrier"],
-  });
-
-  const { data: locations } = useQuery<DirectoryLogistics[]>({
-    queryKey: ["/api/directories/logistics", "delivery_location"],
-  });
-
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
-    setEditingOpt(null);
-  };
-
-  const handleOpenDialog = () => {
-    setEditingOpt(null);
-    setIsDialogOpen(true);
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Оптовые продажи (ОПТ)</h1>
-          <p className="text-muted-foreground">
-            Учет оптовых сделок с автоматическим расчетом цен
-          </p>
-        </div>
-        <Button onClick={handleOpenDialog} data-testid="button-add-opt">
-          <Plus className="mr-2 h-4 w-4" />
-          Новая сделка
-        </Button>
-      </div>
-
-      <AddOptDialog 
-        isOpen={isDialogOpen}
-        onClose={handleCloseDialog}
-        suppliers={suppliers || []} 
-        buyers={buyers || []} 
-        carriers={carriers || []} 
-        locations={locations || []}
-        editOpt={editingOpt}
-      />
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
-          <div>
-            <CardTitle>Список сделок</CardTitle>
-            <CardDescription>
-              Последние 10 записей
-            </CardDescription>
-          </div>
-          <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Maximize2 className="h-4 w-4" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-[95vw] h-[90vh]">
-              <DialogHeader>
-                <DialogTitle>Все оптовые сделки</DialogTitle>
-                <DialogDescription>
-                  Полный список сделок с фильтрацией и поиском
-                </DialogDescription>
-              </DialogHeader>
-              <ScrollArea className="flex-1">
-                <OptTable />
-              </ScrollArea>
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          <OptTable />
-        </CardContent>
-      </Card>
-    </div>
   );
 }
