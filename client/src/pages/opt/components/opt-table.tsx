@@ -1,10 +1,5 @@
-
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,34 +15,23 @@ import {
   Search,
   Filter
 } from "lucide-react";
-import type { Opt } from "@shared/schema";
 import { formatNumberForTable, formatCurrencyForTable } from "../utils";
+import { useOptTable } from "../hooks/use-opt-table";
 
 export function OptTable() {
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingOpt, setEditingOpt] = useState<Opt | null>(null);
-  const pageSize = 10;
-  const { toast } = useToast();
-
-  const { data: optDeals, isLoading } = useQuery<{ data: Opt[]; total: number }>({
-    queryKey: ["/api/opt", page, search],
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await apiRequest("DELETE", `/api/opt/${id}`);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/opt"] });
-      toast({ title: "Сделка удалена", description: "Оптовая сделка успешно удалена" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
-    },
-  });
+  const {
+    page,
+    setPage,
+    search,
+    setSearch,
+    editingOpt,
+    setEditingOpt,
+    pageSize,
+    optDeals,
+    isLoading,
+    deleteMutation,
+    handleDelete,
+  } = useOptTable();
 
   const formatDate = (dateStr: string) => {
     return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
@@ -136,10 +120,7 @@ export function OptTable() {
                         variant="ghost" 
                         size="icon" 
                         className="h-8 w-8"
-                        onClick={() => {
-                          setEditingOpt(deal);
-                          setIsEditing(true);
-                        }}
+                        onClick={() => setEditingOpt(deal)}
                         data-testid={`button-edit-opt-${deal.id}`}
                       >
                         <Pencil className="h-4 w-4" />
@@ -148,11 +129,7 @@ export function OptTable() {
                         variant="ghost" 
                         size="icon" 
                         className="h-8 w-8 text-destructive"
-                        onClick={() => {
-                          if (confirm("Вы уверены, что хотите удалить эту сделку?")) {
-                            deleteMutation.mutate(deal.id);
-                          }
-                        }}
+                        onClick={() => handleDelete(deal.id)}
                         disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4" />
