@@ -195,6 +195,14 @@ export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableP
           </TableBody>
         </Table>
       </div>
+
+      {editingPrice && (
+        <AddPriceDialog
+          editPrice={editingPrice}
+          onEditComplete={() => setEditingPrice(null)}
+        />
+      )}
+      
     </div>
   );
 }
