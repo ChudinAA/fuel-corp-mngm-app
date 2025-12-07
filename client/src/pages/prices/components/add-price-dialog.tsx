@@ -208,21 +208,14 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
         }
       }
     }}>
-      <DialogTrigger asChild>
-        <Button data-testid={editPrice ? "button-edit-price-dialog" : "button-add-price"}>
-          {editPrice ? (
-            <>
-              <Pencil className="mr-2 h-4 w-4" />
-              Редактировать цену
-            </>
-          ) : (
-            <>
-              <Plus className="mr-2 h-4 w-4" />
-              Добавить цену
-            </>
-          )}
-        </Button>
-      </DialogTrigger>
+      {!editPrice && (
+        <DialogTrigger asChild>
+          <Button data-testid="button-add-price">
+            <Plus className="mr-2 h-4 w-4" />
+            Добавить цену
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editPrice ? "Редактирование цены" : "Новая цена"}</DialogTitle>

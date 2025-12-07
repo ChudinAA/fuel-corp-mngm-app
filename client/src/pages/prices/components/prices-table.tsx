@@ -31,7 +31,7 @@ export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableP
   });
 
   const { data: refuelingContractors } = useQuery<RefuelingProvider[]>({
-    queryKey: ["api/refueling/providers"],
+    queryKey: ["/api/refueling/providers"],
   });
 
   const selectionCheck = usePriceSelection();
