@@ -35,7 +35,7 @@ const warehouseFormSchema = z.object({
 
 type WarehouseFormData = z.infer<typeof warehouseFormSchema>;
 
-function WarehouseCard({ warehouse }: { warehouse: WarehouseType }) {
+function WarehouseCard({ warehouse, onEdit }: { warehouse: WarehouseType; onEdit: (warehouse: WarehouseType) => void }) {
   const { toast } = useToast();
   const balance = parseFloat(warehouse.currentBalance || "0");
   const cost = parseFloat(warehouse.averageCost || "0");
@@ -99,7 +99,7 @@ function WarehouseCard({ warehouse }: { warehouse: WarehouseType }) {
               variant="ghost" 
               size="icon" 
               data-testid={`button-edit-warehouse-${warehouse.id}`}
-              onClick={() => setEditingWarehouse(warehouse)}
+              onClick={() => onEdit(warehouse)}
             >
               <Pencil className="h-4 w-4" />
             </Button>
@@ -324,13 +324,11 @@ export default function WarehousesPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredWarehouses.map((warehouse) => (
-            <WarehouseCard key={warehouse.id} warehouse={warehouse} />
+            <WarehouseCard key={warehouse.id} warehouse={warehouse} onEdit={setEditingWarehouse} />
           ))}
-          {editingWarehouse && (
-            <AddWarehouseDialog warehouseToEdit={editingWarehouse} onSave={handleSave} />
-          )}
         </div>
       )}
-    </div>
-  );
-}
+      
+      {editingWarehouse && (
+        <AddWarehouseDialog warehouseToEdit={editingWarehouse} onSave={handleSave} />
+      
