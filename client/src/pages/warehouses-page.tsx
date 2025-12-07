@@ -331,4 +331,8 @@ export default function WarehousesPage() {
       
       {editingWarehouse && (
         <AddWarehouseDialog warehouseToEdit={editingWarehouse} onSave={handleSave} />
+      )}
+    </div>
+  );
+}
       
