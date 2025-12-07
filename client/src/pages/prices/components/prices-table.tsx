@@ -77,8 +77,6 @@ export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableP
         <Input placeholder="Поиск по базису или контрагенту..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
       </div>
 
-      <AddPriceDialog editPrice={editingPrice} onEditComplete={() => setEditingPrice(null)} />
-
       <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
