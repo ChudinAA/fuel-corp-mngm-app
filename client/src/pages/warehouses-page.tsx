@@ -39,9 +39,6 @@ function WarehouseCard({ warehouse }: { warehouse: WarehouseType }) {
   const { toast } = useToast();
   const balance = parseFloat(warehouse.currentBalance || "0");
   const cost = parseFloat(warehouse.averageCost || "0");
-  const usagePercent = allocation > 0 ? (balance / allocation) * 100 : 50;
-  const isLow = usagePercent < 20;
-  const isHigh = usagePercent > 80;
 
   const formatNumber = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value);
   const formatCurrency = (value: number) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 }).format(value);
@@ -61,7 +58,7 @@ function WarehouseCard({ warehouse }: { warehouse: WarehouseType }) {
   });
 
   return (
-    <Card className={isLow ? "border-l-4 border-l-yellow-500" : ""}>
+    <Card>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -72,7 +69,6 @@ function WarehouseCard({ warehouse }: { warehouse: WarehouseType }) {
               </CardDescription>
             )}
           </div>
-          {isLow && <AlertTriangle className="h-5 w-5 text-yellow-500" />}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -86,17 +82,6 @@ function WarehouseCard({ warehouse }: { warehouse: WarehouseType }) {
             <p className="text-lg font-medium">{formatCurrency(cost)}/кг</p>
           </div>
         </div>
-
-        {allocation > 0 && (
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Использование месячного лимита</span>
-              <span className={isLow ? "text-yellow-600" : isHigh ? "text-green-600" : ""}>{usagePercent.toFixed(1)}%</span>
-            </div>
-            <Progress value={usagePercent} className={isLow ? "[&>div]:bg-yellow-500" : isHigh ? "[&>div]:bg-green-500" : ""} />
-            <p className="text-xs text-muted-foreground">Лимит: {formatNumber(allocation)} кг/мес</p>
-          </div>
-        )}
 
         <div className="flex items-center justify-between pt-2 border-t">
           <div className="flex items-center gap-4 text-xs">
