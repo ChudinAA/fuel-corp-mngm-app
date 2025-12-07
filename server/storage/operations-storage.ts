@@ -1,5 +1,5 @@
 
-import { eq, desc, sql, asc } from "drizzle-orm";
+import { eq, desc, sql, asc, or } from "drizzle-orm";
 import { db } from "../db";
 import {
   warehouses,
@@ -7,6 +7,8 @@ import {
   movement,
   opt,
   aircraftRefueling,
+  wholesaleBases,
+  refuelingBases,
   type Warehouse,
   type InsertWarehouse,
   type Exchange,
@@ -22,11 +24,50 @@ import type { IOperationsStorage } from "./types";
 
 export class OperationsStorage implements IOperationsStorage {
   async getAllWarehouses(): Promise<Warehouse[]> {
-    return db.select().from(warehouses).orderBy(asc(warehouses.name));
+    const warehousesList = await db.select().from(warehouses).orderBy(asc(warehouses.name));
+    
+    // Enrich with basis name
+    const enrichedWarehouses = await Promise.all(
+      warehousesList.map(async (wh) => {
+        if (wh.baseId) {
+          // Try to find in wholesale bases first
+          const [wholesaleBase] = await db.select().from(wholesaleBases).where(eq(wholesaleBases.id, wh.baseId)).limit(1);
+          if (wholesaleBase) {
+            return { ...wh, basis: wholesaleBase.name };
+          }
+          
+          // Try refueling bases
+          const [refuelingBase] = await db.select().from(refuelingBases).where(eq(refuelingBases.id, wh.baseId)).limit(1);
+          if (refuelingBase) {
+            return { ...wh, basis: refuelingBase.name };
+          }
+        }
+        return wh;
+      })
+    );
+    
+    return enrichedWarehouses;
   }
 
   async getWarehouse(id: string): Promise<Warehouse | undefined> {
     const [wh] = await db.select().from(warehouses).where(eq(warehouses.id, id)).limit(1);
+    
+    if (!wh) return undefined;
+    
+    if (wh.baseId) {
+      // Try to find in wholesale bases first
+      const [wholesaleBase] = await db.select().from(wholesaleBases).where(eq(wholesaleBases.id, wh.baseId)).limit(1);
+      if (wholesaleBase) {
+        return { ...wh, basis: wholesaleBase.name };
+      }
+      
+      // Try refueling bases
+      const [refuelingBase] = await db.select().from(refuelingBases).where(eq(refuelingBases.id, wh.baseId)).limit(1);
+      if (refuelingBase) {
+        return { ...wh, basis: refuelingBase.name };
+      }
+    }
+    
     return wh;
   }
 

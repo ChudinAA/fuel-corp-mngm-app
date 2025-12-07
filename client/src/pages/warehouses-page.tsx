@@ -26,20 +26,11 @@ import {
   TrendingUp,
   TrendingDown
 } from "lucide-react";
-import type { Warehouse as WarehouseType } from "@shared/schema";
-
-const WAREHOUSE_TYPES = [
-  { value: "service", label: "Служба" },
-  { value: "airport", label: "Аэропорт" },
-  { value: "tk_tvk", label: "ТК ТВК" },
-  { value: "gpn", label: "ГПН" },
-  { value: "gpna", label: "ГПНА" },
-];
+import type { Warehouse as WarehouseType, WholesaleBase, RefuelingBase } from "@shared/schema";
 
 const warehouseFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
-  type: z.string().min(1, "Выберите тип"),
-  basisId: z.string().optional(),
+  baseId: z.string().min(1, "Выберите базис"),
 });
 
 type WarehouseFormData = z.infer<typeof warehouseFormSchema>;
@@ -54,8 +45,6 @@ function WarehouseCard({ warehouse }: { warehouse: WarehouseType }) {
 
   const formatNumber = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value);
   const formatCurrency = (value: number) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 }).format(value);
-
-  const getTypeLabel = (type: string) => WAREHOUSE_TYPES.find(t => t.value === type)?.label || type;
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -77,10 +66,11 @@ function WarehouseCard({ warehouse }: { warehouse: WarehouseType }) {
         <div className="flex items-start justify-between gap-2">
           <div>
             <CardTitle className="text-lg">{warehouse.name}</CardTitle>
-            <CardDescription className="flex items-center gap-2 mt-1">
-              <Badge variant="outline">{getTypeLabel(warehouse.type)}</Badge>
-              {warehouse.basis && <span className="text-xs">{warehouse.basis}</span>}
-            </CardDescription>
+            {warehouse.basis && (
+              <CardDescription className="flex items-center gap-2 mt-1">
+                <Badge variant="outline">{warehouse.basis}</Badge>
+              </CardDescription>
+            )}
           </div>
           {isLow && <AlertTriangle className="h-5 w-5 text-yellow-500" />}
         </div>
@@ -154,12 +144,24 @@ function AddWarehouseDialog({ warehouseToEdit, onSave }: { warehouseToEdit: Ware
 
   const isEditing = !!warehouseToEdit;
 
+  const { data: wholesaleBases } = useQuery<WholesaleBase[]>({
+    queryKey: ["/api/wholesale/bases"],
+  });
+
+  const { data: refuelingBases } = useQuery<RefuelingBase[]>({
+    queryKey: ["/api/refueling/bases"],
+  });
+
+  const allBases = [
+    ...(wholesaleBases?.map(b => ({ id: b.id, name: b.name, source: 'wholesale' })) || []),
+    ...(refuelingBases?.map(b => ({ id: b.id, name: b.name, source: 'refueling' })) || []),
+  ].sort((a, b) => a.name.localeCompare(b.name));
+
   const form = useForm<WarehouseFormData>({
     resolver: zodResolver(warehouseFormSchema),
     defaultValues: {
       name: warehouseToEdit?.name || "",
-      type: warehouseToEdit?.type || "",
-      basisId: warehouseToEdit?.baseId || "",
+      baseId: warehouseToEdit?.baseId || "",
     },
   });
 
@@ -214,35 +216,24 @@ function AddWarehouseDialog({ warehouseToEdit, onSave }: { warehouseToEdit: Ware
             />
             <FormField
               control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Тип</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-warehouse-type">
-                        <SelectValue placeholder="Выберите тип" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {WAREHOUSE_TYPES.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="basisId"
+              name="baseId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Базис</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Базис склада" data-testid="input-warehouse-basis" {...field} />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-warehouse-basis">
+                        <SelectValue placeholder="Выберите базис" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {allBases.map((base) => (
+                        <SelectItem key={base.id} value={base.id}>
+                          {base.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -262,7 +253,6 @@ function AddWarehouseDialog({ warehouseToEdit, onSave }: { warehouseToEdit: Ware
 
 export default function WarehousesPage() {
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [editingWarehouse, setEditingWarehouse] = useState<WarehouseType | null>(null);
   const { toast } = useToast();
 
@@ -272,8 +262,7 @@ export default function WarehousesPage() {
 
   const filteredWarehouses = warehouses?.filter(w => {
     const matchesSearch = w.name.toLowerCase().includes(search.toLowerCase());
-    const matchesType = typeFilter === "all" || w.type === typeFilter;
-    return matchesSearch && matchesType;
+    return matchesSearch;
   }) || [];
 
   const totalBalance = filteredWarehouses.reduce((sum, w) => sum + parseFloat(w.currentBalance || "0"), 0);
@@ -325,17 +314,6 @@ export default function WarehousesPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Поиск складов..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-search-warehouses" />
         </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[180px]" data-testid="select-filter-type">
-            <SelectValue placeholder="Все типы" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Все типы</SelectItem>
-            {WAREHOUSE_TYPES.map((type) => (
-              <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {isLoading ? (

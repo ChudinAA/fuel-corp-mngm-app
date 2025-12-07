@@ -193,7 +193,6 @@ export const deliveryCost = pgTable("delivery_cost", {
 export const warehouses = pgTable("warehouses", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
-  type: text("type").notNull(),
   baseId: uuid("base_id"),
   currentBalance: decimal("current_balance", { precision: 15, scale: 2 }).default("0"),
   averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default("0"),
