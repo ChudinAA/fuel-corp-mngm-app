@@ -123,9 +123,12 @@ function WarehouseCard({ warehouse, onEdit }: { warehouse: WarehouseType; onEdit
   );
 }
 
-function AddWarehouseDialog({ warehouseToEdit, onSave }: { warehouseToEdit: WarehouseType | null, onSave: () => void }) {
+function AddWarehouseDialog({ warehouseToEdit, onSave, open: externalOpen, onOpenChange: externalOnOpenChange }: { warehouseToEdit: WarehouseType | null, onSave: () => void, open?: boolean, onOpenChange?: (open: boolean) => void }) {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = externalOnOpenChange || setInternalOpen;
 
   const isEditing = !!warehouseToEdit;
 
@@ -239,6 +242,7 @@ function AddWarehouseDialog({ warehouseToEdit, onSave }: { warehouseToEdit: Ware
 export default function WarehousesPage() {
   const [search, setSearch] = useState("");
   const [editingWarehouse, setEditingWarehouse] = useState<WarehouseType | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: warehouses, isLoading } = useQuery<WarehouseType[]>({
@@ -255,6 +259,12 @@ export default function WarehousesPage() {
 
   const handleSave = () => {
     setEditingWarehouse(null);
+    setIsDialogOpen(false);
+  };
+
+  const handleEdit = (warehouse: WarehouseType) => {
+    setEditingWarehouse(warehouse);
+    setIsDialogOpen(true);
   };
 
   return (
@@ -264,7 +274,9 @@ export default function WarehousesPage() {
           <h1 className="text-2xl font-semibold">Склады</h1>
           <p className="text-muted-foreground">Управление складами и мониторинг остатков</p>
         </div>
-        <AddWarehouseDialog warehouseToEdit={null} onSave={handleSave} />
+        <Button onClick={() => setIsDialogOpen(true)} data-testid="button-add-warehouse">
+          <Plus className="mr-2 h-4 w-4" />Добавить склад
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -324,14 +336,20 @@ export default function WarehousesPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredWarehouses.map((warehouse) => (
-            <WarehouseCard key={warehouse.id} warehouse={warehouse} onEdit={setEditingWarehouse} />
+            <WarehouseCard key={warehouse.id} warehouse={warehouse} onEdit={handleEdit} />
           ))}
         </div>
       )}
       
-      {editingWarehouse && (
-        <AddWarehouseDialog warehouseToEdit={editingWarehouse} onSave={handleSave} />
-      )}
+      <AddWarehouseDialog 
+        warehouseToEdit={editingWarehouse} 
+        onSave={handleSave}
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) setEditingWarehouse(null);
+        }}
+      />
     </div>
   );
 }
