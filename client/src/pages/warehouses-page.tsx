@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -148,10 +148,25 @@ function AddWarehouseDialog({ warehouseToEdit, onSave, open: externalOpen, onOpe
   const form = useForm<WarehouseFormData>({
     resolver: zodResolver(warehouseFormSchema),
     defaultValues: {
-      name: warehouseToEdit?.name || "",
-      baseId: warehouseToEdit?.baseId || "",
+      name: "",
+      baseId: "",
     },
   });
+
+  // Обновляем форму при изменении warehouseToEdit
+  React.useEffect(() => {
+    if (warehouseToEdit) {
+      form.reset({
+        name: warehouseToEdit.name,
+        baseId: warehouseToEdit.baseId,
+      });
+    } else {
+      form.reset({
+        name: "",
+        baseId: "",
+      });
+    }
+  }, [warehouseToEdit, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: WarehouseFormData) => {
@@ -177,11 +192,6 @@ function AddWarehouseDialog({ warehouseToEdit, onSave, open: externalOpen, onOpe
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button data-testid={isEditing ? `button-edit-warehouse-${warehouseToEdit?.id}` : "button-add-warehouse"}>
-          {isEditing ? <><Pencil className="mr-2 h-4 w-4" />Редактировать</> : <><Plus className="mr-2 h-4 w-4" />Добавить склад</>}
-        </Button>
-      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{isEditing ? "Редактирование склада" : "Новый склад"}</DialogTitle>
