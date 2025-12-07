@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Search, Pencil, Trash2, RefreshCw, CalendarCheck, AlertTriangle } from "lucide-react";
-import type { Price, WholesaleSupplier, RefuelingProvider } from "@shared/schema";
+import type { Price, WholesaleSupplier, RefuelingProvider, Customer } from "@shared/schema";
 import type { PricesTableProps } from "../types";
 import { formatNumber, formatDate, getPriceDisplay, getProductTypeLabel } from "../utils";
 import { usePriceSelection } from "../hooks/use-price-selection";
@@ -34,18 +34,27 @@ export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableP
     queryKey: ["/api/refueling/providers"],
   });
 
+  const { data: customers } = useQuery<Customer[]>({
+    queryKey: ["/api/customers"],
+  });
+
   const selectionCheck = usePriceSelection();
   const dateCheck = useDateCheck();
 
-  const getContractorName = (id: string, type: string) => {
-    const contractors = type === "wholesale" ? optContractors : refuelingContractors;
+  const getContractorName = (id: string, type: string, role: string) => {
+    let contractors;
+    if (role === "buyer") {
+      contractors = customers;
+    } else {
+      contractors = type === "wholesale" ? optContractors : refuelingContractors;
+    }
     return contractors?.find(c => c.id === id)?.name || `ID: ${id}`;
   };
 
   const filteredPrices = prices?.filter(p => 
     p.counterpartyRole === counterpartyRole && 
     p.counterpartyType === counterpartyType &&
-    (!search || p.basis?.toLowerCase().includes(search.toLowerCase()) || getContractorName(p.counterpartyId, p.counterpartyType).toLowerCase().includes(search.toLowerCase()))
+    (!search || p.basis?.toLowerCase().includes(search.toLowerCase()) || getContractorName(p.counterpartyId, p.counterpartyType, p.counterpartyRole).toLowerCase().includes(search.toLowerCase()))
   ) || [];
 
   const deleteMutation = useMutation({
@@ -101,7 +110,7 @@ export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableP
               filteredPrices.map((price) => (
                 <TableRow key={price.id} data-testid={`row-price-${price.id}`}>
                   <TableCell className="text-sm whitespace-nowrap">{formatDate(price.dateFrom)} - {formatDate(price.dateTo)}</TableCell>
-                  <TableCell>{getContractorName(price.counterpartyId, price.counterpartyType)}</TableCell>
+                  <TableCell>{getContractorName(price.counterpartyId, price.counterpartyType, price.counterpartyRole)}</TableCell>
                   <TableCell>{price.basis || "—"}</TableCell>
                   <TableCell>
                     <Badge variant="outline">
