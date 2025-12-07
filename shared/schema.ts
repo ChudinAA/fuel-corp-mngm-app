@@ -35,7 +35,6 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
-  patronymic: text("patronymic"),
   roleId: uuid("role_id").references(() => roles.id),
   isActive: boolean("is_active").default(true),
   lastLoginAt: timestamp("last_login_at"),
@@ -198,7 +197,6 @@ export const warehouses = pgTable("warehouses", {
   baseId: uuid("base_id"),
   currentBalance: decimal("current_balance", { precision: 15, scale: 2 }).default("0"),
   averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default("0"),
-  monthlyAllocation: decimal("monthly_allocation", { precision: 15, scale: 2 }),
   isActive: boolean("is_active").default(true),
 });
 
@@ -382,7 +380,6 @@ export const registerUserSchema = z.object({
   password: z.string().min(6, "Пароль должен быть не менее 6 символов"),
   firstName: z.string().min(1, "Введите имя"),
   lastName: z.string().min(1, "Введите фамилию"),
-  patronymic: z.string().optional(),
   confirmPassword: z.string().optional(),
 });
 

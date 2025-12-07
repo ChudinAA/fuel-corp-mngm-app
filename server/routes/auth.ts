@@ -7,7 +7,7 @@ export function registerAuthRoutes(app: Express) {
   app.post("/api/auth/register", async (req, res) => {
     try {
       const data = registerUserSchema.parse(req.body);
-      const { email, password, firstName, lastName, patronymic } = data;
+      const { email, password, firstName, lastName } = data;
 
       const existingUser = await storage.users.getUserByEmail(email);
       if (existingUser) {

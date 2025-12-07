@@ -65,7 +65,7 @@ export default function SettingsPage() {
                 </Avatar>
                 <div className="flex-1 space-y-1">
                   <h3 className="text-lg font-medium">
-                    {user ? `${user.lastName} ${user.firstName} ${user.patronymic || ""}`.trim() : "Гость"}
+                    {user ? `${user.lastName} ${user.firstName}`.trim() : "Гость"}
                   </h3>
                   <p className="text-sm text-muted-foreground">{user?.email}</p>
                   <Badge variant="outline">Роль: Администратор</Badge>
@@ -83,10 +83,6 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>Фамилия</Label>
                   <Input defaultValue={user?.lastName} data-testid="input-settings-lastname" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Отчество</Label>
-                  <Input defaultValue={user?.patronymic || ""} data-testid="input-settings-patronymic" />
                 </div>
                 <div className="space-y-2">
                   <Label>Email</Label>

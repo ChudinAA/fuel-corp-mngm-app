@@ -20,57 +20,6 @@ export default function PricesPage() {
         <AddPriceDialog editPrice={editingPrice} onEditComplete={() => setEditingPrice(null)} />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-500" />
-              Цены ОПТ
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">Закупка/Продажа</p>
-            <p className="text-xs text-muted-foreground">оптовая торговля</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-blue-500" />
-              Цены Заправка
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">Закупка/Продажа</p>
-            <p className="text-xs text-muted-foreground">заправка воздушных судов</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Calculator className="h-4 w-4 text-purple-500" />
-              Выборка
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">Авторасчет</p>
-            <p className="text-xs text-muted-foreground">сумма сделок по цене</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <CalendarCheck className="h-4 w-4 text-orange-500" />
-              Проверка дат
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">Контроль</p>
-            <p className="text-xs text-muted-foreground">обнаружение пересечений</p>
-          </CardContent>
-        </Card>
-      </div>
-
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "wholesale" | "refueling")}>
         <TabsList>
           <TabsTrigger value="wholesale">ОПТ</TabsTrigger>

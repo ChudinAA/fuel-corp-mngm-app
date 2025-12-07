@@ -36,7 +36,6 @@ const userFormSchema = z.object({
   password: z.string().min(6, "Минимум 6 символов").optional(),
   firstName: z.string().min(1, "Укажите имя"),
   lastName: z.string().min(1, "Укажите фамилию"),
-  patronymic: z.string().optional(),
   roleId: z.string().min(1, "Выберите роль"),
   isActive: z.boolean().default(true),
 });
@@ -58,7 +57,6 @@ function AddUserDialog({
       password: "",
       firstName: "",
       lastName: "",
-      patronymic: "",
       roleId: "",
       isActive: true,
     },
@@ -114,7 +112,6 @@ function AddUserDialog({
         email: editUser.email,
         firstName: editUser.firstName,
         lastName: editUser.lastName,
-        patronymic: editUser.patronymic || "",
         roleId: editUser.roleId || "",
         isActive: editUser.isActive,
       });
@@ -126,7 +123,6 @@ function AddUserDialog({
         password: "",
         firstName: "",
         lastName: "",
-        patronymic: "",
         roleId: "",
         isActive: true,
       });
@@ -141,7 +137,6 @@ function AddUserDialog({
         password: "",
         firstName: "",
         lastName: "",
-        patronymic: "",
         roleId: "",
         isActive: true,
       });
@@ -198,19 +193,6 @@ function AddUserDialog({
                 )}
               />
             </div>
-            <FormField
-              control={form.control}
-              name="patronymic"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Отчество</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Иванович" data-testid="input-user-patronymic" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="email"
@@ -454,8 +436,8 @@ export default function UsersPage() {
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="font-medium">{user.lastName} {user.firstName}</p>
-                              {user.patronymic && <p className="text-xs text-muted-foreground">{user.patronymic}</p>}
+                              <p className="font-medium">{user.firstName}</p>
+                              <p className="text-xs text-muted-foreground">{user.lastName}</p>
                             </div>
                           </div>
                         </TableCell>

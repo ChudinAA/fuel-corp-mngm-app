@@ -22,7 +22,6 @@ const registerSchema = z.object({
   confirmPassword: z.string(),
   firstName: z.string().min(2, "Введите имя"),
   lastName: z.string().min(2, "Введите фамилию"),
-  patronymic: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Пароли не совпадают",
   path: ["confirmPassword"],
@@ -52,7 +51,6 @@ export default function AuthPage() {
       confirmPassword: "",
       firstName: "",
       lastName: "",
-      patronymic: "",
     },
   });
 
@@ -225,23 +223,6 @@ export default function AuthPage() {
                         )}
                       />
                     </div>
-                    <FormField
-                      control={registerForm.control}
-                      name="patronymic"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Отчество (необязательно)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Иванович"
-                              data-testid="input-patronymic"
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                     <FormField
                       control={registerForm.control}
                       name="email"

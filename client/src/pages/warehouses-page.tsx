@@ -39,8 +39,7 @@ const WAREHOUSE_TYPES = [
 const warehouseFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
   type: z.string().min(1, "Выберите тип"),
-  basis: z.string().optional(),
-  monthlyAllocation: z.string().optional(),
+  basisId: z.string().optional(),
 });
 
 type WarehouseFormData = z.infer<typeof warehouseFormSchema>;
@@ -49,7 +48,6 @@ function WarehouseCard({ warehouse }: { warehouse: WarehouseType }) {
   const { toast } = useToast();
   const balance = parseFloat(warehouse.currentBalance || "0");
   const cost = parseFloat(warehouse.averageCost || "0");
-  const allocation = parseFloat(warehouse.monthlyAllocation || "0");
   const usagePercent = allocation > 0 ? (balance / allocation) * 100 : 50;
   const isLow = usagePercent < 20;
   const isHigh = usagePercent > 80;
@@ -161,8 +159,7 @@ function AddWarehouseDialog({ warehouseToEdit, onSave }: { warehouseToEdit: Ware
     defaultValues: {
       name: warehouseToEdit?.name || "",
       type: warehouseToEdit?.type || "",
-      basis: warehouseToEdit?.basis || "",
-      monthlyAllocation: warehouseToEdit?.monthlyAllocation || "",
+      basisId: warehouseToEdit?.baseId || "",
     },
   });
 
@@ -170,7 +167,6 @@ function AddWarehouseDialog({ warehouseToEdit, onSave }: { warehouseToEdit: Ware
     mutationFn: async (data: WarehouseFormData) => {
       const payload = {
         ...data,
-        monthlyAllocation: data.monthlyAllocation || null,
       };
       const url = isEditing ? `/api/warehouses/${warehouseToEdit?.id}` : "/api/warehouses";
       const method = isEditing ? "PATCH" : "POST";
@@ -240,25 +236,12 @@ function AddWarehouseDialog({ warehouseToEdit, onSave }: { warehouseToEdit: Ware
             />
             <FormField
               control={form.control}
-              name="basis"
+              name="basisId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Базис</FormLabel>
                   <FormControl>
                     <Input placeholder="Базис склада" data-testid="input-warehouse-basis" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="monthlyAllocation"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Месячный лимит (кг)</FormLabel>
-                  <FormControl>
-                    <Input type="number" placeholder="Для ГПН/ГПНА" data-testid="input-warehouse-allocation" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
