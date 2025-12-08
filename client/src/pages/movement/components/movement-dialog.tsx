@@ -379,7 +379,17 @@ export function MovementDialog({
                     <FormField control={form.control} name="quantityKg" render={({ field }) => (
                       <FormItem className="md:col-span-3">
                         <FormLabel>Количество (КГ)</FormLabel>
-                        <FormControl><Input type="number" min="0" step="0.01" placeholder="0.00" data-testid="input-movement-kg" {...field} /></FormControl>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0" 
+                            step="0.01" 
+                            placeholder="0.00" 
+                            data-testid="input-movement-kg" 
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value)}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
