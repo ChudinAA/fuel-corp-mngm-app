@@ -298,7 +298,9 @@ export function OptForm({
         carrierId: data.carrierId || null,
         deliveryLocationId: data.deliveryLocationId || null,
         dealDate: format(data.dealDate, "yyyy-MM-dd"),
-        quantityKg: calculatedKg,
+        quantityKg: parseFloat(calculatedKg),
+        quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
+        density: data.density ? parseFloat(data.density) : null,
         purchasePrice: purchasePrice,
         purchasePriceId: watchSelectedPurchasePriceId || null,
         salePrice: salePrice,
@@ -306,6 +308,7 @@ export function OptForm({
         purchaseAmount: purchaseAmount,
         saleAmount: saleAmount,
         deliveryCost: deliveryCost,
+        deliveryTariff: deliveryCost && finalKg > 0 ? deliveryCost / finalKg : null,
         profit: profit,
       };
       const res = await apiRequest("POST", "/api/opt", payload);
@@ -337,7 +340,9 @@ export function OptForm({
         carrierId: data.carrierId || null,
         deliveryLocationId: data.deliveryLocationId || null,
         dealDate: format(data.dealDate, "yyyy-MM-dd"),
-        quantityKg: calculatedKg,
+        quantityKg: parseFloat(calculatedKg),
+        quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
+        density: data.density ? parseFloat(data.density) : null,
         purchasePrice: purchasePrice,
         purchasePriceId: watchSelectedPurchasePriceId || null,
         salePrice: salePrice,
@@ -345,6 +350,7 @@ export function OptForm({
         purchaseAmount: purchaseAmount,
         saleAmount: saleAmount,
         deliveryCost: deliveryCost,
+        deliveryTariff: deliveryCost && finalKg > 0 ? deliveryCost / finalKg : null,
         profit: profit,
       };
       const res = await apiRequest("PATCH", `/api/opt/${data.id}`, payload);
