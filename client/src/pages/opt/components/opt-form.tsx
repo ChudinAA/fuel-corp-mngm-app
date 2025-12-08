@@ -229,22 +229,26 @@ export function OptForm({
 
   // Получение стоимости доставки
   const getDeliveryCost = (): number | null => {
-    if (selectedBasis && watchDeliveryLocationId && watchCarrierId && deliveryCosts && deliveryLocations && finalKg > 0) {
-      const deliveryLocation = deliveryLocations.find(dl => dl.id === watchDeliveryLocationId);
-      
-      if (!deliveryLocation) return null;
-      
-      const cost = deliveryCosts.find(dc => 
-        dc.fromLocation === selectedBasis &&
-        dc.toLocation === deliveryLocation.name &&
-        dc.carrierId === watchCarrierId &&
-        dc.isActive
-      );
-      
-      if (cost?.costPerKg) {
-        return parseFloat(cost.costPerKg) * finalKg;
-      }
+    if (!watchDeliveryLocationId || !watchCarrierId || !deliveryCosts || !finalKg || finalKg <= 0) {
+      return null;
     }
+
+    // Находим baseId по selectedBasis
+    const base = bases?.find(b => b.name === selectedBasis);
+    if (!base) return null;
+
+    // Ищем тариф по baseId и destinationId
+    const cost = deliveryCosts.find(dc => 
+      dc.baseId === base.id &&
+      dc.destinationId === watchDeliveryLocationId &&
+      dc.carrierId === watchCarrierId &&
+      dc.isActive
+    );
+    
+    if (cost?.costPerKg) {
+      return parseFloat(cost.costPerKg) * finalKg;
+    }
+    
     return null;
   };
 

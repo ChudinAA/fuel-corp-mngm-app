@@ -97,7 +97,21 @@ function AddDeliveryCostDialog({ editDeliveryCost, onClose }: { editDeliveryCost
 
   const createMutation = useMutation({
     mutationFn: async (data: DeliveryCostFormData) => {
-      const res = await apiRequest("POST", "/api/delivery-costs", data);
+      // Находим baseId по fromLocation
+      const fromBase = fromLocations.find(loc => loc.name === data.fromLocation);
+      const baseId = fromBase?.id || null;
+      
+      // Находим destinationId по toLocation
+      const toLocation = toLocations.find(loc => loc.name === data.toLocation);
+      const destinationId = toLocation?.id || null;
+      
+      const payload = {
+        ...data,
+        baseId,
+        destinationId
+      };
+      
+      const res = await apiRequest("POST", "/api/delivery-costs", payload);
       return res.json();
     },
     onSuccess: () => {
@@ -112,7 +126,21 @@ function AddDeliveryCostDialog({ editDeliveryCost, onClose }: { editDeliveryCost
 
   const updateMutation = useMutation({
     mutationFn: async (data: DeliveryCostFormData) => {
-      const res = await apiRequest("PATCH", `/api/delivery-costs/${editDeliveryCost?.id}`, data);
+      // Находим baseId по fromLocation
+      const fromBase = fromLocations.find(loc => loc.name === data.fromLocation);
+      const baseId = fromBase?.id || null;
+      
+      // Находим destinationId по toLocation
+      const toLocation = toLocations.find(loc => loc.name === data.toLocation);
+      const destinationId = toLocation?.id || null;
+      
+      const payload = {
+        ...data,
+        baseId,
+        destinationId
+      };
+      
+      const res = await apiRequest("PATCH", `/api/delivery-costs/${editDeliveryCost?.id}`, payload);
       return res.json();
     },
     onSuccess: () => {

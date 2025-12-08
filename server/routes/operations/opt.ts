@@ -15,8 +15,22 @@ export function registerOptRoutes(app: Express) {
 
   app.post("/api/opt", requireAuth, async (req, res) => {
     try {
+      const body = { ...req.body };
+      
+      // Преобразуем числовые поля из строк в числа
+      if (body.quantityKg) body.quantityKg = parseFloat(body.quantityKg);
+      if (body.quantityLiters) body.quantityLiters = parseFloat(body.quantityLiters);
+      if (body.density) body.density = parseFloat(body.density);
+      if (body.purchasePrice) body.purchasePrice = parseFloat(body.purchasePrice);
+      if (body.salePrice) body.salePrice = parseFloat(body.salePrice);
+      if (body.purchaseAmount) body.purchaseAmount = parseFloat(body.purchaseAmount);
+      if (body.saleAmount) body.saleAmount = parseFloat(body.saleAmount);
+      if (body.deliveryCost) body.deliveryCost = parseFloat(body.deliveryCost);
+      if (body.deliveryTariff) body.deliveryTariff = parseFloat(body.deliveryTariff);
+      if (body.profit) body.profit = parseFloat(body.profit);
+      
       const data = insertOptSchema.parse({
-        ...req.body,
+        ...body,
         createdById: req.session.userId,
         warehouseStatus: "OK",
         priceStatus: "OK",
@@ -34,7 +48,21 @@ export function registerOptRoutes(app: Express) {
   app.patch("/api/opt/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.operations.updateOpt(id, req.body);
+      const body = { ...req.body };
+      
+      // Преобразуем числовые поля из строк в числа
+      if (body.quantityKg) body.quantityKg = parseFloat(body.quantityKg);
+      if (body.quantityLiters) body.quantityLiters = parseFloat(body.quantityLiters);
+      if (body.density) body.density = parseFloat(body.density);
+      if (body.purchasePrice) body.purchasePrice = parseFloat(body.purchasePrice);
+      if (body.salePrice) body.salePrice = parseFloat(body.salePrice);
+      if (body.purchaseAmount) body.purchaseAmount = parseFloat(body.purchaseAmount);
+      if (body.saleAmount) body.saleAmount = parseFloat(body.saleAmount);
+      if (body.deliveryCost) body.deliveryCost = parseFloat(body.deliveryCost);
+      if (body.deliveryTariff) body.deliveryTariff = parseFloat(body.deliveryTariff);
+      if (body.profit) body.profit = parseFloat(body.profit);
+      
+      const item = await storage.operations.updateOpt(id, body);
       if (!item) {
         return res.status(404).json({ message: "Сделка не найдена" });
       }

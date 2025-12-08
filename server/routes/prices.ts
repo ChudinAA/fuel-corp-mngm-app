@@ -43,14 +43,14 @@ export function registerPricesRoutes(app: Express) {
     try {
       const id = req.params.id;
       const body = req.body;
-      
+
       // Process priceValues if they exist
       const processedData = {
         ...body,
         priceValues: body.priceValues?.map((pv: { price: string }) => JSON.stringify({ price: parseFloat(pv.price) })),
         volume: body.volume ? String(body.volume) : null,
       };
-      
+
       const item = await storage.prices.updatePrice(id, processedData);
       if (!item) {
         return res.status(404).json({ message: "Цена не найдена" });
@@ -129,17 +129,19 @@ export function registerPricesRoutes(app: Express) {
 
   app.post("/api/delivery-costs", requireAuth, async (req, res) => {
     try {
-      const { carrierId, fromLocation, toLocation, costPerKg, distance } = req.body;
-      
+      const { carrierId, fromLocation, toLocation, costPerKg, distance, baseId, destinationId } = req.body;
+
       const data = {
-        carrierId: carrierId,
-        fromLocation: fromLocation,
-        toLocation: toLocation,
-        costPerKg: costPerKg ? parseFloat(costPerKg) : 0,
+        carrierId,
+        fromLocation,
+        toLocation,
+        costPerKg: parseFloat(costPerKg),
         distance: distance ? parseFloat(distance) : null,
+        baseId: baseId || null,
+        destinationId: destinationId || null,
         isActive: true,
       };
-      
+
       const item = await storage.prices.createDeliveryCost(data);
       res.status(201).json(item);
     } catch (error) {
@@ -155,14 +157,14 @@ export function registerPricesRoutes(app: Express) {
     try {
       const id = req.params.id;
       const { carrierId, fromLocation, toLocation, costPerKg, distance } = req.body;
-      
+
       const data: any = {};
       if (carrierId !== undefined) data.carrierId = carrierId;
       if (fromLocation !== undefined) data.fromLocation = fromLocation;
       if (toLocation !== undefined) data.toLocation = toLocation;
       if (costPerKg !== undefined) data.costPerKg = parseFloat(costPerKg);
       if (distance !== undefined) data.distance = distance ? parseFloat(distance) : null;
-      
+
       const item = await storage.prices.updateDeliveryCost(id, data);
       if (!item) {
         return res.status(404).json({ message: "Тариф не найден" });
