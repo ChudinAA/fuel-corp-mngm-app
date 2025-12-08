@@ -99,7 +99,7 @@ export function OptForm({
   });
 
   const { data: deliveryCosts } = useQuery<DeliveryCost[]>({
-    queryKey: ["/api/delivery-cost"],
+    queryKey: ["/api/delivery-costs"],
   });
 
   const watchSupplierId = form.watch("supplierId");
@@ -229,36 +229,52 @@ export function OptForm({
 
   // Получение стоимости доставки
   const getDeliveryCost = (): number | null => {
-    if (!watchDeliveryLocationId || !watchCarrierId || !deliveryCosts || !finalKg || finalKg <= 0) {
-      console.log("Problem !!!");
-      console.log("watchDeliveryLocationId:", watchDeliveryLocationId);
-      console.log("watchCarrierId:", watchCarrierId);
-      console.log("deliveryCosts:", deliveryCosts);
-      return null;
-    }
-
+    console.log("=== getDeliveryCost called ===");
     console.log("watchDeliveryLocationId:", watchDeliveryLocationId);
     console.log("watchCarrierId:", watchCarrierId);
+    console.log("selectedBasis:", selectedBasis);
+    console.log("finalKg:", finalKg);
     console.log("deliveryCosts:", deliveryCosts);
+    console.log("bases:", bases);
+    
+    if (!watchDeliveryLocationId || !watchCarrierId || !deliveryCosts || !finalKg || finalKg <= 0) {
+      console.log("Missing required data for delivery cost calculation");
+      return null;
+    }
     
     // Находим baseId по selectedBasis
     const base = bases?.find(b => b.name === selectedBasis);
-    if (!base) return null;
+    if (!base) {
+      console.log("Base not found for selectedBasis:", selectedBasis);
+      return null;
+    }
 
-    console.log("selectedBasisnId:", base.id);
+    console.log("Found base.id:", base.id);
     
     // Ищем тариф по baseId и destinationId
-    const cost = deliveryCosts.find(dc => 
-      dc.baseId === base.id &&
-      dc.destinationId === watchDeliveryLocationId &&
-      dc.carrierId === watchCarrierId &&
-      dc.isActive
-    );
+    const cost = deliveryCosts.find(dc => {
+      console.log("Checking delivery cost:", {
+        dcBaseId: dc.baseId,
+        dcDestinationId: dc.destinationId,
+        dcCarrierId: dc.carrierId,
+        dcIsActive: dc.isActive,
+        matches: dc.baseId === base.id && dc.destinationId === watchDeliveryLocationId && dc.carrierId === watchCarrierId && dc.isActive
+      });
+      return dc.baseId === base.id &&
+        dc.destinationId === watchDeliveryLocationId &&
+        dc.carrierId === watchCarrierId &&
+        dc.isActive;
+    });
+    
+    console.log("Found delivery cost:", cost);
     
     if (cost?.costPerKg) {
-      return parseFloat(cost.costPerKg) * finalKg;
+      const totalCost = parseFloat(cost.costPerKg) * finalKg;
+      console.log("Calculated delivery cost:", totalCost);
+      return totalCost;
     }
     
+    console.log("No valid cost found");
     return null;
   };
 
