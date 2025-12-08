@@ -229,10 +229,14 @@ export function OptForm({
 
   // Получение стоимости доставки
   const getDeliveryCost = (): number | null => {
-    if (selectedBasis && watchDeliveryLocationId && watchCarrierId && deliveryCosts && finalKg > 0) {
+    if (selectedBasis && watchDeliveryLocationId && watchCarrierId && deliveryCosts && deliveryLocations && finalKg > 0) {
+      const deliveryLocation = deliveryLocations.find(dl => dl.id === watchDeliveryLocationId);
+      
+      if (!deliveryLocation) return null;
+      
       const cost = deliveryCosts.find(dc => 
-        dc.baseId === selectedBasis &&
-        dc.destinationId === watchDeliveryLocationId &&
+        dc.fromLocation === selectedBasis &&
+        dc.toLocation === deliveryLocation.name &&
         dc.carrierId === watchCarrierId &&
         dc.isActive
       );
