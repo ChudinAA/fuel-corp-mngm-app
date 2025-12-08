@@ -44,6 +44,13 @@ function AddDeliveryCostDialog({ editDeliveryCost, onClose }: { editDeliveryCost
   
   const handleClose = () => {
     setOpen(false);
+    form.reset({
+      carrierId: "",
+      fromLocation: "",
+      toLocation: "",
+      costPerKg: "",
+      distance: "",
+    });
     onClose?.();
   };
 
@@ -96,7 +103,6 @@ function AddDeliveryCostDialog({ editDeliveryCost, onClose }: { editDeliveryCost
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/delivery-costs"] });
       toast({ title: "Тариф добавлен", description: "Новый тариф доставки сохранен" });
-      form.reset();
       handleClose();
     },
     onError: (error: Error) => {
@@ -112,7 +118,6 @@ function AddDeliveryCostDialog({ editDeliveryCost, onClose }: { editDeliveryCost
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/delivery-costs"] });
       toast({ title: "Тариф обновлен", description: "Изменения тарифа доставки сохранены" });
-      form.reset();
       handleClose();
     },
     onError: (error: Error) => {
