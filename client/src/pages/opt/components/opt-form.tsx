@@ -342,6 +342,7 @@ export function OptForm({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/opt"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       toast({ title: "Сделка создана", description: "Оптовая сделка успешно сохранена" });
       form.reset();
       onSuccess?.();
@@ -384,6 +385,7 @@ export function OptForm({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/opt"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       toast({ title: "Сделка обновлена", description: "Оптовая сделка успешно обновлена" });
       form.reset();
       onSuccess?.();

@@ -181,6 +181,33 @@ export class OperationsStorage implements IOperationsStorage {
             averageCost: newAverageCost.toFixed(4)
           })
           .where(eq(warehouses.id, created.toWarehouseId));
+        
+        // Создаем запись транзакции (приход)
+        await db.execute(sql`
+          INSERT INTO warehouse_transactions (
+            warehouse_id,
+            transaction_type,
+            source_type,
+            source_id,
+            quantity_kg,
+            balance_before,
+            balance_after,
+            average_cost_before,
+            average_cost_after,
+            transaction_date
+          ) VALUES (
+            ${created.toWarehouseId},
+            ${created.movementType === 'supply' ? 'receipt' : 'transfer_in'},
+            'movement',
+            ${created.id},
+            ${quantityKg},
+            ${currentBalance},
+            ${newBalance},
+            ${currentCost},
+            ${newAverageCost},
+            ${created.movementDate}
+          )
+        `);
       }
     }
     
@@ -190,6 +217,7 @@ export class OperationsStorage implements IOperationsStorage {
       
       if (sourceWarehouse) {
         const currentBalance = parseFloat(sourceWarehouse.currentBalance || "0");
+        const currentCost = parseFloat(sourceWarehouse.averageCost || "0");
         const newBalance = Math.max(0, currentBalance - quantityKg);
         
         await db.update(warehouses)
@@ -197,6 +225,33 @@ export class OperationsStorage implements IOperationsStorage {
             currentBalance: newBalance.toFixed(2)
           })
           .where(eq(warehouses.id, created.fromWarehouseId));
+        
+        // Создаем запись транзакции (расход)
+        await db.execute(sql`
+          INSERT INTO warehouse_transactions (
+            warehouse_id,
+            transaction_type,
+            source_type,
+            source_id,
+            quantity_kg,
+            balance_before,
+            balance_after,
+            average_cost_before,
+            average_cost_after,
+            transaction_date
+          ) VALUES (
+            ${created.fromWarehouseId},
+            'transfer_out',
+            'movement',
+            ${created.id},
+            ${-quantityKg},
+            ${currentBalance},
+            ${newBalance},
+            ${currentCost},
+            ${currentCost},
+            ${created.movementDate}
+          )
+        `);
       }
     }
     
@@ -222,6 +277,51 @@ export class OperationsStorage implements IOperationsStorage {
 
   async createOpt(data: InsertOpt): Promise<Opt> {
     const [created] = await db.insert(opt).values(data).returning();
+    
+    // Обновляем остаток на складе (списание при продаже)
+    if (created.warehouseId && created.quantityKg) {
+      const quantityKg = parseFloat(created.quantityKg);
+      const [warehouse] = await db.select().from(warehouses).where(eq(warehouses.id, created.warehouseId)).limit(1);
+      
+      if (warehouse) {
+        const currentBalance = parseFloat(warehouse.currentBalance || "0");
+        const newBalance = Math.max(0, currentBalance - quantityKg);
+        
+        await db.update(warehouses)
+          .set({
+            currentBalance: newBalance.toFixed(2)
+          })
+          .where(eq(warehouses.id, created.warehouseId));
+        
+        // Создаем запись транзакции
+        await db.execute(sql`
+          INSERT INTO warehouse_transactions (
+            warehouse_id,
+            transaction_type,
+            source_type,
+            source_id,
+            quantity_kg,
+            balance_before,
+            balance_after,
+            average_cost_before,
+            average_cost_after,
+            transaction_date
+          ) VALUES (
+            ${created.warehouseId},
+            'sale',
+            'opt',
+            ${created.id},
+            ${-quantityKg},
+            ${currentBalance},
+            ${newBalance},
+            ${warehouse.averageCost || "0"},
+            ${warehouse.averageCost || "0"},
+            ${created.dealDate}
+          )
+        `);
+      }
+    }
+    
     return created;
   }
 
