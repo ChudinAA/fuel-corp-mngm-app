@@ -39,7 +39,7 @@ type DeliveryCostFormData = z.infer<typeof deliveryCostFormSchema>;
 
 function AddDeliveryCostDialog({ editDeliveryCost, onClose }: { editDeliveryCost: DeliveryCost | null; onClose?: () => void }) {
   const { toast } = useToast();
-  const [open, setOpen] = useState(editDeliveryCost !== null);
+  const [open, setOpen] = useState(false);
   
   const handleClose = () => {
     setOpen(false);
@@ -122,10 +122,14 @@ function AddDeliveryCostDialog({ editDeliveryCost, onClose }: { editDeliveryCost
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={editDeliveryCost !== null || open} onOpenChange={(isOpen) => {
+      if (!isOpen) {
+        handleClose();
+      }
+    }}>
       <DialogTrigger asChild>
         {editDeliveryCost ? null : (
-          <Button data-testid="button-add-delivery-cost">
+          <Button data-testid="button-add-delivery-cost" onClick={() => setOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Добавить тариф
           </Button>
