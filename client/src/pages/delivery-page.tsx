@@ -1,4 +1,5 @@
 import { useState } from "react";
+import * as React from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -120,6 +121,19 @@ function AddDeliveryCostDialog({ editDeliveryCost, onClose }: { editDeliveryCost
   });
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
+  // Синхронизировать форму с данными редактирования
+  React.useEffect(() => {
+    if (editDeliveryCost) {
+      form.reset({
+        carrierId: editDeliveryCost.carrierId || "",
+        fromLocation: editDeliveryCost.fromLocation || "",
+        toLocation: editDeliveryCost.toLocation || "",
+        costPerKg: editDeliveryCost.costPerKg?.toString() || "",
+        distance: editDeliveryCost.distance?.toString() || "",
+      });
+    }
+  }, [editDeliveryCost, form]);
 
   return (
     <Dialog open={editDeliveryCost !== null || open} onOpenChange={(isOpen) => {
@@ -265,6 +279,15 @@ export default function DeliveryPage() {
     queryKey: ["/api/delivery-costs"],
   });
 
+  const { data: carriers } = useQuery<any[]>({
+    queryKey: ["/api/logistics/carriers"],
+  });
+
+  const getCarrierName = (carrierId: string) => {
+    const carrier = carriers?.find(c => c.id === carrierId);
+    return carrier?.name || carrierId;
+  };
+
   const formatNumber = (value: string | number | null) => {
     if (value === null || value === undefined) return "—";
     const num = typeof value === "string" ? parseFloat(value) : value;
@@ -372,7 +395,7 @@ export default function DeliveryPage() {
                   ) : (
                     filteredCosts.map((cost) => (
                       <TableRow key={cost.id}>
-                        <TableCell>{cost.carrierId}</TableCell>
+                        <TableCell>{getCarrierName(cost.carrierId)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <span>{cost.fromLocation}</span>
