@@ -230,12 +230,22 @@ export function OptForm({
   // Получение стоимости доставки
   const getDeliveryCost = (): number | null => {
     if (!watchDeliveryLocationId || !watchCarrierId || !deliveryCosts || !finalKg || finalKg <= 0) {
+      console.log("Problem !!!");
+      console.log("watchDeliveryLocationId:", watchDeliveryLocationId);
+      console.log("watchCarrierId:", watchCarrierId);
+      console.log("deliveryCosts:", deliveryCosts);
       return null;
     }
 
+    console.log("watchDeliveryLocationId:", watchDeliveryLocationId);
+    console.log("watchCarrierId:", watchCarrierId);
+    console.log("deliveryCosts:", deliveryCosts);
+    
     // Находим baseId по selectedBasis
     const base = bases?.find(b => b.name === selectedBasis);
     if (!base) return null;
+
+    console.log("selectedBasisnId:", base.id);
     
     // Ищем тариф по baseId и destinationId
     const cost = deliveryCosts.find(dc => 
