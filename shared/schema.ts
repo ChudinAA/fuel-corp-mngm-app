@@ -434,7 +434,37 @@ export const insertMovementSchema = z.object({
   notes: z.string().nullable().optional(),
   createdById: z.string().nullable().optional(),
 });
-export const insertOptSchema = createInsertSchema(opt).omit({ id: true, createdAt: true });
+export const insertOptSchema = z.object({
+  dealDate: z.string(),
+  supplierId: z.string(),
+  buyerId: z.string(),
+  warehouseId: z.string().nullable().optional(),
+  basis: z.string().nullable().optional(),
+  quantityLiters: z.number().nullable().optional(),
+  density: z.number().nullable().optional(),
+  quantityKg: z.number(),
+  purchasePrice: z.number().nullable().optional(),
+  purchasePriceId: z.string().nullable().optional(),
+  salePrice: z.number().nullable().optional(),
+  salePriceId: z.string().nullable().optional(),
+  purchaseAmount: z.number().nullable().optional(),
+  saleAmount: z.number().nullable().optional(),
+  carrierId: z.string().nullable().optional(),
+  deliveryLocationId: z.string().nullable().optional(),
+  deliveryTariff: z.number().nullable().optional(),
+  deliveryCost: z.number().nullable().optional(),
+  profit: z.number().nullable().optional(),
+  cumulativeProfit: z.number().nullable().optional(),
+  vehicleNumber: z.string().nullable().optional(),
+  trailerNumber: z.string().nullable().optional(),
+  driverName: z.string().nullable().optional(),
+  contractNumber: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  isApproxVolume: z.boolean().optional(),
+  warehouseStatus: z.string().nullable().optional(),
+  priceStatus: z.string().nullable().optional(),
+  createdById: z.string().nullable().optional(),
+});
 export const insertAircraftRefuelingSchema = createInsertSchema(aircraftRefueling).omit({ id: true, createdAt: true });
 
 // ============ TYPES ============
