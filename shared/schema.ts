@@ -412,7 +412,12 @@ export const insertWarehouseSchema = createInsertSchema(warehouses).omit({ id: t
 export const insertWarehouseTransactionSchema = createInsertSchema(warehouseTransactions).omit({ id: true });
 
 export const insertExchangeSchema = createInsertSchema(exchange).omit({ id: true, createdAt: true });
-export const insertMovementSchema = createInsertSchema(movement).omit({ id: true, createdAt: true });
+export const insertMovementSchema = createInsertSchema(movement).extend({
+  movementDate: z.string(),
+  quantityKg: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) : val),
+  quantityLiters: z.union([z.string(), z.number()]).optional().transform(val => val ? (typeof val === 'string' ? parseFloat(val) : val) : null),
+  density: z.union([z.string(), z.number()]).optional().transform(val => val ? (typeof val === 'string' ? parseFloat(val) : val) : null),
+}).omit({ id: true, createdAt: true });
 export const insertOptSchema = createInsertSchema(opt).omit({ id: true, createdAt: true });
 export const insertAircraftRefuelingSchema = createInsertSchema(aircraftRefueling).omit({ id: true, createdAt: true });
 
@@ -493,7 +498,7 @@ export type InsertAircraftRefueling = z.infer<typeof insertAircraftRefuelingSche
 // Module names for permissions
 export const MODULES = [
   "opt",
-  "refueling", 
+  "refueling",
   "exchange",
   "movement",
   "warehouses",

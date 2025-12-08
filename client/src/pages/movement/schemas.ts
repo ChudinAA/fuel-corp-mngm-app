@@ -9,17 +9,9 @@ export const movementFormSchema = z.object({
   fromWarehouseId: z.string().optional(),
   toWarehouseId: z.string().min(1, "Выберите склад назначения"),
   inputMode: z.enum(["liters", "kg"]),
-  quantityLiters: z.union([z.string(), z.number()]).optional().transform(val => val?.toString() || ""),
-  density: z.union([z.string(), z.number()]).optional().transform(val => val?.toString() || ""),
-  quantityKg: z.union([z.string(), z.number()]).transform(val => {
-    const str = val?.toString() || "";
-    if (!str) return "";
-    return str;
-  }).refine((val) => {
-    if (!val) return false;
-    const num = parseFloat(val);
-    return !isNaN(num) && num > 0;
-  }, { message: "Укажите положительное количество" }),
+  quantityLiters: z.coerce.number().positive().optional().nullable(),
+  density: z.coerce.number().positive().optional().nullable(),
+  quantityKg: z.coerce.number().positive({ message: "Укажите положительное количество" }),
   carrierId: z.string().optional(),
   vehicleNumber: z.string().optional(),
   trailerNumber: z.string().optional(),

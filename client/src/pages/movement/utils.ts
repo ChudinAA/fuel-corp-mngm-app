@@ -18,9 +18,9 @@ export const formatCurrency = (value: string | number | null) => {
 export const formatDate = (dateStr: string) => 
   format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
 
-export const calculateKgFromLiters = (liters: string, density: string): string | null => {
+export const calculateKgFromLiters = (liters: number | null, density: number | null): number | null => {
   if (!liters || !density) return null;
-  return (parseFloat(liters) * parseFloat(density)).toFixed(2);
+  return parseFloat((liters * density).toFixed(2));
 };
 
 export const calculateValues = (

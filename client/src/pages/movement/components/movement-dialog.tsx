@@ -51,9 +51,9 @@ export function MovementDialog({
       fromWarehouseId: editMovement?.fromWarehouseId || "",
       toWarehouseId: editMovement?.toWarehouseId || "",
       inputMode: "kg",
-      quantityLiters: editMovement?.quantityLiters || "",
-      density: editMovement?.density || "",
-      quantityKg: editMovement?.quantityKg || "",
+      quantityLiters: editMovement?.quantityLiters ? parseFloat(editMovement.quantityLiters) : undefined,
+      density: editMovement?.density ? parseFloat(editMovement.density) : undefined,
+      quantityKg: editMovement?.quantityKg ? parseFloat(editMovement.quantityKg) : 0,
       carrierId: editMovement?.carrierId || "",
       vehicleNumber: editMovement?.vehicleNumber || "",
       trailerNumber: editMovement?.trailerNumber || "",
@@ -75,7 +75,7 @@ export function MovementDialog({
     ? calculateKgFromLiters(watchLiters, watchDensity)
     : watchKg;
 
-  const kgNum = calculatedKg ? parseFloat(calculatedKg) : 0;
+  const kgNum = calculatedKg || 0;
 
   // Получение цены закупки
   const getPurchasePrice = (): number | null => {
@@ -362,14 +362,36 @@ export function MovementDialog({
                       <FormField control={form.control} name="quantityLiters" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Литры</FormLabel>
-                          <FormControl><Input type="number" min="0" step="0.01" placeholder="0.00" data-testid="input-movement-liters" {...field} /></FormControl>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              min="0" 
+                              step="0.01" 
+                              placeholder="0.00" 
+                              data-testid="input-movement-liters" 
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.valueAsNumber || null)}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="density" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Плотность</FormLabel>
-                          <FormControl><Input type="number" min="0" step="0.0001" placeholder="0.8000" data-testid="input-movement-density" {...field} /></FormControl>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              min="0" 
+                              step="0.0001" 
+                              placeholder="0.8000" 
+                              data-testid="input-movement-density" 
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.valueAsNumber || null)}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
@@ -387,7 +409,8 @@ export function MovementDialog({
                             placeholder="0.00" 
                             data-testid="input-movement-kg" 
                             {...field}
-                            onChange={(e) => field.onChange(e.target.value)}
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
                           />
                         </FormControl>
                         <FormMessage />
