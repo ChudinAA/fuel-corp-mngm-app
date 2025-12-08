@@ -236,7 +236,7 @@ export function OptForm({
     // Находим baseId по selectedBasis
     const base = bases?.find(b => b.name === selectedBasis);
     if (!base) return null;
-
+    
     // Ищем тариф по baseId и destinationId
     const cost = deliveryCosts.find(dc => 
       dc.baseId === base.id &&
