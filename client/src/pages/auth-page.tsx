@@ -68,39 +68,6 @@ export default function AuthPage() {
     registerMutation.mutate(registerData);
   };
 
-  const features = [
-    {
-      icon: Fuel,
-      title: "Учет топлива",
-      description: "Полный контроль движения керосина и ПВКЖ",
-    },
-    {
-      icon: Plane,
-      title: "Заправка ВС",
-      description: "Автоматизация заправок воздушных судов",
-    },
-    {
-      icon: Warehouse,
-      title: "Управление складами",
-      description: "Мониторинг остатков и себестоимости",
-    },
-    {
-      icon: BarChart3,
-      title: "Ценообразование",
-      description: "Гибкие цены с автоматическим расчетом",
-    },
-    {
-      icon: Building2,
-      title: "Оптовая торговля",
-      description: "Учет сделок и доставки",
-    },
-    {
-      icon: Shield,
-      title: "Ролевой доступ",
-      description: "Гибкое управление правами пользователей",
-    },
-  ];
-
   return (
     <div className="min-h-screen flex">
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
@@ -298,32 +265,6 @@ export default function AuthPage() {
             </Tabs>
           </CardContent>
         </Card>
-      </div>
-
-      <div className="hidden lg:flex flex-1 bg-primary p-12 items-center justify-center">
-        <div className="max-w-lg text-primary-foreground">
-          <h1 className="text-4xl font-semibold mb-4">
-            Система управления бизнес-процессами
-          </h1>
-          <p className="text-lg opacity-90 mb-8">
-            Комплексное решение для учета оптовой торговли, заправки воздушных судов, 
-            управления складами и ценообразования.
-          </p>
-          <div className="grid grid-cols-2 gap-4">
-            {features.map((feature, index) => (
-              <div 
-                key={index} 
-                className="flex items-start gap-3 p-4 rounded-lg bg-primary-foreground/10"
-              >
-                <feature.icon className="h-6 w-6 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="font-medium">{feature.title}</h3>
-                  <p className="text-sm opacity-80">{feature.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
