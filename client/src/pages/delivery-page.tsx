@@ -37,9 +37,14 @@ const deliveryCostFormSchema = z.object({
 
 type DeliveryCostFormData = z.infer<typeof deliveryCostFormSchema>;
 
-function AddDeliveryCostDialog({ editDeliveryCost }: { editDeliveryCost: DeliveryCost | null }) {
+function AddDeliveryCostDialog({ editDeliveryCost, onClose }: { editDeliveryCost: DeliveryCost | null; onClose?: () => void }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(editDeliveryCost !== null);
+  
+  const handleClose = () => {
+    setOpen(false);
+    onClose?.();
+  };
 
   const form = useForm<DeliveryCostFormData>({
     resolver: zodResolver(deliveryCostFormSchema),
@@ -91,7 +96,7 @@ function AddDeliveryCostDialog({ editDeliveryCost }: { editDeliveryCost: Deliver
       queryClient.invalidateQueries({ queryKey: ["/api/delivery-costs"] });
       toast({ title: "Тариф добавлен", description: "Новый тариф доставки сохранен" });
       form.reset();
-      setOpen(false);
+      handleClose();
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
@@ -107,7 +112,7 @@ function AddDeliveryCostDialog({ editDeliveryCost }: { editDeliveryCost: Deliver
       queryClient.invalidateQueries({ queryKey: ["/api/delivery-costs"] });
       toast({ title: "Тариф обновлен", description: "Изменения тарифа доставки сохранены" });
       form.reset();
-      setOpen(false);
+      handleClose();
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
@@ -117,7 +122,7 @@ function AddDeliveryCostDialog({ editDeliveryCost }: { editDeliveryCost: Deliver
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogTrigger asChild>
         {editDeliveryCost ? null : (
           <Button data-testid="button-add-delivery-cost">
@@ -235,7 +240,7 @@ function AddDeliveryCostDialog({ editDeliveryCost }: { editDeliveryCost: Deliver
             </div>
 
             <div className="flex justify-end gap-4 pt-4">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Отмена</Button>
+              <Button type="button" variant="outline" onClick={handleClose}>Отмена</Button>
               <Button type="submit" disabled={isSubmitting} data-testid="button-save-delivery-cost">
                 {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{editDeliveryCost ? "Сохранение..." : "Создание..."}</> : (editDeliveryCost ? "Сохранить" : "Создать")}
               </Button>
@@ -288,7 +293,7 @@ export default function DeliveryPage() {
           <h1 className="text-2xl font-semibold">Доставка</h1>
           <p className="text-muted-foreground">Управление тарифами на доставку</p>
         </div>
-        <AddDeliveryCostDialog editDeliveryCost={editingDeliveryCost} />
+        <AddDeliveryCostDialog editDeliveryCost={editingDeliveryCost} onClose={() => setEditingDeliveryCost(null)} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

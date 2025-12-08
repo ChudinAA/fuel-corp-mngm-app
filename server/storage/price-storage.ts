@@ -1,4 +1,3 @@
-
 import { eq, and, desc, sql, asc } from "drizzle-orm";
 import { db } from "../db";
 import {
@@ -169,7 +168,7 @@ export class PriceStorage implements IPriceStorage {
   }
 
   async getAllDeliveryCosts(): Promise<DeliveryCost[]> {
-    return db.select().from(deliveryCost).orderBy(asc(deliveryCost.basis));
+    return db.select().from(deliveryCost).where(eq(deliveryCost.isActive, true)).orderBy(asc(deliveryCost.fromLocation));
   }
 
   async createDeliveryCost(data: InsertDeliveryCost): Promise<DeliveryCost> {
