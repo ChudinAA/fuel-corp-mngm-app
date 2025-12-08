@@ -3,8 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,14 +11,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
-  CalendarIcon,
   Plus, 
   Pencil, 
   Trash2, 
@@ -31,12 +28,11 @@ import {
 import type { DeliveryCost, DirectoryLogistics } from "@shared/schema";
 
 const deliveryCostFormSchema = z.object({
-  effectiveDate: z.date({ required_error: "Укажите дату" }),
   carrierId: z.string().min(1, "Выберите перевозчика"),
   fromLocation: z.string().min(1, "Укажите откуда"),
   toLocation: z.string().min(1, "Укажите куда"),
-  costPerTrip: z.string().min(1, "Укажите стоимость"),
-  costPerKg: z.string().optional(),
+  costPerKg: z.string().min(1, "Укажите стоимость за кг"),
+  distance: z.string().optional(),
 });
 
 type DeliveryCostFormData = z.infer<typeof deliveryCostFormSchema>;
@@ -48,31 +44,47 @@ function AddDeliveryCostDialog({ editDeliveryCost }: { editDeliveryCost: Deliver
   const form = useForm<DeliveryCostFormData>({
     resolver: zodResolver(deliveryCostFormSchema),
     defaultValues: {
-      effectiveDate: editDeliveryCost ? new Date(editDeliveryCost.effectiveDate) : new Date(),
       carrierId: editDeliveryCost?.carrierId || "",
       fromLocation: editDeliveryCost?.fromLocation || "",
       toLocation: editDeliveryCost?.toLocation || "",
-      costPerTrip: editDeliveryCost?.costPerTrip.toString() || "",
       costPerKg: editDeliveryCost?.costPerKg?.toString() || "",
+      distance: editDeliveryCost?.distance?.toString() || "",
     },
   });
 
-  const { data: carriers } = useQuery<DirectoryLogistics[]>({
-    queryKey: ["/api/directories/logistics", "carrier"],
+  const { data: carriers } = useQuery<any[]>({
+    queryKey: ["/api/logistics/carriers"],
   });
 
-  const { data: locations } = useQuery<DirectoryLogistics[]>({
-    queryKey: ["/api/directories/logistics", "delivery_location"],
+  const { data: wholesaleBases } = useQuery<any[]>({
+    queryKey: ["/api/wholesale/bases"],
   });
+
+  const { data: refuelingBases } = useQuery<any[]>({
+    queryKey: ["/api/refueling/bases"],
+  });
+
+  const { data: deliveryLocations } = useQuery<any[]>({
+    queryKey: ["/api/logistics/delivery-locations"],
+  });
+
+  const { data: logisticsWarehouses } = useQuery<any[]>({
+    queryKey: ["/api/logistics/warehouses"],
+  });
+
+  const fromLocations = [
+    ...(wholesaleBases || []),
+    ...(refuelingBases || [])
+  ];
+
+  const toLocations = [
+    ...(deliveryLocations || []),
+    ...(logisticsWarehouses || [])
+  ];
 
   const createMutation = useMutation({
     mutationFn: async (data: DeliveryCostFormData) => {
-      const payload = {
-        ...data,
-        effectiveDate: format(data.effectiveDate, "yyyy-MM-dd"),
-        carrierId: data.carrierId,
-      };
-      const res = await apiRequest("POST", "/api/delivery-costs", payload);
+      const res = await apiRequest("POST", "/api/delivery-costs", data);
       return res.json();
     },
     onSuccess: () => {
@@ -88,12 +100,7 @@ function AddDeliveryCostDialog({ editDeliveryCost }: { editDeliveryCost: Deliver
 
   const updateMutation = useMutation({
     mutationFn: async (data: DeliveryCostFormData) => {
-      const payload = {
-        ...data,
-        effectiveDate: format(data.effectiveDate, "yyyy-MM-dd"),
-        carrierId: data.carrierId,
-      };
-      const res = await apiRequest("PATCH", `/api/delivery-costs/${editDeliveryCost?.id}`, payload);
+      const res = await apiRequest("PATCH", `/api/delivery-costs/${editDeliveryCost?.id}`, data);
       return res.json();
     },
     onSuccess: () => {
@@ -128,30 +135,6 @@ function AddDeliveryCostDialog({ editDeliveryCost }: { editDeliveryCost: Deliver
           <form onSubmit={form.handleSubmit(data => editDeliveryCost ? updateMutation.mutate(data) : createMutation.mutate(data))} className="space-y-4">
             <FormField
               control={form.control}
-              name="effectiveDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Дата начала действия</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="input-delivery-date">
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {field.value ? format(field.value, "dd.MM.yyyy", { locale: ru }) : "Выберите"}
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={field.value} onSelect={field.onChange} locale={ru} />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
               name="carrierId"
               render={({ field }) => (
                 <FormItem>
@@ -179,7 +162,7 @@ function AddDeliveryCostDialog({ editDeliveryCost }: { editDeliveryCost: Deliver
                 name="fromLocation"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Откуда</FormLabel>
+                    <FormLabel>Откуда (Базис)</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-delivery-from">
@@ -187,9 +170,10 @@ function AddDeliveryCostDialog({ editDeliveryCost }: { editDeliveryCost: Deliver
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {locations?.map((l) => (
+                        {fromLocations.map((l) => (
                           <SelectItem key={l.id} value={l.name}>{l.name}</SelectItem>
-                        )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                        ))}
+                        {fromLocations.length === 0 && <SelectItem value="none" disabled>Нет данных</SelectItem>}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -201,7 +185,7 @@ function AddDeliveryCostDialog({ editDeliveryCost }: { editDeliveryCost: Deliver
                 name="toLocation"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Куда</FormLabel>
+                    <FormLabel>Куда (Место доставки)</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-delivery-to">
@@ -209,9 +193,10 @@ function AddDeliveryCostDialog({ editDeliveryCost }: { editDeliveryCost: Deliver
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {locations?.map((l) => (
+                        {toLocations.map((l) => (
                           <SelectItem key={l.id} value={l.name}>{l.name}</SelectItem>
-                        )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                        ))}
+                        {toLocations.length === 0 && <SelectItem value="none" disabled>Нет данных</SelectItem>}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -221,19 +206,6 @@ function AddDeliveryCostDialog({ editDeliveryCost }: { editDeliveryCost: Deliver
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="costPerTrip"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Стоимость за рейс (₽)</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" placeholder="0.00" data-testid="input-cost-per-trip" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={form.control}
                 name="costPerKg"
@@ -247,10 +219,23 @@ function AddDeliveryCostDialog({ editDeliveryCost }: { editDeliveryCost: Deliver
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="distance"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Расстояние (км)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" placeholder="0.00" data-testid="input-distance" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <div className="flex justify-end gap-4 pt-4">
-              <Button type="button" variant="outline" onClick={() => { setOpen(false); setEditingDeliveryCost(null); }}>Отмена</Button>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Отмена</Button>
               <Button type="submit" disabled={isSubmitting} data-testid="button-save-delivery-cost">
                 {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{editDeliveryCost ? "Сохранение..." : "Создание..."}</> : (editDeliveryCost ? "Сохранить" : "Создать")}
               </Button>
@@ -276,8 +261,6 @@ export default function DeliveryPage() {
     const num = typeof value === "string" ? parseFloat(value) : value;
     return new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
   };
-
-  const formatDate = (dateStr: string) => format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
 
   const filteredCosts = deliveryCosts?.filter(c => 
     c.fromLocation.toLowerCase().includes(search.toLowerCase()) ||
@@ -357,11 +340,10 @@ export default function DeliveryPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Дата начала</TableHead>
                     <TableHead>Перевозчик</TableHead>
                     <TableHead>Маршрут</TableHead>
-                    <TableHead className="text-right">За рейс (₽)</TableHead>
                     <TableHead className="text-right">За кг (₽)</TableHead>
+                    <TableHead className="text-right">Расстояние (км)</TableHead>
                     <TableHead>Статус</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
@@ -369,11 +351,11 @@ export default function DeliveryPage() {
                 <TableBody>
                   {isLoading ? (
                     [1, 2, 3].map((i) => (
-                      <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
+                      <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
                     ))
                   ) : filteredCosts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         <Truck className="h-8 w-8 mx-auto mb-2 opacity-50" />
                         Нет тарифов для отображения
                       </TableCell>
@@ -381,7 +363,6 @@ export default function DeliveryPage() {
                   ) : (
                     filteredCosts.map((cost) => (
                       <TableRow key={cost.id}>
-                        <TableCell>{formatDate(cost.effectiveDate)}</TableCell>
                         <TableCell>{cost.carrierId}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -390,8 +371,8 @@ export default function DeliveryPage() {
                             <span>{cost.toLocation}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-medium">{formatNumber(cost.costPerTrip)} ₽</TableCell>
-                        <TableCell className="text-right">{cost.costPerKg ? `${formatNumber(cost.costPerKg)} ₽` : "—"}</TableCell>
+                        <TableCell className="text-right font-medium">{formatNumber(cost.costPerKg)} ₽</TableCell>
+                        <TableCell className="text-right">{cost.distance ? formatNumber(cost.distance) : "—"}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-green-600 border-green-600">Активен</Badge>
                         </TableCell>

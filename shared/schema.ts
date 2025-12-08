@@ -182,9 +182,10 @@ export const prices = pgTable("prices", {
 export const deliveryCost = pgTable("delivery_cost", {
   id: uuid("id").defaultRandom().primaryKey(),
   carrierId: uuid("carrier_id").notNull(),
-  basis: text("basis").notNull(),
-  deliveryLocationId: uuid("delivery_location_id").notNull(),
-  tariff: decimal("tariff", { precision: 12, scale: 4 }).notNull(),
+  fromLocation: text("from_location").notNull(),
+  toLocation: text("to_location").notNull(),
+  costPerKg: decimal("cost_per_kg", { precision: 12, scale: 4 }).notNull(),
+  distance: decimal("distance", { precision: 10, scale: 2 }),
   isActive: boolean("is_active").default(true),
 });
 
