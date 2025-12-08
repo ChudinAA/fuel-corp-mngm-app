@@ -412,12 +412,28 @@ export const insertWarehouseSchema = createInsertSchema(warehouses).omit({ id: t
 export const insertWarehouseTransactionSchema = createInsertSchema(warehouseTransactions).omit({ id: true });
 
 export const insertExchangeSchema = createInsertSchema(exchange).omit({ id: true, createdAt: true });
-export const insertMovementSchema = createInsertSchema(movement).extend({
+export const insertMovementSchema = z.object({
   movementDate: z.string(),
-  quantityKg: z.coerce.number(),
-  quantityLiters: z.coerce.number().nullable().optional(),
-  density: z.coerce.number().nullable().optional(),
-}).omit({ id: true, createdAt: true });
+  movementType: z.string(),
+  productType: z.string(),
+  supplierId: z.string().nullable().optional(),
+  fromWarehouseId: z.string().nullable().optional(),
+  toWarehouseId: z.string(),
+  quantityLiters: z.number().nullable().optional(),
+  density: z.number().nullable().optional(),
+  quantityKg: z.number(),
+  purchasePrice: z.number().nullable().optional(),
+  deliveryPrice: z.number().nullable().optional(),
+  deliveryCost: z.number().nullable().optional(),
+  totalCost: z.number().nullable().optional(),
+  costPerKg: z.number().nullable().optional(),
+  carrierId: z.string().nullable().optional(),
+  vehicleNumber: z.string().nullable().optional(),
+  trailerNumber: z.string().nullable().optional(),
+  driverName: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  createdById: z.string().nullable().optional(),
+});
 export const insertOptSchema = createInsertSchema(opt).omit({ id: true, createdAt: true });
 export const insertAircraftRefuelingSchema = createInsertSchema(aircraftRefueling).omit({ id: true, createdAt: true });
 

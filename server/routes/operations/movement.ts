@@ -19,7 +19,21 @@ export function registerMovementRoutes(app: Express) {
         ...req.body,
         createdById: req.session.userId,
       });
-      const movementRecord = await storage.operations.createMovement(data);
+      
+      // Преобразуем числовые поля в строки для БД
+      const dbData = {
+        ...data,
+        quantityKg: data.quantityKg.toString(),
+        quantityLiters: data.quantityLiters !== null && data.quantityLiters !== undefined ? data.quantityLiters.toString() : null,
+        density: data.density !== null && data.density !== undefined ? data.density.toString() : null,
+        purchasePrice: data.purchasePrice !== null && data.purchasePrice !== undefined ? data.purchasePrice.toString() : null,
+        deliveryPrice: data.deliveryPrice !== null && data.deliveryPrice !== undefined ? data.deliveryPrice.toString() : null,
+        deliveryCost: data.deliveryCost !== null && data.deliveryCost !== undefined ? data.deliveryCost.toString() : null,
+        totalCost: data.totalCost !== null && data.totalCost !== undefined ? data.totalCost.toString() : null,
+        costPerKg: data.costPerKg !== null && data.costPerKg !== undefined ? data.costPerKg.toString() : null,
+      };
+      
+      const movementRecord = await storage.operations.createMovement(dbData);
       res.status(201).json(movementRecord);
     } catch (error) {
       if (error instanceof z.ZodError) {
