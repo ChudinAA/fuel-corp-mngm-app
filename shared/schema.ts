@@ -186,6 +186,8 @@ export const deliveryCost = pgTable("delivery_cost", {
   toLocation: text("to_location").notNull(),
   costPerKg: decimal("cost_per_kg", { precision: 12, scale: 4 }).notNull(),
   distance: decimal("distance", { precision: 10, scale: 2 }),
+  baseId: uuid("base_id"),
+  destinationId: uuid("destination_id"),
   isActive: boolean("is_active").default(true),
 });
 
