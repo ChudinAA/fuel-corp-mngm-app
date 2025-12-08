@@ -414,9 +414,9 @@ export const insertWarehouseTransactionSchema = createInsertSchema(warehouseTran
 export const insertExchangeSchema = createInsertSchema(exchange).omit({ id: true, createdAt: true });
 export const insertMovementSchema = createInsertSchema(movement).extend({
   movementDate: z.string(),
-  quantityKg: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) : val),
-  quantityLiters: z.union([z.string(), z.number()]).optional().transform(val => val ? (typeof val === 'string' ? parseFloat(val) : val) : null),
-  density: z.union([z.string(), z.number()]).optional().transform(val => val ? (typeof val === 'string' ? parseFloat(val) : val) : null),
+  quantityKg: z.union([z.string(), z.number()]).pipe(z.coerce.number()),
+  quantityLiters: z.union([z.string(), z.number(), z.null()]).pipe(z.coerce.number()).nullable().optional(),
+  density: z.union([z.string(), z.number(), z.null()]).pipe(z.coerce.number()).nullable().optional(),
 }).omit({ id: true, createdAt: true });
 export const insertOptSchema = createInsertSchema(opt).omit({ id: true, createdAt: true });
 export const insertAircraftRefuelingSchema = createInsertSchema(aircraftRefueling).omit({ id: true, createdAt: true });
