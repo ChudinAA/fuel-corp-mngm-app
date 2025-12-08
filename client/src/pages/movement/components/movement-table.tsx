@@ -82,8 +82,8 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
                 {item.movementType === "supply" ? "Поставка" : "Внутреннее"}
               </Badge>
             </TableCell>
-            <TableCell>{item.supplierId || item.fromWarehouseId || "—"}</TableCell>
-            <TableCell>{item.toWarehouseId}</TableCell>
+            <TableCell>{(item as any).fromName || "—"}</TableCell>
+            <TableCell>{(item as any).toName || item.toWarehouseId}</TableCell>
             <TableCell className="text-right font-medium">{formatNumber(item.quantityKg)}</TableCell>
             <TableCell className="text-right">{formatCurrency(item.totalCost)}</TableCell>
             <TableCell>

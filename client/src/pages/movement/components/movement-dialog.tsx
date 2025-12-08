@@ -44,23 +44,64 @@ export function MovementDialog({
   const form = useForm<MovementFormData>({
     resolver: zodResolver(movementFormSchema),
     defaultValues: {
-      movementDate: editMovement ? new Date(editMovement.movementDate) : new Date(),
-      movementType: editMovement?.movementType || "supply",
-      productType: editMovement?.productType || "kerosene",
-      supplierId: editMovement?.supplierId || "",
-      fromWarehouseId: editMovement?.fromWarehouseId || "",
-      toWarehouseId: editMovement?.toWarehouseId || "",
+      movementDate: new Date(),
+      movementType: "supply",
+      productType: "kerosene",
+      supplierId: "",
+      fromWarehouseId: "",
+      toWarehouseId: "",
       inputMode: "kg",
-      quantityLiters: editMovement?.quantityLiters ? parseFloat(editMovement.quantityLiters) : undefined,
-      density: editMovement?.density ? parseFloat(editMovement.density) : undefined,
-      quantityKg: editMovement?.quantityKg ? parseFloat(editMovement.quantityKg) : 0,
-      carrierId: editMovement?.carrierId || "",
-      vehicleNumber: editMovement?.vehicleNumber || "",
-      trailerNumber: editMovement?.trailerNumber || "",
-      driverName: editMovement?.driverName || "",
-      notes: editMovement?.notes || "",
+      quantityLiters: undefined,
+      density: undefined,
+      quantityKg: 0,
+      carrierId: "",
+      vehicleNumber: "",
+      trailerNumber: "",
+      driverName: "",
+      notes: "",
     },
   });
+
+  // Обновляем форму при изменении editMovement
+  useEffect(() => {
+    if (editMovement) {
+      form.reset({
+        movementDate: new Date(editMovement.movementDate),
+        movementType: editMovement.movementType,
+        productType: editMovement.productType,
+        supplierId: editMovement.supplierId || "",
+        fromWarehouseId: editMovement.fromWarehouseId || "",
+        toWarehouseId: editMovement.toWarehouseId,
+        inputMode: "kg",
+        quantityLiters: editMovement.quantityLiters ? parseFloat(editMovement.quantityLiters) : undefined,
+        density: editMovement.density ? parseFloat(editMovement.density) : undefined,
+        quantityKg: editMovement.quantityKg ? parseFloat(editMovement.quantityKg) : 0,
+        carrierId: editMovement.carrierId || "",
+        vehicleNumber: editMovement.vehicleNumber || "",
+        trailerNumber: editMovement.trailerNumber || "",
+        driverName: editMovement.driverName || "",
+        notes: editMovement.notes || "",
+      });
+    } else {
+      form.reset({
+        movementDate: new Date(),
+        movementType: "supply",
+        productType: "kerosene",
+        supplierId: "",
+        fromWarehouseId: "",
+        toWarehouseId: "",
+        inputMode: "kg",
+        quantityLiters: undefined,
+        density: undefined,
+        quantityKg: 0,
+        carrierId: "",
+        vehicleNumber: "",
+        trailerNumber: "",
+        driverName: "",
+        notes: "",
+      });
+    }
+  }, [editMovement, form]);
 
   const watchMovementType = form.watch("movementType");
   const watchSupplierId = form.watch("supplierId");
