@@ -27,17 +27,22 @@ export const calculateValues = (
   liters: string,
   density: string,
   kg: string,
-  inputMode: "liters" | "kg"
+  inputMode: "liters" | "kg",
+  purchasePriceValue: number | null = null,
+  storageCostPerKg: number | null = null,
+  deliveryTariffPerKg: number | null = null
 ): CalculatedValues => {
   const calculatedKg = inputMode === "liters" && liters && density
     ? calculateKgFromLiters(liters, density)
     : kg;
 
-  // Временные значения для демонстрации
-  const purchasePrice = 58.50;
-  const deliveryCost = 15000;
-  const totalCost = 307500;
-  const costPerKg = 61.50;
+  const kgNum = calculatedKg ? parseFloat(calculatedKg) : 0;
+  const purchasePrice = purchasePriceValue || 0;
+  const purchaseAmount = kgNum * purchasePrice;
+  const storageCost = storageCostPerKg ? kgNum * storageCostPerKg : 0;
+  const deliveryCost = deliveryTariffPerKg ? kgNum * deliveryTariffPerKg : 0;
+  const totalCost = purchaseAmount + storageCost + deliveryCost;
+  const costPerKg = kgNum > 0 ? totalCost / kgNum : 0;
 
   return {
     calculatedKg,

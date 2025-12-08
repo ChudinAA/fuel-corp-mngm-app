@@ -5,11 +5,13 @@ export type InputMode = "liters" | "kg";
 
 export interface MovementDialogProps {
   warehouses: Warehouse[];
-  suppliers: DirectoryWholesale[];
+  suppliers: AllSupplier[];
   carriers: DirectoryLogistics[];
   vehicles: DirectoryLogistics[];
   trailers: DirectoryLogistics[];
   drivers: DirectoryLogistics[];
+  prices: any[];
+  deliveryCosts: any[];
   editMovement: Movement | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -29,4 +31,11 @@ export interface CalculatedValues {
   deliveryCost: number;
   totalCost: number;
   costPerKg: number;
+}
+
+export interface AllSupplier {
+  id: string;
+  name: string;
+  type: 'wholesale' | 'refueling';
+  defaultBaseId?: string;
 }

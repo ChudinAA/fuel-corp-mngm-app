@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,7 +20,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CalendarIcon, Plus, Loader2 } from "lucide-react";
 import { movementFormSchema, type MovementFormData } from "../schemas";
-import { calculateValues, formatNumber, formatCurrency } from "../utils";
+import { calculateKgFromLiters, formatNumber, formatCurrency } from "../utils";
 import type { MovementDialogProps } from "../types";
 import { CalculatedField } from "./calculated-field";
 
@@ -31,12 +31,14 @@ export function MovementDialog({
   vehicles,
   trailers,
   drivers,
+  prices,
+  deliveryCosts,
   editMovement,
   open,
   onOpenChange
 }: MovementDialogProps) {
   const { toast } = useToast();
-  const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
+  const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
   const isEditing = !!editMovement;
 
   const form = useForm<MovementFormData>({
@@ -48,7 +50,7 @@ export function MovementDialog({
       supplierId: editMovement?.supplierId || "",
       fromWarehouseId: editMovement?.fromWarehouseId || "",
       toWarehouseId: editMovement?.toWarehouseId || "",
-      inputMode: "liters",
+      inputMode: "kg",
       quantityLiters: editMovement?.quantityLiters || "",
       density: editMovement?.density || "",
       quantityKg: editMovement?.quantityKg || "",
@@ -61,16 +63,103 @@ export function MovementDialog({
   });
 
   const watchMovementType = form.watch("movementType");
+  const watchSupplierId = form.watch("supplierId");
+  const watchToWarehouseId = form.watch("toWarehouseId");
+  const watchCarrierId = form.watch("carrierId");
+  const watchMovementDate = form.watch("movementDate");
   const watchLiters = form.watch("quantityLiters");
   const watchDensity = form.watch("density");
   const watchKg = form.watch("quantityKg");
 
-  const { calculatedKg, purchasePrice, deliveryCost, totalCost, costPerKg } = calculateValues(
-    watchLiters || "",
-    watchDensity || "",
-    watchKg || "",
-    inputMode
-  );
+  const calculatedKg = inputMode === "liters" && watchLiters && watchDensity
+    ? calculateKgFromLiters(watchLiters, watchDensity)
+    : watchKg;
+
+  const kgNum = calculatedKg ? parseFloat(calculatedKg) : 0;
+
+  // Получение цены закупки
+  const getPurchasePrice = (): number | null => {
+    if (!watchSupplierId || !watchMovementDate) return null;
+
+    const dateStr = format(watchMovementDate, "yyyy-MM-dd");
+    const supplier = suppliers.find(s => s.id === watchSupplierId);
+    if (!supplier) return null;
+
+    const counterpartyType = supplier.type;
+    const baseName = warehouses.find(w => w.id === watchToWarehouseId)?.basis || supplier.defaultBaseId;
+
+    if (!baseName) return null;
+
+    // Ищем цену в таблице цен
+    const matchingPrice = prices.find(p =>
+      p.counterpartyId === watchSupplierId &&
+      p.counterpartyType === counterpartyType &&
+      p.counterpartyRole === "supplier" &&
+      p.basis === baseName &&
+      p.dateFrom <= dateStr &&
+      p.dateTo >= dateStr &&
+      p.isActive
+    );
+
+    if (matchingPrice && matchingPrice.priceValues && matchingPrice.priceValues.length > 0) {
+      const priceObj = JSON.parse(matchingPrice.priceValues[0]);
+      return priceObj.price || 0;
+    }
+
+    // Если нет цены, пытаемся взять из склада (среднюю стоимость)
+    const warehouse = warehouses.find(w => w.baseId === baseName);
+    if (warehouse && warehouse.averageCost) {
+      return parseFloat(warehouse.averageCost);
+    }
+
+    return null;
+  };
+
+  const purchasePrice = getPurchasePrice();
+  const purchaseAmount = purchasePrice && kgNum > 0 ? purchasePrice * kgNum : 0;
+
+  // Получение стоимости хранения
+  const getStorageCost = (): number => {
+    if (!watchToWarehouseId || kgNum <= 0) return 0;
+    
+    const warehouse = warehouses.find(w => w.id === watchToWarehouseId);
+    if (!warehouse || !warehouse.storageCost) return 0;
+
+    const storageCostPerKg = parseFloat(warehouse.storageCost);
+    return storageCostPerKg * kgNum;
+  };
+
+  const storageCost = getStorageCost();
+
+  // Получение стоимости доставки
+  const getDeliveryCost = (): number => {
+    if (!watchSupplierId || !watchToWarehouseId || !watchCarrierId || kgNum <= 0) return 0;
+
+    const supplier = suppliers.find(s => s.id === watchSupplierId);
+    if (!supplier) return 0;
+
+    const warehouse = warehouses.find(w => w.id === watchToWarehouseId);
+    const baseName = warehouse?.basis;
+
+    if (!baseName) return 0;
+
+    const deliveryCost = deliveryCosts.find(dc =>
+      dc.carrierId === watchCarrierId &&
+      dc.fromLocation === baseName &&
+      dc.toLocation === warehouse?.name &&
+      dc.isActive
+    );
+
+    if (deliveryCost && deliveryCost.costPerKg) {
+      return parseFloat(deliveryCost.costPerKg) * kgNum;
+    }
+
+    return 0;
+  };
+
+  const deliveryCost = getDeliveryCost();
+  const totalCost = purchaseAmount + storageCost + deliveryCost;
+  const costPerKg = kgNum > 0 ? totalCost / kgNum : 0;
 
   const createMutation = useMutation({
     mutationFn: async (data: MovementFormData) => {
@@ -82,6 +171,11 @@ export function MovementDialog({
         toWarehouseId: data.toWarehouseId,
         carrierId: data.carrierId || null,
         quantityKg: calculatedKg || data.quantityKg,
+        purchasePrice: purchasePrice,
+        deliveryPrice: deliveryCost > 0 && kgNum > 0 ? deliveryCost / kgNum : null,
+        deliveryCost: deliveryCost,
+        totalCost: totalCost,
+        costPerKg: costPerKg,
       };
       const res = await apiRequest(isEditing ? "PATCH" : "POST", isEditing ? `/api/movement/${editMovement?.id}` : "/api/movement", payload);
       return res.json();
@@ -268,14 +362,14 @@ export function MovementDialog({
                       <FormField control={form.control} name="quantityLiters" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Литры</FormLabel>
-                          <FormControl><Input type="number" placeholder="0.00" data-testid="input-movement-liters" {...field} /></FormControl>
+                          <FormControl><Input type="number" min="0" step="0.01" placeholder="0.00" data-testid="input-movement-liters" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="density" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Плотность</FormLabel>
-                          <FormControl><Input type="number" step="0.0001" placeholder="0.8000" data-testid="input-movement-density" {...field} /></FormControl>
+                          <FormControl><Input type="number" min="0" step="0.0001" placeholder="0.8000" data-testid="input-movement-density" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
@@ -285,7 +379,7 @@ export function MovementDialog({
                     <FormField control={form.control} name="quantityKg" render={({ field }) => (
                       <FormItem className="md:col-span-3">
                         <FormLabel>Количество (КГ)</FormLabel>
-                        <FormControl><Input type="number" placeholder="0.00" data-testid="input-movement-kg" {...field} /></FormControl>
+                        <FormControl><Input type="number" min="0" step="0.01" placeholder="0.00" data-testid="input-movement-kg" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
@@ -294,11 +388,16 @@ export function MovementDialog({
               </CardContent>
             </Card>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <CalculatedField label="Цена закупки" value={formatNumber(purchasePrice)} suffix=" ₽/кг" />
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+              <CalculatedField 
+                label="Цена закупки" 
+                value={purchasePrice !== null ? formatNumber(purchasePrice) : "нет цены!"} 
+                suffix={purchasePrice !== null ? " ₽/кг" : ""} 
+              />
+              <CalculatedField label="Сумма покупки" value={formatCurrency(purchaseAmount)} />
+              <CalculatedField label="Хранение" value={formatCurrency(storageCost)} />
               <CalculatedField label="Доставка" value={formatCurrency(deliveryCost)} />
-              <CalculatedField label="Общая стоимость" value={formatCurrency(totalCost)} />
-              <CalculatedField label="Себестоимость на месте" value={formatNumber(costPerKg)} suffix=" ₽/кг" />
+              <CalculatedField label="Себестоимость" value={formatNumber(costPerKg)} suffix=" ₽/кг" />
             </div>
 
             <Card>
@@ -325,7 +424,7 @@ export function MovementDialog({
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl><SelectTrigger data-testid="select-movement-vehicle"><SelectValue placeholder="Выберите" /></SelectTrigger></FormControl>
                         <SelectContent>
-                          {vehicles?.map((v) => <SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                          {vehicles?.map((v) => <SelectItem key={v.id} value={v.regNumber}>{v.regNumber}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -337,7 +436,7 @@ export function MovementDialog({
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl><SelectTrigger data-testid="select-movement-trailer"><SelectValue placeholder="Выберите" /></SelectTrigger></FormControl>
                         <SelectContent>
-                          {trailers?.map((t) => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                          {trailers?.map((t) => <SelectItem key={t.id} value={t.regNumber}>{t.regNumber}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -349,7 +448,7 @@ export function MovementDialog({
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl><SelectTrigger data-testid="select-movement-driver"><SelectValue placeholder="Выберите" /></SelectTrigger></FormControl>
                         <SelectContent>
-                          {drivers?.map((d) => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                          {drivers?.map((d) => <SelectItem key={d.id} value={d.fullName}>{d.fullName}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
                         </SelectContent>
                       </Select>
                       <FormMessage />

@@ -11,7 +11,11 @@ export const movementFormSchema = z.object({
   inputMode: z.enum(["liters", "kg"]),
   quantityLiters: z.string().optional(),
   density: z.string().optional(),
-  quantityKg: z.string().min(1, "Укажите количество"),
+  quantityKg: z.string().refine((val) => {
+    if (!val) return false;
+    const num = parseFloat(val);
+    return !isNaN(num) && num > 0;
+  }, { message: "Укажите положительное количество" }),
   carrierId: z.string().optional(),
   vehicleNumber: z.string().optional(),
   trailerNumber: z.string().optional(),
