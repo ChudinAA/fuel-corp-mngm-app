@@ -231,14 +231,14 @@ export function OptForm({
   const getDeliveryCost = (): number | null => {
     if (selectedBasis && watchDeliveryLocationId && watchCarrierId && deliveryCosts && finalKg > 0) {
       const cost = deliveryCosts.find(dc => 
-        dc.basis === selectedBasis &&
-        dc.deliveryLocationId === watchDeliveryLocationId &&
+        dc.baseId === selectedBasis &&
+        dc.destinationId === watchDeliveryLocationId &&
         dc.carrierId === watchCarrierId &&
         dc.isActive
       );
       
-      if (cost?.tariff) {
-        return parseFloat(cost.tariff) * finalKg;
+      if (cost?.costPerKg) {
+        return parseFloat(cost.costPerKg) * finalKg;
       }
     }
     return null;
@@ -483,11 +483,6 @@ export function OptForm({
             )}
           />
         </div>
-
-        <CalculatedField 
-          label="Базис" 
-          value={selectedBasis || "Не выбран"}
-        />
 
         <Card>
           <CardHeader className="pb-4">
