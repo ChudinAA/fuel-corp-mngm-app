@@ -1,4 +1,3 @@
-
 import { eq, desc, sql, asc, or } from "drizzle-orm";
 import { db } from "../db";
 import {
@@ -30,7 +29,7 @@ import type { IOperationsStorage } from "./types";
 export class OperationsStorage implements IOperationsStorage {
   async getAllWarehouses(): Promise<Warehouse[]> {
     const warehousesList = await db.select().from(warehouses).orderBy(asc(warehouses.name));
-    
+
     // Enrich with basis name
     const enrichedWarehouses = await Promise.all(
       warehousesList.map(async (wh) => {
@@ -40,7 +39,7 @@ export class OperationsStorage implements IOperationsStorage {
           if (wholesaleBase) {
             return { ...wh, basis: wholesaleBase.name };
           }
-          
+
           // Try refueling bases
           const [refuelingBase] = await db.select().from(refuelingBases).where(eq(refuelingBases.id, wh.baseId)).limit(1);
           if (refuelingBase) {
@@ -50,29 +49,29 @@ export class OperationsStorage implements IOperationsStorage {
         return wh;
       })
     );
-    
+
     return enrichedWarehouses;
   }
 
   async getWarehouse(id: string): Promise<Warehouse | undefined> {
     const [wh] = await db.select().from(warehouses).where(eq(warehouses.id, id)).limit(1);
-    
+
     if (!wh) return undefined;
-    
+
     if (wh.baseId) {
       // Try to find in wholesale bases first
       const [wholesaleBase] = await db.select().from(wholesaleBases).where(eq(wholesaleBases.id, wh.baseId)).limit(1);
       if (wholesaleBase) {
         return { ...wh, basis: wholesaleBase.name };
       }
-      
+
       // Try refueling bases
       const [refuelingBase] = await db.select().from(refuelingBases).where(eq(refuelingBases.id, wh.baseId)).limit(1);
       if (refuelingBase) {
         return { ...wh, basis: refuelingBase.name };
       }
     }
-    
+
     return wh;
   }
 
@@ -116,19 +115,19 @@ export class OperationsStorage implements IOperationsStorage {
   async getMovements(page: number, pageSize: number): Promise<{ data: Movement[]; total: number }> {
     const offset = (page - 1) * pageSize;
     const data = await db.select().from(movement).orderBy(desc(movement.movementDate)).limit(pageSize).offset(offset);
-    
+
     // Обогащаем данные названиями складов и поставщиков
     const enrichedData = await Promise.all(
       data.map(async (mov) => {
         let fromName = null;
         let toName = null;
-        
+
         // Получаем название склада назначения
         if (mov.toWarehouseId) {
           const [toWarehouse] = await db.select().from(warehouses).where(eq(warehouses.id, mov.toWarehouseId)).limit(1);
           toName = toWarehouse?.name || mov.toWarehouseId;
         }
-        
+
         // Получаем название источника (склад или поставщик)
         if (mov.movementType === 'supply' && mov.supplierId) {
           // Ищем в оптовых поставщиках
@@ -144,7 +143,7 @@ export class OperationsStorage implements IOperationsStorage {
           const [fromWarehouse] = await db.select().from(warehouses).where(eq(warehouses.id, mov.fromWarehouseId)).limit(1);
           fromName = fromWarehouse?.name || mov.fromWarehouseId;
         }
-        
+
         return {
           ...mov,
           fromName,
@@ -152,39 +151,39 @@ export class OperationsStorage implements IOperationsStorage {
         };
       })
     );
-    
+
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(movement);
     return { data: enrichedData, total: Number(countResult?.count || 0) };
   }
 
   async createMovement(data: InsertMovement): Promise<Movement> {
     const [created] = await db.insert(movement).values(data).returning();
-    
+
     // Обновляем остатки на складах
     const quantityKg = parseFloat(created.quantityKg);
-    
+
     // Если это поставка или внутреннее перемещение - увеличиваем остаток на складе назначения
     if (created.toWarehouseId) {
       const [targetWarehouse] = await db.select().from(warehouses).where(eq(warehouses.id, created.toWarehouseId)).limit(1);
-      
+
       if (targetWarehouse) {
         const currentBalance = parseFloat(targetWarehouse.currentBalance || "0");
         const currentCost = parseFloat(targetWarehouse.averageCost || "0");
         const totalCost = parseFloat(created.totalCost || "0");
-        
+
         // Рассчитываем новую среднюю стоимость
         const newBalance = currentBalance + quantityKg;
-        const newAverageCost = newBalance > 0 
-          ? ((currentBalance * currentCost) + totalCost) / newBalance 
+        const newAverageCost = newBalance > 0
+          ? ((currentBalance * currentCost) + totalCost) / newBalance
           : 0;
-        
+
         await db.update(warehouses)
           .set({
             currentBalance: newBalance.toFixed(2),
             averageCost: newAverageCost.toFixed(4)
           })
           .where(eq(warehouses.id, created.toWarehouseId));
-        
+
         // Создаем запись транзакции (приход)
         await db.insert(warehouseTransactions).values({
           warehouseId: created.toWarehouseId,
@@ -200,22 +199,22 @@ export class OperationsStorage implements IOperationsStorage {
         });
       }
     }
-    
+
     // Если это внутреннее перемещение - уменьшаем остаток на складе-источнике
     if (created.movementType === 'internal' && created.fromWarehouseId) {
       const [sourceWarehouse] = await db.select().from(warehouses).where(eq(warehouses.id, created.fromWarehouseId)).limit(1);
-      
+
       if (sourceWarehouse) {
         const currentBalance = parseFloat(sourceWarehouse.currentBalance || "0");
         const currentCost = parseFloat(sourceWarehouse.averageCost || "0");
         const newBalance = Math.max(0, currentBalance - quantityKg);
-        
+
         await db.update(warehouses)
           .set({
             currentBalance: newBalance.toFixed(2)
           })
           .where(eq(warehouses.id, created.fromWarehouseId));
-        
+
         // Создаем запись транзакции (расход)
         await db.insert(warehouseTransactions).values({
           warehouseId: created.fromWarehouseId,
@@ -231,7 +230,7 @@ export class OperationsStorage implements IOperationsStorage {
         });
       }
     }
-    
+
     return created;
   }
 
@@ -248,25 +247,25 @@ export class OperationsStorage implements IOperationsStorage {
   async getOptDeals(page: number, pageSize: number): Promise<{ data: Opt[]; total: number }> {
     const offset = (page - 1) * pageSize;
     const data = await db.select().from(opt).orderBy(desc(opt.dealDate)).limit(pageSize).offset(offset);
-    
+
     // Обогащаем данные именами поставщиков и покупателей
     const enrichedData = await Promise.all(
       data.map(async (deal) => {
         let supplierName = deal.supplierId;
         let buyerName = deal.buyerId;
-        
+
         // Получаем название поставщика
         const [supplier] = await db.select().from(wholesaleSuppliers).where(eq(wholesaleSuppliers.id, deal.supplierId)).limit(1);
         if (supplier) {
           supplierName = supplier.name;
         }
-        
+
         // Получаем название покупателя из customers
         const [buyer] = await db.select().from(customers).where(eq(customers.id, deal.buyerId)).limit(1);
         if (buyer) {
           buyerName = buyer.name;
         }
-        
+
         return {
           ...deal,
           supplierId: supplierName,
@@ -274,29 +273,29 @@ export class OperationsStorage implements IOperationsStorage {
         };
       })
     );
-    
+
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(opt);
     return { data: enrichedData, total: Number(countResult?.count || 0) };
   }
 
   async createOpt(data: InsertOpt): Promise<Opt> {
     const [created] = await db.insert(opt).values(data).returning();
-    
+
     // Обновляем остаток на складе (списание при продаже)
     if (created.warehouseId && created.quantityKg) {
       const quantityKg = parseFloat(created.quantityKg);
       const [warehouse] = await db.select().from(warehouses).where(eq(warehouses.id, created.warehouseId)).limit(1);
-      
+
       if (warehouse) {
         const currentBalance = parseFloat(warehouse.currentBalance || "0");
         const newBalance = Math.max(0, currentBalance - quantityKg);
-        
+
         await db.update(warehouses)
           .set({
             currentBalance: newBalance.toFixed(2)
           })
           .where(eq(warehouses.id, created.warehouseId));
-        
+
         // Создаем запись транзакции
         await db.insert(warehouseTransactions).values({
           warehouseId: created.warehouseId,
@@ -312,7 +311,7 @@ export class OperationsStorage implements IOperationsStorage {
         });
       }
     }
-    
+
     return created;
   }
 
@@ -364,24 +363,25 @@ export class OperationsStorage implements IOperationsStorage {
 
   async getWarehouseTransactions(warehouseId: string): Promise<WarehouseTransaction[]> {
     const transactions = await db
-      .select({
-        id: warehouseTransactions.id,
-        warehouseId: warehouseTransactions.warehouseId,
-        transactionType: warehouseTransactions.transactionType,
-        sourceType: warehouseTransactions.sourceType,
-        sourceId: warehouseTransactions.sourceId,
-        quantityKg: warehouseTransactions.quantity,
-        balanceBefore: warehouseTransactions.balanceBefore,
-        balanceAfter: warehouseTransactions.balanceAfter,
-        averageCostBefore: warehouseTransactions.averageCostBefore,
-        averageCostAfter: warehouseTransactions.averageCostAfter,
-        transactionDate: warehouseTransactions.transactionDate,
-        createdAt: warehouseTransactions.createdAt,
-      })
+      .select()
       .from(warehouseTransactions)
       .where(eq(warehouseTransactions.warehouseId, warehouseId))
       .orderBy(desc(warehouseTransactions.transactionDate), desc(warehouseTransactions.createdAt));
-    
-    return transactions as WarehouseTransaction[];
+
+    // Маппим поля из БД в формат для фронтенда
+    return transactions.map(tx => ({
+      id: tx.id,
+      warehouseId: tx.warehouseId,
+      transactionType: tx.transactionType,
+      sourceType: tx.sourceType,
+      sourceId: tx.sourceId,
+      quantityKg: tx.quantity,
+      balanceBefore: tx.balanceBefore || "0",
+      balanceAfter: tx.balanceAfter || "0",
+      averageCostBefore: tx.averageCostBefore || "0",
+      averageCostAfter: tx.averageCostAfter || "0",
+      transactionDate: tx.transactionDate,
+      createdAt: tx.createdAt,
+    }));
   }
 }

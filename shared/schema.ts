@@ -212,8 +212,11 @@ export const warehouseTransactions = pgTable("warehouse_transactions", {
   totalAmount: decimal("total_amount", { precision: 15, scale: 2 }),
   sourceType: text("source_type"),
   sourceId: uuid("source_id"),
+  balanceBefore: decimal("balance_before", { precision: 15, scale: 2 }),
   balanceAfter: decimal("balance_after", { precision: 15, scale: 2 }),
+  averageCostBefore: decimal("average_cost_before", { precision: 12, scale: 4 }),
   averageCostAfter: decimal("average_cost_after", { precision: 12, scale: 4 }),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // ============ EXCHANGE (Биржа) ============
