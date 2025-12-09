@@ -234,6 +234,12 @@ export function MovementDialog({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/movement"] });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0] as string;
+          return key?.includes('/api/warehouses/') && key?.includes('/transactions');
+        }
+      });
       toast({ title: isEditing ? "Перемещение обновлено" : "Перемещение создано", description: "Запись успешно сохранена" });
       form.reset();
       onOpenChange(false);

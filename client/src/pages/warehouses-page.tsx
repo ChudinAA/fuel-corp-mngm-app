@@ -198,6 +198,7 @@ function WarehouseCard({ warehouse, onEdit, onViewDetails }: { warehouse: Wareho
 
   const { data: transactions } = useQuery<WarehouseTransaction[]>({
     queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
+    refetchInterval: 5000, // Refetch every 5 seconds
   });
 
   const getCurrentMonthStats = () => {

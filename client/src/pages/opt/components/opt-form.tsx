@@ -703,20 +703,34 @@ export function OptForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Покупка</FormLabel>
-                  <Select onValueChange={(value) => { field.onChange(value); setSelectedPurchasePriceId(value); }} value={field.value}>
+                  <Select 
+                    onValueChange={(value) => { 
+                      field.onChange(value); 
+                      setSelectedPurchasePriceId(value); 
+                    }} 
+                    value={selectedPurchasePriceId || field.value}
+                  >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger data-testid="select-purchase-price">
                         <SelectValue placeholder="Выберите цену" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {purchasePrices.map((price) => {
-                        const priceVal = price.priceValues?.[0] ? JSON.parse(price.priceValues[0]).price : "0";
-                        return (
-                          <SelectItem key={price.id} value={price.id}>
-                            {formatNumber(priceVal)} ₽/кг
-                          </SelectItem>
-                        );
+                        const priceValues = price.priceValues || [];
+                        return priceValues.map((pv: string, idx: number) => {
+                          try {
+                            const parsed = JSON.parse(pv);
+                            const priceVal = parsed.price || "0";
+                            return (
+                              <SelectItem key={`${price.id}-${idx}`} value={price.id}>
+                                {formatNumber(priceVal)} ₽/кг
+                              </SelectItem>
+                            );
+                          } catch {
+                            return null;
+                          }
+                        }).filter(Boolean);
                       })}
                     </SelectContent>
                   </Select>
@@ -752,20 +766,34 @@ export function OptForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Продажа</FormLabel>
-                  <Select onValueChange={(value) => { field.onChange(value); setSelectedSalePriceId(value); }} value={field.value}>
+                  <Select 
+                    onValueChange={(value) => { 
+                      field.onChange(value); 
+                      setSelectedSalePriceId(value); 
+                    }} 
+                    value={selectedSalePriceId || field.value}
+                  >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger data-testid="select-sale-price">
                         <SelectValue placeholder="Выберите цену" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {salePrices.map((price) => {
-                        const priceVal = price.priceValues?.[0] ? JSON.parse(price.priceValues[0]).price : "0";
-                        return (
-                          <SelectItem key={price.id} value={price.id}>
-                            {formatNumber(priceVal)} ₽/кг
-                          </SelectItem>
-                        );
+                        const priceValues = price.priceValues || [];
+                        return priceValues.map((pv: string, idx: number) => {
+                          try {
+                            const parsed = JSON.parse(pv);
+                            const priceVal = parsed.price || "0";
+                            return (
+                              <SelectItem key={`${price.id}-${idx}`} value={price.id}>
+                                {formatNumber(priceVal)} ₽/кг
+                              </SelectItem>
+                            );
+                          } catch {
+                            return null;
+                          }
+                        }).filter(Boolean);
                       })}
                     </SelectContent>
                   </Select>
