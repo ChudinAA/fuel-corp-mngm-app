@@ -364,11 +364,24 @@ export class OperationsStorage implements IOperationsStorage {
 
   async getWarehouseTransactions(warehouseId: string): Promise<WarehouseTransaction[]> {
     const transactions = await db
-      .select()
+      .select({
+        id: warehouseTransactions.id,
+        warehouseId: warehouseTransactions.warehouseId,
+        transactionType: warehouseTransactions.transactionType,
+        sourceType: warehouseTransactions.sourceType,
+        sourceId: warehouseTransactions.sourceId,
+        quantityKg: warehouseTransactions.quantity,
+        balanceBefore: warehouseTransactions.balanceBefore,
+        balanceAfter: warehouseTransactions.balanceAfter,
+        averageCostBefore: warehouseTransactions.averageCostBefore,
+        averageCostAfter: warehouseTransactions.averageCostAfter,
+        transactionDate: warehouseTransactions.transactionDate,
+        createdAt: warehouseTransactions.createdAt,
+      })
       .from(warehouseTransactions)
       .where(eq(warehouseTransactions.warehouseId, warehouseId))
-      .orderBy(desc(warehouseTransactions.transactionDate));
+      .orderBy(desc(warehouseTransactions.transactionDate), desc(warehouseTransactions.createdAt));
     
-    return transactions;
+    return transactions as WarehouseTransaction[];
   }
 }
