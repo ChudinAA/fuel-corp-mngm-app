@@ -39,24 +39,57 @@ export function OptForm({
     resolver: zodResolver(optFormSchema),
     defaultValues: {
       dealDate: editData ? new Date(editData.dealDate) : new Date(),
-      supplierId: editData?.supplierId || "",
-      buyerId: editData?.buyerId || "",
-      warehouseId: editData?.warehouseId || "",
+      supplierId: "",
+      buyerId: "",
+      warehouseId: "",
       inputMode: "kg",
-      quantityLiters: editData?.quantityLiters || "",
-      density: editData?.density || "",
-      quantityKg: editData?.quantityKg || "",
-      carrierId: editData?.carrierId || "",
-      deliveryLocationId: editData?.deliveryLocationId || "",
-      vehicleNumber: editData?.vehicleNumber || "",
-      trailerNumber: editData?.trailerNumber || "",
-      driverName: editData?.driverName || "",
-      notes: editData?.notes || "",
-      isApproxVolume: editData?.isApproxVolume || false,
+      quantityLiters: "",
+      density: "",
+      quantityKg: "",
+      carrierId: "",
+      deliveryLocationId: "",
+      vehicleNumber: "",
+      trailerNumber: "",
+      driverName: "",
+      notes: "",
+      isApproxVolume: false,
       selectedPurchasePriceId: "",
       selectedSalePriceId: "",
     },
   });
+
+  // Update form when editData changes
+  useEffect(() => {
+    if (editData && suppliers && customers) {
+      // Find supplier by name (since enrichedData has names in supplierId field)
+      const supplier = suppliers.find(s => s.name === editData.supplierId || s.id === editData.supplierId);
+      const buyer = customers.find(c => c.name === editData.buyerId || c.id === editData.buyerId);
+      
+      form.reset({
+        dealDate: new Date(editData.dealDate),
+        supplierId: supplier?.id || "",
+        buyerId: buyer?.id || "",
+        warehouseId: editData.warehouseId || "",
+        inputMode: editData.quantityLiters ? "liters" : "kg",
+        quantityLiters: editData.quantityLiters || "",
+        density: editData.density || "",
+        quantityKg: editData.quantityKg || "",
+        carrierId: editData.carrierId || "",
+        deliveryLocationId: editData.deliveryLocationId || "",
+        vehicleNumber: editData.vehicleNumber || "",
+        trailerNumber: editData.trailerNumber || "",
+        driverName: editData.driverName || "",
+        notes: editData.notes || "",
+        isApproxVolume: editData.isApproxVolume || false,
+        selectedPurchasePriceId: editData.purchasePriceId || "",
+        selectedSalePriceId: editData.salePriceId || "",
+      });
+      
+      if (editData.quantityLiters) {
+        setInputMode("liters");
+      }
+    }
+  }, [editData, suppliers, customers, form]);
 
   const { data: suppliers } = useQuery<WholesaleSupplier[]>({
     queryKey: ["/api/wholesale/suppliers"],

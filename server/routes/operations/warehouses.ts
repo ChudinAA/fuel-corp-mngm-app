@@ -55,4 +55,14 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       res.status(500).json({ message: "Ошибка удаления склада" });
     }
   });
+
+  app.get("/api/warehouses/:id/transactions", requireAuth, async (req, res) => {
+    try {
+      const id = req.params.id;
+      const transactions = await storage.operations.getWarehouseTransactions(id);
+      res.json(transactions);
+    } catch (error) {
+      res.status(500).json({ message: "Ошибка получения транзакций склада" });
+    }
+  });
 }

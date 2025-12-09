@@ -3,6 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { 
   Plus, 
   Pencil, 
@@ -24,9 +28,27 @@ import {
   Warehouse,
   AlertTriangle,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Package
 } from "lucide-react";
 import type { Warehouse as WarehouseType, WholesaleBase, RefuelingBase } from "@shared/schema";
+
+interface WarehouseTransaction {
+  id: string;
+  warehouseId: string;
+  transactionType: string;
+  sourceType: string;
+  sourceId: string;
+  quantityKg: string;
+  balanceBefore: string;
+  balanceAfter: string;
+  averageCostBefore: string;
+  averageCostAfter: string;
+  transactionDate: string;
+  createdAt: string;
+}
 
 const warehouseFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
@@ -35,7 +57,138 @@ const warehouseFormSchema = z.object({
 
 type WarehouseFormData = z.infer<typeof warehouseFormSchema>;
 
-function WarehouseCard({ warehouse, onEdit }: { warehouse: WarehouseType; onEdit: (warehouse: WarehouseType) => void }) {
+function WarehouseDetailsDialog({ warehouse, open, onOpenChange }: { warehouse: WarehouseType; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { data: transactions, isLoading } = useQuery<WarehouseTransaction[]>({
+    queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
+    enabled: open,
+  });
+
+  const formatNumber = (value: string | number) => {
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(num);
+  };
+
+  const formatCurrency = (value: string | number) => {
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 }).format(num);
+  };
+
+  const getTransactionTypeLabel = (type: string) => {
+    const types: Record<string, string> = {
+      receipt: "Поступление",
+      sale: "Продажа (ОПТ)",
+      refueling: "Заправка ВС",
+      transfer_in: "Перемещение (приход)",
+      transfer_out: "Перемещение (расход)",
+    };
+    return types[type] || type;
+  };
+
+  const getTransactionIcon = (type: string) => {
+    if (type === 'receipt' || type === 'transfer_in') {
+      return <ArrowUpCircle className="h-4 w-4 text-green-600" />;
+    }
+    return <ArrowDownCircle className="h-4 w-4 text-red-600" />;
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            {warehouse.name} - История операций
+          </DialogTitle>
+          <DialogDescription>
+            Детализация поступлений и списаний по складу
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="grid grid-cols-3 gap-4 py-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Текущий остаток</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xl font-semibold">{formatNumber(warehouse.currentBalance || "0")} кг</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Средняя себестоимость</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xl font-semibold">{formatCurrency(warehouse.averageCost || "0")}/кг</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Базис</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Badge variant="outline">{warehouse.basis || "—"}</Badge>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Separator />
+
+        <ScrollArea className="h-[400px] pr-4">
+          {isLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : transactions && transactions.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Дата</TableHead>
+                  <TableHead>Тип операции</TableHead>
+                  <TableHead className="text-right">Количество</TableHead>
+                  <TableHead className="text-right">Остаток до</TableHead>
+                  <TableHead className="text-right">Остаток после</TableHead>
+                  <TableHead className="text-right">Себест. до</TableHead>
+                  <TableHead className="text-right">Себест. после</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {transactions.map((tx) => (
+                  <TableRow key={tx.id}>
+                    <TableCell className="whitespace-nowrap">
+                      {format(new Date(tx.transactionDate), "dd.MM.yyyy", { locale: ru })}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getTransactionIcon(tx.transactionType)}
+                        <span className="text-sm">{getTransactionTypeLabel(tx.transactionType)}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className={`text-right font-medium ${parseFloat(tx.quantityKg) > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {parseFloat(tx.quantityKg) > 0 ? '+' : ''}{formatNumber(tx.quantityKg)} кг
+                    </TableCell>
+                    <TableCell className="text-right">{formatNumber(tx.balanceBefore)} кг</TableCell>
+                    <TableCell className="text-right">{formatNumber(tx.balanceAfter)} кг</TableCell>
+                    <TableCell className="text-right">{formatCurrency(tx.averageCostBefore)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(tx.averageCostAfter)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Package className="h-12 w-12 mx-auto mb-4 opacity-20" />
+              <p>Нет операций по складу</p>
+            </div>
+          )}
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function WarehouseCard({ warehouse, onEdit, onViewDetails }: { warehouse: WarehouseType; onEdit: (warehouse: WarehouseType) => void; onViewDetails: (warehouse: WarehouseType) => void }) {
   const { toast } = useToast();
   const balance = parseFloat(warehouse.currentBalance || "0");
   const cost = parseFloat(warehouse.averageCost || "0");
@@ -58,7 +211,7 @@ function WarehouseCard({ warehouse, onEdit }: { warehouse: WarehouseType; onEdit
   });
 
   return (
-    <Card>
+    <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onViewDetails(warehouse)}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -71,7 +224,7 @@ function WarehouseCard({ warehouse, onEdit }: { warehouse: WarehouseType; onEdit
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-xs text-muted-foreground">Текущий остаток</p>
@@ -253,6 +406,8 @@ export default function WarehousesPage() {
   const [search, setSearch] = useState("");
   const [editingWarehouse, setEditingWarehouse] = useState<WarehouseType | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [viewingWarehouse, setViewingWarehouse] = useState<WarehouseType | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: warehouses, isLoading } = useQuery<WarehouseType[]>({
@@ -275,6 +430,11 @@ export default function WarehousesPage() {
   const handleEdit = (warehouse: WarehouseType) => {
     setEditingWarehouse(warehouse);
     setIsDialogOpen(true);
+  };
+
+  const handleViewDetails = (warehouse: WarehouseType) => {
+    setViewingWarehouse(warehouse);
+    setIsDetailsDialogOpen(true);
   };
 
   return (
@@ -346,7 +506,7 @@ export default function WarehousesPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredWarehouses.map((warehouse) => (
-            <WarehouseCard key={warehouse.id} warehouse={warehouse} onEdit={handleEdit} />
+            <WarehouseCard key={warehouse.id} warehouse={warehouse} onEdit={handleEdit} onViewDetails={handleViewDetails} />
           ))}
         </div>
       )}
@@ -360,6 +520,14 @@ export default function WarehousesPage() {
           if (!open) setEditingWarehouse(null);
         }}
       />
+      
+      {viewingWarehouse && (
+        <WarehouseDetailsDialog
+          warehouse={viewingWarehouse}
+          open={isDetailsDialogOpen}
+          onOpenChange={setIsDetailsDialogOpen}
+        />
+      )}
     </div>
   );
 }

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -35,7 +34,16 @@ export function useOptTable() {
   });
 
   const handleDelete = (id: string) => {
-    if (confirm("Вы уверены, что хотите удалить эту сделку?")) {
+    const confirmed = window.confirm(
+      "Вы уверены, что хотите удалить эту сделку?\n\n" +
+      "⚠️ ВНИМАНИЕ: Удаление сделки повлияет на:\n" +
+      "• Остатки на складах\n" +
+      "• Транзакции склада (warehouse_transactions)\n" +
+      "• Связанные перемещения\n\n" +
+      "Это действие необратимо!"
+    );
+
+    if (confirmed) {
       deleteMutation.mutate(id);
     }
   };

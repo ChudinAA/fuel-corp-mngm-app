@@ -170,4 +170,5 @@ export interface IOperationsStorage {
     warehouseAlerts: number;
     totalProfitMonth: number;
   }>;
+  getWarehouseTransactions(warehouseId: string): Promise<any[]>;
 }

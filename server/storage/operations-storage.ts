@@ -398,4 +398,26 @@ export class OperationsStorage implements IOperationsStorage {
       totalProfitMonth: 0,
     };
   }
+
+  async getWarehouseTransactions(warehouseId: string): Promise<any[]> {
+    const result = await db.execute(sql`
+      SELECT 
+        id,
+        warehouse_id as "warehouseId",
+        transaction_type as "transactionType",
+        source_type as "sourceType",
+        source_id as "sourceId",
+        quantity_kg as "quantityKg",
+        balance_before as "balanceBefore",
+        balance_after as "balanceAfter",
+        average_cost_before as "averageCostBefore",
+        average_cost_after as "averageCostAfter",
+        transaction_date as "transactionDate",
+        created_at as "createdAt"
+      FROM warehouse_transactions
+      WHERE warehouse_id = ${warehouseId}
+      ORDER BY transaction_date DESC, created_at DESC
+    `);
+    return result.rows as any[];
+  }
 }
