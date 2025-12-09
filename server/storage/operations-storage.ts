@@ -402,20 +402,20 @@ export class OperationsStorage implements IOperationsStorage {
   async getWarehouseTransactions(warehouseId: string): Promise<any[]> {
     const result = await db.execute(sql`
       SELECT 
-        id::text,
-        warehouse_id::text as "warehouseId",
+        id,
+        warehouse_id as "warehouseId",
         transaction_type as "transactionType",
         source_type as "sourceType",
-        source_id::text as "sourceId",
-        quantity_kg::text as "quantityKg",
-        balance_before::text as "balanceBefore",
-        balance_after::text as "balanceAfter",
-        average_cost_before::text as "averageCostBefore",
-        average_cost_after::text as "averageCostAfter",
-        transaction_date::text as "transactionDate",
-        created_at::text as "createdAt"
+        source_id as "sourceId",
+        quantity_kg as "quantityKg",
+        balance_before as "balanceBefore",
+        balance_after as "balanceAfter",
+        average_cost_before as "averageCostBefore",
+        average_cost_after as "averageCostAfter",
+        transaction_date as "transactionDate",
+        created_at as "createdAt"
       FROM warehouse_transactions
-      WHERE warehouse_id = ${warehouseId}
+      WHERE warehouse_id = ${warehouseId}::uuid
       ORDER BY transaction_date DESC, created_at DESC
     `);
     return result.rows as any[];
