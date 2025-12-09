@@ -58,6 +58,18 @@ export function OptForm({
     },
   });
 
+  const { data: suppliers } = useQuery<WholesaleSupplier[]>({
+    queryKey: ["/api/wholesale/suppliers"],
+  });
+
+  const { data: bases } = useQuery<WholesaleBase[]>({
+    queryKey: ["/api/wholesale/bases"],
+  });
+
+  const { data: customers } = useQuery<Customer[]>({
+    queryKey: ["/api/customers"],
+  });
+
   // Update form when editData changes
   useEffect(() => {
     if (editData && suppliers && customers) {
@@ -90,18 +102,6 @@ export function OptForm({
       }
     }
   }, [editData, suppliers, customers, form]);
-
-  const { data: suppliers } = useQuery<WholesaleSupplier[]>({
-    queryKey: ["/api/wholesale/suppliers"],
-  });
-
-  const { data: bases } = useQuery<WholesaleBase[]>({
-    queryKey: ["/api/wholesale/bases"],
-  });
-
-  const { data: customers } = useQuery<Customer[]>({
-    queryKey: ["/api/customers"],
-  });
 
   const { data: warehouses } = useQuery<Warehouse[]>({
     queryKey: ["/api/warehouses"],
