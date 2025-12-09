@@ -341,8 +341,12 @@ export function OptForm({
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/opt"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0] as string;
+          return key?.startsWith('/api/opt') || key?.startsWith('/api/warehouses');
+        }
+      });
       toast({ title: "Сделка создана", description: "Оптовая сделка успешно сохранена" });
       form.reset();
       onSuccess?.();
@@ -384,8 +388,12 @@ export function OptForm({
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/opt"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0] as string;
+          return key?.startsWith('/api/opt') || key?.startsWith('/api/warehouses');
+        }
+      });
       toast({ title: "Сделка обновлена", description: "Оптовая сделка успешно обновлена" });
       form.reset();
       onSuccess?.();

@@ -18,14 +18,16 @@ import {
 import { formatNumberForTable, formatCurrencyForTable } from "../utils";
 import { useOptTable } from "../hooks/use-opt-table";
 
-export function OptTable() {
+interface OptTableProps {
+  onEdit: (opt: any) => void;
+}
+
+export function OptTable({ onEdit }: OptTableProps) {
   const {
     page,
     setPage,
     search,
     setSearch,
-    editingOpt,
-    setEditingOpt,
     pageSize,
     optDeals,
     isLoading,
@@ -120,7 +122,7 @@ export function OptTable() {
                         variant="ghost" 
                         size="icon" 
                         className="h-8 w-8"
-                        onClick={() => setEditingOpt(deal)}
+                        onClick={() => onEdit(deal)}
                         data-testid={`button-edit-opt-${deal.id}`}
                       >
                         <Pencil className="h-4 w-4" />

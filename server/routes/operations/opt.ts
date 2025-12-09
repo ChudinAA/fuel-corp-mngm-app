@@ -25,9 +25,11 @@ export function registerOptRoutes(app: Express) {
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error("Validation error:", error.errors);
         return res.status(400).json({ message: error.errors[0].message, errors: error.errors });
       }
-      res.status(500).json({ message: "Ошибка создания сделки" });
+      console.error("Error creating opt deal:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Ошибка создания сделки" });
     }
   });
 

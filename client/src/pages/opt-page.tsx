@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -13,6 +13,7 @@ export default function OptPage() {
   const [editingOpt, setEditingOpt] = useState<Opt | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: suppliers } = useQuery<DirectoryWholesale[]>({
     queryKey: ["/api/directories/wholesale", "supplier"],
@@ -38,6 +39,15 @@ export default function OptPage() {
   const handleOpenDialog = () => {
     setEditingOpt(null);
     setIsDialogOpen(true);
+  };
+
+  const handleEditOpt = (opt: Opt) => {
+    setEditingOpt(opt);
+    setIsDialogOpen(true);
+  };
+
+  const handleOptDeleted = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/opt"] });
   };
 
   return (
@@ -87,13 +97,19 @@ export default function OptPage() {
                 </DialogDescription>
               </DialogHeader>
               <ScrollArea className="flex-1">
-                <OptTable />
+                <OptTable 
+                  onEdit={handleEditOpt}
+                  onDelete={handleOptDeleted}
+                />
               </ScrollArea>
             </DialogContent>
           </Dialog>
         </CardHeader>
         <CardContent>
-          <OptTable />
+          <OptTable 
+            onEdit={handleEditOpt}
+            onDelete={handleOptDeleted}
+          />
         </CardContent>
       </Card>
     </div>

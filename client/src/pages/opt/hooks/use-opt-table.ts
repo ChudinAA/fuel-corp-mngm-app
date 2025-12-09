@@ -8,7 +8,6 @@ import type { Opt } from "@shared/schema";
 export function useOptTable() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [editingOpt, setEditingOpt] = useState<Opt | null>(null);
   const pageSize = 10;
   const { toast } = useToast();
 
@@ -22,7 +21,12 @@ export function useOptTable() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/opt`], refetchType: 'all' });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0] as string;
+          return key?.startsWith('/api/opt');
+        }
+      });
       toast({ title: "Сделка удалена", description: "Оптовая сделка успешно удалена" });
     },
     onError: (error: Error) => {
@@ -41,8 +45,6 @@ export function useOptTable() {
     setPage,
     search,
     setSearch,
-    editingOpt,
-    setEditingOpt,
     pageSize,
     optDeals,
     isLoading,

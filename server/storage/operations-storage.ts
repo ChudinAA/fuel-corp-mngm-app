@@ -11,6 +11,7 @@ import {
   refuelingBases,
   wholesaleSuppliers,
   refuelingProviders,
+  customers,
   type Warehouse,
   type InsertWarehouse,
   type Exchange,
@@ -271,8 +272,35 @@ export class OperationsStorage implements IOperationsStorage {
   async getOptDeals(page: number, pageSize: number): Promise<{ data: Opt[]; total: number }> {
     const offset = (page - 1) * pageSize;
     const data = await db.select().from(opt).orderBy(desc(opt.dealDate)).limit(pageSize).offset(offset);
+    
+    // Обогащаем данные именами поставщиков и покупателей
+    const enrichedData = await Promise.all(
+      data.map(async (deal) => {
+        let supplierName = deal.supplierId;
+        let buyerName = deal.buyerId;
+        
+        // Получаем название поставщика
+        const [supplier] = await db.select().from(wholesaleSuppliers).where(eq(wholesaleSuppliers.id, deal.supplierId)).limit(1);
+        if (supplier) {
+          supplierName = supplier.name;
+        }
+        
+        // Получаем название покупателя из customers
+        const [buyer] = await db.select().from(customers).where(eq(customers.id, deal.buyerId)).limit(1);
+        if (buyer) {
+          buyerName = buyer.name;
+        }
+        
+        return {
+          ...deal,
+          supplierId: supplierName,
+          buyerId: buyerName
+        };
+      })
+    );
+    
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(opt);
-    return { data, total: Number(countResult?.count || 0) };
+    return { data: enrichedData, total: Number(countResult?.count || 0) };
   }
 
   async createOpt(data: InsertOpt): Promise<Opt> {
