@@ -79,7 +79,9 @@ export function OptTable({ onEdit }: OptTableProps) {
               <TableHead>Поставщик</TableHead>
               <TableHead>Покупатель</TableHead>
               <TableHead className="text-right">КГ</TableHead>
+              <TableHead className="text-right">Цена пок.</TableHead>
               <TableHead className="text-right">Покупка</TableHead>
+              <TableHead className="text-right">Цена прод.</TableHead>
               <TableHead className="text-right">Продажа</TableHead>
               <TableHead className="text-right">Прибыль</TableHead>
               <TableHead>Статус</TableHead>
@@ -100,7 +102,9 @@ export function OptTable({ onEdit }: OptTableProps) {
                   <TableCell>{deal.supplierId}</TableCell>
                   <TableCell>{deal.buyerId}</TableCell>
                   <TableCell className="text-right font-medium">{formatNumberForTable(deal.quantityKg)}</TableCell>
+                  <TableCell className="text-right">{formatNumberForTable(deal.purchasePrice)} ₽/кг</TableCell>
                   <TableCell className="text-right">{formatCurrencyForTable(deal.purchaseAmount)}</TableCell>
+                  <TableCell className="text-right">{formatNumberForTable(deal.salePrice)} ₽/кг</TableCell>
                   <TableCell className="text-right">{formatCurrencyForTable(deal.saleAmount)}</TableCell>
                   <TableCell className="text-right text-green-600">{formatCurrencyForTable(deal.profit)}</TableCell>
                   <TableCell>

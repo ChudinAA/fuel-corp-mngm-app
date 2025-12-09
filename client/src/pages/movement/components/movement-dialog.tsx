@@ -105,6 +105,7 @@ export function MovementDialog({
 
   const watchMovementType = form.watch("movementType");
   const watchSupplierId = form.watch("supplierId");
+  const watchFromWarehouseId = form.watch("fromWarehouseId");
   const watchToWarehouseId = form.watch("toWarehouseId");
   const watchCarrierId = form.watch("carrierId");
   const watchMovementDate = form.watch("movementDate");
@@ -120,6 +121,15 @@ export function MovementDialog({
 
   // Получение цены закупки
   const getPurchasePrice = (): number | null => {
+    // Для внутреннего перемещения берем себестоимость со склада-источника
+    if (watchMovementType === "internal" && watchFromWarehouseId) {
+      const fromWarehouse = warehouses.find(w => w.id === watchFromWarehouseId);
+      if (fromWarehouse && fromWarehouse.averageCost) {
+        return parseFloat(fromWarehouse.averageCost);
+      }
+      return null;
+    }
+
     if (!watchSupplierId || !watchMovementDate) return null;
 
     const dateStr = format(watchMovementDate, "yyyy-MM-dd");
@@ -343,7 +353,7 @@ export function MovementDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Откуда (склад)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
                         <FormControl>
                           <SelectTrigger data-testid="select-movement-from">
                             <SelectValue placeholder="Выберите склад" />

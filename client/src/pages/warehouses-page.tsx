@@ -196,6 +196,37 @@ function WarehouseCard({ warehouse, onEdit, onViewDetails }: { warehouse: Wareho
   const formatNumber = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value);
   const formatCurrency = (value: number) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 }).format(value);
 
+  const { data: transactions } = useQuery<WarehouseTransaction[]>({
+    queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
+  });
+
+  const getCurrentMonthStats = () => {
+    if (!transactions) return { income: 0, expense: 0 };
+    
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    let income = 0;
+    let expense = 0;
+
+    transactions.forEach(tx => {
+      const txDate = new Date(tx.transactionDate);
+      if (txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear) {
+        const qty = parseFloat(tx.quantityKg);
+        if (qty > 0) {
+          income += qty;
+        } else {
+          expense += Math.abs(qty);
+        }
+      }
+    });
+
+    return { income, expense };
+  };
+
+  const monthStats = getCurrentMonthStats();
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await apiRequest("DELETE", `/api/warehouses/${id}`);
@@ -240,11 +271,11 @@ function WarehouseCard({ warehouse, onEdit, onViewDetails }: { warehouse: Wareho
           <div className="flex items-center gap-4 text-xs">
             <span className="flex items-center gap-1 text-green-600">
               <TrendingUp className="h-3 w-3" />
-              +12,500 кг
+              +{formatNumber(monthStats.income)} кг
             </span>
             <span className="flex items-center gap-1 text-red-600">
               <TrendingDown className="h-3 w-3" />
-              -8,200 кг
+              -{formatNumber(monthStats.expense)} кг
             </span>
           </div>
           <div className="flex items-center gap-1">

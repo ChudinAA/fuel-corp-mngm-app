@@ -48,12 +48,23 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
         try {
           parsedPriceValues = editPrice.priceValues.map((pv: string) => {
             const parsed = JSON.parse(pv);
-            return { price: String(parsed.price) };
+            return { price: String(parsed.price || "") };
           });
         } catch (e) {
           console.error("Failed to parse priceValues:", e);
+          parsedPriceValues = [{ price: "" }];
         }
       }
+
+      // Обновляем поля формы
+      const fieldsToRemove = fields.length;
+      for (let i = 0; i < fieldsToRemove; i++) {
+        remove(0);
+      }
+      
+      parsedPriceValues.forEach((pv) => {
+        append(pv);
+      });
 
       form.reset({
         dateFrom: new Date(editPrice.dateFrom),
@@ -69,7 +80,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
       });
       setOpen(true);
     }
-  }, [editPrice, form]);
+  }, [editPrice, form, fields.length, append, remove]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,

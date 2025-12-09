@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -19,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { CalendarIcon, Plus, Loader2 } from "lucide-react";
-import type { WholesaleSupplier, WholesaleBase, Customer, Warehouse, Price, DeliveryCost, LogisticsCarrier, LogisticsDeliveryLocation, LogisticsVehicle, LogisticsTrailer, LogisticsDriver } from "@shared/schema";
+import type { WholesaleSupplier, WholesaleBase, Customer, Warehouse, Price, DeliveryCost, LogisticsCarrier, LogisticsDeliveryLocation, LogisticsVehicle, LogisticsTrailer, LogisticsDriver, Opt } from "@shared/schema";
 import { CalculatedField } from "./calculated-field";
 import { optFormSchema, type OptFormData } from "../schemas";
 import { formatNumber, formatCurrency } from "../utils";
@@ -32,8 +31,9 @@ export function OptForm({
   const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
   const [selectedBasis, setSelectedBasis] = useState<string>("");
-  const [purchasePrices, setPurchasePrices] = useState<Price[]>([]);
-  const [salePrices, setSalePrices] = useState<Price[]>([]);
+  const [selectedPurchasePriceId, setSelectedPurchasePriceId] = useState<string>("");
+  const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
+  const isEditing = !!editData;
 
   const form = useForm<OptFormData>({
     resolver: zodResolver(optFormSchema),
@@ -76,7 +76,7 @@ export function OptForm({
       // Find supplier by name (since enrichedData has names in supplierId field)
       const supplier = suppliers.find(s => s.name === editData.supplierId || s.id === editData.supplierId);
       const buyer = customers.find(c => c.name === editData.buyerId || c.id === editData.buyerId);
-      
+
       form.reset({
         dealDate: new Date(editData.dealDate),
         supplierId: supplier?.id || "",
@@ -96,7 +96,10 @@ export function OptForm({
         selectedPurchasePriceId: editData.purchasePriceId || "",
         selectedSalePriceId: editData.salePriceId || "",
       });
-      
+
+      setSelectedPurchasePriceId(editData.purchasePriceId || "");
+      setSelectedSalePriceId(editData.salePriceId || "");
+
       if (editData.quantityLiters) {
         setInputMode("liters");
       }
@@ -135,6 +138,10 @@ export function OptForm({
     queryKey: ["/api/delivery-costs"],
   });
 
+  const { data: allDeals } = useQuery<{ data: Opt[] }>({
+    queryKey: ["/api/opt"],
+  });
+
   const watchSupplierId = form.watch("supplierId");
   const watchBuyerId = form.watch("buyerId");
   const watchDealDate = form.watch("dealDate");
@@ -144,8 +151,6 @@ export function OptForm({
   const watchCarrierId = form.watch("carrierId");
   const watchDeliveryLocationId = form.watch("deliveryLocationId");
   const watchWarehouseId = form.watch("warehouseId");
-  const watchSelectedPurchasePriceId = form.watch("selectedPurchasePriceId");
-  const watchSelectedSalePriceId = form.watch("selectedSalePriceId");
 
   // Вычисление КГ
   const calculatedKg = inputMode === "liters" && watchLiters && watchDensity
@@ -162,7 +167,7 @@ export function OptForm({
         const base = bases.find(b => b.id === supplier.defaultBaseId);
         if (base) {
           setSelectedBasis(base.name);
-          
+
           // Найти склад с таким же base_id
           const warehouse = warehouses.find(w => w.baseId === supplier.defaultBaseId);
           if (warehouse) {
@@ -174,62 +179,67 @@ export function OptForm({
   }, [watchSupplierId, suppliers, bases, warehouses, form]);
 
   // Фильтрация цен покупки (от поставщика)
-  useEffect(() => {
-    if (watchSupplierId && watchDealDate && allPrices && selectedBasis) {
-      const dateStr = format(watchDealDate, "yyyy-MM-dd");
-      const filtered = allPrices.filter(p => 
-        p.counterpartyId === watchSupplierId &&
-        p.counterpartyType === "wholesale" &&
-        p.counterpartyRole === "supplier" &&
-        p.basis === selectedBasis &&
-        p.dateFrom <= dateStr &&
-        p.dateTo >= dateStr &&
-        p.isActive
-      );
-      setPurchasePrices(filtered);
-      
-      if (filtered.length > 0 && !watchSelectedPurchasePriceId) {
-        form.setValue("selectedPurchasePriceId", filtered[0].id);
-      }
-    } else {
-      setPurchasePrices([]);
-    }
-  }, [watchSupplierId, watchDealDate, allPrices, selectedBasis, watchSelectedPurchasePriceId, form]);
+  const getMatchingPurchasePrices = () => {
+    if (!watchSupplierId || !selectedBasis || !watchDealDate) return [];
+
+    const dateStr = format(watchDealDate, "yyyy-MM-dd");
+    const supplier = suppliers?.find(s => s.id === watchSupplierId);
+    if (!supplier) return [];
+
+    return allPrices?.filter(p =>
+      p.counterpartyId === watchSupplierId &&
+      p.counterpartyType === "wholesale" &&
+      p.counterpartyRole === "supplier" &&
+      p.basis === selectedBasis &&
+      p.dateFrom <= dateStr &&
+      p.dateTo >= dateStr &&
+      p.isActive
+    ) || [];
+  };
+
+  const purchasePrices = getMatchingPurchasePrices();
 
   // Фильтрация цен продажи (для покупателя)
-  useEffect(() => {
-    if (watchBuyerId && watchDealDate && allPrices && selectedBasis) {
-      const dateStr = format(watchDealDate, "yyyy-MM-dd");
-      const filtered = allPrices.filter(p => 
-        p.counterpartyId === watchBuyerId &&
-        p.counterpartyType === "wholesale" &&
-        p.counterpartyRole === "buyer" &&
-        p.basis === selectedBasis &&
-        p.dateFrom <= dateStr &&
-        p.dateTo >= dateStr &&
-        p.isActive
-      );
-      setSalePrices(filtered);
-      
-      if (filtered.length > 0 && !watchSelectedSalePriceId) {
-        form.setValue("selectedSalePriceId", filtered[0].id);
-      }
-    } else {
-      setSalePrices([]);
-    }
-  }, [watchBuyerId, watchDealDate, allPrices, selectedBasis, watchSelectedSalePriceId, form]);
+  const getMatchingSalePrices = () => {
+    if (!watchBuyerId || !selectedBasis || !watchDealDate) return [];
+
+    const dateStr = format(watchDealDate, "yyyy-MM-dd");
+    const buyer = customers?.find(c => c.id === watchBuyerId);
+    if (!buyer) return [];
+
+    return allPrices?.filter(p =>
+      p.counterpartyId === watchBuyerId &&
+      p.counterpartyType === "wholesale" &&
+      p.counterpartyRole === "buyer" &&
+      p.basis === selectedBasis &&
+      p.dateFrom <= dateStr &&
+      p.dateTo >= dateStr &&
+      p.isActive
+    ) || [];
+  };
+
+  const salePrices = getMatchingSalePrices();
 
   // Получение цены покупки
   const getPurchasePrice = (): number | null => {
-    if (watchSelectedPurchasePriceId && purchasePrices.length > 0) {
-      const price = purchasePrices.find(p => p.id === watchSelectedPurchasePriceId);
-      if (price?.priceValues && price.priceValues.length > 0) {
-        try {
-          const firstPrice = JSON.parse(price.priceValues[0]);
-          return parseFloat(firstPrice.price || "0");
-        } catch {
-          return null;
-        }
+    const matchingPrices = getMatchingPurchasePrices();
+    if (matchingPrices.length === 0) return null;
+
+    let selectedPrice = matchingPrices[0];
+    if (selectedPurchasePriceId) {
+      const found = matchingPrices.find(p => p.id === selectedPurchasePriceId);
+      if (found) selectedPrice = found;
+    } else if (editData && editData.purchasePriceId) {
+      const found = matchingPrices.find(p => p.id === editData.purchasePriceId);
+      if (found) selectedPrice = found;
+    }
+
+    if (selectedPrice && selectedPrice.priceValues && selectedPrice.priceValues.length > 0) {
+      try {
+        const priceObj = JSON.parse(selectedPrice.priceValues[0]);
+        return parseFloat(priceObj.price || "0");
+      } catch {
+        return null;
       }
     }
     
@@ -240,21 +250,30 @@ export function OptForm({
         return parseFloat(warehouse.averageCost);
       }
     }
-    
+
     return null;
   };
 
   // Получение цены продажи
   const getSalePrice = (): number | null => {
-    if (watchSelectedSalePriceId && salePrices.length > 0) {
-      const price = salePrices.find(p => p.id === watchSelectedSalePriceId);
-      if (price?.priceValues && price.priceValues.length > 0) {
-        try {
-          const firstPrice = JSON.parse(price.priceValues[0]);
-          return parseFloat(firstPrice.price || "0");
-        } catch {
-          return null;
-        }
+    const matchingPrices = getMatchingSalePrices();
+    if (matchingPrices.length === 0) return null;
+
+    let selectedPrice = matchingPrices[0];
+    if (selectedSalePriceId) {
+      const found = matchingPrices.find(p => p.id === selectedSalePriceId);
+      if (found) selectedPrice = found;
+    } else if (editData && editData.salePriceId) {
+      const found = matchingPrices.find(p => p.id === editData.salePriceId);
+      if (found) selectedPrice = found;
+    }
+
+    if (selectedPrice && selectedPrice.priceValues && selectedPrice.priceValues.length > 0) {
+      try {
+        const priceObj = JSON.parse(selectedPrice.priceValues[0]);
+        return parseFloat(priceObj.price || "0");
+      } catch {
+        return null;
       }
     }
     return null;
@@ -262,52 +281,27 @@ export function OptForm({
 
   // Получение стоимости доставки
   const getDeliveryCost = (): number | null => {
-    console.log("=== getDeliveryCost called ===");
-    console.log("watchDeliveryLocationId:", watchDeliveryLocationId);
-    console.log("watchCarrierId:", watchCarrierId);
-    console.log("selectedBasis:", selectedBasis);
-    console.log("finalKg:", finalKg);
-    console.log("deliveryCosts:", deliveryCosts);
-    console.log("bases:", bases);
-    
     if (!watchDeliveryLocationId || !watchCarrierId || !deliveryCosts || !finalKg || finalKg <= 0) {
-      console.log("Missing required data for delivery cost calculation");
-      return null;
-    }
-    
-    // Находим baseId по selectedBasis
-    const base = bases?.find(b => b.name === selectedBasis);
-    if (!base) {
-      console.log("Base not found for selectedBasis:", selectedBasis);
       return null;
     }
 
-    console.log("Found base.id:", base.id);
-    
+    // Находим baseId по selectedBasis
+    const base = bases?.find(b => b.name === selectedBasis);
+    if (!base) return null;
+
     // Ищем тариф по baseId и destinationId
     const cost = deliveryCosts.find(dc => {
-      console.log("Checking delivery cost:", {
-        dcBaseId: dc.baseId,
-        dcDestinationId: dc.destinationId,
-        dcCarrierId: dc.carrierId,
-        dcIsActive: dc.isActive,
-        matches: dc.baseId === base.id && dc.destinationId === watchDeliveryLocationId && dc.carrierId === watchCarrierId && dc.isActive
-      });
       return dc.baseId === base.id &&
         dc.destinationId === watchDeliveryLocationId &&
         dc.carrierId === watchCarrierId &&
         dc.isActive;
     });
-    
-    console.log("Found delivery cost:", cost);
-    
+
     if (cost?.costPerKg) {
       const totalCost = parseFloat(cost.costPerKg) * finalKg;
-      console.log("Calculated delivery cost:", totalCost);
       return totalCost;
     }
-    
-    console.log("No valid cost found");
+
     return null;
   };
 
@@ -317,11 +311,34 @@ export function OptForm({
 
   const purchaseAmount = purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
   const saleAmount = salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
+
+  const getCumulativeProfit = (): number => {
+    if (!watchDealDate || !allDeals?.data) return 0;
+
+    const currentDate = new Date(watchDealDate);
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+
+    let cumulative = 0;
+    allDeals.data.forEach(deal => {
+      const dealDate = new Date(deal.dealDate);
+      if (dealDate.getMonth() === currentMonth && dealDate.getFullYear() === currentYear) {
+        cumulative += parseFloat(deal.profit);
+      }
+    });
+
+    return cumulative;
+  };
+
+  const cumulativeProfit = getCumulativeProfit();
+
   const profit = purchaseAmount !== null && saleAmount !== null && deliveryCost !== null 
     ? saleAmount - purchaseAmount - deliveryCost 
     : purchaseAmount !== null && saleAmount !== null 
       ? saleAmount - purchaseAmount 
       : null;
+      
+  const deliveryTariff = deliveryCost && finalKg > 0 ? deliveryCost / finalKg : null;
 
   // Проверка остатка на складе
   const getWarehouseStatus = (): { status: "ok" | "warning" | "error"; message: string } => {
@@ -348,6 +365,11 @@ export function OptForm({
 
   const createMutation = useMutation({
     mutationFn: async (data: OptFormData) => {
+      const purchasePrices = getMatchingPurchasePrices();
+      const salePrices = getMatchingSalePrices();
+      const purchasePriceId = selectedPurchasePriceId || (purchasePrices.length > 0 ? purchasePrices[0].id : null);
+      const salePriceId = selectedSalePriceId || (salePrices.length > 0 ? salePrices[0].id : null);
+
       const payload = {
         ...data,
         supplierId: data.supplierId,
@@ -361,13 +383,13 @@ export function OptForm({
         quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
         density: data.density ? parseFloat(data.density) : null,
         purchasePrice: purchasePrice,
-        purchasePriceId: watchSelectedPurchasePriceId || null,
+        purchasePriceId: purchasePriceId,
         salePrice: salePrice,
-        salePriceId: watchSelectedSalePriceId || null,
+        salePriceId: salePriceId,
         purchaseAmount: purchaseAmount,
         saleAmount: saleAmount,
         deliveryCost: deliveryCost,
-        deliveryTariff: deliveryCost && finalKg > 0 ? deliveryCost / finalKg : null,
+        deliveryTariff: deliveryTariff,
         profit: profit,
       };
       const res = await apiRequest("POST", "/api/opt", payload);
@@ -382,6 +404,8 @@ export function OptForm({
       });
       toast({ title: "Сделка создана", description: "Оптовая сделка успешно сохранена" });
       form.reset();
+      setSelectedPurchasePriceId("");
+      setSelectedSalePriceId("");
       onSuccess?.();
     },
     onError: (error: Error) => {
@@ -395,6 +419,11 @@ export function OptForm({
 
   const updateMutation = useMutation({
     mutationFn: async (data: OptFormData & { id: string }) => {
+      const purchasePrices = getMatchingPurchasePrices();
+      const salePrices = getMatchingSalePrices();
+      const purchasePriceId = selectedPurchasePriceId || (purchasePrices.length > 0 ? purchasePrices[0].id : null);
+      const salePriceId = selectedSalePriceId || (salePrices.length > 0 ? salePrices[0].id : null);
+
       const payload = {
         ...data,
         supplierId: data.supplierId,
@@ -408,13 +437,13 @@ export function OptForm({
         quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
         density: data.density ? parseFloat(data.density) : null,
         purchasePrice: purchasePrice,
-        purchasePriceId: watchSelectedPurchasePriceId || null,
+        purchasePriceId: purchasePriceId,
         salePrice: salePrice,
-        salePriceId: watchSelectedSalePriceId || null,
+        salePriceId: salePriceId,
         purchaseAmount: purchaseAmount,
         saleAmount: saleAmount,
         deliveryCost: deliveryCost,
-        deliveryTariff: deliveryCost && finalKg > 0 ? deliveryCost / finalKg : null,
+        deliveryTariff: deliveryTariff,
         profit: profit,
       };
       const res = await apiRequest("PATCH", `/api/opt/${data.id}`, payload);
@@ -429,6 +458,8 @@ export function OptForm({
       });
       toast({ title: "Сделка обновлена", description: "Оптовая сделка успешно обновлена" });
       form.reset();
+      setSelectedPurchasePriceId("");
+      setSelectedSalePriceId("");
       onSuccess?.();
     },
     onError: (error: Error) => {
@@ -664,7 +695,7 @@ export function OptForm({
             value={warehouseStatus.message}
             status={warehouseStatus.status}
           />
-          
+
           {purchasePrices.length > 1 ? (
             <FormField
               control={form.control}
@@ -672,7 +703,7 @@ export function OptForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Покупка</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={(value) => { field.onChange(value); setSelectedPurchasePriceId(value); }} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Выберите цену" />
@@ -721,7 +752,7 @@ export function OptForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Продажа</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={(value) => { field.onChange(value); setSelectedSalePriceId(value); }} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Выберите цену" />
@@ -953,7 +984,7 @@ export function OptForm({
 
             <CalculatedField 
               label="Накопительно" 
-              value="—"
+              value={formatCurrency(cumulativeProfit)}
               status="ok"
             />
           </div>
@@ -965,6 +996,8 @@ export function OptForm({
             variant="outline"
             onClick={() => {
               form.reset();
+              setSelectedPurchasePriceId("");
+              setSelectedSalePriceId("");
               onSuccess?.();
             }}
           >

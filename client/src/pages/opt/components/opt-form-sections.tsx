@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,9 +5,9 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import type { UseFormReturn } from "react-hook-form";
-import type { DirectoryLogistics } from "@shared/schema";
+import type { DirectoryLogistics, Price } from "@shared/schema";
 import { CalculatedField } from "./calculated-field";
-import { formatNumber } from "../utils";
+import { formatCurrency, formatNumber } from "../utils";
 import type { OptFormData } from "../schemas";
 
 interface VolumeInputSectionProps {
@@ -265,6 +264,131 @@ export function LogisticsSection({
                 <FormMessage />
               </FormItem>
             )}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function PricingSection({ 
+  purchasePrice, 
+  salePrice, 
+  purchaseAmount, 
+  saleAmount, 
+  deliveryTariff, 
+  deliveryCost,
+  profit,
+  cumulativeProfit,
+  matchingPurchasePrices,
+  matchingSalePrices,
+  selectedPurchasePriceId,
+  selectedSalePriceId,
+  onPurchasePriceSelect,
+  onSalePriceSelect
+}: { 
+  purchasePrice: number | null;
+  salePrice: number | null;
+  purchaseAmount: number;
+  saleAmount: number;
+  deliveryTariff: number;
+  deliveryCost: number;
+  profit: number;
+  cumulativeProfit: number;
+  matchingPurchasePrices: Price[];
+  matchingSalePrices: Price[];
+  selectedPurchasePriceId: string;
+  selectedSalePriceId: string;
+  onPurchasePriceSelect: (id: string) => void;
+  onSalePriceSelect: (id: string) => void;
+}) {
+  const getPriceLabel = (price: Price) => {
+    if (!price.priceValues || price.priceValues.length === 0) return "Нет цены";
+    const priceObj = JSON.parse(price.priceValues[0]);
+    return `${priceObj.price} ₽/кг (${price.dateFrom} - ${price.dateTo})`;
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-4">
+        <CardTitle className="text-lg">Ценообразование</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {matchingPurchasePrices.length > 1 ? (
+            <div className="space-y-2">
+              <Label>Цена закупки</Label>
+              <Select value={selectedPurchasePriceId || matchingPurchasePrices[0]?.id || ""} onValueChange={onPurchasePriceSelect}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите цену" />
+                </SelectTrigger>
+                <SelectContent>
+                  {matchingPurchasePrices.map(p => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {getPriceLabel(p)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <CalculatedField 
+              label="Цена закупки" 
+              value={purchasePrice !== null ? formatNumber(purchasePrice) : "нет цены!"} 
+              suffix={purchasePrice !== null ? " ₽/кг" : ""} 
+            />
+          )}
+          {matchingSalePrices.length > 1 ? (
+            <div className="space-y-2">
+              <Label>Цена продажи</Label>
+              <Select value={selectedSalePriceId || matchingSalePrices[0]?.id || ""} onValueChange={onSalePriceSelect}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите цену" />
+                </SelectTrigger>
+                <SelectContent>
+                  {matchingSalePrices.map(p => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {getPriceLabel(p)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <CalculatedField 
+              label="Цена продажи" 
+              value={salePrice !== null ? formatNumber(salePrice) : "нет цены!"} 
+              suffix={salePrice !== null ? " ₽/кг" : ""} 
+            />
+          )}
+          <CalculatedField 
+            label="Количество закупки" 
+            value={formatNumber(purchaseAmount)} 
+            suffix=" кг"
+          />
+          <CalculatedField 
+            label="Количество продажи" 
+            value={formatNumber(saleAmount)} 
+            suffix=" кг"
+          />
+          <CalculatedField 
+            label="Тариф доставки" 
+            value={formatCurrency(deliveryTariff)} 
+            suffix=" ₽"
+          />
+          <CalculatedField 
+            label="Стоимость доставки" 
+            value={formatCurrency(deliveryCost)} 
+            suffix=" ₽"
+          />
+          <CalculatedField 
+            label="Прибыль" 
+            value={formatCurrency(profit)} 
+            suffix=" ₽"
+          />
+          <CalculatedField 
+            label="Накопительно" 
+            value={formatCurrency(cumulativeProfit)} 
           />
         </div>
       </CardContent>
