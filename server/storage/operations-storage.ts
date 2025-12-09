@@ -3,6 +3,7 @@ import { eq, desc, sql, asc, or } from "drizzle-orm";
 import { db } from "../db";
 import {
   warehouses,
+  warehouseTransactions,
   exchange,
   movement,
   opt,
@@ -14,6 +15,7 @@ import {
   customers,
   type Warehouse,
   type InsertWarehouse,
+  type WarehouseTransaction,
   type Exchange,
   type InsertExchange,
   type Movement,
@@ -184,31 +186,18 @@ export class OperationsStorage implements IOperationsStorage {
           .where(eq(warehouses.id, created.toWarehouseId));
         
         // Создаем запись транзакции (приход)
-        await db.execute(sql`
-          INSERT INTO warehouse_transactions (
-            warehouse_id,
-            transaction_type,
-            source_type,
-            source_id,
-            quantity_kg,
-            balance_before,
-            balance_after,
-            average_cost_before,
-            average_cost_after,
-            transaction_date
-          ) VALUES (
-            ${created.toWarehouseId},
-            ${created.movementType === 'supply' ? 'receipt' : 'transfer_in'},
-            'movement',
-            ${created.id},
-            ${quantityKg},
-            ${currentBalance},
-            ${newBalance},
-            ${currentCost},
-            ${newAverageCost},
-            ${created.movementDate}
-          )
-        `);
+        await db.insert(warehouseTransactions).values({
+          warehouseId: created.toWarehouseId,
+          transactionType: created.movementType === 'supply' ? 'receipt' : 'transfer_in',
+          sourceType: 'movement',
+          sourceId: created.id,
+          quantity: quantityKg.toString(),
+          balanceBefore: currentBalance.toString(),
+          balanceAfter: newBalance.toString(),
+          averageCostBefore: currentCost.toString(),
+          averageCostAfter: newAverageCost.toString(),
+          transactionDate: created.movementDate,
+        });
       }
     }
     
@@ -228,31 +217,18 @@ export class OperationsStorage implements IOperationsStorage {
           .where(eq(warehouses.id, created.fromWarehouseId));
         
         // Создаем запись транзакции (расход)
-        await db.execute(sql`
-          INSERT INTO warehouse_transactions (
-            warehouse_id,
-            transaction_type,
-            source_type,
-            source_id,
-            quantity_kg,
-            balance_before,
-            balance_after,
-            average_cost_before,
-            average_cost_after,
-            transaction_date
-          ) VALUES (
-            ${created.fromWarehouseId},
-            'transfer_out',
-            'movement',
-            ${created.id},
-            ${-quantityKg},
-            ${currentBalance},
-            ${newBalance},
-            ${currentCost},
-            ${currentCost},
-            ${created.movementDate}
-          )
-        `);
+        await db.insert(warehouseTransactions).values({
+          warehouseId: created.fromWarehouseId,
+          transactionType: 'transfer_out',
+          sourceType: 'movement',
+          sourceId: created.id,
+          quantity: (-quantityKg).toString(),
+          balanceBefore: currentBalance.toString(),
+          balanceAfter: newBalance.toString(),
+          averageCostBefore: currentCost.toString(),
+          averageCostAfter: currentCost.toString(),
+          transactionDate: created.movementDate,
+        });
       }
     }
     
@@ -322,31 +298,18 @@ export class OperationsStorage implements IOperationsStorage {
           .where(eq(warehouses.id, created.warehouseId));
         
         // Создаем запись транзакции
-        await db.execute(sql`
-          INSERT INTO warehouse_transactions (
-            warehouse_id,
-            transaction_type,
-            source_type,
-            source_id,
-            quantity_kg,
-            balance_before,
-            balance_after,
-            average_cost_before,
-            average_cost_after,
-            transaction_date
-          ) VALUES (
-            ${created.warehouseId},
-            'sale',
-            'opt',
-            ${created.id},
-            ${-quantityKg},
-            ${currentBalance},
-            ${newBalance},
-            ${warehouse.averageCost || "0"},
-            ${warehouse.averageCost || "0"},
-            ${created.dealDate}
-          )
-        `);
+        await db.insert(warehouseTransactions).values({
+          warehouseId: created.warehouseId,
+          transactionType: 'sale',
+          sourceType: 'opt',
+          sourceId: created.id,
+          quantity: (-quantityKg).toString(),
+          balanceBefore: currentBalance.toString(),
+          balanceAfter: newBalance.toString(),
+          averageCostBefore: warehouse.averageCost || "0",
+          averageCostAfter: warehouse.averageCost || "0",
+          transactionDate: created.dealDate,
+        });
       }
     }
     
@@ -399,25 +362,13 @@ export class OperationsStorage implements IOperationsStorage {
     };
   }
 
-  async getWarehouseTransactions(warehouseId: string): Promise<any[]> {
-    const result = await db.execute(sql`
-      SELECT 
-        id,
-        warehouse_id as "warehouseId",
-        transaction_type as "transactionType",
-        source_type as "sourceType",
-        source_id as "sourceId",
-        quantity_kg as "quantityKg",
-        balance_before as "balanceBefore",
-        balance_after as "balanceAfter",
-        average_cost_before as "averageCostBefore",
-        average_cost_after as "averageCostAfter",
-        transaction_date as "transactionDate",
-        created_at as "createdAt"
-      FROM warehouse_transactions
-      WHERE warehouse_id = ${warehouseId}::uuid
-      ORDER BY transaction_date DESC, created_at DESC
-    `);
-    return result.rows as any[];
+  async getWarehouseTransactions(warehouseId: string): Promise<WarehouseTransaction[]> {
+    const transactions = await db
+      .select()
+      .from(warehouseTransactions)
+      .where(eq(warehouseTransactions.warehouseId, warehouseId))
+      .orderBy(desc(warehouseTransactions.transactionDate));
+    
+    return transactions;
   }
 }
