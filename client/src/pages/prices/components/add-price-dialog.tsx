@@ -41,6 +41,11 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
     },
   });
 
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "priceValues"
+  });
+
   useEffect(() => {
     if (editPrice) {
       let parsedPriceValues = [{ price: "" }];
@@ -81,11 +86,6 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
       setOpen(true);
     }
   }, [editPrice, form, fields.length, append, remove]);
-
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: "priceValues"
-  });
 
   const watchCounterpartyType = form.watch("counterpartyType");
   const watchCounterpartyRole = form.watch("counterpartyRole");
