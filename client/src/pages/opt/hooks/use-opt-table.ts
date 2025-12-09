@@ -13,7 +13,7 @@ export function useOptTable() {
   const { toast } = useToast();
 
   const { data: optDeals, isLoading } = useQuery<{ data: Opt[]; total: number }>({
-    queryKey: ["/api/opt", page, search],
+    queryKey: [`/api/opt?page=${page}&pageSize=${pageSize}${search ? `&search=${search}` : ""}`],
   });
 
   const deleteMutation = useMutation({
@@ -22,7 +22,7 @@ export function useOptTable() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/opt"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/opt`], refetchType: 'all' });
       toast({ title: "Сделка удалена", description: "Оптовая сделка успешно удалена" });
     },
     onError: (error: Error) => {
