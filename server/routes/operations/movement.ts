@@ -1,15 +1,14 @@
-
 import type { Express } from "express";
 import { storage } from "../../storage/index";
+import { requireAuth } from "../middleware";
 import { insertMovementSchema } from "@shared/schema";
 import { z } from "zod";
-import { requireAuth } from "../middleware";
 
 export function registerMovementRoutes(app: Express) {
   app.get("/api/movement", requireAuth, async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
-    const result = await storage.operations.getMovements(page, pageSize);
+    const result = await storage.movement.getMovements(page, pageSize);
     res.json(result);
   });
 
@@ -19,7 +18,7 @@ export function registerMovementRoutes(app: Express) {
         ...req.body,
         createdById: req.session.userId,
       });
-      
+
       // Преобразуем числовые поля в строки для БД
       const dbData = {
         ...data,
@@ -32,8 +31,8 @@ export function registerMovementRoutes(app: Express) {
         totalCost: data.totalCost !== null && data.totalCost !== undefined ? data.totalCost.toString() : null,
         costPerKg: data.costPerKg !== null && data.costPerKg !== undefined ? data.costPerKg.toString() : null,
       };
-      
-      const movementRecord = await storage.operations.createMovement(dbData);
+
+      const movementRecord = await storage.movement.createMovement(dbData);
       res.status(201).json(movementRecord);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -46,7 +45,7 @@ export function registerMovementRoutes(app: Express) {
   app.patch("/api/movement/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.operations.updateMovement(id, req.body);
+      const item = await storage.movement.updateMovement(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Перемещение не найдено" });
       }
@@ -59,7 +58,7 @@ export function registerMovementRoutes(app: Express) {
   app.delete("/api/movement/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      await storage.operations.deleteMovement(id);
+      await storage.movement.deleteMovement(id);
       res.json({ message: "Перемещение удалено" });
     } catch (error) {
       res.status(500).json({ message: "Ошибка удаления перемещения" });

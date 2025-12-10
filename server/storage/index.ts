@@ -6,7 +6,12 @@ import { WholesaleStorage } from "./wholesale-storage";
 import { RefuelingStorage } from "./refueling-storage";
 import { LogisticsStorage } from "./logistics-storage";
 import { PriceStorage } from "./price-storage";
-import { OperationsStorage } from "./operations-storage";
+import { WarehouseStorage } from "./warehouse-storage";
+import { ExchangeStorage } from "./exchange-storage";
+import { MovementStorage } from "./movement-storage";
+import { OptStorage } from "./opt-storage";
+import { AircraftRefuelingStorage } from "./aircraft-refueling-storage";
+import { DashboardStorage } from "./dashboard-storage";
 
 export * from "./types";
 
@@ -18,7 +23,12 @@ export class Storage {
   public refueling: RefuelingStorage;
   public logistics: LogisticsStorage;
   public prices: PriceStorage;
-  public operations: OperationsStorage;
+  public warehouses: WarehouseStorage;
+  public exchange: ExchangeStorage;
+  public movement: MovementStorage;
+  public opt: OptStorage;
+  public aircraftRefueling: AircraftRefuelingStorage;
+  public dashboard: DashboardStorage;
 
   constructor() {
     this.users = new UserStorage();
@@ -28,7 +38,12 @@ export class Storage {
     this.refueling = new RefuelingStorage();
     this.logistics = new LogisticsStorage();
     this.prices = new PriceStorage();
-    this.operations = new OperationsStorage();
+    this.warehouses = new WarehouseStorage();
+    this.exchange = new ExchangeStorage();
+    this.movement = new MovementStorage();
+    this.opt = new OptStorage();
+    this.aircraftRefueling = new AircraftRefuelingStorage();
+    this.dashboard = new DashboardStorage();
   }
 }
 

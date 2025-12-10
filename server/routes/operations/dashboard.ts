@@ -5,22 +5,22 @@ import { requireAuth } from "../middleware";
 
 export function registerDashboardRoutes(app: Express) {
   app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
-    const stats = await storage.operations.getDashboardStats();
+    const stats = await storage.dashboard.getDashboardStats();
     res.json(stats);
   });
 
   app.get("/api/dashboard/recent-operations", requireAuth, async (req, res) => {
-    const operations = await storage.operations.getRecentOperations();
+    const operations = await storage.dashboard.getRecentOperations();
     res.json(operations);
   });
 
   app.get("/api/dashboard/warehouse-stats", requireAuth, async (req, res) => {
-    const stats = await storage.operations.getWarehouseStatsForDashboard();
+    const stats = await storage.warehouses.getWarehouseStatsForDashboard();
     res.json(stats);
   });
 
   app.get("/api/dashboard/week-stats", requireAuth, async (req, res) => {
-    const stats = await storage.operations.getWeekStats();
+    const stats = await storage.dashboard.getWeekStats();
     res.json(stats);
   });
 }

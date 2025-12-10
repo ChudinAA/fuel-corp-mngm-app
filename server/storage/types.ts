@@ -137,28 +137,7 @@ export interface IPriceStorage {
   deleteDeliveryCost(id: string): Promise<boolean>;
 }
 
-export interface IOperationsStorage {
-  getAllWarehouses(): Promise<Warehouse[]>;
-  getWarehouse(id: string): Promise<Warehouse | undefined>;
-  createWarehouse(data: InsertWarehouse): Promise<Warehouse>;
-  updateWarehouse(id: string, data: Partial<InsertWarehouse>): Promise<Warehouse | undefined>;
-  deleteWarehouse(id: string): Promise<boolean>;
-  getExchangeDeals(page: number, pageSize: number): Promise<{ data: Exchange[]; total: number }>;
-  createExchange(data: InsertExchange): Promise<Exchange>;
-  updateExchange(id: string, data: Partial<InsertExchange>): Promise<Exchange | undefined>;
-  deleteExchange(id: string): Promise<boolean>;
-  getMovements(page: number, pageSize: number): Promise<{ data: Movement[]; total: number }>;
-  createMovement(data: InsertMovement): Promise<Movement>;
-  updateMovement(id: string, data: Partial<InsertMovement>): Promise<Movement | undefined>;
-  deleteMovement(id: string): Promise<boolean>;
-  getOptDeals(page: number, pageSize: number): Promise<{ data: Opt[]; total: number }>;
-  createOpt(data: InsertOpt): Promise<Opt>;
-  updateOpt(id: string, data: Partial<InsertOpt>): Promise<Opt | undefined>;
-  deleteOpt(id: string): Promise<boolean>;
-  getRefuelings(page: number, pageSize: number): Promise<{ data: AircraftRefueling[]; total: number }>;
-  createRefueling(data: InsertAircraftRefueling): Promise<AircraftRefueling>;
-  updateRefueling(id: string, data: Partial<InsertAircraftRefueling>): Promise<AircraftRefueling | undefined>;
-  deleteRefueling(id: string): Promise<boolean>;
+
   getDashboardStats(): Promise<{
     optDealsToday: number;
     refuelingToday: number;
