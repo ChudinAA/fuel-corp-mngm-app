@@ -60,6 +60,16 @@ const warehouseFormSchema = z.object({
 type WarehouseFormData = z.infer<typeof warehouseFormSchema>;
 
 function WarehouseDetailsDialog({ warehouse, open, onOpenChange }: { warehouse: WarehouseType; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { data: wholesaleBases } = useQuery<WholesaleBase[]>({
+    queryKey: ["/api/wholesale/bases"],
+    enabled: open,
+  });
+
+  const { data: refuelingBases } = useQuery<RefuelingBase[]>({
+    queryKey: ["/api/refueling/bases"],
+    enabled: open,
+  });
+
   const { data: transactions, isLoading } = useQuery<WarehouseTransaction[]>({
     queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
     enabled: open,
@@ -125,10 +135,17 @@ function WarehouseDetailsDialog({ warehouse, open, onOpenChange }: { warehouse: 
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Базис</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Базисы</CardTitle>
             </CardHeader>
             <CardContent>
-              <Badge variant="outline">{warehouse.basis || "—"}</Badge>
+              {warehouse.baseIds && warehouse.baseIds.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {warehouse.baseIds.map((baseId, index) => {
+                    const baseName = [...(wholesaleBases || []), ...(refuelingBases || [])].find((b: any) => b.id === baseId)?.name;
+                    return baseName ? <Badge key={index} variant="outline">{baseName}</Badge> : null;
+                  })}
+                </div>
+              ) : <Badge variant="outline">—</Badge>}
             </CardContent>
           </Card>
         </div>
@@ -258,6 +275,8 @@ function WarehouseCard({ warehouse, onEdit, onViewDetails }: { warehouse: Wareho
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/wholesale/suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/refueling/providers"] });
       toast({ title: "Склад удален", description: "Запись успешно удалена" });
     },
     onError: () => {
