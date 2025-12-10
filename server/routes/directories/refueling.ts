@@ -25,6 +25,19 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
     try {
       const data = insertRefuelingProviderSchema.parse(req.body);
       const item = await storage.refueling.createRefuelingProvider(data);
+      
+      // Automatically create warehouse if provider is marked as warehouse
+      if (data.isWarehouse && data.baseIds && data.baseIds.length > 0) {
+        await storage.operations.createWarehouse({
+          name: data.name,
+          baseIds: data.baseIds,
+          supplierType: "refueling",
+          supplierId: item.id,
+          storageCost: data.storageCost || null,
+          isActive: data.isActive ?? true,
+        });
+      }
+      
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {

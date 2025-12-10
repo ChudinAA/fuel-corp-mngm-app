@@ -43,6 +43,7 @@ export function WholesaleTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/wholesale/suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wholesale/bases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       toast({ title: "Запись удалена", description: "Запись успешно удалена из справочника" });
     },
     onError: (error: Error) => {

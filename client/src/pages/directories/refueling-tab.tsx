@@ -43,6 +43,7 @@ export function RefuelingTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/refueling/providers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/refueling/bases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       toast({ title: "Запись удалена", description: "Запись успешно удалена из справочника" });
     },
     onError: (error: Error) => {
@@ -66,6 +67,14 @@ export function RefuelingTab() {
   const getBaseName = (baseId: string | null | undefined) => {
     if (!baseId) return null;
     return bases?.find(b => b.id === baseId)?.name || null;
+  };
+
+  const getBaseNames = (baseIds: string[] | null | undefined) => {
+    if (!baseIds || baseIds.length === 0) return null;
+    return baseIds
+      .map(id => bases?.find(b => b.id === id)?.name)
+      .filter(Boolean)
+      .join(", ");
   };
 
   return (
@@ -138,7 +147,7 @@ export function RefuelingTab() {
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>
                           {item.type === "provider" 
-                            ? getBaseName((item as RefuelingProvider & { type: string }).defaultBaseId) 
+                            ? getBaseNames((item as RefuelingProvider & { type: string }).baseIds) || "—"
                             : item.type === "basis"
                               ? "—"
                               : "—"}

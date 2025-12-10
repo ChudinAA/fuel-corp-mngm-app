@@ -254,9 +254,9 @@ function WarehouseCard({ warehouse, onEdit, onViewDetails }: { warehouse: Wareho
               {warehouse.name}
               {isInactive && <Badge variant="destructive">Неактивен</Badge>}
             </CardTitle>
-            {warehouse.basis && (
+            {getBaseNames(warehouse.baseIds) && (
               <CardDescription className="flex items-center gap-2 mt-1">
-                <Badge variant="outline">{warehouse.basis}</Badge>
+                <Badge variant="outline">{getBaseNames(warehouse.baseIds)}</Badge>
               </CardDescription>
             )}
           </div>
@@ -300,7 +300,7 @@ function WarehouseCard({ warehouse, onEdit, onViewDetails }: { warehouse: Wareho
               className="h-8 w-8 text-destructive"
               onClick={() => {
                 let confirmMessage = "Вы уверены, что хотите удалить этот склад?";
-                if (warehouse.supplierId) {
+                if (warehouse.supplierId && warehouse.isActive) {
                   confirmMessage = "Данный склад привязан к поставщику. После удаления у поставщика не будет склада. Продолжить?";
                 }
                 if (confirm(confirmMessage)) {
@@ -549,6 +549,14 @@ export default function WarehousesPage() {
     queryKey: ["/api/warehouses"],
   });
 
+  const { data: wholesaleBases } = useQuery({
+    queryKey: ["/api/wholesale/bases"],
+  });
+
+  const { data: refuelingBases } = useQuery({
+    queryKey: ["/api/refueling/bases"],
+  });
+
   const filteredWarehouses = warehouses?.filter(w => {
     const matchesSearch = w.name.toLowerCase().includes(search.toLowerCase());
     return matchesSearch;
@@ -556,6 +564,18 @@ export default function WarehousesPage() {
 
   const totalBalance = filteredWarehouses.reduce((sum, w) => sum + parseFloat(w.currentBalance || "0"), 0);
   const formatNumber = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value);
+
+  const getBaseNames = (baseIds: string[] | null | undefined) => {
+    if (!baseIds || baseIds.length === 0) return null;
+    const allBases = [
+      ...(wholesaleBases || []),
+      ...(refuelingBases || []),
+    ];
+    return baseIds
+      .map(id => allBases.find((b: any) => b.id === id)?.name)
+      .filter(Boolean)
+      .join(", ");
+  };
 
   const handleSave = () => {
     setEditingWarehouse(null);
