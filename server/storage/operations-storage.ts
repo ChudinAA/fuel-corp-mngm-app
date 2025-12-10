@@ -388,32 +388,18 @@ export class OperationsStorage implements IOperationsStorage {
       }
     }
 
-    // Прибыль за месяц (сумма всех продаж minus себестоимость)
-    const optDealsMonth = await db
-      .select()
+    // Прибыль за месяц - суммируем поле profit из opt и aircraftRefueling
+    const [optProfitResult] = await db
+      .select({ total: sql<number>`sum(CAST(${opt.profit} AS DECIMAL))` })
       .from(opt)
       .where(sql`${opt.dealDate} >= ${monthStartStr}`);
+    
+    const [refuelingProfitResult] = await db
+      .select({ total: sql<number>`sum(CAST(${aircraftRefueling.profit} AS DECIMAL))` })
+      .from(aircraftRefueling)
+      .where(sql`${aircraftRefueling.refuelingDate} >= ${monthStartStr}`);
 
-    let totalProfitMonth = 0;
-    for (const deal of optDealsMonth) {
-      const revenue = parseFloat(deal.totalCost || "0");
-      const quantity = parseFloat(deal.quantityKg || "0");
-      
-      // Получаем среднюю себестоимость со склада на момент продажи
-      if (deal.warehouseId) {
-        const [warehouse] = await db
-          .select()
-          .from(warehouses)
-          .where(eq(warehouses.id, deal.warehouseId))
-          .limit(1);
-        
-        if (warehouse) {
-          const averageCost = parseFloat(warehouse.averageCost || "0");
-          const cost = quantity * averageCost;
-          totalProfitMonth += (revenue - cost);
-        }
-      }
-    }
+    const totalProfitMonth = (Number(optProfitResult?.total || 0)) + (Number(refuelingProfitResult?.total || 0));
 
     // Количество перемещений в статусе ожидания (используем движения за последние 7 дней)
     const sevenDaysAgo = new Date(today);
@@ -465,5 +451,155 @@ export class OperationsStorage implements IOperationsStorage {
       transactionDate: tx.transactionDate,
       createdAt: tx.createdAt,
     }));
+  }
+
+  async getRecentOperations(): Promise<any[]> {
+    const operations: any[] = [];
+
+    // Получаем последние оптовые сделки
+    const optDeals = await db
+      .select()
+      .from(opt)
+      .orderBy(desc(opt.createdAt))
+      .limit(3);
+
+    for (const deal of optDeals) {
+      const [supplier] = await db.select().from(wholesaleSuppliers).where(eq(wholesaleSuppliers.id, deal.supplierId)).limit(1);
+      const [buyer] = await db.select().from(customers).where(eq(customers.id, deal.buyerId)).limit(1);
+      
+      operations.push({
+        type: 'opt',
+        description: `${supplier?.name || deal.supplierId} → ${buyer?.name || deal.buyerId}: ${parseFloat(deal.quantityKg || "0").toLocaleString('ru-RU')} кг`,
+        time: deal.createdAt,
+        status: 'success',
+      });
+    }
+
+    // Получаем последние заправки
+    const refuelings = await db
+      .select()
+      .from(aircraftRefueling)
+      .orderBy(desc(aircraftRefueling.createdAt))
+      .limit(2);
+
+    for (const refueling of refuelings) {
+      const [base] = await db.select().from(refuelingBases).where(eq(refuelingBases.id, refueling.baseId)).limit(1);
+      operations.push({
+        type: 'refueling',
+        description: `${base?.name || 'База'}: ${refueling.aircraftNumber || 'ВС'}, ${parseFloat(refueling.quantityKg || "0").toLocaleString('ru-RU')} кг`,
+        time: refueling.createdAt,
+        status: 'success',
+      });
+    }
+
+    // Получаем последние перемещения
+    const movements = await db
+      .select()
+      .from(movement)
+      .orderBy(desc(movement.createdAt))
+      .limit(2);
+
+    for (const mov of movements) {
+      let fromName = 'Источник';
+      let toName = 'Назначение';
+
+      if (mov.toWarehouseId) {
+        const [toWarehouse] = await db.select().from(warehouses).where(eq(warehouses.id, mov.toWarehouseId)).limit(1);
+        toName = toWarehouse?.name || mov.toWarehouseId;
+      }
+
+      if (mov.movementType === 'supply' && mov.supplierId) {
+        const [supplier] = await db.select().from(wholesaleSuppliers).where(eq(wholesaleSuppliers.id, mov.supplierId)).limit(1);
+        fromName = supplier?.name || mov.supplierId;
+      } else if (mov.fromWarehouseId) {
+        const [fromWarehouse] = await db.select().from(warehouses).where(eq(warehouses.id, mov.fromWarehouseId)).limit(1);
+        fromName = fromWarehouse?.name || mov.fromWarehouseId;
+      }
+
+      operations.push({
+        type: 'movement',
+        description: `${fromName} → ${toName}: ${parseFloat(mov.quantityKg || "0").toLocaleString('ru-RU')} кг`,
+        time: mov.createdAt,
+        status: mov.movementType === 'supply' ? 'success' : 'pending',
+      });
+    }
+
+    // Сортируем по времени
+    operations.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+    return operations.slice(0, 5);
+  }
+
+  async getWarehouseStatsForDashboard(): Promise<any[]> {
+    const warehousesList = await db.select().from(warehouses).where(eq(warehouses.isActive, true));
+    
+    const stats = warehousesList.map(wh => {
+      const currentBalance = parseFloat(wh.currentBalance || "0");
+      const maxCapacity = parseFloat(wh.storageCost || "100000");
+      const percentage = maxCapacity > 0 ? (currentBalance / maxCapacity) * 100 : 0;
+
+      return {
+        name: wh.name,
+        current: currentBalance,
+        max: maxCapacity,
+        percentage: percentage,
+      };
+    });
+
+    return stats;
+  }
+
+  async getWeekStats(): Promise<{
+    optDealsWeek: number;
+    refuelingsWeek: number;
+    volumeSoldWeek: number;
+    profitWeek: number;
+  }> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekAgoStr = weekAgo.toISOString().split('T')[0];
+
+    // Оптовые сделки за неделю
+    const [optWeekResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(opt)
+      .where(sql`${opt.dealDate} >= ${weekAgoStr}`);
+    const optDealsWeek = Number(optWeekResult?.count || 0);
+
+    // Заправки за неделю
+    const [refuelingsWeekResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(aircraftRefueling)
+      .where(sql`${aircraftRefueling.refuelingDate} >= ${weekAgoStr}`);
+    const refuelingsWeek = Number(refuelingsWeekResult?.count || 0);
+
+    // Объем продаж за неделю
+    const [volumeWeekResult] = await db
+      .select({ total: sql<number>`sum(CAST(${opt.quantityKg} AS DECIMAL))` })
+      .from(opt)
+      .where(sql`${opt.dealDate} >= ${weekAgoStr}`);
+    const volumeSoldWeek = Number(volumeWeekResult?.total || 0);
+
+    // Прибыль за неделю
+    const [optProfitWeek] = await db
+      .select({ total: sql<number>`sum(CAST(${opt.profit} AS DECIMAL))` })
+      .from(opt)
+      .where(sql`${opt.dealDate} >= ${weekAgoStr}`);
+    
+    const [refuelingProfitWeek] = await db
+      .select({ total: sql<number>`sum(CAST(${aircraftRefueling.profit} AS DECIMAL))` })
+      .from(aircraftRefueling)
+      .where(sql`${aircraftRefueling.refuelingDate} >= ${weekAgoStr}`);
+
+    const profitWeek = (Number(optProfitWeek?.total || 0)) + (Number(refuelingProfitWeek?.total || 0));
+
+    return {
+      optDealsWeek,
+      refuelingsWeek,
+      volumeSoldWeek,
+      profitWeek,
+    };
   }
 }

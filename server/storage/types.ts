@@ -168,4 +168,12 @@ export interface IOperationsStorage {
     totalVolumeSold: number;
   }>;
   getWarehouseTransactions(warehouseId: string): Promise<any[]>;
+  getRecentOperations(): Promise<any[]>;
+  getWarehouseStatsForDashboard(): Promise<any[]>;
+  getWeekStats(): Promise<{
+    optDealsWeek: number;
+    refuelingsWeek: number;
+    volumeSoldWeek: number;
+    profitWeek: number;
+  }>;
 }

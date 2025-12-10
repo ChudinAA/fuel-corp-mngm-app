@@ -109,9 +109,42 @@ function RecentActivityItem({
   );
 }
 
+interface RecentOperation {
+  type: string;
+  description: string;
+  time: string;
+  status: 'success' | 'warning' | 'pending';
+}
+
+interface WarehouseStat {
+  name: string;
+  current: number;
+  max: number;
+  percentage: number;
+}
+
+interface WeekStats {
+  optDealsWeek: number;
+  refuelingsWeek: number;
+  volumeSoldWeek: number;
+  profitWeek: number;
+}
+
 export default function DashboardPage() {
   const { data: stats, isLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
+  });
+
+  const { data: recentOperations, isLoading: isLoadingOperations } = useQuery<RecentOperation[]>({
+    queryKey: ["/api/dashboard/recent-operations"],
+  });
+
+  const { data: warehouseStats, isLoading: isLoadingWarehouses } = useQuery<WarehouseStat[]>({
+    queryKey: ["/api/dashboard/warehouse-stats"],
+  });
+
+  const { data: weekStats, isLoading: isLoadingWeek } = useQuery<WeekStats>({
+    queryKey: ["/api/dashboard/week-stats"],
   });
 
   const formatCurrency = (value: number) => {
@@ -125,6 +158,32 @@ export default function DashboardPage() {
 
   const formatNumber = (value: number) => {
     return new Intl.NumberFormat('ru-RU').format(value);
+  };
+
+  const getTimeAgo = (time: string) => {
+    const now = new Date();
+    const then = new Date(time);
+    const diffMs = now.getTime() - then.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 60) {
+      return `${diffMins} мин. назад`;
+    } else if (diffMins < 1440) {
+      const hours = Math.floor(diffMins / 60);
+      return `${hours} ${hours === 1 ? 'час' : hours < 5 ? 'часа' : 'часов'} назад`;
+    } else {
+      const days = Math.floor(diffMins / 1440);
+      return `${days} ${days === 1 ? 'день' : days < 5 ? 'дня' : 'дней'} назад`;
+    }
+  };
+
+  const getOperationTypeLabel = (type: string) => {
+    const types: Record<string, string> = {
+      opt: 'Оптовая продажа',
+      refueling: 'Заправка ВС',
+      movement: 'Перемещение',
+    };
+    return types[type] || type;
   };
 
   return (
@@ -177,7 +236,7 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {isLoadingOperations ? (
               <div className="space-y-3">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <div key={i} className="flex items-center gap-3">
@@ -190,38 +249,21 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
-            ) : (
+            ) : recentOperations && recentOperations.length > 0 ? (
               <div className="space-y-0">
-                <RecentActivityItem
-                  type="Оптовая продажа"
-                  description="ГПН ЯНОС → ТЛК: 5,000 кг"
-                  time="10 мин. назад"
-                  status="success"
-                />
-                <RecentActivityItem
-                  type="Заправка ВС"
-                  description="Шереметьево: Boeing 737, 3,200 л"
-                  time="25 мин. назад"
-                  status="success"
-                />
-                <RecentActivityItem
-                  type="Перемещение"
-                  description="Служба → Склад Домодедово: 10,000 кг"
-                  time="1 час назад"
-                  status="pending"
-                />
-                <RecentActivityItem
-                  type="Биржевая сделка"
-                  description="Покупка: 50,000 кг керосина"
-                  time="2 часа назад"
-                  status="success"
-                />
-                <RecentActivityItem
-                  type="Предупреждение"
-                  description="Низкий остаток на складе Внуково"
-                  time="3 часа назад"
-                  status="warning"
-                />
+                {recentOperations.map((operation, index) => (
+                  <RecentActivityItem
+                    key={index}
+                    type={getOperationTypeLabel(operation.type)}
+                    description={operation.description}
+                    time={getTimeAgo(operation.time)}
+                    status={operation.status}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Нет недавних операций</p>
               </div>
             )}
           </CardContent>
@@ -235,7 +277,7 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {isLoadingWarehouses ? (
               <div className="space-y-4">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="space-y-2">
@@ -247,16 +289,10 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
-            ) : (
+            ) : warehouseStats && warehouseStats.length > 0 ? (
               <div className="space-y-4">
-                {[
-                  { name: "Служба (основной)", current: 125000, max: 200000 },
-                  { name: "Шереметьево", current: 45000, max: 80000 },
-                  { name: "Домодедово", current: 32000, max: 60000 },
-                  { name: "Внуково", current: 8000, max: 50000 },
-                ].map((warehouse) => {
-                  const percentage = (warehouse.current / warehouse.max) * 100;
-                  const isLow = percentage < 20;
+                {warehouseStats.map((warehouse) => {
+                  const isLow = warehouse.percentage < 20;
                   
                   return (
                     <div key={warehouse.name} className="space-y-2">
@@ -271,15 +307,19 @@ export default function DashboardPage() {
                           className={`h-full rounded-full transition-all ${
                             isLow ? 'bg-yellow-500' : 'bg-primary'
                           }`}
-                          style={{ width: `${percentage}%` }}
+                          style={{ width: `${warehouse.percentage}%` }}
                         />
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {percentage.toFixed(1)}% заполнено
+                        {warehouse.percentage.toFixed(1)}% заполнено
                       </p>
                     </div>
                   );
                 })}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Нет активных складов</p>
               </div>
             )}
           </CardContent>
@@ -294,19 +334,19 @@ export default function DashboardPage() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center p-4 bg-muted rounded-lg">
-                <p className="text-2xl font-semibold">{isLoading ? <Skeleton className="h-8 w-16 mx-auto" /> : formatNumber(stats?.optDealsToday ?? 0)}</p>
+                <p className="text-2xl font-semibold">{isLoadingWeek ? <Skeleton className="h-8 w-16 mx-auto" /> : formatNumber(weekStats?.optDealsWeek ?? 0)}</p>
                 <p className="text-xs text-muted-foreground">Оптовых сделок</p>
               </div>
               <div className="text-center p-4 bg-muted rounded-lg">
-                <p className="text-2xl font-semibold">{isLoading ? <Skeleton className="h-8 w-16 mx-auto" /> : formatNumber(stats?.refuelingToday ?? 0)}</p>
+                <p className="text-2xl font-semibold">{isLoadingWeek ? <Skeleton className="h-8 w-16 mx-auto" /> : formatNumber(weekStats?.refuelingsWeek ?? 0)}</p>
                 <p className="text-xs text-muted-foreground">Заправок ВС</p>
               </div>
               <div className="text-center p-4 bg-muted rounded-lg">
-                <p className="text-2xl font-semibold">{isLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : formatNumber(stats?.totalVolumeSold ?? 0)}</p>
+                <p className="text-2xl font-semibold">{isLoadingWeek ? <Skeleton className="h-8 w-20 mx-auto" /> : formatNumber(weekStats?.volumeSoldWeek ?? 0)}</p>
                 <p className="text-xs text-muted-foreground">кг продано</p>
               </div>
               <div className="text-center p-4 bg-muted rounded-lg">
-                <p className="text-2xl font-semibold">{isLoading ? <Skeleton className="h-8 w-24 mx-auto" /> : formatCurrency(stats?.totalProfitMonth ?? 0)}</p>
+                <p className="text-2xl font-semibold">{isLoadingWeek ? <Skeleton className="h-8 w-24 mx-auto" /> : formatCurrency(weekStats?.profitWeek ?? 0)}</p>
                 <p className="text-xs text-muted-foreground">Прибыль</p>
               </div>
             </div>
