@@ -76,6 +76,24 @@ export function registerWarehousesOperationsRoutes(app: Express) {
   app.delete("/api/warehouses/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
+      
+      // Get warehouse to check if it's linked to a supplier
+      const warehouse = await storage.operations.getWarehouse(id);
+      if (warehouse?.supplierId && warehouse?.supplierType) {
+        // Update supplier to set isWarehouse = false
+        if (warehouse.supplierType === "wholesale") {
+          await storage.wholesale.updateWholesaleSupplier(warehouse.supplierId, {
+            isWarehouse: false,
+            storageCost: null,
+          });
+        } else if (warehouse.supplierType === "refueling") {
+          await storage.refueling.updateRefuelingProvider(warehouse.supplierId, {
+            isWarehouse: false,
+            storageCost: null,
+          });
+        }
+      }
+      
       await storage.operations.deleteWarehouse(id);
       res.json({ message: "Склад удален" });
     } catch (error) {

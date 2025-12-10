@@ -64,6 +64,20 @@ export function registerWholesaleRoutes(app: Express) {
   app.delete("/api/wholesale/suppliers/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
+      
+      // Check if supplier has a warehouse
+      const supplier = await storage.wholesale.getWholesaleSupplier(id);
+      if (supplier?.isWarehouse) {
+        // Find and deactivate the warehouse
+        const warehouses = await storage.operations.getAllWarehouses();
+        const linkedWarehouse = warehouses.find(w => w.supplierId === id && w.supplierType === "wholesale");
+        if (linkedWarehouse) {
+          await storage.operations.updateWarehouse(linkedWarehouse.id, {
+            isActive: false,
+          });
+        }
+      }
+      
       await storage.wholesale.deleteWholesaleSupplier(id);
       res.json({ message: "Поставщик удален" });
     } catch (error) {

@@ -58,10 +58,24 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
   app.delete("/api/refueling/providers/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
+
+      // Check if provider has a warehouse
+      const provider = await storage.refueling.getRefuelingProvider(id);
+      if (provider?.isWarehouse) {
+        // Find and deactivate the warehouse
+        const warehouses = await storage.operations.getAllWarehouses();
+        const linkedWarehouse = warehouses.find(w => w.supplierId === id && w.supplierType === "refueling");
+        if (linkedWarehouse) {
+          await storage.operations.updateWarehouse(linkedWarehouse.id, {
+            isActive: false,
+          });
+        }
+      }
+
       await storage.refueling.deleteRefuelingProvider(id);
-      res.json({ message: "Аэропорт/Поставщик удален" });
+      res.json({ message: "Провайдер удален" });
     } catch (error) {
-      res.status(500).json({ message: "Ошибка удаления аэропорта/поставщика" });
+      res.status(500).json({ message: "Ошибка удаления провайдера" });
     }
   });
 

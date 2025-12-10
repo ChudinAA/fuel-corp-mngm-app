@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -164,7 +163,20 @@ export function WholesaleTab() {
                         </TableCell>
                         <TableCell className="text-muted-foreground max-w-xs truncate">
                           {item.type === "supplier" 
-                            ? ((item as WholesaleSupplier & { type: string }).isWarehouse ? "Склад" : (item as WholesaleSupplier & { type: string }).inn || "—")
+                            ? (() => {
+                                const supplier = item as WholesaleSupplier & { type: "supplier" };
+                                return (
+                                  <div className="flex flex-col gap-1">
+                                    {supplier.isWarehouse && (
+                                      <Badge variant="secondary">Склад</Badge>
+                                    )}
+                                    {supplier.description && (
+                                      <span className="text-sm text-muted-foreground">{supplier.description}</span>
+                                    )}
+                                    {!supplier.isWarehouse && !supplier.description && "—"}
+                                  </div>
+                                );
+                              })()
                             : (item as WholesaleBase & { type: string }).location || "—"}
                         </TableCell>
                         <TableCell>
@@ -187,10 +199,14 @@ export function WholesaleTab() {
                             <Button 
                               variant="ghost" 
                               size="icon" 
-                              className="text-destructive" 
+                              className="h-8 w-8 text-destructive" 
                               data-testid={`button-delete-${item.type}-${item.id}`}
                               onClick={() => {
-                                if (confirm("Вы уверены, что хотите удалить эту запись?")) {
+                                let confirmMessage = "Вы уверены, что хотите удалить эту запись?";
+                                if (item.type === "supplier" && (item as WholesaleSupplier).isWarehouse) {
+                                  confirmMessage = "Данный поставщик является складом. Удаление приведет к тому, что привязанный склад станет неактивным. Продолжить?";
+                                }
+                                if (confirm(confirmMessage)) {
                                   deleteMutation.mutate({ type: item.type, id: item.id });
                                 }
                               }}

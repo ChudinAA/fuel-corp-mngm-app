@@ -194,6 +194,7 @@ function WarehouseCard({ warehouse, onEdit, onViewDetails }: { warehouse: Wareho
   const { toast } = useToast();
   const balance = parseFloat(warehouse.currentBalance || "0");
   const cost = parseFloat(warehouse.averageCost || "0");
+  const isInactive = !warehouse.isActive;
 
   const formatNumber = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value);
   const formatCurrency = (value: number) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 }).format(value);
@@ -245,11 +246,14 @@ function WarehouseCard({ warehouse, onEdit, onViewDetails }: { warehouse: Wareho
   });
 
   return (
-    <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onViewDetails(warehouse)}>
+    <Card className={`cursor-pointer hover:shadow-md transition-shadow ${isInactive ? 'opacity-60' : ''}`} onClick={() => onViewDetails(warehouse)}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <CardTitle className="text-lg">{warehouse.name}</CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2">
+              {warehouse.name}
+              {isInactive && <Badge variant="destructive">Неактивен</Badge>}
+            </CardTitle>
             {warehouse.basis && (
               <CardDescription className="flex items-center gap-2 mt-1">
                 <Badge variant="outline">{warehouse.basis}</Badge>
@@ -295,7 +299,11 @@ function WarehouseCard({ warehouse, onEdit, onViewDetails }: { warehouse: Wareho
               size="icon"
               className="h-8 w-8 text-destructive"
               onClick={() => {
-                if (confirm("Вы уверены, что хотите удалить этот склад?")) {
+                let confirmMessage = "Вы уверены, что хотите удалить этот склад?";
+                if (warehouse.supplierId) {
+                  confirmMessage = "Данный склад привязан к поставщику. После удаления у поставщика не будет склада. Продолжить?";
+                }
+                if (confirm(confirmMessage)) {
                   deleteMutation.mutate(warehouse.id);
                 }
               }}
@@ -446,7 +454,13 @@ function AddWarehouseDialog({ warehouseToEdit, onSave, open: externalOpen, onOpe
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => append({ baseId: "" })}
+                  onClick={() => {
+                    const lastField = fields[fields.length - 1];
+                    if (lastField && !form.watch(`bases.${fields.length - 1}.baseId`)) {
+                      return; // Don't add if last field is empty
+                    }
+                    append({ baseId: "" });
+                  }}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>

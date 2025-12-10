@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -146,7 +145,17 @@ export function RefuelingTab() {
                         </TableCell>
                         <TableCell className="text-muted-foreground max-w-xs truncate">
                           {item.type === "provider" 
-                            ? (item as RefuelingProvider & { type: string }).icaoCode || "—"
+                            ? (
+                              <div className="flex flex-col gap-1">
+                                {(item as RefuelingProvider & { type: string }).isWarehouse && (
+                                  <Badge variant="secondary">Склад</Badge>
+                                )}
+                                {(item as RefuelingProvider & { type: string }).description && (
+                                  <span className="text-sm text-muted-foreground">{(item as RefuelingProvider & { type: string }).description}</span>
+                                )}
+                                {!((item as RefuelingProvider & { type: string }).isWarehouse) && !((item as RefuelingProvider & { type: string }).description) && "—"}
+                              </div>
+                            )
                             : (item as RefuelingBase & { type: string }).location || "—"}
                         </TableCell>
                         <TableCell>
@@ -172,7 +181,11 @@ export function RefuelingTab() {
                               className="text-destructive" 
                               data-testid={`button-delete-${item.type}-${item.id}`}
                               onClick={() => {
-                                if (confirm("Вы уверены, что хотите удалить эту запись?")) {
+                                let confirmMessage = "Вы уверены, что хотите удалить эту запись?";
+                                if (item.type === "provider" && (item as RefuelingProvider & {type: string}).isWarehouse) {
+                                  confirmMessage = "Данный провайдер является складом. Удаление приведет к тому, что привязанный склад станет неактивным. Продолжить?";
+                                }
+                                if (confirm(confirmMessage)) {
                                   deleteMutation.mutate({ type: item.type, id: item.id });
                                 }
                               }}
