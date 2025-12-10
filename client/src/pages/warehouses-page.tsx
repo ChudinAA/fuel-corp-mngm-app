@@ -36,6 +36,11 @@ import {
   X
 } from "lucide-react";
 import type { Warehouse as WarehouseType, WholesaleBase, RefuelingBase } from "@shared/schema";
+import { WarehouseStatsCards } from "./warehouses/components/warehouse-stats-cards";
+import { WarehouseCard } from "./warehouses/components/warehouse-card";
+import { AddWarehouseDialog } from "./warehouses/components/add-warehouse-dialog";
+import { WarehouseDetailsDialog } from "./warehouses/components/warehouse-details-dialog";
+
 
 interface WarehouseTransaction {
   id: string;
@@ -650,32 +655,13 @@ export default function WarehousesPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Всего складов</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">{filteredWarehouses.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Общий остаток</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">{formatNumber(totalBalance)} кг</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Средняя себестоимость</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">{formatCurrency(averageCost)}/кг</p>
-          </CardContent>
-        </Card>
-      </div>
+      <WarehouseStatsCards
+        warehousesCount={filteredWarehouses.length}
+        totalBalance={totalBalance}
+        averageCost={averageCost}
+        formatNumber={formatNumber}
+        formatCurrency={formatCurrency}
+      />
 
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
