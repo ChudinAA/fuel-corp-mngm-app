@@ -122,67 +122,82 @@ export function registerPricesRoutes(app: Express) {
 
   // ============ DELIVERY COST ROUTES ============
 
-  app.get("/api/delivery-costs", requireAuth, async (req, res) => {
-    const data = await storage.prices.getAllDeliveryCosts();
-    res.json(data);
+  // Получить все тарифы доставки
+  app.get("/api/delivery-costs", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const costs = await db.select().from(deliveryCost);
+      res.json(costs);
+    } catch (error) {
+      console.error("Error fetching delivery costs:", error);
+      res.status(500).json({ message: "Ошибка получения тарифов доставки" });
+    }
   });
 
-  app.post("/api/delivery-costs", requireAuth, async (req, res) => {
+  // Создать тариф доставки
+  app.post("/api/delivery-costs", requireAuth, async (req: Request, res: Response) => {
     try {
-      const { carrierId, fromLocation, toLocation, costPerKg, distance, baseId, destinationId } = req.body;
+      const data = insertDeliveryCostSchema.parse(req.body);
 
-      const data = {
-        carrierId,
-        fromLocation,
-        toLocation,
-        costPerKg: parseFloat(costPerKg),
-        distance: distance ? parseFloat(distance) : null,
-        baseId: baseId || null,
-        destinationId: destinationId || null,
-        isActive: true,
-      };
+      const [created] = await db.insert(deliveryCost).values({
+        carrierId: data.carrierId,
+        fromEntityType: data.fromEntityType,
+        fromEntityId: data.fromEntityId,
+        fromLocation: data.fromLocation,
+        toEntityType: data.toEntityType,
+        toEntityId: data.toEntityId,
+        toLocation: data.toLocation,
+        costPerKg: data.costPerKg,
+        distance: data.distance || null,
+      }).returning();
 
-      const item = await storage.prices.createDeliveryCost(data);
-      res.status(201).json(item);
+      res.status(201).json(created);
     } catch (error) {
-      console.error("Delivery cost creation error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
       }
-      res.status(500).json({ message: "Ошибка создания тарифа", error: error instanceof Error ? error.message : String(error) });
+      console.error("Error creating delivery cost:", error);
+      res.status(500).json({ message: "Ошибка создания тарифа доставки" });
     }
   });
 
-  app.patch("/api/delivery-costs/:id", requireAuth, async (req, res) => {
+  // Обновить тариф доставки
+  app.patch("/api/delivery-costs/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = req.params.id;
-      const { carrierId, fromLocation, toLocation, costPerKg, distance } = req.body;
+      const data = insertDeliveryCostSchema.partial().parse(req.body);
 
-      const data: any = {};
-      if (carrierId !== undefined) data.carrierId = carrierId;
-      if (fromLocation !== undefined) data.fromLocation = fromLocation;
-      if (toLocation !== undefined) data.toLocation = toLocation;
-      if (costPerKg !== undefined) data.costPerKg = parseFloat(costPerKg);
-      if (distance !== undefined) data.distance = distance ? parseFloat(distance) : null;
+      const [updated] = await db.update(deliveryCost)
+        .set({
+          ...data,
+          updatedAt: new Date(),
+        })
+        .where(eq(deliveryCost.id, id))
+        .returning();
 
-      const item = await storage.prices.updateDeliveryCost(id, data);
-      if (!item) {
-        return res.status(404).json({ message: "Тариф не найден" });
+      if (!updated) {
+        return res.status(404).json({ message: "Тариф доставки не найден" });
       }
-      res.json(item);
+
+      res.json(updated);
     } catch (error) {
-      console.error("Delivery cost update error:", error);
-      res.status(500).json({ message: "Ошибка обновления тарифа" });
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      console.error("Error updating delivery cost:", error);
+      res.status(500).json({ message: "Ошибка обновления тарифа доставки" });
     }
   });
 
-  app.delete("/api/delivery-costs/:id", requireAuth, async (req, res) => {
+  // Удалить тариф доставки
+  app.delete("/api/delivery-costs/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = req.params.id;
-      await storage.prices.deleteDeliveryCost(id);
-      res.json({ message: "Тариф удален" });
+      await db.delete(deliveryCost).where(eq(deliveryCost.id, id));
+      res.json({ message: "Тариф доставки удален" });
     } catch (error) {
-      res.status(500).json({ message: "Ошибка удаления тарифа" });
+      console.error("Error deleting delivery cost:", error);
+      res.status(500).json({ message: "Ошибка удаления тарифа доставки" });
     }
   });
+
 }
