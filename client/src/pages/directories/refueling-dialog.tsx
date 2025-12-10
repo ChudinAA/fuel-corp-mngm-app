@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -12,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Plus, Loader2, Plane, MapPin, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Loader2, Plane, MapPin, ChevronDown, ChevronUp, X } from "lucide-react";
 import type { RefuelingProvider, RefuelingBase } from "@shared/schema";
 
 const REFUELING_TYPES = [
@@ -29,7 +31,9 @@ const refuelingFormSchema = z.object({
   servicePrice: z.string().optional(),
   pvkjPrice: z.string().optional(),
   agentFee: z.string().optional(),
-  defaultBaseId: z.string().optional(),
+  baseIds: z.array(z.string()).default([]),
+  isWarehouse: z.boolean().default(false),
+  storageCost: z.string().optional(),
   isActive: z.boolean().default(true),
 });
 
@@ -49,6 +53,7 @@ export function AddRefuelingDialog({
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [showPriceFields, setShowPriceFields] = useState(false);
+  const [selectedBases, setSelectedBases] = useState<string[]>([""]);
 
   const form = useForm<RefuelingFormData>({
     resolver: zodResolver(refuelingFormSchema),
@@ -60,18 +65,23 @@ export function AddRefuelingDialog({
       servicePrice: "",
       pvkjPrice: "",
       agentFee: "",
-      defaultBaseId: undefined,
+      baseIds: [],
+      isWarehouse: false,
+      storageCost: "",
       isActive: true,
     },
   });
 
   const selectedType = form.watch("type");
+  const isWarehouse = form.watch("isWarehouse");
 
   useEffect(() => {
     form.setValue("location", "");
     form.setValue("servicePrice", "");
     form.setValue("pvkjPrice", "");
     form.setValue("agentFee", "");
+    form.setValue("isWarehouse", false);
+    form.setValue("storageCost", "");
   }, [selectedType, form]);
 
   const createRefuelingMutation = useMutation({
@@ -92,7 +102,9 @@ export function AddRefuelingDialog({
             servicePrice: data.servicePrice || null,
             pvkjPrice: data.pvkjPrice || null,
             agentFee: data.agentFee || null,
-            defaultBaseId: data.defaultBaseId || null,
+            baseIds: data.baseIds.filter(id => id),
+            isWarehouse: data.isWarehouse,
+            storageCost: data.isWarehouse && data.storageCost ? data.storageCost : null,
             isActive: data.isActive 
           }
         : { name: data.name, location: data.location, isActive: data.isActive };
@@ -103,11 +115,13 @@ export function AddRefuelingDialog({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/refueling/providers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/refueling/bases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       toast({ 
         title: editItem ? "Запись обновлена" : "Запись добавлена", 
         description: editItem ? "Изменения сохранены" : "Новая запись сохранена в справочнике" 
       });
       form.reset();
+      setSelectedBases([""]);
       setOpen(false);
     },
     onError: (error: Error) => {
@@ -119,6 +133,7 @@ export function AddRefuelingDialog({
     if (editItem) {
       setOpen(true);
       const data = editItem.data as any;
+      const baseIdsArray = data.baseIds || [];
       form.reset({
         type: editItem.type,
         name: data.name,
@@ -127,9 +142,12 @@ export function AddRefuelingDialog({
         servicePrice: data.servicePrice || "",
         pvkjPrice: data.pvkjPrice || "",
         agentFee: data.agentFee || "",
-        defaultBaseId: data.defaultBaseId || undefined,
+        baseIds: baseIdsArray,
+        isWarehouse: data.isWarehouse || false,
+        storageCost: data.storageCost || "",
         isActive: data.isActive,
       });
+      setSelectedBases(baseIdsArray.length > 0 ? baseIdsArray : [""]);
       if (editItem.type === "provider" && (data.servicePrice || data.pvkjPrice || data.agentFee)) {
         setShowPriceFields(true);
       }
@@ -140,12 +158,12 @@ export function AddRefuelingDialog({
     setOpen(isOpen);
     if (!isOpen) {
       form.reset();
+      setSelectedBases([""]);
       setShowPriceFields(false);
       if (onEditComplete) {
         onEditComplete();
       }
     } else if (isOpen && !editItem) {
-      // Сбрасываем форму при открытии диалога для создания новой записи
       form.reset({
         type: "provider",
         name: "",
@@ -154,11 +172,31 @@ export function AddRefuelingDialog({
         servicePrice: "",
         pvkjPrice: "",
         agentFee: "",
-        defaultBaseId: undefined,
+        baseIds: [],
+        isWarehouse: false,
+        storageCost: "",
         isActive: true,
       });
+      setSelectedBases([""]);
       setShowPriceFields(false);
     }
+  };
+
+  const handleAddBase = () => {
+    setSelectedBases([...selectedBases, ""]);
+  };
+
+  const handleRemoveBase = (index: number) => {
+    const newBases = selectedBases.filter((_, i) => i !== index);
+    setSelectedBases(newBases.length > 0 ? newBases : [""]);
+    form.setValue("baseIds", newBases.filter(id => id));
+  };
+
+  const handleBaseChange = (index: number, value: string) => {
+    const newBases = [...selectedBases];
+    newBases[index] = value;
+    setSelectedBases(newBases);
+    form.setValue("baseIds", newBases.filter(id => id));
   };
 
   return (
@@ -169,7 +207,7 @@ export function AddRefuelingDialog({
           Добавить
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editItem ? "Редактирование записи: Заправка ВС" : "Новая запись: Заправка ВС"}</DialogTitle>
           <DialogDescription>{editItem ? "Изменение записи в справочнике" : "Добавление записи в справочник заправки воздушных судов"}</DialogDescription>
@@ -271,31 +309,91 @@ export function AddRefuelingDialog({
                     />
                   </CollapsibleContent>
                 </Collapsible>
-                <FormField
-                  control={form.control}
-                  name="defaultBaseId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Базис заправки</FormLabel>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Базисы заправки</FormLabel>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleAddBase}
+                      data-testid="button-add-base"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Добавить
+                    </Button>
+                  </div>
+                  {selectedBases.map((baseId, index) => (
+                    <div key={index} className="flex gap-2">
                       <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || ""}
+                        value={baseId}
+                        onValueChange={(value) => handleBaseChange(index, value)}
                       >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-refueling-provider-basis">
-                            <SelectValue placeholder="Выберите базис" />
-                          </SelectTrigger>
-                        </FormControl>
+                        <SelectTrigger data-testid={`select-base-${index}`}>
+                          <SelectValue placeholder="Выберите базис" />
+                        </SelectTrigger>
                         <SelectContent>
                           {bases.map((b) => (
                             <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormMessage />
+                      {selectedBases.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveBase(index)}
+                          data-testid={`button-remove-base-${index}`}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="isWarehouse"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 space-y-0 rounded-md border p-3">
+                      <FormControl>
+                        <Checkbox 
+                          checked={field.value} 
+                          onCheckedChange={field.onChange}
+                          data-testid="checkbox-is-warehouse"
+                        />
+                      </FormControl>
+                      <FormLabel className="font-normal cursor-pointer">
+                        Является складом
+                      </FormLabel>
                     </FormItem>
                   )}
                 />
+
+                {isWarehouse && (
+                  <FormField
+                    control={form.control}
+                    name="storageCost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Стоимость хранения на складе (₽)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="0.00" 
+                            type="number" 
+                            step="0.01" 
+                            data-testid="input-storage-cost" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
               </>
             )}
 
