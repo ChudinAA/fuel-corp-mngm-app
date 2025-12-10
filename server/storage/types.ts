@@ -121,11 +121,6 @@ export interface ILogisticsStorage {
   createLogisticsDriver(data: InsertLogisticsDriver): Promise<LogisticsDriver>;
   updateLogisticsDriver(id: string, data: Partial<InsertLogisticsDriver>): Promise<LogisticsDriver | undefined>;
   deleteLogisticsDriver(id: string): Promise<boolean>;
-  getAllLogisticsWarehouses(): Promise<LogisticsWarehouse[]>;
-  getLogisticsWarehouse(id: string): Promise<LogisticsWarehouse | undefined>;
-  createLogisticsWarehouse(data: InsertLogisticsWarehouse): Promise<LogisticsWarehouse>;
-  updateLogisticsWarehouse(id: string, data: Partial<InsertLogisticsWarehouse>): Promise<LogisticsWarehouse | undefined>;
-  deleteLogisticsWarehouse(id: string): Promise<boolean>;
 }
 
 export interface IPriceStorage {

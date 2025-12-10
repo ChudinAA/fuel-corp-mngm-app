@@ -29,7 +29,7 @@ const logisticsFormSchema = z.object({
   description: z.string().optional(),
   address: z.string().optional(),
   inn: z.string().optional(),
-  carrierId: z.number().optional(),
+  carrierId: z.string().optional(),
   plateNumber: z.string().optional(),
   vehicleType: z.string().optional(),
   capacityKg: z.string().optional(),
@@ -92,7 +92,6 @@ export function AddLogisticsDialog({
     form.setValue("capacityKg", "");
     form.setValue("licenseNumber", "");
     form.setValue("licenseExpiry", "");
-    form.setValue("storageCost", "");
     form.setValue("notes", "");
   }, [selectedType, form]);
 
@@ -146,15 +145,6 @@ export function AddLogisticsDialog({
           licenseExpiry: data.licenseExpiry || null,
           isActive: data.isActive,
         };
-      } else if (data.type === "warehouse") {
-        endpoint = editItem ? `/api/logistics/warehouses/${editItem.data.id}` : "/api/logistics/warehouses";
-        payload = { 
-          name: data.name, 
-          description: data.description, 
-          address: data.address, 
-          storageCost: data.storageCost || null,
-          isActive: data.isActive 
-        };
       }
 
       const res = await apiRequest(editItem ? "PATCH" : "POST", endpoint, payload);
@@ -166,7 +156,6 @@ export function AddLogisticsDialog({
       queryClient.invalidateQueries({ queryKey: ["/api/logistics/vehicles"] });
       queryClient.invalidateQueries({ queryKey: ["/api/logistics/trailers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/logistics/drivers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/logistics/warehouses"] });
       toast({ 
         title: editItem ? "Запись обновлена" : "Запись добавлена", 
         description: editItem ? "Изменения сохранены" : "Новая запись сохранена в справочнике" 
@@ -215,11 +204,6 @@ export function AddLogisticsDialog({
         formData.phone = data.phone || "";
         formData.licenseNumber = data.licenseNumber || "";
         formData.licenseExpiry = data.licenseExpiry || "";
-      } else if (editItem.type === "warehouse") {
-        formData.name = data.name;
-        formData.description = data.description || "";
-        formData.address = data.address || "";
-        formData.storageCost = data.storageCost || "";
       }
 
       form.reset(formData);
@@ -251,7 +235,6 @@ export function AddLogisticsDialog({
         capacityKg: "",
         licenseNumber: "",
         licenseExpiry: "",
-        storageCost: "",
         notes: "",
       });
     }
@@ -529,37 +512,6 @@ export function AddLogisticsDialog({
                       <FormLabel>Срок действия удостоверения</FormLabel>
                       <FormControl>
                         <Input type="date" data-testid="input-logistics-license-expiry" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
-            )}
-
-            {selectedType === "warehouse" && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Адрес</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Полный адрес склада" data-testid="input-logistics-warehouse-address" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="storageCost"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Стоимость хранения (₽)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" placeholder="0.00" data-testid="input-storage-cost" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

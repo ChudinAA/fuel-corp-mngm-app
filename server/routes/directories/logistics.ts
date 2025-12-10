@@ -6,7 +6,6 @@ import {
   insertLogisticsVehicleSchema,
   insertLogisticsTrailerSchema,
   insertLogisticsDriverSchema,
-  insertLogisticsWarehouseSchema,
 } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth } from "../middleware";
@@ -275,55 +274,4 @@ export function registerLogisticsRoutes(app: Express) {
     }
   });
 
-  // ============ LOGISTICS WAREHOUSES/BASES ============
-
-  app.get("/api/logistics/warehouses", requireAuth, async (req, res) => {
-    const data = await storage.logistics.getAllLogisticsWarehouses();
-    res.json(data);
-  });
-
-  app.get("/api/logistics/warehouses/:id", requireAuth, async (req, res) => {
-    const id = req.params.id;
-    const warehouse = await storage.logistics.getLogisticsWarehouse(id);
-    if (!warehouse) {
-      return res.status(404).json({ message: "Склад/Базис не найден" });
-    }
-    res.json(warehouse);
-  });
-
-  app.post("/api/logistics/warehouses", requireAuth, async (req, res) => {
-    try {
-      const data = insertLogisticsWarehouseSchema.parse(req.body);
-      const item = await storage.logistics.createLogisticsWarehouse(data);
-      res.status(201).json(item);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.errors[0].message });
-      }
-      res.status(500).json({ message: "Ошибка создания склада/базиса" });
-    }
-  });
-
-  app.patch("/api/logistics/warehouses/:id", requireAuth, async (req, res) => {
-    try {
-      const id = req.params.id;
-      const item = await storage.logistics.updateLogisticsWarehouse(id, req.body);
-      if (!item) {
-        return res.status(404).json({ message: "Склад/Базис не найден" });
-      }
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ message: "Ошибка обновления склада/базиса" });
-    }
-  });
-
-  app.delete("/api/logistics/warehouses/:id", requireAuth, async (req, res) => {
-    try {
-      const id = req.params.id;
-      await storage.logistics.deleteLogisticsWarehouse(id);
-      res.json({ message: "Склад/Базис удален" });
-    } catch (error) {
-      res.status(500).json({ message: "Ошибка удаления склада/базиса" });
-    }
-  });
-}
+  }

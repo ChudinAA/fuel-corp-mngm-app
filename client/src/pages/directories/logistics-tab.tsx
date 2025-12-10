@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -10,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Truck, Pencil, Trash2 } from "lucide-react";
+import { Search, Truck, Pencil, Trash2, MapPin, Car, Container, User } from "lucide-react";
 import type { 
   LogisticsCarrier,
   LogisticsDeliveryLocation,
@@ -194,7 +193,6 @@ export function LogisticsTab() {
                            item.type === "trailer" ? (item as LogisticsTrailer & { type: string }).capacityKg || "—" :
                            item.type === "driver" ? (item as LogisticsDriver & { type: string }).phone || "—" :
                            item.type === "delivery_location" ? (item as LogisticsDeliveryLocation & { type: string }).address || "—" :
-                           item.type === "warehouse" ? (item as LogisticsWarehouse & { type: string }).storageCost || "—" :
                            (item as LogisticsCarrier & { type: string }).inn || "—"}
                         </TableCell>
                         <TableCell>

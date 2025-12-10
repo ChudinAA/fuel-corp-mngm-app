@@ -7,7 +7,6 @@ import {
   logisticsVehicles,
   logisticsTrailers,
   logisticsDrivers,
-  logisticsWarehouses,
   type LogisticsCarrier,
   type InsertLogisticsCarrier,
   type LogisticsDeliveryLocation,
@@ -18,8 +17,6 @@ import {
   type InsertLogisticsTrailer,
   type LogisticsDriver,
   type InsertLogisticsDriver,
-  type LogisticsWarehouse,
-  type InsertLogisticsWarehouse,
 } from "@shared/schema";
 import type { ILogisticsStorage } from "./types";
 
@@ -153,27 +150,4 @@ export class LogisticsStorage implements ILogisticsStorage {
     return true;
   }
 
-  async getAllLogisticsWarehouses(): Promise<LogisticsWarehouse[]> {
-    return db.select().from(logisticsWarehouses).orderBy(asc(logisticsWarehouses.name));
   }
-
-  async getLogisticsWarehouse(id: string): Promise<LogisticsWarehouse | undefined> {
-    const [warehouse] = await db.select().from(logisticsWarehouses).where(eq(logisticsWarehouses.id, id)).limit(1);
-    return warehouse;
-  }
-
-  async createLogisticsWarehouse(data: InsertLogisticsWarehouse): Promise<LogisticsWarehouse> {
-    const [created] = await db.insert(logisticsWarehouses).values(data).returning();
-    return created;
-  }
-
-  async updateLogisticsWarehouse(id: string, data: Partial<InsertLogisticsWarehouse>): Promise<LogisticsWarehouse | undefined> {
-    const [updated] = await db.update(logisticsWarehouses).set(data).where(eq(logisticsWarehouses.id, id)).returning();
-    return updated;
-  }
-
-  async deleteLogisticsWarehouse(id: string): Promise<boolean> {
-    await db.delete(logisticsWarehouses).where(eq(logisticsWarehouses.id, id));
-    return true;
-  }
-}
