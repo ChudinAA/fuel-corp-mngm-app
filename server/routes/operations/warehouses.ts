@@ -7,13 +7,13 @@ import { requireAuth } from "../middleware";
 
 export function registerWarehousesOperationsRoutes(app: Express) {
   app.get("/api/warehouses", requireAuth, async (req, res) => {
-    const data = await storage.operations.getAllWarehouses();
+    const data = await storage.warehouses.getAllWarehouses();
     res.json(data);
   });
 
   app.get("/api/warehouses/:id", requireAuth, async (req, res) => {
     const id = req.params.id;
-    const warehouse = await storage.operations.getWarehouse(id);
+    const warehouse = await storage.warehouses.getWarehouse(id);
     if (!warehouse) {
       return res.status(404).json({ message: "Склад не найден" });
     }
@@ -24,7 +24,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     try {
       const { createSupplier, supplierType, ...warehouseData } = req.body;
       const data = insertWarehouseSchema.parse(warehouseData);
-      const item = await storage.operations.createWarehouse(data);
+      const item = await storage.warehouses.createWarehouse(data);
       
       // Automatically create supplier if requested
       if (createSupplier && supplierType && data.baseIds && data.baseIds.length > 0) {
@@ -38,13 +38,13 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         
         if (supplierType === "wholesale") {
           const supplier = await storage.wholesale.createWholesaleSupplier(supplierData);
-          await storage.operations.updateWarehouse(item.id, {
+          await storage.warehouses.updateWarehouse(item.id, {
             supplierType: "wholesale",
             supplierId: supplier.id,
           });
         } else if (supplierType === "refueling") {
           const supplier = await storage.refueling.createRefuelingProvider(supplierData);
-          await storage.operations.updateWarehouse(item.id, {
+          await storage.warehouses.updateWarehouse(item.id, {
             supplierType: "refueling",
             supplierId: supplier.id,
           });
@@ -63,7 +63,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
   app.patch("/api/warehouses/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.operations.updateWarehouse(id, req.body);
+      const item = await storage.warehouses.updateWarehouse(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Склад не найден" });
       }
@@ -78,7 +78,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       const id = req.params.id;
       
       // Get warehouse to check if it's linked to a supplier
-      const warehouse = await storage.operations.getWarehouse(id);
+      const warehouse = await storage.warehouses.getWarehouse(id);
       // Only update supplier if warehouse is active
       if (warehouse?.supplierId && warehouse?.supplierType && warehouse?.isActive) {
         // Update supplier to set isWarehouse = false
@@ -95,7 +95,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         }
       }
       
-      await storage.operations.deleteWarehouse(id);
+      await storage.warehouses.deleteWarehouse(id);
       res.json({ message: "Склад удален" });
     } catch (error) {
       res.status(500).json({ message: "Ошибка удаления склада" });
@@ -105,7 +105,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
   app.get("/api/warehouses/:id/transactions", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const transactions = await storage.operations.getWarehouseTransactions(id);
+      const transactions = await storage.warehouses.getWarehouseTransactions(id);
       res.json(transactions);
     } catch (error) {
       res.status(500).json({ message: "Ошибка получения транзакций склада" });

@@ -29,7 +29,7 @@ export function registerWholesaleRoutes(app: Express) {
       
       // Automatically create warehouse if supplier is marked as warehouse
       if (data.isWarehouse && data.baseIds && data.baseIds.length > 0) {
-        await storage.operations.createWarehouse({
+        await storage.warehouses.createWarehouse({
           name: data.name,
           baseIds: data.baseIds,
           supplierType: "wholesale",
@@ -69,10 +69,10 @@ export function registerWholesaleRoutes(app: Express) {
       const supplier = await storage.wholesale.getWholesaleSupplier(id);
       if (supplier?.isWarehouse) {
         // Find and deactivate the warehouse
-        const warehouses = await storage.operations.getAllWarehouses();
+        const warehouses = await storage.warehouses.getAllWarehouses();
         const linkedWarehouse = warehouses.find(w => w.supplierId === id && w.supplierType === "wholesale");
         if (linkedWarehouse) {
-          await storage.operations.updateWarehouse(linkedWarehouse.id, {
+          await storage.warehouses.updateWarehouse(linkedWarehouse.id, {
             isActive: false,
           });
         }

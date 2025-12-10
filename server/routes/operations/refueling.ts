@@ -9,7 +9,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
   app.get("/api/refueling", requireAuth, async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
-    const result = await storage.operations.getRefuelings(page, pageSize);
+    const result = await storage.aircraftRefueling.getRefuelings(page, pageSize);
     res.json(result);
   });
 
@@ -21,7 +21,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         warehouseStatus: "OK",
         priceStatus: "OK",
       });
-      const item = await storage.operations.createRefueling(data);
+      const item = await storage.aircraftRefueling.createRefueling(data);
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -34,7 +34,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
   app.patch("/api/refueling/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.operations.updateRefueling(id, req.body);
+      const item = await storage.aircraftRefueling.updateRefueling(id, req.body);
       if (!item) {
         return res.status(404).json({ message: "Заправка не найдена" });
       }
@@ -47,7 +47,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
   app.delete("/api/refueling/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      await storage.operations.deleteRefueling(id);
+      await storage.aircraftRefueling.deleteRefueling(id);
       res.json({ message: "Заправка удалена" });
     } catch (error) {
       res.status(500).json({ message: "Ошибка удаления заправки" });

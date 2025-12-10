@@ -28,7 +28,7 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
       
       // Automatically create warehouse if provider is marked as warehouse
       if (data.isWarehouse && data.baseIds && data.baseIds.length > 0) {
-        await storage.operations.createWarehouse({
+        await storage.warehouses.createWarehouse({
           name: data.name,
           baseIds: data.baseIds,
           supplierType: "refueling",
@@ -76,10 +76,10 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
       const provider = await storage.refueling.getRefuelingProvider(id);
       if (provider?.isWarehouse) {
         // Find and deactivate the warehouse
-        const warehouses = await storage.operations.getAllWarehouses();
+        const warehouses = await storage.warehouses.getAllWarehouses();
         const linkedWarehouse = warehouses.find(w => w.supplierId === id && w.supplierType === "refueling");
         if (linkedWarehouse) {
-          await storage.operations.updateWarehouse(linkedWarehouse.id, {
+          await storage.warehouses.updateWarehouse(linkedWarehouse.id, {
             isActive: false,
           });
         }
