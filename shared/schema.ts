@@ -1,3 +1,4 @@
+
 import { sql, relations } from "drizzle-orm";
 import { pgTable, text, varchar, integer, decimal, date, boolean, timestamp, jsonb, serial, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
@@ -73,7 +74,9 @@ export const wholesaleSuppliers = pgTable("wholesale_suppliers", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  defaultBaseId: uuid("default_base_id"),
+  baseIds: text("base_ids").array(), // Changed from defaultBaseId to array
+  isWarehouse: boolean("is_warehouse").default(false), // New field
+  storageCost: decimal("storage_cost", { precision: 12, scale: 2 }), // New field
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
@@ -96,10 +99,12 @@ export const refuelingProviders = pgTable("refueling_providers", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  defaultBaseId: uuid("default_base_id"),
+  baseIds: text("base_ids").array(), // Changed from defaultBaseId to array
   servicePrice: decimal("service_price", { precision: 12, scale: 2 }),
   pvkjPrice: decimal("pvkj_price", { precision: 12, scale: 2 }),
   agentFee: decimal("agent_fee", { precision: 12, scale: 2 }),
+  isWarehouse: boolean("is_warehouse").default(false), // New field
+  storageCost: decimal("storage_cost", { precision: 12, scale: 2 }), // New field
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
@@ -174,18 +179,6 @@ export const logisticsDrivers = pgTable("logistics_drivers", {
   updatedAt: timestamp("updated_at"),
 });
 
-// Склады/Базисы
-export const logisticsWarehouses = pgTable("logistics_warehouses", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  address: text("address"),
-  storageCost: decimal("storage_cost", { precision: 12, scale: 2 }),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
-});
-
 // ============ PRICES (Цены) ============
 
 export const prices = pgTable("prices", {
@@ -213,12 +206,14 @@ export const prices = pgTable("prices", {
 export const deliveryCost = pgTable("delivery_cost", {
   id: uuid("id").defaultRandom().primaryKey(),
   carrierId: uuid("carrier_id").notNull(),
+  fromEntityType: text("from_entity_type").notNull(), // "base", "warehouse", "delivery_location"
+  fromEntityId: uuid("from_entity_id").notNull(),
   fromLocation: text("from_location").notNull(),
+  toEntityType: text("to_entity_type").notNull(), // "base", "warehouse", "delivery_location"
+  toEntityId: uuid("to_entity_id").notNull(),
   toLocation: text("to_location").notNull(),
   costPerKg: decimal("cost_per_kg", { precision: 12, scale: 4 }).notNull(),
   distance: decimal("distance", { precision: 10, scale: 2 }),
-  baseId: uuid("base_id"),
-  destinationId: uuid("destination_id"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
@@ -229,9 +224,12 @@ export const deliveryCost = pgTable("delivery_cost", {
 export const warehouses = pgTable("warehouses", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
-  baseId: uuid("base_id"),
+  baseIds: text("base_ids").array(), // Changed from baseId to array
+  supplierType: text("supplier_type"), // "wholesale" or "refueling" - for auto-created suppliers
+  supplierId: uuid("supplier_id"), // Link to auto-created supplier
   currentBalance: decimal("current_balance", { precision: 15, scale: 2 }).default("0"),
   averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default("0"),
+  storageCost: decimal("storage_cost", { precision: 12, scale: 2 }), // Moved from logistics
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
@@ -396,10 +394,6 @@ export const warehouseTransactionsRelations = relations(warehouseTransactions, (
   warehouse: one(warehouses, { fields: [warehouseTransactions.warehouseId], references: [warehouses.id] }),
 }));
 
-
-
-
-
 export const logisticsVehiclesRelations = relations(logisticsVehicles, ({ one }) => ({
   carrier: one(logisticsCarriers, { fields: [logisticsVehicles.carrierId], references: [logisticsCarriers.id] }),
 }));
@@ -445,7 +439,6 @@ export const insertLogisticsDeliveryLocationSchema = createInsertSchema(logistic
 export const insertLogisticsVehicleSchema = createInsertSchema(logisticsVehicles).omit({ id: true });
 export const insertLogisticsTrailerSchema = createInsertSchema(logisticsTrailers).omit({ id: true });
 export const insertLogisticsDriverSchema = createInsertSchema(logisticsDrivers).omit({ id: true });
-export const insertLogisticsWarehouseSchema = createInsertSchema(logisticsWarehouses).omit({ id: true });
 
 export const insertPriceSchema = createInsertSchema(prices).omit({ id: true });
 export const insertDeliveryCostSchema = createInsertSchema(deliveryCost).omit({ id: true });
@@ -554,9 +547,6 @@ export type InsertLogisticsTrailer = z.infer<typeof insertLogisticsTrailerSchema
 
 export type LogisticsDriver = typeof logisticsDrivers.$inferSelect;
 export type InsertLogisticsDriver = z.infer<typeof insertLogisticsDriverSchema>;
-
-export type LogisticsWarehouse = typeof logisticsWarehouses.$inferSelect;
-export type InsertLogisticsWarehouse = z.infer<typeof insertLogisticsWarehouseSchema>;
 
 export type Price = typeof prices.$inferSelect;
 export type InsertPrice = z.infer<typeof insertPriceSchema>;

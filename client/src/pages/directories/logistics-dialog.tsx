@@ -21,11 +21,10 @@ export const LOGISTICS_TYPES = [
   { value: "vehicle", label: "Транспорт", icon: Car },
   { value: "trailer", label: "Прицеп", icon: Container },
   { value: "driver", label: "Водитель", icon: User },
-  { value: "warehouse", label: "Склад/Базис", icon: Warehouse },
 ] as const;
 
 const logisticsFormSchema = z.object({
-  type: z.enum(["carrier", "delivery_location", "vehicle", "trailer", "driver", "warehouse"]),
+  type: z.enum(["carrier", "delivery_location", "vehicle", "trailer", "driver"]),
   name: z.string().min(1, "Укажите название"),
   description: z.string().optional(),
   address: z.string().optional(),
@@ -38,7 +37,6 @@ const logisticsFormSchema = z.object({
   phone: z.string().optional(),
   licenseNumber: z.string().optional(),
   licenseExpiry: z.string().optional(),
-  storageCost: z.string().optional(),
   notes: z.string().optional(),
   isActive: z.boolean().default(true),
 });
