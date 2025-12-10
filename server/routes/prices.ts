@@ -1,8 +1,11 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { storage } from "../storage/index";
 import { insertPriceSchema, insertDeliveryCostSchema } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth } from "./middleware";
+import { db } from "../db";
+import { deliveryCost } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 export function registerPricesRoutes(app: Express) {
   // ============ PRICES ROUTES ============

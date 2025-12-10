@@ -367,10 +367,10 @@ export function OptForm({
     return null;
   };
 
-  const deliveryCost = getDeliveryCostValue();
+  const calculatedDeliveryCost = getDeliveryCostValue();
 
-  const profit = purchaseAmount !== null && saleAmount !== null && deliveryCost !== null 
-    ? saleAmount - purchaseAmount - deliveryCost 
+  const profit = purchaseAmount !== null && saleAmount !== null && calculatedDeliveryCost !== null 
+    ? saleAmount - purchaseAmount - calculatedDeliveryCost 
     : purchaseAmount !== null && saleAmount !== null 
       ? saleAmount - purchaseAmount 
       : null;
