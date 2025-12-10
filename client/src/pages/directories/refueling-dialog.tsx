@@ -107,7 +107,7 @@ export function AddRefuelingDialog({
             agentFee: data.agentFee || null,
             baseIds: data.baseIds.filter(id => id),
             isWarehouse: data.isWarehouse,
-            storageCost: data.isWarehouse && data.storageCost ? data.storageCost : null,
+            storageCost: data.isWarehouse && data.storageCost ? String(data.storageCost) : null,
             isActive: data.isActive 
           }
         : { name: data.name, location: data.location, isActive: data.isActive };
