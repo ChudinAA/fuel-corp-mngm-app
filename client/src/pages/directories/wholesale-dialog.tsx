@@ -90,7 +90,7 @@ export function AddWholesaleDialog({
           baseIds: filteredBaseIds.length > 0 ? filteredBaseIds : null,
           isActive: data.isActive,
           isWarehouse: data.isWarehouse,
-          storageCost: data.storageCost && data.isWarehouse ? data.storageCost : null,
+          storageCost: data.storageCost && data.isWarehouse ? String(data.storageCost) : null,
         };
       } else if (data.type === "basis") {
         endpoint = editItem ? `/api/wholesale/bases/${editItem.data.id}` : "/api/wholesale/bases";
