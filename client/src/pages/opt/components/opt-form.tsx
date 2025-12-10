@@ -332,6 +332,43 @@ export function OptForm({
 
   const cumulativeProfit = getCumulativeProfit();
 
+  // Получение стоимости доставки с учетом типов сущностей
+  const getDeliveryCostValue = (): number | null => {
+    if (!watchCarrierId || !deliveryCosts || finalKg <= 0) return null;
+
+    const warehouse = warehouses?.find(w => w.id === watchWarehouseId);
+    const deliveryLocation = deliveryLocations?.find(dl => dl.id === watchDeliveryLocationId);
+
+    if (!warehouse && !deliveryLocation) return null;
+
+    // Ищем тариф для маршрута склад -> место доставки или склад -> склад
+    let cost = null;
+
+    if (warehouse && deliveryLocation) {
+      cost = deliveryCosts.find(dc =>
+        dc.carrierId === watchCarrierId &&
+        dc.fromEntityType === "warehouse" &&
+        dc.fromEntityId === warehouse.id &&
+        dc.toEntityType === "delivery_location" &&
+        dc.toEntityId === deliveryLocation.id
+      );
+    } else if (warehouse) {
+      cost = deliveryCosts.find(dc =>
+        dc.carrierId === watchCarrierId &&
+        dc.fromEntityType === "warehouse" &&
+        dc.fromEntityId === warehouse.id
+      );
+    }
+
+    if (cost && cost.costPerKg) {
+      return parseFloat(cost.costPerKg.toString()) * finalKg;
+    }
+
+    return null;
+  };
+
+  const deliveryCost = getDeliveryCostValue();
+
   const profit = purchaseAmount !== null && saleAmount !== null && deliveryCost !== null 
     ? saleAmount - purchaseAmount - deliveryCost 
     : purchaseAmount !== null && saleAmount !== null 

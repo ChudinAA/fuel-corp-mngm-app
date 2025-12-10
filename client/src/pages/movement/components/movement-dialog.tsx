@@ -182,23 +182,49 @@ export function MovementDialog({
 
   const storageCost = getStorageCost();
 
-  // Получение стоимости доставки
+  // Получение стоимости доставки с учетом типов сущностей
   const getDeliveryCost = (): number => {
     if (!watchSupplierId || !watchToWarehouseId || !watchCarrierId || kgNum <= 0) return 0;
 
     const supplier = suppliers.find(s => s.id === watchSupplierId);
     if (!supplier) return 0;
 
-    const warehouse = warehouses.find(w => w.id === watchToWarehouseId);
-    const baseName = warehouse?.basis;
+    const toWarehouse = warehouses.find(w => w.id === watchToWarehouseId);
+    if (!toWarehouse) return 0;
 
-    if (!baseName) return 0;
+    // Определяем тип и ID источника (базис или склад поставщика)
+    let fromEntityType = "base";
+    let fromEntityId = null;
 
+    // Если у поставщика есть склад, используем его
+    if (supplier.isWarehouse) {
+      fromEntityType = "warehouse";
+      // Найти склад поставщика по supplier_id
+      const supplierWarehouse = warehouses.find(w => 
+        w.supplierType === (supplier.type === "wholesale" ? "wholesale" : "refueling") && 
+        w.supplierId === supplier.id
+      );
+      if (supplierWarehouse) {
+        fromEntityId = supplierWarehouse.id;
+      }
+    } else {
+      // Используем базис
+      const bases = supplier.baseIds || [];
+      if (bases.length > 0) {
+        // Берем первый базис (можно доработать логику выбора)
+        fromEntityId = bases[0];
+      }
+    }
+
+    if (!fromEntityId) return 0;
+
+    // Ищем тариф доставки
     const deliveryCost = deliveryCosts.find(dc =>
       dc.carrierId === watchCarrierId &&
-      dc.fromLocation === baseName &&
-      dc.toLocation === warehouse?.name &&
-      dc.isActive
+      dc.fromEntityType === fromEntityType &&
+      dc.fromEntityId === fromEntityId &&
+      dc.toEntityType === "warehouse" &&
+      dc.toEntityId === toWarehouse.id
     );
 
     if (deliveryCost && deliveryCost.costPerKg) {

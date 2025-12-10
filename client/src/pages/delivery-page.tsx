@@ -30,13 +30,23 @@ import type { DeliveryCost, DirectoryLogistics } from "@shared/schema";
 
 const deliveryCostFormSchema = z.object({
   carrierId: z.string().min(1, "Выберите перевозчика"),
+  fromEntityType: z.string().min(1, "Выберите тип отправления"),
+  fromEntityId: z.string().min(1, "Выберите пункт отправления"),
   fromLocation: z.string().min(1, "Укажите откуда"),
+  toEntityType: z.string().min(1, "Выберите тип назначения"),
+  toEntityId: z.string().min(1, "Выберите пункт назначения"),
   toLocation: z.string().min(1, "Укажите куда"),
   costPerKg: z.string().min(1, "Укажите стоимость за кг"),
   distance: z.string().optional(),
 });
 
 type DeliveryCostFormData = z.infer<typeof deliveryCostFormSchema>;
+
+const ENTITY_TYPES = [
+  { value: "base", label: "Базис" },
+  { value: "warehouse", label: "Склад" },
+  { value: "delivery_location", label: "Место доставки" },
+] as const;
 
 function AddDeliveryCostDialog({ editDeliveryCost, onClose }: { editDeliveryCost: DeliveryCost | null; onClose?: () => void }) {
   const { toast } = useToast();
@@ -46,7 +56,11 @@ function AddDeliveryCostDialog({ editDeliveryCost, onClose }: { editDeliveryCost
     setOpen(false);
     form.reset({
       carrierId: "",
+      fromEntityType: "",
+      fromEntityId: "",
       fromLocation: "",
+      toEntityType: "",
+      toEntityId: "",
       toLocation: "",
       costPerKg: "",
       distance: "",
@@ -58,7 +72,11 @@ function AddDeliveryCostDialog({ editDeliveryCost, onClose }: { editDeliveryCost
     resolver: zodResolver(deliveryCostFormSchema),
     defaultValues: {
       carrierId: editDeliveryCost?.carrierId || "",
+      fromEntityType: editDeliveryCost?.fromEntityType || "",
+      fromEntityId: editDeliveryCost?.fromEntityId || "",
       fromLocation: editDeliveryCost?.fromLocation || "",
+      toEntityType: editDeliveryCost?.toEntityType || "",
+      toEntityId: editDeliveryCost?.toEntityId || "",
       toLocation: editDeliveryCost?.toLocation || "",
       costPerKg: editDeliveryCost?.costPerKg?.toString() || "",
       distance: editDeliveryCost?.distance?.toString() || "",
@@ -81,37 +99,32 @@ function AddDeliveryCostDialog({ editDeliveryCost, onClose }: { editDeliveryCost
     queryKey: ["/api/logistics/delivery-locations"],
   });
 
-  const { data: logisticsWarehouses } = useQuery<any[]>({
-    queryKey: ["/api/logistics/warehouses"],
+  const { data: warehouses } = useQuery<any[]>({
+    queryKey: ["/api/warehouses"],
   });
 
-  const fromLocations = [
-    ...(wholesaleBases || []),
-    ...(refuelingBases || [])
-  ];
+  const watchFromEntityType = form.watch("fromEntityType");
+  const watchToEntityType = form.watch("toEntityType");
 
-  const toLocations = [
-    ...(deliveryLocations || []),
-    ...(logisticsWarehouses || [])
-  ];
+  const getEntitiesByType = (type: string) => {
+    switch (type) {
+      case "base":
+        return [...(wholesaleBases || []), ...(refuelingBases || [])];
+      case "warehouse":
+        return warehouses || [];
+      case "delivery_location":
+        return deliveryLocations || [];
+      default:
+        return [];
+    }
+  };
+
+  const fromEntities = getEntitiesByType(watchFromEntityType);
+  const toEntities = getEntitiesByType(watchToEntityType);
 
   const createMutation = useMutation({
     mutationFn: async (data: DeliveryCostFormData) => {
-      // Находим baseId по fromLocation
-      const fromBase = fromLocations.find(loc => loc.name === data.fromLocation);
-      const baseId = fromBase?.id || null;
-      
-      // Находим destinationId по toLocation
-      const toLocation = toLocations.find(loc => loc.name === data.toLocation);
-      const destinationId = toLocation?.id || null;
-      
-      const payload = {
-        ...data,
-        baseId,
-        destinationId
-      };
-      
-      const res = await apiRequest("POST", "/api/delivery-costs", payload);
+      const res = await apiRequest("POST", "/api/delivery-costs", data);
       return res.json();
     },
     onSuccess: () => {
@@ -126,21 +139,7 @@ function AddDeliveryCostDialog({ editDeliveryCost, onClose }: { editDeliveryCost
 
   const updateMutation = useMutation({
     mutationFn: async (data: DeliveryCostFormData) => {
-      // Находим baseId по fromLocation
-      const fromBase = fromLocations.find(loc => loc.name === data.fromLocation);
-      const baseId = fromBase?.id || null;
-      
-      // Находим destinationId по toLocation
-      const toLocation = toLocations.find(loc => loc.name === data.toLocation);
-      const destinationId = toLocation?.id || null;
-      
-      const payload = {
-        ...data,
-        baseId,
-        destinationId
-      };
-      
-      const res = await apiRequest("PATCH", `/api/delivery-costs/${editDeliveryCost?.id}`, payload);
+      const res = await apiRequest("PATCH", `/api/delivery-costs/${editDeliveryCost?.id}`, data);
       return res.json();
     },
     onSuccess: () => {
@@ -160,13 +159,38 @@ function AddDeliveryCostDialog({ editDeliveryCost, onClose }: { editDeliveryCost
     if (editDeliveryCost) {
       form.reset({
         carrierId: editDeliveryCost.carrierId || "",
+        fromEntityType: editDeliveryCost.fromEntityType || "",
+        fromEntityId: editDeliveryCost.fromEntityId || "",
         fromLocation: editDeliveryCost.fromLocation || "",
+        toEntityType: editDeliveryCost.toEntityType || "",
+        toEntityId: editDeliveryCost.toEntityId || "",
         toLocation: editDeliveryCost.toLocation || "",
         costPerKg: editDeliveryCost.costPerKg?.toString() || "",
         distance: editDeliveryCost.distance?.toString() || "",
       });
     }
   }, [editDeliveryCost, form]);
+
+  // Обновляем название локации при выборе сущности
+  React.useEffect(() => {
+    const fromEntityId = form.watch("fromEntityId");
+    if (fromEntityId && watchFromEntityType) {
+      const entity = fromEntities.find(e => e.id === fromEntityId);
+      if (entity) {
+        form.setValue("fromLocation", entity.name);
+      }
+    }
+  }, [form.watch("fromEntityId"), watchFromEntityType]);
+
+  React.useEffect(() => {
+    const toEntityId = form.watch("toEntityId");
+    if (toEntityId && watchToEntityType) {
+      const entity = toEntities.find(e => e.id === toEntityId);
+      if (entity) {
+        form.setValue("toLocation", entity.name);
+      }
+    }
+  }, [form.watch("toEntityId"), watchToEntityType]);
 
   return (
     <Dialog open={editDeliveryCost !== null || open} onOpenChange={(isOpen) => {
@@ -213,52 +237,116 @@ function AddDeliveryCostDialog({ editDeliveryCost, onClose }: { editDeliveryCost
             />
 
             <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="fromLocation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Откуда (Базис)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-delivery-from">
-                          <SelectValue placeholder="Выберите" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {fromLocations.map((l) => (
-                          <SelectItem key={l.id} value={l.name}>{l.name}</SelectItem>
-                        ))}
-                        {fromLocations.length === 0 && <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="toLocation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Куда (Место доставки)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-delivery-to">
-                          <SelectValue placeholder="Выберите" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {toLocations.map((l) => (
-                          <SelectItem key={l.id} value={l.name}>{l.name}</SelectItem>
-                        ))}
-                        {toLocations.length === 0 && <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="fromEntityType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Откуда (тип)</FormLabel>
+                      <Select onValueChange={(value) => {
+                        field.onChange(value);
+                        form.setValue("fromEntityId", "");
+                        form.setValue("fromLocation", "");
+                      }} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-delivery-from-type">
+                            <SelectValue placeholder="Выберите тип" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {ENTITY_TYPES.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="fromEntityId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Пункт отправления</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value}
+                        disabled={!watchFromEntityType}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-delivery-from">
+                            <SelectValue placeholder="Выберите пункт" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {fromEntities.map((entity) => (
+                            <SelectItem key={entity.id} value={entity.id}>{entity.name}</SelectItem>
+                          ))}
+                          {fromEntities.length === 0 && <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="toEntityType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Куда (тип)</FormLabel>
+                      <Select onValueChange={(value) => {
+                        field.onChange(value);
+                        form.setValue("toEntityId", "");
+                        form.setValue("toLocation", "");
+                      }} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-delivery-to-type">
+                            <SelectValue placeholder="Выберите тип" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {ENTITY_TYPES.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="toEntityId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Пункт назначения</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value}
+                        disabled={!watchToEntityType}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-delivery-to">
+                            <SelectValue placeholder="Выберите пункт" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {toEntities.map((entity) => (
+                            <SelectItem key={entity.id} value={entity.id}>{entity.name}</SelectItem>
+                          ))}
+                          {toEntities.length === 0 && <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
