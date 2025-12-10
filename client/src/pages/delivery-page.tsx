@@ -420,6 +420,16 @@ export default function DeliveryPage() {
     c.toLocation.toLowerCase().includes(search.toLowerCase())
   ) || [];
 
+  // Вычисляем среднюю стоимость за кг
+  const averageCostPerKg = deliveryCosts && deliveryCosts.length > 0
+    ? deliveryCosts.reduce((sum, cost) => sum + parseFloat(cost.costPerKg.toString()), 0) / deliveryCosts.length
+    : 0;
+
+  // Подсчитываем уникальных активных перевозчиков
+  const activeCarriersCount = deliveryCosts
+    ? new Set(deliveryCosts.map(cost => cost.carrierId)).size
+    : 0;
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await apiRequest("DELETE", `/api/delivery-costs/${id}`);
@@ -460,11 +470,11 @@ export default function DeliveryPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <MapPin className="h-4 w-4" />
-              Средняя стоимость рейса
+              Средняя стоимость за кг
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold">15,000 ₽</p>
+            <p className="text-2xl font-semibold">{formatNumber(averageCostPerKg)} ₽</p>
           </CardContent>
         </Card>
         <Card>
@@ -472,7 +482,7 @@ export default function DeliveryPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Активные перевозчики</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold">5</p>
+            <p className="text-2xl font-semibold">{activeCarriersCount}</p>
           </CardContent>
         </Card>
       </div>
