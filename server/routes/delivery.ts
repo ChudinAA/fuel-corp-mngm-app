@@ -8,7 +8,6 @@ import { deliveryCost } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 export function registerDeliveryRoutes(app: Express) {
-  // ============ DELIVERY COST ROUTES ============
 
   // Получить все тарифы доставки
   app.get("/api/delivery-costs", requireAuth, async (req: Request, res: Response) => {
