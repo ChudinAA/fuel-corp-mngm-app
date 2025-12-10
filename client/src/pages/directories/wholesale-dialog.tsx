@@ -29,7 +29,7 @@ const wholesaleFormSchema = z.object({
   baseIds: z.array(z.string()).optional(),
   location: z.string().optional(),
   isWarehouse: z.boolean().default(false),
-  storageCost: z.string().optional(),
+  storageCost: z.coerce.number().optional(),
 });
 
 type WholesaleFormData = z.infer<typeof wholesaleFormSchema>;
@@ -58,7 +58,7 @@ export function AddWholesaleDialog({
       baseIds: [""],
       location: "",
       isWarehouse: false,
-      storageCost: "",
+      storageCost: undefined,
     },
   });
 
@@ -83,13 +83,14 @@ export function AddWholesaleDialog({
 
       if (data.type === "supplier") {
         endpoint = editItem ? `/api/wholesale/suppliers/${editItem.data.id}` : "/api/wholesale/suppliers";
+        const filteredBaseIds = (data.baseIds || []).filter(id => id && id.trim() !== "");
         payload = {
           name: data.name,
           description: data.description,
-          baseIds: data.baseIds || [],
+          baseIds: filteredBaseIds.length > 0 ? filteredBaseIds : null,
           isActive: data.isActive,
           isWarehouse: data.isWarehouse,
-          storageCost: data.storageCost && data.isWarehouse ? parseFloat(data.storageCost) : null,
+          storageCost: data.storageCost && data.isWarehouse ? data.storageCost : null,
         };
       } else if (data.type === "basis") {
         endpoint = editItem ? `/api/wholesale/bases/${editItem.data.id}` : "/api/wholesale/bases";
@@ -132,7 +133,7 @@ export function AddWholesaleDialog({
         location: data.location || "",
         isActive: data.isActive,
         isWarehouse: data.isWarehouse || false,
-        storageCost: data.storageCost || "",
+        storageCost: data.storageCost ? parseFloat(data.storageCost) : undefined,
       });
     }
   }, [editItem, form]);
@@ -153,7 +154,7 @@ export function AddWholesaleDialog({
         baseIds: [""],
         location: "",
         isWarehouse: false,
-        storageCost: "",
+        storageCost: undefined,
       });
     }
   };
