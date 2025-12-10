@@ -5,6 +5,7 @@ import { registerAuthRoutes } from "./routes/auth";
 import { registerAdminRoutes } from "./routes/admin";
 import { registerDirectoriesRoutes } from "./routes/directories";
 import { registerPricesRoutes } from "./routes/prices";
+import { registerDeliveryRoutes } from "./routes/delivery"; // Import new delivery routes
 import { registerOperationsRoutes } from "./routes/operations";
 import { seedDefaultRoles } from "./routes/utils";
 
@@ -32,6 +33,7 @@ export async function registerRoutes(
   registerAdminRoutes(app);
   registerDirectoriesRoutes(app);
   registerPricesRoutes(app);
+  registerDeliveryRoutes(app); // Register new delivery routes
   registerOperationsRoutes(app);
 
   return httpServer;
