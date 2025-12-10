@@ -602,7 +602,14 @@ export default function WarehousesPage() {
   }) || [];
 
   const totalBalance = filteredWarehouses.reduce((sum, w) => sum + parseFloat(w.currentBalance || "0"), 0);
+  
+  // Вычисляем среднюю себестоимость по всем складам
+  const averageCost = filteredWarehouses.length > 0
+    ? filteredWarehouses.reduce((sum, w) => sum + parseFloat(w.averageCost || "0"), 0) / filteredWarehouses.length
+    : 0;
+  
   const formatNumber = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value);
+  const formatCurrency = (value: number) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 }).format(value);
 
   const getBaseNames = (baseIds: string[] | null | undefined) => {
     if (!baseIds || baseIds.length === 0) return null;
@@ -662,10 +669,10 @@ export default function WarehousesPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Требуют внимания</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Средняя себестоимость</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold text-yellow-600">2</p>
+            <p className="text-2xl font-semibold">{formatCurrency(averageCost)}/кг</p>
           </CardContent>
         </Card>
       </div>
