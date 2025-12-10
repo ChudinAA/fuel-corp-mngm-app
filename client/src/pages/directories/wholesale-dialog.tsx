@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -12,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Loader2, Building2, MapPin } from "lucide-react";
+import { Plus, Loader2, Building2, MapPin, X } from "lucide-react";
 import type { WholesaleSupplier, WholesaleBase } from "@shared/schema";
 
 const WHOLESALE_TYPES = [
@@ -25,8 +26,10 @@ const wholesaleFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
-  defaultBaseId: z.string().optional(),
+  baseIds: z.array(z.string()).optional(),
   location: z.string().optional(),
+  isWarehouse: z.boolean().default(false),
+  storageCost: z.string().optional(),
 });
 
 type WholesaleFormData = z.infer<typeof wholesaleFormSchema>;
@@ -52,15 +55,25 @@ export function AddWholesaleDialog({
       name: "",
       description: "",
       isActive: true,
-      defaultBaseId: undefined,
+      baseIds: [],
       location: "",
+      isWarehouse: false,
+      storageCost: "",
     },
   });
 
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "baseIds"
+  });
+
   const selectedType = form.watch("type");
+  const isWarehouse = form.watch("isWarehouse");
 
   useEffect(() => {
     form.setValue("location", "");
+    form.setValue("isWarehouse", false);
+    form.setValue("storageCost", "");
   }, [selectedType, form]);
 
   const createMutation = useMutation({
@@ -73,8 +86,10 @@ export function AddWholesaleDialog({
         payload = {
           name: data.name,
           description: data.description,
-          defaultBaseId: data.defaultBaseId || null,
+          baseIds: data.baseIds || [],
           isActive: data.isActive,
+          isWarehouse: data.isWarehouse,
+          storageCost: data.storageCost && data.isWarehouse ? parseFloat(data.storageCost) : null,
         };
       } else if (data.type === "basis") {
         endpoint = editItem ? `/api/wholesale/bases/${editItem.data.id}` : "/api/wholesale/bases";
@@ -91,6 +106,7 @@ export function AddWholesaleDialog({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/wholesale/suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wholesale/bases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       toast({ 
         title: editItem ? "Запись обновлена" : "Запись добавлена", 
         description: editItem ? "Изменения сохранены" : "Новая запись сохранена в справочнике" 
@@ -111,9 +127,11 @@ export function AddWholesaleDialog({
         type: editItem.type,
         name: data.name,
         description: data.description || "",
-        defaultBaseId: data.defaultBaseId || undefined,
+        baseIds: data.baseIds || [],
         location: data.location || "",
         isActive: data.isActive,
+        isWarehouse: data.isWarehouse || false,
+        storageCost: data.storageCost || "",
       });
     }
   }, [editItem, form]);
@@ -126,14 +144,15 @@ export function AddWholesaleDialog({
         onEditComplete();
       }
     } else if (isOpen && !editItem) {
-      // Сбрасываем форму при открытии диалога для создания новой записи
       form.reset({
         type: "supplier",
         name: "",
         description: "",
         isActive: true,
-        defaultBaseId: undefined,
+        baseIds: [],
         location: "",
+        isWarehouse: false,
+        storageCost: "",
       });
     }
   };
@@ -146,7 +165,7 @@ export function AddWholesaleDialog({
           Добавить
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editItem ? "Редактирование записи: ОПТ" : "Новая запись: ОПТ"}</DialogTitle>
           <DialogDescription>{editItem ? "Изменение записи в справочнике" : "Добавление записи в справочник оптовых операций"}</DialogDescription>
@@ -196,31 +215,86 @@ export function AddWholesaleDialog({
             />
 
             {selectedType === "supplier" && (
-              <FormField
-                control={form.control}
-                name="defaultBaseId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Базис поставки</FormLabel>
-                    <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || ""}
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Базисы поставки</FormLabel>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => append("")}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {fields.map((field, index) => (
+                    <div key={field.id} className="flex gap-2">
+                      <Select
+                        value={form.watch(`baseIds.${index}`) || ""}
+                        onValueChange={(value) => form.setValue(`baseIds.${index}`, value)}
                       >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-wholesale-supplier-basis">
-                            <SelectValue placeholder="Выберите базис" />
-                          </SelectTrigger>
-                        </FormControl>
+                        <SelectTrigger data-testid={`select-base-${index}`}>
+                          <SelectValue placeholder="Выберите базис" />
+                        </SelectTrigger>
                         <SelectContent>
                           {bases.map((b) => (
                             <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    <FormMessage />
-                  </FormItem>
+                      {fields.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => remove(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  {fields.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Нажмите + для добавления базиса</p>
+                  )}
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="isWarehouse"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 space-y-0">
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-is-warehouse" />
+                      </FormControl>
+                      <FormLabel className="font-normal cursor-pointer">Этот поставщик является складом</FormLabel>
+                    </FormItem>
+                  )}
+                />
+
+                {isWarehouse && (
+                  <FormField
+                    control={form.control}
+                    name="storageCost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Стоимость хранения на складе (₽)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            placeholder="0.00" 
+                            data-testid="input-storage-cost" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 )}
-              />
+              </>
             )}
 
             {selectedType === "basis" && (
