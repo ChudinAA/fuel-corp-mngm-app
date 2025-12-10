@@ -243,8 +243,6 @@ export const warehouseTransactions = pgTable("warehouse_transactions", {
   transactionDate: date("transaction_date").notNull(),
   transactionType: text("transaction_type").notNull(),
   quantity: decimal("quantity", { precision: 15, scale: 2 }).notNull(),
-  price: decimal("price", { precision: 12, scale: 4 }),
-  totalAmount: decimal("total_amount", { precision: 15, scale: 2 }),
   sourceType: text("source_type"),
   sourceId: uuid("source_id"),
   balanceBefore: decimal("balance_before", { precision: 15, scale: 2 }),
