@@ -19,6 +19,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import {
   Plus,
   Pencil,
@@ -322,7 +323,6 @@ const newWarehouseFormSchema = z.object({
   bases: z.array(z.object({ baseId: z.string() })).min(1, "Выберите хотя бы один базис"),
   storageCost: z.string().optional(),
   createSupplier: z.boolean(),
-  supplierType: z.string().optional(),
 });
 
 function AddWarehouseDialog({ warehouseToEdit, onSave, open: externalOpen, onOpenChange: externalOnOpenChange }: { warehouseToEdit: WarehouseType | null, onSave: () => void, open?: boolean, onOpenChange?: (open: boolean) => void }) {
@@ -370,7 +370,6 @@ function AddWarehouseDialog({ warehouseToEdit, onSave, open: externalOpen, onOpe
         bases: warehouseToEdit.baseIds.map(id => ({ baseId: id })),
         storageCost: warehouseToEdit.storageCost || "",
         createSupplier: warehouseToEdit.supplierType !== undefined,
-        supplierType: warehouseToEdit.supplierType,
       });
     } else {
       form.reset({
@@ -378,18 +377,28 @@ function AddWarehouseDialog({ warehouseToEdit, onSave, open: externalOpen, onOpe
         bases: [{ baseId: "" }],
         storageCost: "",
         createSupplier: false,
-        supplierType: undefined,
       });
     }
   }, [warehouseToEdit, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: NewWarehouseFormValues) => {
+      let supplierType: string | undefined;
+      
+      // Определяем тип поставщика по первому базису
+      if (data.createSupplier && data.bases.length > 0) {
+        const firstBaseId = data.bases[0].baseId;
+        const firstBase = allBases.find(b => b.id === firstBaseId);
+        if (firstBase) {
+          supplierType = firstBase.source === 'wholesale' ? 'wholesale' : 'refueling';
+        }
+      }
+      
       const payload = {
         ...data,
         baseIds: data.bases.map(b => b.baseId),
         ...(data.storageCost && { storageCost: data.storageCost }),
-        ...(data.createSupplier && data.supplierType && { supplierType: data.supplierType }),
+        ...(data.createSupplier && supplierType && { supplierType }),
       };
       const url = isEditing ? `/api/warehouses/${warehouseToEdit?.id}` : "/api/warehouses";
       const method = isEditing ? "PATCH" : "POST";
@@ -430,42 +439,51 @@ function AddWarehouseDialog({ warehouseToEdit, onSave, open: externalOpen, onOpe
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="bases"
-              render={() => (
-                <FormItem>
-                  <FormLabel>Базисы поставки</FormLabel>
-                  {fields.map((field, index) => (
-                    <div key={field.id} className="flex items-center gap-2 mb-2">
-                      <Select onValueChange={(value) => form.setValue(`bases.${index}.baseId`, value)} value={form.getValues(`bases.${index}.baseId`)}>
-                        <FormControl>
-                          <SelectTrigger data-testid={`select-warehouse-basis-${index}`}>
-                            <SelectValue placeholder="Выберите базис" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {allBases.map((base) => (
-                            <SelectItem key={base.id} value={base.id}>
-                              {base.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {index > 0 && (
-                        <Button type="button" size="icon" variant="outline" onClick={() => remove(index)}>
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                  <Button type="button" variant="outline" onClick={() => append({ baseId: "" })}>
-                    + Добавить базис
-                  </Button>
-                  <FormMessage />
-                </FormItem>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <FormLabel>Базисы поставки</FormLabel>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => append({ baseId: "" })}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {fields.map((field, index) => (
+                <div key={field.id} className="flex gap-2">
+                  <Select
+                    value={form.watch(`bases.${index}.baseId`) || ""}
+                    onValueChange={(value) => form.setValue(`bases.${index}.baseId`, value)}
+                  >
+                    <SelectTrigger data-testid={`select-warehouse-basis-${index}`}>
+                      <SelectValue placeholder="Выберите базис" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allBases.map((base) => (
+                        <SelectItem key={base.id} value={base.id}>
+                          {base.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fields.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => remove(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              {fields.length === 0 && (
+                <p className="text-sm text-muted-foreground">Нажмите + для добавления базиса</p>
               )}
-            />
+            </div>
             <FormField
               control={form.control}
               name="storageCost"
@@ -483,45 +501,14 @@ function AddWarehouseDialog({ warehouseToEdit, onSave, open: externalOpen, onOpe
               control={form.control}
               name="createSupplier"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                  <div className="space-y-0.5">
-                    <FormLabel>Создать поставщика</FormLabel>
-                    <FormDescription>Автоматически создать поставщика при создании склада</FormDescription>
-                  </div>
+                <FormItem className="flex items-center gap-2 space-y-0">
                   <FormControl>
-                    <input
-                      type="checkbox"
-                      checked={field.value}
-                      onChange={field.onChange}
-                      className="h-5 w-5 text-primary focus:ring-primary border-gray-300 rounded"
-                    />
+                    <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-create-supplier" />
                   </FormControl>
+                  <FormLabel className="font-normal cursor-pointer">Создать поставщика</FormLabel>
                 </FormItem>
               )}
             />
-            {form.watch("createSupplier") && (
-              <FormField
-                control={form.control}
-                name="supplierType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Тип поставщика</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-supplier-type">
-                          <SelectValue placeholder="Выберите тип поставщика" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="wholesale">ОПТ</SelectItem>
-                        <SelectItem value="refueling">Заправка</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
 
             <div className="flex justify-end gap-4 pt-4">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Отмена</Button>
