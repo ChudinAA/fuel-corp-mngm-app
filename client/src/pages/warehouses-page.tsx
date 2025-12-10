@@ -199,6 +199,26 @@ function WarehouseCard({ warehouse, onEdit, onViewDetails }: { warehouse: Wareho
   const formatNumber = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value);
   const formatCurrency = (value: number) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 }).format(value);
 
+  const { data: wholesaleBases } = useQuery<WholesaleBase[]>({
+    queryKey: ["/api/wholesale/bases"],
+  });
+
+  const { data: refuelingBases } = useQuery<RefuelingBase[]>({
+    queryKey: ["/api/refueling/bases"],
+  });
+
+  const getBaseNames = (baseIds: string[] | null | undefined) => {
+    if (!baseIds || baseIds.length === 0) return null;
+    const allBases = [
+      ...(wholesaleBases || []),
+      ...(refuelingBases || []),
+    ];
+    return baseIds
+      .map(id => allBases.find((b: any) => b.id === id)?.name)
+      .filter(Boolean)
+      .join(", ");
+  };
+
   const { data: transactions } = useQuery<WarehouseTransaction[]>({
     queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
     refetchInterval: 5000, // Refetch every 5 seconds
