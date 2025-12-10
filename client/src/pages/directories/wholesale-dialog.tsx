@@ -55,7 +55,7 @@ export function AddWholesaleDialog({
       name: "",
       description: "",
       isActive: true,
-      baseIds: [],
+      baseIds: [""],
       location: "",
       isWarehouse: false,
       storageCost: "",
@@ -123,11 +123,12 @@ export function AddWholesaleDialog({
     if (editItem) {
       setOpen(true);
       const data = editItem.data as any;
+      const baseIdsArray = data.baseIds && data.baseIds.length > 0 ? data.baseIds : [""];
       form.reset({
         type: editItem.type,
         name: data.name,
         description: data.description || "",
-        baseIds: data.baseIds || [],
+        baseIds: baseIdsArray,
         location: data.location || "",
         isActive: data.isActive,
         isWarehouse: data.isWarehouse || false,
@@ -149,7 +150,7 @@ export function AddWholesaleDialog({
         name: "",
         description: "",
         isActive: true,
-        baseIds: [],
+        baseIds: [""],
         location: "",
         isWarehouse: false,
         storageCost: "",

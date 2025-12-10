@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -13,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Plus, Loader2, Plane, MapPin, ChevronDown, ChevronUp, X } from "lucide-react";
 import type { RefuelingProvider, RefuelingBase } from "@shared/schema";
@@ -53,7 +52,6 @@ export function AddRefuelingDialog({
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [showPriceFields, setShowPriceFields] = useState(false);
-  const [selectedBases, setSelectedBases] = useState<string[]>([""]);
 
   const form = useForm<RefuelingFormData>({
     resolver: zodResolver(refuelingFormSchema),
@@ -65,11 +63,16 @@ export function AddRefuelingDialog({
       servicePrice: "",
       pvkjPrice: "",
       agentFee: "",
-      baseIds: [],
+      baseIds: [""],
       isWarehouse: false,
       storageCost: "",
       isActive: true,
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "baseIds"
   });
 
   const selectedType = form.watch("type");
@@ -121,7 +124,6 @@ export function AddRefuelingDialog({
         description: editItem ? "Изменения сохранены" : "Новая запись сохранена в справочнике" 
       });
       form.reset();
-      setSelectedBases([""]);
       setOpen(false);
     },
     onError: (error: Error) => {
@@ -133,7 +135,7 @@ export function AddRefuelingDialog({
     if (editItem) {
       setOpen(true);
       const data = editItem.data as any;
-      const baseIdsArray = data.baseIds || [];
+      const baseIdsArray = data.baseIds && data.baseIds.length > 0 ? data.baseIds : [""];
       form.reset({
         type: editItem.type,
         name: data.name,
@@ -147,7 +149,6 @@ export function AddRefuelingDialog({
         storageCost: data.storageCost || "",
         isActive: data.isActive,
       });
-      setSelectedBases(baseIdsArray.length > 0 ? baseIdsArray : [""]);
       if (editItem.type === "provider" && (data.servicePrice || data.pvkjPrice || data.agentFee)) {
         setShowPriceFields(true);
       }
@@ -158,7 +159,6 @@ export function AddRefuelingDialog({
     setOpen(isOpen);
     if (!isOpen) {
       form.reset();
-      setSelectedBases([""]);
       setShowPriceFields(false);
       if (onEditComplete) {
         onEditComplete();
@@ -172,31 +172,13 @@ export function AddRefuelingDialog({
         servicePrice: "",
         pvkjPrice: "",
         agentFee: "",
-        baseIds: [],
+        baseIds: [""],
         isWarehouse: false,
         storageCost: "",
         isActive: true,
       });
-      setSelectedBases([""]);
       setShowPriceFields(false);
     }
-  };
-
-  const handleAddBase = () => {
-    setSelectedBases([...selectedBases, ""]);
-  };
-
-  const handleRemoveBase = (index: number) => {
-    const newBases = selectedBases.filter((_, i) => i !== index);
-    setSelectedBases(newBases.length > 0 ? newBases : [""]);
-    form.setValue("baseIds", newBases.filter(id => id));
-  };
-
-  const handleBaseChange = (index: number, value: string) => {
-    const newBases = [...selectedBases];
-    newBases[index] = value;
-    setSelectedBases(newBases);
-    form.setValue("baseIds", newBases.filter(id => id));
   };
 
   return (
@@ -258,6 +240,91 @@ export function AddRefuelingDialog({
 
             {selectedType === "provider" && (
               <>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Базисы заправки</FormLabel>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => append("")}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {fields.map((field, index) => (
+                    <div key={field.id} className="flex gap-2">
+                      <Select
+                        value={form.watch(`baseIds.${index}`) || ""}
+                        onValueChange={(value) => form.setValue(`baseIds.${index}`, value)}
+                      >
+                        <SelectTrigger data-testid={`select-base-${index}`}>
+                          <SelectValue placeholder="Выберите базис" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {bases.map((b) => (
+                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {fields.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => remove(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  {fields.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Нажмите + для добавления базиса</p>
+                  )}
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="isWarehouse"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 space-y-0">
+                      <FormControl>
+                        <Switch 
+                          checked={field.value} 
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-is-warehouse"
+                        />
+                      </FormControl>
+                      <FormLabel className="font-normal cursor-pointer">
+                        Этот поставщик является складом
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+
+                {isWarehouse && (
+                  <FormField
+                    control={form.control}
+                    name="storageCost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Стоимость хранения на складе (₽)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            placeholder="0.00" 
+                            data-testid="input-storage-cost" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
                 <Collapsible open={showPriceFields} onOpenChange={setShowPriceFields}>
                   <div className="flex justify-between items-center">
                     <FormLabel>Ценообразование</FormLabel>
@@ -309,91 +376,6 @@ export function AddRefuelingDialog({
                     />
                   </CollapsibleContent>
                 </Collapsible>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <FormLabel>Базисы заправки</FormLabel>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleAddBase}
-                      data-testid="button-add-base"
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Добавить
-                    </Button>
-                  </div>
-                  {selectedBases.map((baseId, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Select 
-                        value={baseId}
-                        onValueChange={(value) => handleBaseChange(index, value)}
-                      >
-                        <SelectTrigger data-testid={`select-base-${index}`}>
-                          <SelectValue placeholder="Выберите базис" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {bases.map((b) => (
-                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {selectedBases.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveBase(index)}
-                          data-testid={`button-remove-base-${index}`}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="isWarehouse"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center gap-2 space-y-0 rounded-md border p-3">
-                      <FormControl>
-                        <Checkbox 
-                          checked={field.value} 
-                          onCheckedChange={field.onChange}
-                          data-testid="checkbox-is-warehouse"
-                        />
-                      </FormControl>
-                      <FormLabel className="font-normal cursor-pointer">
-                        Является складом
-                      </FormLabel>
-                    </FormItem>
-                  )}
-                />
-
-                {isWarehouse && (
-                  <FormField
-                    control={form.control}
-                    name="storageCost"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Стоимость хранения на складе (₽)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="0.00" 
-                            type="number" 
-                            step="0.01" 
-                            data-testid="input-storage-cost" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
               </>
             )}
 
