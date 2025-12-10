@@ -164,6 +164,8 @@ export interface IOperationsStorage {
     refuelingToday: number;
     warehouseAlerts: number;
     totalProfitMonth: number;
+    pendingDeliveries: number;
+    totalVolumeSold: number;
   }>;
   getWarehouseTransactions(warehouseId: string): Promise<any[]>;
 }

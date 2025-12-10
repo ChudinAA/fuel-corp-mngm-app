@@ -143,7 +143,6 @@ export default function DashboardPage() {
           description="Всего сделок за день"
           icon={ShoppingCart}
           loading={isLoading}
-          trend={{ value: 12, isPositive: true }}
         />
         <StatCard
           title="Заправки ВС сегодня"
@@ -158,7 +157,6 @@ export default function DashboardPage() {
           description="Общая прибыль"
           icon={DollarSign}
           loading={isLoading}
-          trend={{ value: 8, isPositive: true }}
         />
         <StatCard
           title="Оповещения склада"
@@ -296,19 +294,19 @@ export default function DashboardPage() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center p-4 bg-muted rounded-lg">
-                <p className="text-2xl font-semibold">{formatNumber(35)}</p>
+                <p className="text-2xl font-semibold">{isLoading ? <Skeleton className="h-8 w-16 mx-auto" /> : formatNumber(stats?.optDealsToday ?? 0)}</p>
                 <p className="text-xs text-muted-foreground">Оптовых сделок</p>
               </div>
               <div className="text-center p-4 bg-muted rounded-lg">
-                <p className="text-2xl font-semibold">{formatNumber(128)}</p>
+                <p className="text-2xl font-semibold">{isLoading ? <Skeleton className="h-8 w-16 mx-auto" /> : formatNumber(stats?.refuelingToday ?? 0)}</p>
                 <p className="text-xs text-muted-foreground">Заправок ВС</p>
               </div>
               <div className="text-center p-4 bg-muted rounded-lg">
-                <p className="text-2xl font-semibold">{formatNumber(450000)}</p>
+                <p className="text-2xl font-semibold">{isLoading ? <Skeleton className="h-8 w-20 mx-auto" /> : formatNumber(stats?.totalVolumeSold ?? 0)}</p>
                 <p className="text-xs text-muted-foreground">кг продано</p>
               </div>
               <div className="text-center p-4 bg-muted rounded-lg">
-                <p className="text-2xl font-semibold">{formatCurrency(2450000)}</p>
+                <p className="text-2xl font-semibold">{isLoading ? <Skeleton className="h-8 w-24 mx-auto" /> : formatCurrency(stats?.totalProfitMonth ?? 0)}</p>
                 <p className="text-xs text-muted-foreground">Прибыль</p>
               </div>
             </div>

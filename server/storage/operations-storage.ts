@@ -352,12 +352,94 @@ export class OperationsStorage implements IOperationsStorage {
     refuelingToday: number;
     warehouseAlerts: number;
     totalProfitMonth: number;
+    pendingDeliveries: number;
+    totalVolumeSold: number;
   }> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split('T')[0];
+
+    // Начало текущего месяца
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthStartStr = monthStart.toISOString().split('T')[0];
+
+    // Оптовые сделки сегодня
+    const [optTodayResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(opt)
+      .where(eq(opt.dealDate, todayStr));
+    const optDealsToday = Number(optTodayResult?.count || 0);
+
+    // Заправки ВС сегодня
+    const [refuelingTodayResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(aircraftRefueling)
+      .where(eq(aircraftRefueling.refuelingDate, todayStr));
+    const refuelingToday = Number(refuelingTodayResult?.count || 0);
+
+    // Проверка складов с низким остатком (< 20%)
+    const warehousesList = await db.select().from(warehouses);
+    let warehouseAlerts = 0;
+    for (const wh of warehousesList) {
+      const currentBalance = parseFloat(wh.currentBalance || "0");
+      const maxCapacity = parseFloat(wh.storageCost || "100000"); // используем storageCost как максимальную вместимость
+      if (maxCapacity > 0 && (currentBalance / maxCapacity) < 0.2) {
+        warehouseAlerts++;
+      }
+    }
+
+    // Прибыль за месяц (сумма всех продаж minus себестоимость)
+    const optDealsMonth = await db
+      .select()
+      .from(opt)
+      .where(sql`${opt.dealDate} >= ${monthStartStr}`);
+
+    let totalProfitMonth = 0;
+    for (const deal of optDealsMonth) {
+      const revenue = parseFloat(deal.totalCost || "0");
+      const quantity = parseFloat(deal.quantityKg || "0");
+      
+      // Получаем среднюю себестоимость со склада на момент продажи
+      if (deal.warehouseId) {
+        const [warehouse] = await db
+          .select()
+          .from(warehouses)
+          .where(eq(warehouses.id, deal.warehouseId))
+          .limit(1);
+        
+        if (warehouse) {
+          const averageCost = parseFloat(warehouse.averageCost || "0");
+          const cost = quantity * averageCost;
+          totalProfitMonth += (revenue - cost);
+        }
+      }
+    }
+
+    // Количество перемещений в статусе ожидания (используем движения за последние 7 дней)
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+
+    const [movementsResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(movement)
+      .where(sql`${movement.movementDate} >= ${sevenDaysAgoStr}`);
+    const pendingDeliveries = Number(movementsResult?.count || 0);
+
+    // Общий объем продаж за месяц
+    const [volumeResult] = await db
+      .select({ total: sql<number>`sum(CAST(${opt.quantityKg} AS DECIMAL))` })
+      .from(opt)
+      .where(sql`${opt.dealDate} >= ${monthStartStr}`);
+    const totalVolumeSold = Number(volumeResult?.total || 0);
+
     return {
-      optDealsToday: 0,
-      refuelingToday: 0,
-      warehouseAlerts: 0,
-      totalProfitMonth: 0,
+      optDealsToday,
+      refuelingToday,
+      warehouseAlerts,
+      totalProfitMonth,
+      pendingDeliveries,
+      totalVolumeSold,
     };
   }
 
