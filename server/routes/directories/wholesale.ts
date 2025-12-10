@@ -26,6 +26,19 @@ export function registerWholesaleRoutes(app: Express) {
     try {
       const data = insertWholesaleSupplierSchema.parse(req.body);
       const item = await storage.wholesale.createWholesaleSupplier(data);
+      
+      // Automatically create warehouse if supplier is marked as warehouse
+      if (data.isWarehouse && data.baseIds && data.baseIds.length > 0) {
+        await storage.operations.createWarehouse({
+          name: data.name,
+          baseIds: data.baseIds,
+          supplierType: "wholesale",
+          supplierId: item.id,
+          storageCost: data.storageCost || null,
+          isActive: data.isActive ?? true,
+        });
+      }
+      
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {

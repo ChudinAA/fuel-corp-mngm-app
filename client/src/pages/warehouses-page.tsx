@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -19,10 +19,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Plus, 
-  Pencil, 
-  Trash2, 
+import {
+  Plus,
+  Pencil,
+  Trash2,
   Loader2,
   Search,
   Warehouse,
@@ -31,7 +31,8 @@ import {
   TrendingDown,
   ArrowUpCircle,
   ArrowDownCircle,
-  Package
+  Package,
+  X
 } from "lucide-react";
 import type { Warehouse as WarehouseType, WholesaleBase, RefuelingBase } from "@shared/schema";
 
@@ -103,7 +104,7 @@ function WarehouseDetailsDialog({ warehouse, open, onOpenChange }: { warehouse: 
             Детализация поступлений и списаний по складу
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="grid grid-cols-3 gap-4 py-4">
           <Card>
             <CardHeader className="pb-2">
@@ -203,7 +204,7 @@ function WarehouseCard({ warehouse, onEdit, onViewDetails }: { warehouse: Wareho
 
   const getCurrentMonthStats = () => {
     if (!transactions) return { income: 0, expense: 0 };
-    
+
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
@@ -280,17 +281,17 @@ function WarehouseCard({ warehouse, onEdit, onViewDetails }: { warehouse: Wareho
             </span>
           </div>
           <div className="flex items-center gap-1">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               data-testid={`button-edit-warehouse-${warehouse.id}`}
               onClick={() => onEdit(warehouse)}
             >
               <Pencil className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="h-8 w-8 text-destructive"
               onClick={() => {
                 if (confirm("Вы уверены, что хотите удалить этот склад?")) {
@@ -307,6 +308,22 @@ function WarehouseCard({ warehouse, onEdit, onViewDetails }: { warehouse: Wareho
     </Card>
   );
 }
+
+interface NewWarehouseFormValues {
+  name: string;
+  bases: { baseId: string }[];
+  storageCost: string;
+  createSupplier: boolean;
+  supplierType?: string;
+}
+
+const newWarehouseFormSchema = z.object({
+  name: z.string().min(1, "Укажите название"),
+  bases: z.array(z.object({ baseId: z.string() })).min(1, "Выберите хотя бы один базис"),
+  storageCost: z.string().optional(),
+  createSupplier: z.boolean(),
+  supplierType: z.string().optional(),
+});
 
 function AddWarehouseDialog({ warehouseToEdit, onSave, open: externalOpen, onOpenChange: externalOnOpenChange }: { warehouseToEdit: WarehouseType | null, onSave: () => void, open?: boolean, onOpenChange?: (open: boolean) => void }) {
   const { toast } = useToast();
@@ -330,12 +347,19 @@ function AddWarehouseDialog({ warehouseToEdit, onSave, open: externalOpen, onOpe
     ...(refuelingBases?.map(b => ({ id: b.id, name: b.name, source: 'refueling' })) || []),
   ].sort((a, b) => a.name.localeCompare(b.name));
 
-  const form = useForm<WarehouseFormData>({
-    resolver: zodResolver(warehouseFormSchema),
+  const form = useForm<NewWarehouseFormValues>({
+    resolver: zodResolver(newWarehouseFormSchema),
     defaultValues: {
       name: "",
-      baseId: "",
+      bases: [{ baseId: "" }],
+      storageCost: "",
+      createSupplier: false,
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "bases",
   });
 
   // Обновляем форму при изменении warehouseToEdit
@@ -343,20 +367,29 @@ function AddWarehouseDialog({ warehouseToEdit, onSave, open: externalOpen, onOpe
     if (warehouseToEdit) {
       form.reset({
         name: warehouseToEdit.name,
-        baseId: warehouseToEdit.baseId,
+        bases: warehouseToEdit.baseIds.map(id => ({ baseId: id })),
+        storageCost: warehouseToEdit.storageCost || "",
+        createSupplier: warehouseToEdit.supplierType !== undefined,
+        supplierType: warehouseToEdit.supplierType,
       });
     } else {
       form.reset({
         name: "",
-        baseId: "",
+        bases: [{ baseId: "" }],
+        storageCost: "",
+        createSupplier: false,
+        supplierType: undefined,
       });
     }
   }, [warehouseToEdit, form]);
 
   const mutation = useMutation({
-    mutationFn: async (data: WarehouseFormData) => {
+    mutationFn: async (data: NewWarehouseFormValues) => {
       const payload = {
         ...data,
+        baseIds: data.bases.map(b => b.baseId),
+        ...(data.storageCost && { storageCost: data.storageCost }),
+        ...(data.createSupplier && data.supplierType && { supplierType: data.supplierType }),
       };
       const url = isEditing ? `/api/warehouses/${warehouseToEdit?.id}` : "/api/warehouses";
       const method = isEditing ? "PATCH" : "POST";
@@ -377,7 +410,7 @@ function AddWarehouseDialog({ warehouseToEdit, onSave, open: externalOpen, onOpe
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent>
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Редактирование склада" : "Новый склад"}</DialogTitle>
           <DialogDescription>{isEditing ? "Изменение информации о складе" : "Добавление нового склада в систему"}</DialogDescription>
@@ -399,28 +432,97 @@ function AddWarehouseDialog({ warehouseToEdit, onSave, open: externalOpen, onOpe
             />
             <FormField
               control={form.control}
-              name="baseId"
-              render={({ field }) => (
+              name="bases"
+              render={() => (
                 <FormItem>
-                  <FormLabel>Базис</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-warehouse-basis">
-                        <SelectValue placeholder="Выберите базис" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {allBases.map((base) => (
-                        <SelectItem key={base.id} value={base.id}>
-                          {base.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Базисы поставки</FormLabel>
+                  {fields.map((field, index) => (
+                    <div key={field.id} className="flex items-center gap-2 mb-2">
+                      <Select onValueChange={(value) => form.setValue(`bases.${index}.baseId`, value)} value={form.getValues(`bases.${index}.baseId`)}>
+                        <FormControl>
+                          <SelectTrigger data-testid={`select-warehouse-basis-${index}`}>
+                            <SelectValue placeholder="Выберите базис" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {allBases.map((base) => (
+                            <SelectItem key={base.id} value={base.id}>
+                              {base.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {index > 0 && (
+                        <Button type="button" size="icon" variant="outline" onClick={() => remove(index)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" onClick={() => append({ baseId: "" })}>
+                    + Добавить базис
+                  </Button>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="storageCost"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Стоимость хранения (₽)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Стоимость хранения" type="number" data-testid="input-storage-cost" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="createSupplier"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5">
+                    <FormLabel>Создать поставщика</FormLabel>
+                    <FormDescription>Автоматически создать поставщика при создании склада</FormDescription>
+                  </div>
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      checked={field.value}
+                      onChange={field.onChange}
+                      className="h-5 w-5 text-primary focus:ring-primary border-gray-300 rounded"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            {form.watch("createSupplier") && (
+              <FormField
+                control={form.control}
+                name="supplierType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Тип поставщика</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-supplier-type">
+                          <SelectValue placeholder="Выберите тип поставщика" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="wholesale">ОПТ</SelectItem>
+                        <SelectItem value="refueling">Заправка</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             <div className="flex justify-end gap-4 pt-4">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Отмена</Button>
               <Button type="submit" disabled={mutation.isPending} data-testid="button-save-warehouse">
@@ -542,9 +644,9 @@ export default function WarehousesPage() {
           ))}
         </div>
       )}
-      
-      <AddWarehouseDialog 
-        warehouseToEdit={editingWarehouse} 
+
+      <AddWarehouseDialog
+        warehouseToEdit={editingWarehouse}
         onSave={handleSave}
         open={isDialogOpen}
         onOpenChange={(open) => {
@@ -552,7 +654,7 @@ export default function WarehousesPage() {
           if (!open) setEditingWarehouse(null);
         }}
       />
-      
+
       {viewingWarehouse && (
         <WarehouseDetailsDialog
           warehouse={viewingWarehouse}
@@ -563,4 +665,3 @@ export default function WarehousesPage() {
     </div>
   );
 }
-      

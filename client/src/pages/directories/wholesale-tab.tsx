@@ -74,6 +74,14 @@ export function WholesaleTab() {
     return bases?.find(b => b.id === baseId)?.name || null;
   };
 
+  const getBaseNames = (baseIds: string[] | null | undefined) => {
+    if (!baseIds || baseIds.length === 0) return null;
+    return baseIds
+      .map(id => bases?.find(b => b.id === id)?.name)
+      .filter(Boolean)
+      .join(", ");
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -149,14 +157,14 @@ export function WholesaleTab() {
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>
                           {item.type === "supplier" 
-                            ? getBaseName((item as WholesaleSupplier & { type: string }).defaultBaseId) || "—"
+                            ? getBaseNames((item as WholesaleSupplier & { type: string }).baseIds) || "—"
                             : item.type === "basis" 
-                              ? getSupplierName((item as WholesaleBase & { type: string }).supplierId) || "—"
+                              ? "—"
                               : "—"}
                         </TableCell>
                         <TableCell className="text-muted-foreground max-w-xs truncate">
                           {item.type === "supplier" 
-                            ? (item as WholesaleSupplier & { type: string }).inn || "—" 
+                            ? ((item as WholesaleSupplier & { type: string }).isWarehouse ? "Склад" : (item as WholesaleSupplier & { type: string }).inn || "—")
                             : (item as WholesaleBase & { type: string }).location || "—"}
                         </TableCell>
                         <TableCell>

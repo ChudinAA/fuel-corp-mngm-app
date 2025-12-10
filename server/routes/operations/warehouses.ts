@@ -22,8 +22,35 @@ export function registerWarehousesOperationsRoutes(app: Express) {
 
   app.post("/api/warehouses", requireAuth, async (req, res) => {
     try {
-      const data = insertWarehouseSchema.parse(req.body);
+      const { createSupplier, supplierType, ...warehouseData } = req.body;
+      const data = insertWarehouseSchema.parse(warehouseData);
       const item = await storage.operations.createWarehouse(data);
+      
+      // Automatically create supplier if requested
+      if (createSupplier && supplierType && data.baseIds && data.baseIds.length > 0) {
+        const supplierData = {
+          name: data.name,
+          baseIds: data.baseIds,
+          isWarehouse: true,
+          storageCost: data.storageCost || null,
+          isActive: data.isActive ?? true,
+        };
+        
+        if (supplierType === "wholesale") {
+          const supplier = await storage.wholesale.createWholesaleSupplier(supplierData);
+          await storage.operations.updateWarehouse(item.id, {
+            supplierType: "wholesale",
+            supplierId: supplier.id,
+          });
+        } else if (supplierType === "refueling") {
+          const supplier = await storage.refueling.createRefuelingProvider(supplierData);
+          await storage.operations.updateWarehouse(item.id, {
+            supplierType: "refueling",
+            supplierId: supplier.id,
+          });
+        }
+      }
+      
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
