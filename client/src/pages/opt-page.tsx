@@ -50,6 +50,16 @@ export default function OptPage() {
     queryClient.invalidateQueries({ queryKey: ["/api/opt"] });
   };
 
+  // Вычисление накопительной прибыли за текущий месяц
+  const cumulativeProfit = optDeals?.data?.reduce((sum, deal) => {
+    const dealDate = new Date(deal.dealDate);
+    const now = new Date();
+    if (dealDate.getMonth() === now.getMonth() && dealDate.getFullYear() === now.getFullYear()) {
+      return sum + parseFloat(deal.profit || "0");
+    }
+    return sum;
+  }, 0) || 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -57,6 +67,9 @@ export default function OptPage() {
           <h1 className="text-2xl font-semibold">Оптовые продажи (ОПТ)</h1>
           <p className="text-muted-foreground">
             Учет оптовых сделок с автоматическим расчетом цен
+          </p>
+          <p className="text-sm font-medium mt-2">
+            Прибыль накопительно (текущий месяц): <span className="text-green-600">{cumulativeProfit.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽</span>
           </p>
         </div>
         <Button onClick={handleOpenDialog} data-testid="button-add-opt">

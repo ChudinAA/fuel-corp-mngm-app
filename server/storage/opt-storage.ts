@@ -50,12 +50,13 @@ export class OptStorage implements IOptStorage {
   async createOpt(data: InsertOpt): Promise<Opt> {
     const [created] = await db.insert(opt).values(data).returning();
 
-    // Обновляем остаток на складе (списание при продаже)
+    // Обновляем остаток на складе только если это склад-поставщик
     if (created.warehouseId && created.quantityKg) {
-      const quantityKg = parseFloat(created.quantityKg);
       const [warehouse] = await db.select().from(warehouses).where(eq(warehouses.id, created.warehouseId)).limit(1);
 
-      if (warehouse) {
+      // Проверяем что это склад поставщика
+      if (warehouse && warehouse.supplierType && warehouse.supplierId) {
+        const quantityKg = parseFloat(created.quantityKg);
         const currentBalance = parseFloat(warehouse.currentBalance || "0");
         const newBalance = Math.max(0, currentBalance - quantityKg);
 

@@ -155,25 +155,39 @@ export function OptForm({
   // Вычисление КГ
   const calculatedKg = inputMode === "liters" && watchLiters && watchDensity
     ? (parseFloat(watchLiters) * parseFloat(watchDensity)).toFixed(2)
-    : watchKg;
+    : watchKg || "0";
 
   const finalKg = parseFloat(calculatedKg || "0");
 
-  // Автоматический выбор базиса и склада при выборе поставщика
+  // Получение данных поставщика
+  const selectedSupplier = suppliers?.find(s => s.id === watchSupplierId);
+  const isWarehouseSupplier = selectedSupplier?.isWarehouse || false;
+  const supplierWarehouse = warehouses?.find(w => 
+    w.supplierType === "wholesale" && w.supplierId === watchSupplierId
+  );
+
+  // Автоматический выбор базиса при выборе поставщика
   useEffect(() => {
-    if (watchSupplierId && suppliers && bases && warehouses) {
+    if (watchSupplierId && suppliers && bases) {
       const supplier = suppliers.find(s => s.id === watchSupplierId);
-      if (supplier?.defaultBaseId) {
-        const base = bases.find(b => b.id === supplier.defaultBaseId);
+      if (supplier?.baseIds && supplier.baseIds.length > 0) {
+        const baseId = supplier.baseIds[0];
+        const base = bases.find(b => b.id === baseId);
         if (base) {
           setSelectedBasis(base.name);
-
-          // Найти склад с таким же base_id
-          const warehouse = warehouses.find(w => w.baseId === supplier.defaultBaseId);
-          if (warehouse) {
-            form.setValue("warehouseId", warehouse.id);
-          }
         }
+      }
+
+      // Установить склад если поставщик-склад
+      if (supplier?.isWarehouse) {
+        const warehouse = warehouses?.find(w => 
+          w.supplierType === "wholesale" && w.supplierId === supplier.id
+        );
+        if (warehouse) {
+          form.setValue("warehouseId", warehouse.id);
+        }
+      } else {
+        form.setValue("warehouseId", "");
       }
     }
   }, [watchSupplierId, suppliers, bases, warehouses, form]);
@@ -222,6 +236,12 @@ export function OptForm({
 
   // Получение цены покупки
   const getPurchasePrice = (): number | null => {
+    // Если поставщик-склад, берем себестоимость со склада
+    if (isWarehouseSupplier && supplierWarehouse) {
+      return parseFloat(supplierWarehouse.averageCost || "0");
+    }
+
+    // Иначе берем из таблицы цен
     const matchingPrices = getMatchingPurchasePrices();
     if (matchingPrices.length === 0) return null;
 
@@ -240,14 +260,6 @@ export function OptForm({
         return parseFloat(priceObj.price || "0");
       } catch {
         return null;
-      }
-    }
-    
-    // Если нет в таблице цен, попробовать взять из склада
-    if (watchWarehouseId && warehouses) {
-      const warehouse = warehouses.find(w => w.id === watchWarehouseId);
-      if (warehouse?.averageCost) {
-        return parseFloat(warehouse.averageCost);
       }
     }
 
@@ -379,16 +391,17 @@ export function OptForm({
 
   // Проверка остатка на складе
   const getWarehouseStatus = (): { status: "ok" | "warning" | "error"; message: string } => {
-    if (!watchWarehouseId || !warehouses || finalKg <= 0) {
+    // Если поставщик не со склада
+    if (!isWarehouseSupplier) {
+      return { status: "ok", message: "ОК" };
+    }
+
+    // Если поставщик-склад
+    if (!supplierWarehouse || finalKg <= 0) {
       return { status: "ok", message: "—" };
     }
 
-    const warehouse = warehouses.find(w => w.id === watchWarehouseId);
-    if (!warehouse) {
-      return { status: "error", message: "Склад не найден" };
-    }
-
-    const currentBalance = parseFloat(warehouse.currentBalance || "0");
+    const currentBalance = parseFloat(supplierWarehouse.currentBalance || "0");
     const remaining = currentBalance - finalKg;
 
     if (remaining >= 0) {
@@ -404,14 +417,16 @@ export function OptForm({
     mutationFn: async (data: OptFormData) => {
       const purchasePrices = getMatchingPurchasePrices();
       const salePrices = getMatchingSalePrices();
-      const purchasePriceId = selectedPurchasePriceId || (purchasePrices.length > 0 ? purchasePrices[0].id : null);
+      const purchasePriceId = !isWarehouseSupplier && selectedPurchasePriceId 
+        ? selectedPurchasePriceId 
+        : (!isWarehouseSupplier && purchasePrices.length > 0 ? purchasePrices[0].id : null);
       const salePriceId = selectedSalePriceId || (salePrices.length > 0 ? salePrices[0].id : null);
 
       const payload = {
         ...data,
         supplierId: data.supplierId,
         buyerId: data.buyerId,
-        warehouseId: data.warehouseId || null,
+        warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
         basis: selectedBasis,
         carrierId: data.carrierId || null,
         deliveryLocationId: data.deliveryLocationId || null,
@@ -458,14 +473,16 @@ export function OptForm({
     mutationFn: async (data: OptFormData & { id: string }) => {
       const purchasePrices = getMatchingPurchasePrices();
       const salePrices = getMatchingSalePrices();
-      const purchasePriceId = selectedPurchasePriceId || (purchasePrices.length > 0 ? purchasePrices[0].id : null);
+      const purchasePriceId = !isWarehouseSupplier && selectedPurchasePriceId 
+        ? selectedPurchasePriceId 
+        : (!isWarehouseSupplier && purchasePrices.length > 0 ? purchasePrices[0].id : null);
       const salePriceId = selectedSalePriceId || (salePrices.length > 0 ? salePrices[0].id : null);
 
       const payload = {
         ...data,
         supplierId: data.supplierId,
         buyerId: data.buyerId,
-        warehouseId: data.warehouseId || null,
+        warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
         basis: selectedBasis,
         carrierId: data.carrierId || null,
         deliveryLocationId: data.deliveryLocationId || null,
@@ -607,32 +624,20 @@ export function OptForm({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="warehouseId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Склад</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-warehouse">
-                      <SelectValue placeholder="Выберите склад" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {warehouses?.map((warehouse) => (
-                      <SelectItem key={warehouse.id} value={warehouse.id}>
-                        {warehouse.name}
-                      </SelectItem>
-                    )) || (
-                      <SelectItem value="none" disabled>Нет данных</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <FormItem>
+            <FormLabel>Склад</FormLabel>
+            <FormControl>
+              <Input 
+                value={
+                  isWarehouseSupplier && supplierWarehouse 
+                    ? supplierWarehouse.name 
+                    : "Объем не со склада"
+                }
+                disabled
+                className="bg-muted"
+              />
+            </FormControl>
+          </FormItem>
         </div>
 
         <Card>
@@ -667,7 +672,8 @@ export function OptForm({
                             step="0.01"
                             placeholder="0.00"
                             data-testid="input-liters"
-                            {...field} 
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(e.target.value)}
                           />
                         </FormControl>
                         <FormMessage />
@@ -727,13 +733,47 @@ export function OptForm({
         </Card>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 1 ? (
+            <FormItem>
+              <FormLabel>Базис</FormLabel>
+              <Select 
+                value={selectedBasis} 
+                onValueChange={(value) => {
+                  const base = bases?.find(b => b.name === value);
+                  if (base) setSelectedBasis(base.name);
+                }}
+              >
+                <FormControl>
+                  <SelectTrigger data-testid="select-basis">
+                    <SelectValue placeholder="Выберите базис" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {selectedSupplier.baseIds.map((baseId) => {
+                    const base = bases?.find(b => b.id === baseId);
+                    return base ? (
+                      <SelectItem key={base.id} value={base.name}>
+                        {base.name}
+                      </SelectItem>
+                    ) : null;
+                  })}
+                </SelectContent>
+              </Select>
+            </FormItem>
+          ) : (
+            <CalculatedField 
+              label="Базис" 
+              value={selectedBasis || "—"}
+            />
+          )}
+
           <CalculatedField 
             label="Объем на складе" 
             value={warehouseStatus.message}
             status={warehouseStatus.status}
           />
 
-          {purchasePrices.length > 1 ? (
+          {!isWarehouseSupplier && purchasePrices.length > 1 ? (
             <FormField
               control={form.control}
               name="selectedPurchasePriceId"
@@ -788,10 +828,6 @@ export function OptForm({
             label="Сумма закупки" 
             value={purchaseAmount !== null ? formatCurrency(purchaseAmount) : "Ошибка"}
             status={purchaseAmount !== null ? "ok" : "error"}
-          />
-          <CalculatedField 
-            label="Базис" 
-            value={selectedBasis || "—"}
           />
         </div>
 
@@ -872,28 +908,50 @@ export function OptForm({
               <FormField
                 control={form.control}
                 name="carrierId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Перевозчик</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-carrier">
-                          <SelectValue placeholder="Выберите перевозчика" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {carriers?.map((carrier) => (
-                          <SelectItem key={carrier.id} value={carrier.id}>
-                            {carrier.name}
-                          </SelectItem>
-                        )) || (
-                          <SelectItem value="none" disabled>Нет данных</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  // Фильтруем перевозчиков, у которых есть тарифы с текущим базисом
+                  const availableCarriers = carriers?.filter(carrier => {
+                    if (!selectedBasis || !deliveryCosts) return true;
+                    
+                    const base = bases?.find(b => b.name === selectedBasis);
+                    if (!base) return true;
+
+                    const warehouse = supplierWarehouse;
+                    
+                    return deliveryCosts.some(dc => 
+                      dc.carrierId === carrier.id &&
+                      (
+                        (dc.fromEntityType === "base" && dc.fromEntityId === base.id) ||
+                        (warehouse && dc.fromEntityType === "warehouse" && dc.fromEntityId === warehouse.id)
+                      )
+                    );
+                  }) || [];
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Перевозчик</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-carrier">
+                            <SelectValue placeholder="Выберите перевозчика" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {availableCarriers.length > 0 ? (
+                            availableCarriers.map((carrier) => (
+                              <SelectItem key={carrier.id} value={carrier.id}>
+                                {carrier.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>Нет доступных перевозчиков</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField
@@ -923,86 +981,7 @@ export function OptForm({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="vehicleNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Госномер</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-vehicle">
-                          <SelectValue placeholder="Выберите номер" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {vehicles?.map((vehicle) => (
-                          <SelectItem key={vehicle.id} value={vehicle.regNumber}>
-                            {vehicle.regNumber}
-                          </SelectItem>
-                        )) || (
-                          <SelectItem value="none" disabled>Нет данных</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="trailerNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Госномер ПП</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-trailer">
-                          <SelectValue placeholder="Выберите номер" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {trailers?.map((trailer) => (
-                          <SelectItem key={trailer.id} value={trailer.regNumber}>
-                            {trailer.regNumber}
-                          </SelectItem>
-                        )) || (
-                          <SelectItem value="none" disabled>Нет данных</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="driverName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>ФИО водителя</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-driver">
-                          <SelectValue placeholder="Выберите водителя" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {drivers?.map((driver) => (
-                          <SelectItem key={driver.id} value={driver.fullName}>
-                            {driver.fullName}
-                          </SelectItem>
-                        )) || (
-                          <SelectItem value="none" disabled>Нет данных</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              
             </div>
           </CardContent>
         </Card>
@@ -1027,32 +1006,24 @@ export function OptForm({
             )}
           />
 
-          <div className="space-y-4">
-            <FormField
-              control={form.control}
-              name="isApproxVolume"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2 space-y-0 pt-6">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="checkbox-approx-volume"
-                    />
-                  </FormControl>
-                  <FormLabel className="text-sm font-normal cursor-pointer">
-                    Примерный объем (требует уточнения)
-                  </FormLabel>
-                </FormItem>
-              )}
-            />
-
-            <CalculatedField 
-              label="Накопительно" 
-              value={formatCurrency(cumulativeProfit)}
-              status="ok"
-            />
-          </div>
+          <FormField
+            control={form.control}
+            name="isApproxVolume"
+            render={({ field }) => (
+              <FormItem className="flex items-center gap-2 space-y-0 pt-6">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    data-testid="checkbox-approx-volume"
+                  />
+                </FormControl>
+                <FormLabel className="text-sm font-normal cursor-pointer">
+                  Примерный объем (требует уточнения)
+                </FormLabel>
+              </FormItem>
+            )}
+          />
         </div>
 
         <div className="flex justify-end gap-4 pt-4 border-t">
