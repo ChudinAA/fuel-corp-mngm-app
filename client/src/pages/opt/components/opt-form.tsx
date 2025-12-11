@@ -17,7 +17,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { CalendarIcon, Plus, Loader2 } from "lucide-react";
+import { CalendarIcon, Plus, Loader2, ChevronDown } from "lucide-react";
 import type { WholesaleSupplier, WholesaleBase, Customer, Warehouse, Price, DeliveryCost, LogisticsCarrier, LogisticsDeliveryLocation, LogisticsVehicle, LogisticsTrailer, LogisticsDriver, Opt } from "@shared/schema";
 import { CalculatedField } from "./calculated-field";
 import { optFormSchema, type OptFormData } from "../schemas";
@@ -318,7 +318,7 @@ export function OptForm({
 
   const purchasePrice = getPurchasePrice();
   const salePrice = getSalePrice();
-  const deliveryCost = getDeliveryCost();
+  const calculatedDeliveryCost = getDeliveryCostValue();
 
   const purchaseAmount = purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
   const saleAmount = salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
@@ -343,55 +343,13 @@ export function OptForm({
 
   const cumulativeProfit = getCumulativeProfit();
 
-  // Получение стоимости доставки с учетом типов сущностей
-  const getDeliveryCostValue = (): number | null => {
-    if (!watchCarrierId || !deliveryCosts || finalKg <= 0) return null;
-
-    // Если есть склад поставщика, ищем тариф от склада
-    if (isWarehouseSupplier && supplierWarehouse && watchDeliveryLocationId) {
-      const cost = deliveryCosts.find(dc =>
-        dc.carrierId === watchCarrierId &&
-        dc.fromEntityType === "warehouse" &&
-        dc.fromEntityId === supplierWarehouse.id &&
-        dc.toEntityType === "delivery_location" &&
-        dc.toEntityId === watchDeliveryLocationId
-      );
-      
-      if (cost && cost.costPerKg) {
-        return parseFloat(cost.costPerKg.toString()) * finalKg;
-      }
-    }
-
-    // Если нет склада, ищем тариф от базиса
-    if (!isWarehouseSupplier && selectedBasis && watchDeliveryLocationId) {
-      const base = bases?.find(b => b.name === selectedBasis);
-      if (base) {
-        const cost = deliveryCosts.find(dc =>
-          dc.carrierId === watchCarrierId &&
-          dc.fromEntityType === "base" &&
-          dc.fromEntityId === base.id &&
-          dc.toEntityType === "delivery_location" &&
-          dc.toEntityId === watchDeliveryLocationId
-        );
-        
-        if (cost && cost.costPerKg) {
-          return parseFloat(cost.costPerKg.toString()) * finalKg;
-        }
-      }
-    }
-
-    return null;
-  };
-
-  const calculatedDeliveryCost = getDeliveryCostValue();
-
   const profit = purchaseAmount !== null && saleAmount !== null && calculatedDeliveryCost !== null 
     ? saleAmount - purchaseAmount - calculatedDeliveryCost 
     : purchaseAmount !== null && saleAmount !== null 
       ? saleAmount - purchaseAmount 
       : null;
       
-  const deliveryTariff = deliveryCost && finalKg > 0 ? deliveryCost / finalKg : null;
+  const deliveryTariff = calculatedDeliveryCost && finalKg > 0 ? calculatedDeliveryCost / finalKg : null;
 
   // Проверка остатка на складе
   const getWarehouseStatus = (): { status: "ok" | "warning" | "error"; message: string } => {
@@ -444,7 +402,7 @@ export function OptForm({
         salePriceId: salePriceId,
         purchaseAmount: purchaseAmount,
         saleAmount: saleAmount,
-        deliveryCost: deliveryCost,
+        deliveryCost: calculatedDeliveryCost,
         deliveryTariff: deliveryTariff,
         profit: profit,
       };
@@ -500,7 +458,7 @@ export function OptForm({
         salePriceId: salePriceId,
         purchaseAmount: purchaseAmount,
         saleAmount: saleAmount,
-        deliveryCost: deliveryCost,
+        deliveryCost: calculatedDeliveryCost,
         deliveryTariff: deliveryTariff,
         profit: profit,
       };
@@ -676,10 +634,7 @@ export function OptForm({
                             step="0.01"
                             placeholder="0.00"
                             data-testid="input-liters"
-                            value={field.value || ""}
-                            onChange={field.onChange}
-                            onBlur={field.onBlur}
-                            name={field.name}
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
@@ -741,7 +696,10 @@ export function OptForm({
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 1 ? (
             <FormItem>
-              <FormLabel>Базис</FormLabel>
+              <FormLabel className="flex items-center gap-2">
+                Базис
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              </FormLabel>
               <Select 
                 value={selectedBasis} 
                 onValueChange={(value) => {
@@ -750,7 +708,7 @@ export function OptForm({
                 }}
               >
                 <FormControl>
-                  <SelectTrigger data-testid="select-basis" className="relative">
+                  <SelectTrigger data-testid="select-basis">
                     <SelectValue placeholder="Выберите базис" />
                   </SelectTrigger>
                 </FormControl>
@@ -785,7 +743,10 @@ export function OptForm({
               name="selectedPurchasePriceId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Покупка</FormLabel>
+                  <FormLabel className="flex items-center gap-2">
+                    Покупка
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  </FormLabel>
                   <Select 
                     onValueChange={(value) => { 
                       field.onChange(value); 
@@ -794,7 +755,7 @@ export function OptForm({
                     value={selectedPurchasePriceId || field.value}
                   >
                     <FormControl>
-                      <SelectTrigger data-testid="select-purchase-price" className="relative">
+                      <SelectTrigger data-testid="select-purchase-price">
                         <SelectValue placeholder="Выберите цену" />
                       </SelectTrigger>
                     </FormControl>
@@ -844,7 +805,10 @@ export function OptForm({
               name="selectedSalePriceId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Продажа</FormLabel>
+                  <FormLabel className="flex items-center gap-2">
+                    Продажа
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  </FormLabel>
                   <Select 
                     onValueChange={(value) => { 
                       field.onChange(value); 
@@ -853,7 +817,7 @@ export function OptForm({
                     value={selectedSalePriceId || field.value}
                   >
                     <FormControl>
-                      <SelectTrigger data-testid="select-sale-price" className="relative">
+                      <SelectTrigger data-testid="select-sale-price">
                         <SelectValue placeholder="Выберите цену" />
                       </SelectTrigger>
                     </FormControl>
@@ -896,7 +860,7 @@ export function OptForm({
           />
           <CalculatedField 
             label="Доставка" 
-            value={deliveryCost !== null ? formatCurrency(deliveryCost) : "—"}
+            value={calculatedDeliveryCost !== null ? formatCurrency(calculatedDeliveryCost) : "—"}
           />
           <CalculatedField 
             label="Прибыль" 
