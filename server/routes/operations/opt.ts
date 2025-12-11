@@ -9,7 +9,8 @@ export function registerOptRoutes(app: Express) {
   app.get("/api/opt", requireAuth, async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
-    const result = await storage.opt.getOptDeals(page, pageSize);
+    const search = req.query.search as string | undefined;
+    const result = await storage.opt.getOptDeals(page, pageSize, search);
     res.json(result);
   });
 

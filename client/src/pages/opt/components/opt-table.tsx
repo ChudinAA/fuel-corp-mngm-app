@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,10 @@ import { useOptTable } from "../hooks/use-opt-table";
 
 interface OptTableProps {
   onEdit: (opt: any) => void;
+  onDelete?: () => void;
 }
 
-export function OptTable({ onEdit }: OptTableProps) {
+export function OptTable({ onEdit, onDelete }: OptTableProps) {
   const {
     page,
     setPage,
@@ -39,6 +40,17 @@ export function OptTable({ onEdit }: OptTableProps) {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dealToDelete, setDealToDelete] = useState<any>(null);
+  const [searchInput, setSearchInput] = useState("");
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1); // Reset to first page when searching
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchInput, setSearch, setPage]);
 
   const formatDate = (dateStr: string) => {
     return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
@@ -64,14 +76,19 @@ export function OptTable({ onEdit }: OptTableProps) {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Поиск по сделкам..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Поиск по поставщику, покупателю, базису..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="pl-9"
             data-testid="input-search-opt"
           />
         </div>
-        <Button variant="outline" size="icon">
+        <Button 
+          variant="outline" 
+          size="icon"
+          disabled
+          title="Фильтры скоро будут доступны"
+        >
           <Filter className="h-4 w-4" />
         </Button>
       </div>
@@ -145,6 +162,7 @@ export function OptTable({ onEdit }: OptTableProps) {
                           setDeleteDialogOpen(true);
                         }}
                         disabled={deleteMutation.isPending}
+                        data-testid={`button-delete-opt-${deal.id}`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -192,6 +210,7 @@ export function OptTable({ onEdit }: OptTableProps) {
         onConfirm={() => {
           if (dealToDelete) {
             handleDelete(dealToDelete.id);
+            onDelete?.();
           }
           setDeleteDialogOpen(false);
           setDealToDelete(null);

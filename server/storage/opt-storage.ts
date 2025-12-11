@@ -1,5 +1,4 @@
-
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, or } from "drizzle-orm";
 import { db } from "../db";
 import {
   opt,
@@ -13,9 +12,28 @@ import {
 import { IOptStorage } from "./types";
 
 export class OptStorage implements IOptStorage {
-  async getOptDeals(page: number, pageSize: number): Promise<{ data: Opt[]; total: number }> {
+  async getOptDeals(page: number = 1, pageSize: number = 10, search?: string): Promise<{ data: Opt[]; total: number }> {
     const offset = (page - 1) * pageSize;
-    const data = await db.select().from(opt).orderBy(desc(opt.dealDate)).limit(pageSize).offset(offset);
+
+    let query = db.select().from(opt);
+    let countQuery = db.select({ count: sql<number>`count(*)` }).from(opt);
+
+    // Add search filter if provided
+    if (search && search.trim()) {
+      const searchPattern = `%${search.trim()}%`;
+      const searchCondition = or(
+        sql`${opt.supplierId}::text ILIKE ${searchPattern}`,
+        sql`${opt.buyerId}::text ILIKE ${searchPattern}`,
+        sql`${opt.basis}::text ILIKE ${searchPattern}`,
+        sql`${opt.vehicleNumber}::text ILIKE ${searchPattern}`,
+        sql`${opt.driverName}::text ILIKE ${searchPattern}`,
+        sql`${opt.notes}::text ILIKE ${searchPattern}`
+      );
+      query = query.where(searchCondition);
+      countQuery = countQuery.where(searchCondition);
+    }
+
+    const data = await query.orderBy(desc(opt.createdAt)).limit(pageSize).offset(offset);
 
     // Обогащаем данные именами поставщиков и покупателей
     const enrichedData = await Promise.all(
@@ -43,7 +61,7 @@ export class OptStorage implements IOptStorage {
       })
     );
 
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(opt);
+    const [countResult] = await countQuery;
     return { data: enrichedData, total: Number(countResult?.count || 0) };
   }
 
