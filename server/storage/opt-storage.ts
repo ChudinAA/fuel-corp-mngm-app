@@ -47,8 +47,6 @@ export class OptStorage implements IOptStorage {
         sql`${wholesaleSuppliers.name} ILIKE ${searchPattern}`,
         sql`${customers.name} ILIKE ${searchPattern}`,
         sql`${opt.basis}::text ILIKE ${searchPattern}`,
-        sql`${opt.vehicleNumber}::text ILIKE ${searchPattern}`,
-        sql`${opt.driverName}::text ILIKE ${searchPattern}`,
         sql`${opt.notes}::text ILIKE ${searchPattern}`,
         sql`${logisticsCarriers.name}::text ILIKE ${searchPattern}`,
         sql`${logisticsDeliveryLocations.name}::text ILIKE ${searchPattern}`

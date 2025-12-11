@@ -111,18 +111,12 @@ interface LogisticsSectionProps {
   form: UseFormReturn<OptFormData>;
   carriers?: DirectoryLogistics[];
   deliveryLocations?: DirectoryLogistics[];
-  vehicles?: DirectoryLogistics[];
-  trailers?: DirectoryLogistics[];
-  drivers?: DirectoryLogistics[];
 }
 
 export function LogisticsSection({ 
   form, 
   carriers, 
   deliveryLocations, 
-  vehicles, 
-  trailers, 
-  drivers 
 }: LogisticsSectionProps) {
   return (
     <Card>
@@ -184,87 +178,6 @@ export function LogisticsSection({
               </FormItem>
             )}
           />
-
-          <FormField
-            control={form.control}
-            name="vehicleNumber"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Госномер</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-vehicle">
-                      <SelectValue placeholder="Выберите номер" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {vehicles?.map((vehicle) => (
-                      <SelectItem key={vehicle.id} value={vehicle.name}>
-                        {vehicle.name}
-                      </SelectItem>
-                    )) || (
-                      <SelectItem value="none" disabled>Нет данных</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="trailerNumber"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Госномер ПП</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-trailer">
-                      <SelectValue placeholder="Выберите номер" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {trailers?.map((trailer) => (
-                      <SelectItem key={trailer.id} value={trailer.name}>
-                        {trailer.name}
-                      </SelectItem>
-                    )) || (
-                      <SelectItem value="none" disabled>Нет данных</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="driverName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>ФИО водителя</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-driver">
-                      <SelectValue placeholder="Выберите водителя" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {drivers?.map((driver) => (
-                      <SelectItem key={driver.id} value={driver.name}>
-                        {driver.name}
-                      </SelectItem>
-                    )) || (
-                      <SelectItem value="none" disabled>Нет данных</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
       </CardContent>
     </Card>
@@ -279,7 +192,6 @@ export function PricingSection({
   deliveryTariff, 
   deliveryCost,
   profit,
-  cumulativeProfit,
   matchingPurchasePrices,
   matchingSalePrices,
   selectedPurchasePriceId,
@@ -294,7 +206,6 @@ export function PricingSection({
   deliveryTariff: number;
   deliveryCost: number;
   profit: number;
-  cumulativeProfit: number;
   matchingPurchasePrices: Price[];
   matchingSalePrices: Price[];
   selectedPurchasePriceId: string;
@@ -385,10 +296,6 @@ export function PricingSection({
             label="Прибыль" 
             value={formatCurrency(profit)} 
             suffix=" ₽"
-          />
-          <CalculatedField 
-            label="Накопительно" 
-            value={formatCurrency(cumulativeProfit)} 
           />
         </div>
       </CardContent>

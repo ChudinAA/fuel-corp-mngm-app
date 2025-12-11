@@ -48,9 +48,6 @@ export function OptForm({
       quantityKg: "",
       carrierId: "",
       deliveryLocationId: "",
-      vehicleNumber: "",
-      trailerNumber: "",
-      driverName: "",
       notes: "",
       isApproxVolume: false,
       selectedPurchasePriceId: "",
@@ -88,9 +85,6 @@ export function OptForm({
         quantityKg: editData.quantityKg || "",
         carrierId: editData.carrierId || "",
         deliveryLocationId: editData.deliveryLocationId || "",
-        vehicleNumber: editData.vehicleNumber || "",
-        trailerNumber: editData.trailerNumber || "",
-        driverName: editData.driverName || "",
         notes: editData.notes || "",
         isApproxVolume: editData.isApproxVolume || false,
         selectedPurchasePriceId: editData.purchasePriceId || "",
@@ -116,18 +110,6 @@ export function OptForm({
 
   const { data: deliveryLocations } = useQuery<LogisticsDeliveryLocation[]>({
     queryKey: ["/api/logistics/delivery-locations"],
-  });
-
-  const { data: vehicles } = useQuery<LogisticsVehicle[]>({
-    queryKey: ["/api/logistics/vehicles"],
-  });
-
-  const { data: trailers } = useQuery<LogisticsTrailer[]>({
-    queryKey: ["/api/logistics/trailers"],
-  });
-
-  const { data: drivers } = useQuery<LogisticsDriver[]>({
-    queryKey: ["/api/logistics/drivers"],
   });
 
   const { data: allPrices } = useQuery<Price[]>({
@@ -329,26 +311,6 @@ export function OptForm({
 
   const purchaseAmount = purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
   const saleAmount = salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
-
-  const getCumulativeProfit = (): number => {
-    if (!watchDealDate || !allDeals?.data) return 0;
-
-    const currentDate = new Date(watchDealDate);
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
-
-    let cumulative = 0;
-    allDeals.data.forEach(deal => {
-      const dealDate = new Date(deal.dealDate);
-      if (dealDate.getMonth() === currentMonth && dealDate.getFullYear() === currentYear) {
-        cumulative += parseFloat(deal.profit);
-      }
-    });
-
-    return cumulative;
-  };
-
-  const cumulativeProfit = getCumulativeProfit();
 
   const profit = purchaseAmount !== null && saleAmount !== null && calculatedDeliveryCost !== null 
     ? saleAmount - purchaseAmount - calculatedDeliveryCost 
