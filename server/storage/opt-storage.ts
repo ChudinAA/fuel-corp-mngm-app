@@ -1,4 +1,4 @@
-import { eq, desc, sql, or } from "drizzle-orm";
+import { eq, desc, sql, or, and } from "drizzle-orm";
 import { db } from "../db";
 import {
   opt,
@@ -12,7 +12,18 @@ import {
 import { IOptStorage } from "./types";
 
 export class OptStorage implements IOptStorage {
-  async getOptDeals(page: number = 1, pageSize: number = 10, search?: string): Promise<{ data: Opt[]; total: number }> {
+  async getOptDeals(
+    page: number = 1,
+    pageSize: number = 10,
+    search?: string,
+    filters?: {
+      dateFrom?: string;
+      dateTo?: string;
+      supplierId?: string;
+      buyerId?: string;
+      warehouseId?: string;
+    }
+  ): Promise<{ data: Opt[]; total: number }> {
     const offset = (page - 1) * pageSize;
 
     let query = db.select({
@@ -29,19 +40,52 @@ export class OptStorage implements IOptStorage {
       .leftJoin(wholesaleSuppliers, eq(opt.supplierId, wholesaleSuppliers.id))
       .leftJoin(customers, eq(opt.buyerId, customers.id));
 
+    const conditions = [];
+
     // Add search filter if provided
     if (search && search.trim()) {
       const searchPattern = `%${search.trim()}%`;
-      const searchCondition = or(
-        sql`${wholesaleSuppliers.name} ILIKE ${searchPattern}`,
-        sql`${customers.name} ILIKE ${searchPattern}`,
-        sql`${opt.basis}::text ILIKE ${searchPattern}`,
-        sql`${opt.vehicleNumber}::text ILIKE ${searchPattern}`,
-        sql`${opt.driverName}::text ILIKE ${searchPattern}`,
-        sql`${opt.notes}::text ILIKE ${searchPattern}`
+      conditions.push(
+        or(
+          sql`${wholesaleSuppliers.name} ILIKE ${searchPattern}`,
+          sql`${customers.name} ILIKE ${searchPattern}`,
+          sql`${opt.basis}::text ILIKE ${searchPattern}`,
+          sql`${opt.vehicleNumber}::text ILIKE ${searchPattern}`,
+          sql`${opt.driverName}::text ILIKE ${searchPattern}`,
+          sql`${opt.notes}::text ILIKE ${searchPattern}`
+        )
       );
-      query = query.where(searchCondition);
-      countQuery = countQuery.where(searchCondition);
+    }
+
+    // Add date filters
+    if (filters?.dateFrom) {
+      conditions.push(sql`${opt.dealDate} >= ${filters.dateFrom}`);
+    }
+
+    if (filters?.dateTo) {
+      conditions.push(sql`${opt.dealDate} <= ${filters.dateTo}`);
+    }
+
+    // Add supplier filter
+    if (filters?.supplierId) {
+      conditions.push(eq(opt.supplierId, filters.supplierId));
+    }
+
+    // Add buyer filter
+    if (filters?.buyerId) {
+      conditions.push(eq(opt.buyerId, filters.buyerId));
+    }
+
+    // Add warehouse filter
+    if (filters?.warehouseId) {
+      conditions.push(eq(opt.warehouseId, filters.warehouseId));
+    }
+
+    // Apply all conditions
+    if (conditions.length > 0) {
+      const combinedConditions = conditions.length === 1 ? conditions[0] : sql`${sql.join(conditions, sql` AND `)}`;
+      query = query.where(combinedConditions);
+      countQuery = countQuery.where(combinedConditions);
     }
 
     const rawData = await query.orderBy(desc(opt.createdAt)).limit(pageSize).offset(offset);

@@ -1,4 +1,3 @@
-
 import type {
   User,
   InsertUser,
@@ -162,7 +161,18 @@ export interface IMovementStorage {
 }
 
 export interface IOptStorage {
-  getOptDeals(page: number, pageSize: number): Promise<{ data: Opt[]; total: number }>;
+  getOptDeals(
+    page?: number,
+    pageSize?: number,
+    search?: string,
+    filters?: {
+      dateFrom?: string;
+      dateTo?: string;
+      supplierId?: string;
+      buyerId?: string;
+      warehouseId?: string;
+    }
+  ): Promise<{ data: Opt[]; total: number }>;
   createOpt(data: InsertOpt): Promise<Opt>;
   updateOpt(id: string, data: Partial<InsertOpt>): Promise<Opt | undefined>;
   deleteOpt(id: string): Promise<boolean>;

@@ -19,18 +19,25 @@ import {
 } from "lucide-react";
 import { formatNumberForTable, formatCurrencyForTable } from "../utils";
 import { useOptTable } from "../hooks/use-opt-table";
+import { OptFiltersDialog, type OptFilters } from "./opt-filters-dialog";
+import type { DirectoryWholesale, Warehouse } from "@shared/schema";
 
 interface OptTableProps {
   onEdit: (opt: any) => void;
   onDelete?: () => void;
+  suppliers?: DirectoryWholesale[];
+  buyers?: DirectoryWholesale[];
+  warehouses?: Warehouse[];
 }
 
-export function OptTable({ onEdit, onDelete }: OptTableProps) {
+export function OptTable({ onEdit, onDelete, suppliers = [], buyers = [], warehouses = [] }: OptTableProps) {
   const {
     page,
     setPage,
     search,
     setSearch,
+    filters,
+    setFilters,
     pageSize,
     optDeals,
     isLoading,
@@ -41,6 +48,7 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dealToDelete, setDealToDelete] = useState<any>(null);
   const [searchInput, setSearchInput] = useState("");
+  const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
 
   // Debounce search input
   useEffect(() => {
@@ -51,6 +59,19 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
 
     return () => clearTimeout(timer);
   }, [searchInput, setSearch, setPage]);
+
+  const handleFiltersChange = (newFilters: OptFilters) => {
+    setFilters(newFilters);
+    setPage(1);
+  };
+
+  const hasActiveFilters = !!(
+    filters.dateFrom ||
+    filters.dateTo ||
+    filters.supplierId ||
+    filters.buyerId ||
+    filters.warehouseId
+  );
 
   const formatDate = (dateStr: string) => {
     return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
@@ -84,10 +105,10 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
           />
         </div>
         <Button 
-          variant="outline" 
+          variant={hasActiveFilters ? "default" : "outline"}
           size="icon"
-          disabled
-          title="Фильтры скоро будут доступны"
+          onClick={() => setFiltersDialogOpen(true)}
+          title="Фильтры"
         >
           <Filter className="h-4 w-4" />
         </Button>
@@ -217,6 +238,16 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
         }}
         title="Удалить сделку?"
         description="Вы уверены, что хотите удалить эту оптовую сделку? Это действие нельзя отменить."
+      />
+
+      <OptFiltersDialog
+        open={filtersDialogOpen}
+        onOpenChange={setFiltersDialogOpen}
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        suppliers={suppliers}
+        buyers={buyers}
+        warehouses={warehouses}
       />
     </div>
   );

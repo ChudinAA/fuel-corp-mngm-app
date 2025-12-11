@@ -35,6 +35,10 @@ export default function OptPage() {
     queryKey: ["/api/opt?page=1&pageSize=1000"],
   });
 
+  const { data: warehouses } = useQuery({
+    queryKey: ["/api/warehouses"],
+  });
+
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingOpt(null);
@@ -117,6 +121,9 @@ export default function OptPage() {
                 <OptTable 
                   onEdit={handleEditOpt}
                   onDelete={handleOptDeleted}
+                  suppliers={suppliers}
+                  buyers={buyers}
+                  warehouses={warehouses}
                 />
               </ScrollArea>
             </DialogContent>
@@ -126,6 +133,9 @@ export default function OptPage() {
           <OptTable 
             onEdit={handleEditOpt}
             onDelete={handleOptDeleted}
+            suppliers={suppliers}
+            buyers={buyers}
+            warehouses={warehouses}
           />
         </CardContent>
       </Card>
