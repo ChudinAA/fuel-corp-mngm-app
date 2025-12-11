@@ -18,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { 
   Plus, 
   Pencil, 
@@ -280,6 +281,8 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const { toast } = useToast();
 
   const {
@@ -470,9 +473,8 @@ export default function UsersPage() {
                               size="icon" 
                               className="h-8 w-8 text-destructive"
                               onClick={() => {
-                                if (confirm("Вы уверены, что хотите удалить этого пользователя?")) {
-                                  deleteMutation.mutate(user.id);
-                                }
+                                setUserToDelete(user);
+                                setDeleteDialogOpen(true);
                               }}
                               disabled={deleteMutation.isPending}
                             >
@@ -489,6 +491,21 @@ export default function UsersPage() {
           </div>
         </CardContent>
       </Card>
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={() => {
+          if (userToDelete) {
+            deleteMutation.mutate(userToDelete.id);
+          }
+          setDeleteDialogOpen(false);
+          setUserToDelete(null);
+        }}
+        title="Удалить пользователя?"
+        description="Вы уверены, что хотите удалить этого пользователя? Это действие нельзя отменить."
+        itemName={userToDelete ? `${userToDelete.firstName} ${userToDelete.lastName}` : undefined}
+      />
     </div>
   );
 }

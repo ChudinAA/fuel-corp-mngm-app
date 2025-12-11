@@ -1,8 +1,10 @@
 
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Pencil, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +20,8 @@ interface WarehouseCardProps {
 
 export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCardProps) {
   const { toast } = useToast();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState("");
   const balance = parseFloat(warehouse.currentBalance || "0");
   const cost = parseFloat(warehouse.averageCost || "0");
   const isInactive = !warehouse.isActive;
@@ -150,13 +154,12 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
               size="icon"
               className="h-8 w-8 text-destructive"
               onClick={() => {
-                let confirmMessage = "Вы уверены, что хотите удалить этот склад?";
                 if (warehouse.supplierId && warehouse.isActive) {
-                  confirmMessage = "Данный склад привязан к поставщику. После удаления у поставщика не будет склада. Продолжить?";
+                  setConfirmMessage("Данный склад привязан к поставщику. После удаления у поставщика не будет склада. Продолжить?");
+                } else {
+                  setConfirmMessage("Вы уверены, что хотите удалить этот склад? Это действие нельзя отменить.");
                 }
-                if (confirm(confirmMessage)) {
-                  deleteMutation.mutate(warehouse.id);
-                }
+                setDeleteDialogOpen(true);
               }}
               disabled={deleteMutation.isPending}
             >
@@ -165,6 +168,18 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
           </div>
         </div>
       </CardContent>
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={() => {
+          deleteMutation.mutate(warehouse.id);
+          setDeleteDialogOpen(false);
+        }}
+        title="Удалить склад?"
+        description={confirmMessage}
+        itemName={warehouse.name}
+      />
     </Card>
   );
 }

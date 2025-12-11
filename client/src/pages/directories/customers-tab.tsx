@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Users, Pencil, Trash2 } from "lucide-react";
 import type { Customer } from "@shared/schema";
@@ -16,6 +17,8 @@ import { AddCustomerDialog } from "./customers-dialog";
 export function CustomersTab() {
   const [search, setSearch] = useState("");
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const { toast } = useToast();
 
   const { data: customers, isLoading } = useQuery<Customer[]>({
@@ -126,9 +129,8 @@ export function CustomersTab() {
                               className="text-destructive" 
                               data-testid={`button-delete-customer-${item.id}`}
                               onClick={() => {
-                                if (confirm("Вы уверены, что хотите удалить этого покупателя?")) {
-                                  deleteMutation.mutate(item.id);
-                                }
+                                setCustomerToDelete(item);
+                                setDeleteDialogOpen(true);
                               }}
                               disabled={deleteMutation.isPending}
                             >
@@ -145,6 +147,21 @@ export function CustomersTab() {
           )}
         </div>
       </CardContent>
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={() => {
+          if (customerToDelete) {
+            deleteMutation.mutate(customerToDelete.id);
+          }
+          setDeleteDialogOpen(false);
+          setCustomerToDelete(null);
+        }}
+        title="Удалить покупателя?"
+        description="Вы уверены, что хотите удалить этого покупателя? Это действие нельзя отменить."
+        itemName={customerToDelete?.name}
+      />
     </Card>
   );
 }

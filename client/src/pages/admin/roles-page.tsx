@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { 
   Plus, 
   Pencil, 
@@ -257,6 +258,9 @@ function RoleFormDialog({
 
 export default function RolesPage() {
   const [search, setSearch] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
+  const { toast } = useToast();
 
   const { data: roles, isLoading } = useQuery<Role[]>({
     queryKey: ["/api/roles"],
@@ -384,9 +388,8 @@ export default function RolesPage() {
                                 size="icon" 
                                 className="h-8 w-8 text-destructive"
                                 onClick={() => {
-                                  if (confirm("Вы уверены, что хотите удалить эту роль?")) {
-                                    deleteMutation.mutate(role.id);
-                                  }
+                                  setRoleToDelete(role);
+                                  setDeleteDialogOpen(true);
                                 }}
                                 disabled={deleteMutation.isPending}
                               >
@@ -404,6 +407,21 @@ export default function RolesPage() {
           </div>
         </CardContent>
       </Card>
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={() => {
+          if (roleToDelete) {
+            deleteMutation.mutate(roleToDelete.id);
+          }
+          setDeleteDialogOpen(false);
+          setRoleToDelete(null);
+        }}
+        title="Удалить роль?"
+        description="Вы уверены, что хотите удалить эту роль? Это действие нельзя отменить."
+        itemName={roleToDelete?.name}
+      />
     </div>
   );
 }

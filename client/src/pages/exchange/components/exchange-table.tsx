@@ -1,7 +1,9 @@
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pencil, Trash2 } from "lucide-react";
 import type { ExchangeTableProps } from "../types";
@@ -14,6 +16,8 @@ export function ExchangeTable({
   onDelete, 
   isDeletingId 
 }: ExchangeTableProps) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<any>(null);
   return (
     <div className="border rounded-lg">
       <Table>
@@ -72,9 +76,8 @@ export function ExchangeTable({
                       size="icon" 
                       className="h-8 w-8 text-destructive"
                       onClick={() => {
-                        if (confirm("Вы уверены, что хотите удалить эту сделку?")) {
-                          onDelete(item.id);
-                        }
+                        setItemToDelete(item);
+                        setDeleteDialogOpen(true);
                       }}
                       disabled={isDeletingId === item.id}
                     >
@@ -86,6 +89,20 @@ export function ExchangeTable({
             ))
           )}
         </TableBody>
+
+        <DeleteConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={() => {
+            if (itemToDelete) {
+              onDelete(itemToDelete.id);
+            }
+            setDeleteDialogOpen(false);
+            setItemToDelete(null);
+          }}
+          title="Удалить сделку?"
+          description="Вы уверены, что хотите удалить эту биржевую сделку? Это действие нельзя отменить."
+        />
       </Table>
     </div>
   );

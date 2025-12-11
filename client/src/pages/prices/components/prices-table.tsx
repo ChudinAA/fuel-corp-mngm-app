@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Search, Pencil, Trash2, RefreshCw, CalendarCheck, AlertTriangle } from "lucide-react";
@@ -20,6 +21,8 @@ import { AddPriceDialog } from "./add-price-dialog";
 export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableProps) {
   const [search, setSearch] = useState("");
   const [editingPrice, setEditingPrice] = useState<Price | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [priceToDelete, setPriceToDelete] = useState<Price | null>(null);
   const { toast } = useToast();
 
   const { data: prices, isLoading } = useQuery<Price[]>({
@@ -187,9 +190,8 @@ export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableP
                         size="icon" 
                         className="h-8 w-8 text-destructive" 
                         onClick={() => {
-                          if (confirm("Вы уверены, что хотите удалить эту цену?")) {
-                            deleteMutation.mutate(price.id);
-                          }
+                          setPriceToDelete(price);
+                          setDeleteDialogOpen(true);
                         }}
                         disabled={deleteMutation.isPending}
                         data-testid={`button-delete-price-${price.id}`}
@@ -211,6 +213,20 @@ export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableP
           onEditComplete={() => setEditingPrice(null)}
         />
       )}
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={() => {
+          if (priceToDelete) {
+            deleteMutation.mutate(priceToDelete.id);
+          }
+          setDeleteDialogOpen(false);
+          setPriceToDelete(null);
+        }}
+        title="Удалить цену?"
+        description="Вы уверены, что хотите удалить эту цену? Это действие нельзя отменить."
+      />
       
     </div>
   );

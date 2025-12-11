@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, BookOpen, Building2, Pencil, Trash2 } from "lucide-react";
@@ -24,6 +25,8 @@ export function WholesaleTab() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<WholesaleType | "all">("all");
   const [editingItem, setEditingItem] = useState<{ type: "supplier" | "basis"; data: any } | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{ type: string; id: string; name: string; isWarehouse?: boolean } | null>(null);
   const { toast } = useToast();
 
   const { data: suppliers, isLoading: suppliersLoading } = useQuery<WholesaleSupplier[]>({
@@ -203,13 +206,13 @@ export function WholesaleTab() {
                               className="h-8 w-8 text-destructive" 
                               data-testid={`button-delete-${item.type}-${item.id}`}
                               onClick={() => {
-                                let confirmMessage = "Вы уверены, что хотите удалить эту запись?";
-                                if (item.type === "supplier" && (item as WholesaleSupplier).isWarehouse) {
-                                  confirmMessage = "Данный поставщик является складом. Удаление приведет к тому, что привязанный склад станет неактивным. Продолжить?";
-                                }
-                                if (confirm(confirmMessage)) {
-                                  deleteMutation.mutate({ type: item.type, id: item.id });
-                                }
+                                setItemToDelete({ 
+                                  type: item.type, 
+                                  id: item.id, 
+                                  name: item.name,
+                                  isWarehouse: item.type === "supplier" ? (item as WholesaleSupplier).isWarehouse : false
+                                });
+                                setDeleteDialogOpen(true);
                               }}
                               disabled={deleteMutation.isPending}
                             >
@@ -226,6 +229,25 @@ export function WholesaleTab() {
           )}
         </div>
       </CardContent>
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={() => {
+          if (itemToDelete) {
+            deleteMutation.mutate({ type: itemToDelete.type, id: itemToDelete.id });
+          }
+          setDeleteDialogOpen(false);
+          setItemToDelete(null);
+        }}
+        title="Удалить запись?"
+        description={
+          itemToDelete?.isWarehouse
+            ? "Данный поставщик является складом. Удаление приведет к тому, что привязанный склад станет неактивным. Продолжить?"
+            : "Вы уверены, что хотите удалить эту запись? Это действие нельзя отменить."
+        }
+        itemName={itemToDelete?.name}
+      />
     </Card>
   );
 }

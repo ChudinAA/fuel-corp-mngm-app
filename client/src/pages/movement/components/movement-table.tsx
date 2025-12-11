@@ -1,13 +1,17 @@
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pencil, Trash2 } from "lucide-react";
 import { formatNumber, formatCurrency, formatDate } from "../utils";
 import type { MovementTableProps } from "../types";
 
 export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }: MovementTableProps) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<any>(null);
   if (isLoading) {
     return (
       <Table>
@@ -102,9 +106,8 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
                   size="icon" 
                   className="h-8 w-8 text-destructive"
                   onClick={() => {
-                    if (confirm("Вы уверены, что хотите удалить это перемещение?")) {
-                      onDelete(item.id);
-                    }
+                    setItemToDelete(item);
+                    setDeleteDialogOpen(true);
                   }}
                   disabled={isDeleting}
                 >
@@ -115,6 +118,20 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
           </TableRow>
         ))}
       </TableBody>
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={() => {
+          if (itemToDelete) {
+            onDelete(itemToDelete.id);
+          }
+          setDeleteDialogOpen(false);
+          setItemToDelete(null);
+        }}
+        title="Удалить перемещение?"
+        description="Вы уверены, что хотите удалить это перемещение? Это действие нельзя отменить."
+      />
     </Table>
   );
 }

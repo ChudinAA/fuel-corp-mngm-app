@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Truck, Pencil, Trash2, MapPin, Car, Container, User } from "lucide-react";
@@ -26,6 +27,8 @@ export function LogisticsTab() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<LogisticsType | "all">("all");
   const [editingItem, setEditingItem] = useState<{ type: string; data: any } | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{ type: string; id: string; name: string } | null>(null);
   const { toast } = useToast();
 
   const { data: carriers, isLoading: carriersLoading } = useQuery<LogisticsCarrier[]>({
@@ -218,9 +221,8 @@ export function LogisticsTab() {
                               className="text-destructive" 
                               data-testid={`button-delete-${item.type}-${item.id}`}
                               onClick={() => {
-                                if (confirm("Вы уверены, что хотите удалить эту запись?")) {
-                                  deleteMutation.mutate({ type: item.type, id: item.id });
-                                }
+                                setItemToDelete({ type: item.type, id: item.id, name: getItemDisplayName(item) });
+                                setDeleteDialogOpen(true);
                               }}
                               disabled={deleteMutation.isPending}
                             >
@@ -237,6 +239,21 @@ export function LogisticsTab() {
           )}
         </div>
       </CardContent>
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={() => {
+          if (itemToDelete) {
+            deleteMutation.mutate({ type: itemToDelete.type, id: itemToDelete.id });
+          }
+          setDeleteDialogOpen(false);
+          setItemToDelete(null);
+        }}
+        title="Удалить запись?"
+        description="Вы уверены, что хотите удалить эту запись? Это действие нельзя отменить."
+        itemName={itemToDelete?.name}
+      />
     </Card>
   );
 }

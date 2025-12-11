@@ -1,10 +1,12 @@
 
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Truck, Pencil, Trash2 } from "lucide-react";
 import type { DeliveryCost } from "@shared/schema";
@@ -19,6 +21,8 @@ interface DeliveryTableProps {
 
 export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit }: DeliveryTableProps) {
   const { toast } = useToast();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [costToDelete, setCostToDelete] = useState<DeliveryCost | null>(null);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -90,9 +94,8 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit }: Deli
                       size="icon" 
                       className="h-8 w-8 text-destructive"
                       onClick={() => {
-                        if (confirm("Вы уверены, что хотите удалить этот тариф?")) {
-                          deleteMutation.mutate(cost.id);
-                        }
+                        setCostToDelete(cost);
+                        setDeleteDialogOpen(true);
                       }}
                       disabled={deleteMutation.isPending}
                     >
@@ -105,6 +108,20 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit }: Deli
           )}
         </TableBody>
       </Table>
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={() => {
+          if (costToDelete) {
+            deleteMutation.mutate(costToDelete.id);
+          }
+          setDeleteDialogOpen(false);
+          setCostToDelete(null);
+        }}
+        title="Удалить тариф?"
+        description="Вы уверены, что хотите удалить этот тариф доставки? Это действие нельзя отменить."
+      />
     </div>
   );
 }

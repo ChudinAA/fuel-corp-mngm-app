@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Pencil, 
@@ -34,6 +36,9 @@ export function OptTable({ onEdit }: OptTableProps) {
     deleteMutation,
     handleDelete,
   } = useOptTable();
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [dealToDelete, setDealToDelete] = useState<any>(null);
 
   const formatDate = (dateStr: string) => {
     return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
@@ -135,7 +140,10 @@ export function OptTable({ onEdit }: OptTableProps) {
                         variant="ghost" 
                         size="icon" 
                         className="h-8 w-8 text-destructive"
-                        onClick={() => handleDelete(deal.id)}
+                        onClick={() => {
+                          setDealToDelete(deal);
+                          setDeleteDialogOpen(true);
+                        }}
                         disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -177,6 +185,20 @@ export function OptTable({ onEdit }: OptTableProps) {
           </div>
         </div>
       )}
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={() => {
+          if (dealToDelete) {
+            handleDelete(dealToDelete.id);
+          }
+          setDeleteDialogOpen(false);
+          setDealToDelete(null);
+        }}
+        title="Удалить сделку?"
+        description="Вы уверены, что хотите удалить эту оптовую сделку? Это действие нельзя отменить."
+      />
     </div>
   );
 }
