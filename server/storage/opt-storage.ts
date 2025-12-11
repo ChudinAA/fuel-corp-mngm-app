@@ -36,7 +36,9 @@ export class OptStorage implements IOptStorage {
     let countQuery = db.select({ count: sql<number>`count(*)` })
       .from(opt)
       .leftJoin(wholesaleSuppliers, eq(opt.supplierId, wholesaleSuppliers.id))
-      .leftJoin(customers, eq(opt.buyerId, customers.id));
+      .leftJoin(customers, eq(opt.buyerId, customers.id))
+      .leftJoin(logisticsCarriers, eq(opt.carrierId, logisticsCarriers.id))
+      .leftJoin(logisticsDeliveryLocations, eq(opt.deliveryLocationId, logisticsDeliveryLocations.id));
 
     // Add search filter if provided
     if (search && search.trim()) {
