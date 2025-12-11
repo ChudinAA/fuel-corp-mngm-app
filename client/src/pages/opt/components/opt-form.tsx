@@ -43,8 +43,8 @@ export function OptForm({
       buyerId: "",
       warehouseId: "",
       inputMode: "kg",
-      quantityLiters: undefined,
-      density: undefined,
+      quantityLiters: "",
+      density: "",
       quantityKg: "",
       carrierId: "",
       deliveryLocationId: "",
@@ -83,8 +83,8 @@ export function OptForm({
         buyerId: buyer?.id || "",
         warehouseId: editData.warehouseId || "",
         inputMode: editData.quantityLiters ? "liters" : "kg",
-        quantityLiters: editData.quantityLiters ? editData.quantityLiters.toString() : undefined,
-        density: editData.density ? editData.density.toString() : undefined,
+        quantityLiters: editData.quantityLiters || "",
+        density: editData.density || "",
         quantityKg: editData.quantityKg || "",
         carrierId: editData.carrierId || "",
         deliveryLocationId: editData.deliveryLocationId || "",
@@ -99,7 +99,6 @@ export function OptForm({
 
       setSelectedPurchasePriceId(editData.purchasePriceId || "");
       setSelectedSalePriceId(editData.salePriceId || "");
-      setSelectedBasis(editData.basis || "");
 
       if (editData.quantityLiters) {
         setInputMode("liters");
@@ -305,14 +304,14 @@ export function OptForm({
     const cost = deliveryCosts.find(dc => {
       const matchesCarrier = dc.carrierId === watchCarrierId;
       const matchesDestination = dc.toEntityType === "delivery_location" && dc.toEntityId === watchDeliveryLocationId;
-      
+
       let matchesSource = false;
       if (warehouse && dc.fromEntityType === "warehouse" && dc.fromEntityId === warehouse.id) {
         matchesSource = true;
       } else if (base && dc.fromEntityType === "base" && dc.fromEntityId === base.id) {
         matchesSource = true;
       }
-      
+
       return matchesCarrier && matchesDestination && matchesSource && dc.isActive;
     });
 
@@ -702,14 +701,12 @@ export function OptForm({
         </Card>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <FormItem>
-            <FormLabel className="flex items-center gap-2">
-              Базис
-              {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 1 && (
+          {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 1 ? (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                Базис
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              )}
-            </FormLabel>
-            {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 1 ? (
+              </FormLabel>
               <Select 
                 value={selectedBasis} 
                 onValueChange={(value) => {
@@ -733,16 +730,13 @@ export function OptForm({
                   })}
                 </SelectContent>
               </Select>
-            ) : (
-              <FormControl>
-                <Input 
-                  value={selectedBasis || "—"}
-                  disabled
-                  className="bg-muted"
-                />
-              </FormControl>
-            )}
-          </FormItem>
+            </FormItem>
+          ) : (
+            <CalculatedField 
+              label="Базис" 
+              value={selectedBasis || "—"}
+            />
+          )}
 
           <CalculatedField 
             label="Объем на складе" 
@@ -750,18 +744,16 @@ export function OptForm({
             status={warehouseStatus.status}
           />
 
-          <FormItem>
-            <FormLabel className="flex items-center gap-2">
-              Покупка
-              {!isWarehouseSupplier && purchasePrices.length > 1 && (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              )}
-            </FormLabel>
-            {!isWarehouseSupplier && purchasePrices.length > 1 ? (
-              <FormField
-                control={form.control}
-                name="selectedPurchasePriceId"
-                render={({ field }) => (
+          {!isWarehouseSupplier && purchasePrices.length > 1 ? (
+            <FormField
+              control={form.control}
+              name="selectedPurchasePriceId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    Покупка
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  </FormLabel>
                   <Select 
                     onValueChange={(value) => { 
                       field.onChange(value); 
@@ -793,18 +785,18 @@ export function OptForm({
                       })}
                     </SelectContent>
                   </Select>
-                )}
-              />
-            ) : (
-              <FormControl>
-                <Input 
-                  value={purchasePrice !== null ? `${formatNumber(purchasePrice)} ₽/кг` : "Нет цены!"}
-                  disabled
-                  className={purchasePrice !== null ? "bg-muted" : "bg-red-50 text-red-600"}
-                />
-              </FormControl>
-            )}
-          </FormItem>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : (
+            <CalculatedField 
+              label="Покупка" 
+              value={purchasePrice !== null ? formatNumber(purchasePrice) : "Нет цены!"}
+              suffix={purchasePrice !== null ? " ₽/кг" : ""}
+              status={purchasePrice !== null ? "ok" : "error"}
+            />
+          )}
 
           <CalculatedField 
             label="Сумма закупки" 
@@ -814,18 +806,16 @@ export function OptForm({
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <FormItem>
-            <FormLabel className="flex items-center gap-2">
-              Продажа
-              {salePrices.length > 1 && (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              )}
-            </FormLabel>
-            {salePrices.length > 1 ? (
-              <FormField
-                control={form.control}
-                name="selectedSalePriceId"
-                render={({ field }) => (
+          {salePrices.length > 1 ? (
+            <FormField
+              control={form.control}
+              name="selectedSalePriceId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    Продажа
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  </FormLabel>
                   <Select 
                     onValueChange={(value) => { 
                       field.onChange(value); 
@@ -857,18 +847,18 @@ export function OptForm({
                       })}
                     </SelectContent>
                   </Select>
-                )}
-              />
-            ) : (
-              <FormControl>
-                <Input 
-                  value={salePrice !== null ? `${formatNumber(salePrice)} ₽/кг` : "Нет цены!"}
-                  disabled
-                  className={salePrice !== null ? "bg-muted" : "bg-red-50 text-red-600"}
-                />
-              </FormControl>
-            )}
-          </FormItem>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : (
+            <CalculatedField 
+              label="Продажа" 
+              value={salePrice !== null ? formatNumber(salePrice) : "Нет цены!"}
+              suffix={salePrice !== null ? " ₽/кг" : ""}
+              status={salePrice !== null ? "ok" : "error"}
+            />
+          )}
 
           <CalculatedField 
             label="Сумма продажи" 
