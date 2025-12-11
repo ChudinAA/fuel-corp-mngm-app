@@ -20,13 +20,13 @@ import {
 import { formatNumberForTable, formatCurrencyForTable } from "../utils";
 import { useOptTable } from "../hooks/use-opt-table";
 import { OptFiltersDialog, type OptFilters } from "./opt-filters-dialog";
-import type { DirectoryWholesale, Warehouse } from "@shared/schema";
+import type { DirectoryWholesale, Warehouse, Customer } from "@shared/schema";
 
 interface OptTableProps {
   onEdit: (opt: any) => void;
   onDelete?: () => void;
   suppliers?: DirectoryWholesale[];
-  buyers?: DirectoryWholesale[];
+  buyers?: Customer[];
   warehouses?: Warehouse[];
 }
 

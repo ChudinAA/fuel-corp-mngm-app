@@ -59,11 +59,11 @@ export class OptStorage implements IOptStorage {
 
     // Add date filters
     if (filters?.dateFrom) {
-      conditions.push(sql`${opt.dealDate} >= ${filters.dateFrom}`);
+      conditions.push(sql`${opt.dealDate} >= ${filters.dateFrom}::date`);
     }
 
     if (filters?.dateTo) {
-      conditions.push(sql`${opt.dealDate} <= ${filters.dateTo}`);
+      conditions.push(sql`${opt.dealDate} <= ${filters.dateTo}::date`);
     }
 
     // Add supplier filter

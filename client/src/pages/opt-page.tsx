@@ -15,11 +15,11 @@ export default function OptPage() {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: suppliers } = useQuery<DirectoryWholesale[]>({
+  const { data: allSuppliers } = useQuery<DirectoryWholesale[]>({
     queryKey: ["/api/directories/wholesale", "supplier"],
   });
 
-  const { data: buyers } = useQuery<DirectoryWholesale[]>({
+  const { data: allBuyers } = useQuery<DirectoryWholesale[]>({
     queryKey: ["/api/directories/wholesale", "buyer"],
   });
 
@@ -86,12 +86,12 @@ export default function OptPage() {
         </Button>
       </div>
 
-      <AddOptDialog 
+      <AddOptDialog
         isOpen={isDialogOpen}
         onClose={handleCloseDialog}
-        suppliers={suppliers || []} 
-        buyers={buyers || []} 
-        carriers={carriers || []} 
+        suppliers={allSuppliers || []}
+        buyers={allBuyers || []}
+        carriers={carriers || []}
         locations={locations || []}
         editOpt={editingOpt}
       />
@@ -118,11 +118,11 @@ export default function OptPage() {
                 </DialogDescription>
               </DialogHeader>
               <ScrollArea className="flex-1">
-                <OptTable 
+                <OptTable
                   onEdit={handleEditOpt}
                   onDelete={handleOptDeleted}
-                  suppliers={suppliers}
-                  buyers={buyers}
+                  suppliers={allSuppliers || []}
+                  buyers={allBuyers || []}
                   warehouses={warehouses}
                 />
               </ScrollArea>
@@ -130,11 +130,11 @@ export default function OptPage() {
           </Dialog>
         </CardHeader>
         <CardContent>
-          <OptTable 
+          <OptTable
             onEdit={handleEditOpt}
             onDelete={handleOptDeleted}
-            suppliers={suppliers}
-            buyers={buyers}
+            suppliers={allSuppliers || []}
+            buyers={allBuyers || []}
             warehouses={warehouses}
           />
         </CardContent>

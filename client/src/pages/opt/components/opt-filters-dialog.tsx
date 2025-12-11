@@ -10,7 +10,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { DirectoryWholesale, Warehouse } from "@shared/schema";
+import type { DirectoryWholesale, Warehouse, Customer } from "@shared/schema";
 
 export interface OptFilters {
   dateFrom?: Date;
@@ -26,7 +26,7 @@ interface OptFiltersDialogProps {
   filters: OptFilters;
   onFiltersChange: (filters: OptFilters) => void;
   suppliers: DirectoryWholesale[];
-  buyers: DirectoryWholesale[];
+  buyers: Customer[];
   warehouses: Warehouse[];
 }
 
