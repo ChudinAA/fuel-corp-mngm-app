@@ -225,7 +225,6 @@ export function OptForm({
       p.counterpartyId === watchBuyerId &&
       p.counterpartyType === "wholesale" &&
       p.counterpartyRole === "buyer" &&
-      p.basis === selectedBasis &&
       p.dateFrom <= dateStr &&
       p.dateTo >= dateStr &&
       p.isActive
