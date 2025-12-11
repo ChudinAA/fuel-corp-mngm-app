@@ -155,7 +155,7 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
           <TableBody>
             {deals.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground text-xs">
+                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground text-sm">
                   Нет данных для отображения
                 </TableCell>
               </TableRow>
@@ -163,7 +163,7 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
               deals.map((deal) => (
                 <TableRow key={deal.id}>
                   <TableCell className="text-xs">{formatDate(deal.dealDate)}</TableCell>
-                  <TableCell className="text-xs">
+                  <TableCell className="text-sm">
                     <TooltipProvider>
                       <div className="flex items-center gap-1.5">
                         <span>{deal.supplier?.name || 'Не указан'}</span>
@@ -180,8 +180,8 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
                       </div>
                     </TooltipProvider>
                   </TableCell>
-                  <TableCell className="text-xs">{deal.buyer?.name || 'Не указан'}</TableCell>
-                  <TableCell className="text-right font-medium text-xs">
+                  <TableCell className="text-sm">{deal.buyer?.name || 'Не указан'}</TableCell>
+                  <TableCell className="text-right font-medium text-sm">
                     <TooltipProvider>
                       <div className="flex items-center justify-end gap-1.5">
                         <span>{formatNumberForTable(deal.quantityKg)}</span>
@@ -198,14 +198,14 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
                       </div>
                     </TooltipProvider>
                   </TableCell>
-                  <TableCell className="text-right text-xs">{formatNumberForTable(deal.purchasePrice)} ₽/кг</TableCell>
-                  <TableCell className="text-right text-xs">{formatCurrencyForTable(deal.purchaseAmount)}</TableCell>
-                  <TableCell className="text-right text-xs">{formatNumberForTable(deal.salePrice)} ₽/кг</TableCell>
-                  <TableCell className="text-right text-xs">{formatCurrencyForTable(deal.saleAmount)}</TableCell>
-                  <TableCell className="text-xs">{deal.deliveryLocation?.name || '—'}</TableCell>
-                  <TableCell className="text-xs">{deal.carrier?.name || '—'}</TableCell>
-                  <TableCell className="text-right text-xs">{deal.deliveryCost ? formatCurrencyForTable(deal.deliveryCost) : '—'}</TableCell>
-                  <TableCell className="text-right text-green-600 font-medium text-xs">{formatCurrencyForTable(deal.profit)}</TableCell>
+                  <TableCell className="text-right text-sm">{formatNumberForTable(deal.purchasePrice)} ₽/кг</TableCell>
+                  <TableCell className="text-right text-sm">{formatCurrencyForTable(deal.purchaseAmount)}</TableCell>
+                  <TableCell className="text-right text-sm">{formatNumberForTable(deal.salePrice)} ₽/кг</TableCell>
+                  <TableCell className="text-right text-sm">{formatCurrencyForTable(deal.saleAmount)}</TableCell>
+                  <TableCell className="text-sm">{deal.deliveryLocation?.name || '—'}</TableCell>
+                  <TableCell className="text-sm">{deal.carrier?.name || '—'}</TableCell>
+                  <TableCell className="text-right text-sm">{deal.deliveryCost ? formatCurrencyForTable(deal.deliveryCost) : '—'}</TableCell>
+                  <TableCell className="text-right text-green-600 font-medium text-sm">{formatCurrencyForTable(deal.profit)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -219,13 +219,6 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => onEdit(deal)}
-                          data-testid={`button-edit-opt-${deal.id}`}
-                        >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Редактировать
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
                           onClick={() => {
                             setSelectedDealNotes(deal.notes || "");
                             setNotesDialogOpen(true);
@@ -233,6 +226,13 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
                         >
                           <FileText className="h-4 w-4 mr-2" />
                           Примечания
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => onEdit(deal)}
+                          data-testid={`button-edit-opt-${deal.id}`}
+                        >
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Редактировать
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
