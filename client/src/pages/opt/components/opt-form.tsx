@@ -318,7 +318,7 @@ export function OptForm({
 
   const purchasePrice = getPurchasePrice();
   const salePrice = getSalePrice();
-  const calculatedDeliveryCost = getDeliveryCostValue();
+  const calculatedDeliveryCost = getDeliveryCost();
 
   const purchaseAmount = purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
   const saleAmount = salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
