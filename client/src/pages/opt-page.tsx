@@ -15,11 +15,11 @@ export default function OptPage() {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: allSuppliers } = useQuery<DirectoryWholesale[]>({
+  const { data: suppliers } = useQuery<DirectoryWholesale[]>({
     queryKey: ["/api/directories/wholesale", "supplier"],
   });
 
-  const { data: allBuyers } = useQuery<DirectoryWholesale[]>({
+  const { data: buyers } = useQuery<DirectoryWholesale[]>({
     queryKey: ["/api/directories/wholesale", "buyer"],
   });
 
@@ -33,10 +33,6 @@ export default function OptPage() {
 
   const { data: optDeals } = useQuery<{ data: Opt[]; total: number }>({
     queryKey: ["/api/opt?page=1&pageSize=1000"],
-  });
-
-  const { data: warehouses } = useQuery({
-    queryKey: ["/api/warehouses"],
   });
 
   const handleCloseDialog = () => {
@@ -86,12 +82,12 @@ export default function OptPage() {
         </Button>
       </div>
 
-      <AddOptDialog
+      <AddOptDialog 
         isOpen={isDialogOpen}
         onClose={handleCloseDialog}
-        suppliers={allSuppliers || []}
-        buyers={allBuyers || []}
-        carriers={carriers || []}
+        suppliers={suppliers || []} 
+        buyers={buyers || []} 
+        carriers={carriers || []} 
         locations={locations || []}
         editOpt={editingOpt}
       />
@@ -118,24 +114,18 @@ export default function OptPage() {
                 </DialogDescription>
               </DialogHeader>
               <ScrollArea className="flex-1">
-                <OptTable
+                <OptTable 
                   onEdit={handleEditOpt}
                   onDelete={handleOptDeleted}
-                  suppliers={allSuppliers || []}
-                  buyers={allBuyers || []}
-                  warehouses={warehouses}
                 />
               </ScrollArea>
             </DialogContent>
           </Dialog>
         </CardHeader>
         <CardContent>
-          <OptTable
+          <OptTable 
             onEdit={handleEditOpt}
             onDelete={handleOptDeleted}
-            suppliers={allSuppliers || []}
-            buyers={allBuyers || []}
-            warehouses={warehouses}
           />
         </CardContent>
       </Card>
