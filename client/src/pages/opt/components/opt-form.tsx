@@ -43,8 +43,8 @@ export function OptForm({
       buyerId: "",
       warehouseId: "",
       inputMode: "kg",
-      quantityLiters: "",
-      density: "",
+      quantityLiters: undefined,
+      density: undefined,
       quantityKg: "",
       carrierId: "",
       deliveryLocationId: "",
@@ -83,8 +83,8 @@ export function OptForm({
         buyerId: buyer?.id || "",
         warehouseId: editData.warehouseId || "",
         inputMode: editData.quantityLiters ? "liters" : "kg",
-        quantityLiters: editData.quantityLiters || "",
-        density: editData.density || "",
+        quantityLiters: editData.quantityLiters ? editData.quantityLiters.toString() : undefined,
+        density: editData.density ? editData.density.toString() : undefined,
         quantityKg: editData.quantityKg || "",
         carrierId: editData.carrierId || "",
         deliveryLocationId: editData.deliveryLocationId || "",
@@ -99,6 +99,7 @@ export function OptForm({
 
       setSelectedPurchasePriceId(editData.purchasePriceId || "");
       setSelectedSalePriceId(editData.salePriceId || "");
+      setSelectedBasis(editData.basis || "");
 
       if (editData.quantityLiters) {
         setInputMode("liters");
@@ -298,14 +299,21 @@ export function OptForm({
 
     // Находим baseId по selectedBasis
     const base = bases?.find(b => b.name === selectedBasis);
-    if (!base) return null;
+    const warehouse = supplierWarehouse;
 
-    // Ищем тариф по baseId и destinationId
+    // Ищем тариф по baseId/warehouseId и destinationId
     const cost = deliveryCosts.find(dc => {
-      return dc.baseId === base.id &&
-        dc.destinationId === watchDeliveryLocationId &&
-        dc.carrierId === watchCarrierId &&
-        dc.isActive;
+      const matchesCarrier = dc.carrierId === watchCarrierId;
+      const matchesDestination = dc.toEntityType === "delivery_location" && dc.toEntityId === watchDeliveryLocationId;
+      
+      let matchesSource = false;
+      if (warehouse && dc.fromEntityType === "warehouse" && dc.fromEntityId === warehouse.id) {
+        matchesSource = true;
+      } else if (base && dc.fromEntityType === "base" && dc.fromEntityId === base.id) {
+        matchesSource = true;
+      }
+      
+      return matchesCarrier && matchesDestination && matchesSource && dc.isActive;
     });
 
     if (cost?.costPerKg) {
@@ -694,12 +702,14 @@ export function OptForm({
         </Card>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 1 ? (
-            <FormItem>
-              <FormLabel className="flex items-center gap-2">
-                Базис
+          <FormItem>
+            <FormLabel className="flex items-center gap-2">
+              Базис
+              {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 1 && (
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </FormLabel>
+              )}
+            </FormLabel>
+            {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 1 ? (
               <Select 
                 value={selectedBasis} 
                 onValueChange={(value) => {
@@ -723,13 +733,16 @@ export function OptForm({
                   })}
                 </SelectContent>
               </Select>
-            </FormItem>
-          ) : (
-            <CalculatedField 
-              label="Базис" 
-              value={selectedBasis || "—"}
-            />
-          )}
+            ) : (
+              <FormControl>
+                <Input 
+                  value={selectedBasis || "—"}
+                  disabled
+                  className="bg-muted"
+                />
+              </FormControl>
+            )}
+          </FormItem>
 
           <CalculatedField 
             label="Объем на складе" 
@@ -737,16 +750,18 @@ export function OptForm({
             status={warehouseStatus.status}
           />
 
-          {!isWarehouseSupplier && purchasePrices.length > 1 ? (
-            <FormField
-              control={form.control}
-              name="selectedPurchasePriceId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    Покупка
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  </FormLabel>
+          <FormItem>
+            <FormLabel className="flex items-center gap-2">
+              Покупка
+              {!isWarehouseSupplier && purchasePrices.length > 1 && (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
+            </FormLabel>
+            {!isWarehouseSupplier && purchasePrices.length > 1 ? (
+              <FormField
+                control={form.control}
+                name="selectedPurchasePriceId"
+                render={({ field }) => (
                   <Select 
                     onValueChange={(value) => { 
                       field.onChange(value); 
@@ -778,18 +793,18 @@ export function OptForm({
                       })}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          ) : (
-            <CalculatedField 
-              label="Покупка" 
-              value={purchasePrice !== null ? formatNumber(purchasePrice) : "Нет цены!"}
-              suffix={purchasePrice !== null ? " ₽/кг" : ""}
-              status={purchasePrice !== null ? "ok" : "error"}
-            />
-          )}
+                )}
+              />
+            ) : (
+              <FormControl>
+                <Input 
+                  value={purchasePrice !== null ? `${formatNumber(purchasePrice)} ₽/кг` : "Нет цены!"}
+                  disabled
+                  className={purchasePrice !== null ? "bg-muted" : "bg-red-50 text-red-600"}
+                />
+              </FormControl>
+            )}
+          </FormItem>
 
           <CalculatedField 
             label="Сумма закупки" 
@@ -799,16 +814,18 @@ export function OptForm({
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {salePrices.length > 1 ? (
-            <FormField
-              control={form.control}
-              name="selectedSalePriceId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    Продажа
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  </FormLabel>
+          <FormItem>
+            <FormLabel className="flex items-center gap-2">
+              Продажа
+              {salePrices.length > 1 && (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
+            </FormLabel>
+            {salePrices.length > 1 ? (
+              <FormField
+                control={form.control}
+                name="selectedSalePriceId"
+                render={({ field }) => (
                   <Select 
                     onValueChange={(value) => { 
                       field.onChange(value); 
@@ -840,18 +857,18 @@ export function OptForm({
                       })}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          ) : (
-            <CalculatedField 
-              label="Продажа" 
-              value={salePrice !== null ? formatNumber(salePrice) : "Нет цены!"}
-              suffix={salePrice !== null ? " ₽/кг" : ""}
-              status={salePrice !== null ? "ok" : "error"}
-            />
-          )}
+                )}
+              />
+            ) : (
+              <FormControl>
+                <Input 
+                  value={salePrice !== null ? `${formatNumber(salePrice)} ₽/кг` : "Нет цены!"}
+                  disabled
+                  className={salePrice !== null ? "bg-muted" : "bg-red-50 text-red-600"}
+                />
+              </FormControl>
+            )}
+          </FormItem>
 
           <CalculatedField 
             label="Сумма продажи" 
