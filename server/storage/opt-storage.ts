@@ -6,23 +6,32 @@ import {
   warehouseTransactions,
   wholesaleSuppliers,
   customers,
+  logisticsCarriers,
+  logisticsDeliveryLocations,
   type Opt,
   type InsertOpt,
 } from "@shared/schema";
 import { IOptStorage } from "./types";
 
 export class OptStorage implements IOptStorage {
-  async getOptDeals(page: number = 1, pageSize: number = 10, search?: string): Promise<{ data: Opt[]; total: number }> {
+  async getOptDeals(page: number = 1, pageSize: number = 10, search?: string): Promise<{ data: any[]; total: number }> {
     const offset = (page - 1) * pageSize;
 
     let query = db.select({
       opt: opt,
       supplierName: wholesaleSuppliers.name,
+      supplierIsWarehouse: wholesaleSuppliers.isWarehouse,
       buyerName: customers.name,
+      carrierName: sql<string>`${logisticsCarriers.name}`,
+      deliveryLocationName: sql<string>`${logisticsDeliveryLocations.name}`,
+      warehouseName: sql<string>`${warehouses.name}`,
     })
       .from(opt)
       .leftJoin(wholesaleSuppliers, eq(opt.supplierId, wholesaleSuppliers.id))
-      .leftJoin(customers, eq(opt.buyerId, customers.id));
+      .leftJoin(customers, eq(opt.buyerId, customers.id))
+      .leftJoin(logisticsCarriers, eq(opt.carrierId, logisticsCarriers.id))
+      .leftJoin(logisticsDeliveryLocations, eq(opt.deliveryLocationId, logisticsDeliveryLocations.id))
+      .leftJoin(warehouses, eq(opt.warehouseId, warehouses.id));
 
     let countQuery = db.select({ count: sql<number>`count(*)` })
       .from(opt)
@@ -46,11 +55,30 @@ export class OptStorage implements IOptStorage {
 
     const rawData = await query.orderBy(desc(opt.createdAt)).limit(pageSize).offset(offset);
     
-    // Преобразуем данные в нужный формат
+    // Преобразуем данные в нужный формат с полными объектами
     const data = rawData.map(row => ({
       ...row.opt,
-      supplierId: row.supplierName || row.opt.supplierId,
-      buyerId: row.buyerName || row.opt.buyerId,
+      supplier: {
+        id: row.opt.supplierId,
+        name: row.supplierName || 'Не указан',
+        isWarehouse: row.supplierIsWarehouse || false,
+      },
+      buyer: {
+        id: row.opt.buyerId,
+        name: row.buyerName || 'Не указан',
+      },
+      carrier: row.opt.carrierId ? {
+        id: row.opt.carrierId,
+        name: row.carrierName || 'Не указан',
+      } : null,
+      deliveryLocation: row.opt.deliveryLocationId ? {
+        id: row.opt.deliveryLocationId,
+        name: row.deliveryLocationName || 'Не указано',
+      } : null,
+      warehouse: row.opt.warehouseId ? {
+        id: row.opt.warehouseId,
+        name: row.warehouseName || 'Не указан',
+      } : null,
     }));
 
     const [countResult] = await countQuery;

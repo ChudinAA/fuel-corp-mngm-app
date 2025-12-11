@@ -15,8 +15,16 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
-  Filter
+  Filter,
+  Warehouse,
+  MoreVertical
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { formatNumberForTable, formatCurrencyForTable } from "../utils";
 import { useOptTable } from "../hooks/use-opt-table";
 
@@ -120,15 +128,17 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
               <TableHead className="text-right">Покупка</TableHead>
               <TableHead className="text-right">Цена прод.</TableHead>
               <TableHead className="text-right">Продажа</TableHead>
+              <TableHead>Место доставки</TableHead>
+              <TableHead>Перевозчик</TableHead>
+              <TableHead className="text-right">Доставка</TableHead>
               <TableHead className="text-right">Прибыль</TableHead>
-              <TableHead>Статус</TableHead>
-              <TableHead className="w-[80px]"></TableHead>
+              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {deals.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                   Нет данных для отображения
                 </TableCell>
               </TableRow>
@@ -136,52 +146,57 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
               deals.map((deal) => (
                 <TableRow key={deal.id}>
                   <TableCell>{formatDate(deal.dealDate)}</TableCell>
-                  <TableCell>{deal.supplierId}</TableCell>
-                  <TableCell>{deal.buyerId}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5">
+                      {deal.supplier?.isWarehouse && (
+                        <Warehouse className="h-4 w-4 text-muted-foreground flex-shrink-0" title="Склад" />
+                      )}
+                      <span>{deal.supplier?.name || 'Не указан'}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>{deal.buyer?.name || 'Не указан'}</TableCell>
                   <TableCell className="text-right font-medium">{formatNumberForTable(deal.quantityKg)}</TableCell>
                   <TableCell className="text-right">{formatNumberForTable(deal.purchasePrice)} ₽/кг</TableCell>
                   <TableCell className="text-right">{formatCurrencyForTable(deal.purchaseAmount)}</TableCell>
                   <TableCell className="text-right">{formatNumberForTable(deal.salePrice)} ₽/кг</TableCell>
                   <TableCell className="text-right">{formatCurrencyForTable(deal.saleAmount)}</TableCell>
-                  <TableCell className="text-right text-green-600">{formatCurrencyForTable(deal.profit)}</TableCell>
+                  <TableCell>{deal.deliveryLocation?.name || '—'}</TableCell>
+                  <TableCell>{deal.carrier?.name || '—'}</TableCell>
+                  <TableCell className="text-right">{deal.deliveryCost ? formatCurrencyForTable(deal.deliveryCost) : '—'}</TableCell>
+                  <TableCell className="text-right text-green-600 font-medium">{formatCurrencyForTable(deal.profit)}</TableCell>
                   <TableCell>
-                    {deal.warehouseStatus === "OK" ? (
-                      <Badge variant="outline" className="text-green-600 border-green-600">
-                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                        ОК
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        Внимание
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8"
-                        onClick={() => onEdit(deal)}
-                        data-testid={`button-edit-opt-${deal.id}`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => {
-                          setDealToDelete(deal);
-                          setDeleteDialogOpen(true);
-                        }}
-                        disabled={deleteMutation.isPending}
-                        data-testid={`button-delete-opt-${deal.id}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => onEdit(deal)}
+                          data-testid={`button-edit-opt-${deal.id}`}
+                        >
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Редактировать
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setDealToDelete(deal);
+                            setDeleteDialogOpen(true);
+                          }}
+                          disabled={deleteMutation.isPending}
+                          className="text-destructive focus:text-destructive"
+                          data-testid={`button-delete-opt-${deal.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Удалить
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))
