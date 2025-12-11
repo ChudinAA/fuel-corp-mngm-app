@@ -166,6 +166,7 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
                   <TableCell className="text-sm">
                     <TooltipProvider>
                       <div className="flex items-center gap-1.5">
+                        <span>{deal.supplier?.name || 'Не указан'}</span>
                         {deal.supplier?.isWarehouse && (
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -176,7 +177,6 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
                             </TooltipContent>
                           </Tooltip>
                         )}
-                        <span>{deal.supplier?.name || 'Не указан'}</span>
                       </div>
                     </TooltipProvider>
                   </TableCell>
@@ -191,7 +191,7 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
                               <AlertCircle className="h-4 w-4 text-red-300 flex-shrink-0 cursor-help" />
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Требует внимания</p>
+                              <p>Примерный объем</p>
                             </TooltipContent>
                           </Tooltip>
                         )}
