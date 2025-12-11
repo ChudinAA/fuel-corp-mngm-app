@@ -15,15 +15,26 @@ export class OptStorage implements IOptStorage {
   async getOptDeals(page: number = 1, pageSize: number = 10, search?: string): Promise<{ data: Opt[]; total: number }> {
     const offset = (page - 1) * pageSize;
 
-    let query = db.select().from(opt);
-    let countQuery = db.select({ count: sql<number>`count(*)` }).from(opt);
+    let query = db.select({
+      opt: opt,
+      supplierName: wholesaleSuppliers.name,
+      buyerName: customers.name,
+    })
+      .from(opt)
+      .leftJoin(wholesaleSuppliers, eq(opt.supplierId, wholesaleSuppliers.id))
+      .leftJoin(customers, eq(opt.buyerId, customers.id));
+
+    let countQuery = db.select({ count: sql<number>`count(*)` })
+      .from(opt)
+      .leftJoin(wholesaleSuppliers, eq(opt.supplierId, wholesaleSuppliers.id))
+      .leftJoin(customers, eq(opt.buyerId, customers.id));
 
     // Add search filter if provided
     if (search && search.trim()) {
       const searchPattern = `%${search.trim()}%`;
       const searchCondition = or(
-        sql`${opt.supplierId}::text ILIKE ${searchPattern}`,
-        sql`${opt.buyerId}::text ILIKE ${searchPattern}`,
+        sql`${wholesaleSuppliers.name} ILIKE ${searchPattern}`,
+        sql`${customers.name} ILIKE ${searchPattern}`,
         sql`${opt.basis}::text ILIKE ${searchPattern}`,
         sql`${opt.vehicleNumber}::text ILIKE ${searchPattern}`,
         sql`${opt.driverName}::text ILIKE ${searchPattern}`,
@@ -33,36 +44,17 @@ export class OptStorage implements IOptStorage {
       countQuery = countQuery.where(searchCondition);
     }
 
-    const data = await query.orderBy(desc(opt.createdAt)).limit(pageSize).offset(offset);
-
-    // Обогащаем данные именами поставщиков и покупателей
-    const enrichedData = await Promise.all(
-      data.map(async (deal) => {
-        let supplierName = deal.supplierId;
-        let buyerName = deal.buyerId;
-
-        // Получаем название поставщика
-        const [supplier] = await db.select().from(wholesaleSuppliers).where(eq(wholesaleSuppliers.id, deal.supplierId)).limit(1);
-        if (supplier) {
-          supplierName = supplier.name;
-        }
-
-        // Получаем название покупателя из customers
-        const [buyer] = await db.select().from(customers).where(eq(customers.id, deal.buyerId)).limit(1);
-        if (buyer) {
-          buyerName = buyer.name;
-        }
-
-        return {
-          ...deal,
-          supplierId: supplierName,
-          buyerId: buyerName
-        };
-      })
-    );
+    const rawData = await query.orderBy(desc(opt.createdAt)).limit(pageSize).offset(offset);
+    
+    // Преобразуем данные в нужный формат
+    const data = rawData.map(row => ({
+      ...row.opt,
+      supplierId: row.supplierName || row.opt.supplierId,
+      buyerId: row.buyerName || row.opt.buyerId,
+    }));
 
     const [countResult] = await countQuery;
-    return { data: enrichedData, total: Number(countResult?.count || 0) };
+    return { data, total: Number(countResult?.count || 0) };
   }
 
   async createOpt(data: InsertOpt): Promise<Opt> {
