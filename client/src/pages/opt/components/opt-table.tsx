@@ -17,7 +17,9 @@ import {
   Search,
   Filter,
   Warehouse,
-  MoreVertical
+  MoreVertical,
+  FileText,
+  AlertCircle
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -25,6 +27,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { formatNumberForTable, formatCurrencyForTable } from "../utils";
 import { useOptTable } from "../hooks/use-opt-table";
 
@@ -48,6 +63,8 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dealToDelete, setDealToDelete] = useState<any>(null);
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [selectedDealNotes, setSelectedDealNotes] = useState<string>("");
   const [searchInput, setSearchInput] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const cursorPositionRef = useRef<number>(0);
@@ -120,50 +137,75 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Дата</TableHead>
-              <TableHead>Поставщик</TableHead>
-              <TableHead>Покупатель</TableHead>
-              <TableHead className="text-right">КГ</TableHead>
-              <TableHead className="text-right">Цена пок.</TableHead>
-              <TableHead className="text-right">Покупка</TableHead>
-              <TableHead className="text-right">Цена прод.</TableHead>
-              <TableHead className="text-right">Продажа</TableHead>
-              <TableHead>Место доставки</TableHead>
-              <TableHead>Перевозчик</TableHead>
-              <TableHead className="text-right">Доставка</TableHead>
-              <TableHead className="text-right">Прибыль</TableHead>
+              <TableHead className="text-xs">Дата</TableHead>
+              <TableHead className="text-xs">Поставщик</TableHead>
+              <TableHead className="text-xs">Покупатель</TableHead>
+              <TableHead className="text-right text-xs">КГ</TableHead>
+              <TableHead className="text-right text-xs">Цена пок.</TableHead>
+              <TableHead className="text-right text-xs">Покупка</TableHead>
+              <TableHead className="text-right text-xs">Цена прод.</TableHead>
+              <TableHead className="text-right text-xs">Продажа</TableHead>
+              <TableHead className="text-xs">Место доставки</TableHead>
+              <TableHead className="text-xs">Перевозчик</TableHead>
+              <TableHead className="text-right text-xs">Доставка</TableHead>
+              <TableHead className="text-right text-xs">Прибыль</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {deals.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground text-sm">
                   Нет данных для отображения
                 </TableCell>
               </TableRow>
             ) : (
               deals.map((deal) => (
                 <TableRow key={deal.id}>
-                  <TableCell>{formatDate(deal.dealDate)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1.5">
-                      {deal.supplier?.isWarehouse && (
-                        <Warehouse className="h-4 w-4 text-muted-foreground flex-shrink-0" title="Склад" />
-                      )}
-                      <span>{deal.supplier?.name || 'Не указан'}</span>
-                    </div>
+                  <TableCell className="text-sm">{formatDate(deal.dealDate)}</TableCell>
+                  <TableCell className="text-sm">
+                    <TooltipProvider>
+                      <div className="flex items-center gap-1.5">
+                        {deal.supplier?.isWarehouse && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Warehouse className="h-4 w-4 text-sky-400 flex-shrink-0 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Склад</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                        <span>{deal.supplier?.name || 'Не указан'}</span>
+                      </div>
+                    </TooltipProvider>
                   </TableCell>
-                  <TableCell>{deal.buyer?.name || 'Не указан'}</TableCell>
-                  <TableCell className="text-right font-medium">{formatNumberForTable(deal.quantityKg)}</TableCell>
-                  <TableCell className="text-right">{formatNumberForTable(deal.purchasePrice)} ₽/кг</TableCell>
-                  <TableCell className="text-right">{formatCurrencyForTable(deal.purchaseAmount)}</TableCell>
-                  <TableCell className="text-right">{formatNumberForTable(deal.salePrice)} ₽/кг</TableCell>
-                  <TableCell className="text-right">{formatCurrencyForTable(deal.saleAmount)}</TableCell>
-                  <TableCell>{deal.deliveryLocation?.name || '—'}</TableCell>
-                  <TableCell>{deal.carrier?.name || '—'}</TableCell>
-                  <TableCell className="text-right">{deal.deliveryCost ? formatCurrencyForTable(deal.deliveryCost) : '—'}</TableCell>
-                  <TableCell className="text-right text-green-600 font-medium">{formatCurrencyForTable(deal.profit)}</TableCell>
+                  <TableCell className="text-sm">{deal.buyer?.name || 'Не указан'}</TableCell>
+                  <TableCell className="text-right font-medium text-sm">
+                    <TooltipProvider>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span>{formatNumberForTable(deal.quantityKg)}</span>
+                        {deal.isApproxVolume && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <AlertCircle className="h-4 w-4 text-red-300 flex-shrink-0 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Требует внимания</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </TooltipProvider>
+                  </TableCell>
+                  <TableCell className="text-right text-sm">{formatNumberForTable(deal.purchasePrice)} ₽/кг</TableCell>
+                  <TableCell className="text-right text-sm">{formatCurrencyForTable(deal.purchaseAmount)}</TableCell>
+                  <TableCell className="text-right text-sm">{formatNumberForTable(deal.salePrice)} ₽/кг</TableCell>
+                  <TableCell className="text-right text-sm">{formatCurrencyForTable(deal.saleAmount)}</TableCell>
+                  <TableCell className="text-sm">{deal.deliveryLocation?.name || '—'}</TableCell>
+                  <TableCell className="text-sm">{deal.carrier?.name || '—'}</TableCell>
+                  <TableCell className="text-right text-sm">{deal.deliveryCost ? formatCurrencyForTable(deal.deliveryCost) : '—'}</TableCell>
+                  <TableCell className="text-right text-green-600 font-medium text-sm">{formatCurrencyForTable(deal.profit)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -182,6 +224,15 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
                         >
                           <Pencil className="h-4 w-4 mr-2" />
                           Редактировать
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedDealNotes(deal.notes || "");
+                            setNotesDialogOpen(true);
+                          }}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          Примечания
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
@@ -248,6 +299,17 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
         title="Удалить сделку?"
         description="Вы уверены, что хотите удалить эту оптовую сделку? Это действие нельзя отменить."
       />
+
+      <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Примечания к сделке</DialogTitle>
+            <DialogDescription>
+              {selectedDealNotes ? selectedDealNotes : "Нет примечаний"}
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

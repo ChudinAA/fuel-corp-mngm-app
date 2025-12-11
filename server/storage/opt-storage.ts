@@ -47,7 +47,9 @@ export class OptStorage implements IOptStorage {
         sql`${opt.basis}::text ILIKE ${searchPattern}`,
         sql`${opt.vehicleNumber}::text ILIKE ${searchPattern}`,
         sql`${opt.driverName}::text ILIKE ${searchPattern}`,
-        sql`${opt.notes}::text ILIKE ${searchPattern}`
+        sql`${opt.notes}::text ILIKE ${searchPattern}`,
+        sql`${logisticsCarriers.name}::text ILIKE ${searchPattern}`,
+        sql`${logisticsDeliveryLocations.name}::text ILIKE ${searchPattern}`
       );
       query = query.where(searchCondition);
       countQuery = countQuery.where(searchCondition);
@@ -79,6 +81,7 @@ export class OptStorage implements IOptStorage {
         id: row.opt.warehouseId,
         name: row.warehouseName || 'Не указан',
       } : null,
+      isApproxVolume: row.opt.isApproxVolume || false,
     }));
 
     const [countResult] = await countQuery;
