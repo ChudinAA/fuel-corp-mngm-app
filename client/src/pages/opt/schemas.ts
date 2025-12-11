@@ -9,7 +9,7 @@ export const optFormSchema = z.object({
   inputMode: z.enum(["liters", "kg"]),
   quantityLiters: z.string().optional(),
   density: z.string().optional(),
-  quantityKg: z.string().min(1, "Укажите количество"),
+  quantityKg: z.string().optional(),
   carrierId: z.string().optional(),
   deliveryLocationId: z.string().optional(),
   vehicleNumber: z.string().optional(),
