@@ -31,6 +31,10 @@ export default function OptPage() {
     queryKey: ["/api/directories/logistics", "delivery_location"],
   });
 
+  const { data: optDeals } = useQuery<{ data: Opt[]; total: number }>({
+    queryKey: ["/api/opt?page=1&pageSize=1000"],
+  });
+
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingOpt(null);
