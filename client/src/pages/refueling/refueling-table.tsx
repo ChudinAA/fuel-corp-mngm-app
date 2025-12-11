@@ -1,4 +1,5 @@
 
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -6,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Pencil, 
@@ -43,6 +45,8 @@ export function RefuelingTable({
   onEdit,
 }: RefuelingTableProps) {
   const { toast } = useToast();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{ id: string } | null>(null);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -151,9 +155,8 @@ export function RefuelingTable({
                         size="icon" 
                         className="h-8 w-8 text-destructive"
                         onClick={() => {
-                          if (confirm("Вы уверены, что хотите удалить эту заправку?")) {
-                            deleteMutation.mutate(item.id);
-                          }
+                          setItemToDelete({ id: item.id });
+                          setDeleteDialogOpen(true);
                         }}
                         disabled={deleteMutation.isPending}
                       >
@@ -196,6 +199,20 @@ export function RefuelingTable({
           </div>
         </div>
       )}
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={() => {
+          if (itemToDelete) {
+            deleteMutation.mutate(itemToDelete.id);
+          }
+          setDeleteDialogOpen(false);
+          setItemToDelete(null);
+        }}
+        title="Удалить заправку?"
+        description="Вы уверены, что хотите удалить эту заправку?"
+      />
     </div>
   );
 }
