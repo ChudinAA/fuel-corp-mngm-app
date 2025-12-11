@@ -676,7 +676,10 @@ export function OptForm({
                             step="0.01"
                             placeholder="0.00"
                             data-testid="input-liters"
-                            {...field}
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            name={field.name}
                           />
                         </FormControl>
                         <FormMessage />
@@ -738,10 +741,7 @@ export function OptForm({
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 1 ? (
             <FormItem>
-              <FormLabel className="flex items-center gap-2">
-                Базис
-                <span className="text-xs text-muted-foreground">▼</span>
-              </FormLabel>
+              <FormLabel>Базис</FormLabel>
               <Select 
                 value={selectedBasis} 
                 onValueChange={(value) => {
@@ -750,7 +750,7 @@ export function OptForm({
                 }}
               >
                 <FormControl>
-                  <SelectTrigger data-testid="select-basis">
+                  <SelectTrigger data-testid="select-basis" className="relative">
                     <SelectValue placeholder="Выберите базис" />
                   </SelectTrigger>
                 </FormControl>
@@ -785,10 +785,7 @@ export function OptForm({
               name="selectedPurchasePriceId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    Покупка
-                    <span className="text-xs text-muted-foreground">▼</span>
-                  </FormLabel>
+                  <FormLabel>Покупка</FormLabel>
                   <Select 
                     onValueChange={(value) => { 
                       field.onChange(value); 
@@ -797,7 +794,7 @@ export function OptForm({
                     value={selectedPurchasePriceId || field.value}
                   >
                     <FormControl>
-                      <SelectTrigger data-testid="select-purchase-price">
+                      <SelectTrigger data-testid="select-purchase-price" className="relative">
                         <SelectValue placeholder="Выберите цену" />
                       </SelectTrigger>
                     </FormControl>
@@ -847,10 +844,7 @@ export function OptForm({
               name="selectedSalePriceId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    Продажа
-                    <span className="text-xs text-muted-foreground">▼</span>
-                  </FormLabel>
+                  <FormLabel>Продажа</FormLabel>
                   <Select 
                     onValueChange={(value) => { 
                       field.onChange(value); 
@@ -859,7 +853,7 @@ export function OptForm({
                     value={selectedSalePriceId || field.value}
                   >
                     <FormControl>
-                      <SelectTrigger data-testid="select-sale-price">
+                      <SelectTrigger data-testid="select-sale-price" className="relative">
                         <SelectValue placeholder="Выберите цену" />
                       </SelectTrigger>
                     </FormControl>
@@ -969,28 +963,50 @@ export function OptForm({
               <FormField
                 control={form.control}
                 name="deliveryLocationId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Место доставки</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-delivery-location">
-                          <SelectValue placeholder="Выберите место" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {deliveryLocations?.map((location) => (
-                          <SelectItem key={location.id} value={location.id}>
-                            {location.name}
-                          </SelectItem>
-                        )) || (
-                          <SelectItem value="none" disabled>Нет данных</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  // Фильтруем места доставки, для которых есть тарифы с выбранным перевозчиком и базисом/складом
+                  const availableLocations = deliveryLocations?.filter(location => {
+                    if (!watchCarrierId || !deliveryCosts) return true;
+                    
+                    const base = bases?.find(b => b.name === selectedBasis);
+                    const warehouse = supplierWarehouse;
+                    
+                    return deliveryCosts.some(dc => 
+                      dc.carrierId === watchCarrierId &&
+                      dc.toEntityType === "delivery_location" &&
+                      dc.toEntityId === location.id &&
+                      (
+                        (base && dc.fromEntityType === "base" && dc.fromEntityId === base.id) ||
+                        (warehouse && dc.fromEntityType === "warehouse" && dc.fromEntityId === warehouse.id)
+                      )
+                    );
+                  }) || [];
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Место доставки</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-delivery-location">
+                            <SelectValue placeholder="Выберите место" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {availableLocations.length > 0 ? (
+                            availableLocations.map((location) => (
+                              <SelectItem key={location.id} value={location.id}>
+                                {location.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>Нет доступных мест доставки</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               
