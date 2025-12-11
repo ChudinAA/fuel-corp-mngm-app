@@ -320,10 +320,6 @@ export const opt = pgTable("opt", {
   deliveryTariff: decimal("delivery_tariff", { precision: 12, scale: 4 }),
   deliveryCost: decimal("delivery_cost", { precision: 15, scale: 2 }),
   profit: decimal("profit", { precision: 15, scale: 2 }),
-  cumulativeProfit: decimal("cumulative_profit", { precision: 15, scale: 2 }),
-  vehicleNumber: text("vehicle_number"),
-  trailerNumber: text("trailer_number"),
-  driverName: text("driver_name"),
   contractNumber: text("contract_number"),
   notes: text("notes"),
   isApproxVolume: boolean("is_approx_volume").default(false),
@@ -332,6 +328,7 @@ export const opt = pgTable("opt", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
   createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // ============ AIRCRAFT REFUELING (Заправка ВС) ============
