@@ -642,8 +642,6 @@ export function OptForm({
                             placeholder="0.00"
                             data-testid="input-liters"
                             {...field}
-                            value={field.value || ""}
-                            onChange={(e) => field.onChange(e.target.value)}
                           />
                         </FormControl>
                         <FormMessage />
