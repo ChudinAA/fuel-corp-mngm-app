@@ -348,32 +348,37 @@ export function OptForm({
   const getDeliveryCostValue = (): number | null => {
     if (!watchCarrierId || !deliveryCosts || finalKg <= 0) return null;
 
-    const warehouse = warehouses?.find(w => w.id === watchWarehouseId);
-    const deliveryLocation = deliveryLocations?.find(dl => dl.id === watchDeliveryLocationId);
-
-    if (!warehouse && !deliveryLocation) return null;
-
-    // Ищем тариф для маршрута склад -> место доставки или склад -> склад
-    let cost = null;
-
-    if (warehouse && deliveryLocation) {
-      cost = deliveryCosts.find(dc =>
+    // Если есть склад поставщика, ищем тариф от склада
+    if (isWarehouseSupplier && supplierWarehouse && watchDeliveryLocationId) {
+      const cost = deliveryCosts.find(dc =>
         dc.carrierId === watchCarrierId &&
         dc.fromEntityType === "warehouse" &&
-        dc.fromEntityId === warehouse.id &&
+        dc.fromEntityId === supplierWarehouse.id &&
         dc.toEntityType === "delivery_location" &&
-        dc.toEntityId === deliveryLocation.id
+        dc.toEntityId === watchDeliveryLocationId
       );
-    } else if (warehouse) {
-      cost = deliveryCosts.find(dc =>
-        dc.carrierId === watchCarrierId &&
-        dc.fromEntityType === "warehouse" &&
-        dc.fromEntityId === warehouse.id
-      );
+      
+      if (cost && cost.costPerKg) {
+        return parseFloat(cost.costPerKg.toString()) * finalKg;
+      }
     }
 
-    if (cost && cost.costPerKg) {
-      return parseFloat(cost.costPerKg.toString()) * finalKg;
+    // Если нет склада, ищем тариф от базиса
+    if (!isWarehouseSupplier && selectedBasis && watchDeliveryLocationId) {
+      const base = bases?.find(b => b.name === selectedBasis);
+      if (base) {
+        const cost = deliveryCosts.find(dc =>
+          dc.carrierId === watchCarrierId &&
+          dc.fromEntityType === "base" &&
+          dc.fromEntityId === base.id &&
+          dc.toEntityType === "delivery_location" &&
+          dc.toEntityId === watchDeliveryLocationId
+        );
+        
+        if (cost && cost.costPerKg) {
+          return parseFloat(cost.costPerKg.toString()) * finalKg;
+        }
+      }
     }
 
     return null;
@@ -672,8 +677,7 @@ export function OptForm({
                             step="0.01"
                             placeholder="0.00"
                             data-testid="input-liters"
-                            value={field.value || ""}
-                            onChange={(e) => field.onChange(e.target.value)}
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
@@ -735,7 +739,10 @@ export function OptForm({
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 1 ? (
             <FormItem>
-              <FormLabel>Базис</FormLabel>
+              <FormLabel className="flex items-center gap-2">
+                Базис
+                <span className="text-xs text-muted-foreground">▼</span>
+              </FormLabel>
               <Select 
                 value={selectedBasis} 
                 onValueChange={(value) => {
@@ -779,7 +786,10 @@ export function OptForm({
               name="selectedPurchasePriceId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Покупка</FormLabel>
+                  <FormLabel className="flex items-center gap-2">
+                    Покупка
+                    <span className="text-xs text-muted-foreground">▼</span>
+                  </FormLabel>
                   <Select 
                     onValueChange={(value) => { 
                       field.onChange(value); 
@@ -838,7 +848,10 @@ export function OptForm({
               name="selectedSalePriceId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Продажа</FormLabel>
+                  <FormLabel className="flex items-center gap-2">
+                    Продажа
+                    <span className="text-xs text-muted-foreground">▼</span>
+                  </FormLabel>
                   <Select 
                     onValueChange={(value) => { 
                       field.onChange(value); 
