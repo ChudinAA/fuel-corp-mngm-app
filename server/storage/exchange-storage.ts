@@ -6,8 +6,9 @@ import {
   type Exchange,
   type InsertExchange,
 } from "@shared/schema";
+import { IExchangeStorage } from "./types";
 
-export class ExchangeStorage {
+export class ExchangeStorage implements IExchangeStorage {
   async getExchangeDeals(page: number, pageSize: number): Promise<{ data: Exchange[]; total: number }> {
     const offset = (page - 1) * pageSize;
     const data = await db.select().from(exchange).orderBy(desc(exchange.dealDate)).limit(pageSize).offset(offset);

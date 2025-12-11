@@ -10,8 +10,9 @@ import {
   type Movement,
   type InsertMovement,
 } from "@shared/schema";
+import { IMovementStorage } from "./types";
 
-export class MovementStorage {
+export class MovementStorage implements IMovementStorage {
   async getMovements(page: number, pageSize: number): Promise<{ data: Movement[]; total: number }> {
     const offset = (page - 1) * pageSize;
     const data = await db.select().from(movement).orderBy(desc(movement.movementDate)).limit(pageSize).offset(offset);

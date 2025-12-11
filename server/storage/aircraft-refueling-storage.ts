@@ -6,8 +6,9 @@ import {
   type AircraftRefueling,
   type InsertAircraftRefueling,
 } from "@shared/schema";
+import { IAircraftRefuelingStorage } from "./types";
 
-export class AircraftRefuelingStorage {
+export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
   async getRefuelings(page: number, pageSize: number): Promise<{ data: AircraftRefueling[]; total: number }> {
     const offset = (page - 1) * pageSize;
     const data = await db.select().from(aircraftRefueling).orderBy(desc(aircraftRefueling.refuelingDate)).limit(pageSize).offset(offset);

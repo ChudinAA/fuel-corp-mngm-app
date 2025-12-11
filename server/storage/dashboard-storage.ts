@@ -10,8 +10,9 @@ import {
   customers,
   refuelingBases,
 } from "@shared/schema";
+import { IDashboardStorage } from "./types";
 
-export class DashboardStorage {
+export class DashboardStorage implements IDashboardStorage {
   async getDashboardStats(): Promise<{
     optDealsToday: number;
     refuelingToday: number;

@@ -10,8 +10,9 @@ import {
   type InsertWarehouse,
   type WarehouseTransaction,
 } from "@shared/schema";
+import { IWarehouseStorage } from "./types";
 
-export class WarehouseStorage {
+export class WarehouseStorage implements IWarehouseStorage {
   async getAllWarehouses(): Promise<Warehouse[]> {
     const warehousesList = await db.select().from(warehouses).orderBy(asc(warehouses.name));
 

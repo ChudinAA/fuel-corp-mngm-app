@@ -10,8 +10,9 @@ import {
   type Opt,
   type InsertOpt,
 } from "@shared/schema";
+import { IOptStorage } from "./types";
 
-export class OptStorage {
+export class OptStorage implements IOptStorage {
   async getOptDeals(page: number, pageSize: number): Promise<{ data: Opt[]; total: number }> {
     const offset = (page - 1) * pageSize;
     const data = await db.select().from(opt).orderBy(desc(opt.dealDate)).limit(pageSize).offset(offset);
