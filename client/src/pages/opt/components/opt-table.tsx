@@ -137,33 +137,33 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="text-xs">Дата</TableHead>
-              <TableHead className="text-xs">Поставщик</TableHead>
-              <TableHead className="text-xs">Покупатель</TableHead>
-              <TableHead className="text-right text-xs">КГ</TableHead>
-              <TableHead className="text-right text-xs">Цена пок.</TableHead>
-              <TableHead className="text-right text-xs">Покупка</TableHead>
-              <TableHead className="text-right text-xs">Цена прод.</TableHead>
-              <TableHead className="text-right text-xs">Продажа</TableHead>
-              <TableHead className="text-xs">Место доставки</TableHead>
-              <TableHead className="text-xs">Перевозчик</TableHead>
-              <TableHead className="text-right text-xs">Доставка</TableHead>
-              <TableHead className="text-right text-xs">Прибыль</TableHead>
+              <TableHead className="text-sm font-semibold">Дата</TableHead>
+              <TableHead className="text-sm font-semibold">Поставщик</TableHead>
+              <TableHead className="text-sm font-semibold">Покупатель</TableHead>
+              <TableHead className="text-right text-sm font-semibold">КГ</TableHead>
+              <TableHead className="text-right text-sm font-semibold">Цена пок.</TableHead>
+              <TableHead className="text-right text-sm font-semibold">Покупка</TableHead>
+              <TableHead className="text-right text-sm font-semibold">Цена прод.</TableHead>
+              <TableHead className="text-right text-sm font-semibold">Продажа</TableHead>
+              <TableHead className="text-sm font-semibold">Место доставки</TableHead>
+              <TableHead className="text-sm font-semibold">Перевозчик</TableHead>
+              <TableHead className="text-right text-sm font-semibold">Доставка</TableHead>
+              <TableHead className="text-right text-sm font-semibold">Прибыль</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {deals.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground text-sm">
+                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground text-xs">
                   Нет данных для отображения
                 </TableCell>
               </TableRow>
             ) : (
               deals.map((deal) => (
                 <TableRow key={deal.id}>
-                  <TableCell className="text-sm">{formatDate(deal.dealDate)}</TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-xs">{formatDate(deal.dealDate)}</TableCell>
+                  <TableCell className="text-xs">
                     <TooltipProvider>
                       <div className="flex items-center gap-1.5">
                         <span>{deal.supplier?.name || 'Не указан'}</span>
@@ -180,8 +180,8 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
                       </div>
                     </TooltipProvider>
                   </TableCell>
-                  <TableCell className="text-sm">{deal.buyer?.name || 'Не указан'}</TableCell>
-                  <TableCell className="text-right font-medium text-sm">
+                  <TableCell className="text-xs">{deal.buyer?.name || 'Не указан'}</TableCell>
+                  <TableCell className="text-right font-medium text-xs">
                     <TooltipProvider>
                       <div className="flex items-center justify-end gap-1.5">
                         <span>{formatNumberForTable(deal.quantityKg)}</span>
@@ -198,14 +198,14 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
                       </div>
                     </TooltipProvider>
                   </TableCell>
-                  <TableCell className="text-right text-sm">{formatNumberForTable(deal.purchasePrice)} ₽/кг</TableCell>
-                  <TableCell className="text-right text-sm">{formatCurrencyForTable(deal.purchaseAmount)}</TableCell>
-                  <TableCell className="text-right text-sm">{formatNumberForTable(deal.salePrice)} ₽/кг</TableCell>
-                  <TableCell className="text-right text-sm">{formatCurrencyForTable(deal.saleAmount)}</TableCell>
-                  <TableCell className="text-sm">{deal.deliveryLocation?.name || '—'}</TableCell>
-                  <TableCell className="text-sm">{deal.carrier?.name || '—'}</TableCell>
-                  <TableCell className="text-right text-sm">{deal.deliveryCost ? formatCurrencyForTable(deal.deliveryCost) : '—'}</TableCell>
-                  <TableCell className="text-right text-green-600 font-medium text-sm">{formatCurrencyForTable(deal.profit)}</TableCell>
+                  <TableCell className="text-right text-xs">{formatNumberForTable(deal.purchasePrice)} ₽/кг</TableCell>
+                  <TableCell className="text-right text-xs">{formatCurrencyForTable(deal.purchaseAmount)}</TableCell>
+                  <TableCell className="text-right text-xs">{formatNumberForTable(deal.salePrice)} ₽/кг</TableCell>
+                  <TableCell className="text-right text-xs">{formatCurrencyForTable(deal.saleAmount)}</TableCell>
+                  <TableCell className="text-xs">{deal.deliveryLocation?.name || '—'}</TableCell>
+                  <TableCell className="text-xs">{deal.carrier?.name || '—'}</TableCell>
+                  <TableCell className="text-right text-xs">{deal.deliveryCost ? formatCurrencyForTable(deal.deliveryCost) : '—'}</TableCell>
+                  <TableCell className="text-right text-green-600 font-medium text-xs">{formatCurrencyForTable(deal.profit)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
