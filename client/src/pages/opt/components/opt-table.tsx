@@ -42,21 +42,26 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
   const [dealToDelete, setDealToDelete] = useState<any>(null);
   const [searchInput, setSearchInput] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const cursorPositionRef = useRef<number>(0);
 
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput);
       setPage(1); // Reset to first page when searching
-      
-      // Restore focus to search input after update
-      if (searchInputRef.current && document.activeElement !== searchInputRef.current) {
-        searchInputRef.current.focus();
-      }
     }, 500);
 
     return () => clearTimeout(timer);
   }, [searchInput, setSearch, setPage]);
+
+  // Restore focus and cursor position after data update
+  useEffect(() => {
+    if (searchInputRef.current && searchInput) {
+      const input = searchInputRef.current;
+      input.focus();
+      input.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current);
+    }
+  }, [optDeals]);
 
   const formatDate = (dateStr: string) => {
     return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
@@ -85,7 +90,10 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
             ref={searchInputRef}
             placeholder="Поиск по поставщику, покупателю, базису..."
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={(e) => {
+              setSearchInput(e.target.value);
+              cursorPositionRef.current = e.target.selectionStart || 0;
+            }}
             className="pl-9"
             data-testid="input-search-opt"
           />
