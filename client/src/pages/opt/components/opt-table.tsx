@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -41,12 +41,18 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dealToDelete, setDealToDelete] = useState<any>(null);
   const [searchInput, setSearchInput] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput);
       setPage(1); // Reset to first page when searching
+      
+      // Restore focus to search input after update
+      if (searchInputRef.current && document.activeElement !== searchInputRef.current) {
+        searchInputRef.current.focus();
+      }
     }, 500);
 
     return () => clearTimeout(timer);
@@ -76,6 +82,7 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
+            ref={searchInputRef}
             placeholder="Поиск по поставщику, покупателю, базису..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
