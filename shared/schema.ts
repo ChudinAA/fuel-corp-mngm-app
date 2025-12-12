@@ -13,8 +13,8 @@ export const roles = pgTable("roles", {
   permissions: text("permissions").array(),
   isDefault: boolean("is_default").default(false),
   isSystem: boolean("is_system").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -24,8 +24,8 @@ export const permissions = pgTable("permissions", {
   module: text("module").notNull(),
   action: text("action").notNull(),
   description: text("description"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -34,8 +34,8 @@ export const rolePermissions = pgTable("role_permissions", {
   id: uuid("id").defaultRandom().primaryKey(),
   roleId: uuid("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
   permissionId: uuid("permission_id").notNull().references(() => permissions.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -51,8 +51,8 @@ export const users = pgTable("users", {
   roleId: uuid("role_id").references(() => roles.id),
   isActive: boolean("is_active").default(true),
   lastLoginAt: timestamp("last_login_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
@@ -70,8 +70,8 @@ export const customers = pgTable("customers", {
   email: text("email"),
   module: text("module").notNull(), // "wholesale", "refueling", "both"
   isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -87,8 +87,8 @@ export const wholesaleSuppliers = pgTable("wholesale_suppliers", {
   isWarehouse: boolean("is_warehouse").default(false), // New field
   storageCost: decimal("storage_cost", { precision: 12, scale: 2 }), // New field
   isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -99,8 +99,8 @@ export const wholesaleBases = pgTable("wholesale_bases", {
   name: text("name").notNull(),
   location: text("location"),
   isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -119,8 +119,8 @@ export const refuelingProviders = pgTable("refueling_providers", {
   isWarehouse: boolean("is_warehouse").default(false), // New field
   storageCost: decimal("storage_cost", { precision: 12, scale: 2 }), // New field
   isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -131,8 +131,8 @@ export const refuelingBases = pgTable("refueling_bases", {
   name: text("name").notNull(),
   location: text("location"),
   isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -146,8 +146,8 @@ export const logisticsCarriers = pgTable("logistics_carriers", {
   description: text("description"),
   inn: text("inn"),
   isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -159,8 +159,8 @@ export const logisticsDeliveryLocations = pgTable("logistics_delivery_locations"
   address: text("address"),
   notes: text("notes"),
   isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -173,8 +173,8 @@ export const logisticsVehicles = pgTable("logistics_vehicles", {
   model: text("model"),
   capacityKg: decimal("capacity_kg", { precision: 12, scale: 2 }),
   isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -186,8 +186,8 @@ export const logisticsTrailers = pgTable("logistics_trailers", {
   regNumber: text("reg_number").notNull(),
   capacityKg: decimal("capacity_kg", { precision: 12, scale: 2 }),
   isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -200,8 +200,8 @@ export const logisticsDrivers = pgTable("logistics_drivers", {
   phone: text("phone"),
   licenseNumber: text("license_number"),
   isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -224,8 +224,8 @@ export const prices = pgTable("prices", {
   soldVolume: decimal("sold_volume", { precision: 15, scale: 2 }).default("0"),
   dateCheckWarning: text("date_check_warning"),
   isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -244,8 +244,8 @@ export const deliveryCost = pgTable("delivery_cost", {
   costPerKg: decimal("cost_per_kg", { precision: 12, scale: 4 }).notNull(),
   distance: decimal("distance", { precision: 10, scale: 2 }),
   isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -262,8 +262,8 @@ export const warehouses = pgTable("warehouses", {
   averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default("0"),
   storageCost: decimal("storage_cost", { precision: 12, scale: 2 }), // Moved from logistics
   isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -279,8 +279,8 @@ export const warehouseTransactions = pgTable("warehouse_transactions", {
   balanceAfter: decimal("balance_after", { precision: 15, scale: 2 }),
   averageCostBefore: decimal("average_cost_before", { precision: 12, scale: 4 }),
   averageCostAfter: decimal("average_cost_after", { precision: 12, scale: 4 }),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -298,8 +298,8 @@ export const exchange = pgTable("exchange", {
   totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
   warehouseId: uuid("warehouse_id").references(() => warehouses.id),
   notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
 });
 
@@ -326,8 +326,8 @@ export const movement = pgTable("movement", {
   trailerNumber: text("trailer_number"),
   driverName: text("driver_name"),
   notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -360,8 +360,8 @@ export const opt = pgTable("opt", {
   isApproxVolume: boolean("is_approx_volume").default(false),
   warehouseStatus: text("warehouse_status"),
   priceStatus: text("price_status"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
@@ -394,8 +394,8 @@ export const aircraftRefueling = pgTable("aircraft_refueling", {
   isApproxVolume: boolean("is_approx_volume").default(false),
   warehouseStatus: text("warehouse_status"),
   priceStatus: text("price_status"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
