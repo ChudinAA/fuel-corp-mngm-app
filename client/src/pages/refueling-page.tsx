@@ -15,23 +15,27 @@ export default function RefuelingPage() {
   const [editingRefueling, setEditingRefueling] = useState<AircraftRefueling | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const { data: allSuppliers } = useQuery<any[]>({
+  const { data: allSuppliers = [] } = useQuery<any[]>({
     queryKey: ["/api/suppliers"],
   });
 
-  const { data: allBuyers } = useQuery<any[]>({
+  const { data: allBases = [] } = useQuery<any[]>({
+    queryKey: ["/api/bases"],
+  });
+
+  const { data: allBuyers = [] } = useQuery<any[]>({
     queryKey: ["/api/customers"],
   });
 
-  // Filter suppliers and buyers for refueling module
-  const suppliers = allSuppliers?.filter(s => 
-    s.baseIds?.some((baseId: string) => {
-      // Check if any attached base is of type 'refueling'
-      return true; // For now accept all, will be filtered by baseType in backend
-    })
-  ) || [];
+  // Filter suppliers that have refueling bases attached
+  const refuelingBases = allBases.filter(b => b.baseType === 'refueling');
+  const refuelingBaseIds = new Set(refuelingBases.map(b => b.id));
+  
+  const suppliers = allSuppliers.filter(s => 
+    s.baseIds?.some((baseId: string) => refuelingBaseIds.has(baseId))
+  );
 
-  const buyers = allBuyers?.filter(b => b.module === 'refueling' || b.module === 'both') || [];
+  const buyers = allBuyers.filter(b => b.module === 'refueling' || b.module === 'both');
 
   const { data: refuelings, isLoading } = useQuery<{ data: AircraftRefueling[]; total: number }>({
     queryKey: ["/api/refueling", page, search],

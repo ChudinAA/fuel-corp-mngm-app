@@ -62,11 +62,11 @@ export function AddRefuelingDialog({
   const isEditing = !!editRefueling;
 
   const { data: allBases = [] } = useQuery<any[]>({
-    queryKey: ["/api/bases"],
+    queryKey: ["/api/bases", "refueling"],
   });
 
-  // Filter only refueling bases
-  const bases = allBases.filter(b => b.baseType === 'refueling');
+  // Bases are already filtered by backend
+  const bases = allBases;
 
 
   const form = useForm<RefuelingFormData>({
@@ -260,9 +260,52 @@ export function AddRefuelingDialog({
                 )}
               />
 
-              <CalculatedField
-                label="Базис"
-                value="Шереметьево"
+              <FormField
+                control={form.control}
+                name="basis"
+                render={({ field }) => {
+                  const watchedSupplierId = form.watch("supplierId");
+                  const supplier = suppliers?.find(s => s.id === watchedSupplierId);
+                  const supplierBases = supplier?.baseIds 
+                    ? bases.filter(b => supplier.baseIds.includes(b.id))
+                    : [];
+
+                  if (supplierBases.length === 1) {
+                    // Auto-select if only one base
+                    if (field.value !== supplierBases[0].name) {
+                      field.onChange(supplierBases[0].name);
+                    }
+                    return (
+                      <FormItem>
+                        <FormLabel>Базис</FormLabel>
+                        <FormControl>
+                          <Input value={supplierBases[0].name} disabled />
+                        </FormControl>
+                      </FormItem>
+                    );
+                  }
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Базис</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-basis">
+                            <SelectValue placeholder="Выберите базис" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {supplierBases.map((base) => (
+                            <SelectItem key={base.id} value={base.name}>
+                              {base.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField

@@ -65,7 +65,7 @@ export interface ICustomerStorage {
 }
 
 export interface IBaseStorage {
-  getAllBases(supplierId?: string): Promise<Base[]>;
+  getAllBases(baseType?: string): Promise<Base[]>;
   getBase(id: string): Promise<Base | undefined>;
   createBase(data: InsertBase): Promise<Base>;
   updateBase(id: string, data: Partial<InsertBase>): Promise<Base | undefined>;
