@@ -82,7 +82,7 @@ export class MovementStorage implements IMovementStorage {
           .set({
             currentBalance: newBalance.toFixed(2),
             averageCost: newAverageCost.toFixed(4),
-            updatedAt: new Date(),
+            updatedAt: sql`NOW()`,
             updatedById: data.createdById,
           })
           .where(eq(warehouses.id, created.toWarehouseId));
@@ -115,7 +115,7 @@ export class MovementStorage implements IMovementStorage {
         await db.update(warehouses)
           .set({
             currentBalance: newBalance.toFixed(2),
-            updatedAt: new Date(),
+            updatedAt: sql`NOW()`,
             updatedById: data.createdById
           })
           .where(eq(warehouses.id, created.fromWarehouseId));

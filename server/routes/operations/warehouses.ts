@@ -4,6 +4,7 @@ import { storage } from "../../storage/index";
 import { insertWarehouseSchema } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth } from "../middleware";
+import { sql } from "drizzle-orm";
 
 export function registerWarehousesOperationsRoutes(app: Express) {
   app.get("/api/warehouses", requireAuth, async (req, res) => {
@@ -45,7 +46,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           await storage.warehouses.updateWarehouse(item.id, {
             supplierType: "wholesale",
             supplierId: supplier.id,
-            updatedAt: new Date(),
+            updatedAt: sql`NOW()`,
             updatedById: req.session.userId,
           });
         } else if (supplierType === "refueling") {
@@ -53,7 +54,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           await storage.warehouses.updateWarehouse(item.id, {
             supplierType: "refueling",
             supplierId: supplier.id,
-            updatedAt: new Date(),
+            updatedAt: sql`NOW()`,
             updatedById: req.session.userId,
           });
         }

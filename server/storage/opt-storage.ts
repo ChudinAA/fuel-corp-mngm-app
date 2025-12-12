@@ -104,7 +104,7 @@ export class OptStorage implements IOptStorage {
         await db.update(warehouses)
           .set({
             currentBalance: newBalance.toFixed(2),
-            updatedAt: new Date(),
+            updatedAt: sql`NOW()`,
             updatedById: data.createdById
           })
           .where(eq(warehouses.id, created.warehouseId));
@@ -163,7 +163,7 @@ export class OptStorage implements IOptStorage {
           await db.update(warehouses)
             .set({ 
               currentBalance: newBalance.toFixed(2),
-              updatedAt: new Date(),
+              updatedAt: sql`NOW()`,
               updatedById: data.updatedById
             })
             .where(eq(warehouses.id, currentOpt.warehouseId));
@@ -173,7 +173,7 @@ export class OptStorage implements IOptStorage {
             .set({
               quantity: (-newQuantityKg).toString(),
               balanceAfter: newBalance.toString(),
-              updatedAt: new Date(),
+              updatedAt: sql`NOW()`,
               updatedById: data.updatedById
             })
             .where(eq(warehouseTransactions.id, currentOpt.transactionId));

@@ -57,7 +57,7 @@ export function registerDeliveryRoutes(app: Express) {
       const [updated] = await db.update(deliveryCost)
         .set({
           ...data,
-          updatedAt: new Date(),
+          updatedAt: sql`NOW()`,
           updatedById: req.session.userId,
         })
         .where(eq(deliveryCost.id, id))

@@ -527,8 +527,7 @@ export const insertOptSchema = z.object({
   warehouseStatus: z.string().nullable().optional(),
   priceStatus: z.string().nullable().optional(),
   createdById: z.string().nullable().optional(),
-  updatedById: z.string().nullable().optional(),
-  updatedAt: z.date().nullable().optional()
+  updatedById: z.string().nullable().optional()
 });
 export const insertAircraftRefuelingSchema = createInsertSchema(aircraftRefueling).omit({ id: true, createdAt: true });
 

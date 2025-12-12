@@ -25,7 +25,10 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
   }
 
   async updateRefueling(id: string, data: Partial<InsertAircraftRefueling>): Promise<AircraftRefueling | undefined> {
-    const [updated] = await db.update(aircraftRefueling).set(data).where(eq(aircraftRefueling.id, id)).returning();
+    const [updated] = await db.update(aircraftRefueling).set({
+      ...data,
+      updatedAt: sql`NOW()`
+    }).where(eq(aircraftRefueling.id, id)).returning();
     return updated;
   }
 

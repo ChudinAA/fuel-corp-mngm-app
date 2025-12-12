@@ -3,6 +3,7 @@ import { storage } from "../../storage/index";
 import { insertRefuelingProviderSchema, insertRefuelingBaseSchema } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth } from "../middleware";
+import { sql } from "drizzle-orm";
 
 export function registerRefuelingDirectoryRoutes(app: Express) {
   // ============ REFUELING PROVIDERS ============
@@ -60,7 +61,7 @@ export function registerRefuelingDirectoryRoutes(app: Express) {
       // for consistency and security, similar to how POST is handled.
       const item = await storage.refueling.updateRefuelingProvider(id, {
         ...req.body,
-        updatedAt: new Date(),
+        updatedAt: sql`NOW()`,
         updatedById: req.session.userId,
       });
       if (!item) {
@@ -138,7 +139,7 @@ export function registerRefuelingDirectoryRoutes(app: Express) {
       // Similar to providers, validate and parse req.body
       const item = await storage.refueling.updateRefuelingBase(id, {
         ...req.body,
-        updatedAt: new Date(),
+        updatedAt: sql`NOW()`,
         updatedById: req.session.userId,
       });
       if (!item) {
