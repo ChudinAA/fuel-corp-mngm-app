@@ -1,4 +1,4 @@
-import { eq, or, asc } from "drizzle-orm";
+import { eq, or, asc, sql } from "drizzle-orm";
 import { db } from "../db";
 import { customers, type Customer, type InsertCustomer } from "@shared/schema";
 import type { ICustomerStorage } from "./types";

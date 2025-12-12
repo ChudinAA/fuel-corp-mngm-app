@@ -1,5 +1,5 @@
 
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, sql } from "drizzle-orm";
 import { db } from "../db";
 import {
   logisticsCarriers,

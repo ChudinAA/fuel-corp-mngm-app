@@ -5,7 +5,7 @@ import { z } from "zod";
 import { requireAuth } from "./middleware";
 import { db } from "../db";
 import { deliveryCost } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 export function registerDeliveryRoutes(app: Express) {
 
