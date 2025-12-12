@@ -39,7 +39,6 @@ export function registerOptRoutes(app: Express) {
       const id = req.params.id;
       const item = await storage.opt.updateOpt(id, {
         ...req.body,
-        updatedAt: new Date(),
         updatedById: req.session.userId,
       });
       if (!item) {
