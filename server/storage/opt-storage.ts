@@ -137,30 +137,33 @@ export class OptStorage implements IOptStorage {
     
     if (!currentOpt) return undefined;
 
-    // Обновляем сделку
-    const [updated] = await db.update(opt).set(data).where(eq(opt.id, id)).returning();
-
     // Проверяем изменилось ли количество КГ и есть ли привязанная транзакция
     if (data.quantityKg && currentOpt.transactionId && currentOpt.warehouseId) {
       const oldQuantityKg = parseFloat(currentOpt.quantityKg);
       const newQuantityKg = parseFloat(data.quantityKg.toString());
 
       if (oldQuantityKg !== newQuantityKg) {
+        // quantityDiff показывает на сколько увеличилась продажа
+        // Если положительное - нужно списать еще больше со склада
+        // Если отрицательное - нужно вернуть обратно на склад
         const quantityDiff = newQuantityKg - oldQuantityKg;
 
-        // Получаем склад
+        // Получаем склад и текущую транзакцию
         const [warehouse] = await db.select().from(warehouses).where(eq(warehouses.id, currentOpt.warehouseId)).limit(1);
+        const [transaction] = await db.select().from(warehouseTransactions).where(eq(warehouseTransactions.id, currentOpt.transactionId)).limit(1);
 
-        if (warehouse) {
+        if (warehouse && transaction) {
           const currentBalance = parseFloat(warehouse.currentBalance || "0");
+          // Уменьшаем баланс на разницу (если quantityDiff отрицательный, баланс увеличится)
           const newBalance = Math.max(0, currentBalance - quantityDiff);
+          const balanceBefore = parseFloat(transaction.balanceBefore || "0");
 
           // Обновляем баланс склада
           await db.update(warehouses)
             .set({ currentBalance: newBalance.toFixed(2) })
             .where(eq(warehouses.id, currentOpt.warehouseId));
 
-          // Обновляем транзакцию
+          // Обновляем транзакцию - там хранится полное количество продажи (отрицательное)
           await db.update(warehouseTransactions)
             .set({
               quantity: (-newQuantityKg).toString(),
@@ -170,6 +173,9 @@ export class OptStorage implements IOptStorage {
         }
       }
     }
+
+    // Обновляем сделку
+    const [updated] = await db.update(opt).set(data).where(eq(opt.id, id)).returning();
 
     return updated;
   }
