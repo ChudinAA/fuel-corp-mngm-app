@@ -79,12 +79,8 @@ export default function WarehousesPage() {
     queryKey: ["/api/warehouses"],
   });
 
-  const { data: wholesaleBases } = useQuery<WholesaleBase[]>({
-    queryKey: ["/api/wholesale/bases"],
-  });
-
-  const { data: refuelingBases } = useQuery<RefuelingBase[]>({
-    queryKey: ["/api/refueling/bases"],
+  const { data: allBases = [] } = useQuery<any[]>({
+    queryKey: ["/api/bases"],
   });
 
   const filteredWarehouses = warehouses?.filter(w => {
@@ -104,10 +100,6 @@ export default function WarehousesPage() {
 
   const getBaseNames = (baseIds: string[] | null | undefined) => {
     if (!baseIds || baseIds.length === 0) return null;
-    const allBases = [
-      ...(wholesaleBases || []),
-      ...(refuelingBases || []),
-    ];
     return baseIds
       .map(id => allBases.find((b: any) => b.id === id)?.name)
       .filter(Boolean)

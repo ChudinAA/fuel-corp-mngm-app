@@ -61,12 +61,8 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
     queryKey: ["/api/logistics/carriers"],
   });
 
-  const { data: wholesaleBases } = useQuery<any[]>({
-    queryKey: ["/api/wholesale/bases"],
-  });
-
-  const { data: refuelingBases } = useQuery<any[]>({
-    queryKey: ["/api/refueling/bases"],
+  const { data: allBases = [] } = useQuery<any[]>({
+    queryKey: ["/api/bases"],
   });
 
   const { data: deliveryLocations } = useQuery<any[]>({
@@ -82,16 +78,14 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
 
   const fromEntities = getEntitiesByType(
     watchFromEntityType,
-    wholesaleBases,
-    refuelingBases,
+    allBases,
     warehouses,
     deliveryLocations
   );
   
   const toEntities = getEntitiesByType(
     watchToEntityType,
-    wholesaleBases,
-    refuelingBases,
+    allBases,
     warehouses,
     deliveryLocations
   );

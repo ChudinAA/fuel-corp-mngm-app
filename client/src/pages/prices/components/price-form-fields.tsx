@@ -10,12 +10,12 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { Control, FieldArrayWithId, UseFieldArrayRemove, UseFieldArrayAppend } from "react-hook-form";
 import type { PriceFormData } from "../types";
-import type { WholesaleBase, WholesaleSupplier, RefuelingProvider, RefuelingBase, Customer } from "@shared/schema";
+import type { Base, Supplier, Customer } from "@shared/schema";
 
 interface PriceFormFieldsProps {
   control: Control<PriceFormData>;
-  contractors: Array<WholesaleSupplier | RefuelingProvider | Customer>;
-  allBases: Array<WholesaleBase | RefuelingBase>;
+  contractors: Array<Supplier | Customer>;
+  allBases: Base[];
   fields: FieldArrayWithId<PriceFormData, "priceValues", "id">[];
   remove: UseFieldArrayRemove;
   append: UseFieldArrayAppend<PriceFormData, "priceValues">;
@@ -184,7 +184,7 @@ export function PriceFormFields({ control, contractors, allBases, fields, remove
                 </FormControl>
                 <SelectContent>
                   {allBases?.map((b) => (
-                    <SelectItem key={`${b.id}-${b.name}`} value={b.basis || b.name}>{b.basis || b.name}</SelectItem>
+                    <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
                   )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
                 </SelectContent>
               </Select>

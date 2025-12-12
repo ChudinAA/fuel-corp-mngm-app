@@ -7,13 +7,13 @@ export const formatNumber = (value: string | number | null) => {
 
 export const getEntitiesByType = (
   type: string,
-  bases: any[] = [],
+  allBases: any[] = [],
   warehouses: any[] = [],
   deliveryLocations: any[] = []
 ) => {
   switch (type) {
     case "base":
-      return bases;
+      return allBases;
     case "warehouse":
       return warehouses;
     case "delivery_location":
