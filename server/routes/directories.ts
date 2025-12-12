@@ -1,12 +1,13 @@
+
 import type { Express } from "express";
-import { registerCustomersRoutes } from "./directories/customers";
-import { registerBasesRoutes } from "./directories/bases";
-import { registerSuppliersRoutes } from "./directories/suppliers";
+import { registerCustomerRoutes } from "./directories/customers";
 import { registerLogisticsRoutes } from "./directories/logistics";
+import { registerSupplierRoutes } from "./directories/suppliers";
+import { registerBaseRoutes } from "./directories/bases";
 
 export function registerDirectoriesRoutes(app: Express) {
-  registerCustomersRoutes(app);
-  registerBasesRoutes(app);
-  registerSuppliersRoutes(app);
+  registerSupplierRoutes(app);
+  registerBaseRoutes(app);
+  registerCustomerRoutes(app);
   registerLogisticsRoutes(app);
 }

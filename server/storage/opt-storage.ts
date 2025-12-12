@@ -4,7 +4,7 @@ import {
   opt,
   warehouses,
   warehouseTransactions,
-  wholesaleSuppliers,
+  suppliers,
   customers,
   logisticsCarriers,
   logisticsDeliveryLocations,
@@ -19,15 +19,15 @@ export class OptStorage implements IOptStorage {
 
     let query = db.select({
       opt: opt,
-      supplierName: wholesaleSuppliers.name,
-      supplierIsWarehouse: wholesaleSuppliers.isWarehouse,
+      supplierName: suppliers.name,
+      supplierIsWarehouse: sql<boolean>`${suppliers.warehouseId} IS NOT NULL`,
       buyerName: customers.name,
       carrierName: sql<string>`${logisticsCarriers.name}`,
       deliveryLocationName: sql<string>`${logisticsDeliveryLocations.name}`,
       warehouseName: sql<string>`${warehouses.name}`,
     })
       .from(opt)
-      .leftJoin(wholesaleSuppliers, eq(opt.supplierId, wholesaleSuppliers.id))
+      .leftJoin(suppliers, eq(opt.supplierId, suppliers.id))
       .leftJoin(customers, eq(opt.buyerId, customers.id))
       .leftJoin(logisticsCarriers, eq(opt.carrierId, logisticsCarriers.id))
       .leftJoin(logisticsDeliveryLocations, eq(opt.deliveryLocationId, logisticsDeliveryLocations.id))
@@ -35,7 +35,7 @@ export class OptStorage implements IOptStorage {
 
     let countQuery = db.select({ count: sql<number>`count(*)` })
       .from(opt)
-      .leftJoin(wholesaleSuppliers, eq(opt.supplierId, wholesaleSuppliers.id))
+      .leftJoin(suppliers, eq(opt.supplierId, suppliers.id))
       .leftJoin(customers, eq(opt.buyerId, customers.id))
       .leftJoin(logisticsCarriers, eq(opt.carrierId, logisticsCarriers.id))
       .leftJoin(logisticsDeliveryLocations, eq(opt.deliveryLocationId, logisticsDeliveryLocations.id));
@@ -44,7 +44,7 @@ export class OptStorage implements IOptStorage {
     if (search && search.trim()) {
       const searchPattern = `%${search.trim()}%`;
       const searchCondition = or(
-        sql`${wholesaleSuppliers.name} ILIKE ${searchPattern}`,
+        sql`${suppliers.name} ILIKE ${searchPattern}`,
         sql`${customers.name} ILIKE ${searchPattern}`,
         sql`${opt.basis}::text ILIKE ${searchPattern}`,
         sql`${opt.notes}::text ILIKE ${searchPattern}`,

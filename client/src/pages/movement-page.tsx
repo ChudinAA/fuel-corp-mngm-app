@@ -36,18 +36,10 @@ export default function MovementPage() {
     },
   });
 
-  const { data: wholesaleSuppliers } = useQuery({
-    queryKey: ["/api/wholesale/suppliers"],
+  const { data: suppliers } = useQuery({
+    queryKey: ["/api/suppliers"],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/wholesale/suppliers");
-      return res.json();
-    },
-  });
-
-  const { data: refuelingProviders } = useQuery({
-    queryKey: ["/api/refueling/providers"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/refueling/providers");
+      const res = await apiRequest("GET", "/api/suppliers");
       return res.json();
     },
   });

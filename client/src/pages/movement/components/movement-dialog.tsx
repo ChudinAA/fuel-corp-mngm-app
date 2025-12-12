@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -172,7 +171,7 @@ export function MovementDialog({
   // Получение стоимости хранения
   const getStorageCost = (): number => {
     if (!watchToWarehouseId || kgNum <= 0) return 0;
-    
+
     const warehouse = warehouses.find(w => w.id === watchToWarehouseId);
     if (!warehouse || !warehouse.storageCost) return 0;
 

@@ -94,15 +94,13 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
   const watchDateFrom = form.watch("dateFrom");
   const watchDateTo = form.watch("dateTo");
 
-  const { data: optBases } = useQuery<WholesaleBase[]>({ queryKey: ["/api/wholesale/bases"] });
-  const { data: refuelingBases } = useQuery<RefuelingBase[]>({ queryKey: ["/api/refueling/bases"] });
-  const { data: wholesaleSuppliers } = useQuery<WholesaleSupplier[]>({ queryKey: ["/api/wholesale/suppliers"] });
-  const { data: refuelingProviders } = useQuery<RefuelingProvider[]>({ queryKey: ["/api/refueling/providers"] });
+  const { data: bases } = useQuery({ queryKey: ["/api/bases"] });
+  const { data: suppliers } = useQuery({ queryKey: ["/api/suppliers"] });
   const { data: customers } = useQuery<Customer[]>({ queryKey: ["/api/customers"] });
 
-  const allBases = [...(optBases || []), ...(refuelingBases || [])];
+  const allBases = bases || [];
   const contractors = watchCounterpartyRole === "supplier" 
-    ? [...(wholesaleSuppliers || []), ...(refuelingProviders || [])]
+    ? suppliers || []
     : customers || [];
 
   useEffect(() => {

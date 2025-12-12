@@ -55,8 +55,8 @@ export function OptForm({
     },
   });
 
-  const { data: suppliers } = useQuery<WholesaleSupplier[]>({
-    queryKey: ["/api/wholesale/suppliers"],
+  const { data: suppliers } = useQuery({
+    queryKey: ["/api/suppliers"],
   });
 
   const { data: bases } = useQuery<WholesaleBase[]>({
@@ -312,7 +312,7 @@ export function OptForm({
     : purchaseAmount !== null && saleAmount !== null 
       ? saleAmount - purchaseAmount 
       : null;
-      
+
   const deliveryTariff = calculatedDeliveryCost && finalKg > 0 ? calculatedDeliveryCost / finalKg : null;
 
   // Проверка остатка на складе
@@ -846,12 +846,12 @@ export function OptForm({
                   // Фильтруем перевозчиков, у которых есть тарифы с текущим базисом
                   const availableCarriers = carriers?.filter(carrier => {
                     if (!selectedBasis || !deliveryCosts) return true;
-                    
+
                     const base = bases?.find(b => b.name === selectedBasis);
                     if (!base) return true;
 
                     const warehouse = supplierWarehouse;
-                    
+
                     return deliveryCosts.some(dc => 
                       dc.carrierId === carrier.id &&
                       (
@@ -895,10 +895,10 @@ export function OptForm({
                   // Фильтруем места доставки, для которых есть тарифы с выбранным перевозчиком и базисом/складом
                   const availableLocations = deliveryLocations?.filter(location => {
                     if (!watchCarrierId || !deliveryCosts) return true;
-                    
+
                     const base = bases?.find(b => b.name === selectedBasis);
                     const warehouse = supplierWarehouse;
-                    
+
                     return deliveryCosts.some(dc => 
                       dc.carrierId === watchCarrierId &&
                       dc.toEntityType === "delivery_location" &&
@@ -937,7 +937,7 @@ export function OptForm({
                 }}
               />
 
-              
+
             </div>
           </CardContent>
         </Card>

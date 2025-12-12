@@ -44,8 +44,8 @@ const refuelingFormSchema = z.object({
 type RefuelingFormData = z.infer<typeof refuelingFormSchema>;
 
 interface AddRefuelingDialogProps {
-  suppliers: DirectoryRefueling[];
-  buyers: DirectoryRefueling[];
+  suppliers: any[];
+  buyers: any[];
   editRefueling: AircraftRefueling | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;

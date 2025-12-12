@@ -5,8 +5,7 @@ import {
   movement,
   warehouses,
   warehouseTransactions,
-  wholesaleSuppliers,
-  refuelingProviders,
+  suppliers,
   type Movement,
   type InsertMovement,
 } from "@shared/schema";
@@ -31,15 +30,8 @@ export class MovementStorage implements IMovementStorage {
 
         // Получаем название источника (склад или поставщик)
         if (mov.movementType === 'supply' && mov.supplierId) {
-          // Ищем в оптовых поставщиках
-          const [wholesaleSupplier] = await db.select().from(wholesaleSuppliers).where(eq(wholesaleSuppliers.id, mov.supplierId)).limit(1);
-          if (wholesaleSupplier) {
-            fromName = wholesaleSupplier.name;
-          } else {
-            // Ищем в заправочных провайдерах
-            const [refuelingProvider] = await db.select().from(refuelingProviders).where(eq(refuelingProviders.id, mov.supplierId)).limit(1);
-            fromName = refuelingProvider?.name || mov.supplierId;
-          }
+          const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, mov.supplierId)).limit(1);
+          fromName = supplier?.name || mov.supplierId;
         } else if (mov.fromWarehouseId) {
           const [fromWarehouse] = await db.select().from(warehouses).where(eq(warehouses.id, mov.fromWarehouseId)).limit(1);
           fromName = fromWarehouse?.name || mov.fromWarehouseId;

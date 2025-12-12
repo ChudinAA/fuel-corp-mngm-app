@@ -4,8 +4,7 @@ import { db } from "../db";
 import {
   warehouses,
   warehouseTransactions,
-  wholesaleBases,
-  refuelingBases,
+  bases,
   type Warehouse,
   type InsertWarehouse,
   type WarehouseTransaction,
@@ -20,16 +19,9 @@ export class WarehouseStorage implements IWarehouseStorage {
     const enrichedWarehouses = await Promise.all(
       warehousesList.map(async (wh) => {
         if (wh.baseId) {
-          // Try to find in wholesale bases first
-          const [wholesaleBase] = await db.select().from(wholesaleBases).where(eq(wholesaleBases.id, wh.baseId)).limit(1);
-          if (wholesaleBase) {
-            return { ...wh, basis: wholesaleBase.name };
-          }
-
-          // Try refueling bases
-          const [refuelingBase] = await db.select().from(refuelingBases).where(eq(refuelingBases.id, wh.baseId)).limit(1);
-          if (refuelingBase) {
-            return { ...wh, basis: refuelingBase.name };
+          const [base] = await db.select().from(bases).where(eq(bases.id, wh.baseId)).limit(1);
+          if (base) {
+            return { ...wh, basis: base.name };
           }
         }
         return wh;
@@ -45,16 +37,9 @@ export class WarehouseStorage implements IWarehouseStorage {
     if (!wh) return undefined;
 
     if (wh.baseId) {
-      // Try to find in wholesale bases first
-      const [wholesaleBase] = await db.select().from(wholesaleBases).where(eq(wholesaleBases.id, wh.baseId)).limit(1);
-      if (wholesaleBase) {
-        return { ...wh, basis: wholesaleBase.name };
-      }
-
-      // Try refueling bases
-      const [refuelingBase] = await db.select().from(refuelingBases).where(eq(refuelingBases.id, wh.baseId)).limit(1);
-      if (refuelingBase) {
-        return { ...wh, basis: refuelingBase.name };
+      const [base] = await db.select().from(bases).where(eq(bases.id, wh.baseId)).limit(1);
+      if (base) {
+        return { ...wh, basis: base.name };
       }
     }
 

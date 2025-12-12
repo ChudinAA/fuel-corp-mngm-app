@@ -37,18 +37,12 @@ export function AddWarehouseDialog({
 
   const isEditing = !!warehouseToEdit;
 
-  const { data: wholesaleBases } = useQuery<WholesaleBase[]>({
-    queryKey: ["/api/wholesale/bases"],
+  const { data: bases } = useQuery({
+    queryKey: ["/api/bases"],
   });
 
-  const { data: refuelingBases } = useQuery<RefuelingBase[]>({
-    queryKey: ["/api/refueling/bases"],
-  });
-
-  const allBases = [
-    ...(wholesaleBases?.map(b => ({ id: b.id, name: b.name, source: 'wholesale' })) || []),
-    ...(refuelingBases?.map(b => ({ id: b.id, name: b.name, source: 'refueling' })) || []),
-  ].sort((a, b) => a.name.localeCompare(b.name));
+  const allBases = (bases?.map(b => ({ id: b.id, name: b.name, baseType: b.baseType })) || [])
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const form = useForm<NewWarehouseFormValues>({
     resolver: zodResolver(newWarehouseFormSchema),
