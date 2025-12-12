@@ -103,7 +103,9 @@ export class OptStorage implements IOptStorage {
 
         await db.update(warehouses)
           .set({
-            currentBalance: newBalance.toFixed(2)
+            currentBalance: newBalance.toFixed(2),
+            updatedAt: new Date(),
+            updatedById: data.createdById
           })
           .where(eq(warehouses.id, created.warehouseId));
 
@@ -118,7 +120,7 @@ export class OptStorage implements IOptStorage {
           balanceAfter: newBalance.toString(),
           averageCostBefore: warehouse.averageCost || "0",
           averageCostAfter: warehouse.averageCost || "0",
-          transactionDate: created.dealDate,
+          createdById: data.createdById
         }).returning();
 
         // Сохраняем ID транзакции в сделке
@@ -156,11 +158,14 @@ export class OptStorage implements IOptStorage {
           const currentBalance = parseFloat(warehouse.currentBalance || "0");
           // Уменьшаем баланс на разницу (если quantityDiff отрицательный, баланс увеличится)
           const newBalance = Math.max(0, currentBalance - quantityDiff);
-          const balanceBefore = parseFloat(transaction.balanceBefore || "0");
 
           // Обновляем баланс склада
           await db.update(warehouses)
-            .set({ currentBalance: newBalance.toFixed(2) })
+            .set({ 
+              currentBalance: newBalance.toFixed(2),
+              updatedAt: new Date(),
+              updatedById: data.updatedById
+            })
             .where(eq(warehouses.id, currentOpt.warehouseId));
 
           // Обновляем транзакцию - там хранится полное количество продажи (отрицательное)
@@ -168,6 +173,8 @@ export class OptStorage implements IOptStorage {
             .set({
               quantity: (-newQuantityKg).toString(),
               balanceAfter: newBalance.toString(),
+              updatedAt: new Date(),
+              updatedById: data.updatedById
             })
             .where(eq(warehouseTransactions.id, currentOpt.transactionId));
         }

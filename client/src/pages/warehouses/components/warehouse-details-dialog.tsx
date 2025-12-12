@@ -136,7 +136,7 @@ export function WarehouseDetailsDialog({
                 {transactions.map((tx) => (
                   <TableRow key={tx.id}>
                     <TableCell className="whitespace-nowrap">
-                      {format(new Date(tx.transactionDate), "dd.MM.yyyy", { locale: ru })}
+                      {format(new Date(tx.createdAt), "dd.MM.yyyy", { locale: ru })}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

@@ -68,8 +68,8 @@ export class PriceStorage implements IPriceStorage {
         and(
           eq(opt.supplierId, counterpartyId),
           eq(opt.basis, basis),
-          sql`${opt.dealDate} >= ${dateFrom}`,
-          sql`${opt.dealDate} <= ${dateTo}`
+          sql`${opt.createdAt} >= ${dateFrom}`,
+          sql`${opt.createdAt} <= ${dateTo}`
         )
       );
 
@@ -79,8 +79,8 @@ export class PriceStorage implements IPriceStorage {
         and(
           eq(opt.buyerId, counterpartyId),
           eq(opt.basis, basis),
-          sql`${opt.dealDate} >= ${dateFrom}`,
-          sql`${opt.dealDate} <= ${dateTo}`
+          sql`${opt.createdAt} >= ${dateFrom}`,
+          sql`${opt.createdAt} <= ${dateTo}`
         )
       );
 

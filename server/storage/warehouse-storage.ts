@@ -81,7 +81,7 @@ export class WarehouseStorage implements IWarehouseStorage {
       .select()
       .from(warehouseTransactions)
       .where(eq(warehouseTransactions.warehouseId, warehouseId))
-      .orderBy(desc(warehouseTransactions.transactionDate), desc(warehouseTransactions.createdAt));
+      .orderBy(desc(warehouseTransactions.createdAt));
 
     // Маппим поля из БД в формат для фронтенда
     return transactions.map(tx => ({
@@ -95,7 +95,6 @@ export class WarehouseStorage implements IWarehouseStorage {
       balanceAfter: tx.balanceAfter || "0",
       averageCostBefore: tx.averageCostBefore || "0",
       averageCostAfter: tx.averageCostAfter || "0",
-      transactionDate: tx.transactionDate,
       createdAt: tx.createdAt,
     }));
   }

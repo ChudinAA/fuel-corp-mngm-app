@@ -38,7 +38,7 @@ export function OptForm({
   const form = useForm<OptFormData>({
     resolver: zodResolver(optFormSchema),
     defaultValues: {
-      dealDate: editData ? new Date(editData.dealDate) : new Date(),
+      dealDate: editData ? new Date(editData.createdAt) : new Date(),
       supplierId: "",
       buyerId: "",
       warehouseId: "",
@@ -75,7 +75,7 @@ export function OptForm({
       const buyer = customers.find(c => c.name === editData.buyerId || c.id === editData.buyerId);
 
       form.reset({
-        dealDate: new Date(editData.dealDate),
+        dealDate: new Date(editData.createdAt),
         supplierId: supplier?.id || "",
         buyerId: buyer?.id || "",
         warehouseId: editData.warehouseId || "",
@@ -120,10 +120,6 @@ export function OptForm({
     queryKey: ["/api/delivery-costs"],
   });
 
-  const { data: allDeals } = useQuery<{ data: Opt[] }>({
-    queryKey: ["/api/opt"],
-  });
-
   const watchSupplierId = form.watch("supplierId");
   const watchBuyerId = form.watch("buyerId");
   const watchDealDate = form.watch("dealDate");
@@ -132,7 +128,6 @@ export function OptForm({
   const watchKg = form.watch("quantityKg");
   const watchCarrierId = form.watch("carrierId");
   const watchDeliveryLocationId = form.watch("deliveryLocationId");
-  const watchWarehouseId = form.watch("warehouseId");
 
   // Вычисление КГ
   const calculatedKg = inputMode === "liters" && watchLiters && watchDensity

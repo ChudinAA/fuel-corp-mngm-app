@@ -271,7 +271,6 @@ export const warehouses = pgTable("warehouses", {
 export const warehouseTransactions = pgTable("warehouse_transactions", {
   id: uuid("id").defaultRandom().primaryKey(),
   warehouseId: uuid("warehouse_id").notNull().references(() => warehouses.id),
-  transactionDate: date("transaction_date").notNull(),
   transactionType: text("transaction_type").notNull(),
   quantity: decimal("quantity", { precision: 15, scale: 2 }).notNull(),
   sourceType: text("source_type"),
@@ -337,7 +336,6 @@ export const movement = pgTable("movement", {
 
 export const opt = pgTable("opt", {
   id: uuid("id").defaultRandom().primaryKey(),
-  dealDate: date("deal_date").notNull(),
   supplierId: uuid("supplier_id").notNull(),
   buyerId: uuid("buyer_id").notNull(),
   warehouseId: uuid("warehouse_id").references(() => warehouses.id),
@@ -505,7 +503,6 @@ export const insertMovementSchema = z.object({
   createdById: z.string().nullable().optional(),
 });
 export const insertOptSchema = z.object({
-  dealDate: z.string(),
   supplierId: z.string(),
   buyerId: z.string(),
   warehouseId: z.string().nullable().optional(),
@@ -530,6 +527,8 @@ export const insertOptSchema = z.object({
   warehouseStatus: z.string().nullable().optional(),
   priceStatus: z.string().nullable().optional(),
   createdById: z.string().nullable().optional(),
+  updatedById: z.string().nullable().optional(),
+  updatedAt: z.date().nullable().optional()
 });
 export const insertAircraftRefuelingSchema = createInsertSchema(aircraftRefueling).omit({ id: true, createdAt: true });
 

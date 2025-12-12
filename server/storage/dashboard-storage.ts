@@ -33,7 +33,7 @@ export class DashboardStorage implements IDashboardStorage {
     const [optTodayResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(opt)
-      .where(eq(opt.dealDate, todayStr));
+      .where(eq(opt.createdAt, todayStr));
     const optDealsToday = Number(optTodayResult?.count || 0);
 
     // Заправки ВС сегодня
@@ -58,7 +58,7 @@ export class DashboardStorage implements IDashboardStorage {
     const [optProfitResult] = await db
       .select({ total: sql<number>`sum(CAST(${opt.profit} AS DECIMAL))` })
       .from(opt)
-      .where(sql`${opt.dealDate} >= ${monthStartStr}`);
+      .where(sql`${opt.createdAt} >= ${monthStartStr}`);
     
     const [refuelingProfitResult] = await db
       .select({ total: sql<number>`sum(CAST(${aircraftRefueling.profit} AS DECIMAL))` })
@@ -82,7 +82,7 @@ export class DashboardStorage implements IDashboardStorage {
     const [volumeResult] = await db
       .select({ total: sql<number>`sum(CAST(${opt.quantityKg} AS DECIMAL))` })
       .from(opt)
-      .where(sql`${opt.dealDate} >= ${monthStartStr}`);
+      .where(sql`${opt.createdAt} >= ${monthStartStr}`);
     const totalVolumeSold = Number(volumeResult?.total || 0);
 
     return {
@@ -188,7 +188,7 @@ export class DashboardStorage implements IDashboardStorage {
     const [optWeekResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(opt)
-      .where(sql`${opt.dealDate} >= ${weekAgoStr}`);
+      .where(sql`${opt.createdAt} >= ${weekAgoStr}`);
     const optDealsWeek = Number(optWeekResult?.count || 0);
 
     // Заправки за неделю
@@ -202,14 +202,14 @@ export class DashboardStorage implements IDashboardStorage {
     const [volumeWeekResult] = await db
       .select({ total: sql<number>`sum(CAST(${opt.quantityKg} AS DECIMAL))` })
       .from(opt)
-      .where(sql`${opt.dealDate} >= ${weekAgoStr}`);
+      .where(sql`${opt.createdAt} >= ${weekAgoStr}`);
     const volumeSoldWeek = Number(volumeWeekResult?.total || 0);
 
     // Прибыль за неделю
     const [optProfitWeek] = await db
       .select({ total: sql<number>`sum(CAST(${opt.profit} AS DECIMAL))` })
       .from(opt)
-      .where(sql`${opt.dealDate} >= ${weekAgoStr}`);
+      .where(sql`${opt.createdAt} >= ${weekAgoStr}`);
     
     const [refuelingProfitWeek] = await db
       .select({ total: sql<number>`sum(CAST(${aircraftRefueling.profit} AS DECIMAL))` })

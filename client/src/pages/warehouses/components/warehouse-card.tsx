@@ -59,7 +59,7 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
     let expense = 0;
 
     transactions.forEach(tx => {
-      const txDate = new Date(tx.transactionDate);
+      const txDate = new Date(tx.createdAt);
       if (txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear) {
         const qty = parseFloat(tx.quantityKg);
         if (qty > 0) {

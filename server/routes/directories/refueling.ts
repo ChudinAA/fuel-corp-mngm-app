@@ -38,6 +38,7 @@ export function registerRefuelingDirectoryRoutes(app: Express) {
           supplierId: item.id,
           storageCost: data.storageCost || null,
           isActive: data.isActive ?? true,
+          createdById: req.session.userId,
         });
       }
 

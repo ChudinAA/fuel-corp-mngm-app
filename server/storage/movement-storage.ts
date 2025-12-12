@@ -81,7 +81,9 @@ export class MovementStorage implements IMovementStorage {
         await db.update(warehouses)
           .set({
             currentBalance: newBalance.toFixed(2),
-            averageCost: newAverageCost.toFixed(4)
+            averageCost: newAverageCost.toFixed(4),
+            updatedAt: new Date(),
+            updatedById: data.createdById,
           })
           .where(eq(warehouses.id, created.toWarehouseId));
 
@@ -96,7 +98,7 @@ export class MovementStorage implements IMovementStorage {
           balanceAfter: newBalance.toString(),
           averageCostBefore: currentCost.toString(),
           averageCostAfter: newAverageCost.toString(),
-          transactionDate: created.movementDate,
+          createdById: data.createdById,
         });
       }
     }
@@ -112,7 +114,9 @@ export class MovementStorage implements IMovementStorage {
 
         await db.update(warehouses)
           .set({
-            currentBalance: newBalance.toFixed(2)
+            currentBalance: newBalance.toFixed(2),
+            updatedAt: new Date(),
+            updatedById: data.createdById
           })
           .where(eq(warehouses.id, created.fromWarehouseId));
 
@@ -127,7 +131,7 @@ export class MovementStorage implements IMovementStorage {
           balanceAfter: newBalance.toString(),
           averageCostBefore: currentCost.toString(),
           averageCostAfter: currentCost.toString(),
-          transactionDate: created.movementDate,
+          createdById: data.createdById
         });
       }
     }

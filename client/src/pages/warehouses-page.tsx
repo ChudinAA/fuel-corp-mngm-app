@@ -53,7 +53,6 @@ interface WarehouseTransaction {
   balanceAfter: string;
   averageCostBefore: string;
   averageCostAfter: string;
-  transactionDate: string;
   createdAt: string;
 }
 

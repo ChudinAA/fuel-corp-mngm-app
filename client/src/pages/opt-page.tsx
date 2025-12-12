@@ -56,7 +56,7 @@ export default function OptPage() {
 
   // Вычисление накопительной прибыли за текущий месяц
   const cumulativeProfit = optDeals?.data?.reduce((sum, deal) => {
-    const dealDate = new Date(deal.dealDate);
+    const dealDate = new Date(deal.createdAt);
     const now = new Date();
     if (dealDate.getMonth() === now.getMonth() && dealDate.getFullYear() === now.getFullYear()) {
       return sum + parseFloat(deal.profit || "0");

@@ -162,7 +162,7 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
             ) : (
               deals.map((deal) => (
                 <TableRow key={deal.id}>
-                  <TableCell className="text-xs">{formatDate(deal.dealDate)}</TableCell>
+                  <TableCell className="text-xs">{formatDate(deal.createdAt)}</TableCell>
                   <TableCell className="text-sm">
                     <TooltipProvider>
                       <div className="flex items-center gap-1.5">
