@@ -6,9 +6,9 @@ import {
   aircraftRefueling,
   warehouses,
   movement,
-  wholesaleSuppliers,
+  suppliers,
   customers,
-  refuelingBases,
+  bases,
 } from "@shared/schema";
 import { IDashboardStorage } from "./types";
 
@@ -106,7 +106,7 @@ export class DashboardStorage implements IDashboardStorage {
       .limit(3);
 
     for (const deal of optDeals) {
-      const [supplier] = await db.select().from(wholesaleSuppliers).where(eq(wholesaleSuppliers.id, deal.supplierId)).limit(1);
+      const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, deal.supplierId)).limit(1);
       const [buyer] = await db.select().from(customers).where(eq(customers.id, deal.buyerId)).limit(1);
       
       operations.push({
@@ -125,10 +125,9 @@ export class DashboardStorage implements IDashboardStorage {
       .limit(2);
 
     for (const refueling of refuelings) {
-      const [base] = await db.select().from(refuelingBases).where(eq(refuelingBases.id, refueling.baseId)).limit(1);
       operations.push({
         type: 'refueling',
-        description: `${base?.name || 'База'}: ${refueling.aircraftNumber || 'ВС'}, ${parseFloat(refueling.quantityKg || "0").toLocaleString('ru-RU')} кг`,
+        description: `${refueling.basis || 'База'}: ${refueling.aircraftNumber || 'ВС'}, ${parseFloat(refueling.quantityKg || "0").toLocaleString('ru-RU')} кг`,
         time: refueling.createdAt,
         status: 'success',
       });
@@ -151,7 +150,7 @@ export class DashboardStorage implements IDashboardStorage {
       }
 
       if (mov.movementType === 'supply' && mov.supplierId) {
-        const [supplier] = await db.select().from(wholesaleSuppliers).where(eq(wholesaleSuppliers.id, mov.supplierId)).limit(1);
+        const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, mov.supplierId)).limit(1);
         fromName = supplier?.name || mov.supplierId;
       } else if (mov.fromWarehouseId) {
         const [fromWarehouse] = await db.select().from(warehouses).where(eq(warehouses.id, mov.fromWarehouseId)).limit(1);

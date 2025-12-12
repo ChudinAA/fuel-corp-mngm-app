@@ -1,18 +1,12 @@
 
 import type { Express } from "express";
-import { storage } from "../../storage/index";
-import { insertWholesaleSupplierSchema, insertWholesaleBaseSchema } from "@shared/schema";
-import { z } from "zod";
-import { requireAuth } from "../middleware";
 
+// Old wholesale routes are deprecated
+// Use unified /api/directories/suppliers and /api/directories/bases instead
 export function registerWholesaleRoutes(app: Express) {
-  // ============ WHOLESALE SUPPLIERS ============
+  // Routes removed - use unified endpoints at /api/directories/suppliers and /api/directories/bases
 
-  app.get("/api/wholesale/suppliers", requireAuth, async (req, res) => {
-    const data = await storage.wholesale.getAllWholesaleSuppliers();
-    res.json(data);
-  });
-
+  /* Removed - use /api/directories/suppliers/:id
   app.get("/api/wholesale/suppliers/:id", requireAuth, async (req, res) => {
     const id = req.params.id;
     const supplier = await storage.wholesale.getWholesaleSupplier(id);

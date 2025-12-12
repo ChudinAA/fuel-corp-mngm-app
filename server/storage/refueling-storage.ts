@@ -1,65 +1,48 @@
-
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, sql } from "drizzle-orm";
 import { db } from "../db";
-import {
-  refuelingProviders,
-  refuelingBases,
-  type RefuelingProvider,
-  type InsertRefuelingProvider,
-  type RefuelingBase,
-  type InsertRefuelingBase,
-} from "@shared/schema";
 import type { IRefuelingStorage } from "./types";
 
+// This storage is no longer needed as refueling providers and bases
+// are now unified into suppliers and bases tables
 export class RefuelingStorage implements IRefuelingStorage {
-  async getAllRefuelingProviders(): Promise<RefuelingProvider[]> {
-    return db.select().from(refuelingProviders).orderBy(asc(refuelingProviders.name));
+  async getAllRefuelingProviders(): Promise<any[]> {
+    // Redirect to unified suppliers
+    throw new Error("Use SupplierStorage instead");
   }
 
-  async getRefuelingProvider(id: string): Promise<RefuelingProvider | undefined> {
-    const [provider] = await db.select().from(refuelingProviders).where(eq(refuelingProviders.id, id)).limit(1);
-    return provider;
+  async getRefuelingProvider(id: string): Promise<any> {
+    throw new Error("Use SupplierStorage instead");
   }
 
-  async createRefuelingProvider(data: InsertRefuelingProvider): Promise<RefuelingProvider> {
-    const [created] = await db.insert(refuelingProviders).values(data).returning();
-    return created;
+  async createRefuelingProvider(data: any): Promise<any> {
+    throw new Error("Use SupplierStorage instead");
   }
 
-  async updateRefuelingProvider(id: string, data: Partial<InsertRefuelingProvider>): Promise<RefuelingProvider | undefined> {
-    const [updated] = await db.update(refuelingProviders).set(data).where(eq(refuelingProviders.id, id)).returning();
-    return updated;
+  async updateRefuelingProvider(id: string, data: any): Promise<any> {
+    throw new Error("Use SupplierStorage instead");
   }
 
   async deleteRefuelingProvider(id: string): Promise<boolean> {
-    await db.delete(refuelingProviders).where(eq(refuelingProviders.id, id));
-    return true;
+    throw new Error("Use SupplierStorage instead");
   }
 
-  async getAllRefuelingBases(providerId?: string): Promise<RefuelingBase[]> {
-    if (providerId) {
-      return db.select().from(refuelingBases).where(eq(refuelingBases.providerId, providerId)).orderBy(asc(refuelingBases.name));
-    }
-    return db.select().from(refuelingBases).orderBy(asc(refuelingBases.name));
+  async getAllRefuelingBases(providerId?: string): Promise<any[]> {
+    throw new Error("Use BaseStorage instead");
   }
 
-  async getRefuelingBase(id: string): Promise<RefuelingBase | undefined> {
-    const [base] = await db.select().from(refuelingBases).where(eq(refuelingBases.id, id)).limit(1);
-    return base;
+  async getRefuelingBase(id: string): Promise<any> {
+    throw new Error("Use BaseStorage instead");
   }
 
-  async createRefuelingBase(data: InsertRefuelingBase): Promise<RefuelingBase> {
-    const [created] = await db.insert(refuelingBases).values(data).returning();
-    return created;
+  async createRefuelingBase(data: any): Promise<any> {
+    throw new Error("Use BaseStorage instead");
   }
 
-  async updateRefuelingBase(id: string, data: Partial<InsertRefuelingBase>): Promise<RefuelingBase | undefined> {
-    const [updated] = await db.update(refuelingBases).set(data).where(eq(refuelingBases.id, id)).returning();
-    return updated;
+  async updateRefuelingBase(id: string, data: any): Promise<any> {
+    throw new Error("Use BaseStorage instead");
   }
 
   async deleteRefuelingBase(id: string): Promise<boolean> {
-    await db.delete(refuelingBases).where(eq(refuelingBases.id, id));
-    return true;
+    throw new Error("Use BaseStorage instead");
   }
 }

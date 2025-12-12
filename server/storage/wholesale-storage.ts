@@ -1,71 +1,47 @@
-
 import { eq, asc, sql } from "drizzle-orm";
 import { db } from "../db";
-import {
-  wholesaleSuppliers,
-  wholesaleBases,
-  type WholesaleSupplier,
-  type InsertWholesaleSupplier,
-  type WholesaleBase,
-  type InsertWholesaleBase,
-} from "@shared/schema";
 import type { IWholesaleStorage } from "./types";
 
+// This storage is no longer needed as wholesale suppliers and bases
+// are now unified into suppliers and bases tables
 export class WholesaleStorage implements IWholesaleStorage {
-  async getAllWholesaleSuppliers(): Promise<WholesaleSupplier[]> {
-    return db.select().from(wholesaleSuppliers).orderBy(asc(wholesaleSuppliers.name));
+  async getAllWholesaleSuppliers(): Promise<any[]> {
+    throw new Error("Use SupplierStorage instead");
   }
 
-  async getWholesaleSupplier(id: string): Promise<WholesaleSupplier | undefined> {
-    const [supplier] = await db.select().from(wholesaleSuppliers).where(eq(wholesaleSuppliers.id, id)).limit(1);
-    return supplier;
+  async getWholesaleSupplier(id: string): Promise<any> {
+    throw new Error("Use SupplierStorage instead");
   }
 
-  async createWholesaleSupplier(data: InsertWholesaleSupplier): Promise<WholesaleSupplier> {
-    const [created] = await db.insert(wholesaleSuppliers).values(data).returning();
-    return created;
+  async createWholesaleSupplier(data: any): Promise<any> {
+    throw new Error("Use SupplierStorage instead");
   }
 
-  async updateWholesaleSupplier(id: string, data: Partial<InsertWholesaleSupplier>): Promise<WholesaleSupplier | undefined> {
-    const [updated] = await db.update(wholesaleSuppliers).set({
-      ...data,
-      updatedAt: sql`NOW()`
-    }).where(eq(wholesaleSuppliers.id, id)).returning();
-    return updated;
+  async updateWholesaleSupplier(id: string, data: any): Promise<any> {
+    throw new Error("Use SupplierStorage instead");
   }
 
   async deleteWholesaleSupplier(id: string): Promise<boolean> {
-    await db.delete(wholesaleSuppliers).where(eq(wholesaleSuppliers.id, id));
-    return true;
+    throw new Error("Use SupplierStorage instead");
   }
 
-  async getAllWholesaleBases(supplierId?: string): Promise<WholesaleBase[]> {
-    if (supplierId) {
-      return db.select().from(wholesaleBases).where(eq(wholesaleBases.supplierId, supplierId)).orderBy(asc(wholesaleBases.name));
-    }
-    return db.select().from(wholesaleBases).orderBy(asc(wholesaleBases.name));
+  async getAllWholesaleBases(supplierId?: string): Promise<any[]> {
+    throw new Error("Use BaseStorage instead");
   }
 
-  async getWholesaleBase(id: string): Promise<WholesaleBase | undefined> {
-    const [base] = await db.select().from(wholesaleBases).where(eq(wholesaleBases.id, id)).limit(1);
-    return base;
+  async getWholesaleBase(id: string): Promise<any> {
+    throw new Error("Use BaseStorage instead");
   }
 
-  async createWholesaleBase(data: InsertWholesaleBase): Promise<WholesaleBase> {
-    const [created] = await db.insert(wholesaleBases).values(data).returning();
-    return created;
+  async createWholesaleBase(data: any): Promise<any> {
+    throw new Error("Use BaseStorage instead");
   }
 
-  async updateWholesaleBase(id: string, data: Partial<InsertWholesaleBase>): Promise<WholesaleBase | undefined> {
-    const [updated] = await db.update(wholesaleBases).set({
-      ...data,
-      updatedAt: sql`NOW()`
-    }).where(eq(wholesaleBases.id, id)).returning();
-    return updated;
+  async updateWholesaleBase(id: string, data: any): Promise<any> {
+    throw new Error("Use BaseStorage instead");
   }
 
   async deleteWholesaleBase(id: string): Promise<boolean> {
-    await db.delete(wholesaleBases).where(eq(wholesaleBases.id, id));
-    return true;
+    throw new Error("Use BaseStorage instead");
   }
 }

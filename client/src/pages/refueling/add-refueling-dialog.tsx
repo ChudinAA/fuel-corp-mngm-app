@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -51,16 +50,24 @@ interface AddRefuelingDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function AddRefuelingDialog({ 
+export function AddRefuelingDialog({
   suppliers,
   buyers,
-  editRefueling, 
-  open, 
-  onOpenChange 
+  editRefueling,
+  open,
+  onOpenChange
 }: AddRefuelingDialogProps) {
   const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
   const isEditing = !!editRefueling;
+
+  const { data: allBases = [] } = useQuery<any[]>({
+    queryKey: ["/api/directories/bases"],
+  });
+
+  // Filter only refueling bases
+  const bases = allBases.filter(b => b.baseType === 'refueling');
+
 
   const form = useForm<RefuelingFormData>({
     resolver: zodResolver(refuelingFormSchema),
@@ -99,10 +106,10 @@ export function AddRefuelingDialog({
       onOpenChange(false);
     },
     onError: (error: Error) => {
-      toast({ 
-        title: "Ошибка", 
-        description: error.message, 
-        variant: "destructive" 
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive"
       });
     },
   });
@@ -195,10 +202,10 @@ export function AddRefuelingDialog({
                   <FormItem>
                     <FormLabel>Бортовой номер</FormLabel>
                     <FormControl>
-                      <Input 
+                      <Input
                         placeholder="RA-12345"
                         data-testid="input-aircraft-number"
-                        {...field} 
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
@@ -213,10 +220,10 @@ export function AddRefuelingDialog({
                   <FormItem>
                     <FormLabel>Номер РТ</FormLabel>
                     <FormControl>
-                      <Input 
+                      <Input
                         placeholder="RT-001234"
                         data-testid="input-order-number"
-                        {...field} 
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
@@ -253,8 +260,8 @@ export function AddRefuelingDialog({
                 )}
               />
 
-              <CalculatedField 
-                label="Базис" 
+              <CalculatedField
+                label="Базис"
                 value="Шереметьево"
               />
 
@@ -313,11 +320,11 @@ export function AddRefuelingDialog({
                             <FormItem>
                               <FormLabel>Литры</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
+                                <Input
+                                  type="number"
                                   placeholder="0.00"
                                   data-testid="input-refueling-liters"
-                                  {...field} 
+                                  {...field}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -331,20 +338,20 @@ export function AddRefuelingDialog({
                             <FormItem>
                               <FormLabel>Плотность</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
+                                <Input
+                                  type="number"
                                   step="0.0001"
                                   placeholder="0.8000"
                                   data-testid="input-refueling-density"
-                                  {...field} 
+                                  {...field}
                                 />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                        <CalculatedField 
-                          label="КГ (расчет)" 
+                        <CalculatedField
+                          label="КГ (расчет)"
                           value={formatNumber(calculatedKg)}
                           suffix=" кг"
                         />
@@ -357,11 +364,11 @@ export function AddRefuelingDialog({
                           <FormItem className="md:col-span-3">
                             <FormLabel>Количество (КГ)</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
+                              <Input
+                                type="number"
                                 placeholder="0.00"
                                 data-testid="input-refueling-kg"
-                                {...field} 
+                                {...field}
                               />
                             </FormControl>
                             <FormMessage />
@@ -381,16 +388,16 @@ export function AddRefuelingDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {watchProductType === "service" ? "Количество заправок" : 
-                       watchProductType === "storage" ? "Объем хранения (кг)" : 
+                      {watchProductType === "service" ? "Количество заправок" :
+                       watchProductType === "storage" ? "Объем хранения (кг)" :
                        "Сумма услуги"}
                     </FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
+                      <Input
+                        type="number"
                         placeholder="0.00"
                         data-testid="input-service-quantity"
-                        {...field} 
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
@@ -400,40 +407,40 @@ export function AddRefuelingDialog({
             )}
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <CalculatedField 
-                label="Объем на складе" 
+              <CalculatedField
+                label="Объем на складе"
                 value="ОК: 45,000"
                 status="ok"
                 suffix=" кг"
               />
-              <CalculatedField 
-                label="Покупка" 
+              <CalculatedField
+                label="Покупка"
                 value={formatNumber(58.50)}
                 suffix=" ₽/кг"
               />
-              <CalculatedField 
-                label="Сумма закупки" 
+              <CalculatedField
+                label="Сумма закупки"
                 value={formatCurrency(187200)}
               />
-              <CalculatedField 
-                label="Продажа" 
+              <CalculatedField
+                label="Продажа"
                 value={formatNumber(65.00)}
                 suffix=" ₽/кг"
               />
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <CalculatedField 
-                label="Сумма продажи" 
+              <CalculatedField
+                label="Сумма продажи"
                 value={formatCurrency(208000)}
               />
-              <CalculatedField 
-                label="Прибыль" 
+              <CalculatedField
+                label="Прибыль"
                 value={formatCurrency(20800)}
                 status="ok"
               />
-              <CalculatedField 
-                label="Накопительно" 
+              <CalculatedField
+                label="Накопительно"
                 value={formatCurrency(458000)}
               />
             </div>

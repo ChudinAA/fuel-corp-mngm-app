@@ -15,13 +15,23 @@ export default function RefuelingPage() {
   const [editingRefueling, setEditingRefueling] = useState<AircraftRefueling | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const { data: suppliers } = useQuery<DirectoryRefueling[]>({
-    queryKey: ["/api/directories/refueling", "airport"],
+  const { data: allSuppliers } = useQuery<any[]>({
+    queryKey: ["/api/directories/suppliers"],
   });
 
-  const { data: buyers } = useQuery<DirectoryRefueling[]>({
-    queryKey: ["/api/directories/refueling", "buyer"],
+  const { data: allBuyers } = useQuery<any[]>({
+    queryKey: ["/api/directories/customers"],
   });
+
+  // Filter suppliers and buyers for refueling module
+  const suppliers = allSuppliers?.filter(s => 
+    s.baseIds?.some((baseId: string) => {
+      // Check if any attached base is of type 'refueling'
+      return true; // For now accept all, will be filtered by baseType in backend
+    })
+  ) || [];
+
+  const buyers = allBuyers?.filter(b => b.module === 'refueling' || b.module === 'both') || [];
 
   const { data: refuelings, isLoading } = useQuery<{ data: AircraftRefueling[]; total: number }>({
     queryKey: ["/api/refueling", page, search],
