@@ -38,7 +38,7 @@ export class Storage {
     this.logistics = new LogisticsStorage();
     this.prices = new PriceStorage();
     this.warehouses = new WarehouseStorage();
-    this.exchange = new ExchangeExchangeStorage();
+    this.exchange = new ExchangeStorage();
     this.movement = new MovementStorage();
     this.opt = new OptStorage();
     this.aircraftRefueling = new AircraftRefuelingStorage();
