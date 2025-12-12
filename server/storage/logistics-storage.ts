@@ -36,7 +36,10 @@ export class LogisticsStorage implements ILogisticsStorage {
   }
 
   async updateLogisticsCarrier(id: string, data: Partial<InsertLogisticsCarrier>): Promise<LogisticsCarrier | undefined> {
-    const [updated] = await db.update(logisticsCarriers).set(data).where(eq(logisticsCarriers.id, id)).returning();
+    const [updated] = await db.update(logisticsCarriers).set({
+      ...data,
+      updatedAt: sql`NOW()`
+    }).where(eq(logisticsCarriers.id, id)).returning();
     return updated;
   }
 
@@ -60,7 +63,10 @@ export class LogisticsStorage implements ILogisticsStorage {
   }
 
   async updateLogisticsDeliveryLocation(id: string, data: Partial<InsertLogisticsDeliveryLocation>): Promise<LogisticsDeliveryLocation | undefined> {
-    const [updated] = await db.update(logisticsDeliveryLocations).set(data).where(eq(logisticsDeliveryLocations.id, id)).returning();
+    const [updated] = await db.update(logisticsDeliveryLocations).set({
+      ...data,
+      updatedAt: sql`NOW()`
+    }).where(eq(logisticsDeliveryLocations.id, id)).returning();
     return updated;
   }
 
@@ -87,7 +93,10 @@ export class LogisticsStorage implements ILogisticsStorage {
   }
 
   async updateLogisticsVehicle(id: string, data: Partial<InsertLogisticsVehicle>): Promise<LogisticsVehicle | undefined> {
-    const [updated] = await db.update(logisticsVehicles).set(data).where(eq(logisticsVehicles.id, id)).returning();
+    const [updated] = await db.update(logisticsVehicles).set({
+      ...data,
+      updatedAt: sql`NOW()`
+    }).where(eq(logisticsVehicles.id, id)).returning();
     return updated;
   }
 
@@ -114,7 +123,10 @@ export class LogisticsStorage implements ILogisticsStorage {
   }
 
   async updateLogisticsTrailer(id: string, data: Partial<InsertLogisticsTrailer>): Promise<LogisticsTrailer | undefined> {
-    const [updated] = await db.update(logisticsTrailers).set(data).where(eq(logisticsTrailers.id, id)).returning();
+    const [updated] = await db.update(logisticsTrailers).set({
+      ...data,
+      updatedAt: sql`NOW()`
+    }).where(eq(logisticsTrailers.id, id)).returning();
     return updated;
   }
 
@@ -141,7 +153,10 @@ export class LogisticsStorage implements ILogisticsStorage {
   }
 
   async updateLogisticsDriver(id: string, data: Partial<InsertLogisticsDriver>): Promise<LogisticsDriver | undefined> {
-    const [updated] = await db.update(logisticsDrivers).set(data).where(eq(logisticsDrivers.id, id)).returning();
+    const [updated] = await db.update(logisticsDrivers).set({
+      ...data,
+      updatedAt: sql`NOW()`
+    }).where(eq(logisticsDrivers.id, id)).returning();
     return updated;
   }
 

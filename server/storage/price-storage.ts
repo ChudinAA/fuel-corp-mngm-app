@@ -43,7 +43,10 @@ export class PriceStorage implements IPriceStorage {
   }
 
   async updatePrice(id: string, data: Partial<InsertPrice>): Promise<Price | undefined> {
-    const [updated] = await db.update(prices).set(data).where(eq(prices.id, id)).returning();
+    const [updated] = await db.update(prices).set({
+      ...data,
+      updatedAt: sql`NOW()`
+    }).where(eq(prices.id, id)).returning();
     return updated;
   }
 

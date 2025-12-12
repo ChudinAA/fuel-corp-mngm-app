@@ -26,7 +26,10 @@ export class CustomerStorage implements ICustomerStorage {
   async updateCustomer(id: string, data: InsertCustomer): Promise<Customer> {
     const [customer] = await db
       .update(customers)
-      .set(data)
+      .set({
+        ...data,
+        updatedAt: sql`NOW()`
+      })
       .where(eq(customers.id, id))
       .returning();
     return customer;

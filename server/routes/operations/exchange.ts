@@ -33,7 +33,6 @@ export function registerExchangeRoutes(app: Express) {
       const id = req.params.id;
       const data = insertExchangeSchema.partial().parse({
         ...req.body,
-        updatedAt: new Date(),
         updatedById: req.session.userId,
       });
       const item = await storage.exchange.updateExchange(id, data);

@@ -41,7 +41,6 @@ export function registerCustomersRoutes(app: Express) {
       const id = req.params.id;
       const item = await storage.customers.updateCustomer(id, {
         ...req.body,
-        updatedAt: new Date(),
         updatedById: req.session.userId,
       });
       if (!item) {

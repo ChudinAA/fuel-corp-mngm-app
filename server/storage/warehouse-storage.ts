@@ -67,7 +67,10 @@ export class WarehouseStorage implements IWarehouseStorage {
   }
 
   async updateWarehouse(id: string, data: Partial<InsertWarehouse>): Promise<Warehouse | undefined> {
-    const [updated] = await db.update(warehouses).set(data).where(eq(warehouses.id, id)).returning();
+    const [updated] = await db.update(warehouses).set({
+      ...data,
+      updatedAt: sql`NOW()`
+    }).where(eq(warehouses.id, id)).returning();
     return updated;
   }
 

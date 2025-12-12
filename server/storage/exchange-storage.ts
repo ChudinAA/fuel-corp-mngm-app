@@ -22,7 +22,10 @@ export class ExchangeStorage implements IExchangeStorage {
   }
 
   async updateExchange(id: string, data: Partial<InsertExchange>): Promise<Exchange | undefined> {
-    const [updated] = await db.update(exchange).set(data).where(eq(exchange.id, id)).returning();
+    const [updated] = await db.update(exchange).set({
+      ...data,
+      updatedAt: sql`NOW()`
+    }).where(eq(exchange.id, id)).returning();
     return updated;
   }
 

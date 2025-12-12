@@ -140,7 +140,10 @@ export class MovementStorage implements IMovementStorage {
   }
 
   async updateMovement(id: string, data: Partial<InsertMovement>): Promise<Movement | undefined> {
-    const [updated] = await db.update(movement).set(data).where(eq(movement.id, id)).returning();
+    const [updated] = await db.update(movement).set({
+      ...data,
+      updatedAt: sql`NOW()`
+    }).where(eq(movement.id, id)).returning();
     return updated;
   }
 

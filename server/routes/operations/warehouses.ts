@@ -73,7 +73,6 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       const id = req.params.id;
       const item = await storage.warehouses.updateWarehouse(id, {
         ...req.body,
-        updatedAt: new Date(),
         updatedById: req.session.userId,
       });
       if (!item) {

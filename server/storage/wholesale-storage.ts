@@ -27,7 +27,10 @@ export class WholesaleStorage implements IWholesaleStorage {
   }
 
   async updateWholesaleSupplier(id: string, data: Partial<InsertWholesaleSupplier>): Promise<WholesaleSupplier | undefined> {
-    const [updated] = await db.update(wholesaleSuppliers).set(data).where(eq(wholesaleSuppliers.id, id)).returning();
+    const [updated] = await db.update(wholesaleSuppliers).set({
+      ...data,
+      updatedAt: sql`NOW()`
+    }).where(eq(wholesaleSuppliers.id, id)).returning();
     return updated;
   }
 
@@ -54,7 +57,10 @@ export class WholesaleStorage implements IWholesaleStorage {
   }
 
   async updateWholesaleBase(id: string, data: Partial<InsertWholesaleBase>): Promise<WholesaleBase | undefined> {
-    const [updated] = await db.update(wholesaleBases).set(data).where(eq(wholesaleBases.id, id)).returning();
+    const [updated] = await db.update(wholesaleBases).set({
+      ...data,
+      updatedAt: sql`NOW()`
+    }).where(eq(wholesaleBases.id, id)).returning();
     return updated;
   }
 

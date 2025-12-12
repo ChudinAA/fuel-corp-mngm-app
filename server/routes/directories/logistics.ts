@@ -48,7 +48,6 @@ export function registerLogisticsRoutes(app: Express) {
       const id = req.params.id;
       const item = await storage.logistics.updateLogisticsCarrier(id, {
         ...req.body,
-        updatedAt: new Date(),
         updatedById: req.session.userId,
       });
       if (!item) {
@@ -107,7 +106,6 @@ export function registerLogisticsRoutes(app: Express) {
       const id = req.params.id;
       const item = await storage.logistics.updateLogisticsDeliveryLocation(id, {
         ...req.body,
-        updatedAt: new Date(),
         updatedById: req.session.userId,
       });
       if (!item) {
@@ -167,7 +165,6 @@ export function registerLogisticsRoutes(app: Express) {
       const id = req.params.id;
       const item = await storage.logistics.updateLogisticsVehicle(id, {
         ...req.body,
-        updatedAt: new Date(),
         updatedById: req.session.userId,
       });
       if (!item) {
@@ -227,7 +224,6 @@ export function registerLogisticsRoutes(app: Express) {
       const id = req.params.id;
       const item = await storage.logistics.updateLogisticsTrailer(id, {
         ...req.body,
-        updatedAt: new Date(),
         updatedById: req.session.userId,
       });
       if (!item) {
@@ -287,7 +283,6 @@ export function registerLogisticsRoutes(app: Express) {
       const id = req.params.id;
       const item = await storage.logistics.updateLogisticsDriver(id, {
         ...req.body,
-        updatedAt: new Date(),
         updatedById: req.session.userId,
       });
       if (!item) {

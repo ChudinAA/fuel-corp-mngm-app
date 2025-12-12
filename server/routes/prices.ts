@@ -49,7 +49,6 @@ export function registerPricesRoutes(app: Express) {
         ...body,
         priceValues: body.priceValues?.map((pv: { price: string }) => JSON.stringify({ price: parseFloat(pv.price) })),
         volume: body.volume ? String(body.volume) : null,
-        updatedAt: new Date(),
         updatedById: req.session.userId,
       };
 

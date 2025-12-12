@@ -36,7 +36,6 @@ export function registerRefuelingOperationsRoutes(app: Express) {
       const id = req.params.id;
       const item = await storage.aircraftRefueling.updateRefueling(id, {
         ...req.body,
-        updatedAt: new Date(),
         updatedById: req.session.userId,
       });
       if (!item) {

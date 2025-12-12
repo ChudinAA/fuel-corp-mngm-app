@@ -57,7 +57,6 @@ export function registerWholesaleRoutes(app: Express) {
       const id = req.params.id;
       const item = await storage.wholesale.updateWholesaleSupplier(id, {
         ...req.body,
-        updatedAt: new Date(),
         updatedById: req.session.userId,
       });
       if (!item) {
@@ -131,7 +130,6 @@ export function registerWholesaleRoutes(app: Express) {
       const id = req.params.id;
       const item = await storage.wholesale.updateWholesaleBase(id, {
         ...req.body,
-        updatedAt: new Date(),
         updatedById: req.session.userId,
       });
       if (!item) {

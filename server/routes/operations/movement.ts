@@ -47,7 +47,6 @@ export function registerMovementRoutes(app: Express) {
       const id = req.params.id;
       const item = await storage.movement.updateMovement(id, {
         ...req.body,
-        updatedAt: new Date(),
         updatedById: req.session.userId,
       });
       if (!item) {
