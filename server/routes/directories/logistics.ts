@@ -29,7 +29,10 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.post("/api/logistics/carriers", requireAuth, async (req, res) => {
     try {
-      const data = insertLogisticsCarrierSchema.parse(req.body);
+      const data = insertLogisticsCarrierSchema.parse({
+        ...req.body,
+        createdById: req.session.userId,
+      });
       const item = await storage.logistics.createLogisticsCarrier(data);
       res.status(201).json(item);
     } catch (error) {
@@ -43,7 +46,11 @@ export function registerLogisticsRoutes(app: Express) {
   app.patch("/api/logistics/carriers/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.logistics.updateLogisticsCarrier(id, req.body);
+      const item = await storage.logistics.updateLogisticsCarrier(id, {
+        ...req.body,
+        updatedAt: new Date(),
+        updatedById: req.session.userId,
+      });
       if (!item) {
         return res.status(404).json({ message: "Перевозчик не найден" });
       }
@@ -81,7 +88,10 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.post("/api/logistics/delivery-locations", requireAuth, async (req, res) => {
     try {
-      const data = insertLogisticsDeliveryLocationSchema.parse(req.body);
+      const data = insertLogisticsDeliveryLocationSchema.parse({
+        ...req.body,
+        createdById: req.session.userId,
+      });
       const item = await storage.logistics.createLogisticsDeliveryLocation(data);
       res.status(201).json(item);
     } catch (error) {
@@ -95,7 +105,11 @@ export function registerLogisticsRoutes(app: Express) {
   app.patch("/api/logistics/delivery-locations/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.logistics.updateLogisticsDeliveryLocation(id, req.body);
+      const item = await storage.logistics.updateLogisticsDeliveryLocation(id, {
+        ...req.body,
+        updatedAt: new Date(),
+        updatedById: req.session.userId,
+      });
       if (!item) {
         return res.status(404).json({ message: "Место доставки не найдено" });
       }
@@ -134,7 +148,10 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.post("/api/logistics/vehicles", requireAuth, async (req, res) => {
     try {
-      const data = insertLogisticsVehicleSchema.parse(req.body);
+      const data = insertLogisticsVehicleSchema.parse({
+        ...req.body,
+        createdById: req.session.userId,
+      });
       const item = await storage.logistics.createLogisticsVehicle(data);
       res.status(201).json(item);
     } catch (error) {
@@ -148,7 +165,11 @@ export function registerLogisticsRoutes(app: Express) {
   app.patch("/api/logistics/vehicles/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.logistics.updateLogisticsVehicle(id, req.body);
+      const item = await storage.logistics.updateLogisticsVehicle(id, {
+        ...req.body,
+        updatedAt: new Date(),
+        updatedById: req.session.userId,
+      });
       if (!item) {
         return res.status(404).json({ message: "Транспорт не найден" });
       }
@@ -187,7 +208,10 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.post("/api/logistics/trailers", requireAuth, async (req, res) => {
     try {
-      const data = insertLogisticsTrailerSchema.parse(req.body);
+      const data = insertLogisticsTrailerSchema.parse({
+        ...req.body,
+        createdById: req.session.userId,
+      });
       const item = await storage.logistics.createLogisticsTrailer(data);
       res.status(201).json(item);
     } catch (error) {
@@ -201,7 +225,11 @@ export function registerLogisticsRoutes(app: Express) {
   app.patch("/api/logistics/trailers/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.logistics.updateLogisticsTrailer(id, req.body);
+      const item = await storage.logistics.updateLogisticsTrailer(id, {
+        ...req.body,
+        updatedAt: new Date(),
+        updatedById: req.session.userId,
+      });
       if (!item) {
         return res.status(404).json({ message: "Прицеп не найден" });
       }
@@ -240,7 +268,10 @@ export function registerLogisticsRoutes(app: Express) {
 
   app.post("/api/logistics/drivers", requireAuth, async (req, res) => {
     try {
-      const data = insertLogisticsDriverSchema.parse(req.body);
+      const data = insertLogisticsDriverSchema.parse({
+        ...req.body,
+        createdById: req.session.userId,
+      });
       const item = await storage.logistics.createLogisticsDriver(data);
       res.status(201).json(item);
     } catch (error) {
@@ -254,7 +285,11 @@ export function registerLogisticsRoutes(app: Express) {
   app.patch("/api/logistics/drivers/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.logistics.updateLogisticsDriver(id, req.body);
+      const item = await storage.logistics.updateLogisticsDriver(id, {
+        ...req.body,
+        updatedAt: new Date(),
+        updatedById: req.session.userId,
+      });
       if (!item) {
         return res.status(404).json({ message: "Водитель не найден" });
       }

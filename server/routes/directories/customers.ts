@@ -22,7 +22,10 @@ export function registerCustomersRoutes(app: Express) {
 
   app.post("/api/customers", requireAuth, async (req, res) => {
     try {
-      const data = insertCustomerSchema.parse(req.body);
+      const data = insertCustomerSchema.parse({
+        ...req.body,
+        createdById: req.session.userId,
+      });
       const item = await storage.customers.createCustomer(data);
       res.status(201).json(item);
     } catch (error) {
@@ -36,7 +39,11 @@ export function registerCustomersRoutes(app: Express) {
   app.patch("/api/customers/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.customers.updateCustomer(id, req.body);
+      const item = await storage.customers.updateCustomer(id, {
+        ...req.body,
+        updatedAt: new Date(),
+        updatedById: req.session.userId,
+      });
       if (!item) {
         return res.status(404).json({ message: "Покупатель не найден" });
       }

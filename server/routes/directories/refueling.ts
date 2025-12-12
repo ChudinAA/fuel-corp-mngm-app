@@ -4,7 +4,7 @@ import { insertRefuelingProviderSchema, insertRefuelingBaseSchema } from "@share
 import { z } from "zod";
 import { requireAuth } from "../middleware";
 
-export function registerRefuelingDirectoriesRoutes(app: Express) {
+export function registerRefuelingDirectoryRoutes(app: Express) {
   // ============ REFUELING PROVIDERS ============
 
   app.get("/api/refueling/providers", requireAuth, async (req, res) => {
@@ -23,9 +23,12 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
 
   app.post("/api/refueling/providers", requireAuth, async (req, res) => {
     try {
-      const data = insertRefuelingProviderSchema.parse(req.body);
+      const data = insertRefuelingProviderSchema.parse({
+        ...req.body,
+        createdById: req.session.userId,
+      });
       const item = await storage.refueling.createRefuelingProvider(data);
-      
+
       // Automatically create warehouse if provider is marked as warehouse
       if (data.isWarehouse && data.baseIds && data.baseIds.length > 0) {
         await storage.warehouses.createWarehouse({
@@ -37,7 +40,7 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
           isActive: data.isActive ?? true,
         });
       }
-      
+
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -54,8 +57,11 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
       // and returns the updated item or null if not found.
       // We might need to parse and validate req.body with insertRefuelingProviderSchema here as well
       // for consistency and security, similar to how POST is handled.
-      const data = insertRefuelingProviderSchema.parse(req.body);
-      const item = await storage.refueling.updateRefuelingProvider(id, data);
+      const item = await storage.refueling.updateRefuelingProvider(id, {
+        ...req.body,
+        updatedAt: new Date(),
+        updatedById: req.session.userId,
+      });
       if (!item) {
         return res.status(404).json({ message: "Аэропорт/Поставщик не найден" });
       }
@@ -111,7 +117,10 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
 
   app.post("/api/refueling/bases", requireAuth, async (req, res) => {
     try {
-      const data = insertRefuelingBaseSchema.parse(req.body);
+      const data = insertRefuelingBaseSchema.parse({
+        ...req.body,
+        createdById: req.session.userId,
+      });
       const item = await storage.refueling.createRefuelingBase(data);
       res.status(201).json(item);
     } catch (error) {
@@ -126,8 +135,11 @@ export function registerRefuelingDirectoriesRoutes(app: Express) {
     try {
       const id = req.params.id;
       // Similar to providers, validate and parse req.body
-      const data = insertRefuelingBaseSchema.parse(req.body);
-      const item = await storage.refueling.updateRefuelingBase(id, data);
+      const item = await storage.refueling.updateRefuelingBase(id, {
+        ...req.body,
+        updatedAt: new Date(),
+        updatedById: req.session.userId,
+      });
       if (!item) {
         return res.status(404).json({ message: "Базис заправки не найден" });
       }

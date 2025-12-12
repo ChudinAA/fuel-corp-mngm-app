@@ -29,6 +29,7 @@ export async function seedDefaultRoles() {
           permissions,
           isDefault: roleData.name === "Менеджер",
           isSystem: roleData.name === "Админ" || roleData.name === "Ген.дир",
+          createdById: null,
         });
       }
       console.log("Default roles seeded successfully");

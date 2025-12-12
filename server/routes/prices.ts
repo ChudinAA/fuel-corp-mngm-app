@@ -23,7 +23,8 @@ export function registerPricesRoutes(app: Express) {
         ...body,
         priceValues: body.priceValues?.map((pv: { price: string }) => JSON.stringify({ price: parseFloat(pv.price) })),
         volume: body.volume ? String(body.volume) : null,
-        counterpartyId: body.counterpartyId, // Оставляем как есть, это уже UUID строка
+        counterpartyId: body.counterpartyId,
+        createdById: req.session.userId,
       };
 
       const data = insertPriceSchema.parse(processedData);
@@ -48,6 +49,8 @@ export function registerPricesRoutes(app: Express) {
         ...body,
         priceValues: body.priceValues?.map((pv: { price: string }) => JSON.stringify({ price: parseFloat(pv.price) })),
         volume: body.volume ? String(body.volume) : null,
+        updatedAt: new Date(),
+        updatedById: req.session.userId,
       };
 
       const item = await storage.prices.updatePrice(id, processedData);

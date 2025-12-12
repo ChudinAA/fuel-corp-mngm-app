@@ -34,7 +34,11 @@ export function registerRefuelingOperationsRoutes(app: Express) {
   app.patch("/api/refueling/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.aircraftRefueling.updateRefueling(id, req.body);
+      const item = await storage.aircraftRefueling.updateRefueling(id, {
+        ...req.body,
+        updatedAt: new Date(),
+        updatedById: req.session.userId,
+      });
       if (!item) {
         return res.status(404).json({ message: "Заправка не найдена" });
       }

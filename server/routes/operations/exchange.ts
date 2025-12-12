@@ -31,7 +31,11 @@ export function registerExchangeRoutes(app: Express) {
   app.put("/api/exchange/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const data = insertExchangeSchema.partial().parse(req.body);
+      const data = insertExchangeSchema.partial().parse({
+        ...req.body,
+        updatedAt: new Date(),
+        updatedById: req.session.userId,
+      });
       const item = await storage.exchange.updateExchange(id, data);
       if (!item) {
         return res.status(404).json({ message: "Сделка не найдена" });

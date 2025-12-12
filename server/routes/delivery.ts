@@ -35,6 +35,7 @@ export function registerDeliveryRoutes(app: Express) {
         toLocation: data.toLocation,
         costPerKg: data.costPerKg,
         distance: data.distance || null,
+        createdById: req.session.userId,
       }).returning();
 
       res.status(201).json(created);
@@ -57,6 +58,7 @@ export function registerDeliveryRoutes(app: Express) {
         .set({
           ...data,
           updatedAt: new Date(),
+          updatedById: req.session.userId,
         })
         .where(eq(deliveryCost.id, id))
         .returning();

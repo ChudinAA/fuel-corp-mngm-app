@@ -23,7 +23,10 @@ export function registerWarehousesOperationsRoutes(app: Express) {
   app.post("/api/warehouses", requireAuth, async (req, res) => {
     try {
       const { createSupplier, supplierType, ...warehouseData } = req.body;
-      const data = insertWarehouseSchema.parse(warehouseData);
+      const data = insertWarehouseSchema.parse({
+        ...warehouseData,
+        createdById: req.session.userId,
+      });
       const item = await storage.warehouses.createWarehouse(data);
       
       // Automatically create supplier if requested
@@ -34,6 +37,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           isWarehouse: true,
           storageCost: data.storageCost || null,
           isActive: data.isActive ?? true,
+          createdById: req.session.userId,
         };
         
         if (supplierType === "wholesale") {
@@ -41,12 +45,16 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           await storage.warehouses.updateWarehouse(item.id, {
             supplierType: "wholesale",
             supplierId: supplier.id,
+            updatedAt: new Date(),
+            updatedById: req.session.userId,
           });
         } else if (supplierType === "refueling") {
           const supplier = await storage.refueling.createRefuelingProvider(supplierData);
           await storage.warehouses.updateWarehouse(item.id, {
             supplierType: "refueling",
             supplierId: supplier.id,
+            updatedAt: new Date(),
+            updatedById: req.session.userId,
           });
         }
       }
@@ -63,7 +71,11 @@ export function registerWarehousesOperationsRoutes(app: Express) {
   app.patch("/api/warehouses/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.warehouses.updateWarehouse(id, req.body);
+      const item = await storage.warehouses.updateWarehouse(id, {
+        ...req.body,
+        updatedAt: new Date(),
+        updatedById: req.session.userId,
+      });
       if (!item) {
         return res.status(404).json({ message: "Склад не найден" });
       }

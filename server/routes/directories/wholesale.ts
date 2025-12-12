@@ -24,7 +24,10 @@ export function registerWholesaleRoutes(app: Express) {
 
   app.post("/api/wholesale/suppliers", requireAuth, async (req, res) => {
     try {
-      const data = insertWholesaleSupplierSchema.parse(req.body);
+      const data = insertWholesaleSupplierSchema.parse({
+        ...req.body,
+        createdById: req.session.userId,
+      });
       const item = await storage.wholesale.createWholesaleSupplier(data);
       
       // Automatically create warehouse if supplier is marked as warehouse
@@ -36,6 +39,7 @@ export function registerWholesaleRoutes(app: Express) {
           supplierId: item.id,
           storageCost: data.storageCost || null,
           isActive: data.isActive ?? true,
+          createdById: req.session.userId,
         });
       }
       
@@ -51,7 +55,11 @@ export function registerWholesaleRoutes(app: Express) {
   app.patch("/api/wholesale/suppliers/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.wholesale.updateWholesaleSupplier(id, req.body);
+      const item = await storage.wholesale.updateWholesaleSupplier(id, {
+        ...req.body,
+        updatedAt: new Date(),
+        updatedById: req.session.userId,
+      });
       if (!item) {
         return res.status(404).json({ message: "Поставщик не найден" });
       }
@@ -104,7 +112,10 @@ export function registerWholesaleRoutes(app: Express) {
 
   app.post("/api/wholesale/bases", requireAuth, async (req, res) => {
     try {
-      const data = insertWholesaleBaseSchema.parse(req.body);
+      const data = insertWholesaleBaseSchema.parse({
+        ...req.body,
+        createdById: req.session.userId,
+      });
       const item = await storage.wholesale.createWholesaleBase(data);
       res.status(201).json(item);
     } catch (error) {
@@ -118,7 +129,11 @@ export function registerWholesaleRoutes(app: Express) {
   app.patch("/api/wholesale/bases/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.wholesale.updateWholesaleBase(id, req.body);
+      const item = await storage.wholesale.updateWholesaleBase(id, {
+        ...req.body,
+        updatedAt: new Date(),
+        updatedById: req.session.userId,
+      });
       if (!item) {
         return res.status(404).json({ message: "Базис не найден" });
       }
