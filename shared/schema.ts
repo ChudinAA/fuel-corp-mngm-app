@@ -15,6 +15,8 @@ export const roles = pgTable("roles", {
   isSystem: boolean("is_system").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 export const permissions = pgTable("permissions", {
@@ -24,6 +26,8 @@ export const permissions = pgTable("permissions", {
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 export const rolePermissions = pgTable("role_permissions", {
@@ -32,6 +36,8 @@ export const rolePermissions = pgTable("role_permissions", {
   permissionId: uuid("permission_id").notNull().references(() => permissions.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // ============ USERS ============
@@ -47,6 +53,7 @@ export const users = pgTable("users", {
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // ============ UNIFIED DIRECTORIES ============
@@ -65,6 +72,8 @@ export const customers = pgTable("customers", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // ============ DIRECTORIES: ОПТ (Оптовая торговля) ============
@@ -80,6 +89,8 @@ export const wholesaleSuppliers = pgTable("wholesale_suppliers", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // Базисы для ОПТ
@@ -90,6 +101,8 @@ export const wholesaleBases = pgTable("wholesale_bases", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // ============ DIRECTORIES: Заправка ВС ============
@@ -108,6 +121,8 @@ export const refuelingProviders = pgTable("refueling_providers", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // Базисы заправки
@@ -118,6 +133,8 @@ export const refuelingBases = pgTable("refueling_bases", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // ============ DIRECTORIES: Логистика ============
@@ -131,6 +148,8 @@ export const logisticsCarriers = pgTable("logistics_carriers", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // Места доставки
@@ -142,6 +161,8 @@ export const logisticsDeliveryLocations = pgTable("logistics_delivery_locations"
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // Транспорт
@@ -154,6 +175,8 @@ export const logisticsVehicles = pgTable("logistics_vehicles", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // Прицепы
@@ -165,6 +188,8 @@ export const logisticsTrailers = pgTable("logistics_trailers", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // Водители
@@ -177,6 +202,8 @@ export const logisticsDrivers = pgTable("logistics_drivers", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // ============ PRICES (Цены) ============
@@ -199,6 +226,8 @@ export const prices = pgTable("prices", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // ============ DELIVERY COST (Стоимость доставки) ============
@@ -217,6 +246,8 @@ export const deliveryCost = pgTable("delivery_cost", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // ============ WAREHOUSES (Склады) ============
@@ -233,6 +264,8 @@ export const warehouses = pgTable("warehouses", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 export const warehouseTransactions = pgTable("warehouse_transactions", {
@@ -249,6 +282,8 @@ export const warehouseTransactions = pgTable("warehouse_transactions", {
   averageCostAfter: decimal("average_cost_after", { precision: 12, scale: 4 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
+  createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // ============ EXCHANGE (Биржа) ============
@@ -295,6 +330,7 @@ export const movement = pgTable("movement", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
   createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // ============ OPT (Оптовые продажи) ============
@@ -363,6 +399,7 @@ export const aircraftRefueling = pgTable("aircraft_refueling", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
   createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // ============ RELATIONS ============
