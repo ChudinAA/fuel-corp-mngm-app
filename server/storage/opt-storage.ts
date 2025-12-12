@@ -20,7 +20,7 @@ export class OptStorage implements IOptStorage {
     let query = db.select({
       opt: opt,
       supplierName: suppliers.name,
-      supplierIsWarehouse: sql<boolean>`${suppliers.warehouseId} IS NOT NULL`,
+      supplierIsWarehouse: suppliers.isWarehouse,
       buyerName: customers.name,
       carrierName: sql<string>`${logisticsCarriers.name}`,
       deliveryLocationName: sql<string>`${logisticsDeliveryLocations.name}`,
