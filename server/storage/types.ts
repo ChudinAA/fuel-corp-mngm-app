@@ -1,4 +1,3 @@
-
 import type {
   User,
   InsertUser,
@@ -6,14 +5,10 @@ import type {
   InsertRole,
   Customer,
   InsertCustomer,
-  WholesaleSupplier,
-  InsertWholesaleSupplier,
-  WholesaleBase,
-  InsertWholesaleBase,
-  RefuelingProvider,
-  InsertRefuelingProvider,
-  RefuelingBase,
-  InsertRefuelingBase,
+  Base,
+  InsertBase,
+  Supplier,
+  InsertSupplier,
   LogisticsCarrier,
   InsertLogisticsCarrier,
   LogisticsDeliveryLocation,
@@ -69,30 +64,20 @@ export interface ICustomerStorage {
   deleteCustomer(id: string): Promise<boolean>;
 }
 
-export interface IWholesaleStorage {
-  getAllWholesaleSuppliers(): Promise<WholesaleSupplier[]>;
-  getWholesaleSupplier(id: string): Promise<WholesaleSupplier | undefined>;
-  createWholesaleSupplier(data: InsertWholesaleSupplier): Promise<WholesaleSupplier>;
-  updateWholesaleSupplier(id: string, data: Partial<InsertWholesaleSupplier>): Promise<WholesaleSupplier | undefined>;
-  deleteWholesaleSupplier(id: string): Promise<boolean>;
-  getAllWholesaleBases(supplierId?: string): Promise<WholesaleBase[]>;
-  getWholesaleBase(id: string): Promise<WholesaleBase | undefined>;
-  createWholesaleBase(data: InsertWholesaleBase): Promise<WholesaleBase>;
-  updateWholesaleBase(id: string, data: Partial<InsertWholesaleBase>): Promise<WholesaleBase | undefined>;
-  deleteWholesaleBase(id: string): Promise<boolean>;
+export interface IBaseStorage {
+  getAllBases(supplierId?: string): Promise<Base[]>;
+  getBase(id: string): Promise<Base | undefined>;
+  createBase(data: InsertBase): Promise<Base>;
+  updateBase(id: string, data: Partial<InsertBase>): Promise<Base | undefined>;
+  deleteBase(id: string): Promise<boolean>;
 }
 
-export interface IRefuelingStorage {
-  getAllRefuelingProviders(): Promise<RefuelingProvider[]>;
-  getRefuelingProvider(id: string): Promise<RefuelingProvider | undefined>;
-  createRefuelingProvider(data: InsertRefuelingProvider): Promise<RefuelingProvider>;
-  updateRefuelingProvider(id: string, data: Partial<InsertRefuelingProvider>): Promise<RefuelingProvider | undefined>;
-  deleteRefuelingProvider(id: string): Promise<boolean>;
-  getAllRefuelingBases(providerId?: string): Promise<RefuelingBase[]>;
-  getRefuelingBase(id: string): Promise<RefuelingBase | undefined>;
-  createRefuelingBase(data: InsertRefuelingBase): Promise<RefuelingBase>;
-  updateRefuelingBase(id: string, data: Partial<InsertRefuelingBase>): Promise<RefuelingBase | undefined>;
-  deleteRefuelingBase(id: string): Promise<boolean>;
+export interface ISupplierStorage {
+  getAllSuppliers(): Promise<Supplier[]>;
+  getSupplier(id: string): Promise<Supplier | undefined>;
+  createSupplier(data: InsertSupplier): Promise<Supplier>;
+  updateSupplier(id: string, data: Partial<InsertSupplier>): Promise<Supplier | undefined>;
+  deleteSupplier(id: string): Promise<boolean>;
 }
 
 export interface ILogisticsStorage {
@@ -191,4 +176,12 @@ export interface IDashboardStorage {
     volumeSoldWeek: number;
     profitWeek: number;
   }>;
+}
+
+export interface IStorage {
+  users: IUserStorage;
+  roles: IRoleStorage;
+  customers: ICustomerStorage;
+  bases: IBaseStorage;
+  suppliers: ISupplierStorage;
 }

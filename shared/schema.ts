@@ -76,27 +76,13 @@ export const customers = pgTable("customers", {
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
-// ============ DIRECTORIES: ОПТ (Оптовая торговля) ============
+// ============ UNIFIED DIRECTORIES ============
 
-// Поставщики для ОПТ
-export const wholesaleSuppliers = pgTable("wholesale_suppliers", {
+// Unified Bases (for both wholesale and refueling)
+export const bases = pgTable("bases", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
-  description: text("description"),
-  baseIds: text("base_ids").array(), // Changed from defaultBaseId to array
-  isWarehouse: boolean("is_warehouse").default(false), // New field
-  storageCost: decimal("storage_cost", { precision: 12, scale: 2 }), // New field
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: "string" }),
-  createdById: uuid("created_by_id").references(() => users.id),
-  updatedById: uuid("updated_by_id").references(() => users.id),
-});
-
-// Базисы для ОПТ
-export const wholesaleBases = pgTable("wholesale_bases", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: text("name").notNull(),
+  baseType: text("base_type").notNull(), // 'wholesale' or 'refueling'
   location: text("location"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -105,31 +91,18 @@ export const wholesaleBases = pgTable("wholesale_bases", {
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
-// ============ DIRECTORIES: Заправка ВС ============
-
-// Аэропорты/Поставщики для заправки ВС
-export const refuelingProviders = pgTable("refueling_providers", {
+// Unified Suppliers (for both wholesale and refueling)
+export const suppliers = pgTable("suppliers", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  baseIds: text("base_ids").array(), // Changed from defaultBaseId to array
+  baseIds: text("base_ids").array(),
   servicePrice: decimal("service_price", { precision: 12, scale: 2 }),
   pvkjPrice: decimal("pvkj_price", { precision: 12, scale: 2 }),
   agentFee: decimal("agent_fee", { precision: 12, scale: 2 }),
-  isWarehouse: boolean("is_warehouse").default(false), // New field
-  storageCost: decimal("storage_cost", { precision: 12, scale: 2 }), // New field
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: "string" }),
-  createdById: uuid("created_by_id").references(() => users.id),
-  updatedById: uuid("updated_by_id").references(() => users.id),
-});
-
-// Базисы заправки
-export const refuelingBases = pgTable("refueling_bases", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: text("name").notNull(),
-  location: text("location"),
+  isWarehouse: boolean("is_warehouse").default(false),
+  warehouseId: uuid("warehouse_id").references(() => warehouses.id),
+  storageCost: decimal("storage_cost", { precision: 12, scale: 2 }),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -463,10 +436,8 @@ export const loginSchema = z.object({
 
 // Directory schemas
 export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true });
-export const insertWholesaleSupplierSchema = createInsertSchema(wholesaleSuppliers).omit({ id: true });
-export const insertWholesaleBaseSchema = createInsertSchema(wholesaleBases).omit({ id: true });
-export const insertRefuelingProviderSchema = createInsertSchema(refuelingProviders).omit({ id: true });
-export const insertRefuelingBaseSchema = createInsertSchema(refuelingBases).omit({ id: true });
+export const insertBaseSchema = createInsertSchema(bases).omit({ id: true });
+export const insertSupplierSchema = createInsertSchema(suppliers).omit({ id: true });
 
 export const insertLogisticsCarrierSchema = createInsertSchema(logisticsCarriers).omit({ id: true });
 export const insertLogisticsDeliveryLocationSchema = createInsertSchema(logisticsDeliveryLocations).omit({ id: true });
@@ -551,17 +522,11 @@ export type LoginCredentials = z.infer<typeof loginSchema>;
 export type Customer = typeof customers.$inferSelect;
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 
-export type WholesaleSupplier = typeof wholesaleSuppliers.$inferSelect;
-export type InsertWholesaleSupplier = z.infer<typeof insertWholesaleSupplierSchema>;
+export type Base = typeof bases.$inferSelect;
+export type InsertBase = z.infer<typeof insertBaseSchema>;
 
-export type WholesaleBase = typeof wholesaleBases.$inferSelect;
-export type InsertWholesaleBase = z.infer<typeof insertWholesaleBaseSchema>;
-
-export type RefuelingProvider = typeof refuelingProviders.$inferSelect;
-export type InsertRefuelingProvider = z.infer<typeof insertRefuelingProviderSchema>;
-
-export type RefuelingBase = typeof refuelingBases.$inferSelect;
-export type InsertRefuelingBase = z.infer<typeof insertRefuelingBaseSchema>;
+export type Supplier = typeof suppliers.$inferSelect;
+export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
 
 export type LogisticsCarrier = typeof logisticsCarriers.$inferSelect;
 export type InsertLogisticsCarrier = z.infer<typeof insertLogisticsCarrierSchema>;

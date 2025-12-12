@@ -1,9 +1,8 @@
-
 import { UserStorage } from "./user-storage";
 import { RoleStorage } from "./role-storage";
 import { CustomerStorage } from "./customer-storage";
-import { WholesaleStorage } from "./wholesale-storage";
-import { RefuelingStorage } from "./refueling-storage";
+import { BaseStorage } from "./base-storage";
+import { SupplierStorage } from "./supplier-storage";
 import { LogisticsStorage } from "./logistics-storage";
 import { PriceStorage } from "./price-storage";
 import { WarehouseStorage } from "./warehouse-storage";
@@ -19,8 +18,8 @@ export class Storage {
   public users: UserStorage;
   public roles: RoleStorage;
   public customers: CustomerStorage;
-  public wholesale: WholesaleStorage;
-  public refueling: RefuelingStorage;
+  public bases: BaseStorage;
+  public suppliers: SupplierStorage;
   public logistics: LogisticsStorage;
   public prices: PriceStorage;
   public warehouses: WarehouseStorage;
@@ -34,12 +33,12 @@ export class Storage {
     this.users = new UserStorage();
     this.roles = new RoleStorage();
     this.customers = new CustomerStorage();
-    this.wholesale = new WholesaleStorage();
-    this.refueling = new RefuelingStorage();
+    this.bases = new BaseStorage();
+    this.suppliers = new SupplierStorage();
     this.logistics = new LogisticsStorage();
     this.prices = new PriceStorage();
     this.warehouses = new WarehouseStorage();
-    this.exchange = new ExchangeStorage();
+    this.exchange = new ExchangeExchangeStorage();
     this.movement = new MovementStorage();
     this.opt = new OptStorage();
     this.aircraftRefueling = new AircraftRefuelingStorage();
