@@ -62,7 +62,7 @@ export function AddRefuelingDialog({
   const isEditing = !!editRefueling;
 
   const { data: allBases = [] } = useQuery<any[]>({
-    queryKey: ["/api/directories/bases"],
+    queryKey: ["/api/bases"],
   });
 
   // Filter only refueling bases

@@ -18,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { CalendarIcon, Plus, Loader2, ChevronDown } from "lucide-react";
-import type { WholesaleSupplier, WholesaleBase, Customer, Warehouse, Price, DeliveryCost, LogisticsCarrier, LogisticsDeliveryLocation, LogisticsVehicle, LogisticsTrailer, LogisticsDriver, Opt } from "@shared/schema";
+import type { Supplier, Base, Customer, Warehouse, Price, DeliveryCost, LogisticsCarrier, LogisticsDeliveryLocation, LogisticsVehicle, LogisticsTrailer, LogisticsDriver, Opt } from "@shared/schema";
 import { CalculatedField } from "./calculated-field";
 import { optFormSchema, type OptFormData } from "../schemas";
 import { formatNumber, formatCurrency } from "../utils";
@@ -55,12 +55,12 @@ export function OptForm({
     },
   });
 
-  const { data: suppliers } = useQuery({
+  const { data: suppliers } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
   });
 
-  const { data: bases } = useQuery<WholesaleBase[]>({
-    queryKey: ["/api/wholesale/bases"],
+  const { data: bases } = useQuery<Base[]>({
+    queryKey: ["/api/bases"],
   });
 
   const { data: customers } = useQuery<Customer[]>({

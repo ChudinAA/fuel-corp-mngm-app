@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import type { AircraftRefueling, DirectoryRefueling } from "@shared/schema";
+import type { AircraftRefueling } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { AddRefuelingDialog } from "./refueling/add-refueling-dialog";
 import { RefuelingTable } from "./refueling/refueling-table";
@@ -16,11 +16,11 @@ export default function RefuelingPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { data: allSuppliers } = useQuery<any[]>({
-    queryKey: ["/api/directories/suppliers"],
+    queryKey: ["/api/suppliers"],
   });
 
   const { data: allBuyers } = useQuery<any[]>({
-    queryKey: ["/api/directories/customers"],
+    queryKey: ["/api/customers"],
   });
 
   // Filter suppliers and buyers for refueling module
