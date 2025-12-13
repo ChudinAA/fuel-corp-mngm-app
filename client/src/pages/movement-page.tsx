@@ -36,7 +36,7 @@ export default function MovementPage() {
     },
   });
 
-  const { data: suppliers } = useQuery({
+  const { data: allSuppliers } = useQuery({
     queryKey: ["/api/suppliers"],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/suppliers");
@@ -92,10 +92,10 @@ export default function MovementPage() {
     },
   });
 
-  const allSuppliers: AllSupplier[] = [
-    ...(wholesaleSuppliers || []).map((s: any) => ({ ...s, type: 'wholesale' as const })),
-    ...(refuelingProviders || []).map((p: any) => ({ ...p, type: 'refueling' as const })),
-  ];
+  // const allSuppliers: AllSupplier[] = [
+  //   ...(wholesaleSuppliers || []).map((s: any) => ({ ...s, type: 'wholesale' as const })),
+  //   ...(refuelingProviders || []).map((p: any) => ({ ...p, type: 'refueling' as const })),
+  // ];
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {

@@ -11,7 +11,7 @@ import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Search, Pencil, Trash2, RefreshCw, CalendarCheck, AlertTriangle } from "lucide-react";
-import type { Price, WholesaleSupplier, RefuelingProvider, Customer } from "@shared/schema";
+import type { Price, Supplier, Customer } from "@shared/schema";
 import type { PricesTableProps } from "../types";
 import { formatNumber, formatDate, getPriceDisplay, getProductTypeLabel } from "../utils";
 import { usePriceSelection } from "../hooks/use-price-selection";
@@ -29,12 +29,8 @@ export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableP
     queryKey: ["/api/prices"],
   });
 
-  const { data: optContractors } = useQuery<WholesaleSupplier[]>({
-    queryKey: ["/api/wholesale/suppliers"],
-  });
-
-  const { data: refuelingContractors } = useQuery<RefuelingProvider[]>({
-    queryKey: ["/api/refueling/providers"],
+  const { data: allContractors } = useQuery<Supplier[]>({
+    queryKey: ["/api/suppliers"],
   });
 
   const { data: customers } = useQuery<Customer[]>({
@@ -49,7 +45,7 @@ export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableP
     if (role === "buyer") {
       contractors = customers;
     } else {
-      contractors = type === "wholesale" ? optContractors : refuelingContractors;
+      contractors = allContractors;
     }
     return contractors?.find(c => c.id === id)?.name || `ID: ${id}`;
   };

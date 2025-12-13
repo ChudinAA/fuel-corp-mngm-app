@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Package, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
-import type { Warehouse, WholesaleBase, RefuelingBase } from "@shared/schema";
+import type { Warehouse, Base } from "@shared/schema";
 import type { WarehouseTransaction } from "../types";
 import { formatNumber, formatCurrency, getTransactionTypeLabel } from "../utils";
 
@@ -25,13 +25,8 @@ export function WarehouseDetailsDialog({
   open, 
   onOpenChange 
 }: WarehouseDetailsDialogProps) {
-  const { data: wholesaleBases } = useQuery<WholesaleBase[]>({
-    queryKey: ["/api/wholesale/bases"],
-    enabled: open,
-  });
-
-  const { data: refuelingBases } = useQuery<RefuelingBase[]>({
-    queryKey: ["/api/refueling/bases"],
+  const { data: bases } = useQuery<Base[]>({
+    queryKey: ["/api/bases"],
     enabled: open,
   });
 
@@ -95,7 +90,7 @@ export function WarehouseDetailsDialog({
               {warehouse.baseIds && warehouse.baseIds.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
                   {warehouse.baseIds.map((baseId, index) => {
-                    const baseName = [...(wholesaleBases || []), ...(refuelingBases || [])].find(
+                    const baseName = bases.find(
                       (b: any) => b.id === baseId
                     )?.name;
                     return baseName ? (

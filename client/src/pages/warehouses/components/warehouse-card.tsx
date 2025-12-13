@@ -8,7 +8,7 @@ import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Pencil, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Warehouse, WholesaleBase, RefuelingBase } from "@shared/schema";
+import type { Warehouse, Base } from "@shared/schema";
 import type { WarehouseTransaction } from "../types";
 import { formatNumber, formatCurrency } from "../utils";
 
@@ -26,12 +26,8 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
   const cost = parseFloat(warehouse.averageCost || "0");
   const isInactive = !warehouse.isActive;
 
-  const { data: wholesaleBases } = useQuery<WholesaleBase[]>({
-    queryKey: ["/api/wholesale/bases"],
-  });
-
-  const { data: refuelingBases } = useQuery<RefuelingBase[]>({
-    queryKey: ["/api/refueling/bases"],
+  const { data: allBases } = useQuery<Base[]>({
+    queryKey: ["/api/bases"],
   });
 
   const { data: transactions } = useQuery<WarehouseTransaction[]>({
@@ -41,7 +37,6 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
 
   const getBaseNames = (baseIds: string[] | null | undefined) => {
     if (!baseIds || baseIds.length === 0) return null;
-    const allBases = [...(wholesaleBases || []), ...(refuelingBases || [])];
     return baseIds
       .map(id => allBases.find((b: any) => b.id === id)?.name)
       .filter(Boolean)
@@ -82,8 +77,7 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/wholesale/suppliers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/refueling/providers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
       toast({ title: "Склад удален", description: "Запись успешно удалена" });
     },
     onError: () => {
