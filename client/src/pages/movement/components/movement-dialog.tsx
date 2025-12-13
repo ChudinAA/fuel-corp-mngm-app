@@ -199,8 +199,7 @@ export function MovementDialog({
     if (supplier.isWarehouse) {
       fromEntityType = "warehouse";
       // Найти склад поставщика по supplier_id
-      const supplierWarehouse = warehouses.find(w => 
-        w.supplierType === (supplier.type === "wholesale" ? "wholesale" : "refueling") && 
+      const supplierWarehouse = warehouses.find(w =>
         w.supplierId === supplier.id
       );
       if (supplierWarehouse) {

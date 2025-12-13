@@ -33,4 +33,5 @@ export interface AllSupplier {
   id: string;
   name: string;
   baseIds: string[];
+  isWarehouse: boolean;
 }

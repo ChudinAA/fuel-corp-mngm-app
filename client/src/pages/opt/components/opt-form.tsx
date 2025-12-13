@@ -140,7 +140,7 @@ export function OptForm({
   const selectedSupplier = suppliers?.find(s => s.id === watchSupplierId);
   const isWarehouseSupplier = selectedSupplier?.isWarehouse || false;
   const supplierWarehouse = warehouses?.find(w => 
-    w.supplierType === "wholesale" && w.supplierId === watchSupplierId
+    w.supplierId === watchSupplierId
   );
 
   // Автоматический выбор базиса при выборе поставщика
@@ -158,7 +158,7 @@ export function OptForm({
       // Установить склад если поставщик-склад
       if (supplier?.isWarehouse) {
         const warehouse = warehouses?.find(w => 
-          w.supplierType === "wholesale" && w.supplierId === supplier.id
+          w.supplierId === supplier.id
         );
         if (warehouse) {
           form.setValue("warehouseId", warehouse.id);

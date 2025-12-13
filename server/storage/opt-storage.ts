@@ -96,7 +96,7 @@ export class OptStorage implements IOptStorage {
       const [warehouse] = await db.select().from(warehouses).where(eq(warehouses.id, created.warehouseId)).limit(1);
 
       // Проверяем что это склад поставщика
-      if (warehouse && warehouse.supplierType && warehouse.supplierId) {
+      if (warehouse && warehouse.supplierId) {
         const quantityKg = parseFloat(created.quantityKg);
         const currentBalance = parseFloat(warehouse.currentBalance || "0");
         const newBalance = Math.max(0, currentBalance - quantityKg);

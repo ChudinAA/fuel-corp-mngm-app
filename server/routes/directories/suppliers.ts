@@ -34,7 +34,6 @@ export function registerSuppliersRoutes(app: Express) {
         const warehouse = await storage.warehouses.createWarehouse({
           name: data.name,
           baseIds: data.baseIds,
-          supplierType: null,
           supplierId: null,
           storageCost: data.storageCost || null,
           isActive: data.isActive ?? true,
@@ -52,8 +51,6 @@ export function registerSuppliersRoutes(app: Express) {
       if (warehouseId && data.isWarehouse) {
         await storage.warehouses.updateWarehouse(warehouseId, {
           supplierId: item.id,
-          updatedAt: sql`NOW()`,
-          updatedById: req.session.userId,
         });
       }
       
