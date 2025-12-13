@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Truck, Pencil, Trash2, MapPin, Car, Container, User } from "lucide-react";
+import { Search, Truck, Pencil, Trash2, MapPin, Car, Container, User, Building2, TruckIcon } from "lucide-react";
 import type { 
   LogisticsCarrier,
   LogisticsDeliveryLocation,
@@ -118,6 +118,25 @@ export function LogisticsTab() {
     return carriers?.find(c => c.id === carrierId)?.name || null;
   };
 
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case "carrier":
+        return <Building2 className="h-3.5 w-3.5 text-blue-400" />;
+      case "delivery_location":
+        return <MapPin className="h-3.5 w-3.5 text-purple-400" />;
+      case "vehicle":
+        return <Car className="h-3.5 w-3.5 text-green-400" />;
+      case "trailer":
+        return <Container className="h-3.5 w-3.5 text-amber-400" />;
+      case "driver":
+        return <User className="h-3.5 w-3.5 text-cyan-400" />;
+      case "warehouse":
+        return <TruckIcon className="h-3.5 w-3.5 text-sky-400" />;
+      default:
+        return <Truck className="h-3.5 w-3.5 text-gray-400" />;
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -183,7 +202,10 @@ export function LogisticsTab() {
                     filteredItems.map((item) => (
                       <TableRow key={`${item.type}-${item.id}`} data-testid={`row-logistics-${item.type}-${item.id}`}>
                         <TableCell>
-                          <Badge variant="outline">{item.typeName}</Badge>
+                          <Badge variant="outline" className="flex items-center gap-1.5 w-fit">
+                            {getTypeIcon(item.type)}
+                            <span>{item.typeName}</span>
+                          </Badge>
                         </TableCell>
                         <TableCell className="font-medium">{getItemDisplayName(item)}</TableCell>
                         <TableCell>
