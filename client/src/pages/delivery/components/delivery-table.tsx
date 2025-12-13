@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Truck, Pencil, Trash2, Droplets, Fuel, Package, MapPin } from "lucide-react";
+import { Truck, Pencil, Trash2, Droplets, Fuel, Warehouse, MapPin } from "lucide-react";
 import type { DeliveryCost } from "@shared/schema";
 import { formatNumber } from "../utils";
 
@@ -27,11 +27,11 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit }: Deli
   const getEntityIcon = (entityType: string) => {
     switch (entityType) {
       case "base":
-        return { icon: Droplets, color: "text-blue-400" };
+        return { icon: Droplets, color: "text-orange-400" };
       case "warehouse":
-        return { icon: Package, color: "text-purple-400" };
+        return { icon: Warehouse, color: "text-sky-400" };
       case "delivery_location":
-        return { icon: MapPin, color: "text-amber-400" };
+        return { icon: MapPin, color: "text-purple-400" };
       default:
         return { icon: MapPin, color: "text-gray-400" };
     }
