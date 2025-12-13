@@ -28,7 +28,10 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         ...warehouseData,
         createdById: req.session.userId,
       });
-      const item = await storage.warehouses.createWarehouse(data);
+      const item = await storage.warehouses.createWarehouse({
+        ...data,
+        supplierId: data.supplierId || null
+      });
       
       // Automatically create supplier if requested
       if (createSupplier && data.baseIds && data.baseIds.length > 0) {
@@ -36,6 +39,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           name: data.name,
           baseIds: data.baseIds,
           isWarehouse: true,
+          warehouseId: item.id,
           storageCost: data.storageCost || null,
           isActive: data.isActive ?? true,
           createdById: req.session.userId,
@@ -44,8 +48,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         const supplier = await storage.suppliers.createSupplier(supplierData);
         await storage.warehouses.updateWarehouse(item.id, {
           supplierId: supplier.id,
-          updatedAt: sql`NOW()`,
-          updatedById: req.session.userId,
+          updatedById: req.session.userId
         });
       }
       
