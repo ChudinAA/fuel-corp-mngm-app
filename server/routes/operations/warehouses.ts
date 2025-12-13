@@ -88,19 +88,30 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       
       // Get warehouse to check if it's linked to a supplier
       const warehouse = await storage.warehouses.getWarehouse(id);
-      // Only update supplier if warehouse is active
-      if (warehouse?.supplierId && warehouse?.isActive) {
-        // Update supplier to set isWarehouse = false
-        await storage.suppliers.updateSupplier(warehouse.supplierId, {
-          isWarehouse: false,
-          storageCost: null,
-        });
+      
+      if (!warehouse) {
+        return res.status(404).json({ message: "Склад не найден" });
+      }
+      
+      // Update supplier if warehouse is linked to one
+      if (warehouse.supplierId) {
+        try {
+          await storage.suppliers.updateSupplier(warehouse.supplierId, {
+            isWarehouse: false,
+            warehouseId: null,
+            storageCost: null,
+          });
+        } catch (supplierError) {
+          console.error("Error updating supplier during warehouse deletion:", supplierError);
+          // Continue with warehouse deletion even if supplier update fails
+        }
       }
       
       await storage.warehouses.deleteWarehouse(id);
       res.json({ message: "Склад удален" });
     } catch (error) {
-      res.status(500).json({ message: "Ошибка удаления склада" });
+      console.error("Warehouse deletion error:", error);
+      res.status(500).json({ message: "Ошибка удаления склада", error: error.message });
     }
   });
 

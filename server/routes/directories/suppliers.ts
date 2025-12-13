@@ -72,6 +72,7 @@ export function registerSuppliersRoutes(app: Express) {
       }
       res.json(item);
     } catch (error) {
+      console.error("Supplier update error:", error);
       res.status(500).json({ message: "Ошибка обновления поставщика" });
     }
   });
