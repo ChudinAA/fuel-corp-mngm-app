@@ -1,16 +1,32 @@
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Package, Plane, TruckIcon, ShoppingCart } from "lucide-react";
 import type { Price } from "@shared/schema";
 import { AddPriceDialog } from "./prices/components/add-price-dialog";
 import { PricesTable } from "./prices/components/prices-table";
 
 export default function PricesPage() {
   const [editingPrice, setEditingPrice] = useState<Price | null>(null);
-  const [dealTypeFilter, setDealTypeFilter] = useState<"all" | "wholesale" | "refueling">("all");
-  const [roleFilter, setRoleFilter] = useState<"all" | "supplier" | "buyer">("all");
+  const [wholesaleEnabled, setWholesaleEnabled] = useState(true);
+  const [refuelingEnabled, setRefuelingEnabled] = useState(true);
+  const [supplierEnabled, setSupplierEnabled] = useState(true);
+  const [buyerEnabled, setBuyerEnabled] = useState(true);
+
+  const getDealTypeFilter = (): "all" | "wholesale" | "refueling" => {
+    if (wholesaleEnabled && refuelingEnabled) return "all";
+    if (wholesaleEnabled) return "wholesale";
+    if (refuelingEnabled) return "refueling";
+    return "all";
+  };
+
+  const getRoleFilter = (): "all" | "supplier" | "buyer" => {
+    if (supplierEnabled && buyerEnabled) return "all";
+    if (supplierEnabled) return "supplier";
+    if (buyerEnabled) return "buyer";
+    return "all";
+  };
 
   return (
     <div className="space-y-6">
@@ -24,50 +40,51 @@ export default function PricesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Фильтры</CardTitle>
-          <CardDescription>Выберите тип сделки и роль контрагента</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Тип сделки</Label>
-              <Select value={dealTypeFilter} onValueChange={(v) => setDealTypeFilter(v as typeof dealTypeFilter)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все</SelectItem>
-                  <SelectItem value="wholesale">ОПТ</SelectItem>
-                  <SelectItem value="refueling">Заправка ВС</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Роль контрагента</Label>
-              <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as typeof roleFilter)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все</SelectItem>
-                  <SelectItem value="supplier">Поставщик</SelectItem>
-                  <SelectItem value="buyer">Покупатель</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle className="text-lg">Список цен</CardTitle>
-          <CardDescription>Все цены покупки и продажи</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <Button
+              variant={wholesaleEnabled ? "default" : "outline"}
+              size="sm"
+              onClick={() => setWholesaleEnabled(!wholesaleEnabled)}
+              className="gap-2"
+            >
+              <Package className="h-4 w-4" />
+              ОПТ
+            </Button>
+            <Button
+              variant={refuelingEnabled ? "default" : "outline"}
+              size="sm"
+              onClick={() => setRefuelingEnabled(!refuelingEnabled)}
+              className="gap-2"
+            >
+              <Plane className="h-4 w-4" />
+              Заправка ВС
+            </Button>
+            <div className="w-px h-6 bg-border mx-1" />
+            <Button
+              variant={supplierEnabled ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSupplierEnabled(!supplierEnabled)}
+              className="gap-2"
+            >
+              <TruckIcon className="h-4 w-4" />
+              Поставщик
+            </Button>
+            <Button
+              variant={buyerEnabled ? "default" : "outline"}
+              size="sm"
+              onClick={() => setBuyerEnabled(!buyerEnabled)}
+              className="gap-2"
+            >
+              <ShoppingCart className="h-4 w-4" />
+              Покупатель
+            </Button>
+          </div>
           <PricesTable 
-            dealTypeFilter={dealTypeFilter} 
-            roleFilter={roleFilter}
+            dealTypeFilter={getDealTypeFilter()} 
+            roleFilter={getRoleFilter()}
             onEdit={setEditingPrice}
           />
         </CardContent>

@@ -201,7 +201,14 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
             <FormItem>
               <FormLabel>Объем по договору (кг)</FormLabel>
               <FormControl>
-                <Input type="number" step="0.01" placeholder="Объем поставки" data-testid="input-volume" {...field} />
+                <Input 
+                  type="number" 
+                  step="0.01" 
+                  min="0"
+                  placeholder="Объем поставки" 
+                  data-testid="input-volume" 
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -219,7 +226,14 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
               render={({ field }) => (
                 <FormItem className="flex-1">
                   <FormControl>
-                    <Input type="number" step="0.0001" placeholder="Цена за кг (₽)" data-testid={`input-price-${index}`} {...field} />
+                    <Input 
+                      type="number" 
+                      step="0.0001" 
+                      min="0"
+                      placeholder="Цена за кг (₽)" 
+                      data-testid={`input-price-${index}`} 
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

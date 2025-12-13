@@ -10,12 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Search, Pencil, Trash2, RefreshCw, CalendarCheck, AlertTriangle } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Search, MoreVertical, Pencil, Trash2, RefreshCw, Package, Plane, TruckIcon, ShoppingCart, FileText, StickyNote } from "lucide-react";
 import type { Price, Supplier, Customer } from "@shared/schema";
 import type { PricesTableProps } from "../types";
 import { formatNumber, formatDate, getPriceDisplay, getProductTypeLabel } from "../utils";
 import { usePriceSelection } from "../hooks/use-price-selection";
-import { useDateCheck } from "../hooks/use-date-check";
 
 export function PricesTable({ dealTypeFilter, roleFilter, onEdit }: PricesTableProps) {
   const [search, setSearch] = useState("");
@@ -36,7 +36,6 @@ export function PricesTable({ dealTypeFilter, roleFilter, onEdit }: PricesTableP
   });
 
   const selectionCheck = usePriceSelection();
-  const dateCheck = useDateCheck();
 
   const getContractorName = (id: string, type: string, role: string) => {
     let contractors;
@@ -106,36 +105,57 @@ export function PricesTable({ dealTypeFilter, roleFilter, onEdit }: PricesTableP
           <TableHeader>
             <TableRow>
               <TableHead>Период</TableHead>
-              <TableHead>Тип сделки</TableHead>
-              <TableHead>Роль</TableHead>
+              <TableHead className="w-[60px]">Тип</TableHead>
+              <TableHead className="w-[60px]">Роль</TableHead>
               <TableHead>Контрагент</TableHead>
               <TableHead>Базис</TableHead>
               <TableHead>Продукт</TableHead>
               <TableHead className="text-right">Цена (₽/кг)</TableHead>
               <TableHead className="text-right">Объем</TableHead>
               <TableHead className="text-right">Выборка</TableHead>
-              <TableHead>Даты</TableHead>
-              <TableHead className="w-[80px]"></TableHead>
+              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredPrices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Нет данных</TableCell>
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Нет данных</TableCell>
               </TableRow>
             ) : (
               filteredPrices.map((price) => (
                 <TableRow key={price.id} data-testid={`row-price-${price.id}`}>
                   <TableCell className="text-sm whitespace-nowrap">{formatDate(price.dateFrom)} - {formatDate(price.dateTo)}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">
-                      {price.counterpartyType === "wholesale" ? "ОПТ" : "Заправка ВС"}
-                    </Badge>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center justify-center">
+                          {price.counterpartyType === "wholesale" ? (
+                            <Package className="h-5 w-5 text-blue-500/70" />
+                          ) : (
+                            <Plane className="h-5 w-5 text-purple-500/70" />
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {price.counterpartyType === "wholesale" ? "ОПТ" : "Заправка ВС"}
+                      </TooltipContent>
+                    </Tooltip>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={price.counterpartyRole === "supplier" ? "default" : "secondary"}>
-                      {price.counterpartyRole === "supplier" ? "Поставщик" : "Покупатель"}
-                    </Badge>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center justify-center">
+                          {price.counterpartyRole === "supplier" ? (
+                            <TruckIcon className="h-5 w-5 text-green-500/70" />
+                          ) : (
+                            <ShoppingCart className="h-5 w-5 text-orange-500/70" />
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {price.counterpartyRole === "supplier" ? "Поставщик" : "Покупатель"}
+                      </TooltipContent>
+                    </Tooltip>
                   </TableCell>
                   <TableCell>{getContractorName(price.counterpartyId, price.counterpartyType, price.counterpartyRole)}</TableCell>
                   <TableCell>{price.basis || "—"}</TableCell>
@@ -167,62 +187,44 @@ export function PricesTable({ dealTypeFilter, roleFilter, onEdit }: PricesTableP
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      {price.dateCheckWarning === "error" ? (
-                        <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                          <AlertTriangle className="h-3 w-3" />
-                          Пересечение
-                        </Badge>
-                      ) : price.dateCheckWarning === "warning" ? (
-                        <Badge variant="outline" className="flex items-center gap-1 w-fit text-yellow-600">
-                          <AlertTriangle className="h-3 w-3" />
-                          Внимание
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300">ОК</Badge>
-                      )}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => dateCheck.checkForPrice.mutate(price)}
-                            disabled={dateCheck.checkForPrice.isPending}
-                            data-testid={`button-check-dates-${price.id}`}
-                          >
-                            <CalendarCheck className={`h-3 w-3 ${dateCheck.checkForPrice.isPending ? "animate-spin" : ""}`} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Проверить даты</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8" 
-                        data-testid={`button-edit-price-${price.id}`}
-                        onClick={() => onEdit(price)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-destructive" 
-                        onClick={() => {
-                          setPriceToDelete(price);
-                          setDeleteDialogOpen(true);
-                        }}
-                        disabled={deleteMutation.isPending}
-                        data-testid={`button-delete-price-${price.id}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-menu-price-${price.id}`}>
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onEdit(price)} data-testid={`button-edit-price-${price.id}`}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Редактировать
+                        </DropdownMenuItem>
+                        {price.notes && (
+                          <DropdownMenuItem onClick={() => alert(price.notes)}>
+                            <StickyNote className="mr-2 h-4 w-4" />
+                            Примечания
+                          </DropdownMenuItem>
+                        )}
+                        {price.contractNumber && (
+                          <DropdownMenuItem onClick={() => alert(`Договор: ${price.contractNumber}`)}>
+                            <FileText className="mr-2 h-4 w-4" />
+                            Договор
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setPriceToDelete(price);
+                            setDeleteDialogOpen(true);
+                          }}
+                          disabled={deleteMutation.isPending}
+                          className="text-destructive"
+                          data-testid={`button-delete-price-${price.id}`}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Удалить
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))
