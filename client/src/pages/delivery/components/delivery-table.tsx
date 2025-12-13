@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Truck, Pencil, Trash2 } from "lucide-react";
+import { Truck, Pencil, Trash2, Droplets, Fuel, Package, MapPin } from "lucide-react";
 import type { DeliveryCost } from "@shared/schema";
 import { formatNumber } from "../utils";
 
@@ -23,6 +23,19 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit }: Deli
   const { toast } = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [costToDelete, setCostToDelete] = useState<DeliveryCost | null>(null);
+
+  const getEntityIcon = (entityType: string) => {
+    switch (entityType) {
+      case "base":
+        return { icon: Droplets, color: "text-blue-400" };
+      case "warehouse":
+        return { icon: Package, color: "text-purple-400" };
+      case "delivery_location":
+        return { icon: MapPin, color: "text-amber-400" };
+      default:
+        return { icon: MapPin, color: "text-gray-400" };
+    }
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -64,47 +77,60 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit }: Deli
               </TableCell>
             </TableRow>
           ) : (
-            costs.map((cost) => (
-              <TableRow key={cost.id}>
-                <TableCell>{getCarrierName(cost.carrierId)}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span>{cost.fromLocation}</span>
-                    <span className="text-muted-foreground">→</span>
-                    <span>{cost.toLocation}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-right font-medium">{formatNumber(cost.costPerKg)} ₽</TableCell>
+            costs.map((cost) => {
+              const fromEntityIcon = getEntityIcon(cost.fromEntityType);
+              const toEntityIcon = getEntityIcon(cost.toEntityType);
+              const FromIcon = fromEntityIcon.icon;
+              const ToIcon = toEntityIcon.icon;
+
+              return (
+                <TableRow key={cost.id}>
+                  <TableCell>{getCarrierName(cost.carrierId)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <FromIcon className={`h-3.5 w-3.5 ${fromEntityIcon.color}`} />
+                        <span>{cost.fromLocation}</span>
+                      </div>
+                      <span className="text-muted-foreground">→</span>
+                      <div className="flex items-center gap-1.5">
+                        <ToIcon className={`h-3.5 w-3.5 ${toEntityIcon.color}`} />
+                        <span>{cost.toLocation}</span>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right font-medium">{formatNumber(cost.costPerKg)} ₽</TableCell>
                 <TableCell className="text-right">{cost.distance ? formatNumber(cost.distance) : "—"}</TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="text-green-600 border-green-600">Активен</Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      data-testid={`button-edit-delivery-${cost.id}`}
-                      onClick={() => onEdit(cost)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => {
-                        setCostToDelete(cost);
-                        setDeleteDialogOpen(true);
-                      }}
-                      disabled={deleteMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))
+                  <TableCell>
+                    <Badge variant="outline" className="text-green-600 border-green-600">Активен</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        data-testid={`button-edit-delivery-${cost.id}`}
+                        onClick={() => onEdit(cost)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-destructive"
+                        onClick={() => {
+                          setCostToDelete(cost);
+                          setDeleteDialogOpen(true);
+                        }}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })
           )}
         </TableBody>
       </Table>
