@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -21,6 +22,9 @@ export function PricesTable({ dealTypeFilter, roleFilter, onEdit }: PricesTableP
   const [search, setSearch] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [priceToDelete, setPriceToDelete] = useState<Price | null>(null);
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [contractDialogOpen, setContractDialogOpen] = useState(false);
+  const [selectedPrice, setSelectedPrice] = useState<Price | null>(null);
   const { toast } = useToast();
 
   const { data: prices, isLoading } = useQuery<Price[]>({
@@ -199,13 +203,19 @@ export function PricesTable({ dealTypeFilter, roleFilter, onEdit }: PricesTableP
                           Редактировать
                         </DropdownMenuItem>
                         {price.notes && (
-                          <DropdownMenuItem onClick={() => alert(price.notes)}>
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedPrice(price);
+                            setNotesDialogOpen(true);
+                          }}>
                             <StickyNote className="mr-2 h-4 w-4" />
                             Примечания
                           </DropdownMenuItem>
                         )}
                         {price.contractNumber && (
-                          <DropdownMenuItem onClick={() => alert(`Договор: ${price.contractNumber}`)}>
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedPrice(price);
+                            setContractDialogOpen(true);
+                          }}>
                             <FileText className="mr-2 h-4 w-4" />
                             Договор
                           </DropdownMenuItem>
@@ -246,6 +256,30 @@ export function PricesTable({ dealTypeFilter, roleFilter, onEdit }: PricesTableP
         title="Удалить цену?"
         description="Вы уверены, что хотите удалить эту цену? Это действие нельзя отменить."
       />
+
+      <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Примечания</DialogTitle>
+            <DialogDescription>Дополнительная информация о цене</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm whitespace-pre-wrap">{selectedPrice?.notes}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={contractDialogOpen} onOpenChange={setContractDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Договор</DialogTitle>
+            <DialogDescription>Информация о договоре</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm">Номер договора: <span className="font-medium">{selectedPrice?.contractNumber}</span></p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
