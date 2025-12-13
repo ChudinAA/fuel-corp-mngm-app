@@ -1,4 +1,3 @@
-
 import { sql, relations } from "drizzle-orm";
 import { pgTable, text, varchar, integer, decimal, date, boolean, timestamp, jsonb, serial, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
@@ -446,7 +445,14 @@ export const insertLogisticsDriverSchema = createInsertSchema(logisticsDrivers).
 
 export const insertPriceSchema = createInsertSchema(prices).omit({ id: true });
 export const insertDeliveryCostSchema = createInsertSchema(deliveryCost).omit({ id: true });
-export const insertWarehouseSchema = createInsertSchema(warehouses).omit({ id: true });
+export const insertWarehouseSchema = z.object({
+  name: z.string().min(1),
+  baseIds: z.array(z.string()).optional(),
+  supplierId: z.string().uuid().optional().nullable(),
+  storageCost: z.string().optional().nullable(),
+  isActive: z.boolean().optional(),
+  createdById: z.string().uuid(),
+});
 export const insertWarehouseTransactionSchema = createInsertSchema(warehouseTransactions).omit({ id: true });
 
 export const insertExchangeSchema = createInsertSchema(exchange).omit({ id: true, createdAt: true });

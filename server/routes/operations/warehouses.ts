@@ -23,25 +23,29 @@ export function registerWarehousesOperationsRoutes(app: Express) {
 
   app.post("/api/warehouses", requireAuth, async (req, res) => {
     try {
-      const { createSupplier, ...warehouseData } = req.body;
-      const data = insertWarehouseSchema.parse({
+      const { createSupplier, bases, ...warehouseData } = req.body;
+      
+      // Extract baseIds from bases array
+      const baseIds = bases?.map((b: { baseId: string }) => b.baseId).filter(Boolean) || [];
+      
+      const data = {
         ...warehouseData,
+        baseIds,
         createdById: req.session.userId,
-      });
-      const item = await storage.warehouses.createWarehouse({
-        ...data,
-        supplierId: data.supplierId || null
-      });
+        supplierId: warehouseData.supplierId || null,
+      };
+      
+      const item = await storage.warehouses.createWarehouse(data);
       
       // Automatically create supplier if requested
-      if (createSupplier && data.baseIds && data.baseIds.length > 0) {
+      if (createSupplier && baseIds.length > 0) {
         const supplierData = {
           name: data.name,
-          baseIds: data.baseIds,
+          baseIds: baseIds,
           isWarehouse: true,
           warehouseId: item.id,
           storageCost: data.storageCost || null,
-          isActive: data.isActive ?? true,
+          isActive: true,
           createdById: req.session.userId,
         };
         
@@ -54,10 +58,11 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       
       res.status(201).json(item);
     } catch (error) {
+      console.error("Warehouse creation error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
       }
-      res.status(500).json({ message: "Ошибка создания склада" });
+      res.status(500).json({ message: "Ошибка создания склада", error: error.message });
     }
   });
 
