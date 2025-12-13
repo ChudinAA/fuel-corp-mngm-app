@@ -20,7 +20,7 @@ export default function RefuelingPage() {
   });
 
   const { data: allBases = [] } = useQuery<any[]>({
-    queryKey: ["/api/bases"],
+    queryKey: ["/api/bases?baseType=refueling"],
   });
 
   const { data: allBuyers = [] } = useQuery<any[]>({
@@ -30,7 +30,7 @@ export default function RefuelingPage() {
   // Filter suppliers that have refueling bases attached
   const refuelingBases = allBases.filter(b => b.baseType === 'refueling');
   const refuelingBaseIds = new Set(refuelingBases.map(b => b.id));
-  
+
   const suppliers = allSuppliers.filter(s => 
     s.baseIds?.some((baseId: string) => refuelingBaseIds.has(baseId))
   );
