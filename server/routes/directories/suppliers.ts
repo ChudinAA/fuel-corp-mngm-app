@@ -27,30 +27,26 @@ export function registerSuppliersRoutes(app: Express) {
         createdById: req.session.userId,
       });
       
-      let warehouseId = data.warehouseId;
+      // First, create the supplier
+      const item = await storage.suppliers.createSupplier({
+        ...data,
+        warehouseId: data.warehouseId || null,
+      });
       
-      // Create warehouse if supplier is marked as warehouse and doesn't have one
-      if (data.isWarehouse && !warehouseId && data.baseIds && data.baseIds.length > 0) {
+      // Then create warehouse if supplier is marked as warehouse and doesn't have one
+      if (data.isWarehouse && !data.warehouseId && data.baseIds && data.baseIds.length > 0) {
         const warehouse = await storage.warehouses.createWarehouse({
           name: data.name,
           baseIds: data.baseIds,
-          supplierId: null,
+          supplierId: item.id,
           storageCost: data.storageCost || null,
           isActive: data.isActive ?? true,
           createdById: req.session.userId,
         });
-        warehouseId = warehouse.id;
-      }
-      
-      const item = await storage.suppliers.createSupplier({
-        ...data,
-        warehouseId,
-      });
-      
-      // Link warehouse back to supplier if warehouse was created
-      if (warehouseId && data.isWarehouse) {
-        await storage.warehouses.updateWarehouse(warehouseId, {
-          supplierId: item.id,
+        
+        // Link warehouse back to supplier
+        await storage.suppliers.updateSupplier(item.id, {
+          warehouseId: warehouse.id,
         });
       }
       
@@ -59,6 +55,7 @@ export function registerSuppliersRoutes(app: Express) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
       }
+      console.error("Error creating supplier:", error);
       res.status(500).json({ message: "Ошибка создания поставщика" });
     }
   });
