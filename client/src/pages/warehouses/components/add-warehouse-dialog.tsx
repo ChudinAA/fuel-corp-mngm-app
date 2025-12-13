@@ -65,7 +65,7 @@ export function AddWarehouseDialog({
         name: warehouseToEdit.name,
         bases: warehouseToEdit.baseIds.map(id => ({ baseId: id })),
         storageCost: warehouseToEdit.storageCost || "",
-        createSupplier: warehouseToEdit.supplierType !== undefined,
+        createSupplier: !!warehouseToEdit.supplierId,
       });
     } else {
       form.reset({
@@ -79,21 +79,10 @@ export function AddWarehouseDialog({
 
   const mutation = useMutation({
     mutationFn: async (data: NewWarehouseFormValues) => {
-      let supplierType: string | undefined;
-      
-      if (data.createSupplier && data.bases.length > 0) {
-        const firstBaseId = data.bases[0].baseId;
-        const firstBase = allBases.find(b => b.id === firstBaseId);
-        if (firstBase) {
-          supplierType = firstBase.baseType === 'wholesale' ? 'wholesale' : 'refueling';
-        }
-      }
-      
       const payload = {
         ...data,
         baseIds: data.bases.map(b => b.baseId),
         ...(data.storageCost && { storageCost: data.storageCost }),
-        ...(data.createSupplier && supplierType && { supplierType }),
       };
       const url = isEditing ? `/api/warehouses/${warehouseToEdit?.id}` : "/api/warehouses";
       const method = isEditing ? "PATCH" : "POST";

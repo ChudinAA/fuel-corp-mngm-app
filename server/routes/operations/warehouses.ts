@@ -23,7 +23,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
 
   app.post("/api/warehouses", requireAuth, async (req, res) => {
     try {
-      const { createSupplier, supplierType, ...warehouseData } = req.body;
+      const { createSupplier, ...warehouseData } = req.body;
       const data = insertWarehouseSchema.parse({
         ...warehouseData,
         createdById: req.session.userId,
@@ -31,7 +31,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       const item = await storage.warehouses.createWarehouse(data);
       
       // Automatically create supplier if requested
-      if (createSupplier && supplierType && data.baseIds && data.baseIds.length > 0) {
+      if (createSupplier && data.baseIds && data.baseIds.length > 0) {
         const supplierData = {
           name: data.name,
           baseIds: data.baseIds,
@@ -43,7 +43,6 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         
         const supplier = await storage.suppliers.createSupplier(supplierData);
         await storage.warehouses.updateWarehouse(item.id, {
-          supplierType: supplierType,
           supplierId: supplier.id,
           updatedAt: sql`NOW()`,
           updatedById: req.session.userId,

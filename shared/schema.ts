@@ -229,7 +229,6 @@ export const warehouses = pgTable("warehouses", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   baseIds: text("base_ids").array(), // Changed from baseId to array
-  supplierType: text("supplier_type"), // "wholesale" or "refueling" - for auto-created suppliers
   supplierId: uuid("supplier_id"), // Link to auto-created supplier
   currentBalance: decimal("current_balance", { precision: 15, scale: 2 }).default("0"),
   averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default("0"),
