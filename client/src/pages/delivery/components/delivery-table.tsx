@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Truck, Pencil, Trash2, Droplets, Fuel, Warehouse, MapPin } from "lucide-react";
 import type { DeliveryCost } from "@shared/schema";
 import { formatNumber } from "../utils";
@@ -30,15 +31,15 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
       case "base":
         const base = bases.find(b => b.id === entityId);
         if (base?.baseType === "refueling") {
-          return { icon: Fuel, color: "text-green-400" };
+          return { icon: Fuel, color: "text-green-400", label: "Базис (Заправка)" };
         }
-        return { icon: Droplets, color: "text-orange-400" };
+        return { icon: Droplets, color: "text-orange-400", label: "Базис (ОПТ)" };
       case "warehouse":
-        return { icon: Warehouse, color: "text-sky-400" };
+        return { icon: Warehouse, color: "text-sky-400", label: "Склад" };
       case "delivery_location":
-        return { icon: MapPin, color: "text-purple-400" };
+        return { icon: MapPin, color: "text-purple-400", label: "Место доставки" };
       default:
-        return { icon: MapPin, color: "text-gray-400" };
+        return { icon: MapPin, color: "text-gray-400", label: "Неизвестно" };
     }
   };
 
@@ -92,17 +93,33 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
                 <TableRow key={cost.id}>
                   <TableCell>{getCarrierName(cost.carrierId)}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <FromIcon className={`h-3.5 w-3.5 ${fromEntityIcon.color}`} />
-                        <span>{cost.fromLocation}</span>
+                    <TooltipProvider>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <FromIcon className={`h-3.5 w-3.5 ${fromEntityIcon.color}`} />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{fromEntityIcon.label}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <span>{cost.fromLocation}</span>
+                        </div>
+                        <span className="text-muted-foreground">→</span>
+                        <div className="flex items-center gap-1.5">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <ToIcon className={`h-3.5 w-3.5 ${toEntityIcon.color}`} />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{toEntityIcon.label}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <span>{cost.toLocation}</span>
+                        </div>
                       </div>
-                      <span className="text-muted-foreground">→</span>
-                      <div className="flex items-center gap-1.5">
-                        <ToIcon className={`h-3.5 w-3.5 ${toEntityIcon.color}`} />
-                        <span>{cost.toLocation}</span>
-                      </div>
-                    </div>
+                    </TooltipProvider>
                   </TableCell>
                   <TableCell className="text-right font-medium">{formatNumber(cost.costPerKg)} ₽</TableCell>
                 <TableCell className="text-right">{cost.distance ? formatNumber(cost.distance) : "—"}</TableCell>
