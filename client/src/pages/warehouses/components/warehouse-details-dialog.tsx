@@ -9,7 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Package, ArrowUpCircle, ArrowDownCircle, Warehouse as WarehouseIcon, Droplets, Fuel } from "lucide-react";
 import type { Warehouse, Base } from "@shared/schema";
 import type { WarehouseTransaction } from "../types";
 import { formatNumber, formatCurrency, getTransactionTypeLabel } from "../utils";
@@ -42,12 +43,19 @@ export function WarehouseDetailsDialog({
     return <ArrowDownCircle className="h-4 w-4 text-red-600" />;
   };
 
+  const getBaseIcon = (baseType: string) => {
+    if (baseType === 'refueling') {
+      return { icon: Fuel, color: "text-green-400", label: "Заправка" };
+    }
+    return { icon: Droplets, color: "text-orange-400", label: "ОПТ" };
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
+            <WarehouseIcon className="h-5 w-5 text-sky-400" />
             {warehouse.name} - История операций
           </DialogTitle>
           <DialogDescription>
@@ -87,15 +95,28 @@ export function WarehouseDetailsDialog({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {warehouse.baseIds && warehouse.baseIds.length > 0 ? (
+              {warehouse.baseIds && warehouse.baseIds.length > 0 && bases ? (
                 <div className="flex flex-wrap gap-1">
-                  {warehouse.baseIds.map((baseId, index) => {
-                    const baseName = bases.find(
-                      (b: any) => b.id === baseId
-                    )?.name;
-                    return baseName ? (
-                      <Badge key={index} variant="outline">{baseName}</Badge>
-                    ) : null;
+                  {warehouse.baseIds.map((baseId) => {
+                    const base = bases.find((b: any) => b.id === baseId);
+                    if (!base) return null;
+                    const baseIcon = getBaseIcon(base.baseType);
+                    const BaseIcon = baseIcon.icon;
+                    return (
+                      <TooltipProvider key={baseId}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="flex items-center gap-1">
+                              <BaseIcon className={`h-3 w-3 ${baseIcon.color}`} />
+                              {base.name}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{baseIcon.label}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
                   })}
                 </div>
               ) : (

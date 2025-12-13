@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
-import { Pencil, Trash2, TrendingUp, TrendingDown } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Pencil, Trash2, TrendingUp, TrendingDown, Warehouse as WarehouseIcon, Droplets, Fuel } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Warehouse, Base } from "@shared/schema";
@@ -41,6 +42,13 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
       .map(id => allBases.find((b: any) => b.id === id)?.name)
       .filter(Boolean)
       .join(", ");
+  };
+
+  const getBaseIcon = (baseType: string) => {
+    if (baseType === 'refueling') {
+      return { icon: Fuel, color: "text-green-400", label: "Заправка" };
+    }
+    return { icon: Droplets, color: "text-orange-400", label: "ОПТ" };
   };
 
   const getCurrentMonthStats = () => {
@@ -100,12 +108,33 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
         <div className="flex items-start justify-between gap-2">
           <div>
             <CardTitle className="text-lg flex items-center gap-2">
+              <WarehouseIcon className="h-4 w-4 text-sky-400" />
               {warehouse.name}
               {isInactive && <Badge variant="destructive">Неактивен</Badge>}
             </CardTitle>
-            {getBaseNames(warehouse.baseIds) && (
-              <CardDescription className="flex items-center gap-2 mt-1">
-                <Badge variant="outline">{getBaseNames(warehouse.baseIds)}</Badge>
+            {warehouse.baseIds && warehouse.baseIds.length > 0 && allBases && (
+              <CardDescription className="flex items-center gap-2 mt-1 flex-wrap">
+                {warehouse.baseIds.map((baseId) => {
+                  const base = allBases.find((b: any) => b.id === baseId);
+                  if (!base) return null;
+                  const baseIcon = getBaseIcon(base.baseType);
+                  const BaseIcon = baseIcon.icon;
+                  return (
+                    <TooltipProvider key={baseId}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            <BaseIcon className={`h-3 w-3 ${baseIcon.color}`} />
+                            {base.name}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{baseIcon.label}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  );
+                })}
               </CardDescription>
             )}
           </div>
