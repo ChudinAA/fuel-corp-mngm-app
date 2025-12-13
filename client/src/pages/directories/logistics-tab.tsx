@@ -184,7 +184,6 @@ export function LogisticsTab() {
                   <TableRow>
                     <TableHead className="w-[140px]">Тип</TableHead>
                     <TableHead>Название</TableHead>
-                    <TableHead>Перевозчик</TableHead>
                     <TableHead>Доп. информация</TableHead>
                     <TableHead>Статус</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
@@ -208,11 +207,6 @@ export function LogisticsTab() {
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">{getItemDisplayName(item)}</TableCell>
-                        <TableCell>
-                          {(item.type === "vehicle" || item.type === "trailer" || item.type === "driver") 
-                            ? getCarrierName((item as any).carrierId) || "—"
-                            : "—"}
-                        </TableCell>
                         <TableCell className="text-muted-foreground max-w-xs truncate">
                           {item.type === "vehicle" ? (item as LogisticsVehicle & { type: string }).model || "—" :
                            item.type === "trailer" ? (item as LogisticsTrailer & { type: string }).capacityKg || "—" :
