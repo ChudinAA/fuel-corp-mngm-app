@@ -14,4 +14,5 @@ export const priceFormSchema = z.object({
     price: z.string().min(1, "Укажите цену")
   })).min(1, "Добавьте хотя бы одну цену"),
   contractNumber: z.string().optional(),
+  notes: z.string().optional(),
 });

@@ -24,6 +24,7 @@ export function registerPricesRoutes(app: Express) {
         priceValues: body.priceValues?.map((pv: { price: string }) => JSON.stringify({ price: parseFloat(pv.price) })),
         volume: body.volume ? String(body.volume) : null,
         counterpartyId: body.counterpartyId,
+        notes: body.notes || null,
         createdById: req.session.userId,
       };
 
@@ -49,6 +50,7 @@ export function registerPricesRoutes(app: Express) {
         ...body,
         priceValues: body.priceValues?.map((pv: { price: string }) => JSON.stringify({ price: parseFloat(pv.price) })),
         volume: body.volume ? String(body.volume) : null,
+        notes: body.notes || null,
         updatedById: req.session.userId,
       };
 

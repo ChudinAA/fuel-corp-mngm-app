@@ -2,6 +2,7 @@
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,13 +16,13 @@ import type { Base, Supplier, Customer } from "@shared/schema";
 interface PriceFormFieldsProps {
   control: Control<PriceFormData>;
   contractors: Array<Supplier | Customer>;
-  allBases: Base[];
+  availableBases: Base[];
   fields: FieldArrayWithId<PriceFormData, "priceValues", "id">[];
   remove: UseFieldArrayRemove;
   append: UseFieldArrayAppend<PriceFormData, "priceValues">;
 }
 
-export function PriceFormFields({ control, contractors, allBases, fields, remove, append }: PriceFormFieldsProps) {
+export function PriceFormFields({ control, contractors, availableBases, fields, remove, append }: PriceFormFieldsProps) {
   return (
     <>
       <div className="grid grid-cols-2 gap-4">
@@ -79,7 +80,7 @@ export function PriceFormFields({ control, contractors, allBases, fields, remove
           name="counterpartyType"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Тип контрагента</FormLabel>
+              <FormLabel>Тип сделки</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger data-testid="select-counterparty-type">
@@ -183,9 +184,9 @@ export function PriceFormFields({ control, contractors, allBases, fields, remove
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {allBases?.map((b) => (
+                  {availableBases?.length > 0 ? availableBases.map((b) => (
                     <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
-                  )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                  )) : <SelectItem value="none" disabled>Нет доступных базисов</SelectItem>}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -258,6 +259,20 @@ export function PriceFormFields({ control, contractors, allBases, fields, remove
             <FormLabel>Номер договора (опционально)</FormLabel>
             <FormControl>
               <Input placeholder="№ договора" data-testid="input-contract-number" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={control}
+        name="notes"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Примечание (опционально)</FormLabel>
+            <FormControl>
+              <Textarea placeholder="Дополнительная информация" data-testid="input-notes" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>

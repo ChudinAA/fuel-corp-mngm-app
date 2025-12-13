@@ -16,11 +16,9 @@ import type { PricesTableProps } from "../types";
 import { formatNumber, formatDate, getPriceDisplay, getProductTypeLabel } from "../utils";
 import { usePriceSelection } from "../hooks/use-price-selection";
 import { useDateCheck } from "../hooks/use-date-check";
-import { AddPriceDialog } from "./add-price-dialog";
 
-export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableProps) {
+export function PricesTable({ dealTypeFilter, roleFilter, onEdit }: PricesTableProps) {
   const [search, setSearch] = useState("");
-  const [editingPrice, setEditingPrice] = useState<Price | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [priceToDelete, setPriceToDelete] = useState<Price | null>(null);
   const { toast } = useToast();
@@ -50,11 +48,29 @@ export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableP
     return contractors?.find(c => c.id === id)?.name || `ID: ${id}`;
   };
 
-  const filteredPrices = prices?.filter(p => 
-    p.counterpartyRole === counterpartyRole && 
-    p.counterpartyType === counterpartyType &&
-    (!search || p.basis?.toLowerCase().includes(search.toLowerCase()) || getContractorName(p.counterpartyId, p.counterpartyType, p.counterpartyRole).toLowerCase().includes(search.toLowerCase()))
-  ) || [];
+  const filteredPrices = prices?.filter(p => {
+    // Фильтр по типу сделки
+    if (dealTypeFilter !== "all" && p.counterpartyType !== dealTypeFilter) {
+      return false;
+    }
+    
+    // Фильтр по роли
+    if (roleFilter !== "all" && p.counterpartyRole !== roleFilter) {
+      return false;
+    }
+    
+    // Поиск
+    if (search) {
+      const searchLower = search.toLowerCase();
+      const contractorName = getContractorName(p.counterpartyId, p.counterpartyType, p.counterpartyRole).toLowerCase();
+      const basis = (p.basis || "").toLowerCase();
+      if (!contractorName.includes(searchLower) && !basis.includes(searchLower)) {
+        return false;
+      }
+    }
+    
+    return true;
+  }) || [];
 
   const deleteMutation = useMutation({
     mutationFn: async (priceId: string) => {
@@ -90,6 +106,8 @@ export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableP
           <TableHeader>
             <TableRow>
               <TableHead>Период</TableHead>
+              <TableHead>Тип сделки</TableHead>
+              <TableHead>Роль</TableHead>
               <TableHead>Контрагент</TableHead>
               <TableHead>Базис</TableHead>
               <TableHead>Продукт</TableHead>
@@ -103,12 +121,22 @@ export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableP
           <TableBody>
             {filteredPrices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Нет данных</TableCell>
+                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Нет данных</TableCell>
               </TableRow>
             ) : (
               filteredPrices.map((price) => (
                 <TableRow key={price.id} data-testid={`row-price-${price.id}`}>
                   <TableCell className="text-sm whitespace-nowrap">{formatDate(price.dateFrom)} - {formatDate(price.dateTo)}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {price.counterpartyType === "wholesale" ? "ОПТ" : "Заправка ВС"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={price.counterpartyRole === "supplier" ? "default" : "secondary"}>
+                      {price.counterpartyRole === "supplier" ? "Поставщик" : "Покупатель"}
+                    </Badge>
+                  </TableCell>
                   <TableCell>{getContractorName(price.counterpartyId, price.counterpartyType, price.counterpartyRole)}</TableCell>
                   <TableCell>{price.basis || "—"}</TableCell>
                   <TableCell>
@@ -177,7 +205,7 @@ export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableP
                         size="icon" 
                         className="h-8 w-8" 
                         data-testid={`button-edit-price-${price.id}`}
-                        onClick={() => setEditingPrice(price)}
+                        onClick={() => onEdit(price)}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -203,13 +231,6 @@ export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableP
         </Table>
       </div>
 
-      {editingPrice && (
-        <AddPriceDialog
-          editPrice={editingPrice}
-          onEditComplete={() => setEditingPrice(null)}
-        />
-      )}
-
       <DeleteConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
@@ -223,7 +244,6 @@ export function PricesTable({ counterpartyRole, counterpartyType }: PricesTableP
         title="Удалить цену?"
         description="Вы уверены, что хотите удалить эту цену? Это действие нельзя отменить."
       />
-      
     </div>
   );
 }

@@ -12,6 +12,7 @@ export interface PriceFormData {
   volume?: string;
   priceValues: Array<{ price: string }>;
   contractNumber?: string;
+  notes?: string;
 }
 
 export interface PriceDialogProps {
@@ -20,8 +21,9 @@ export interface PriceDialogProps {
 }
 
 export interface PricesTableProps {
-  counterpartyRole: "supplier" | "buyer";
-  counterpartyType: "wholesale" | "refueling";
+  dealTypeFilter: "all" | "wholesale" | "refueling";
+  roleFilter: "all" | "supplier" | "buyer";
+  onEdit: (price: Price) => void;
 }
 
 export interface SelectionCheckState {

@@ -193,6 +193,7 @@ export const prices = pgTable("prices", {
   dateTo: date("date_to").notNull(),
   contractNumber: text("contract_number"),
   contractAppendix: text("contract_appendix"),
+  notes: text("notes"),
   soldVolume: decimal("sold_volume", { precision: 15, scale: 2 }).default("0"),
   dateCheckWarning: text("date_check_warning"),
   isActive: boolean("is_active").default(true),

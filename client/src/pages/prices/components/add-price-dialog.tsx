@@ -9,11 +9,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
-import { Plus, Pencil, Loader2 } from "lucide-react";
-import type { WholesaleBase, WholesaleSupplier, RefuelingProvider, RefuelingBase, Customer } from "@shared/schema";
+import { Plus, Loader2 } from "lucide-react";
+import type { Base, Supplier, Customer } from "@shared/schema";
 import { priceFormSchema } from "../schemas";
 import type { PriceFormData, PriceDialogProps } from "../types";
-import { usePriceSelection } from "../hooks/use-price-selection";
 import { useDateCheck } from "../hooks/use-date-check";
 import { PriceFormFields } from "./price-form-fields";
 import { PriceChecksPanel } from "./price-checks-panel";
@@ -21,8 +20,8 @@ import { PriceChecksPanel } from "./price-checks-panel";
 export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [dateCheckPassed, setDateCheckPassed] = useState(false);
 
-  const selectionCheck = usePriceSelection();
   const dateCheck = useDateCheck();
 
   const form = useForm<PriceFormData>({
@@ -38,6 +37,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
       volume: "",
       priceValues: [{ price: "" }],
       contractNumber: "",
+      notes: "",
     },
   });
 
@@ -61,7 +61,6 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
         }
       }
 
-      // Обновляем поля формы
       const fieldsToRemove = fields.length;
       for (let i = 0; i < fieldsToRemove; i++) {
         remove(0);
@@ -82,17 +81,19 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
         volume: editPrice.volume || "",
         priceValues: parsedPriceValues,
         contractNumber: editPrice.contractNumber || "",
+        notes: editPrice.notes || "",
       });
       setOpen(true);
+      setDateCheckPassed(false);
     }
   }, [editPrice, form, fields.length, append, remove]);
 
   const watchCounterpartyType = form.watch("counterpartyType");
   const watchCounterpartyRole = form.watch("counterpartyRole");
   const watchCounterpartyId = form.watch("counterpartyId");
-  const watchBasis = form.watch("basis");
   const watchDateFrom = form.watch("dateFrom");
   const watchDateTo = form.watch("dateTo");
+  const watchBasis = form.watch("basis");
 
   const { data: bases } = useQuery({ queryKey: ["/api/bases"] });
   const { data: suppliers } = useQuery({ queryKey: ["/api/suppliers"] });
@@ -103,37 +104,36 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
     ? suppliers || []
     : customers || [];
 
+  // Фильтруем базисы для поставщика
+  const availableBases = watchCounterpartyRole === "supplier" && watchCounterpartyId
+    ? (() => {
+        const supplier = suppliers?.find(s => s.id === watchCounterpartyId);
+        if (supplier && supplier.baseIds && supplier.baseIds.length > 0) {
+          return allBases.filter(b => supplier.baseIds.includes(b.id));
+        }
+        return [];
+      })()
+    : allBases;
+
+  // Автоматически выбираем первый базис для поставщика
   useEffect(() => {
-    if (watchCounterpartyRole === "supplier" && watchCounterpartyId) {
-      const selectedContractor = contractors.find(c => c.id === watchCounterpartyId);
-      if (selectedContractor && selectedContractor.defaultBaseId) {
-        const defaultBase = allBases.find(b => b.id === selectedContractor.defaultBaseId);
-        if (defaultBase) {
-          form.setValue("basis", defaultBase.name);
+    if (watchCounterpartyRole === "supplier" && watchCounterpartyId && !editPrice) {
+      const supplier = suppliers?.find(s => s.id === watchCounterpartyId);
+      if (supplier && supplier.baseIds && supplier.baseIds.length > 0) {
+        const firstBase = allBases.find(b => b.id === supplier.baseIds[0]);
+        if (firstBase && !watchBasis) {
+          form.setValue("basis", firstBase.name);
         }
       }
     }
-  }, [watchCounterpartyRole, watchCounterpartyId, contractors, allBases, form]);
-
-  const handleCalculateSelection = () => {
-    if (!watchCounterpartyId || !watchBasis || !watchDateFrom || !watchDateTo) {
-      toast({ title: "Ошибка", description: "Заполните все обязательные поля", variant: "destructive" });
-      return;
-    }
-    selectionCheck.calculate({
-      counterpartyId: watchCounterpartyId,
-      counterpartyType: watchCounterpartyType,
-      basis: watchBasis,
-      dateFrom: watchDateFrom,
-      dateTo: watchDateTo,
-    });
-  };
+  }, [watchCounterpartyRole, watchCounterpartyId, suppliers, allBases, form, watchBasis, editPrice]);
 
   const handleCheckDates = () => {
     if (!watchCounterpartyId || !watchBasis || !watchDateFrom || !watchDateTo) {
       toast({ title: "Ошибка", description: "Заполните все обязательные поля", variant: "destructive" });
       return;
     }
+    
     dateCheck.check({
       counterpartyId: watchCounterpartyId,
       counterpartyType: watchCounterpartyType,
@@ -144,6 +144,18 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
       excludeId: editPrice?.id,
     });
   };
+
+  // Следим за результатом проверки дат
+  useEffect(() => {
+    if (dateCheck.result) {
+      if (dateCheck.result.status === "ok") {
+        setDateCheckPassed(true);
+        toast({ title: "Проверка пройдена", description: "Можно создать цену" });
+      } else {
+        setDateCheckPassed(false);
+      }
+    }
+  }, [dateCheck.result, toast]);
 
   const createMutation = useMutation({
     mutationFn: async (data: PriceFormData) => {
@@ -158,6 +170,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
         dateFrom: format(data.dateFrom, "yyyy-MM-dd"),
         dateTo: format(data.dateTo, "yyyy-MM-dd"),
         contractNumber: data.contractNumber || null,
+        notes: data.notes || null,
       };
       if (editPrice) {
         const res = await apiRequest("PATCH", `/api/prices/${editPrice.id}`, payload);
@@ -181,9 +194,10 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
         volume: "",
         priceValues: [{ price: "" }],
         contractNumber: "",
+        notes: "",
       });
-      selectionCheck.setResult(null);
       dateCheck.setResult(null);
+      setDateCheckPassed(false);
       setOpen(false);
       if (onEditComplete) {
         onEditComplete();
@@ -193,6 +207,18 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
     },
   });
+
+  const handleSubmit = (data: PriceFormData) => {
+    if (!dateCheckPassed && !editPrice) {
+      toast({ 
+        title: "Необходима проверка дат", 
+        description: "Сначала нажмите кнопку 'Проверка дат' и убедитесь, что нет ошибок", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    createMutation.mutate(data);
+  };
 
   return (
     <Dialog open={open || !!editPrice} onOpenChange={(isOpen) => {
@@ -209,9 +235,10 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
           volume: "",
           priceValues: [{ price: "" }],
           contractNumber: "",
+          notes: "",
         });
-        selectionCheck.setResult(null);
         dateCheck.setResult(null);
+        setDateCheckPassed(false);
         if (onEditComplete) {
           onEditComplete();
         }
@@ -231,23 +258,21 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
           <DialogDescription>Добавление или редактирование цены покупки или продажи</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <PriceFormFields
               control={form.control}
               contractors={contractors}
-              allBases={allBases}
+              availableBases={availableBases}
               fields={fields}
               remove={remove}
               append={append}
             />
 
             <PriceChecksPanel
-              selectionResult={selectionCheck.result}
               dateCheckResult={dateCheck.result}
-              onCalculateSelection={handleCalculateSelection}
               onCheckDates={handleCheckDates}
-              isCalculating={selectionCheck.isCalculating}
               isChecking={dateCheck.isChecking}
+              dateCheckPassed={dateCheckPassed}
             />
 
             <div className="flex justify-end gap-4 pt-4">
@@ -257,7 +282,11 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
                   onEditComplete();
                 }
               }}>Отмена</Button>
-              <Button type="submit" disabled={createMutation.isPending} data-testid={editPrice ? "button-save-edit-price" : "button-save-price"}>
+              <Button 
+                type="submit" 
+                disabled={createMutation.isPending || (!dateCheckPassed && !editPrice)} 
+                data-testid={editPrice ? "button-save-edit-price" : "button-save-price"}
+              >
                 {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{editPrice ? "Сохранение..." : "Создание..."}</> : (editPrice ? "Сохранить" : "Создать")}
               </Button>
             </div>
