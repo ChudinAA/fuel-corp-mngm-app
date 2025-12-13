@@ -10,7 +10,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Building2, Pencil, Trash2 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Search, Building2, Pencil, Trash2, Warehouse, PackageOpen, Fuel } from "lucide-react";
 import type { Supplier, Base } from "@shared/schema";
 import { AddSupplierDialog } from "./suppliers-dialog";
 
@@ -115,18 +121,61 @@ export function SuppliersTab() {
                   ) : (
                     filteredSuppliers.map((supplier) => (
                       <TableRow key={supplier.id} data-testid={`row-supplier-${supplier.id}`}>
-                        <TableCell className="font-medium">{supplier.name}</TableCell>
-                        <TableCell>{getBaseNames(supplier.baseIds)}</TableCell>
+                        <TableCell className="font-medium">
+                          <TooltipProvider>
+                            <div className="flex items-center gap-1.5">
+                              <span>{supplier.name}</span>
+                              {supplier.isWarehouse && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Warehouse className="h-4 w-4 text-sky-400 flex-shrink-0 cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Склад</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                          </TooltipProvider>
+                        </TableCell>
                         <TableCell>
-                          <div className="flex flex-col gap-1">
-                            {supplier.isWarehouse && (
-                              <Badge variant="secondary">Склад</Badge>
-                            )}
-                            {supplier.description && (
-                              <span className="text-sm text-muted-foreground">{supplier.description}</span>
-                            )}
-                            {!supplier.isWarehouse && !supplier.description && "—"}
-                          </div>
+                          <TooltipProvider>
+                            <div className="flex flex-wrap gap-1.5">
+                              {supplier.baseIds && supplier.baseIds.length > 0 ? (
+                                supplier.baseIds.map((baseId) => {
+                                  const base = bases.find(b => b.id === baseId);
+                                  if (!base) return null;
+                                  const isWholesale = base.baseType === 'wholesale';
+                                  return (
+                                    <div key={baseId} className="flex items-center gap-1">
+                                      <span className="text-sm">{base.name}</span>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          {isWholesale ? (
+                                            <PackageOpen className="h-4 w-4 text-orange-400 flex-shrink-0 cursor-help" />
+                                          ) : (
+                                            <Fuel className="h-4 w-4 text-green-400 flex-shrink-0 cursor-help" />
+                                          )}
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>{isWholesale ? 'ОПТ' : 'Заправка'}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <span>—</span>
+                              )}
+                            </div>
+                          </TooltipProvider>
+                        </TableCell>
+                        <TableCell>
+                          {supplier.description ? (
+                            <span className="text-sm text-muted-foreground">{supplier.description}</span>
+                          ) : (
+                            "—"
+                          )}
                         </TableCell>
                         <TableCell>
                           {supplier.isActive ? (

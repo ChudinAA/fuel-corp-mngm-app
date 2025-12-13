@@ -30,7 +30,8 @@ export default function DeliveryPage() {
 
   const filteredCosts = deliveryCosts?.filter(c => 
     c.fromLocation.toLowerCase().includes(search.toLowerCase()) ||
-    c.toLocation.toLowerCase().includes(search.toLowerCase())
+    c.toLocation.toLowerCase().includes(search.toLowerCase()) ||
+    getCarrierName(c.carrierId).toLowerCase().includes(search.toLowerCase()) // Added carrier search
   ) || [];
 
   const { averageCostPerKg, activeCarriersCount } = useDeliveryStats(deliveryCosts);
@@ -60,7 +61,13 @@ export default function DeliveryPage() {
           <div className="space-y-4">
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Поиск по маршрутам..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-search-delivery" />
+              <Input 
+              placeholder="Поиск по маршруту или перевозчику..." 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+              data-testid="input-search-delivery"
+            />
             </div>
 
             <DeliveryTable 
