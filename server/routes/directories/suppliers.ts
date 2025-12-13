@@ -48,6 +48,15 @@ export function registerSuppliersRoutes(app: Express) {
         warehouseId,
       });
       
+      // Link warehouse back to supplier if warehouse was created
+      if (warehouseId && data.isWarehouse) {
+        await storage.warehouses.updateWarehouse(warehouseId, {
+          supplierId: item.id,
+          updatedAt: sql`NOW()`,
+          updatedById: req.session.userId,
+        });
+      }
+      
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {

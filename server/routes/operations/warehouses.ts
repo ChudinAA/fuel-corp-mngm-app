@@ -41,23 +41,13 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           createdById: req.session.userId,
         };
         
-        if (supplierType === "wholesale") {
-          const supplier = await storage.wholesale.createWholesaleSupplier(supplierData);
-          await storage.warehouses.updateWarehouse(item.id, {
-            supplierType: "wholesale",
-            supplierId: supplier.id,
-            updatedAt: sql`NOW()`,
-            updatedById: req.session.userId,
-          });
-        } else if (supplierType === "refueling") {
-          const supplier = await storage.refueling.createRefuelingProvider(supplierData);
-          await storage.warehouses.updateWarehouse(item.id, {
-            supplierType: "refueling",
-            supplierId: supplier.id,
-            updatedAt: sql`NOW()`,
-            updatedById: req.session.userId,
-          });
-        }
+        const supplier = await storage.suppliers.createSupplier(supplierData);
+        await storage.warehouses.updateWarehouse(item.id, {
+          supplierType: supplierType,
+          supplierId: supplier.id,
+          updatedAt: sql`NOW()`,
+          updatedById: req.session.userId,
+        });
       }
       
       res.status(201).json(item);
@@ -92,19 +82,12 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       // Get warehouse to check if it's linked to a supplier
       const warehouse = await storage.warehouses.getWarehouse(id);
       // Only update supplier if warehouse is active
-      if (warehouse?.supplierId && warehouse?.supplierType && warehouse?.isActive) {
+      if (warehouse?.supplierId && warehouse?.isActive) {
         // Update supplier to set isWarehouse = false
-        if (warehouse.supplierType === "wholesale") {
-          await storage.wholesale.updateWholesaleSupplier(warehouse.supplierId, {
-            isWarehouse: false,
-            storageCost: null,
-          });
-        } else if (warehouse.supplierType === "refueling") {
-          await storage.refueling.updateRefuelingProvider(warehouse.supplierId, {
-            isWarehouse: false,
-            storageCost: null,
-          });
-        }
+        await storage.suppliers.updateSupplier(warehouse.supplierId, {
+          isWarehouse: false,
+          storageCost: null,
+        });
       }
       
       await storage.warehouses.deleteWarehouse(id);

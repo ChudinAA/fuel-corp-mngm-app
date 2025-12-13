@@ -85,7 +85,7 @@ export function AddWarehouseDialog({
         const firstBaseId = data.bases[0].baseId;
         const firstBase = allBases.find(b => b.id === firstBaseId);
         if (firstBase) {
-          supplierType = firstBase.source === 'wholesale' ? 'wholesale' : 'refueling';
+          supplierType = firstBase.baseType === 'wholesale' ? 'wholesale' : 'refueling';
         }
       }
       
