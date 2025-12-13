@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Maximize2 } from "lucide-react";
-import type { Opt, DirectoryWholesale, DirectoryLogistics } from "@shared/schema";
+import type { Opt } from "@shared/schema";
 import { AddOptDialog } from "./opt/components/add-opt-dialog";
 import { OptTable } from "./opt/components/opt-table";
 
@@ -14,22 +14,6 @@ export default function OptPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const queryClient = useQueryClient();
-
-  const { data: suppliers } = useQuery<DirectoryWholesale[]>({
-    queryKey: ["/api/directories/wholesale", "supplier"],
-  });
-
-  const { data: buyers } = useQuery<DirectoryWholesale[]>({
-    queryKey: ["/api/directories/wholesale", "buyer"],
-  });
-
-  const { data: carriers } = useQuery<DirectoryLogistics[]>({
-    queryKey: ["/api/directories/logistics", "carrier"],
-  });
-
-  const { data: locations } = useQuery<DirectoryLogistics[]>({
-    queryKey: ["/api/directories/logistics", "delivery_location"],
-  });
 
   const { data: optDeals } = useQuery<{ data: Opt[]; total: number }>({
     queryKey: ["/api/opt?page=1&pageSize=1000"],
@@ -82,13 +66,9 @@ export default function OptPage() {
         </Button>
       </div>
 
-      <AddOptDialog 
+      <AddOptDialog
         isOpen={isDialogOpen}
         onClose={handleCloseDialog}
-        suppliers={suppliers || []} 
-        buyers={buyers || []} 
-        carriers={carriers || []} 
-        locations={locations || []}
         editOpt={editingOpt}
       />
 

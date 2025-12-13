@@ -1,5 +1,5 @@
 
-import type { Opt, DirectoryWholesale, DirectoryLogistics } from "@shared/schema";
+import type { Opt } from "@shared/schema";
 
 export interface OptFormProps {
   onSuccess?: () => void;
@@ -9,10 +9,6 @@ export interface OptFormProps {
 export interface AddOptDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  suppliers: DirectoryWholesale[];
-  buyers: DirectoryWholesale[];
-  carriers: DirectoryLogistics[];
-  locations: DirectoryLogistics[];
   editOpt: Opt | null;
 }
 

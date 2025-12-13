@@ -80,11 +80,6 @@ The application follows a monorepo pattern with shared code:
 6. **Prices** - Central pricing repository for purchase/sale prices by counterparty, product, and date range
 7. **Delivery Costs** - Rate tables for carriers, routes, and tariffs
 
-**Directory Tables (Reference Data):**
-- Wholesale Directory: Suppliers, buyers, and basis locations
-- Refueling Directory: Airports, buyers, and services
-- Logistics Directory: Carriers, delivery locations, vehicles, trailers, drivers
-
 **Calculation Features:**
 - Dual input mode: liters or kilograms with automatic conversion using density
 - Weighted average cost calculation when merging inventory
@@ -98,7 +93,6 @@ RESTful endpoints organized by module:
 - `/api/auth/*` - Authentication (login, logout, user session)
 - `/api/users/*` - User management (CRUD operations)
 - `/api/roles/*` - Role and permission management
-- `/api/directories/*` - Reference data (wholesale, refueling, logistics)
 - `/api/prices/*` - Price management
 - `/api/delivery-cost/*` - Delivery rate management
 - `/api/warehouses/*` - Warehouse and inventory operations

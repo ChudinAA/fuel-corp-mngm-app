@@ -1,15 +1,11 @@
 
-import type { Movement, Warehouse, DirectoryWholesale, DirectoryLogistics } from "@shared/schema";
+import type { Movement, Warehouse } from "@shared/schema";
 
 export type InputMode = "liters" | "kg";
 
 export interface MovementDialogProps {
   warehouses: Warehouse[];
   suppliers: AllSupplier[];
-  carriers: DirectoryLogistics[];
-  vehicles: DirectoryLogistics[];
-  trailers: DirectoryLogistics[];
-  drivers: DirectoryLogistics[];
   prices: any[];
   deliveryCosts: any[];
   editMovement: Movement | null;
@@ -36,6 +32,5 @@ export interface CalculatedValues {
 export interface AllSupplier {
   id: string;
   name: string;
-  type: 'wholesale' | 'refueling';
-  defaultBaseId?: string;
+  baseIds: string[];
 }

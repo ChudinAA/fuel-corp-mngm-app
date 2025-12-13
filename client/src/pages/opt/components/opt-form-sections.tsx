@@ -5,7 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import type { UseFormReturn } from "react-hook-form";
-import type { DirectoryLogistics, Price } from "@shared/schema";
+import type { LogisticsCarrier, LogisticsDeliveryLocation, Price } from "@shared/schema";
 import { CalculatedField } from "./calculated-field";
 import { formatCurrency, formatNumber } from "../utils";
 import type { OptFormData } from "../schemas";
@@ -109,8 +109,8 @@ export function VolumeInputSection({ form, inputMode, setInputMode, calculatedKg
 
 interface LogisticsSectionProps {
   form: UseFormReturn<OptFormData>;
-  carriers?: DirectoryLogistics[];
-  deliveryLocations?: DirectoryLogistics[];
+  carriers?: LogisticsCarrier[];
+  deliveryLocations?: LogisticsDeliveryLocation[];
 }
 
 export function LogisticsSection({ 

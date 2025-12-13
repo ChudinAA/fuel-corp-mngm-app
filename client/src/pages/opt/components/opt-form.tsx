@@ -60,7 +60,7 @@ export function OptForm({
   });
 
   const { data: bases } = useQuery<Base[]>({
-    queryKey: ["/api/bases"],
+    queryKey: ["/api/bases?baseType=wholesale"],
   });
 
   const { data: customers } = useQuery<Customer[]>({

@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CalendarIcon, Plus, Loader2 } from "lucide-react";
-import type { AircraftRefueling, DirectoryRefueling } from "@shared/schema";
+import type { AircraftRefueling } from "@shared/schema";
 import { PRODUCT_TYPES } from "./constants";
 import { CalculatedField } from "./calculated-field";
 import { formatNumber, formatCurrency } from "./utils";
