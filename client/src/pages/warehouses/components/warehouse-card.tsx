@@ -36,7 +36,7 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
   });
 
   const getBaseNames = (baseIds: string[] | null | undefined) => {
-    if (!baseIds || baseIds.length === 0) return null;
+    if (!baseIds || baseIds.length === 0 || !allBases) return null;
     return baseIds
       .map(id => allBases.find((b: any) => b.id === id)?.name)
       .filter(Boolean)
