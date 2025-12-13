@@ -211,10 +211,11 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
   const handleSubmit = (data: PriceFormData) => {
     if (!dateCheckPassed && !editPrice) {
       toast({ 
-        title: "Внимание!", 
-        description: "Рекомендуется проверить даты перед созданием цены, чтобы избежать пересечений", 
-        variant: "default"
+        title: "Ошибка!", 
+        description: "Необходимо проверить даты перед созданием цены. Нажмите кнопку 'Проверить даты'", 
+        variant: "destructive"
       });
+      return;
     }
     createMutation.mutate(data);
   };
@@ -283,7 +284,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
               }}>Отмена</Button>
               <Button 
                 type="submit" 
-                disabled={createMutation.isPending} 
+                disabled={createMutation.isPending}
                 data-testid={editPrice ? "button-save-edit-price" : "button-save-price"}
               >
                 {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{editPrice ? "Сохранение..." : "Создание..."}</> : (editPrice ? "Сохранить" : "Создать")}
