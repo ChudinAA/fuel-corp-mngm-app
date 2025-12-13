@@ -17,16 +17,21 @@ interface DeliveryTableProps {
   isLoading: boolean;
   getCarrierName: (carrierId: string) => string;
   onEdit: (cost: DeliveryCost) => void;
+  bases?: any[];
 }
 
-export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit }: DeliveryTableProps) {
+export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases = [] }: DeliveryTableProps) {
   const { toast } = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [costToDelete, setCostToDelete] = useState<DeliveryCost | null>(null);
 
-  const getEntityIcon = (entityType: string) => {
+  const getEntityIcon = (entityType: string, entityId: string) => {
     switch (entityType) {
       case "base":
+        const base = bases.find(b => b.id === entityId);
+        if (base?.baseType === "refueling") {
+          return { icon: Fuel, color: "text-green-400" };
+        }
         return { icon: Droplets, color: "text-orange-400" };
       case "warehouse":
         return { icon: Warehouse, color: "text-sky-400" };
@@ -78,8 +83,8 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit }: Deli
             </TableRow>
           ) : (
             costs.map((cost) => {
-              const fromEntityIcon = getEntityIcon(cost.fromEntityType);
-              const toEntityIcon = getEntityIcon(cost.toEntityType);
+              const fromEntityIcon = getEntityIcon(cost.fromEntityType, cost.fromEntityId);
+              const toEntityIcon = getEntityIcon(cost.toEntityType, cost.toEntityId);
               const FromIcon = fromEntityIcon.icon;
               const ToIcon = toEntityIcon.icon;
 

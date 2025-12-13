@@ -23,6 +23,10 @@ export default function DeliveryPage() {
     queryKey: ["/api/logistics/carriers"],
   });
 
+  const { data: bases = [] } = useQuery<any[]>({
+    queryKey: ["/api/bases"],
+  });
+
   const getCarrierName = (carrierId: string) => {
     const carrier = carriers?.find(c => c.id === carrierId);
     return carrier?.name || carrierId;
@@ -75,6 +79,7 @@ export default function DeliveryPage() {
               isLoading={isLoading}
               getCarrierName={getCarrierName}
               onEdit={setEditingDeliveryCost}
+              bases={bases}
             />
           </div>
         </CardContent>
