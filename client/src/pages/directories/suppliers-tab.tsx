@@ -16,7 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Search, Building2, Pencil, Trash2, Warehouse, Truck, Fuel } from "lucide-react";
+import { Search, Building2, Pencil, Trash2, Warehouse, Droplets, Fuel } from "lucide-react";
 import type { Supplier, Base } from "@shared/schema";
 import { AddSupplierDialog } from "./suppliers-dialog";
 
@@ -152,7 +152,7 @@ export function SuppliersTab() {
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           {isWholesale ? (
-                                            <Truck className="h-4 w-4 text-orange-400 flex-shrink-0 cursor-help" />
+                                            <Droplets className="h-4 w-4 text-orange-400 flex-shrink-0 cursor-help" />
                                           ) : (
                                             <Fuel className="h-4 w-4 text-green-400 flex-shrink-0 cursor-help" />
                                           )}
