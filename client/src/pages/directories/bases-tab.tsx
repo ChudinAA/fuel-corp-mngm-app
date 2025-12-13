@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, MapPin, Pencil, Trash2 } from "lucide-react";
+import { Search, MapPin, Pencil, Trash2, Droplets, Fuel } from "lucide-react";
 import type { Base } from "@shared/schema";
 import { AddBaseDialog } from "./bases-dialog";
 
@@ -111,8 +111,18 @@ export function BasesTab() {
                       <TableRow key={base.id} data-testid={`row-base-${base.id}`}>
                         <TableCell className="font-medium">{base.name}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">
-                            {base.baseType === 'wholesale' ? 'ОПТ' : 'Заправка'}
+                          <Badge variant="outline" className="flex items-center gap-1.5 w-fit">
+                            {base.baseType === 'wholesale' ? (
+                              <>
+                                <Droplets className="h-3.5 w-3.5 text-orange-400" />
+                                <span>ОПТ</span>
+                              </>
+                            ) : (
+                              <>
+                                <Fuel className="h-3.5 w-3.5 text-green-400" />
+                                <span>Заправка</span>
+                              </>
+                            )}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground">{base.location || "—"}</TableCell>
