@@ -9,6 +9,7 @@ import type { Price } from "@shared/schema";
 export function usePriceSelection() {
   const { toast } = useToast();
   const [result, setResult] = useState<string | null>(null);
+  const [calculatingPriceId, setCalculatingPriceId] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: async (params: {
@@ -39,6 +40,7 @@ export function usePriceSelection() {
 
   const calculateForPrice = useMutation({
     mutationFn: async (price: Price) => {
+      setCalculatingPriceId(price.id);
       const params = new URLSearchParams({
         counterpartyId: price.counterpartyId,
         counterpartyType: price.counterpartyType,
@@ -53,9 +55,11 @@ export function usePriceSelection() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/prices"] });
       toast({ title: "Выборка рассчитана", description: `Общий объем: ${data.totalVolume} кг` });
+      setCalculatingPriceId(null);
     },
     onError: () => {
       toast({ title: "Ошибка", description: "Не удалось рассчитать выборку", variant: "destructive" });
+      setCalculatingPriceId(null);
     },
   });
 
@@ -65,5 +69,6 @@ export function usePriceSelection() {
     calculate: mutation.mutate,
     isCalculating: mutation.isPending,
     calculateForPrice,
+    calculatingPriceId,
   };
 }

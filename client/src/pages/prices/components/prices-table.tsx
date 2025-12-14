@@ -73,6 +73,9 @@ export function PricesTable({ dealTypeFilter, roleFilter, onEdit }: PricesTableP
     }
     
     return true;
+  }).sort((a, b) => {
+    // Сортировка по дате создания (новые сверху)
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   }) || [];
 
   const deleteMutation = useMutation({
@@ -180,10 +183,10 @@ export function PricesTable({ dealTypeFilter, roleFilter, onEdit }: PricesTableP
                             size="icon"
                             className="h-6 w-6"
                             onClick={() => selectionCheck.calculateForPrice.mutate(price)}
-                            disabled={selectionCheck.calculateForPrice.isPending}
+                            disabled={selectionCheck.calculatingPriceId === price.id}
                             data-testid={`button-calc-selection-${price.id}`}
                           >
-                            <RefreshCw className={`h-3 w-3 ${selectionCheck.calculateForPrice.isPending ? "animate-spin" : ""}`} />
+                            <RefreshCw className={`h-3 w-3 ${selectionCheck.calculatingPriceId === price.id ? "animate-spin" : ""}`} />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Пересчитать выборку</TooltipContent>
