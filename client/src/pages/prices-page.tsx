@@ -85,6 +85,7 @@ export default function PricesPage() {
               <ShoppingCart className={`h-4 w-4 ${!buyerEnabled ? 'text-orange-500' : ''}`} />
               Покупатель
             </Button>
+            <div className="w-px h-6 bg-border mx-1" />
             <Select value={productTypeFilter} onValueChange={setProductTypeFilter}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Тип продукта" />
@@ -93,7 +94,7 @@ export default function PricesPage() {
                 <SelectItem value="all">Все продукты</SelectItem>
                 <SelectItem value="kerosine">Керосин</SelectItem>
                 <SelectItem value="service">Услуги</SelectItem>
-                <SelectItem value="pvkj">ПВК/Ж</SelectItem>
+                <SelectItem value="pvkj">ПВКЖ</SelectItem>
                 <SelectItem value="agent">Агентское</SelectItem>
                 <SelectItem value="storage">Хранение</SelectItem>
               </SelectContent>
