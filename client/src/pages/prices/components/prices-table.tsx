@@ -179,11 +179,11 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                     <Badge 
                       variant="outline"
                       className={
-                        price.productType === "kerosine" ? "border-l-2 border-l-blue-400/60" :
-                        price.productType === "pvkj" ? "border-l-2 border-l-purple-400/60" :
-                        price.productType === "service" ? "border-l-2 border-l-green-400/60" :
-                        price.productType === "agent" ? "border-l-2 border-l-orange-400/60" :
-                        price.productType === "storage" ? "border-l-2 border-l-amber-400/60" :
+                        price.productType === "kerosine" ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30" :
+                        price.productType === "pvkj" ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" :
+                        price.productType === "service" ? "bg-green-50/50 dark:bg-green-950/20 border-green-200/30 dark:border-green-800/30" :
+                        price.productType === "agent" ? "bg-orange-50/50 dark:bg-orange-950/20 border-orange-200/30 dark:border-orange-800/30" :
+                        price.productType === "storage" ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/30 dark:border-amber-800/30" :
                         ""
                       }
                     >
