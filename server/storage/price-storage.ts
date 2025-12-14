@@ -65,51 +65,80 @@ export class PriceStorage implements IPriceStorage {
   ): Promise<number> {
     let totalVolume = 0;
 
-    // priceId обязателен для корректного расчета
     if (!priceId) {
       return 0;
     }
 
+    // Получаем цену для определения роли контрагента
+    const [price] = await db.select().from(prices).where(eq(prices.id, priceId)).limit(1);
+    if (!price) {
+      return 0;
+    }
+
     if (counterpartyType === "wholesale") {
-      // Сделки, где контрагент - поставщик (используем purchasePriceId)
-      const optDealsSupplier = await db.select({
-        total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`
-      }).from(opt).where(
-        eq(opt.purchasePriceId, priceId)
-      );
-
-      // Сделки, где контрагент - покупатель (используем salePriceId)
-      const optDealsBuyer = await db.select({
-        total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`
-      }).from(opt).where(
-        eq(opt.salePriceId, priceId)
-      );
-
-      totalVolume += parseFloat(optDealsSupplier[0]?.total || "0");
-      totalVolume += parseFloat(optDealsBuyer[0]?.total || "0");
+      if (price.counterpartyRole === "supplier") {
+        // Ищем сделки, где этот контрагент - поставщик
+        const optDeals = await db.select({
+          total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`
+        }).from(opt).where(
+          and(
+            eq(opt.supplierId, counterpartyId),
+            eq(opt.basis, basis),
+            sql`${opt.createdAt}::date >= ${dateFrom}`,
+            sql`${opt.createdAt}::date <= ${dateTo}`
+          )
+        );
+        totalVolume += parseFloat(optDeals[0]?.total || "0");
+      } else if (price.counterpartyRole === "buyer") {
+        // Ищем сделки, где этот контрагент - покупатель
+        const optDeals = await db.select({
+          total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`
+        }).from(opt).where(
+          and(
+            eq(opt.buyerId, counterpartyId),
+            eq(opt.basis, basis),
+            sql`${opt.createdAt}::date >= ${dateFrom}`,
+            sql`${opt.createdAt}::date <= ${dateTo}`
+          )
+        );
+        totalVolume += parseFloat(optDeals[0]?.total || "0");
+      }
     } else if (counterpartyType === "refueling") {
-      // Сделки, где контрагент - поставщик (используем purchasePriceId)
-      const refuelingDealsSupplier = await db.select({
-        total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`
-      }).from(aircraftRefueling).where(
-        eq(aircraftRefueling.purchasePriceId, priceId)
-      );
-
-      // Сделки, где контрагент - покупатель (используем salePriceId)
-      const refuelingDealsBuyer = await db.select({
-        total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`
-      }).from(aircraftRefueling).where(
-        eq(aircraftRefueling.salePriceId, priceId)
-      );
-
-      totalVolume += parseFloat(refuelingDealsSupplier[0]?.total || "0");
-      totalVolume += parseFloat(refuelingDealsBuyer[0]?.total || "0");
+      if (price.counterpartyRole === "supplier") {
+        // Ищем сделки, где этот контрагент - поставщик
+        const refuelingDeals = await db.select({
+          total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`
+        }).from(aircraftRefueling).where(
+          and(
+            eq(aircraftRefueling.supplierId, counterpartyId),
+            eq(aircraftRefueling.basis, basis),
+            sql`${aircraftRefueling.refuelingDate} >= ${dateFrom}`,
+            sql`${aircraftRefueling.refuelingDate} <= ${dateTo}`
+          )
+        );
+        totalVolume += parseFloat(refuelingDeals[0]?.total || "0");
+      } else if (price.counterpartyRole === "buyer") {
+        // Ищем сделки, где этот контрагент - покупатель
+        const refuelingDeals = await db.select({
+          total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`
+        }).from(aircraftRefueling).where(
+          and(
+            eq(aircraftRefueling.buyerId, counterpartyId),
+            eq(aircraftRefueling.basis, basis),
+            sql`${aircraftRefueling.refuelingDate} >= ${dateFrom}`,
+            sql`${aircraftRefueling.refuelingDate} <= ${dateTo}`
+          )
+        );
+        totalVolume += parseFloat(refuelingDeals[0]?.total || "0");
+      }
     }
 
     // Обновляем значение в базе данных
-    await db.update(prices).set({
-      soldVolume: totalVolume.toString()
-    }).where(eq(prices.id, priceId));
+    if (priceId) {
+      await db.update(prices).set({
+        soldVolume: totalVolume.toString()
+      }).where(eq(prices.id, priceId));
+    }
 
     return totalVolume;
   }
