@@ -134,9 +134,13 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                 <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Нет данных</TableCell>
               </TableRow>
             ) : (
-              filteredPrices.map((price) => (
-                <TableRow key={price.id} data-testid={`row-price-${price.id}`}>
-                  <TableCell className="text-sm whitespace-nowrap">{formatDate(price.dateFrom)} - {formatDate(price.dateTo)}</TableCell>
+              filteredPrices.map((price) => {
+                const isExpired = price.dateTo && new Date(price.dateTo) < new Date();
+                return (
+                <TableRow key={price.id} data-testid={`row-price-${price.id}`} className={isExpired ? "opacity-60" : ""}>
+                  <TableCell className="text-sm whitespace-nowrap">
+                    {formatDate(price.dateFrom)} - <span className={isExpired ? "text-red-400/70" : ""}>{formatDate(price.dateTo)}</span>
+                  </TableCell>
                   <TableCell>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -172,7 +176,17 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                   <TableCell>{getContractorName(price.counterpartyId, price.counterpartyType, price.counterpartyRole)}</TableCell>
                   <TableCell>{price.basis || "—"}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">
+                    <Badge 
+                      variant="outline"
+                      className={
+                        price.productType === "kerosine" ? "border-blue-300/50" :
+                        price.productType === "pvkj" ? "border-purple-300/50" :
+                        price.productType === "service" ? "border-green-300/50" :
+                        price.productType === "agent" ? "border-orange-300/50" :
+                        price.productType === "storage" ? "border-amber-300/50" :
+                        ""
+                      }
+                    >
                       {getProductTypeLabel(price.productType)}
                     </Badge>
                   </TableCell>
@@ -245,7 +259,8 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))
+              );
+              })
             )}
           </TableBody>
         </Table>
