@@ -185,7 +185,8 @@ export class OptStorage implements IOptStorage {
     // Обновляем сделку
     const [updated] = await db.update(opt).set({
       ...data,
-      updatedAt: sql`NOW()`
+      updatedAt: sql`NOW()`,
+      updatedById: data.updatedById
     }).where(eq(opt.id, id)).returning();
 
     return updated;
