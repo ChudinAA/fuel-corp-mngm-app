@@ -104,6 +104,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
       const [transaction] = await db.insert(warehouseTransactions).values({
         warehouseId: data.warehouseId,
         transactionType: "sale",
+        productType: data.productType || "kerosene",
         sourceType: "refueling",
         sourceId: created.id,
         quantity: quantity.toFixed(2),
@@ -184,6 +185,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
       const [transaction] = await db.insert(warehouseTransactions).values({
         warehouseId: data.warehouseId,
         transactionType: "sale",
+        productType: data.productType || "kerosene",
         sourceType: "refueling",
         sourceId: id,
         quantity: quantity.toFixed(2),

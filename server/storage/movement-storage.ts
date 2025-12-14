@@ -83,6 +83,7 @@ export class MovementStorage implements IMovementStorage {
         await db.insert(warehouseTransactions).values({
           warehouseId: created.toWarehouseId,
           transactionType: created.movementType === 'supply' ? 'receipt' : 'transfer_in',
+          productType: created.productType || 'kerosene',
           sourceType: 'movement',
           sourceId: created.id,
           quantity: quantityKg.toString(),
@@ -116,6 +117,7 @@ export class MovementStorage implements IMovementStorage {
         await db.insert(warehouseTransactions).values({
           warehouseId: created.fromWarehouseId,
           transactionType: 'transfer_out',
+          productType: created.productType || 'kerosene',
           sourceType: 'movement',
           sourceId: created.id,
           quantity: (-quantityKg).toString(),

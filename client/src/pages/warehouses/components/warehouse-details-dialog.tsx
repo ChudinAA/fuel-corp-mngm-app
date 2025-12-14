@@ -153,6 +153,7 @@ export function WarehouseDetailsDialog({
                 <TableRow>
                   <TableHead>Дата</TableHead>
                   <TableHead>Тип операции</TableHead>
+                  <TableHead>Продукт</TableHead>
                   <TableHead className="text-right">Количество</TableHead>
                   <TableHead className="text-right">Остаток до</TableHead>
                   <TableHead className="text-right">Остаток после</TableHead>
@@ -173,6 +174,11 @@ export function WarehouseDetailsDialog({
                           {getTransactionTypeLabel(tx.transactionType, tx.sourceType)}
                         </span>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={tx.productType === 'pvkj' ? 'secondary' : 'outline'} className="text-xs">
+                        {tx.productType === 'pvkj' ? 'ПВКЖ' : 'Керосин'}
+                      </Badge>
                     </TableCell>
                     <TableCell className={`text-right font-medium ${
                       parseFloat(tx.quantityKg) > 0 ? 'text-green-600' : 'text-red-600'

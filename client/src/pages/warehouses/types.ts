@@ -3,6 +3,7 @@ export interface WarehouseTransaction {
   warehouseId: string;
   transactionType: string;
   sourceType?: string;
+  productType?: string;
   quantityKg: string;
   balanceBefore: string;
   balanceAfter: string;

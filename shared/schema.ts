@@ -246,6 +246,7 @@ export const warehouseTransactions = pgTable("warehouse_transactions", {
   id: uuid("id").defaultRandom().primaryKey(),
   warehouseId: uuid("warehouse_id").notNull().references(() => warehouses.id),
   transactionType: text("transaction_type").notNull(),
+  productType: text("product_type").default("kerosene"),
   quantity: decimal("quantity", { precision: 15, scale: 2 }).notNull(),
   sourceType: text("source_type"),
   sourceId: uuid("source_id"),

@@ -78,6 +78,7 @@ export class WarehouseStorage implements IWarehouseStorage {
       transactionType: tx.transactionType,
       sourceType: tx.sourceType,
       sourceId: tx.sourceId,
+      productType: tx.productType || "kerosene",
       quantityKg: tx.quantity,
       balanceBefore: tx.balanceBefore || "0",
       balanceAfter: tx.balanceAfter || "0",

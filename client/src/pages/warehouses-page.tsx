@@ -89,10 +89,15 @@ export default function WarehousesPage() {
   }) || [];
 
   const totalBalance = filteredWarehouses.reduce((sum, w) => sum + parseFloat(w.currentBalance || "0"), 0);
+  const totalPvkjBalance = filteredWarehouses.reduce((sum, w) => sum + parseFloat(w.pvkjBalance || "0"), 0);
   
   // Вычисляем среднюю себестоимость по всем складам
   const averageCost = filteredWarehouses.length > 0
     ? filteredWarehouses.reduce((sum, w) => sum + parseFloat(w.averageCost || "0"), 0) / filteredWarehouses.length
+    : 0;
+  
+  const averagePvkjCost = filteredWarehouses.length > 0
+    ? filteredWarehouses.reduce((sum, w) => sum + parseFloat(w.pvkjAverageCost || "0"), 0) / filteredWarehouses.length
     : 0;
   
   const formatNumber = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value);
@@ -137,6 +142,8 @@ export default function WarehousesPage() {
         warehousesCount={filteredWarehouses.length}
         totalBalance={totalBalance}
         averageCost={averageCost}
+        totalPvkjBalance={totalPvkjBalance}
+        averagePvkjCost={averagePvkjCost}
         formatNumber={formatNumber}
         formatCurrency={formatCurrency}
       />

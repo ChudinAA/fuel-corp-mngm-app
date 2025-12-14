@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +24,8 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
   const [confirmMessage, setConfirmMessage] = useState("");
   const balance = parseFloat(warehouse.currentBalance || "0");
   const cost = parseFloat(warehouse.averageCost || "0");
+  const pvkjBalance = parseFloat(warehouse.pvkjBalance || "0");
+  const pvkjCost = parseFloat(warehouse.pvkjCost || "0");
   const isInactive = !warehouse.isActive;
 
   const { data: allBases } = useQuery<Base[]>({
@@ -140,17 +141,30 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4" onClick={(e) => e.stopPropagation()}>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs text-muted-foreground">Текущий остаток</p>
-            <p className="text-xl font-semibold">{formatNumber(balance)} кг</p>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-semibold">{formatNumber(balance)} кг</span>
+            <Badge variant="outline" className="text-xs">Керосин</Badge>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Средняя себестоимость</p>
-            <p className="text-lg font-medium">{formatCurrency(cost)}/кг</p>
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span>Себестоимость:</span>
+            <span className="font-medium">{formatCurrency(cost)}/кг</span>
           </div>
         </div>
+
+        {pvkjBalance > 0 && (
+          <div className="space-y-2 pt-2 border-t">
+            <div className="flex items-baseline justify-between">
+              <span className="text-lg font-semibold text-muted-foreground">{formatNumber(pvkjBalance)} кг</span>
+              <Badge variant="secondary" className="text-xs">ПВКЖ</Badge>
+            </div>
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>Себестоимость:</span>
+              <span className="font-medium">{formatCurrency(pvkjCost)}/кг</span>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-between pt-2 border-t">
           <div className="flex items-center gap-4 text-xs">
