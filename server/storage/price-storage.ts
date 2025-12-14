@@ -117,6 +117,13 @@ export class PriceStorage implements IPriceStorage {
       totalVolume += parseFloat(refuelingDealsBuyer[0]?.total || "0");
     }
 
+    // Обновляем значение в базе данных, если передан priceId
+    if (priceId) {
+      await db.update(prices).set({
+        soldVolume: totalVolume.toString()
+      }).where(eq(prices.id, priceId));
+    }
+
     return totalVolume;
   }
 

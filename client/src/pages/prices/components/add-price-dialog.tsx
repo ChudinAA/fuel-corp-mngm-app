@@ -214,15 +214,51 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
     },
   });
 
-  const handleSubmit = (data: PriceFormData) => {
+  const handleSubmit = async (data: PriceFormData) => {
+    // Если проверка еще не была пройдена, запускаем ее автоматически
     if (!dateCheckPassed) {
-      toast({ 
-        title: "Ошибка!", 
-        description: "Необходимо проверить даты перед сохранением цены. Нажмите кнопку 'Проверить даты'", 
-        variant: "destructive"
-      });
-      return;
+      if (!watchCounterpartyId || !watchBasis || !watchDateFrom || !watchDateTo) {
+        toast({ title: "Ошибка", description: "Заполните все обязательные поля", variant: "destructive" });
+        return;
+      }
+      
+      // Запускаем проверку
+      const checkParams = {
+        counterpartyId: watchCounterpartyId,
+        counterpartyType: watchCounterpartyType,
+        counterpartyRole: watchCounterpartyRole,
+        basis: watchBasis,
+        dateFrom: watchDateFrom,
+        dateTo: watchDateTo,
+        excludeId: editPrice?.id,
+      };
+      
+      try {
+        await dateCheck.checkAsync(checkParams);
+        // Проверяем результат после выполнения
+        const result = await new Promise<any>((resolve) => {
+          // Небольшая задержка для получения результата
+          setTimeout(() => resolve(dateCheck.result), 100);
+        });
+        
+        if (result && result.status === "error") {
+          toast({ 
+            title: "Ошибка!", 
+            description: result.message, 
+            variant: "destructive"
+          });
+          return;
+        }
+      } catch (error) {
+        toast({ 
+          title: "Ошибка!", 
+          description: "Не удалось проверить даты", 
+          variant: "destructive"
+        });
+        return;
+      }
     }
+    
     createMutation.mutate(data);
   };
 

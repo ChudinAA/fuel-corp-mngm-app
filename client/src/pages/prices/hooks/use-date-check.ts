@@ -84,6 +84,7 @@ export function useDateCheck() {
     result,
     setResult,
     check: mutation.mutate,
+    checkAsync: mutation.mutateAsync,
     isChecking: mutation.isPending,
     checkForPrice,
   };

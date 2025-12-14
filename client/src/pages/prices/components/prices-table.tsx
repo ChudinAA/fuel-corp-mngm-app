@@ -171,24 +171,34 @@ export function PricesTable({ dealTypeFilter, roleFilter, onEdit }: PricesTableP
                   <TableCell className="text-right font-medium">{getPriceDisplay(price.priceValues)}</TableCell>
                   <TableCell className="text-right">{price.volume ? `${formatNumber(price.volume)} кг` : "—"}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <span>{price.soldVolume ? `${formatNumber(price.soldVolume)} кг` : "—"}</span>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => selectionCheck.calculateForPrice.mutate(price)}
-                            disabled={selectionCheck.calculateForPrice.isPending}
-                            data-testid={`button-calc-selection-${price.id}`}
-                          >
-                            <RefreshCw className={`h-3 w-3 ${selectionCheck.calculateForPrice.isPending ? "animate-spin" : ""}`} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Пересчитать выборку</TooltipContent>
-                      </Tooltip>
-                    </div>
+                    {(() => {
+                      const today = new Date();
+                      const dateTo = new Date(price.dateTo || price.dateFrom);
+                      const isActive = dateTo >= today;
+                      
+                      return (
+                        <div className="flex items-center justify-end gap-1">
+                          <span>{price.soldVolume && parseFloat(price.soldVolume) > 0 ? `${formatNumber(price.soldVolume)} кг` : "—"}</span>
+                          {isActive && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => selectionCheck.calculateForPrice.mutate(price)}
+                                  disabled={selectionCheck.calculateForPrice.isPending}
+                                  data-testid={`button-calc-selection-${price.id}`}
+                                >
+                                  <RefreshCw className={`h-3 w-3 ${selectionCheck.calculateForPrice.isPending ? "animate-spin" : ""}`} />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Пересчитать выборку</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
