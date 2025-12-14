@@ -200,7 +200,7 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6"
+                            className="h-5 w-5"
                             onClick={() => selectionCheck.calculateForPrice.mutate(price)}
                             disabled={selectionCheck.calculatingPriceId === price.id}
                             data-testid={`button-calc-selection-${price.id}`}
