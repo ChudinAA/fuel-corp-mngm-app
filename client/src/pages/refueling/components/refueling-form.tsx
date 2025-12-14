@@ -46,7 +46,7 @@ export function RefuelingForm({
     resolver: zodResolver(refuelingFormSchema),
     defaultValues: {
       refuelingDate: editData ? new Date(editData.refuelingDate) : new Date(),
-      productType: "",
+      productType: "kerosene",
       aircraftNumber: "",
       orderNumber: "",
       supplierId: "",
@@ -60,7 +60,7 @@ export function RefuelingForm({
       isApproxVolume: false,
       selectedPurchasePriceId: "",
       selectedSalePriceId: "",
-      basis: "", // Добавлено поле basis
+      basis: "",
     },
   });
 
@@ -128,8 +128,8 @@ export function RefuelingForm({
         form.setValue("warehouseId", "");
       }
 
-      // Автоматически выбираем первый базис если он только один
-      if (!editData && supplier?.baseIds && supplier.baseIds.length === 1) {
+      // Автоматически выбираем первый базис
+      if (!editData && supplier?.baseIds && supplier.baseIds.length >= 1) {
         const baseId = supplier.baseIds[0];
         const base = allBases.find(b => b.id === baseId && b.baseType === "refueling");
         if (base) {
@@ -510,7 +510,7 @@ export function RefuelingForm({
           />
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <FormField
             control={form.control}
             name="supplierId"
@@ -529,6 +529,41 @@ export function RefuelingForm({
                         {supplier.name}
                       </SelectItem>
                     )) || (
+                      <SelectItem value="none" disabled>Нет данных</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="basis"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Базис</FormLabel>
+                <Select 
+                  onValueChange={(value) => { 
+                    field.onChange(value); 
+                    setSelectedBasis(value); 
+                  }} 
+                  value={field.value || selectedBasis}
+                  disabled={availableBases.length === 0}
+                >
+                  <FormControl>
+                    <SelectTrigger data-testid="select-basis">
+                      <SelectValue placeholder="Выберите базис" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {availableBases.map((base) => (
+                      <SelectItem key={base.id} value={base.name}>
+                        {base.name}
+                      </SelectItem>
+                    ))}
+                    {availableBases.length === 0 && (
                       <SelectItem value="none" disabled>Нет данных</SelectItem>
                     )}
                   </SelectContent>
@@ -672,42 +707,7 @@ export function RefuelingForm({
           </CardContent>
         </Card>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <FormField
-            control={form.control}
-            name="basis"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Базис</FormLabel>
-                <Select 
-                  onValueChange={(value) => { 
-                    field.onChange(value); 
-                    setSelectedBasis(value); 
-                  }} 
-                  value={field.value || selectedBasis}
-                  disabled={availableBases.length === 0}
-                >
-                  <FormControl>
-                    <SelectTrigger data-testid="select-basis">
-                      <SelectValue placeholder="Выберите базис" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {availableBases.map((base) => (
-                      <SelectItem key={base.id} value={base.name}>
-                        {base.name}
-                      </SelectItem>
-                    ))}
-                    {availableBases.length === 0 && (
-                      <SelectItem value="none" disabled>Нет данных</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <CalculatedField 
             label="Объем на складе" 
             value={warehouseStatus.message}

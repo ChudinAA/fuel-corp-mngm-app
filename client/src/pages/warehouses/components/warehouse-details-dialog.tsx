@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Package, ArrowUpCircle, ArrowDownCircle, Warehouse as WarehouseIcon, Droplets, Fuel } from "lucide-react";
 import type { Warehouse, Base } from "@shared/schema";
 import type { WarehouseTransaction } from "../types";
-import { formatNumber, formatCurrency, getTransactionTypeLabel } from "../utils";
+import { formatNumber, formatCurrency } from "../utils";
 
 interface WarehouseDetailsDialogProps {
   warehouse: Warehouse;
@@ -41,6 +41,18 @@ export function WarehouseDetailsDialog({
       return <ArrowUpCircle className="h-4 w-4 text-green-600" />;
     }
     return <ArrowDownCircle className="h-4 w-4 text-red-600" />;
+  };
+
+  const getTransactionTypeLabel = (transactionType: string, sourceType?: string) => {
+    if (transactionType === 'receipt') return 'Поступление';
+    if (transactionType === 'transfer_in') return 'Перемещение (приход)';
+    if (transactionType === 'transfer_out') return 'Перемещение (расход)';
+    if (transactionType === 'sale') {
+      if (sourceType === 'refueling') return 'Продажа (Заправка ВС)';
+      if (sourceType === 'opt') return 'Продажа (ОПТ)';
+      return 'Продажа';
+    }
+    return transactionType;
   };
 
   const getBaseIcon = (baseType: string) => {
@@ -158,7 +170,7 @@ export function WarehouseDetailsDialog({
                       <div className="flex items-center gap-2">
                         {getTransactionIcon(tx.transactionType)}
                         <span className="text-sm">
-                          {getTransactionTypeLabel(tx.transactionType)}
+                          {getTransactionTypeLabel(tx.transactionType, tx.sourceType)}
                         </span>
                       </div>
                     </TableCell>

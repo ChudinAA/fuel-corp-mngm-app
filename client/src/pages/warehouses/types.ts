@@ -1,10 +1,8 @@
-
 export interface WarehouseTransaction {
   id: string;
   warehouseId: string;
   transactionType: string;
-  sourceType: string;
-  sourceId: string;
+  sourceType?: string;
   quantityKg: string;
   balanceBefore: string;
   balanceAfter: string;
