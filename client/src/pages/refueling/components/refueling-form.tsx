@@ -174,15 +174,6 @@ export function RefuelingForm({
     queryKey: ["/api/customers"],
   });
 
-  const watchSupplierId = form.watch("supplierId");
-  const watchBuyerId = form.watch("buyerId");
-  const watchRefuelingDate = form.watch("refuelingDate");
-  const watchLiters = form.watch("quantityLiters");
-  const watchDensity = form.watch("density");
-  const watchKg = form.watch("quantityKg");
-  const watchProductType = form.watch("productType");
-  const watchBasis = form.watch("basis");
-
   const calculatedKg = inputMode === "liters" && watchLiters && watchDensity
     ? (parseFloat(watchLiters) * parseFloat(watchDensity)).toFixed(2)
     : watchKg || "0";
