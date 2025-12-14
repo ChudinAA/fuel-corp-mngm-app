@@ -98,6 +98,7 @@ export function MovementDialog({
   }, [editMovement, form]);
 
   const watchMovementType = form.watch("movementType");
+  const watchProductType = form.watch("productType");
   const watchSupplierId = form.watch("supplierId");
   const watchFromWarehouseId = form.watch("fromWarehouseId");
   const watchToWarehouseId = form.watch("toWarehouseId");
