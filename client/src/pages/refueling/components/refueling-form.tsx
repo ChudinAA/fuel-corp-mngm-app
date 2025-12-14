@@ -174,18 +174,6 @@ export function RefuelingForm({
     queryKey: ["/api/customers"],
   });
 
-  const calculatedKg = inputMode === "liters" && watchLiters && watchDensity
-    ? (parseFloat(watchLiters) * parseFloat(watchDensity)).toFixed(2)
-    : watchKg || "0";
-
-  const finalKg = parseFloat(calculatedKg || "0");
-
-  const selectedSupplier = suppliers?.find(s => s.id === watchSupplierId);
-  const isWarehouseSupplier = selectedSupplier?.isWarehouse || false;
-  const supplierWarehouse = warehouses?.find(w => 
-    w.supplierId === watchSupplierId
-  );
-
   const getMatchingPurchasePrices = () => {
     if (!watchSupplierId || !watchBasis || !watchRefuelingDate) return [];
 
