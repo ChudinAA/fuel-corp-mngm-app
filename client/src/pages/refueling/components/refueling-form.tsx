@@ -76,6 +76,14 @@ export function RefuelingForm({
     queryKey: ["/api/prices"],
   });
 
+  const { data: warehouses } = useQuery<Warehouse[]>({
+    queryKey: ["/api/warehouses"],
+  });
+
+  const { data: customers } = useQuery<Customer[]>({
+    queryKey: ["/api/customers"],
+  });
+
   const watchSupplierId = form.watch("supplierId");
   const watchBuyerId = form.watch("buyerId");
   const watchRefuelingDate = form.watch("refuelingDate");
@@ -132,10 +140,6 @@ export function RefuelingForm({
     }
   }, [watchSupplierId, suppliers, allBases, warehouses, form, editData]);
 
-  const { data: warehouses } = useQuery<Warehouse[]>({
-    queryKey: ["/api/warehouses"],
-  });
-
   useEffect(() => {
     if (editData && suppliers && customers) {
       const supplier = suppliers.find(s => s.name === editData.supplierId || s.id === editData.supplierId);
@@ -169,10 +173,6 @@ export function RefuelingForm({
       }
     }
   }, [editData, suppliers, customers, form]);
-
-  const { data: customers } = useQuery<Customer[]>({
-    queryKey: ["/api/customers"],
-  });
 
   const getMatchingPurchasePrices = () => {
     if (!watchSupplierId || !watchBasis || !watchRefuelingDate) return [];
