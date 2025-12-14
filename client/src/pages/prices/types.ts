@@ -1,4 +1,3 @@
-
 import type { Price } from "@shared/schema";
 
 export interface PriceFormData {
@@ -30,6 +29,17 @@ export interface PricesTableProps {
 export interface SelectionCheckState {
   calculating: boolean;
   result: string | null;
+}
+
+export interface DateCheckParams {
+  counterpartyId: string;
+  counterpartyType: string;
+  counterpartyRole: string;
+  basis: string;
+  productType: string;
+  dateFrom: Date;
+  dateTo: Date;
+  excludeId?: string;
 }
 
 export interface DateCheckState {

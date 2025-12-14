@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -36,7 +35,7 @@ export default function MovementPage() {
     },
   });
 
-  const { data: allSuppliers } = useQuery({
+  const { data: suppliers } = useQuery({
     queryKey: ["/api/suppliers"],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/suppliers");
@@ -92,11 +91,6 @@ export default function MovementPage() {
     },
   });
 
-  // const allSuppliers: AllSupplier[] = [
-  //   ...(wholesaleSuppliers || []).map((s: any) => ({ ...s, type: 'wholesale' as const })),
-  //   ...(refuelingProviders || []).map((p: any) => ({ ...p, type: 'refueling' as const })),
-  // ];
-
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await apiRequest("DELETE", `/api/movement/${id}`);
@@ -146,16 +140,13 @@ export default function MovementPage() {
 
       <MovementDialog
         warehouses={warehouses || []}
-        suppliers={allSuppliers}
+        suppliers={suppliers || []}
         carriers={carriers || []}
-        vehicles={vehicles || []}
-        trailers={trailers || []}
-        drivers={drivers || []}
         prices={prices || []}
         deliveryCosts={deliveryCosts || []}
         editMovement={editingMovement}
         open={isDialogOpen}
-        onOpenChange={(open) => !open && handleCloseDialog()}
+        onOpenChange={setIsDialogOpen}
       />
 
       <Card>

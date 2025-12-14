@@ -148,6 +148,7 @@ export class PriceStorage implements IPriceStorage {
     counterpartyType: string,
     counterpartyRole: string,
     basis: string,
+    productType: string,
     dateFrom: string,
     dateTo: string,
     excludeId?: string
@@ -157,6 +158,7 @@ export class PriceStorage implements IPriceStorage {
       eq(prices.counterpartyType, counterpartyType),
       eq(prices.counterpartyRole, counterpartyRole),
       eq(prices.basis, basis),
+      eq(prices.productType, productType),
       eq(prices.isActive, true),
       sql`${prices.dateFrom} <= ${dateTo}`,
       sql`${prices.dateTo} >= ${dateFrom}`

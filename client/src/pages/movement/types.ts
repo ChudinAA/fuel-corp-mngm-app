@@ -6,6 +6,7 @@ export type InputMode = "liters" | "kg";
 export interface MovementDialogProps {
   warehouses: Warehouse[];
   suppliers: AllSupplier[];
+  carriers: any[];
   prices: any[];
   deliveryCosts: any[];
   editMovement: Movement | null;

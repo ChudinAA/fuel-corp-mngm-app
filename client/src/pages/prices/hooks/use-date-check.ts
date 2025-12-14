@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -22,6 +21,7 @@ export function useDateCheck() {
       basis: string;
       dateFrom: Date;
       dateTo: Date;
+      productType: string; // Added productType
       excludeId?: string;
     }) => {
       const queryParams = new URLSearchParams({
@@ -29,12 +29,11 @@ export function useDateCheck() {
         counterpartyType: params.counterpartyType,
         counterpartyRole: params.counterpartyRole,
         basis: params.basis,
+        productType: params.productType, // Added productType
         dateFrom: format(params.dateFrom, "yyyy-MM-dd"),
         dateTo: format(params.dateTo, "yyyy-MM-dd"),
+        ...(params.excludeId && { excludeId: params.excludeId }),
       });
-      if (params.excludeId) {
-        queryParams.append("excludeId", params.excludeId);
-      }
       const res = await apiRequest("GET", `/api/prices/check-date-overlaps?${queryParams}`);
       return res.json();
     },
@@ -60,6 +59,7 @@ export function useDateCheck() {
         counterpartyType: price.counterpartyType,
         counterpartyRole: price.counterpartyRole,
         basis: price.basis || "",
+        productType: price.productType, // Assuming productType exists on Price schema
         dateFrom: price.dateFrom,
         dateTo: price.dateTo || price.dateFrom,
         excludeId: price.id,

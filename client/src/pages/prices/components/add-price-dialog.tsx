@@ -94,12 +94,13 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
   const watchDateFrom = form.watch("dateFrom");
   const watchDateTo = form.watch("dateTo");
   const watchBasis = form.watch("basis");
+  const watchProductType = form.watch("productType");
 
   // Сбрасывать проверку дат при изменении критических полей
   useEffect(() => {
     setDateCheckPassed(false);
     dateCheck.setResult(null);
-  }, [watchCounterpartyId, watchBasis, watchDateFrom, watchDateTo]);
+  }, [watchCounterpartyId, watchBasis, watchProductType, watchDateFrom, watchDateTo]);
 
   const { data: bases } = useQuery({ queryKey: ["/api/bases"] });
   const { data: suppliers } = useQuery({ queryKey: ["/api/suppliers"] });
@@ -145,6 +146,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
       counterpartyType: watchCounterpartyType,
       counterpartyRole: watchCounterpartyRole,
       basis: watchBasis,
+      productType: watchProductType,
       dateFrom: watchDateFrom,
       dateTo: watchDateTo,
       excludeId: editPrice?.id,
@@ -215,6 +217,16 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
   });
 
   const handleSubmit = async (data: PriceFormData) => {
+    // Если проверка показала ошибку пересечения дат, блокируем создание
+    if (dateCheck.result && dateCheck.result.status === "error") {
+      toast({ 
+        title: "Ошибка пересечения дат!", 
+        description: "Исправьте даты перед созданием цены", 
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Если проверка еще не была пройдена, запускаем ее автоматически
     if (!dateCheckPassed) {
       if (!watchCounterpartyId || !watchBasis || !watchDateFrom || !watchDateTo) {
@@ -228,6 +240,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
         counterpartyType: watchCounterpartyType,
         counterpartyRole: watchCounterpartyRole,
         basis: watchBasis,
+        productType: watchProductType,
         dateFrom: watchDateFrom,
         dateTo: watchDateTo,
         excludeId: editPrice?.id,
@@ -243,7 +256,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
         
         if (result && result.status === "error") {
           toast({ 
-            title: "Ошибка!", 
+            title: "Ошибка пересечения дат!", 
             description: result.message, 
             variant: "destructive"
           });

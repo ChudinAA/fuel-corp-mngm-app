@@ -100,28 +100,18 @@ export function registerPricesRoutes(app: Express) {
   });
 
   app.get("/api/prices/check-date-overlaps", requireAuth, async (req, res) => {
-    try {
-      const { counterpartyId, counterpartyType, counterpartyRole, basis, dateFrom, dateTo, excludeId } = req.query;
-
-      if (!counterpartyId || !counterpartyType || !counterpartyRole || !basis || !dateFrom || !dateTo) {
-        return res.status(400).json({ message: "Не указаны обязательные параметры" });
-      }
-
-      const result = await storage.prices.checkPriceDateOverlaps(
-        counterpartyId as string,
-        counterpartyType as string,
-        counterpartyRole as string,
-        basis as string,
-        dateFrom as string,
-        dateTo as string,
-        excludeId as string | undefined
-      );
-
-      res.json(result);
-    } catch (error) {
-      console.error("Date overlap check error:", error);
-      res.status(500).json({ message: "Ошибка проверки дат" });
-    }
+    const { counterpartyId, counterpartyType, counterpartyRole, basis, productType, dateFrom, dateTo, excludeId } = req.query;
+    const result = await storage.prices.checkPriceDateOverlaps(
+      String(counterpartyId),
+      String(counterpartyType),
+      String(counterpartyRole),
+      String(basis),
+      String(productType),
+      String(dateFrom),
+      String(dateTo),
+      excludeId ? String(excludeId) : undefined
+    );
+    res.json(result);
   });
 
 }

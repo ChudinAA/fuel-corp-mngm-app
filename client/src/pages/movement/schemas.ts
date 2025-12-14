@@ -13,9 +13,6 @@ export const movementFormSchema = z.object({
   density: z.coerce.number().positive().optional().nullable(),
   quantityKg: z.coerce.number().positive({ message: "Укажите положительное количество" }),
   carrierId: z.string().optional(),
-  vehicleNumber: z.string().optional(),
-  trailerNumber: z.string().optional(),
-  driverName: z.string().optional(),
   notes: z.string().optional(),
 });
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -40,6 +40,10 @@ export function MovementDialog({
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
   const isEditing = !!editMovement;
 
+  const { data: allBases } = useQuery<any[]>({
+    queryKey: ["/api/bases"],
+  });
+
   const form = useForm<MovementFormData>({
     resolver: zodResolver(movementFormSchema),
     defaultValues: {
@@ -54,9 +58,6 @@ export function MovementDialog({
       density: undefined,
       quantityKg: 0,
       carrierId: "",
-      vehicleNumber: "",
-      trailerNumber: "",
-      driverName: "",
       notes: "",
     },
   });
@@ -76,9 +77,6 @@ export function MovementDialog({
         density: editMovement.density ? parseFloat(editMovement.density) : undefined,
         quantityKg: editMovement.quantityKg ? parseFloat(editMovement.quantityKg) : 0,
         carrierId: editMovement.carrierId || "",
-        vehicleNumber: editMovement.vehicleNumber || "",
-        trailerNumber: editMovement.trailerNumber || "",
-        driverName: editMovement.driverName || "",
         notes: editMovement.notes || "",
       });
     } else {
@@ -94,9 +92,6 @@ export function MovementDialog({
         density: undefined,
         quantityKg: 0,
         carrierId: "",
-        vehicleNumber: "",
-        trailerNumber: "",
-        driverName: "",
         notes: "",
       });
     }
@@ -123,8 +118,12 @@ export function MovementDialog({
     // Для внутреннего перемещения берем себестоимость со склада-источника
     if (watchMovementType === "internal" && watchFromWarehouseId) {
       const fromWarehouse = warehouses.find(w => w.id === watchFromWarehouseId);
-      if (fromWarehouse && fromWarehouse.averageCost) {
-        return parseFloat(fromWarehouse.averageCost);
+      if (fromWarehouse) {
+        const isPvkj = watchProductType === "pvkj";
+        const averageCost = isPvkj ? fromWarehouse.pvkjAverageCost : fromWarehouse.averageCost;
+        if (averageCost) {
+          return parseFloat(averageCost);
+        }
       }
       return null;
     }
@@ -135,16 +134,29 @@ export function MovementDialog({
     const supplier = suppliers.find(s => s.id === watchSupplierId);
     if (!supplier) return null;
 
-    const counterpartyType = supplier.type;
-    const baseName = warehouses.find(w => w.id === watchToWarehouseId)?.basis || supplier.defaultBaseId;
+    // Определяем тип продукта для поиска цены
+    let priceProductType = "kerosine";
+    if (watchProductType === "pvkj") {
+      priceProductType = "pvkj";
+    }
+
+    // Определяем базис - берем первый базис поставщика
+    let baseName = null;
+    if (supplier.baseIds && supplier.baseIds.length > 0) {
+      const firstBase = allBases?.find(b => b.id === supplier.baseIds[0]);
+      if (firstBase) {
+        baseName = firstBase.name;
+      }
+    }
 
     if (!baseName) return null;
 
     // Ищем цену в таблице цен
     const matchingPrice = prices.find(p =>
       p.counterpartyId === watchSupplierId &&
-      p.counterpartyType === counterpartyType &&
+      p.counterpartyType === "wholesale" &&
       p.counterpartyRole === "supplier" &&
+      p.productType === priceProductType &&
       p.basis === baseName &&
       p.dateFrom <= dateStr &&
       p.dateTo >= dateStr &&
@@ -152,14 +164,12 @@ export function MovementDialog({
     );
 
     if (matchingPrice && matchingPrice.priceValues && matchingPrice.priceValues.length > 0) {
-      const priceObj = JSON.parse(matchingPrice.priceValues[0]);
-      return priceObj.price || 0;
-    }
-
-    // Если нет цены, пытаемся взять из склада (среднюю стоимость)
-    const warehouse = warehouses.find(w => w.baseId === baseName);
-    if (warehouse && warehouse.averageCost) {
-      return parseFloat(warehouse.averageCost);
+      try {
+        const priceObj = JSON.parse(matchingPrice.priceValues[0]);
+        return parseFloat(priceObj.price || "0");
+      } catch {
+        return null;
+      }
     }
 
     return null;
@@ -175,43 +185,47 @@ export function MovementDialog({
     const warehouse = warehouses.find(w => w.id === watchToWarehouseId);
     if (!warehouse || !warehouse.storageCost) return 0;
 
-    const storageCostPerKg = parseFloat(warehouse.storageCost);
-    return storageCostPerKg * kgNum;
+    const storageCostPerTon = parseFloat(warehouse.storageCost);
+    // Делим на 1000 так как стоимость хранения считается за тонну
+    return (storageCostPerTon / 1000) * kgNum;
   };
 
   const storageCost = getStorageCost();
 
-  // Получение стоимости доставки с учетом типов сущностей
+  // Получение стоимости доставки
   const getDeliveryCost = (): number => {
-    if (!watchSupplierId || !watchToWarehouseId || !watchCarrierId || kgNum <= 0) return 0;
-
-    const supplier = suppliers.find(s => s.id === watchSupplierId);
-    if (!supplier) return 0;
+    if (!watchToWarehouseId || !watchCarrierId || kgNum <= 0) return 0;
 
     const toWarehouse = warehouses.find(w => w.id === watchToWarehouseId);
     if (!toWarehouse) return 0;
 
-    // Определяем тип и ID источника (базис или склад поставщика)
-    let fromEntityType = "base";
-    let fromEntityId = null;
+    let fromEntityType = "";
+    let fromEntityId = "";
 
-    // Если у поставщика есть склад, используем его
-    if (supplier.isWarehouse) {
+    // Для поставки - берем от поставщика
+    if (watchMovementType === "supply" && watchSupplierId) {
+      const supplier = suppliers.find(s => s.id === watchSupplierId);
+      if (!supplier) return 0;
+
+      // Если у поставщика есть склад, используем его
+      if (supplier.isWarehouse) {
+        fromEntityType = "warehouse";
+        const supplierWarehouse = warehouses.find(w => w.supplierId === supplier.id);
+        if (supplierWarehouse) {
+          fromEntityId = supplierWarehouse.id;
+        }
+      } else {
+        // Используем базис (первый)
+        fromEntityType = "base";
+        if (supplier.baseIds && supplier.baseIds.length > 0) {
+          fromEntityId = supplier.baseIds[0];
+        }
+      }
+    }
+    // Для внутреннего перемещения - берем от склада-источника
+    else if (watchMovementType === "internal" && watchFromWarehouseId) {
       fromEntityType = "warehouse";
-      // Найти склад поставщика по supplier_id
-      const supplierWarehouse = warehouses.find(w =>
-        w.supplierId === supplier.id
-      );
-      if (supplierWarehouse) {
-        fromEntityId = supplierWarehouse.id;
-      }
-    } else {
-      // Используем базис
-      const bases = supplier.baseIds || [];
-      if (bases.length > 0) {
-        // Берем первый базис (можно доработать логику выбора)
-        fromEntityId = bases[0];
-      }
+      fromEntityId = watchFromWarehouseId;
     }
 
     if (!fromEntityId) return 0;
@@ -519,56 +533,18 @@ export function MovementDialog({
                 <CardTitle className="text-lg">Логистика</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  <FormField control={form.control} name="carrierId" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Перевозчик</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger data-testid="select-movement-carrier"><SelectValue placeholder="Выберите" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          {carriers?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="vehicleNumber" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Госномер</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger data-testid="select-movement-vehicle"><SelectValue placeholder="Выберите" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          {vehicles?.map((v) => <SelectItem key={v.id} value={v.regNumber}>{v.regNumber}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="trailerNumber" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Госномер ПП</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger data-testid="select-movement-trailer"><SelectValue placeholder="Выберите" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          {trailers?.map((t) => <SelectItem key={t.id} value={t.regNumber}>{t.regNumber}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="driverName" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>ФИО водителя</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger data-testid="select-movement-driver"><SelectValue placeholder="Выберите" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          {drivers?.map((d) => <SelectItem key={d.id} value={d.fullName}>{d.fullName}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                </div>
+                <FormField control={form.control} name="carrierId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Перевозчик</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger data-testid="select-movement-carrier"><SelectValue placeholder="Выберите перевозчика" /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        {carriers?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
               </CardContent>
             </Card>
 
