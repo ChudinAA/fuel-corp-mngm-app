@@ -108,27 +108,9 @@ export interface ILogisticsStorage {
   deleteLogisticsDriver(id: string): Promise<boolean>;
 }
 
-export interface PriceFilters {
-  dateFrom?: string;
-  dateTo?: string;
-  counterpartyType?: string;
-  counterpartyRole?: string;
-  productType?: string;
-  showArchived: boolean;
-  limit: number;
-  offset: number;
-}
-
-export interface FilteredPricesResult {
-  data: Price[];
-  total: number;
-  hasMore: boolean;
-}
-
 export interface IPriceStorage {
   getAllPrices(): Promise<Price[]>;
   getPricesByRole(counterpartyRole: string, counterpartyType: string): Promise<Price[]>;
-  getFilteredPrices(filters: PriceFilters): Promise<FilteredPricesResult>;
   createPrice(data: InsertPrice): Promise<Price>;
   updatePrice(id: string, data: Partial<InsertPrice>): Promise<Price | undefined>;
   deletePrice(id: string): Promise<boolean>;
@@ -140,15 +122,7 @@ export interface IPriceStorage {
     dateTo: string,
     priceId?: string
   ): Promise<number>;
-  checkPriceDateOverlaps(
-    counterpartyId: string,
-    counterpartyType: string,
-    counterpartyRole: string,
-    basis: string,
-    dateFrom: string,
-    dateTo: string,
-    excludeId?: string
-  ): Promise<{ status: string; message: string; overlaps?: { id: string; dateFrom: string; dateTo: string }[] }>;
+  checkPriceDateOverlaps(counterpartyId: string, counterpartyType: string, counterpartyRole: string, basis: string, dateFrom: string, dateTo: string, excludeId?: string): Promise<{ status: string; message: string; overlaps?: { id: string; dateFrom: string; dateTo: string }[] }>;
   getAllDeliveryCosts(): Promise<DeliveryCost[]>;
   createDeliveryCost(data: InsertDeliveryCost): Promise<DeliveryCost>;
   updateDeliveryCost(id: string, data: Partial<InsertDeliveryCost>): Promise<DeliveryCost | undefined>;

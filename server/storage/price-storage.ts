@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, asc, lte, gte } from "drizzle-orm";
+import { eq, and, desc, sql, asc } from "drizzle-orm";
 import { db } from "../db";
 import {
   prices,
@@ -10,7 +10,7 @@ import {
   type DeliveryCost,
   type InsertDeliveryCost,
 } from "@shared/schema";
-import type { IPriceStorage, PriceFilters, FilteredPricesResult } from "./types";
+import type { IPriceStorage } from "./types";
 
 export class PriceStorage implements IPriceStorage {
   async getAllPrices(): Promise<Price[]> {
@@ -23,62 +23,6 @@ export class PriceStorage implements IPriceStorage {
       and(eq(prices.counterpartyRole, counterpartyRole), eq(prices.counterpartyType, counterpartyType))
     ).orderBy(desc(prices.dateFrom));
     return filtered.map(p => this.enrichPriceWithCalculations(p));
-  }
-
-  async getFilteredPrices(filters: PriceFilters): Promise<FilteredPricesResult> {
-    const conditions = [eq(prices.isActive, true)];
-    const today = new Date().toISOString().split('T')[0];
-
-    // Фильтр по актуальности (если не показываем архивные)
-    if (!filters.showArchived) {
-      conditions.push(gte(prices.dateTo, today));
-    }
-
-    // Фильтр по датам
-    if (filters.dateFrom) {
-      conditions.push(gte(prices.dateFrom, filters.dateFrom));
-    }
-    if (filters.dateTo) {
-      conditions.push(lte(prices.dateTo, filters.dateTo));
-    }
-
-    // Фильтр по типу контрагента
-    if (filters.counterpartyType && filters.counterpartyType !== "all") {
-      conditions.push(eq(prices.counterpartyType, filters.counterpartyType));
-    }
-
-    // Фильтр по роли контрагента
-    if (filters.counterpartyRole && filters.counterpartyRole !== "all") {
-      conditions.push(eq(prices.counterpartyRole, filters.counterpartyRole));
-    }
-
-    // Фильтр по типу продукта
-    if (filters.productType && filters.productType !== "all") {
-      conditions.push(eq(prices.productType, filters.productType));
-    }
-
-    // Получаем общее количество записей
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(prices)
-      .where(and(...conditions));
-
-    // Получаем данные с пагинацией
-    const data = await db
-      .select()
-      .from(prices)
-      .where(and(...conditions))
-      .orderBy(desc(prices.dateFrom), desc(prices.createdAt))
-      .limit(filters.limit)
-      .offset(filters.offset);
-
-    const enrichedData = data.map(p => this.enrichPriceWithCalculations(p));
-
-    return {
-      data: enrichedData,
-      total: count,
-      hasMore: filters.offset + filters.limit < count
-    };
   }
 
   private enrichPriceWithCalculations(price: Price): Price {

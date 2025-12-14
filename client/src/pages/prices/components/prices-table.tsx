@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -14,73 +14,22 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Search, MoreVertical, Pencil, Trash2, RefreshCw, Package, Plane, TruckIcon, ShoppingCart, FileText, StickyNote } from "lucide-react";
 import type { Price, Supplier, Customer } from "@shared/schema";
-import type { PricesTableProps, FilteredPricesResult } from "../types";
+import type { PricesTableProps } from "../types";
 import { formatNumber, formatDate, getPriceDisplay, getProductTypeLabel } from "../utils";
 import { usePriceSelection } from "../hooks/use-price-selection";
 
-export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, detailedFilters, onEdit }: PricesTableProps) {
+export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onEdit }: PricesTableProps) {
   const [search, setSearch] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [priceToDelete, setPriceToDelete] = useState<Price | null>(null);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [selectedPrice, setSelectedPrice] = useState<Price | null>(null);
-  const [offset, setOffset] = useState(0);
-  const [allPrices, setAllPrices] = useState<Price[]>([]);
   const { toast } = useToast();
 
-  const buildFilterParams = () => {
-    const params = new URLSearchParams();
-    
-    if (detailedFilters.dateFrom) params.append("dateFrom", detailedFilters.dateFrom);
-    if (detailedFilters.dateTo) params.append("dateTo", detailedFilters.dateTo);
-    
-    const counterpartyType = detailedFilters.counterpartyType !== "all" 
-      ? detailedFilters.counterpartyType 
-      : (dealTypeFilter !== "all" ? dealTypeFilter : undefined);
-    if (counterpartyType) params.append("counterpartyType", counterpartyType);
-    
-    const counterpartyRole = detailedFilters.counterpartyRole !== "all" 
-      ? detailedFilters.counterpartyRole 
-      : (roleFilter !== "all" ? roleFilter : undefined);
-    if (counterpartyRole) params.append("counterpartyRole", counterpartyRole);
-    
-    const productType = detailedFilters.productType !== "all" 
-      ? detailedFilters.productType 
-      : (productTypeFilter !== "all" ? productTypeFilter : undefined);
-    if (productType) params.append("productType", productType);
-    
-    params.append("showArchived", String(detailedFilters.showArchived));
-    params.append("limit", "15");
-    params.append("offset", String(offset));
-    
-    return params.toString();
-  };
-
-  const { data: filteredResult, isLoading } = useQuery<FilteredPricesResult>({
-    queryKey: ["/api/prices/filtered", buildFilterParams()],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/prices/filtered?${buildFilterParams()}`);
-      return res.json();
-    },
+  const { data: prices, isLoading } = useQuery<Price[]>({
+    queryKey: ["/api/prices"],
   });
-
-  // Обновляем список при изменении фильтров
-  useEffect(() => {
-    if (filteredResult) {
-      if (offset === 0) {
-        setAllPrices(filteredResult.data);
-      } else {
-        setAllPrices(prev => [...prev, ...filteredResult.data]);
-      }
-    }
-  }, [filteredResult, offset]);
-
-  // Сброс при изменении фильтров
-  useEffect(() => {
-    setOffset(0);
-    setAllPrices([]);
-  }, [dealTypeFilter, roleFilter, productTypeFilter, detailedFilters]);
 
   const { data: allContractors } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
@@ -102,18 +51,37 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, det
     return contractors?.find(c => c.id === id)?.name || `ID: ${id}`;
   };
 
-  const displayedPrices = allPrices.filter(p => {
-    if (!search) return true;
+  const filteredPrices = prices?.filter(p => {
+    // Фильтр по типу сделки
+    if (dealTypeFilter !== "all" && p.counterpartyType !== dealTypeFilter) {
+      return false;
+    }
     
-    const searchLower = search.toLowerCase();
-    const contractorName = getContractorName(p.counterpartyId, p.counterpartyType, p.counterpartyRole).toLowerCase();
-    const basis = (p.basis || "").toLowerCase();
-    return contractorName.includes(searchLower) || basis.includes(searchLower);
-  });
-
-  const handleLoadMore = () => {
-    setOffset(prev => prev + 15);
-  };
+    // Фильтр по роли
+    if (roleFilter !== "all" && p.counterpartyRole !== roleFilter) {
+      return false;
+    }
+    
+    // Фильтр по типу продукта
+    if (productTypeFilter !== "all" && p.productType !== productTypeFilter) {
+      return false;
+    }
+    
+    // Поиск
+    if (search) {
+      const searchLower = search.toLowerCase();
+      const contractorName = getContractorName(p.counterpartyId, p.counterpartyType, p.counterpartyRole).toLowerCase();
+      const basis = (p.basis || "").toLowerCase();
+      if (!contractorName.includes(searchLower) && !basis.includes(searchLower)) {
+        return false;
+      }
+    }
+    
+    return true;
+  }).sort((a, b) => {
+    // Сортировка по дате создания (новые сверху)
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  }) || [];
 
   const deleteMutation = useMutation({
     mutationFn: async (priceId: string) => {
@@ -161,12 +129,12 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, det
             </TableRow>
           </TableHeader>
           <TableBody>
-            {displayedPrices.length === 0 ? (
+            {filteredPrices.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Нет данных</TableCell>
               </TableRow>
             ) : (
-              displayedPrices.map((price) => (
+              filteredPrices.map((price) => (
                 <TableRow key={price.id} data-testid={`row-price-${price.id}`}>
                   <TableCell className="text-sm whitespace-nowrap">{formatDate(price.dateFrom)} - {formatDate(price.dateTo)}</TableCell>
                   <TableCell>
@@ -282,18 +250,6 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, det
           </TableBody>
         </Table>
       </div>
-
-      {filteredResult?.hasMore && (
-        <div className="flex justify-center py-4">
-          <Button
-            variant="outline"
-            onClick={handleLoadMore}
-            disabled={isLoading}
-          >
-            {isLoading ? "Загрузка..." : "Подгрузить еще (архивные)"}
-          </Button>
-        </div>
-      )}
 
       <DeleteConfirmDialog
         open={deleteDialogOpen}
