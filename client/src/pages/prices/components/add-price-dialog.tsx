@@ -95,6 +95,12 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
   const watchDateTo = form.watch("dateTo");
   const watchBasis = form.watch("basis");
 
+  // Сбрасывать проверку дат при изменении критических полей
+  useEffect(() => {
+    setDateCheckPassed(false);
+    dateCheck.setResult(null);
+  }, [watchCounterpartyId, watchBasis, watchDateFrom, watchDateTo]);
+
   const { data: bases } = useQuery({ queryKey: ["/api/bases"] });
   const { data: suppliers } = useQuery({ queryKey: ["/api/suppliers"] });
   const { data: customers } = useQuery<Customer[]>({ queryKey: ["/api/customers"] });
@@ -209,10 +215,10 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
   });
 
   const handleSubmit = (data: PriceFormData) => {
-    if (!dateCheckPassed && !editPrice) {
+    if (!dateCheckPassed) {
       toast({ 
         title: "Ошибка!", 
-        description: "Необходимо проверить даты перед созданием цены. Нажмите кнопку 'Проверить даты'", 
+        description: "Необходимо проверить даты перед сохранением цены. Нажмите кнопку 'Проверить даты'", 
         variant: "destructive"
       });
       return;

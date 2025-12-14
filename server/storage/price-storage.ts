@@ -60,55 +60,56 @@ export class PriceStorage implements IPriceStorage {
     counterpartyType: string,
     basis: string,
     dateFrom: string,
-    dateTo: string
+    dateTo: string,
+    priceId?: string
   ): Promise<number> {
     let totalVolume = 0;
 
     if (counterpartyType === "wholesale") {
+      // Сделки, где контрагент - поставщик
       const optDealsSupplier = await db.select({
         total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`
       }).from(opt).where(
         and(
           eq(opt.supplierId, counterpartyId),
           eq(opt.basis, basis),
-          sql`${opt.createdAt} >= ${dateFrom}`,
-          sql`${opt.createdAt} <= ${dateTo}`
+          priceId ? eq(opt.purchasePriceId, priceId) : sql`1=1`
         )
       );
 
+      // Сделки, где контрагент - покупатель
       const optDealsBuyer = await db.select({
         total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`
       }).from(opt).where(
         and(
           eq(opt.buyerId, counterpartyId),
           eq(opt.basis, basis),
-          sql`${opt.createdAt} >= ${dateFrom}`,
-          sql`${opt.createdAt} <= ${dateTo}`
+          priceId ? eq(opt.salePriceId, priceId) : sql`1=1`
         )
       );
 
       totalVolume += parseFloat(optDealsSupplier[0]?.total || "0");
       totalVolume += parseFloat(optDealsBuyer[0]?.total || "0");
     } else if (counterpartyType === "refueling") {
+      // Сделки, где контрагент - поставщик
       const refuelingDealsSupplier = await db.select({
         total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`
       }).from(aircraftRefueling).where(
         and(
           eq(aircraftRefueling.supplierId, counterpartyId),
           eq(aircraftRefueling.basis, basis),
-          sql`${aircraftRefueling.refuelingDate} >= ${dateFrom}`,
-          sql`${aircraftRefueling.refuelingDate} <= ${dateTo}`
+          priceId ? eq(aircraftRefueling.purchasePriceId, priceId) : sql`1=1`
         )
       );
 
+      // Сделки, где контрагент - покупатель
       const refuelingDealsBuyer = await db.select({
         total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`
       }).from(aircraftRefueling).where(
         and(
           eq(aircraftRefueling.buyerId, counterpartyId),
           eq(aircraftRefueling.basis, basis),
-          sql`${aircraftRefueling.refuelingDate} >= ${dateFrom}`,
-          sql`${aircraftRefueling.refuelingDate} <= ${dateTo}`
+          priceId ? eq(aircraftRefueling.salePriceId, priceId) : sql`1=1`
         )
       );
 

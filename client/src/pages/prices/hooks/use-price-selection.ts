@@ -45,6 +45,7 @@ export function usePriceSelection() {
         basis: price.basis || "",
         dateFrom: price.dateFrom,
         dateTo: price.dateTo || price.dateFrom,
+        priceId: price.id,
       });
       const res = await apiRequest("GET", `/api/prices/calculate-selection?${params}`);
       return res.json();

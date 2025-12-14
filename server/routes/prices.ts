@@ -77,7 +77,7 @@ export function registerPricesRoutes(app: Express) {
 
   app.get("/api/prices/calculate-selection", requireAuth, async (req, res) => {
     try {
-      const { counterpartyId, counterpartyType, basis, dateFrom, dateTo } = req.query;
+      const { counterpartyId, counterpartyType, basis, dateFrom, dateTo, priceId } = req.query;
 
       if (!counterpartyId || !counterpartyType || !basis || !dateFrom || !dateTo) {
         return res.status(400).json({ message: "Не указаны обязательные параметры" });
@@ -88,7 +88,8 @@ export function registerPricesRoutes(app: Express) {
         counterpartyType as string,
         basis as string,
         dateFrom as string,
-        dateTo as string
+        dateTo as string,
+        priceId as string | undefined
       );
 
       res.json({ totalVolume: totalVolume.toFixed(2) });
