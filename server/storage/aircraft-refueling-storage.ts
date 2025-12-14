@@ -1,4 +1,3 @@
-
 import { eq, desc, sql, or } from "drizzle-orm";
 import { db } from "../db";
 import {
@@ -46,7 +45,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
     }
 
     const rawData = await query.orderBy(desc(aircraftRefueling.refuelingDate)).limit(pageSize).offset(offset);
-    
+
     const data = rawData.map(row => ({
       ...row.refueling,
       supplier: {
@@ -71,85 +70,135 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
   async createRefueling(data: InsertAircraftRefueling): Promise<AircraftRefueling> {
     const [created] = await db.insert(aircraftRefueling).values(data).returning();
 
-    if (created.warehouseId && created.quantityKg) {
-      const [warehouse] = await db.select().from(warehouses).where(eq(warehouses.id, created.warehouseId)).limit(1);
-
-      if (warehouse && warehouse.supplierId) {
-        const quantityKg = parseFloat(created.quantityKg);
-        const currentBalance = parseFloat(warehouse.currentBalance || "0");
-        const newBalance = Math.max(0, currentBalance - quantityKg);
-
-        await db.update(warehouses)
-          .set({
-            currentBalance: newBalance.toFixed(2),
-            updatedAt: sql`NOW()`,
-            updatedById: data.createdById
-          })
-          .where(eq(warehouses.id, created.warehouseId));
-
-        const [transaction] = await db.insert(warehouseTransactions).values({
-          warehouseId: created.warehouseId,
-          transactionType: 'sale',
-          sourceType: 'refueling',
-          sourceId: created.id,
-          quantity: (-quantityKg).toString(),
-          balanceBefore: currentBalance.toString(),
-          balanceAfter: newBalance.toString(),
-          averageCostBefore: warehouse.averageCost || "0",
-          averageCostAfter: warehouse.averageCost || "0",
-          createdById: data.createdById
-        }).returning();
-
-        await db.update(aircraftRefueling)
-          .set({ transactionId: transaction.id })
-          .where(eq(aircraftRefueling.id, created.id));
+    if (data.warehouseId) {
+      const [warehouse] = await db.select().from(warehouses).where(eq(warehouses.id, data.warehouseId)).limit(1);
+      if (!warehouse) {
+        throw new Error("Warehouse not found");
       }
+
+      const quantity = parseFloat(data.quantityKg);
+      const isPvkj = data.productType === "pvkj";
+
+      // Для ПВКЖ используем pvkjBalance, для керосина - currentBalance
+      const currentBalance = parseFloat(isPvkj ? (warehouse.pvkjBalance || "0") : (warehouse.currentBalance || "0"));
+      const averageCost = isPvkj ? (warehouse.pvkjAverageCost || "0") : (warehouse.averageCost || "0");
+      const newBalance = currentBalance - quantity;
+
+      if (newBalance < 0) {
+        throw new Error("Insufficient warehouse balance");
+      }
+
+      // Обновляем соответствующий баланс
+      const updateData: any = {
+        updatedAt: sql`NOW()`,
+      };
+
+      if (isPvkj) {
+        updateData.pvkjBalance = newBalance.toFixed(2);
+      } else {
+        updateData.currentBalance = newBalance.toFixed(2);
+      }
+
+      await db.update(warehouses).set(updateData).where(eq(warehouses.id, data.warehouseId));
+
+      const [transaction] = await db.insert(warehouseTransactions).values({
+        warehouseId: data.warehouseId,
+        transactionType: "sale",
+        sourceType: "refueling",
+        sourceId: created.id,
+        quantity: quantity.toFixed(2),
+        balanceBefore: currentBalance.toFixed(2),
+        balanceAfter: newBalance.toFixed(2),
+        averageCostBefore: averageCost,
+        averageCostAfter: averageCost,
+        createdById: data.createdById,
+      }).returning();
+
+      await db.update(aircraftRefueling).set({
+        transactionId: transaction.id,
+      }).where(eq(aircraftRefueling.id, created.id));
     }
 
     return created;
   }
 
   async updateRefueling(id: string, data: Partial<InsertAircraftRefueling>): Promise<AircraftRefueling | undefined> {
-    const [currentRefueling] = await db.select().from(aircraftRefueling).where(eq(aircraftRefueling.id, id)).limit(1);
-    
-    if (!currentRefueling) return undefined;
+    const [existing] = await db.select().from(aircraftRefueling).where(eq(aircraftRefueling.id, id)).limit(1);
 
-    if (data.quantityKg && currentRefueling.transactionId && currentRefueling.warehouseId) {
-      const oldQuantityKg = parseFloat(currentRefueling.quantityKg);
-      const newQuantityKg = parseFloat(data.quantityKg.toString());
+    if (!existing) return undefined;
 
-      if (oldQuantityKg !== newQuantityKg) {
-        const quantityDiff = newQuantityKg - oldQuantityKg;
+    const updateData: Partial<InsertAircraftRefueling> = { ...data };
 
-        const [warehouse] = await db.select().from(warehouses).where(eq(warehouses.id, currentRefueling.warehouseId)).limit(1);
-        const [transaction] = await db.select().from(warehouseTransactions).where(eq(warehouseTransactions.id, currentRefueling.transactionId)).limit(1);
+    if (existing.warehouseId && existing.transactionId) {
+      const [warehouse] = await db.select().from(warehouses).where(eq(warehouses.id, existing.warehouseId)).limit(1);
+      if (warehouse) {
+        const oldQuantity = parseFloat(existing.quantityKg);
+        const isPvkj = existing.productType === "pvkj";
+        const currentBalance = parseFloat(isPvkj ? (warehouse.pvkjBalance || "0") : (warehouse.currentBalance || "0"));
+        const restoredBalance = currentBalance + oldQuantity;
 
-        if (warehouse && transaction) {
-          const currentBalance = parseFloat(warehouse.currentBalance || "0");
-          const newBalance = Math.max(0, currentBalance - quantityDiff);
+        const restoreData: any = {
+          updatedAt: sql`NOW()`,
+        };
 
-          await db.update(warehouses)
-            .set({ 
-              currentBalance: newBalance.toFixed(2),
-              updatedAt: sql`NOW()`,
-              updatedById: data.updatedById
-            })
-            .where(eq(warehouses.id, currentRefueling.warehouseId));
-
-          await db.update(warehouseTransactions)
-            .set({
-              quantity: (-newQuantityKg).toString(),
-              balanceAfter: newBalance.toString(),
-              updatedAt: sql`NOW()`,
-              updatedById: data.updatedById
-            })
-            .where(eq(warehouseTransactions.id, currentRefueling.transactionId));
+        if (isPvkj) {
+          restoreData.pvkjBalance = restoredBalance.toFixed(2);
+        } else {
+          restoreData.currentBalance = restoredBalance.toFixed(2);
         }
+
+        await db.update(warehouses).set(restoreData).where(eq(warehouses.id, existing.warehouseId));
       }
+
+      await db.delete(warehouseTransactions).where(eq(warehouseTransactions.id, existing.transactionId));
+    }
+
+    if (data.warehouseId) {
+      const [warehouse] = await db.select().from(warehouses).where(eq(warehouses.id, data.warehouseId)).limit(1);
+      if (!warehouse) {
+        throw new Error("Warehouse not found");
+      }
+
+      const quantity = parseFloat(data.quantityKg);
+      const isPvkj = data.productType === "pvkj";
+      const currentBalance = parseFloat(isPvkj ? (warehouse.pvkjBalance || "0") : (warehouse.currentBalance || "0"));
+      const averageCost = isPvkj ? (warehouse.pvkjAverageCost || "0") : (warehouse.averageCost || "0");
+      const newBalance = currentBalance - quantity;
+
+      if (newBalance < 0) {
+        throw new Error("Insufficient warehouse balance");
+      }
+
+      const warehouseUpdateData: any = {
+        updatedAt: sql`NOW()`,
+      };
+
+      if (isPvkj) {
+        warehouseUpdateData.pvkjBalance = newBalance.toFixed(2);
+      } else {
+        warehouseUpdateData.currentBalance = newBalance.toFixed(2);
+      }
+
+      await db.update(warehouses).set(warehouseUpdateData).where(eq(warehouses.id, data.warehouseId));
+
+      const [transaction] = await db.insert(warehouseTransactions).values({
+        warehouseId: data.warehouseId,
+        transactionType: "sale",
+        sourceType: "refueling",
+        sourceId: id,
+        quantity: quantity.toFixed(2),
+        balanceBefore: currentBalance.toFixed(2),
+        balanceAfter: newBalance.toFixed(2),
+        averageCostBefore: averageCost,
+        averageCostAfter: averageCost,
+        createdById: data.createdById,
+      }).returning();
+
+      updateData.transactionId = transaction.id;
     }
 
     const [updated] = await db.update(aircraftRefueling).set({
-      ...data,
+      ...updateData,
       updatedAt: sql`NOW()`
     }).where(eq(aircraftRefueling.id, id)).returning();
 
@@ -161,16 +210,25 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
 
     if (currentRefueling && currentRefueling.transactionId && currentRefueling.warehouseId) {
       const quantityKg = parseFloat(currentRefueling.quantityKg);
+      const isPvkj = currentRefueling.productType === "pvkj";
 
       const [warehouse] = await db.select().from(warehouses).where(eq(warehouses.id, currentRefueling.warehouseId)).limit(1);
 
       if (warehouse) {
-        const currentBalance = parseFloat(warehouse.currentBalance || "0");
+        const currentBalance = parseFloat(isPvkj ? (warehouse.pvkjBalance || "0") : (warehouse.currentBalance || "0"));
         const newBalance = currentBalance + quantityKg;
 
-        await db.update(warehouses)
-          .set({ currentBalance: newBalance.toFixed(2) })
-          .where(eq(warehouses.id, currentRefueling.warehouseId));
+        const updateData: any = {
+          updatedAt: sql`NOW()`,
+        };
+
+        if (isPvkj) {
+          updateData.pvkjBalance = newBalance.toFixed(2);
+        } else {
+          updateData.currentBalance = newBalance.toFixed(2);
+        }
+
+        await db.update(warehouses).set(updateData).where(eq(warehouses.id, currentRefueling.warehouseId));
 
         await db.delete(warehouseTransactions).where(eq(warehouseTransactions.id, currentRefueling.transactionId));
       }

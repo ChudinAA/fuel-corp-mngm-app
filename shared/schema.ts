@@ -232,6 +232,8 @@ export const warehouses = pgTable("warehouses", {
   supplierId: uuid("supplier_id"), // Link to auto-created supplier
   currentBalance: decimal("current_balance", { precision: 15, scale: 2 }).default("0"),
   averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default("0"),
+  pvkjBalance: decimal("pvkj_balance", { precision: 15, scale: 2 }).default("0"),
+  pvkjAverageCost: decimal("pvkj_average_cost", { precision: 12, scale: 4 }).default("0"),
   storageCost: decimal("storage_cost", { precision: 12, scale: 2 }), // Moved from logistics
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -451,6 +453,8 @@ export const insertWarehouseSchema = z.object({
   baseIds: z.array(z.string()).optional(),
   supplierId: z.string().uuid().optional().nullable(),
   storageCost: z.string().optional().nullable(),
+  pvkjBalance: z.string().optional().nullable(),
+  pvkjAverageCost: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
   createdById: z.string().uuid(),
 });

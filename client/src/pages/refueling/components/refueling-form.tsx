@@ -175,21 +175,37 @@ export function RefuelingForm({
   }, [editData, suppliers, customers, form]);
 
   const getMatchingPurchasePrices = () => {
-    if (!watchSupplierId || !watchBasis || !watchRefuelingDate) return [];
+    if (!watchSupplierId || !watchRefuelingDate) return [];
 
     const dateStr = format(watchRefuelingDate, "yyyy-MM-dd");
     const supplier = suppliers?.find(s => s.id === watchSupplierId);
     if (!supplier) return [];
 
-    return allPrices?.filter(p =>
-      p.counterpartyId === watchSupplierId &&
-      p.counterpartyType === "refueling" &&
-      p.counterpartyRole === "supplier" &&
-      p.basis === watchBasis &&
-      p.dateFrom <= dateStr &&
-      p.dateTo >= dateStr &&
-      p.isActive
-    ) || [];
+    // Определяем тип продукта для поиска цены
+    let priceProductType = "kerosine";
+    if (watchProductType === "pvkj") {
+      priceProductType = "pvkj";
+    } else if (watchProductType === "service") {
+      priceProductType = "service";
+    }
+
+    return allPrices?.filter(p => {
+      const basicMatch = p.counterpartyId === watchSupplierId &&
+        p.counterpartyType === "refueling" &&
+        p.counterpartyRole === "supplier" &&
+        p.productType === priceProductType &&
+        p.dateFrom <= dateStr &&
+        p.dateTo >= dateStr &&
+        p.isActive;
+
+      // Для керосина и ПВКЖ проверяем базис
+      if (watchProductType === "kerosene" || watchProductType === "pvkj") {
+        return basicMatch && p.basis === watchBasis;
+      }
+      
+      // Для услуг базис не важен
+      return basicMatch;
+    }) || [];
   };
 
   const purchasePrices = getMatchingPurchasePrices();
@@ -201,10 +217,19 @@ export function RefuelingForm({
     const buyer = customers?.find(c => c.id === watchBuyerId);
     if (!buyer) return [];
 
+    // Определяем тип продукта для поиска цены
+    let priceProductType = "kerosine";
+    if (watchProductType === "pvkj") {
+      priceProductType = "pvkj";
+    } else if (watchProductType === "service") {
+      priceProductType = "service";
+    }
+
     return allPrices?.filter(p =>
       p.counterpartyId === watchBuyerId &&
       p.counterpartyType === "refueling" &&
       p.counterpartyRole === "buyer" &&
+      p.productType === priceProductType &&
       p.dateFrom <= dateStr &&
       p.dateTo >= dateStr &&
       p.isActive
@@ -214,6 +239,63 @@ export function RefuelingForm({
   const salePrices = getMatchingSalePrices();
 
   const getPurchasePrice = (): number | null => {
+    // Для услуги заправки
+    if (watchProductType === "service") {
+      if (selectedSupplier?.servicePrice) {
+        return parseFloat(selectedSupplier.servicePrice);
+      }
+      
+      const matchingPrices = getMatchingPurchasePrices();
+      if (matchingPrices.length === 0) return null;
+      
+      let selectedPrice = matchingPrices[0];
+      if (selectedPurchasePriceId) {
+        const found = matchingPrices.find(p => p.id === selectedPurchasePriceId);
+        if (found) selectedPrice = found;
+      }
+      
+      if (selectedPrice?.priceValues?.[0]) {
+        try {
+          const priceObj = JSON.parse(selectedPrice.priceValues[0]);
+          return parseFloat(priceObj.price || "0");
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    }
+
+    // Для ПВКЖ
+    if (watchProductType === "pvkj") {
+      if (isWarehouseSupplier && supplierWarehouse) {
+        return parseFloat(supplierWarehouse.pvkjAverageCost || "0");
+      }
+
+      if (selectedSupplier?.pvkjPrice) {
+        return parseFloat(selectedSupplier.pvkjPrice);
+      }
+
+      const matchingPrices = getMatchingPurchasePrices();
+      if (matchingPrices.length === 0) return null;
+
+      let selectedPrice = matchingPrices[0];
+      if (selectedPurchasePriceId) {
+        const found = matchingPrices.find(p => p.id === selectedPurchasePriceId);
+        if (found) selectedPrice = found;
+      }
+
+      if (selectedPrice?.priceValues?.[0]) {
+        try {
+          const priceObj = JSON.parse(selectedPrice.priceValues[0]);
+          return parseFloat(priceObj.price || "0");
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    }
+
+    // Для керосина
     if (isWarehouseSupplier && supplierWarehouse) {
       return parseFloat(supplierWarehouse.averageCost || "0");
     }
@@ -272,8 +354,10 @@ export function RefuelingForm({
   const purchaseAmount = purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
   const saleAmount = salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
 
+  const agentFee = selectedSupplier?.agentFee ? parseFloat(selectedSupplier.agentFee) * finalKg : 0;
+
   const profit = purchaseAmount !== null && saleAmount !== null 
-    ? saleAmount - purchaseAmount 
+    ? saleAmount - purchaseAmount - agentFee
     : null;
 
   const getWarehouseStatus = (): { status: "ok" | "warning" | "error"; message: string } => {
@@ -285,6 +369,19 @@ export function RefuelingForm({
       return { status: "ok", message: "—" };
     }
 
+    // Для ПВКЖ проверяем баланс ПВКЖ
+    if (watchProductType === "pvkj") {
+      const currentBalance = parseFloat(supplierWarehouse.pvkjBalance || "0");
+      const remaining = currentBalance - finalKg;
+
+      if (remaining >= 0) {
+        return { status: "ok", message: `ОК: ${formatNumber(remaining)} кг` };
+      } else {
+        return { status: "error", message: `Недостаточно! Доступно: ${formatNumber(currentBalance)} кг` };
+      }
+    }
+
+    // Для керосина проверяем обычный баланс
     const currentBalance = parseFloat(supplierWarehouse.currentBalance || "0");
     const remaining = currentBalance - finalKg;
 
@@ -773,6 +870,17 @@ export function RefuelingForm({
             status={purchaseAmount !== null ? "ok" : "error"}
           />
         </div>
+
+        {agentFee > 0 && (
+          <div className="p-3 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-md">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+              <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                Агентское вознаграждение: {formatCurrency(agentFee)}
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {salePrices.length > 1 ? (
