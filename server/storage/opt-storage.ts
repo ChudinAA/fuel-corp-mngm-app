@@ -113,6 +113,7 @@ export class OptStorage implements IOptStorage {
         const [transaction] = await db.insert(warehouseTransactions).values({
           warehouseId: created.warehouseId,
           transactionType: 'sale',
+          productType: 'kerosene',
           sourceType: 'opt',
           sourceId: created.id,
           quantity: (-quantityKg).toString(),
@@ -205,7 +206,7 @@ export class OptStorage implements IOptStorage {
         const newBalance = currentBalance + quantityKg;
 
         await db.update(warehouses)
-          .set({ currentBalance: newBalance.toFixed(2) })
+          .set({ currentBalance: newBalance.toFixed(2), updatedAt: sql`NOW()` })
           .where(eq(warehouses.id, currentOpt.warehouseId));
 
         // Удаляем транзакцию

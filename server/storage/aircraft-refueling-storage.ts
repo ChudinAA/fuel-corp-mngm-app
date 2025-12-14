@@ -82,15 +82,12 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
       // Для ПВКЖ используем pvkjBalance, для керосина - currentBalance
       const currentBalance = parseFloat(isPvkj ? (warehouse.pvkjBalance || "0") : (warehouse.currentBalance || "0"));
       const averageCost = isPvkj ? (warehouse.pvkjAverageCost || "0") : (warehouse.averageCost || "0");
-      const newBalance = currentBalance - quantity;
-
-      if (newBalance < 0) {
-        throw new Error("Insufficient warehouse balance");
-      }
+      const newBalance = Math.max(0, currentBalance - quantity);
 
       // Обновляем соответствующий баланс
       const updateData: any = {
         updatedAt: sql`NOW()`,
+        updatedById: data.createdById
       };
 
       if (isPvkj) {
@@ -107,17 +104,17 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         productType: data.productType || "kerosene",
         sourceType: "refueling",
         sourceId: created.id,
-        quantity: quantity.toFixed(2),
-        balanceBefore: currentBalance.toFixed(2),
-        balanceAfter: newBalance.toFixed(2),
+        quantity: (-quantity).toString(),
+        balanceBefore: currentBalance.toString(),
+        balanceAfter: newBalance.toString(),
         averageCostBefore: averageCost,
         averageCostAfter: averageCost,
         createdById: data.createdById,
       }).returning();
 
-      await db.update(aircraftRefueling).set({
-        transactionId: transaction.id,
-      }).where(eq(aircraftRefueling.id, created.id));
+      await db.update(aircraftRefueling)
+        .set({ transactionId: transaction.id })
+        .where(eq(aircraftRefueling.id, created.id));
     }
 
     return created;
@@ -172,6 +169,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
 
       const warehouseUpdateData: any = {
         updatedAt: sql`NOW()`,
+        updatedById: data.updatedById
       };
 
       if (isPvkj) {
