@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Package, Plane, TruckIcon, ShoppingCart } from "lucide-react";
 import type { Price } from "@shared/schema";
 import { AddPriceDialog } from "./prices/components/add-price-dialog";
@@ -13,6 +14,7 @@ export default function PricesPage() {
   const [refuelingEnabled, setRefuelingEnabled] = useState(false);
   const [supplierEnabled, setSupplierEnabled] = useState(false);
   const [buyerEnabled, setBuyerEnabled] = useState(false);
+  const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
 
   const getDealTypeFilter = (): "all" | "wholesale" | "refueling" => {
     if (!wholesaleEnabled && !refuelingEnabled) return "all";
@@ -83,10 +85,24 @@ export default function PricesPage() {
               <ShoppingCart className={`h-4 w-4 ${!buyerEnabled ? 'text-orange-500' : ''}`} />
               Покупатель
             </Button>
+            <Select value={productTypeFilter} onValueChange={setProductTypeFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Тип продукта" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все продукты</SelectItem>
+                <SelectItem value="kerosine">Керосин</SelectItem>
+                <SelectItem value="service">Услуги</SelectItem>
+                <SelectItem value="pvkj">ПВК/Ж</SelectItem>
+                <SelectItem value="agent">Агентское</SelectItem>
+                <SelectItem value="storage">Хранение</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <PricesTable 
             dealTypeFilter={getDealTypeFilter()} 
             roleFilter={getRoleFilter()}
+            productTypeFilter={productTypeFilter}
             onEdit={setEditingPrice}
           />
         </CardContent>

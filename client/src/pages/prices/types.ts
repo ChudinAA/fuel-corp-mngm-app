@@ -23,6 +23,7 @@ export interface PriceDialogProps {
 export interface PricesTableProps {
   dealTypeFilter: "all" | "wholesale" | "refueling";
   roleFilter: "all" | "supplier" | "buyer";
+  productTypeFilter: string;
   onEdit: (price: Price) => void;
 }
 

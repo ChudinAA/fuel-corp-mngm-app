@@ -18,7 +18,7 @@ import type { PricesTableProps } from "../types";
 import { formatNumber, formatDate, getPriceDisplay, getProductTypeLabel } from "../utils";
 import { usePriceSelection } from "../hooks/use-price-selection";
 
-export function PricesTable({ dealTypeFilter, roleFilter, onEdit }: PricesTableProps) {
+export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onEdit }: PricesTableProps) {
   const [search, setSearch] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [priceToDelete, setPriceToDelete] = useState<Price | null>(null);
@@ -59,6 +59,11 @@ export function PricesTable({ dealTypeFilter, roleFilter, onEdit }: PricesTableP
     
     // Фильтр по роли
     if (roleFilter !== "all" && p.counterpartyRole !== roleFilter) {
+      return false;
+    }
+    
+    // Фильтр по типу продукта
+    if (productTypeFilter !== "all" && p.productType !== productTypeFilter) {
       return false;
     }
     
