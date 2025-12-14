@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -61,6 +60,7 @@ export function RefuelingForm({
       isApproxVolume: false,
       selectedPurchasePriceId: "",
       selectedSalePriceId: "",
+      basis: "", // Добавлено поле basis
     },
   });
 
@@ -68,12 +68,72 @@ export function RefuelingForm({
     queryKey: ["/api/suppliers"],
   });
 
-  const { data: bases } = useQuery<Base[]>({
-    queryKey: ["/api/bases?baseType=refueling"],
+  const { data: allBases } = useQuery<Base[]>({
+    queryKey: ["/api/bases"],
   });
 
-  const { data: customers } = useQuery<Customer[]>({
-    queryKey: ["/api/customers"],
+  const { data: allPrices } = useQuery<Price[]>({
+    queryKey: ["/api/prices"],
+  });
+
+  const watchSupplierId = form.watch("supplierId");
+  const watchBuyerId = form.watch("buyerId");
+  const watchRefuelingDate = form.watch("refuelingDate");
+  const watchLiters = form.watch("quantityLiters");
+  const watchDensity = form.watch("density");
+  const watchKg = form.watch("quantityKg");
+  const watchProductType = form.watch("productType");
+  const watchBasis = form.watch("basis");
+
+  const calculatedKg = inputMode === "liters" && watchLiters && watchDensity
+    ? (parseFloat(watchLiters) * parseFloat(watchDensity)).toFixed(2)
+    : watchKg || "0";
+
+  const finalKg = parseFloat(calculatedKg || "0");
+
+  const selectedSupplier = suppliers?.find(s => s.id === watchSupplierId);
+  const isWarehouseSupplier = selectedSupplier?.isWarehouse || false;
+  const supplierWarehouse = warehouses?.find(w => 
+    w.supplierId === watchSupplierId
+  );
+
+  // Фильтруем базисы для поставщика (только refueling)
+  const availableBases = watchSupplierId && selectedSupplier?.baseIds
+    ? allBases?.filter(b => 
+        b.baseType === "refueling" && 
+        selectedSupplier.baseIds.includes(b.id)
+      ) || []
+    : [];
+
+  useEffect(() => {
+    if (watchSupplierId && suppliers && allBases) {
+      const supplier = suppliers.find(s => s.id === watchSupplierId);
+
+      if (supplier?.isWarehouse) {
+        const warehouse = warehouses?.find(w => 
+          w.supplierId === supplier.id
+        );
+        if (warehouse) {
+          form.setValue("warehouseId", warehouse.id);
+        }
+      } else {
+        form.setValue("warehouseId", "");
+      }
+
+      // Автоматически выбираем первый базис если он только один
+      if (!editData && supplier?.baseIds && supplier.baseIds.length === 1) {
+        const baseId = supplier.baseIds[0];
+        const base = allBases.find(b => b.id === baseId && b.baseType === "refueling");
+        if (base) {
+          form.setValue("basis", base.name);
+          setSelectedBasis(base.name);
+        }
+      }
+    }
+  }, [watchSupplierId, suppliers, allBases, warehouses, form, editData]);
+
+  const { data: warehouses } = useQuery<Warehouse[]>({
+    queryKey: ["/api/warehouses"],
   });
 
   useEffect(() => {
@@ -97,10 +157,12 @@ export function RefuelingForm({
         isApproxVolume: editData.isApproxVolume || false,
         selectedPurchasePriceId: editData.purchasePriceId || "",
         selectedSalePriceId: editData.salePriceId || "",
+        basis: editData.basis || "",
       });
 
       setSelectedPurchasePriceId(editData.purchasePriceId || "");
       setSelectedSalePriceId(editData.salePriceId || "");
+      setSelectedBasis(editData.basis || "");
 
       if (editData.quantityLiters) {
         setInputMode("liters");
@@ -108,12 +170,8 @@ export function RefuelingForm({
     }
   }, [editData, suppliers, customers, form]);
 
-  const { data: warehouses } = useQuery<Warehouse[]>({
-    queryKey: ["/api/warehouses"],
-  });
-
-  const { data: allPrices } = useQuery<Price[]>({
-    queryKey: ["/api/prices"],
+  const { data: customers } = useQuery<Customer[]>({
+    queryKey: ["/api/customers"],
   });
 
   const watchSupplierId = form.watch("supplierId");
@@ -123,6 +181,7 @@ export function RefuelingForm({
   const watchDensity = form.watch("density");
   const watchKg = form.watch("quantityKg");
   const watchProductType = form.watch("productType");
+  const watchBasis = form.watch("basis");
 
   const calculatedKg = inputMode === "liters" && watchLiters && watchDensity
     ? (parseFloat(watchLiters) * parseFloat(watchDensity)).toFixed(2)
@@ -136,32 +195,8 @@ export function RefuelingForm({
     w.supplierId === watchSupplierId
   );
 
-  useEffect(() => {
-    if (watchSupplierId && suppliers && bases) {
-      const supplier = suppliers.find(s => s.id === watchSupplierId);
-      if (supplier?.baseIds && supplier.baseIds.length > 0) {
-        const baseId = supplier.baseIds[0];
-        const base = bases.find(b => b.id === baseId);
-        if (base) {
-          setSelectedBasis(base.name);
-        }
-      }
-
-      if (supplier?.isWarehouse) {
-        const warehouse = warehouses?.find(w => 
-          w.supplierId === supplier.id
-        );
-        if (warehouse) {
-          form.setValue("warehouseId", warehouse.id);
-        }
-      } else {
-        form.setValue("warehouseId", "");
-      }
-    }
-  }, [watchSupplierId, suppliers, bases, warehouses, form]);
-
   const getMatchingPurchasePrices = () => {
-    if (!watchSupplierId || !selectedBasis || !watchRefuelingDate) return [];
+    if (!watchSupplierId || !watchBasis || !watchRefuelingDate) return [];
 
     const dateStr = format(watchRefuelingDate, "yyyy-MM-dd");
     const supplier = suppliers?.find(s => s.id === watchSupplierId);
@@ -171,7 +206,7 @@ export function RefuelingForm({
       p.counterpartyId === watchSupplierId &&
       p.counterpartyType === "refueling" &&
       p.counterpartyRole === "supplier" &&
-      p.basis === selectedBasis &&
+      p.basis === watchBasis &&
       p.dateFrom <= dateStr &&
       p.dateTo >= dateStr &&
       p.isActive
@@ -181,7 +216,7 @@ export function RefuelingForm({
   const purchasePrices = getMatchingPurchasePrices();
 
   const getMatchingSalePrices = () => {
-    if (!watchBuyerId || !selectedBasis || !watchRefuelingDate) return [];
+    if (!watchBuyerId || !watchRefuelingDate) return [];
 
     const dateStr = format(watchRefuelingDate, "yyyy-MM-dd");
     const buyer = customers?.find(c => c.id === watchBuyerId);
@@ -297,7 +332,7 @@ export function RefuelingForm({
         supplierId: data.supplierId,
         buyerId: data.buyerId,
         warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
-        basis: selectedBasis,
+        basis: watchBasis || selectedBasis,
         refuelingDate: format(data.refuelingDate, "yyyy-MM-dd"),
         quantityKg: parseFloat(calculatedKg),
         quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
@@ -324,6 +359,7 @@ export function RefuelingForm({
       form.reset();
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
+      setSelectedBasis("");
       onSuccess?.();
     },
     onError: (error: Error) => {
@@ -349,7 +385,7 @@ export function RefuelingForm({
         supplierId: data.supplierId,
         buyerId: data.buyerId,
         warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
-        basis: selectedBasis,
+        basis: watchBasis || selectedBasis,
         refuelingDate: format(data.refuelingDate, "yyyy-MM-dd"),
         quantityKg: parseFloat(calculatedKg),
         quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
@@ -376,6 +412,7 @@ export function RefuelingForm({
       form.reset();
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
+      setSelectedBasis("");
       onSuccess?.();
     },
     onError: (error: Error) => {
@@ -657,9 +694,39 @@ export function RefuelingForm({
         </Card>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <CalculatedField 
-            label="Базис" 
-            value={selectedBasis || "—"}
+          <FormField
+            control={form.control}
+            name="basis"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Базис</FormLabel>
+                <Select 
+                  onValueChange={(value) => { 
+                    field.onChange(value); 
+                    setSelectedBasis(value); 
+                  }} 
+                  value={field.value || selectedBasis}
+                  disabled={availableBases.length === 0}
+                >
+                  <FormControl>
+                    <SelectTrigger data-testid="select-basis">
+                      <SelectValue placeholder="Выберите базис" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {availableBases.map((base) => (
+                      <SelectItem key={base.id} value={base.name}>
+                        {base.name}
+                      </SelectItem>
+                    ))}
+                    {availableBases.length === 0 && (
+                      <SelectItem value="none" disabled>Нет данных</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
           />
 
           <CalculatedField 
@@ -843,6 +910,7 @@ export function RefuelingForm({
               form.reset();
               setSelectedPurchasePriceId("");
               setSelectedSalePriceId("");
+              setSelectedBasis("");
               onSuccess?.();
             }}
           >
