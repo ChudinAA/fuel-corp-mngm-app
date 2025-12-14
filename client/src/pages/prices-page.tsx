@@ -7,6 +7,8 @@ import { Package, Plane, TruckIcon, ShoppingCart } from "lucide-react";
 import type { Price } from "@shared/schema";
 import { AddPriceDialog } from "./prices/components/add-price-dialog";
 import { PricesTable } from "./prices/components/prices-table";
+import { PriceFilterDialog } from "./prices/components/price-filter-dialog";
+import type { PriceFilterState } from "./prices/types";
 
 export default function PricesPage() {
   const [editingPrice, setEditingPrice] = useState<Price | null>(null);
@@ -15,6 +17,12 @@ export default function PricesPage() {
   const [supplierEnabled, setSupplierEnabled] = useState(false);
   const [buyerEnabled, setBuyerEnabled] = useState(false);
   const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
+  const [detailedFilters, setDetailedFilters] = useState<PriceFilterState>({
+    counterpartyType: "all",
+    counterpartyRole: "all",
+    productType: "all",
+    showArchived: false,
+  });
 
   const getDealTypeFilter = (): "all" | "wholesale" | "refueling" => {
     if (!wholesaleEnabled && !refuelingEnabled) return "all";
@@ -30,6 +38,16 @@ export default function PricesPage() {
     if (supplierEnabled) return "supplier";
     if (buyerEnabled) return "buyer";
     return "all";
+  };
+
+  const handleApplyDetailedFilter = (filters: PriceFilterState) => {
+    setDetailedFilters(filters);
+    // Синхронизируем кнопки быстрого фильтра
+    setWholesaleEnabled(filters.counterpartyType === "wholesale");
+    setRefuelingEnabled(filters.counterpartyType === "refueling");
+    setSupplierEnabled(filters.counterpartyRole === "supplier");
+    setBuyerEnabled(filters.counterpartyRole === "buyer");
+    setProductTypeFilter(filters.productType);
   };
 
   return (
@@ -99,11 +117,17 @@ export default function PricesPage() {
                 <SelectItem value="storage">Хранение</SelectItem>
               </SelectContent>
             </Select>
+            <div className="w-px h-6 bg-border mx-1" />
+            <PriceFilterDialog
+              onApplyFilter={handleApplyDetailedFilter}
+              currentFilters={detailedFilters}
+            />
           </div>
           <PricesTable 
             dealTypeFilter={getDealTypeFilter()} 
             roleFilter={getRoleFilter()}
             productTypeFilter={productTypeFilter}
+            detailedFilters={detailedFilters}
             onEdit={setEditingPrice}
           />
         </CardContent>

@@ -20,11 +20,27 @@ export interface PriceDialogProps {
   onEditComplete?: () => void;
 }
 
+export interface PriceFilterState {
+  dateFrom?: string;
+  dateTo?: string;
+  counterpartyType: "all" | "wholesale" | "refueling";
+  counterpartyRole: "all" | "supplier" | "buyer";
+  productType: string;
+  showArchived: boolean;
+}
+
 export interface PricesTableProps {
   dealTypeFilter: "all" | "wholesale" | "refueling";
   roleFilter: "all" | "supplier" | "buyer";
   productTypeFilter: string;
+  detailedFilters: PriceFilterState;
   onEdit: (price: Price) => void;
+}
+
+export interface FilteredPricesResult {
+  data: Price[];
+  total: number;
+  hasMore: boolean;
 }
 
 export interface SelectionCheckState {

@@ -16,6 +16,38 @@ export function registerPricesRoutes(app: Express) {
     res.json(data);
   });
 
+  app.get("/api/prices/filtered", requireAuth, async (req, res) => {
+    try {
+      const {
+        dateFrom,
+        dateTo,
+        counterpartyType,
+        counterpartyRole,
+        productType,
+        showArchived,
+        limit,
+        offset
+      } = req.query;
+
+      const filters = {
+        dateFrom: dateFrom as string | undefined,
+        dateTo: dateTo as string | undefined,
+        counterpartyType: counterpartyType as string | undefined,
+        counterpartyRole: counterpartyRole as string | undefined,
+        productType: productType as string | undefined,
+        showArchived: showArchived === "true",
+        limit: limit ? parseInt(limit as string) : 15,
+        offset: offset ? parseInt(offset as string) : 0
+      };
+
+      const result = await storage.prices.getFilteredPrices(filters);
+      res.json(result);
+    } catch (error) {
+      console.error("Price filtering error:", error);
+      res.status(500).json({ message: "Ошибка фильтрации цен" });
+    }
+  });
+
   app.post("/api/prices", requireAuth, async (req, res) => {
     try {
       const body = req.body;
