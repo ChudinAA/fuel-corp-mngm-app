@@ -1,53 +1,24 @@
+
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Plus, Maximize2 } from "lucide-react";
 import type { AircraftRefueling } from "@shared/schema";
-import { useAuth } from "@/hooks/use-auth";
-import { AddRefuelingDialog } from "./refueling/add-refueling-dialog";
-import { RefuelingTable } from "./refueling/refueling-table";
+import { AddRefuelingDialog } from "./refueling/components/add-refueling-dialog";
+import { RefuelingTable } from "./refueling/components/refueling-table";
 
 export default function RefuelingPage() {
-  const { user } = useAuth();
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
   const [editingRefueling, setEditingRefueling] = useState<AircraftRefueling | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const queryClient = useQueryClient();
 
-  const { data: allSuppliers = [] } = useQuery<any[]>({
-    queryKey: ["/api/suppliers"],
+  const { data: refuelingDeals } = useQuery<{ data: AircraftRefueling[]; total: number }>({
+    queryKey: ["/api/refueling?page=1&pageSize=1000"],
   });
-
-  const { data: allBases = [] } = useQuery<any[]>({
-    queryKey: ["/api/bases?baseType=refueling"],
-  });
-
-  const { data: allBuyers = [] } = useQuery<any[]>({
-    queryKey: ["/api/customers"],
-  });
-
-  // Filter suppliers that have refueling bases attached
-  const refuelingBases = allBases.filter(b => b.baseType === 'refueling');
-  const refuelingBaseIds = new Set(refuelingBases.map(b => b.id));
-
-  const suppliers = allSuppliers.filter(s => 
-    s.baseIds?.some((baseId: string) => refuelingBaseIds.has(baseId))
-  );
-
-  const buyers = allBuyers.filter(b => b.module === 'refueling' || b.module === 'both');
-
-  const { data: refuelings, isLoading } = useQuery<{ data: AircraftRefueling[]; total: number }>({
-    queryKey: ["/api/refueling", page, search],
-  });
-
-  const data = refuelings?.data || [];
-  const total = refuelings?.total || 0;
-
-  const handleEditClick = (refueling: AircraftRefueling) => {
-    setEditingRefueling(refueling);
-    setIsDialogOpen(true);
-  };
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
@@ -59,13 +30,35 @@ export default function RefuelingPage() {
     setIsDialogOpen(true);
   };
 
+  const handleEditRefueling = (refueling: AircraftRefueling) => {
+    setEditingRefueling(refueling);
+    setIsDialogOpen(true);
+  };
+
+  const handleRefuelingDeleted = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/refueling"] });
+  };
+
+  // Вычисление накопительной прибыли за текущий месяц
+  const cumulativeProfit = refuelingDeals?.data?.reduce((sum, deal) => {
+    const dealDate = new Date(deal.refuelingDate);
+    const now = new Date();
+    if (dealDate.getMonth() === now.getMonth() && dealDate.getFullYear() === now.getFullYear()) {
+      return sum + parseFloat(deal.profit || "0");
+    }
+    return sum;
+  }, 0) || 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Заправка ВС</h1>
           <p className="text-muted-foreground">
-            Учет заправок воздушных судов и сопутствующих услуг
+            Учет заправок воздушных судов с автоматическим расчетом цен
+          </p>
+          <p className="text-sm font-medium mt-2">
+            Прибыль накопительно (текущий месяц): <span className="text-green-600">{cumulativeProfit.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽</span>
           </p>
         </div>
         <Button onClick={handleOpenDialog} data-testid="button-add-refueling">
@@ -75,28 +68,47 @@ export default function RefuelingPage() {
       </div>
 
       <AddRefuelingDialog
-        suppliers={suppliers || []}
-        buyers={buyers || []}
+        isOpen={isDialogOpen}
+        onClose={handleCloseDialog}
         editRefueling={editingRefueling}
-        open={isDialogOpen}
-        onOpenChange={(open) => !open && handleCloseDialog()}
       />
 
       <Card>
-        <CardHeader>
-          <CardTitle>Список заправок</CardTitle>
-          <CardDescription>История заправок воздушных судов</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+          <div>
+            <CardTitle>Список заправок</CardTitle>
+            <CardDescription>
+              Последние 10 записей
+            </CardDescription>
+          </div>
+          <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => setIsFullScreen(true)}
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+            <DialogContent className="max-w-[95vw] h-[90vh]">
+              <DialogHeader>
+                <DialogTitle>Все заправки ВС</DialogTitle>
+                <DialogDescription>
+                  Полный список заправок с фильтрацией и поиском
+                </DialogDescription>
+              </DialogHeader>
+              <ScrollArea className="flex-1">
+                <RefuelingTable 
+                  onEdit={handleEditRefueling}
+                  onDelete={handleRefuelingDeleted}
+                />
+              </ScrollArea>
+            </DialogContent>
+          </Dialog>
         </CardHeader>
         <CardContent>
-          <RefuelingTable
-            data={data}
-            total={total}
-            page={page}
-            search={search}
-            isLoading={isLoading}
-            onPageChange={setPage}
-            onSearchChange={setSearch}
-            onEdit={handleEditClick}
+          <RefuelingTable 
+            onEdit={handleEditRefueling}
+            onDelete={handleRefuelingDeleted}
           />
         </CardContent>
       </Card>
