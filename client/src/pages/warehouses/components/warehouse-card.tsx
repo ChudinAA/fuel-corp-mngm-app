@@ -127,28 +127,30 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
               {isInactive && <Badge variant="destructive">Неактивен</Badge>}
             </CardTitle>
             {warehouse.baseIds && warehouse.baseIds.length > 0 && allBases && (
-              <CardDescription className="flex items-center gap-2 mt-1 flex-wrap">
-                {warehouse.baseIds.map((baseId) => {
-                  const base = allBases.find((b: any) => b.id === baseId);
-                  if (!base) return null;
-                  const baseIcon = getBaseIcon(base.baseType);
-                  const BaseIcon = baseIcon.icon;
-                  return (
-                    <TooltipProvider key={baseId}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Badge variant="outline" className="flex items-center gap-1">
-                            <BaseIcon className={`h-3 w-3 ${baseIcon.color}`} />
-                            {base.name}
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{baseIcon.label}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  );
-                })}
+              <CardDescription className="mt-1 overflow-x-auto">
+                <div className="flex items-center gap-2 min-w-max">
+                  {warehouse.baseIds.map((baseId) => {
+                    const base = allBases.find((b: any) => b.id === baseId);
+                    if (!base) return null;
+                    const baseIcon = getBaseIcon(base.baseType);
+                    const BaseIcon = baseIcon.icon;
+                    return (
+                      <TooltipProvider key={baseId}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="flex items-center gap-1 flex-shrink-0">
+                              <BaseIcon className={`h-3 w-3 ${baseIcon.color}`} />
+                              {base.name}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{baseIcon.label}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })}
+                </div>
               </CardDescription>
             )}
           </div>
