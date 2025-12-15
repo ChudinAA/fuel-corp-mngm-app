@@ -192,8 +192,9 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>Себестоимость: <span className="font-medium">{formatCurrency(cost)}/кг</span></span>
             <div className="flex items-center gap-2 text-xs">
-              <span className="text-green-600">+{formatNumber(monthStats.income)}</span>
-              <span className="text-red-600">-{formatNumber(monthStats.expense)}</span>
+              <span className="text-muted-foreground mr-1">В месяц:</span>
+              <span className="text-green-600">+{formatNumber(monthStats.income)} кг</span>
+              <span className="text-red-600">-{formatNumber(monthStats.expense)} кг</span>
             </div>
           </div>
         </div>
@@ -207,8 +208,9 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>Себестоимость: <span className="font-medium">{formatCurrency(pvkjCost)}/кг</span></span>
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-green-600">+{formatNumber(monthStats.pvkjIncome)}</span>
-                <span className="text-red-600">-{formatNumber(monthStats.pvkjExpense)}</span>
+                <span className="text-muted-foreground mr-1">В месяц:</span>
+                <span className="text-green-600">+{formatNumber(monthStats.pvkjIncome)} кг</span>
+                <span className="text-red-600">-{formatNumber(monthStats.pvkjExpense)} кг</span>
               </div>
             </div>
           </div>
