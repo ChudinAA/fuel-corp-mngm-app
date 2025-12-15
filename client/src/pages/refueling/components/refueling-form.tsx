@@ -833,8 +833,15 @@ export function RefuelingForm({
               control={form.control}
               name="selectedPurchasePriceId"
               render={({ field }) => {
-                // Автоматически выбираем первую цену, если не выбрана
-                const effectiveValue = selectedPurchasePriceId || field.value || (purchasePrices.length > 0 ? purchasePrices[0].id : undefined);
+                // Автоматически выбираем первую цену при загрузке
+                const firstPriceId = purchasePrices.length > 0 ? `${purchasePrices[0].id}-0` : undefined;
+                const effectiveValue = selectedPurchasePriceId || field.value || firstPriceId;
+
+                // Устанавливаем первую цену, если ничего не выбрано
+                if (!selectedPurchasePriceId && !field.value && firstPriceId) {
+                  setSelectedPurchasePriceId(firstPriceId);
+                  field.onChange(firstPriceId);
+                }
 
                 return (
                   <FormItem className="flex-1">
@@ -845,10 +852,9 @@ export function RefuelingForm({
                         setSelectedPurchasePriceId(value); 
                       }} 
                       value={effectiveValue}
-                      defaultValue={effectiveValue}
                     >
                       <FormControl>
-                        <SelectTrigger data-testid="select-purchase-price">
+                        <SelectTrigger data-testid="select-purchase-price" className="h-9">
                           <SelectValue placeholder="Выберите цену" />
                         </SelectTrigger>
                       </FormControl>
@@ -879,22 +885,28 @@ export function RefuelingForm({
               }}
             />
           ) : !isWarehouseSupplier && watchProductType !== "service" ? (
-            <div className="flex-1">
-              <CalculatedField 
-                label="Покупка" 
-                value="Нет цены!"
-                status="error"
-              />
-            </div>
+            <FormItem className="flex-1">
+              <FormLabel>Покупка</FormLabel>
+              <div className="h-9 flex items-center">
+                <CalculatedField 
+                  label="" 
+                  value="Нет цены!"
+                  status="error"
+                />
+              </div>
+            </FormItem>
           ) : (
-            <div className="flex-1">
-              <CalculatedField 
-                label="Покупка" 
-                value={purchasePrice !== null ? formatNumber(purchasePrice) : "Нет цены!"}
-                suffix={purchasePrice !== null ? " ₽/кг" : ""}
-                status={purchasePrice !== null ? "ok" : "error"}
-              />
-            </div>
+            <FormItem className="flex-1">
+              <FormLabel>Покупка</FormLabel>
+              <div className="h-9 flex items-center">
+                <CalculatedField 
+                  label="" 
+                  value={purchasePrice !== null ? formatNumber(purchasePrice) : "Нет цены!"}
+                  suffix={purchasePrice !== null ? " ₽/кг" : ""}
+                  status={purchasePrice !== null ? "ok" : "error"}
+                />
+              </div>
+            </FormItem>
           )}
 
           <CalculatedField 
@@ -921,8 +933,15 @@ export function RefuelingForm({
               control={form.control}
               name="selectedSalePriceId"
               render={({ field }) => {
-                // Автоматически выбираем первую цену, если не выбрана
-                const effectiveValue = selectedSalePriceId || field.value || (salePrices.length > 0 ? salePrices[0].id : undefined);
+                // Автоматически выбираем первую цену при загрузке
+                const firstPriceId = salePrices.length > 0 ? `${salePrices[0].id}-0` : undefined;
+                const effectiveValue = selectedSalePriceId || field.value || firstPriceId;
+
+                // Устанавливаем первую цену, если ничего не выбрано
+                if (!selectedSalePriceId && !field.value && firstPriceId) {
+                  setSelectedSalePriceId(firstPriceId);
+                  field.onChange(firstPriceId);
+                }
 
                 return (
                   <FormItem className="flex-1">
@@ -933,10 +952,9 @@ export function RefuelingForm({
                         setSelectedSalePriceId(value); 
                       }} 
                       value={effectiveValue}
-                      defaultValue={effectiveValue}
                     >
                       <FormControl>
-                        <SelectTrigger data-testid="select-sale-price">
+                        <SelectTrigger data-testid="select-sale-price" className="h-9">
                           <SelectValue placeholder="Выберите цену" />
                         </SelectTrigger>
                       </FormControl>
@@ -967,13 +985,16 @@ export function RefuelingForm({
               }}
             />
           ) : (
-            <div className="flex-1">
-              <CalculatedField 
-                label="Продажа" 
-                value="Нет цены!"
-                status="error"
-              />
-            </div>
+            <FormItem className="flex-1">
+              <FormLabel>Продажа</FormLabel>
+              <div className="h-9 flex items-center">
+                <CalculatedField 
+                  label="" 
+                  value="Нет цены!"
+                  status="error"
+                />
+              </div>
+            </FormItem>
           )}
 
           <CalculatedField 
