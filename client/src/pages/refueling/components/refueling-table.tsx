@@ -141,6 +141,7 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
             <SelectItem value="all">Все продукты</SelectItem>
             <SelectItem value="kerosene">Керосин</SelectItem>
             <SelectItem value="pvkj">ПВКЖ</SelectItem>
+            <SelectItem value="service">Услуга заправки</SelectItem>
           </SelectContent>
         </Select>
       </div>

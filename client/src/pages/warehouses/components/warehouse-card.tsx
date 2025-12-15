@@ -183,15 +183,18 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
           </DropdownMenu>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         <div className="space-y-2">
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-semibold">{formatNumber(balance)} кг</span>
             <Badge variant="outline" className="text-xs">Керосин</Badge>
           </div>
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Себестоимость:</span>
-            <span className="font-medium">{formatCurrency(cost)}/кг</span>
+            <span>Себестоимость: <span className="font-medium">{formatCurrency(cost)}/кг</span></span>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-green-600">+{formatNumber(monthStats.income)}</span>
+              <span className="text-red-600">-{formatNumber(monthStats.expense)}</span>
+            </div>
           </div>
         </div>
 
@@ -202,34 +205,14 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
               <Badge variant="secondary" className="text-xs">ПВКЖ</Badge>
             </div>
             <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Себестоимость:</span>
-              <span className="font-medium">{formatCurrency(pvkjCost)}/кг</span>
+              <span>Себестоимость: <span className="font-medium">{formatCurrency(pvkjCost)}/кг</span></span>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-green-600">+{formatNumber(monthStats.pvkjIncome)}</span>
+                <span className="text-red-600">-{formatNumber(monthStats.pvkjExpense)}</span>
+              </div>
             </div>
           </div>
         )}
-
-        <div className="flex items-center justify-between text-xs pt-2 border-t">
-          <div className="flex items-center gap-3">
-            <span className="text-muted-foreground text-xs font-medium">Керосин:</span>
-            <span className="flex items-center gap-1 text-green-600">
-              +{formatNumber(monthStats.income)} кг
-            </span>
-            <span className="flex items-center gap-1 text-red-600">
-              -{formatNumber(monthStats.expense)} кг
-            </span>
-          </div>
-          {(monthStats.pvkjIncome > 0 || monthStats.pvkjExpense > 0) && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <span className="text-xs font-medium">ПВКЖ:</span>
-              <span className="flex items-center gap-1 text-green-600/70 text-[10px]">
-                +{formatNumber(monthStats.pvkjIncome)}
-              </span>
-              <span className="flex items-center gap-1 text-red-600/70 text-[10px]">
-                -{formatNumber(monthStats.pvkjExpense)}
-              </span>
-            </div>
-          )}
-        </div>
       </CardContent>
 
       <DeleteConfirmDialog
