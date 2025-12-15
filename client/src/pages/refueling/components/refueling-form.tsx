@@ -225,7 +225,6 @@ export function RefuelingForm({
         p.counterpartyType === "refueling" &&
         p.counterpartyRole === "buyer" &&
         p.productType === priceProductType &&
-        p.basis === watchBasis &&
         p.dateFrom <= dateStr &&
         p.dateTo >= dateStr &&
         p.isActive;
