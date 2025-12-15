@@ -499,28 +499,40 @@ export function OptForm({
           <FormField
             control={form.control}
             name="supplierId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Поставщик</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-supplier">
-                      <SelectValue placeholder="Выберите поставщика" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {suppliers?.map((supplier) => (
-                      <SelectItem key={supplier.id} value={supplier.id}>
-                        {supplier.name}
-                      </SelectItem>
-                    )) || (
-                      <SelectItem value="none" disabled>Нет данных</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              // Фильтруем поставщиков, у которых есть хотя бы один базис типа wholesale
+              const wholesaleSuppliers = suppliers?.filter(supplier => {
+                if (!supplier.baseIds || supplier.baseIds.length === 0) return false;
+                return allBases?.some(base => 
+                  supplier.baseIds.includes(base.id) && base.baseType === 'wholesale'
+                );
+              }) || [];
+
+              return (
+                <FormItem>
+                  <FormLabel>Поставщик</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-supplier">
+                        <SelectValue placeholder="Выберите поставщика" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {wholesaleSuppliers.length > 0 ? (
+                        wholesaleSuppliers.map((supplier) => (
+                          <SelectItem key={supplier.id} value={supplier.id}>
+                            {supplier.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>Нет данных</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
 
           <FormField

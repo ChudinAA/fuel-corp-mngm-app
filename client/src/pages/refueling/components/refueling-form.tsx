@@ -182,7 +182,7 @@ export function RefuelingForm({
     if (!supplier) return [];
 
     // Определяем тип продукта для поиска цены
-    let priceProductType = "kerosene";
+    let priceProductType = "kerosine";
     if (watchProductType === "pvkj") {
       priceProductType = "pvkj";
     } else if (watchProductType === "service") {
@@ -200,7 +200,7 @@ export function RefuelingForm({
 
       // Для керосина и ПВКЖ проверяем базис
       if (watchProductType === "kerosene" || watchProductType === "pvkj") {
-        return basicMatch && p.basis === watchBasis;
+        return basicMatch && watchBasis && p.basis === watchBasis;
       }
 
       // Для услуг базис не важен
@@ -218,22 +218,30 @@ export function RefuelingForm({
     if (!buyer) return [];
 
     // Определяем тип продукта для поиска цены
-    let priceProductType = "kerosene";
+    let priceProductType = "kerosine";
     if (watchProductType === "pvkj") {
       priceProductType = "pvkj";
     } else if (watchProductType === "service") {
       priceProductType = "service";
     }
 
-    return allPrices?.filter(p =>
-      p.counterpartyId === watchBuyerId &&
-      p.counterpartyType === "refueling" &&
-      p.counterpartyRole === "buyer" &&
-      p.productType === priceProductType &&
-      p.dateFrom <= dateStr &&
-      p.dateTo >= dateStr &&
-      p.isActive
-    ) || [];
+    return allPrices?.filter(p => {
+      const basicMatch = p.counterpartyId === watchBuyerId &&
+        p.counterpartyType === "refueling" &&
+        p.counterpartyRole === "buyer" &&
+        p.productType === priceProductType &&
+        p.dateFrom <= dateStr &&
+        p.dateTo >= dateStr &&
+        p.isActive;
+
+      // Для керосина и ПВКЖ проверяем базис
+      if (watchProductType === "kerosene" || watchProductType === "pvkj") {
+        return basicMatch && watchBasis && p.basis === watchBasis;
+      }
+
+      // Для услуг базис не важен
+      return basicMatch;
+    }) || [];
   };
 
   const salePrices = getMatchingSalePrices();
@@ -611,28 +619,40 @@ export function RefuelingForm({
           <FormField
             control={form.control}
             name="supplierId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Поставщик</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-supplier">
-                      <SelectValue placeholder="Выберите поставщика" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {suppliers?.map((supplier) => (
-                      <SelectItem key={supplier.id} value={supplier.id}>
-                        {supplier.name}
-                      </SelectItem>
-                    )) || (
-                      <SelectItem value="none" disabled>Нет данных</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              // Фильтруем поставщиков, у которых есть хотя бы один базис типа refueling
+              const refuelingSuppliers = suppliers?.filter(supplier => {
+                if (!supplier.baseIds || supplier.baseIds.length === 0) return false;
+                return allBases?.some(base => 
+                  supplier.baseIds.includes(base.id) && base.baseType === 'refueling'
+                );
+              }) || [];
+
+              return (
+                <FormItem>
+                  <FormLabel>Поставщик</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-supplier">
+                        <SelectValue placeholder="Выберите поставщика" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {refuelingSuppliers.length > 0 ? (
+                        refuelingSuppliers.map((supplier) => (
+                          <SelectItem key={supplier.id} value={supplier.id}>
+                            {supplier.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>Нет данных</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
 
           <FormField

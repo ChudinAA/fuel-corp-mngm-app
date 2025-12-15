@@ -61,15 +61,6 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
         }
       }
 
-      const fieldsToRemove = fields.length;
-      for (let i = 0; i < fieldsToRemove; i++) {
-        remove(0);
-      }
-      
-      parsedPriceValues.forEach((pv) => {
-        append(pv);
-      });
-
       form.reset({
         dateFrom: new Date(editPrice.dateFrom),
         dateTo: new Date(editPrice.dateTo || editPrice.dateFrom),
@@ -86,7 +77,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
       setOpen(true);
       setDateCheckPassed(false);
     }
-  }, [editPrice, form, fields.length, append, remove]);
+  }, [editPrice, form]);
 
   const watchCounterpartyType = form.watch("counterpartyType");
   const watchCounterpartyRole = form.watch("counterpartyRole");
