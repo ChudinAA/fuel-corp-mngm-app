@@ -348,10 +348,14 @@ export function OptForm({
     mutationFn: async (data: OptFormData) => {
       const purchasePrices = getMatchingPurchasePrices();
       const salePrices = getMatchingSalePrices();
+      
+      // Извлекаем ID цены без индекса
       const purchasePriceId = !isWarehouseSupplier && selectedPurchasePriceId 
-        ? selectedPurchasePriceId 
+        ? (selectedPurchasePriceId.includes('-') ? selectedPurchasePriceId.split('-')[0] : selectedPurchasePriceId)
         : (!isWarehouseSupplier && purchasePrices.length > 0 ? purchasePrices[0].id : null);
-      const salePriceId = selectedSalePriceId || (salePrices.length > 0 ? salePrices[0].id : null);
+      const salePriceId = selectedSalePriceId 
+        ? (selectedSalePriceId.includes('-') ? selectedSalePriceId.split('-')[0] : selectedSalePriceId)
+        : (salePrices.length > 0 ? salePrices[0].id : null);
 
       const payload = {
         ...data,
@@ -404,10 +408,14 @@ export function OptForm({
     mutationFn: async (data: OptFormData & { id: string }) => {
       const purchasePrices = getMatchingPurchasePrices();
       const salePrices = getMatchingSalePrices();
+      
+      // Извлекаем ID цены без индекса
       const purchasePriceId = !isWarehouseSupplier && selectedPurchasePriceId 
-        ? selectedPurchasePriceId 
+        ? (selectedPurchasePriceId.includes('-') ? selectedPurchasePriceId.split('-')[0] : selectedPurchasePriceId)
         : (!isWarehouseSupplier && purchasePrices.length > 0 ? purchasePrices[0].id : null);
-      const salePriceId = selectedSalePriceId || (salePrices.length > 0 ? salePrices[0].id : null);
+      const salePriceId = selectedSalePriceId 
+        ? (selectedSalePriceId.includes('-') ? selectedSalePriceId.split('-')[0] : selectedSalePriceId)
+        : (salePrices.length > 0 ? salePrices[0].id : null);
 
       const payload = {
         ...data,
@@ -745,13 +753,14 @@ export function OptForm({
                         {purchasePrices.map((price) => {
                           const priceValues = price.priceValues || [];
                           if (priceValues.length === 0) return null;
-                          
+
                           return priceValues.map((priceValueStr, idx) => {
                             try {
                               const parsed = JSON.parse(priceValueStr);
                               const priceVal = parsed.price || "0";
+                              // Добавляем индекс к значению, чтобы различать одинаковые цены из разных priceValues
                               return (
-                                <SelectItem key={`${price.id}-${idx}`} value={price.id}>
+                                <SelectItem key={`${price.id}-${idx}`} value={`${price.id}-${idx}`}>
                                   {formatNumber(priceVal)} ₽/кг
                                 </SelectItem>
                               );
@@ -822,13 +831,14 @@ export function OptForm({
                         {salePrices.map((price) => {
                           const priceValues = price.priceValues || [];
                           if (priceValues.length === 0) return null;
-                          
+
                           return priceValues.map((priceValueStr, idx) => {
                             try {
                               const parsed = JSON.parse(priceValueStr);
                               const priceVal = parsed.price || "0";
+                              // Добавляем индекс к значению, чтобы различать одинаковые цены из разных priceValues
                               return (
-                                <SelectItem key={`${price.id}-${idx}`} value={price.id}>
+                                <SelectItem key={`${price.id}-${idx}`} value={`${price.id}-${idx}`}>
                                   {formatNumber(priceVal)} ₽/кг
                                 </SelectItem>
                               );
