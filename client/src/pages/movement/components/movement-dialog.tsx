@@ -453,7 +453,7 @@ export function MovementDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Откуда (склад)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-movement-from">
                             <SelectValue placeholder="Выберите склад" />

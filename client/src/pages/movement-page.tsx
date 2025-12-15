@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import type { Movement, Warehouse } from "@shared/schema";
 import { MovementDialog } from "./movement/components/movement-dialog";
@@ -119,7 +120,8 @@ export default function MovementPage() {
         item.fromName?.toLowerCase().includes(searchLower) ||
         item.toName?.toLowerCase().includes(searchLower) ||
         item.carrierName?.toLowerCase().includes(searchLower) ||
-        item.notes?.toLowerCase().includes(searchLower)
+        item.notes?.toLowerCase().includes(searchLower) ||
+        item.quantityKg?.toLowerCase().includes(searchLower)
       );
     }
 
@@ -193,50 +195,30 @@ export default function MovementPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Button
-                  variant={typeFilter === null ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setTypeFilter(null)}
-                >
-                  Все типы
-                </Button>
-                <Button
                   variant={typeFilter === "supply" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setTypeFilter("supply")}
+                  onClick={() => setTypeFilter(typeFilter === "supply" ? null : "supply")}
                 >
                   Поставка
                 </Button>
                 <Button
                   variant={typeFilter === "internal" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setTypeFilter("internal")}
+                  onClick={() => setTypeFilter(typeFilter === "internal" ? null : "internal")}
                 >
                   Внутреннее
                 </Button>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={productFilter === null ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setProductFilter(null)}
-                >
-                  Все продукты
-                </Button>
-                <Button
-                  variant={productFilter === "kerosene" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setProductFilter("kerosene")}
-                >
-                  Керосин
-                </Button>
-                <Button
-                  variant={productFilter === "pvkj" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setProductFilter("pvkj")}
-                >
-                  ПВКЖ
-                </Button>
-              </div>
+              <Select value={productFilter || "all"} onValueChange={(value) => setProductFilter(value === "all" ? null : value)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Все продукты" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все продукты</SelectItem>
+                  <SelectItem value="kerosene">Керосин</SelectItem>
+                  <SelectItem value="pvkj">ПВКЖ</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="border rounded-lg">

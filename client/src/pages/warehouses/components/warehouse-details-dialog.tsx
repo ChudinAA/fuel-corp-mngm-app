@@ -38,9 +38,9 @@ export function WarehouseDetailsDialog({
 
   const getTransactionIcon = (type: string) => {
     if (type === 'receipt' || type === 'transfer_in') {
-      return <ArrowUpCircle className="h-4 w-4 text-green-600" />;
+      return <ArrowUpCircle className="h-5 w-5 text-green-600" />;
     }
-    return <ArrowDownCircle className="h-4 w-4 text-red-600" />;
+    return <ArrowDownCircle className="h-5 w-5 text-red-600" />;
   };
 
   const getTransactionTypeLabel = (transactionType: string, sourceType?: string) => {
@@ -64,7 +64,7 @@ export function WarehouseDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent className="max-w-[90vw] max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <WarehouseIcon className="h-5 w-5 text-sky-400" />
@@ -75,11 +75,11 @@ export function WarehouseDetailsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-3 gap-4 py-4">
+        <div className="grid grid-cols-5 gap-4 py-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Текущий остаток
+                Остаток (Керосин)
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -91,12 +91,36 @@ export function WarehouseDetailsDialog({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Средняя себестоимость
+                Себестоимость (Керосин)
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-xl font-semibold">
                 {formatCurrency(warehouse.averageCost || "0")}/кг
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Остаток (ПВКЖ)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xl font-semibold">
+                {formatNumber(warehouse.pvkjBalance || "0")} кг
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Себестоимость (ПВКЖ)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xl font-semibold">
+                {formatCurrency(warehouse.pvkjAverageCost || "0")}/кг
               </p>
             </CardContent>
           </Card>
@@ -176,7 +200,10 @@ export function WarehouseDetailsDialog({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={tx.productType === 'pvkj' ? 'secondary' : 'outline'} className="text-xs">
+                      <Badge 
+                        variant="outline" 
+                        className={`text-xs ${tx.productType === 'pvkj' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}
+                      >
                         {tx.productType === 'pvkj' ? 'ПВКЖ' : 'Керосин'}
                       </Badge>
                     </TableCell>

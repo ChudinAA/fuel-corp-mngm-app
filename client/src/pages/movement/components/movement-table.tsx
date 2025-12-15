@@ -6,9 +6,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Pencil, Trash2, FileText } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatNumber, formatCurrency, formatDate } from "../utils";
+
+const formatNumberWithK = (value: string | number) => {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (num >= 1000) {
+    return `${(num / 1000).toFixed(1)}к`;
+  }
+  return formatNumber(num);
+};
 import type { MovementTableProps } from "../types";
 
 export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }: MovementTableProps) {
@@ -130,20 +138,20 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
                 </TableCell>
                 <TableCell>{(item as any).fromName || "—"}</TableCell>
                 <TableCell>{(item as any).toName || item.toWarehouseId}</TableCell>
-                <TableCell className="text-right font-medium">{formatNumber(item.quantityKg)}</TableCell>
+                <TableCell className="text-right font-medium">{formatNumberWithK(item.quantityKg)}</TableCell>
                 <TableCell className="text-right">
                   {purchasePrice !== null ? `${formatNumber(purchasePrice)} ₽/кг` : "—"}
                 </TableCell>
-                <TableCell className="text-right">{formatCurrency(purchaseAmount)}</TableCell>
+                <TableCell className="text-right">{formatNumberWithK(purchaseAmount)}</TableCell>
                 <TableCell>{(item as any).carrierName || "—"}</TableCell>
-                <TableCell className="text-right">{formatCurrency(deliveryCost)}</TableCell>
-                <TableCell className="text-right">{formatCurrency(storageCost)}</TableCell>
+                <TableCell className="text-right">{formatNumberWithK(deliveryCost)}</TableCell>
+                <TableCell className="text-right">{formatNumberWithK(storageCost)}</TableCell>
                 <TableCell className="text-right font-medium">{formatNumber(costPerKg)} ₽/кг</TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
+                        <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">

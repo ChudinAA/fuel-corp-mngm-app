@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pencil, Trash2, TrendingUp, TrendingDown, Warehouse as WarehouseIcon, Droplets, Fuel } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Pencil, Trash2, TrendingUp, TrendingDown, Warehouse as WarehouseIcon, Droplets, Fuel, MoreVertical } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Warehouse, Base } from "@shared/schema";
@@ -25,7 +26,7 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
   const balance = parseFloat(warehouse.currentBalance || "0");
   const cost = parseFloat(warehouse.averageCost || "0");
   const pvkjBalance = parseFloat(warehouse.pvkjBalance || "0");
-  const pvkjCost = parseFloat(warehouse.pvkjCost || "0");
+  const pvkjCost = parseFloat(warehouse.pvkjAverageCost || "0");
   const isInactive = !warehouse.isActive;
 
   const { data: allBases } = useQuery<Base[]>({
@@ -139,6 +140,35 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
               </CardDescription>
             )}
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(warehouse); }}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Редактировать
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (warehouse.supplierId && warehouse.isActive) {
+                    setConfirmMessage("Данный склад привязан к поставщику. После удаления у поставщика не будет склада. Продолжить?");
+                  } else {
+                    setConfirmMessage("Вы уверены, что хотите удалить этот склад? Это действие нельзя отменить.");
+                  }
+                  setDeleteDialogOpen(true);
+                }}
+                disabled={deleteMutation.isPending}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Удалить
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -166,43 +196,15 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-2 border-t">
-          <div className="flex items-center gap-4 text-xs">
-            <span className="flex items-center gap-1 text-green-600">
-              <TrendingUp className="h-3 w-3" />
-              +{formatNumber(monthStats.income)} кг
-            </span>
-            <span className="flex items-center gap-1 text-red-600">
-              <TrendingDown className="h-3 w-3" />
-              -{formatNumber(monthStats.expense)} кг
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              data-testid={`button-edit-warehouse-${warehouse.id}`}
-              onClick={() => onEdit(warehouse)}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-destructive"
-              onClick={() => {
-                if (warehouse.supplierId && warehouse.isActive) {
-                  setConfirmMessage("Данный склад привязан к поставщику. После удаления у поставщика не будет склада. Продолжить?");
-                } else {
-                  setConfirmMessage("Вы уверены, что хотите удалить этот склад? Это действие нельзя отменить.");
-                }
-                setDeleteDialogOpen(true);
-              }}
-              disabled={deleteMutation.isPending}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+        <div className="flex items-center gap-4 text-xs pt-2 border-t">
+          <span className="flex items-center gap-1 text-green-600">
+            <TrendingUp className="h-3 w-3" />
+            +{formatNumber(monthStats.income)} кг
+          </span>
+          <span className="flex items-center gap-1 text-red-600">
+            <TrendingDown className="h-3 w-3" />
+            -{formatNumber(monthStats.expense)} кг
+          </span>
         </div>
       </CardContent>
 
