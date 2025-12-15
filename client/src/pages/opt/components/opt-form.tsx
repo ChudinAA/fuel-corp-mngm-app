@@ -184,6 +184,7 @@ export function OptForm({
       p.counterpartyId === watchSupplierId &&
       p.counterpartyType === "wholesale" &&
       p.counterpartyRole === "supplier" &&
+      p.productType === "kerosine" &&
       p.basis === selectedBasis &&
       p.dateFrom <= dateStr &&
       p.dateTo >= dateStr &&
@@ -205,6 +206,7 @@ export function OptForm({
       p.counterpartyId === watchBuyerId &&
       p.counterpartyType === "wholesale" &&
       p.counterpartyRole === "buyer" &&
+      p.productType === "kerosine" &&
       p.dateFrom <= dateStr &&
       p.dateTo >= dateStr &&
       p.isActive
@@ -724,7 +726,7 @@ export function OptForm({
                 const effectiveValue = selectedPurchasePriceId || field.value || (purchasePrices.length > 0 ? purchasePrices[0].id : undefined);
 
                 return (
-                  <FormItem>
+                  <FormItem className="flex-1">
                     <FormLabel>Покупка</FormLabel>
                     <Select 
                       onValueChange={(value) => { 
@@ -742,19 +744,19 @@ export function OptForm({
                       <SelectContent>
                         {purchasePrices.map((price) => {
                           const priceValues = price.priceValues || [];
-                          return priceValues.map((pv: string, idx: number) => {
-                            try {
-                              const parsed = JSON.parse(pv);
-                              const priceVal = parsed.price || "0";
-                              return (
-                                <SelectItem key={`${price.id}-${idx}`} value={price.id}>
-                                  {formatNumber(priceVal)} ₽/кг
-                                </SelectItem>
-                              );
-                            } catch {
-                              return null;
-                            }
-                          }).filter(Boolean);
+                          if (priceValues.length === 0) return null;
+                          
+                          try {
+                            const parsed = JSON.parse(priceValues[0]);
+                            const priceVal = parsed.price || "0";
+                            return (
+                              <SelectItem key={price.id} value={price.id}>
+                                {formatNumber(priceVal)} ₽/кг
+                              </SelectItem>
+                            );
+                          } catch {
+                            return null;
+                          }
                         })}
                       </SelectContent>
                     </Select>
@@ -764,18 +766,22 @@ export function OptForm({
               }}
             />
           ) : !isWarehouseSupplier ? (
-            <CalculatedField 
-              label="Покупка" 
-              value="Нет цены!"
-              status="error"
-            />
+            <div className="flex-1">
+              <CalculatedField 
+                label="Покупка" 
+                value="Нет цены!"
+                status="error"
+              />
+            </div>
           ) : (
-            <CalculatedField 
-              label="Покупка" 
-              value={purchasePrice !== null ? formatNumber(purchasePrice) : "Нет цены!"}
-              suffix={purchasePrice !== null ? " ₽/кг" : ""}
-              status={purchasePrice !== null ? "ok" : "error"}
-            />
+            <div className="flex-1">
+              <CalculatedField 
+                label="Покупка" 
+                value={purchasePrice !== null ? formatNumber(purchasePrice) : "Нет цены!"}
+                suffix={purchasePrice !== null ? " ₽/кг" : ""}
+                status={purchasePrice !== null ? "ok" : "error"}
+              />
+            </div>
           )}
 
           <CalculatedField 
@@ -795,7 +801,7 @@ export function OptForm({
                 const effectiveValue = selectedSalePriceId || field.value || (salePrices.length > 0 ? salePrices[0].id : undefined);
 
                 return (
-                  <FormItem>
+                  <FormItem className="flex-1">
                     <FormLabel>Продажа</FormLabel>
                     <Select 
                       onValueChange={(value) => { 
@@ -813,19 +819,19 @@ export function OptForm({
                       <SelectContent>
                         {salePrices.map((price) => {
                           const priceValues = price.priceValues || [];
-                          return priceValues.map((pv: string, idx: number) => {
-                            try {
-                              const parsed = JSON.parse(pv);
-                              const priceVal = parsed.price || "0";
-                              return (
-                                <SelectItem key={`${price.id}-${idx}`} value={price.id}>
-                                  {formatNumber(priceVal)} ₽/кг
-                                </SelectItem>
-                              );
-                            } catch {
-                              return null;
-                            }
-                          }).filter(Boolean);
+                          if (priceValues.length === 0) return null;
+                          
+                          try {
+                            const parsed = JSON.parse(priceValues[0]);
+                            const priceVal = parsed.price || "0";
+                            return (
+                              <SelectItem key={price.id} value={price.id}>
+                                {formatNumber(priceVal)} ₽/кг
+                              </SelectItem>
+                            );
+                          } catch {
+                            return null;
+                          }
                         })}
                       </SelectContent>
                     </Select>
@@ -835,11 +841,13 @@ export function OptForm({
               }}
             />
           ) : (
-            <CalculatedField 
-              label="Продажа" 
-              value="Нет цены!"
-              status="error"
-            />
+            <div className="flex-1">
+              <CalculatedField 
+                label="Продажа" 
+                value="Нет цены!"
+                status="error"
+              />
+            </div>
           )}
 
           <CalculatedField 

@@ -175,7 +175,7 @@ export function RefuelingForm({
   }, [editData, suppliers, customers, form]);
 
   const getMatchingPurchasePrices = () => {
-    if (!watchSupplierId || !watchRefuelingDate) return [];
+    if (!watchSupplierId || !watchRefuelingDate || !watchBasis) return [];
 
     const dateStr = format(watchRefuelingDate, "yyyy-MM-dd");
     const supplier = suppliers?.find(s => s.id === watchSupplierId);
@@ -194,6 +194,7 @@ export function RefuelingForm({
         p.counterpartyType === "refueling" &&
         p.counterpartyRole === "supplier" &&
         p.productType === priceProductType &&
+        p.basis === watchBasis &&
         p.dateFrom <= dateStr &&
         p.dateTo >= dateStr &&
         p.isActive;
@@ -205,7 +206,7 @@ export function RefuelingForm({
   const purchasePrices = getMatchingPurchasePrices();
 
   const getMatchingSalePrices = () => {
-    if (!watchBuyerId || !watchRefuelingDate) return [];
+    if (!watchBuyerId || !watchRefuelingDate || !watchBasis) return [];
 
     const dateStr = format(watchRefuelingDate, "yyyy-MM-dd");
     const buyer = customers?.find(c => c.id === watchBuyerId);
@@ -224,6 +225,7 @@ export function RefuelingForm({
         p.counterpartyType === "refueling" &&
         p.counterpartyRole === "buyer" &&
         p.productType === priceProductType &&
+        p.basis === watchBasis &&
         p.dateFrom <= dateStr &&
         p.dateTo >= dateStr &&
         p.isActive;
@@ -828,7 +830,7 @@ export function RefuelingForm({
                 const effectiveValue = selectedPurchasePriceId || field.value || (purchasePrices.length > 0 ? purchasePrices[0].id : undefined);
 
                 return (
-                  <FormItem>
+                  <FormItem className="flex-1">
                     <FormLabel>Покупка</FormLabel>
                     <Select 
                       onValueChange={(value) => { 
@@ -846,19 +848,19 @@ export function RefuelingForm({
                       <SelectContent>
                         {purchasePrices.map((price) => {
                           const priceValues = price.priceValues || [];
-                          return priceValues.map((pv: string, idx: number) => {
-                            try {
-                              const parsed = JSON.parse(pv);
-                              const priceVal = parsed.price || "0";
-                              return (
-                                <SelectItem key={`${price.id}-${idx}`} value={price.id}>
-                                  {formatNumber(priceVal)} ₽/кг
-                                </SelectItem>
-                              );
-                            } catch {
-                              return null;
-                            }
-                          }).filter(Boolean);
+                          if (priceValues.length === 0) return null;
+                          
+                          try {
+                            const parsed = JSON.parse(priceValues[0]);
+                            const priceVal = parsed.price || "0";
+                            return (
+                              <SelectItem key={price.id} value={price.id}>
+                                {formatNumber(priceVal)} ₽/кг
+                              </SelectItem>
+                            );
+                          } catch {
+                            return null;
+                          }
                         })}
                       </SelectContent>
                     </Select>
@@ -868,18 +870,22 @@ export function RefuelingForm({
               }}
             />
           ) : !isWarehouseSupplier && watchProductType !== "service" ? (
-            <CalculatedField 
-              label="Покупка" 
-              value="Нет цены!"
-              status="error"
-            />
+            <div className="flex-1">
+              <CalculatedField 
+                label="Покупка" 
+                value="Нет цены!"
+                status="error"
+              />
+            </div>
           ) : (
-            <CalculatedField 
-              label="Покупка" 
-              value={purchasePrice !== null ? formatNumber(purchasePrice) : "Нет цены!"}
-              suffix={purchasePrice !== null ? " ₽/кг" : ""}
-              status={purchasePrice !== null ? "ok" : "error"}
-            />
+            <div className="flex-1">
+              <CalculatedField 
+                label="Покупка" 
+                value={purchasePrice !== null ? formatNumber(purchasePrice) : "Нет цены!"}
+                suffix={purchasePrice !== null ? " ₽/кг" : ""}
+                status={purchasePrice !== null ? "ok" : "error"}
+              />
+            </div>
           )}
 
           <CalculatedField 
@@ -910,7 +916,7 @@ export function RefuelingForm({
                 const effectiveValue = selectedSalePriceId || field.value || (salePrices.length > 0 ? salePrices[0].id : undefined);
 
                 return (
-                  <FormItem>
+                  <FormItem className="flex-1">
                     <FormLabel>Продажа</FormLabel>
                     <Select 
                       onValueChange={(value) => { 
@@ -928,19 +934,19 @@ export function RefuelingForm({
                       <SelectContent>
                         {salePrices.map((price) => {
                           const priceValues = price.priceValues || [];
-                          return priceValues.map((pv: string, idx: number) => {
-                            try {
-                              const parsed = JSON.parse(pv);
-                              const priceVal = parsed.price || "0";
-                              return (
-                                <SelectItem key={`${price.id}-${idx}`} value={price.id}>
-                                  {formatNumber(priceVal)} ₽/кг
-                                </SelectItem>
-                              );
-                            } catch {
-                              return null;
-                            }
-                          }).filter(Boolean);
+                          if (priceValues.length === 0) return null;
+                          
+                          try {
+                            const parsed = JSON.parse(priceValues[0]);
+                            const priceVal = parsed.price || "0";
+                            return (
+                              <SelectItem key={price.id} value={price.id}>
+                                {formatNumber(priceVal)} ₽/кг
+                              </SelectItem>
+                            );
+                          } catch {
+                            return null;
+                          }
                         })}
                       </SelectContent>
                     </Select>
@@ -950,11 +956,13 @@ export function RefuelingForm({
               }}
             />
           ) : (
-            <CalculatedField 
-              label="Продажа" 
-              value="Нет цены!"
-              status="error"
-            />
+            <div className="flex-1">
+              <CalculatedField 
+                label="Продажа" 
+                value="Нет цены!"
+                status="error"
+              />
+            </div>
           )}
 
           <CalculatedField 
