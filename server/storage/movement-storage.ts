@@ -6,6 +6,7 @@ import {
   warehouses,
   warehouseTransactions,
   suppliers,
+  logisticsCarriers,
   type Movement,
   type InsertMovement,
 } from "@shared/schema";
@@ -14,13 +15,14 @@ import { IMovementStorage } from "./types";
 export class MovementStorage implements IMovementStorage {
   async getMovements(page: number, pageSize: number): Promise<{ data: Movement[]; total: number }> {
     const offset = (page - 1) * pageSize;
-    const data = await db.select().from(movement).orderBy(desc(movement.movementDate)).limit(pageSize).offset(offset);
+    const data = await db.select().from(movement).orderBy(desc(movement.createdAt)).limit(pageSize).offset(offset);
 
-    // Обогащаем данные названиями складов и поставщиков
+    // Обогащаем данные названиями складов, поставщиков и перевозчиков
     const enrichedData = await Promise.all(
       data.map(async (mov) => {
         let fromName = null;
         let toName = null;
+        let carrierName = null;
 
         // Получаем название склада назначения
         if (mov.toWarehouseId) {
@@ -37,10 +39,17 @@ export class MovementStorage implements IMovementStorage {
           fromName = fromWarehouse?.name || mov.fromWarehouseId;
         }
 
+        // Получаем название перевозчика
+        if (mov.carrierId) {
+          const [carrier] = await db.select().from(logisticsCarriers).where(eq(logisticsCarriers.id, mov.carrierId)).limit(1);
+          carrierName = carrier?.name || null;
+        }
+
         return {
           ...mov,
           fromName,
-          toName
+          toName,
+          carrierName
         };
       })
     );
@@ -54,45 +63,78 @@ export class MovementStorage implements IMovementStorage {
 
     // Обновляем остатки на складах
     const quantityKg = parseFloat(created.quantityKg);
+    const isPvkj = created.productType === 'pvkj';
 
     // Если это поставка или внутреннее перемещение - увеличиваем остаток на складе назначения
     if (created.toWarehouseId) {
       const [targetWarehouse] = await db.select().from(warehouses).where(eq(warehouses.id, created.toWarehouseId)).limit(1);
 
       if (targetWarehouse) {
-        const currentBalance = parseFloat(targetWarehouse.currentBalance || "0");
-        const currentCost = parseFloat(targetWarehouse.averageCost || "0");
         const totalCost = parseFloat(created.totalCost || "0");
 
-        // Рассчитываем новую среднюю стоимость
-        const newBalance = currentBalance + quantityKg;
-        const newAverageCost = newBalance > 0
-          ? ((currentBalance * currentCost) + totalCost) / newBalance
-          : 0;
+        if (isPvkj) {
+          // Работаем с ПВКЖ
+          const currentBalance = parseFloat(targetWarehouse.pvkjBalance || "0");
+          const currentCost = parseFloat(targetWarehouse.pvkjAverageCost || "0");
+          const newBalance = currentBalance + quantityKg;
+          const newAverageCost = newBalance > 0
+            ? ((currentBalance * currentCost) + totalCost) / newBalance
+            : 0;
 
-        await db.update(warehouses)
-          .set({
-            currentBalance: newBalance.toFixed(2),
-            averageCost: newAverageCost.toFixed(4),
-            updatedAt: sql`NOW()`,
-            updatedById: data.createdById,
-          })
-          .where(eq(warehouses.id, created.toWarehouseId));
+          await db.update(warehouses)
+            .set({
+              pvkjBalance: newBalance.toFixed(2),
+              pvkjAverageCost: newAverageCost.toFixed(4),
+              updatedAt: sql`NOW()`,
+              updatedById: data.createdById,
+            })
+            .where(eq(warehouses.id, created.toWarehouseId));
 
-        // Создаем запись транзакции (приход)
-        await db.insert(warehouseTransactions).values({
-          warehouseId: created.toWarehouseId,
-          transactionType: created.movementType === 'supply' ? 'receipt' : 'transfer_in',
-          productType: created.productType || 'kerosene',
-          sourceType: 'movement',
-          sourceId: created.id,
-          quantity: quantityKg.toString(),
-          balanceBefore: currentBalance.toString(),
-          balanceAfter: newBalance.toString(),
-          averageCostBefore: currentCost.toString(),
-          averageCostAfter: newAverageCost.toString(),
-          createdById: data.createdById,
-        });
+          await db.insert(warehouseTransactions).values({
+            warehouseId: created.toWarehouseId,
+            transactionType: created.movementType === 'supply' ? 'receipt' : 'transfer_in',
+            productType: 'pvkj',
+            sourceType: 'movement',
+            sourceId: created.id,
+            quantity: quantityKg.toString(),
+            balanceBefore: currentBalance.toString(),
+            balanceAfter: newBalance.toString(),
+            averageCostBefore: currentCost.toString(),
+            averageCostAfter: newAverageCost.toString(),
+            createdById: data.createdById,
+          });
+        } else {
+          // Работаем с керосином
+          const currentBalance = parseFloat(targetWarehouse.currentBalance || "0");
+          const currentCost = parseFloat(targetWarehouse.averageCost || "0");
+          const newBalance = currentBalance + quantityKg;
+          const newAverageCost = newBalance > 0
+            ? ((currentBalance * currentCost) + totalCost) / newBalance
+            : 0;
+
+          await db.update(warehouses)
+            .set({
+              currentBalance: newBalance.toFixed(2),
+              averageCost: newAverageCost.toFixed(4),
+              updatedAt: sql`NOW()`,
+              updatedById: data.createdById,
+            })
+            .where(eq(warehouses.id, created.toWarehouseId));
+
+          await db.insert(warehouseTransactions).values({
+            warehouseId: created.toWarehouseId,
+            transactionType: created.movementType === 'supply' ? 'receipt' : 'transfer_in',
+            productType: 'kerosene',
+            sourceType: 'movement',
+            sourceId: created.id,
+            quantity: quantityKg.toString(),
+            balanceBefore: currentBalance.toString(),
+            balanceAfter: newBalance.toString(),
+            averageCostBefore: currentCost.toString(),
+            averageCostAfter: newAverageCost.toString(),
+            createdById: data.createdById,
+          });
+        }
       }
     }
 
@@ -101,32 +143,59 @@ export class MovementStorage implements IMovementStorage {
       const [sourceWarehouse] = await db.select().from(warehouses).where(eq(warehouses.id, created.fromWarehouseId)).limit(1);
 
       if (sourceWarehouse) {
-        const currentBalance = parseFloat(sourceWarehouse.currentBalance || "0");
-        const currentCost = parseFloat(sourceWarehouse.averageCost || "0");
-        const newBalance = Math.max(0, currentBalance - quantityKg);
+        if (isPvkj) {
+          const currentBalance = parseFloat(sourceWarehouse.pvkjBalance || "0");
+          const currentCost = parseFloat(sourceWarehouse.pvkjAverageCost || "0");
+          const newBalance = Math.max(0, currentBalance - quantityKg);
 
-        await db.update(warehouses)
-          .set({
-            currentBalance: newBalance.toFixed(2),
-            updatedAt: sql`NOW()`,
-            updatedById: data.createdById
-          })
-          .where(eq(warehouses.id, created.fromWarehouseId));
+          await db.update(warehouses)
+            .set({
+              pvkjBalance: newBalance.toFixed(2),
+              updatedAt: sql`NOW()`,
+              updatedById: data.createdById
+            })
+            .where(eq(warehouses.id, created.fromWarehouseId));
 
-        // Создаем запись транзакции (расход)
-        await db.insert(warehouseTransactions).values({
-          warehouseId: created.fromWarehouseId,
-          transactionType: 'transfer_out',
-          productType: created.productType || 'kerosene',
-          sourceType: 'movement',
-          sourceId: created.id,
-          quantity: (-quantityKg).toString(),
-          balanceBefore: currentBalance.toString(),
-          balanceAfter: newBalance.toString(),
-          averageCostBefore: currentCost.toString(),
-          averageCostAfter: currentCost.toString(),
-          createdById: data.createdById
-        });
+          await db.insert(warehouseTransactions).values({
+            warehouseId: created.fromWarehouseId,
+            transactionType: 'transfer_out',
+            productType: 'pvkj',
+            sourceType: 'movement',
+            sourceId: created.id,
+            quantity: (-quantityKg).toString(),
+            balanceBefore: currentBalance.toString(),
+            balanceAfter: newBalance.toString(),
+            averageCostBefore: currentCost.toString(),
+            averageCostAfter: currentCost.toString(),
+            createdById: data.createdById
+          });
+        } else {
+          const currentBalance = parseFloat(sourceWarehouse.currentBalance || "0");
+          const currentCost = parseFloat(sourceWarehouse.averageCost || "0");
+          const newBalance = Math.max(0, currentBalance - quantityKg);
+
+          await db.update(warehouses)
+            .set({
+              currentBalance: newBalance.toFixed(2),
+              updatedAt: sql`NOW()`,
+              updatedById: data.createdById
+            })
+            .where(eq(warehouses.id, created.fromWarehouseId));
+
+          await db.insert(warehouseTransactions).values({
+            warehouseId: created.fromWarehouseId,
+            transactionType: 'transfer_out',
+            productType: 'kerosene',
+            sourceType: 'movement',
+            sourceId: created.id,
+            quantity: (-quantityKg).toString(),
+            balanceBefore: currentBalance.toString(),
+            balanceAfter: newBalance.toString(),
+            averageCostBefore: currentCost.toString(),
+            averageCostAfter: currentCost.toString(),
+            createdById: data.createdById
+          });
+        }
       }
     }
 

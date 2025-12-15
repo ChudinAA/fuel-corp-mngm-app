@@ -5,13 +5,23 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pencil, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, Pencil, Trash2, FileText } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatNumber, formatCurrency, formatDate } from "../utils";
 import type { MovementTableProps } from "../types";
 
 export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }: MovementTableProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [selectedNotes, setSelectedNotes] = useState("");
+
+  const getProductLabel = (productType: string) => {
+    if (productType === "pvkj") return "ПВКЖ";
+    return "Керосин";
+  };
+
   if (isLoading) {
     return (
       <Table>
@@ -19,17 +29,23 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
           <TableRow>
             <TableHead>Дата</TableHead>
             <TableHead>Тип</TableHead>
+            <TableHead>Продукт</TableHead>
             <TableHead>Откуда</TableHead>
             <TableHead>Куда</TableHead>
             <TableHead className="text-right">КГ</TableHead>
-            <TableHead className="text-right">Стоимость</TableHead>
-            <TableHead className="w-[80px]"></TableHead>
+            <TableHead className="text-right">Цена покупки</TableHead>
+            <TableHead className="text-right">Сумма покупки</TableHead>
+            <TableHead>Перевозчик</TableHead>
+            <TableHead className="text-right">Доставка</TableHead>
+            <TableHead className="text-right">Хранение</TableHead>
+            <TableHead className="text-right">Себестоимость</TableHead>
+            <TableHead className="w-[50px]"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {[1, 2, 3].map((i) => (
             <TableRow key={i}>
-              <TableCell colSpan={7}>
+              <TableCell colSpan={13}>
                 <Skeleton className="h-8 w-full" />
               </TableCell>
             </TableRow>
@@ -46,16 +62,22 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
           <TableRow>
             <TableHead>Дата</TableHead>
             <TableHead>Тип</TableHead>
+            <TableHead>Продукт</TableHead>
             <TableHead>Откуда</TableHead>
             <TableHead>Куда</TableHead>
             <TableHead className="text-right">КГ</TableHead>
-            <TableHead className="text-right">Стоимость</TableHead>
-            <TableHead className="w-[80px]"></TableHead>
+            <TableHead className="text-right">Цена покупки</TableHead>
+            <TableHead className="text-right">Сумма покупки</TableHead>
+            <TableHead>Перевозчик</TableHead>
+            <TableHead className="text-right">Доставка</TableHead>
+            <TableHead className="text-right">Хранение</TableHead>
+            <TableHead className="text-right">Себестоимость</TableHead>
+            <TableHead className="w-[50px]"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           <TableRow>
-            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+            <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
               Нет данных
             </TableCell>
           </TableRow>
@@ -65,59 +87,100 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Дата</TableHead>
-          <TableHead>Тип</TableHead>
-          <TableHead>Откуда</TableHead>
-          <TableHead>Куда</TableHead>
-          <TableHead className="text-right">КГ</TableHead>
-          <TableHead className="text-right">Стоимость</TableHead>
-          <TableHead className="w-[80px]"></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {data.map((item) => (
-          <TableRow key={item.id}>
-            <TableCell>{formatDate(item.movementDate)}</TableCell>
-            <TableCell>
-              <Badge variant="outline">
-                {item.movementType === "supply" ? "Поставка" : "Внутреннее"}
-              </Badge>
-            </TableCell>
-            <TableCell>{(item as any).fromName || "—"}</TableCell>
-            <TableCell>{(item as any).toName || item.toWarehouseId}</TableCell>
-            <TableCell className="text-right font-medium">{formatNumber(item.quantityKg)}</TableCell>
-            <TableCell className="text-right">{formatCurrency(item.totalCost)}</TableCell>
-            <TableCell>
-              <div className="flex items-center gap-1">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8"
-                  data-testid={`button-edit-movement-${item.id}`}
-                  onClick={() => onEdit(item)}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 text-destructive"
-                  onClick={() => {
-                    setItemToDelete(item);
-                    setDeleteDialogOpen(true);
-                  }}
-                  disabled={isDeleting}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </TableCell>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Дата</TableHead>
+            <TableHead>Тип</TableHead>
+            <TableHead>Продукт</TableHead>
+            <TableHead>Откуда</TableHead>
+            <TableHead>Куда</TableHead>
+            <TableHead className="text-right">КГ</TableHead>
+            <TableHead className="text-right">Цена покупки</TableHead>
+            <TableHead className="text-right">Сумма покупки</TableHead>
+            <TableHead>Перевозчик</TableHead>
+            <TableHead className="text-right">Доставка</TableHead>
+            <TableHead className="text-right">Хранение</TableHead>
+            <TableHead className="text-right">Себестоимость</TableHead>
+            <TableHead className="w-[50px]"></TableHead>
           </TableRow>
-        ))}
-      </TableBody>
+        </TableHeader>
+        <TableBody>
+          {data.map((item) => {
+            const quantityKg = parseFloat(item.quantityKg || "0");
+            const purchasePrice = item.purchasePrice ? parseFloat(item.purchasePrice) : null;
+            const purchaseAmount = purchasePrice && quantityKg > 0 ? purchasePrice * quantityKg : 0;
+            const deliveryCost = item.deliveryCost ? parseFloat(item.deliveryCost) : 0;
+            const storageCost = (parseFloat(item.totalCost || "0") - purchaseAmount - deliveryCost);
+            const costPerKg = item.costPerKg ? parseFloat(item.costPerKg) : 0;
+
+            return (
+              <TableRow key={item.id}>
+                <TableCell>{formatDate(item.movementDate)}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">
+                    {item.movementType === "supply" ? "Поставка" : "Внутреннее"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={item.productType === "pvkj" ? "secondary" : "outline"}>
+                    {getProductLabel(item.productType || "kerosene")}
+                  </Badge>
+                </TableCell>
+                <TableCell>{(item as any).fromName || "—"}</TableCell>
+                <TableCell>{(item as any).toName || item.toWarehouseId}</TableCell>
+                <TableCell className="text-right font-medium">{formatNumber(item.quantityKg)}</TableCell>
+                <TableCell className="text-right">
+                  {purchasePrice !== null ? `${formatNumber(purchasePrice)} ₽/кг` : "—"}
+                </TableCell>
+                <TableCell className="text-right">{formatCurrency(purchaseAmount)}</TableCell>
+                <TableCell>{(item as any).carrierName || "—"}</TableCell>
+                <TableCell className="text-right">{formatCurrency(deliveryCost)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(storageCost)}</TableCell>
+                <TableCell className="text-right font-medium">{formatNumber(costPerKg)} ₽/кг</TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onEdit(item)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Редактировать
+                      </DropdownMenuItem>
+                      {item.notes && (
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedNotes(item.notes || "");
+                            setNotesDialogOpen(true);
+                          }}
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          Примечание
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => {
+                          setItemToDelete(item);
+                          setDeleteDialogOpen(true);
+                        }}
+                        disabled={isDeleting}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Удалить
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
 
       <DeleteConfirmDialog
         open={deleteDialogOpen}
@@ -132,6 +195,15 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
         title="Удалить перемещение?"
         description="Вы уверены, что хотите удалить это перемещение? Это действие нельзя отменить."
       />
-    </Table>
+
+      <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Примечание</DialogTitle>
+            <DialogDescription className="whitespace-pre-wrap">{selectedNotes}</DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

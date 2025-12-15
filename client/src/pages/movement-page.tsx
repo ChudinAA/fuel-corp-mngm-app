@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, ChevronLeft, ChevronRight, Search, Filter } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import type { Movement, Warehouse } from "@shared/schema";
 import { MovementDialog } from "./movement/components/movement-dialog";
 import { MovementTable } from "./movement/components/movement-table";
@@ -14,6 +14,8 @@ import type { AllSupplier } from "./movement/types";
 export default function MovementPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [productFilter, setProductFilter] = useState<string | null>(null);
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -106,7 +108,35 @@ export default function MovementPage() {
     },
   });
 
-  const data = movementData?.data || [];
+  // Фильтрация и поиск
+  const filteredData = useMemo(() => {
+    let result = movementData?.data || [];
+
+    // Поиск
+    if (search) {
+      const searchLower = search.toLowerCase();
+      result = result.filter((item: any) => 
+        item.fromName?.toLowerCase().includes(searchLower) ||
+        item.toName?.toLowerCase().includes(searchLower) ||
+        item.carrierName?.toLowerCase().includes(searchLower) ||
+        item.notes?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Фильтр по типу
+    if (typeFilter) {
+      result = result.filter((item: any) => item.movementType === typeFilter);
+    }
+
+    // Фильтр по продукту
+    if (productFilter) {
+      result = result.filter((item: any) => item.productType === productFilter);
+    }
+
+    return result;
+  }, [movementData?.data, search, typeFilter, productFilter]);
+
+  const data = filteredData;
   const total = movementData?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
 
@@ -156,12 +186,57 @@ export default function MovementPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 flex-wrap">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Поиск..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-search-movement" />
               </div>
-              <Button variant="outline" size="icon"><Filter className="h-4 w-4" /></Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={typeFilter === null ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setTypeFilter(null)}
+                >
+                  Все типы
+                </Button>
+                <Button
+                  variant={typeFilter === "supply" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setTypeFilter("supply")}
+                >
+                  Поставка
+                </Button>
+                <Button
+                  variant={typeFilter === "internal" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setTypeFilter("internal")}
+                >
+                  Внутреннее
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={productFilter === null ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setProductFilter(null)}
+                >
+                  Все продукты
+                </Button>
+                <Button
+                  variant={productFilter === "kerosene" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setProductFilter("kerosene")}
+                >
+                  Керосин
+                </Button>
+                <Button
+                  variant={productFilter === "pvkj" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setProductFilter("pvkj")}
+                >
+                  ПВКЖ
+                </Button>
+              </div>
             </div>
 
             <div className="border rounded-lg">

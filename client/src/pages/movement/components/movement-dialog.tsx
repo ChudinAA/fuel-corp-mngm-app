@@ -193,6 +193,59 @@ export function MovementDialog({
 
   const storageCost = getStorageCost();
 
+  // Получение доступных перевозчиков для выбранного маршрута
+  const getAvailableCarriers = () => {
+    if (!watchToWarehouseId) return carriers || [];
+
+    const toWarehouse = warehouses.find(w => w.id === watchToWarehouseId);
+    if (!toWarehouse) return carriers || [];
+
+    let fromEntityType = "";
+    let fromEntityId = "";
+
+    // Для поставки - берем от поставщика
+    if (watchMovementType === "supply" && watchSupplierId) {
+      const supplier = suppliers.find(s => s.id === watchSupplierId);
+      if (!supplier) return carriers || [];
+
+      // Если у поставщика есть склад, используем его
+      if (supplier.isWarehouse) {
+        fromEntityType = "warehouse";
+        const supplierWarehouse = warehouses.find(w => w.supplierId === supplier.id);
+        if (supplierWarehouse) {
+          fromEntityId = supplierWarehouse.id;
+        }
+      } else {
+        // Используем базис (первый)
+        fromEntityType = "base";
+        if (supplier.baseIds && supplier.baseIds.length > 0) {
+          fromEntityId = supplier.baseIds[0];
+        }
+      }
+    }
+    // Для внутреннего перемещения - берем от склада-источника
+    else if (watchMovementType === "internal" && watchFromWarehouseId) {
+      fromEntityType = "warehouse";
+      fromEntityId = watchFromWarehouseId;
+    }
+
+    if (!fromEntityId) return carriers || [];
+
+    // Фильтруем перевозчиков, у которых есть тариф для данного маршрута
+    const availableCarrierIds = new Set(
+      deliveryCosts
+        .filter(dc =>
+          dc.fromEntityType === fromEntityType &&
+          dc.fromEntityId === fromEntityId &&
+          dc.toEntityType === "warehouse" &&
+          dc.toEntityId === toWarehouse.id
+        )
+        .map(dc => dc.carrierId)
+    );
+
+    return carriers?.filter(c => availableCarrierIds.has(c.id)) || [];
+  };
+
   // Получение стоимости доставки
   const getDeliveryCost = (): number => {
     if (!watchToWarehouseId || !watchCarrierId || kgNum <= 0) return 0;
@@ -246,6 +299,8 @@ export function MovementDialog({
 
     return 0;
   };
+
+  const availableCarriers = getAvailableCarriers();
 
   const deliveryCost = getDeliveryCost();
   const totalCost = purchaseAmount + storageCost + deliveryCost;
@@ -537,10 +592,14 @@ export function MovementDialog({
                 <FormField control={form.control} name="carrierId" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Перевозчик</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl><SelectTrigger data-testid="select-movement-carrier"><SelectValue placeholder="Выберите перевозчика" /></SelectTrigger></FormControl>
                       <SelectContent>
-                        {carriers?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                        {availableCarriers.length > 0 ? (
+                          availableCarriers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
+                        ) : (
+                          <SelectItem value="none" disabled>Нет перевозчиков для данного маршрута</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />

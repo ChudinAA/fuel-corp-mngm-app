@@ -88,18 +88,23 @@ export default function WarehousesPage() {
     return matchesSearch;
   }) || [];
 
-  const totalBalance = filteredWarehouses.reduce((sum, w) => sum + parseFloat(w.currentBalance || "0"), 0);
-  const totalPvkjBalance = filteredWarehouses.reduce((sum, w) => sum + parseFloat(w.pvkjBalance || "0"), 0);
-  
-  // Вычисляем среднюю себестоимость по всем складам
-  const averageCost = filteredWarehouses.length > 0
-    ? filteredWarehouses.reduce((sum, w) => sum + parseFloat(w.averageCost || "0"), 0) / filteredWarehouses.length
+  const totalBalance = warehouses?.reduce((sum, w) => sum + parseFloat(w.currentBalance || "0"), 0) || 0;
+
+  // Средняя себестоимость - только склады с остатками
+  const warehousesWithBalance = warehouses?.filter(w => parseFloat(w.currentBalance || "0") > 0 && parseFloat(w.averageCost || "0") > 0) || [];
+  const averageCost = warehousesWithBalance.length > 0
+    ? warehousesWithBalance.reduce((sum, w) => sum + parseFloat(w.averageCost || "0"), 0) / warehousesWithBalance.length
     : 0;
-  
-  const averagePvkjCost = filteredWarehouses.length > 0
-    ? filteredWarehouses.reduce((sum, w) => sum + parseFloat(w.pvkjAverageCost || "0"), 0) / filteredWarehouses.length
+
+  const totalPvkjBalance = warehouses?.reduce((sum, w) => sum + parseFloat(w.pvkjBalance || "0"), 0) || 0;
+
+  // Средняя себестоимость ПВКЖ - только склады с остатками
+  const warehousesWithPvkjBalance = warehouses?.filter(w => parseFloat(w.pvkjBalance || "0") > 0 && parseFloat(w.pvkjAverageCost || "0") > 0) || [];
+  const averagePvkjCost = warehousesWithPvkjBalance.length > 0
+    ? warehousesWithPvkjBalance.reduce((sum, w) => sum + parseFloat(w.pvkjAverageCost || "0"), 0) / warehousesWithPvkjBalance.length
     : 0;
-  
+
+
   const formatNumber = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value);
   const formatCurrency = (value: number) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 }).format(value);
 
