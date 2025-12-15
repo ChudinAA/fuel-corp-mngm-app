@@ -136,7 +136,7 @@ export function MovementDialog({
     if (!supplier) return null;
 
     // Определяем тип продукта для поиска цены
-    let priceProductType = "kerosine";
+    let priceProductType = "kerosene";
     if (watchProductType === "pvkj") {
       priceProductType = "pvkj";
     }
@@ -453,7 +453,11 @@ export function MovementDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Откуда (склад)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value || undefined}
+                        defaultValue={field.value || undefined}
+                      >
                         <FormControl>
                           <SelectTrigger data-testid="select-movement-from">
                             <SelectValue placeholder="Выберите склад" />

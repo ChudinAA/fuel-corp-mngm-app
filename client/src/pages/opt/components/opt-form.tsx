@@ -701,50 +701,59 @@ export function OptForm({
             status={warehouseStatus.status}
           />
 
-          {!isWarehouseSupplier && purchasePrices.length > 1 ? (
+          {!isWarehouseSupplier && purchasePrices.length > 0 ? (
             <FormField
               control={form.control}
               name="selectedPurchasePriceId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    Покупка
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  </FormLabel>
-                  <Select 
-                    onValueChange={(value) => { 
-                      field.onChange(value); 
-                      setSelectedPurchasePriceId(value); 
-                    }} 
-                    value={selectedPurchasePriceId || field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger data-testid="select-purchase-price">
-                        <SelectValue placeholder="Выберите цену" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {purchasePrices.map((price) => {
-                        const priceValues = price.priceValues || [];
-                        return priceValues.map((pv: string, idx: number) => {
-                          try {
-                            const parsed = JSON.parse(pv);
-                            const priceVal = parsed.price || "0";
-                            return (
-                              <SelectItem key={`${price.id}-${idx}`} value={price.id}>
-                                {formatNumber(priceVal)} ₽/кг
-                              </SelectItem>
-                            );
-                          } catch {
-                            return null;
-                          }
-                        }).filter(Boolean);
-                      })}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                // Автоматически выбираем первую цену, если не выбрана
+                const effectiveValue = selectedPurchasePriceId || field.value || (purchasePrices.length > 0 ? purchasePrices[0].id : undefined);
+
+                return (
+                  <FormItem>
+                    <FormLabel>Покупка</FormLabel>
+                    <Select 
+                      onValueChange={(value) => { 
+                        field.onChange(value); 
+                        setSelectedPurchasePriceId(value); 
+                      }} 
+                      value={effectiveValue}
+                      defaultValue={effectiveValue}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-purchase-price">
+                          <SelectValue placeholder="Выберите цену" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {purchasePrices.map((price) => {
+                          const priceValues = price.priceValues || [];
+                          return priceValues.map((pv: string, idx: number) => {
+                            try {
+                              const parsed = JSON.parse(pv);
+                              const priceVal = parsed.price || "0";
+                              return (
+                                <SelectItem key={`${price.id}-${idx}`} value={price.id}>
+                                  {formatNumber(priceVal)} ₽/кг
+                                </SelectItem>
+                              );
+                            } catch {
+                              return null;
+                            }
+                          }).filter(Boolean);
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+          ) : !isWarehouseSupplier ? (
+            <CalculatedField 
+              label="Покупка" 
+              value="Нет цены!"
+              status="error"
             />
           ) : (
             <CalculatedField 
@@ -763,57 +772,59 @@ export function OptForm({
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {salePrices.length > 1 ? (
+          {salePrices.length > 0 ? (
             <FormField
               control={form.control}
               name="selectedSalePriceId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    Продажа
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  </FormLabel>
-                  <Select 
-                    onValueChange={(value) => { 
-                      field.onChange(value); 
-                      setSelectedSalePriceId(value); 
-                    }} 
-                    value={selectedSalePriceId || field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger data-testid="select-sale-price">
-                        <SelectValue placeholder="Выберите цену" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {salePrices.map((price) => {
-                        const priceValues = price.priceValues || [];
-                        return priceValues.map((pv: string, idx: number) => {
-                          try {
-                            const parsed = JSON.parse(pv);
-                            const priceVal = parsed.price || "0";
-                            return (
-                              <SelectItem key={`${price.id}-${idx}`} value={price.id}>
-                                {formatNumber(priceVal)} ₽/кг
-                              </SelectItem>
-                            );
-                          } catch {
-                            return null;
-                          }
-                        }).filter(Boolean);
-                      })}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                // Автоматически выбираем первую цену, если не выбрана
+                const effectiveValue = selectedSalePriceId || field.value || (salePrices.length > 0 ? salePrices[0].id : undefined);
+
+                return (
+                  <FormItem>
+                    <FormLabel>Продажа</FormLabel>
+                    <Select 
+                      onValueChange={(value) => { 
+                        field.onChange(value); 
+                        setSelectedSalePriceId(value); 
+                      }} 
+                      value={effectiveValue}
+                      defaultValue={effectiveValue}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-sale-price">
+                          <SelectValue placeholder="Выберите цену" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {salePrices.map((price) => {
+                          const priceValues = price.priceValues || [];
+                          return priceValues.map((pv: string, idx: number) => {
+                            try {
+                              const parsed = JSON.parse(pv);
+                              const priceVal = parsed.price || "0";
+                              return (
+                                <SelectItem key={`${price.id}-${idx}`} value={price.id}>
+                                  {formatNumber(priceVal)} ₽/кг
+                                </SelectItem>
+                              );
+                            } catch {
+                              return null;
+                            }
+                          }).filter(Boolean);
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
           ) : (
             <CalculatedField 
               label="Продажа" 
-              value={salePrice !== null ? formatNumber(salePrice) : "Нет цены!"}
-              suffix={salePrice !== null ? " ₽/кг" : ""}
-              status={salePrice !== null ? "ok" : "error"}
+              value="Нет цены!"
+              status="error"
             />
           )}
 
