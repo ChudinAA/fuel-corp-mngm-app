@@ -131,7 +131,7 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={item.productType === "pvkj" ? "secondary" : "outline"}>
+                  <Badge variant="outline" className={item.productType === 'pvkj' ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30' : 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30'}>
                     {getProductLabel(item.productType || "kerosene")}
                   </Badge>
                 </TableCell>
