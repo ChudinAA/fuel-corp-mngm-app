@@ -677,7 +677,6 @@ export function OptForm({
             <FormItem>
               <FormLabel className="flex items-center gap-2">
                 Базис
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </FormLabel>
               <Select 
                 value={selectedBasis} 

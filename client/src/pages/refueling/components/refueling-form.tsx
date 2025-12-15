@@ -198,12 +198,6 @@ export function RefuelingForm({
         p.dateTo >= dateStr &&
         p.isActive;
 
-      // Для керосина и ПВКЖ проверяем базис
-      if (watchProductType === "kerosene" || watchProductType === "pvkj") {
-        return basicMatch && watchBasis && p.basis === watchBasis;
-      }
-
-      // Для услуг базис не важен
       return basicMatch;
     }) || [];
   };
@@ -234,12 +228,6 @@ export function RefuelingForm({
         p.dateTo >= dateStr &&
         p.isActive;
 
-      // Для керосина и ПВКЖ проверяем базис
-      if (watchProductType === "kerosene" || watchProductType === "pvkj") {
-        return basicMatch && watchBasis && p.basis === watchBasis;
-      }
-
-      // Для услуг базис не важен
       return basicMatch;
     }) || [];
   };
