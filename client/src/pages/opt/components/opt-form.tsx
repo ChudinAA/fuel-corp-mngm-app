@@ -746,17 +746,19 @@ export function OptForm({
                           const priceValues = price.priceValues || [];
                           if (priceValues.length === 0) return null;
                           
-                          try {
-                            const parsed = JSON.parse(priceValues[0]);
-                            const priceVal = parsed.price || "0";
-                            return (
-                              <SelectItem key={price.id} value={price.id}>
-                                {formatNumber(priceVal)} ₽/кг
-                              </SelectItem>
-                            );
-                          } catch {
-                            return null;
-                          }
+                          return priceValues.map((priceValueStr, idx) => {
+                            try {
+                              const parsed = JSON.parse(priceValueStr);
+                              const priceVal = parsed.price || "0";
+                              return (
+                                <SelectItem key={`${price.id}-${idx}`} value={price.id}>
+                                  {formatNumber(priceVal)} ₽/кг
+                                </SelectItem>
+                              );
+                            } catch {
+                              return null;
+                            }
+                          });
                         })}
                       </SelectContent>
                     </Select>
@@ -821,17 +823,19 @@ export function OptForm({
                           const priceValues = price.priceValues || [];
                           if (priceValues.length === 0) return null;
                           
-                          try {
-                            const parsed = JSON.parse(priceValues[0]);
-                            const priceVal = parsed.price || "0";
-                            return (
-                              <SelectItem key={price.id} value={price.id}>
-                                {formatNumber(priceVal)} ₽/кг
-                              </SelectItem>
-                            );
-                          } catch {
-                            return null;
-                          }
+                          return priceValues.map((priceValueStr, idx) => {
+                            try {
+                              const parsed = JSON.parse(priceValueStr);
+                              const priceVal = parsed.price || "0";
+                              return (
+                                <SelectItem key={`${price.id}-${idx}`} value={price.id}>
+                                  {formatNumber(priceVal)} ₽/кг
+                                </SelectItem>
+                              );
+                            } catch {
+                              return null;
+                            }
+                          });
                         })}
                       </SelectContent>
                     </Select>
