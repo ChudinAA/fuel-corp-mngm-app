@@ -182,7 +182,7 @@ export function RefuelingForm({
     if (!supplier) return [];
 
     // Определяем тип продукта для поиска цены
-    let priceProductType = "kerosene";
+    let priceProductType = "kerosine";
     if (watchProductType === "pvkj") {
       priceProductType = "pvkj";
     } else if (watchProductType === "service") {
@@ -213,7 +213,7 @@ export function RefuelingForm({
     if (!buyer) return [];
 
     // Определяем тип продукта для поиска цены
-    let priceProductType = "kerosene";
+    let priceProductType = "kerosine";
     if (watchProductType === "pvkj") {
       priceProductType = "pvkj";
     } else if (watchProductType === "service") {
