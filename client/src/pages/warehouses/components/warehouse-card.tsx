@@ -127,33 +127,31 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
               {isInactive && <Badge variant="destructive">Неактивен</Badge>}
             </CardTitle>
             {warehouse.baseIds && warehouse.baseIds.length > 0 && allBases && (
-              <CardDescription className="mt-1">
-                <div className="overflow-x-auto -mx-6 px-6">
-                  <div className="flex items-center gap-2 w-max">
-                    {warehouse.baseIds.map((baseId) => {
-                      const base = allBases.find((b: any) => b.id === baseId);
-                      if (!base) return null;
-                      const baseIcon = getBaseIcon(base.baseType);
-                      const BaseIcon = baseIcon.icon;
-                      return (
-                        <TooltipProvider key={baseId}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge variant="outline" className="flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
-                                <BaseIcon className={`h-3 w-3 ${baseIcon.color}`} />
-                                <span className="text-xs text-muted-foreground">{base.name}</span>
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{baseIcon.label}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      );
-                    })}
-                  </div>
+              <div className="mt-1 max-w-full overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+                <div className="flex items-center gap-2 w-max pb-1">
+                  {warehouse.baseIds.map((baseId) => {
+                    const base = allBases.find((b: any) => b.id === baseId);
+                    if (!base) return null;
+                    const baseIcon = getBaseIcon(base.baseType);
+                    const BaseIcon = baseIcon.icon;
+                    return (
+                      <TooltipProvider key={baseId}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
+                              <BaseIcon className={`h-3 w-3 ${baseIcon.color}`} />
+                              <span className="text-xs text-muted-foreground">{base.name}</span>
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{baseIcon.label}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })}
                 </div>
-              </CardDescription>
+              </div>
             )}
           </div>
           <DropdownMenu>
