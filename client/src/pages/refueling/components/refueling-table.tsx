@@ -27,6 +27,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -45,10 +52,10 @@ import { useRefuelingTable } from "../hooks/use-refueling-table";
 interface RefuelingTableProps {
   onEdit: (refueling: any) => void;
   onDelete?: () => void;
-  productTypeFilter?: string;
 }
 
-export function RefuelingTable({ onEdit, onDelete, productTypeFilter = "all" }: RefuelingTableProps) {
+export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
+  const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
   const {
     page,
     setPage,
@@ -126,14 +133,16 @@ export function RefuelingTable({ onEdit, onDelete, productTypeFilter = "all" }: 
             data-testid="input-search-refueling"
           />
         </div>
-        <Button 
-          variant="outline" 
-          size="icon"
-          disabled
-          title="Фильтры скоро будут доступны"
-        >
-          <Filter className="h-4 w-4" />
-        </Button>
+        <Select value={productTypeFilter} onValueChange={setProductTypeFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Тип продукта" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Все продукты</SelectItem>
+            <SelectItem value="kerosene">Керосин</SelectItem>
+            <SelectItem value="pvkj">ПВКЖ</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="border rounded-lg">

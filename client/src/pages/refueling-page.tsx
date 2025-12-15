@@ -75,19 +75,6 @@ export default function RefuelingPage() {
         editRefueling={editingRefueling}
       />
 
-      <div className="flex items-center gap-4 mb-4">
-        <Select value={productTypeFilter} onValueChange={setProductTypeFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Тип продукта" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Все продукты</SelectItem>
-            <SelectItem value="kerosene">Керосин</SelectItem>
-            <SelectItem value="pvkj">ПВКЖ</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
           <div>

@@ -34,18 +34,18 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[100px]">Дата</TableHead>
-            <TableHead className="w-[110px]">Тип</TableHead>
-            <TableHead className="w-[100px]">Продукт</TableHead>
-            <TableHead className="min-w-[140px]">Откуда</TableHead>
-            <TableHead className="min-w-[140px]">Куда</TableHead>
-            <TableHead className="text-right">КГ</TableHead>
-            <TableHead className="text-right">Цена покупки</TableHead>
-            <TableHead className="text-right min-w-[120px]">Сумма покупки</TableHead>
-            <TableHead>Перевозчик</TableHead>
-            <TableHead className="text-right w-[100px]">Доставка</TableHead>
-            <TableHead className="text-right w-[100px]">Хранение</TableHead>
-            <TableHead className="text-right">Себестоимость</TableHead>
+            <TableHead className="w-[90px]">Дата</TableHead>
+            <TableHead className="w-[100px]">Тип</TableHead>
+            <TableHead className="w-[90px]">Продукт</TableHead>
+            <TableHead className="w-[160px]">Откуда</TableHead>
+            <TableHead className="w-[160px]">Куда</TableHead>
+            <TableHead className="text-right w-[80px]">КГ</TableHead>
+            <TableHead className="text-right w-[100px]">Цена покупки</TableHead>
+            <TableHead className="text-right w-[130px]">Сумма покупки</TableHead>
+            <TableHead className="w-[120px]">Перевозчик</TableHead>
+            <TableHead className="text-right w-[90px]">Доставка</TableHead>
+            <TableHead className="text-right w-[90px]">Хранение</TableHead>
+            <TableHead className="text-right w-[110px]">Себестоимость</TableHead>
             <TableHead className="w-[50px]"></TableHead>
           </TableRow>
         </TableHeader>
@@ -67,18 +67,18 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[100px]">Дата</TableHead>
-            <TableHead className="w-[110px]">Тип</TableHead>
-            <TableHead className="w-[100px]">Продукт</TableHead>
-            <TableHead className="min-w-[140px]">Откуда</TableHead>
-            <TableHead className="min-w-[140px]">Куда</TableHead>
-            <TableHead className="text-right">КГ</TableHead>
-            <TableHead className="text-right">Цена покупки</TableHead>
-            <TableHead className="text-right min-w-[120px]">Сумма покупки</TableHead>
-            <TableHead>Перевозчик</TableHead>
-            <TableHead className="text-right w-[100px]">Доставка</TableHead>
-            <TableHead className="text-right w-[100px]">Хранение</TableHead>
-            <TableHead className="text-right">Себестоимость</TableHead>
+            <TableHead className="w-[90px]">Дата</TableHead>
+            <TableHead className="w-[100px]">Тип</TableHead>
+            <TableHead className="w-[90px]">Продукт</TableHead>
+            <TableHead className="w-[160px]">Откуда</TableHead>
+            <TableHead className="w-[160px]">Куда</TableHead>
+            <TableHead className="text-right w-[80px]">КГ</TableHead>
+            <TableHead className="text-right w-[100px]">Цена покупки</TableHead>
+            <TableHead className="text-right w-[130px]">Сумма покупки</TableHead>
+            <TableHead className="w-[120px]">Перевозчик</TableHead>
+            <TableHead className="text-right w-[90px]">Доставка</TableHead>
+            <TableHead className="text-right w-[90px]">Хранение</TableHead>
+            <TableHead className="text-right w-[110px]">Себестоимость</TableHead>
             <TableHead className="w-[50px]"></TableHead>
           </TableRow>
         </TableHeader>
@@ -98,18 +98,18 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[100px]">Дата</TableHead>
-            <TableHead className="w-[110px]">Тип</TableHead>
-            <TableHead className="w-[100px]">Продукт</TableHead>
-            <TableHead className="min-w-[140px]">Откуда</TableHead>
-            <TableHead className="min-w-[140px]">Куда</TableHead>
-            <TableHead className="text-right">КГ</TableHead>
-            <TableHead className="text-right">Цена покупки</TableHead>
-            <TableHead className="text-right min-w-[120px]">Сумма покупки</TableHead>
-            <TableHead>Перевозчик</TableHead>
-            <TableHead className="text-right w-[100px]">Доставка</TableHead>
-            <TableHead className="text-right w-[100px]">Хранение</TableHead>
-            <TableHead className="text-right">Себестоимость</TableHead>
+            <TableHead className="w-[90px]">Дата</TableHead>
+            <TableHead className="w-[100px]">Тип</TableHead>
+            <TableHead className="w-[90px]">Продукт</TableHead>
+            <TableHead className="w-[160px]">Откуда</TableHead>
+            <TableHead className="w-[160px]">Куда</TableHead>
+            <TableHead className="text-right w-[80px]">КГ</TableHead>
+            <TableHead className="text-right w-[100px]">Цена покупки</TableHead>
+            <TableHead className="text-right w-[130px]">Сумма покупки</TableHead>
+            <TableHead className="w-[120px]">Перевозчик</TableHead>
+            <TableHead className="text-right w-[90px]">Доставка</TableHead>
+            <TableHead className="text-right w-[90px]">Хранение</TableHead>
+            <TableHead className="text-right w-[110px]">Себестоимость</TableHead>
             <TableHead className="w-[50px]"></TableHead>
           </TableRow>
         </TableHeader>

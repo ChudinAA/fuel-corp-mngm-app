@@ -210,7 +210,7 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
 
         <div className="flex items-center justify-between text-xs pt-2 border-t">
           <div className="flex items-center gap-3">
-            <span className="text-muted-foreground text-[10px]">Керосин:</span>
+            <span className="text-muted-foreground text-xs font-medium">Керосин:</span>
             <span className="flex items-center gap-1 text-green-600">
               +{formatNumber(monthStats.income)} кг
             </span>
@@ -220,7 +220,7 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
           </div>
           {(monthStats.pvkjIncome > 0 || monthStats.pvkjExpense > 0) && (
             <div className="flex items-center gap-2 text-muted-foreground">
-              <span className="text-[10px]">ПВКЖ:</span>
+              <span className="text-xs font-medium">ПВКЖ:</span>
               <span className="flex items-center gap-1 text-green-600/70 text-[10px]">
                 +{formatNumber(monthStats.pvkjIncome)}
               </span>
