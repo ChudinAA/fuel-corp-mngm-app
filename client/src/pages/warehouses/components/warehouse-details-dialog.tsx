@@ -202,7 +202,7 @@ export function WarehouseDetailsDialog({
                     <TableCell>
                       <Badge 
                         variant="outline" 
-                        className={`text-xs ${tx.productType === 'pvkj' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}
+                        className={`text-xs ${tx.productType === 'pvkj' ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30' : 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30'}`}
                       >
                         {tx.productType === 'pvkj' ? 'ПВКЖ' : 'Керосин'}
                       </Badge>

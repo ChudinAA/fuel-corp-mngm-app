@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Pencil, Trash2, TrendingUp, TrendingDown, Warehouse as WarehouseIcon, Droplets, Fuel, MoreVertical } from "lucide-react";
+import { Pencil, Trash2, TrendingUp, TrendingDown, Warehouse as WarehouseIcon, Droplets, Fuel, MoreHorizontal } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Warehouse, Base } from "@shared/schema";
@@ -143,7 +143,7 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
               <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -198,11 +198,9 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
 
         <div className="flex items-center gap-4 text-xs pt-2 border-t">
           <span className="flex items-center gap-1 text-green-600">
-            <TrendingUp className="h-3 w-3" />
             +{formatNumber(monthStats.income)} кг
           </span>
           <span className="flex items-center gap-1 text-red-600">
-            <TrendingDown className="h-3 w-3" />
             -{formatNumber(monthStats.expense)} кг
           </span>
         </div>
