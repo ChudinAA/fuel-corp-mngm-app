@@ -182,7 +182,7 @@ export function RefuelingForm({
     if (!supplier) return [];
 
     // Определяем тип продукта для поиска цены
-    let priceProductType = "kerosine";
+    let priceProductType = "kerosene";
     if (watchProductType === "pvkj") {
       priceProductType = "pvkj";
     } else if (watchProductType === "service") {
@@ -202,7 +202,7 @@ export function RefuelingForm({
       if (watchProductType === "kerosene" || watchProductType === "pvkj") {
         return basicMatch && p.basis === watchBasis;
       }
-      
+
       // Для услуг базис не важен
       return basicMatch;
     }) || [];
@@ -218,7 +218,7 @@ export function RefuelingForm({
     if (!buyer) return [];
 
     // Определяем тип продукта для поиска цены
-    let priceProductType = "kerosine";
+    let priceProductType = "kerosene";
     if (watchProductType === "pvkj") {
       priceProductType = "pvkj";
     } else if (watchProductType === "service") {
@@ -244,16 +244,16 @@ export function RefuelingForm({
       if (selectedSupplier?.servicePrice) {
         return parseFloat(selectedSupplier.servicePrice);
       }
-      
+
       const matchingPrices = getMatchingPurchasePrices();
       if (matchingPrices.length === 0) return null;
-      
+
       let selectedPrice = matchingPrices[0];
       if (selectedPurchasePriceId) {
         const found = matchingPrices.find(p => p.id === selectedPurchasePriceId);
         if (found) selectedPrice = found;
       }
-      
+
       if (selectedPrice?.priceValues?.[0]) {
         try {
           const priceObj = JSON.parse(selectedPrice.priceValues[0]);
@@ -866,8 +866,8 @@ export function RefuelingForm({
 
           <CalculatedField 
             label="Сумма закупки" 
-            value={purchaseAmount !== null ? formatCurrency(purchaseAmount) : "Ошибка"}
-            status={purchaseAmount !== null ? "ok" : "error"}
+            value={purchaseAmount !== null ? `${purchaseAmount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽` : "—"}
+            variant="neutral"
           />
         </div>
 
@@ -938,14 +938,14 @@ export function RefuelingForm({
 
           <CalculatedField 
             label="Сумма продажи" 
-            value={saleAmount !== null ? formatCurrency(saleAmount) : "Ошибка"}
-            status={saleAmount !== null ? "ok" : "error"}
+            value={saleAmount !== null ? `${saleAmount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽` : "—"}
+            variant="neutral"
           />
 
           <CalculatedField 
             label="Прибыль" 
-            value={profit !== null ? formatCurrency(profit) : "—"}
-            status={profit !== null && profit >= 0 ? "ok" : profit !== null ? "warning" : undefined}
+            value={profit !== null ? `${profit.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽` : "—"}
+            variant={profit && profit > 0 ? "positive" : "neutral"}
           />
         </div>
 

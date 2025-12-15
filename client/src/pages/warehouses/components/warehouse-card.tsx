@@ -54,7 +54,7 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
   };
 
   const getCurrentMonthStats = () => {
-    if (!transactions) return { income: 0, expense: 0 };
+    if (!transactions) return { income: 0, expense: 0, pvkjIncome: 0, pvkjExpense: 0 };
 
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -62,20 +62,32 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
 
     let income = 0;
     let expense = 0;
+    let pvkjIncome = 0;
+    let pvkjExpense = 0;
 
     transactions.forEach(tx => {
       const txDate = new Date(tx.createdAt);
       if (txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear) {
         const qty = parseFloat(tx.quantityKg);
+        const isPvkj = tx.productType === 'pvkj';
+        
         if (qty > 0) {
-          income += qty;
+          if (isPvkj) {
+            pvkjIncome += qty;
+          } else {
+            income += qty;
+          }
         } else {
-          expense += Math.abs(qty);
+          if (isPvkj) {
+            pvkjExpense += Math.abs(qty);
+          } else {
+            expense += Math.abs(qty);
+          }
         }
       }
     });
 
-    return { income, expense };
+    return { income, expense, pvkjIncome, pvkjExpense };
   };
 
   const monthStats = getCurrentMonthStats();
@@ -196,13 +208,27 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
           </div>
         )}
 
-        <div className="flex items-center gap-4 text-xs pt-2 border-t">
-          <span className="flex items-center gap-1 text-green-600">
-            +{formatNumber(monthStats.income)} кг
-          </span>
-          <span className="flex items-center gap-1 text-red-600">
-            -{formatNumber(monthStats.expense)} кг
-          </span>
+        <div className="flex items-center justify-between text-xs pt-2 border-t">
+          <div className="flex items-center gap-3">
+            <span className="text-muted-foreground text-[10px]">Керосин:</span>
+            <span className="flex items-center gap-1 text-green-600">
+              +{formatNumber(monthStats.income)} кг
+            </span>
+            <span className="flex items-center gap-1 text-red-600">
+              -{formatNumber(monthStats.expense)} кг
+            </span>
+          </div>
+          {(monthStats.pvkjIncome > 0 || monthStats.pvkjExpense > 0) && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <span className="text-[10px]">ПВКЖ:</span>
+              <span className="flex items-center gap-1 text-green-600/70 text-[10px]">
+                +{formatNumber(monthStats.pvkjIncome)}
+              </span>
+              <span className="flex items-center gap-1 text-red-600/70 text-[10px]">
+                -{formatNumber(monthStats.pvkjExpense)}
+              </span>
+            </div>
+          )}
         </div>
       </CardContent>
 

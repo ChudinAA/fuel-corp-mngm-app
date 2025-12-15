@@ -45,9 +45,10 @@ import { useRefuelingTable } from "../hooks/use-refueling-table";
 interface RefuelingTableProps {
   onEdit: (refueling: any) => void;
   onDelete?: () => void;
+  productTypeFilter?: string;
 }
 
-export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
+export function RefuelingTable({ onEdit, onDelete, productTypeFilter = "all" }: RefuelingTableProps) {
   const {
     page,
     setPage,
@@ -99,8 +100,13 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
     );
   }
 
-  const deals = refuelingDeals?.data || [];
-  const total = refuelingDeals?.total || 0;
+  const allDeals = refuelingDeals?.data || [];
+  const filteredDeals = productTypeFilter === "all" 
+    ? allDeals 
+    : allDeals.filter(deal => deal.productType === productTypeFilter);
+  
+  const deals = filteredDeals;
+  const total = filteredDeals.length;
   const totalPages = Math.ceil(total / pageSize);
 
   return (
@@ -160,7 +166,16 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
                 <TableRow key={deal.id}>
                   <TableCell className="text-xs">{formatDate(deal.refuelingDate)}</TableCell>
                   <TableCell className="text-sm">
-                    <Badge variant="outline">{getProductLabel(deal.productType)}</Badge>
+                    <Badge 
+                      variant="outline"
+                      className={
+                        deal.productType === "kerosene" ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30" :
+                        deal.productType === "pvkj" ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" :
+                        ""
+                      }
+                    >
+                      {getProductLabel(deal.productType)}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-sm">{deal.aircraftNumber || '—'}</TableCell>
                   <TableCell className="text-sm">
