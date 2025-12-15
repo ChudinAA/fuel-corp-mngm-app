@@ -59,8 +59,8 @@ export function OptForm({
     queryKey: ["/api/suppliers"],
   });
 
-  const { data: bases } = useQuery<Base[]>({
-    queryKey: ["/api/bases?baseType=wholesale"],
+  const { data: allBases } = useQuery<Base[]>({
+    queryKey: ["/api/bases"],
   });
 
   const { data: customers } = useQuery<Customer[]>({
@@ -143,13 +143,16 @@ export function OptForm({
     w.supplierId === watchSupplierId
   );
 
+  // Фильтруем базисы типа wholesale
+  const bases = allBases?.filter(b => b.baseType === 'wholesale') || [];
+
   // Автоматический выбор базиса при выборе поставщика
   useEffect(() => {
-    if (watchSupplierId && suppliers && bases) {
+    if (watchSupplierId && suppliers && allBases) {
       const supplier = suppliers.find(s => s.id === watchSupplierId);
       if (supplier?.baseIds && supplier.baseIds.length > 0) {
         const baseId = supplier.baseIds[0];
-        const base = bases.find(b => b.id === baseId);
+        const base = allBases.find(b => b.id === baseId && b.baseType === 'wholesale');
         if (base) {
           setSelectedBasis(base.name);
         }
@@ -167,7 +170,7 @@ export function OptForm({
         form.setValue("warehouseId", "");
       }
     }
-  }, [watchSupplierId, suppliers, bases, warehouses, form]);
+  }, [watchSupplierId, suppliers, allBases, warehouses, form]);
 
   // Фильтрация цен покупки (от поставщика)
   const getMatchingPurchasePrices = () => {
