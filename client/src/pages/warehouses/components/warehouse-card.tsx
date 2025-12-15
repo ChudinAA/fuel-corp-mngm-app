@@ -192,17 +192,17 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>Себестоимость: <span className="font-medium">{formatCurrency(cost)}/кг</span></span>
             <div className="flex flex-col items-end text-xs gap-0.5">
-              <span className="text-muted-foreground text-[10px]">В месяц:</span>
+              <span className="text-muted-foreground text-[10px]">В этом месяце (кг):</span>
               <div className="flex items-center gap-2">
                 <span className="text-green-600">
                   +{monthStats.income > 1000 
-                    ? `${formatNumber(monthStats.income / 1000)} к` 
-                    : `${formatNumber(monthStats.income)} кг`}
+                    ? `${formatNumber(monthStats.income / 1000)}к` 
+                    : `${formatNumber(monthStats.income)}`}
                 </span>
                 <span className="text-red-600">
                   -{monthStats.expense > 1000 
-                    ? `${formatNumber(monthStats.expense / 1000)} к` 
-                    : `${formatNumber(monthStats.expense)} кг`}
+                    ? `${formatNumber(monthStats.expense / 1000)}к` 
+                    : `${formatNumber(monthStats.expense)}`}
                 </span>
               </div>
             </div>
@@ -218,17 +218,17 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>Себестоимость: <span className="font-medium">{formatCurrency(pvkjCost)}/кг</span></span>
               <div className="flex flex-col items-end text-xs gap-0.5">
-                <span className="text-muted-foreground text-[10px]">В месяц:</span>
+                <span className="text-muted-foreground text-[10px]">В этом месяце (кг):</span>
                 <div className="flex items-center gap-2">
                   <span className="text-green-600">
                     +{monthStats.pvkjIncome > 1000 
-                      ? `${formatNumber(monthStats.pvkjIncome / 1000)} к` 
-                      : `${formatNumber(monthStats.pvkjIncome)} кг`}
+                      ? `${formatNumber(monthStats.pvkjIncome / 1000)}к` 
+                      : `${formatNumber(monthStats.pvkjIncome)}`}
                   </span>
                   <span className="text-red-600">
                     -{monthStats.pvkjExpense > 1000 
-                      ? `${formatNumber(monthStats.pvkjExpense / 1000)} к` 
-                      : `${formatNumber(monthStats.pvkjExpense)} кг`}
+                      ? `${formatNumber(monthStats.pvkjExpense / 1000)}к` 
+                      : `${formatNumber(monthStats.pvkjExpense)}`}
                   </span>
                 </div>
               </div>
