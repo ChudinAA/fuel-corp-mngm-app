@@ -46,7 +46,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { formatNumber, formatCurrency, getProductLabel } from "../utils";
+import { formatNumber, formatNumberForTable, formatCurrency, getProductLabel } from "../utils";
 import { useRefuelingTable } from "../hooks/use-refueling-table";
 
 interface RefuelingTableProps {
@@ -209,7 +209,7 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
                   <TableCell className="text-right font-medium text-sm">
                     <TooltipProvider>
                       <div className="flex items-center justify-end gap-1.5">
-                        <span>{formatNumber(deal.quantityKg)}</span>
+                        <span>{formatNumberForTable(deal.quantityKg)}</span>
                         {deal.isApproxVolume && (
                           <Tooltip>
                             <TooltipTrigger asChild>
