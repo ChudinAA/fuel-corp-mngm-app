@@ -153,11 +153,6 @@ export function RefuelingForm({
       const salePriceCompositeId = editData.salePriceId && editData.salePriceIndex !== undefined
         ? `${editData.salePriceId}-${editData.salePriceIndex}`
         : editData.salePriceId || "";
-
-      // Set basis from editData
-      if (editData.basis) {
-        setSelectedBasis(editData.basis);
-      }
       
       form.reset({
         refuelingDate: new Date(editData.refuelingDate),
@@ -181,6 +176,11 @@ export function RefuelingForm({
       setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);
 
+      // Set basis from editData
+      if (editData.basis) {
+        setSelectedBasis(editData.basis);
+      }
+      
       if (editData.quantityLiters) {
         setInputMode("liters");
       }
