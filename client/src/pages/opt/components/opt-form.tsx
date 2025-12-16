@@ -741,7 +741,7 @@ export function OptForm({
                 }
 
                 return (
-                  <FormItem className="flex-1">
+                  <FormItem>
                     <FormLabel>Покупка</FormLabel>
                     <Select 
                       onValueChange={(value) => { 
@@ -751,7 +751,7 @@ export function OptForm({
                       value={effectiveValue}
                     >
                       <FormControl>
-                        <SelectTrigger data-testid="select-purchase-price" className="h-9">
+                        <SelectTrigger data-testid="select-purchase-price">
                           <SelectValue placeholder="Выберите цену" />
                         </SelectTrigger>
                       </FormControl>
@@ -782,28 +782,18 @@ export function OptForm({
               }}
             />
           ) : !isWarehouseSupplier ? (
-            <FormItem className="flex-1">
-              <FormLabel>Покупка</FormLabel>
-              <div className="h-9 flex items-center">
-                <CalculatedField 
-                  label="" 
-                  value="Нет цены!"
-                  status="error"
-                />
-              </div>
-            </FormItem>
+            <CalculatedField 
+              label="Покупка" 
+              value="Нет цены!"
+              status="error"
+            />
           ) : (
-            <FormItem className="flex-1">
-              <FormLabel>Покупка</FormLabel>
-              <div className="h-9 flex items-center">
-                <CalculatedField 
-                  label="" 
-                  value={purchasePrice !== null ? formatNumber(purchasePrice) : "Нет цены!"}
-                  suffix={purchasePrice !== null ? " ₽/кг" : ""}
-                  status={purchasePrice !== null ? "ok" : "error"}
-                />
-              </div>
-            </FormItem>
+            <CalculatedField 
+              label="Покупка" 
+              value={purchasePrice !== null ? formatNumber(purchasePrice) : "Нет цены!"}
+              suffix={purchasePrice !== null ? " ₽/кг" : ""}
+              status={purchasePrice !== null ? "ok" : "error"}
+            />
           )}
 
           <CalculatedField 
@@ -830,7 +820,7 @@ export function OptForm({
                 }
 
                 return (
-                  <FormItem className="flex-1">
+                  <FormItem>
                     <FormLabel>Продажа</FormLabel>
                     <Select 
                       onValueChange={(value) => { 
@@ -840,7 +830,7 @@ export function OptForm({
                       value={effectiveValue}
                     >
                       <FormControl>
-                        <SelectTrigger data-testid="select-sale-price" className="h-9">
+                        <SelectTrigger data-testid="select-sale-price">
                           <SelectValue placeholder="Выберите цену" />
                         </SelectTrigger>
                       </FormControl>
@@ -871,16 +861,11 @@ export function OptForm({
               }}
             />
           ) : (
-            <FormItem className="flex-1">
-              <FormLabel>Продажа</FormLabel>
-              <div className="h-9 flex items-center">
-                <CalculatedField 
-                  label="" 
-                  value="Нет цены!"
-                  status="error"
-                />
-              </div>
-            </FormItem>
+            <CalculatedField 
+              label="Продажа" 
+              value="Нет цены!"
+              status="error"
+            />
           )}
 
           <CalculatedField 
