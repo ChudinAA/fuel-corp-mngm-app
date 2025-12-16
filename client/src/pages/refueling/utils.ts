@@ -29,6 +29,17 @@ export const formatCurrency = (value: string | number | null | undefined): strin
   return `${num.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽`;
 };
 
+export const formatCurrencyForTable = (value: string | number | null) => {
+  if (value === null) return "—";
+  const num = typeof value === "string" ? parseFloat(value) : value;
+
+  if (num >= 1000) {
+    return `${(num / 1000).toFixed(1)}к ₽`;
+  }
+
+  return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(num);
+};
+
 export const formatDate = (dateStr: string) => {
   return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
 };

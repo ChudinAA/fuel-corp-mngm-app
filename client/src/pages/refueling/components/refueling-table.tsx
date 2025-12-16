@@ -46,7 +46,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { formatNumber, formatNumberForTable, formatCurrency, getProductLabel } from "../utils";
+import { formatNumber, formatNumberForTable, formatCurrencyForTable, getProductLabel } from "../utils";
 import { useRefuelingTable } from "../hooks/use-refueling-table";
 
 interface RefuelingTableProps {
@@ -224,10 +224,10 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
                     </TooltipProvider>
                   </TableCell>
                   <TableCell className="text-right text-sm">{formatNumber(deal.purchasePrice)} ₽/кг</TableCell>
-                  <TableCell className="text-right text-sm">{formatCurrency(deal.purchaseAmount)}</TableCell>
+                  <TableCell className="text-right text-sm">{formatCurrencyForTable(deal.purchaseAmount)}</TableCell>
                   <TableCell className="text-right text-sm">{formatNumber(deal.salePrice)} ₽/кг</TableCell>
-                  <TableCell className="text-right text-sm">{formatCurrency(deal.saleAmount)}</TableCell>
-                  <TableCell className="text-right text-green-600 font-medium text-sm">{formatCurrency(deal.profit)}</TableCell>
+                  <TableCell className="text-right text-sm">{formatCurrencyForTable(deal.saleAmount)}</TableCell>
+                  <TableCell className="text-right text-green-600 font-medium text-sm">{formatCurrencyForTable(deal.profit)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
