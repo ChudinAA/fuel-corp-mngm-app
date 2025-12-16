@@ -154,6 +154,11 @@ export function RefuelingForm({
         ? `${editData.salePriceId}-${editData.salePriceIndex}`
         : editData.salePriceId || "";
       
+      // Set basis state BEFORE form.reset
+      if (editData.basis) {
+        setSelectedBasis(editData.basis);
+      }
+      
       form.reset({
         refuelingDate: new Date(editData.refuelingDate),
         productType: editData.productType,
@@ -175,11 +180,6 @@ export function RefuelingForm({
 
       setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);
-
-      // Set basis from editData
-      if (editData.basis) {
-        setSelectedBasis(editData.basis);
-      }
       
       if (editData.quantityLiters) {
         setInputMode("liters");
@@ -751,36 +751,46 @@ export function RefuelingForm({
           <FormField
             control={form.control}
             name="basis"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Базис</FormLabel>
-                <Select 
-                  onValueChange={(value) => { 
-                    field.onChange(value); 
-                    setSelectedBasis(value); 
-                  }} 
-                  value={field.value}
-                  disabled={availableBases.length === 0}
-                >
-                  <FormControl>
-                    <SelectTrigger data-testid="select-basis">
-                      <SelectValue placeholder="Выберите базис" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {availableBases.map((base) => (
-                      <SelectItem key={base.id} value={base.name}>
-                        {base.name}
-                      </SelectItem>
-                    ))}
-                    {availableBases.length === 0 && (
-                      <SelectItem value="none" disabled>Нет данных</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
+            render={({ field }) => {
+              // Синхронизируем field.value и selectedBasis
+              const currentValue = field.value || selectedBasis;
+              
+              // Если значение изменилось, обновляем оба состояния
+              if (currentValue && currentValue !== field.value) {
+                field.onChange(currentValue);
+              }
+              
+              return (
+                <FormItem>
+                  <FormLabel>Базис</FormLabel>
+                  <Select 
+                    onValueChange={(value) => { 
+                      field.onChange(value); 
+                      setSelectedBasis(value); 
+                    }} 
+                    value={currentValue}
+                    disabled={availableBases.length === 0}
+                  >
+                    <FormControl>
+                      <SelectTrigger data-testid="select-basis">
+                        <SelectValue placeholder="Выберите базис" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {availableBases.map((base) => (
+                        <SelectItem key={base.id} value={base.name}>
+                          {base.name}
+                        </SelectItem>
+                      ))}
+                      {availableBases.length === 0 && (
+                        <SelectItem value="none" disabled>Нет данных</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
 
           <FormField
