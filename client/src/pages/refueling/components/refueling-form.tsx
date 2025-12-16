@@ -141,7 +141,7 @@ export function RefuelingForm({
   }, [watchSupplierId, suppliers, allBases, warehouses, form, editData]);
 
   useEffect(() => {
-    if (editData && suppliers && customers) {
+    if (editData && suppliers && customers && allBases) {
       const supplier = suppliers.find(s => s.name === editData.supplierId || s.id === editData.supplierId);
       const buyer = customers.find(c => c.name === editData.buyerId || c.id === editData.buyerId);
 
@@ -185,7 +185,7 @@ export function RefuelingForm({
         setInputMode("liters");
       }
     }
-  }, [editData, suppliers, customers, form]);
+  }, [editData, suppliers, customers, allBases, form]);
 
   const getMatchingPurchasePrices = () => {
     if (!watchSupplierId || !watchRefuelingDate || !watchBasis) return [];
@@ -249,8 +249,14 @@ export function RefuelingForm({
   const salePrices = getMatchingSalePrices();
 
   const getPurchasePrice = (): number | null => {
-    // Для услуги заправки - всегда из таблицы цен (никогда не из склада)
+    // Для услуги заправки - сначала проверяем service_price у поставщика
     if (watchProductType === "service") {
+      // Проверяем service_price у поставщика
+      if (selectedSupplier?.servicePrice) {
+        return parseFloat(selectedSupplier.servicePrice);
+      }
+
+      // Если service_price нет, ищем в таблице цен
       const matchingPrices = getMatchingPurchasePrices();
       if (matchingPrices.length === 0) return null;
 
