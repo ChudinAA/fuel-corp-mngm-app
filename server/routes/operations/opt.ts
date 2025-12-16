@@ -19,8 +19,6 @@ export function registerOptRoutes(app: Express) {
       const data = insertOptSchema.parse({
         ...req.body,
         createdById: req.session.userId,
-        warehouseStatus: "OK",
-        priceStatus: "OK",
       });
       const item = await storage.opt.createOpt(data);
       res.status(201).json(item);

@@ -19,8 +19,6 @@ export function registerRefuelingOperationsRoutes(app: Express) {
       const data = insertAircraftRefuelingSchema.parse({
         ...req.body,
         createdById: req.session.userId,
-        warehouseStatus: "OK",
-        priceStatus: "OK",
       });
       const item = await storage.aircraftRefueling.createRefueling(data);
       res.status(201).json(item);
