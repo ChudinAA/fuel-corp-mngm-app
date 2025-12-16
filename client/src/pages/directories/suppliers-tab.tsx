@@ -171,11 +171,26 @@ export function SuppliersTab() {
                           </TooltipProvider>
                         </TableCell>
                         <TableCell>
-                          {supplier.description ? (
-                            <span className="text-sm text-muted-foreground">{supplier.description}</span>
-                          ) : (
-                            "—"
-                          )}
+                          <div className="space-y-1">
+                            {supplier.description && (
+                              <span className="text-sm text-muted-foreground">{supplier.description}</span>
+                            )}
+                            {(supplier.servicePrice || supplier.pvkjPrice) && (
+                              <div className="flex flex-wrap gap-2 text-xs">
+                                {supplier.servicePrice && (
+                                  <span className="text-blue-600 dark:text-blue-400">
+                                    Услуга: {parseFloat(supplier.servicePrice).toFixed(2)} ₽/кг
+                                  </span>
+                                )}
+                                {supplier.pvkjPrice && (
+                                  <span className="text-purple-600 dark:text-purple-400">
+                                    ПВКЖ: {parseFloat(supplier.pvkjPrice).toFixed(2)} ₽/кг
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {!supplier.description && !supplier.servicePrice && !supplier.pvkjPrice && "—"}
+                          </div>
                         </TableCell>
                         <TableCell>
                           {supplier.isActive ? (
