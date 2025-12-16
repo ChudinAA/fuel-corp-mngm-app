@@ -759,7 +759,7 @@ export function RefuelingForm({
                     field.onChange(value); 
                     setSelectedBasis(value); 
                   }} 
-                  value={selectedBasis || field.value}
+                  value={field.value}
                   disabled={availableBases.length === 0}
                 >
                   <FormControl>
