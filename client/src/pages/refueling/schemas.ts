@@ -18,6 +18,8 @@ export const refuelingFormSchema = z.object({
   isApproxVolume: z.boolean().default(false),
   selectedPurchasePriceId: z.string().optional(),
   selectedSalePriceId: z.string().optional(),
+  purchasePriceIndex: z.number().optional(),
+  salePriceIndex: z.number().optional(),
 });
 
 export type RefuelingFormData = z.infer<typeof refuelingFormSchema>;

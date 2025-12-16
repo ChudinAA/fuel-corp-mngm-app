@@ -396,13 +396,38 @@ export function RefuelingForm({
       const purchasePrices = getMatchingPurchasePrices();
       const salePrices = getMatchingSalePrices();
 
-      // Извлекаем ID цены без индекса
-      const purchasePriceId = !isWarehouseSupplier && selectedPurchasePriceId 
-        ? (selectedPurchasePriceId.includes('-') ? selectedPurchasePriceId.split('-')[0] : selectedPurchasePriceId)
-        : (!isWarehouseSupplier && purchasePrices.length > 0 ? purchasePrices[0].id : null);
-      const salePriceId = selectedSalePriceId 
-        ? (selectedSalePriceId.includes('-') ? selectedSalePriceId.split('-')[0] : selectedSalePriceId)
-        : (salePrices.length > 0 ? salePrices[0].id : null);
+      // Извлекаем ID цены и индекс из составного ID
+      let purchasePriceId = null;
+      let purchasePriceIndex = 0;
+      
+      if (!isWarehouseSupplier && selectedPurchasePriceId) {
+        const parts = selectedPurchasePriceId.split('-');
+        if (parts.length >= 5) {
+          purchasePriceIndex = parseInt(parts[parts.length - 1]);
+          purchasePriceId = parts.slice(0, -1).join('-');
+        } else {
+          purchasePriceId = selectedPurchasePriceId;
+        }
+      } else if (!isWarehouseSupplier && purchasePrices.length > 0) {
+        purchasePriceId = purchasePrices[0].id;
+        purchasePriceIndex = 0;
+      }
+      
+      let salePriceId = null;
+      let salePriceIndex = 0;
+      
+      if (selectedSalePriceId) {
+        const parts = selectedSalePriceId.split('-');
+        if (parts.length >= 5) {
+          salePriceIndex = parseInt(parts[parts.length - 1]);
+          salePriceId = parts.slice(0, -1).join('-');
+        } else {
+          salePriceId = selectedSalePriceId;
+        }
+      } else if (salePrices.length > 0) {
+        salePriceId = salePrices[0].id;
+        salePriceIndex = 0;
+      }
 
       const payload = {
         ...data,
@@ -416,8 +441,10 @@ export function RefuelingForm({
         density: data.density ? String(parseFloat(data.density)) : null,
         purchasePrice: purchasePrice !== null ? String(purchasePrice) : null,
         purchasePriceId: purchasePriceId,
+        purchasePriceIndex: purchasePriceIndex,
         salePrice: salePrice !== null ? String(salePrice) : null,
         salePriceId: salePriceId,
+        salePriceIndex: salePriceIndex,
         purchaseAmount: purchaseAmount !== null ? String(purchaseAmount) : null,
         saleAmount: saleAmount !== null ? String(saleAmount) : null,
         profit: profit !== null ? String(profit) : null,
@@ -453,13 +480,38 @@ export function RefuelingForm({
       const purchasePrices = getMatchingPurchasePrices();
       const salePrices = getMatchingSalePrices();
 
-      // Извлекаем ID цены без индекса
-      const purchasePriceId = !isWarehouseSupplier && selectedPurchasePriceId 
-        ? (selectedPurchasePriceId.includes('-') ? selectedPurchasePriceId.split('-')[0] : selectedPurchasePriceId)
-        : (!isWarehouseSupplier && purchasePrices.length > 0 ? purchasePrices[0].id : null);
-      const salePriceId = selectedSalePriceId 
-        ? (selectedSalePriceId.includes('-') ? selectedSalePriceId.split('-')[0] : selectedSalePriceId)
-        : (salePrices.length > 0 ? salePrices[0].id : null);
+      // Извлекаем ID цены и индекс из составного ID
+      let purchasePriceId = null;
+      let purchasePriceIndex = 0;
+      
+      if (!isWarehouseSupplier && selectedPurchasePriceId) {
+        const parts = selectedPurchasePriceId.split('-');
+        if (parts.length >= 5) {
+          purchasePriceIndex = parseInt(parts[parts.length - 1]);
+          purchasePriceId = parts.slice(0, -1).join('-');
+        } else {
+          purchasePriceId = selectedPurchasePriceId;
+        }
+      } else if (!isWarehouseSupplier && purchasePrices.length > 0) {
+        purchasePriceId = purchasePrices[0].id;
+        purchasePriceIndex = 0;
+      }
+      
+      let salePriceId = null;
+      let salePriceIndex = 0;
+      
+      if (selectedSalePriceId) {
+        const parts = selectedSalePriceId.split('-');
+        if (parts.length >= 5) {
+          salePriceIndex = parseInt(parts[parts.length - 1]);
+          salePriceId = parts.slice(0, -1).join('-');
+        } else {
+          salePriceId = selectedSalePriceId;
+        }
+      } else if (salePrices.length > 0) {
+        salePriceId = salePrices[0].id;
+        salePriceIndex = 0;
+      }
 
       const payload = {
         ...data,
@@ -473,8 +525,10 @@ export function RefuelingForm({
         density: data.density ? String(parseFloat(data.density)) : null,
         purchasePrice: purchasePrice !== null ? String(purchasePrice) : null,
         purchasePriceId: purchasePriceId,
+        purchasePriceIndex: purchasePriceIndex,
         salePrice: salePrice !== null ? String(salePrice) : null,
         salePriceId: salePriceId,
+        salePriceIndex: salePriceIndex,
         purchaseAmount: purchaseAmount !== null ? String(purchaseAmount) : null,
         saleAmount: saleAmount !== null ? String(saleAmount) : null,
         profit: profit !== null ? String(profit) : null,

@@ -16,6 +16,8 @@ export const optFormSchema = z.object({
   isApproxVolume: z.boolean().default(false),
   selectedPurchasePriceId: z.string().optional(),
   selectedSalePriceId: z.string().optional(),
+  purchasePriceIndex: z.number().optional(),
+  salePriceIndex: z.number().optional(),
 });
 
 export type OptFormData = z.infer<typeof optFormSchema>;
