@@ -742,7 +742,7 @@ export function OptForm({
 
                 return (
                   <FormItem>
-                    <FormLabel>Покупка</FormLabel>
+                    <FormLabel className="flex items-center gap-2">Покупка</FormLabel>
                     <Select 
                       onValueChange={(value) => { 
                         field.onChange(value); 
@@ -821,7 +821,7 @@ export function OptForm({
 
                 return (
                   <FormItem>
-                    <FormLabel>Продажа</FormLabel>
+                    <FormLabel className="flex items-center gap-2">Продажа</FormLabel>
                     <Select 
                       onValueChange={(value) => { 
                         field.onChange(value); 
