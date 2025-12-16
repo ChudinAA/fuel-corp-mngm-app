@@ -69,10 +69,24 @@ export function OptForm({
 
   // Update form when editData changes
   useEffect(() => {
-    if (editData && suppliers && customers) {
+    if (editData && suppliers && customers && allBases) {
       // Find supplier by name (since enrichedData has names in supplierId field)
       const supplier = suppliers.find(s => s.name === editData.supplierId || s.id === editData.supplierId);
       const buyer = customers.find(c => c.name === editData.buyerId || c.id === editData.buyerId);
+
+      // Set basis from editData
+      if (editData.basis) {
+        setSelectedBasis(editData.basis);
+      }
+
+      // Construct composite price IDs with indices
+      const purchasePriceCompositeId = editData.purchasePriceId && editData.purchasePriceIndex !== undefined
+        ? `${editData.purchasePriceId}-${editData.purchasePriceIndex}`
+        : editData.purchasePriceId || "";
+      
+      const salePriceCompositeId = editData.salePriceId && editData.salePriceIndex !== undefined
+        ? `${editData.salePriceId}-${editData.salePriceIndex}`
+        : editData.salePriceId || "";
 
       form.reset({
         dealDate: new Date(editData.createdAt),
@@ -87,18 +101,18 @@ export function OptForm({
         deliveryLocationId: editData.deliveryLocationId || "",
         notes: editData.notes || "",
         isApproxVolume: editData.isApproxVolume || false,
-        selectedPurchasePriceId: editData.purchasePriceId || "",
-        selectedSalePriceId: editData.salePriceId || "",
+        selectedPurchasePriceId: purchasePriceCompositeId,
+        selectedSalePriceId: salePriceCompositeId,
       });
 
-      setSelectedPurchasePriceId(editData.purchasePriceId || "");
-      setSelectedSalePriceId(editData.salePriceId || "");
+      setSelectedPurchasePriceId(purchasePriceCompositeId);
+      setSelectedSalePriceId(salePriceCompositeId);
 
       if (editData.quantityLiters) {
         setInputMode("liters");
       }
     }
-  }, [editData, suppliers, customers, form]);
+  }, [editData, suppliers, customers, allBases, form]);
 
   const { data: warehouses } = useQuery<Warehouse[]>({
     queryKey: ["/api/warehouses"],
@@ -227,17 +241,22 @@ export function OptForm({
     if (matchingPrices.length === 0) return null;
 
     let selectedPrice = matchingPrices[0];
+    let selectedIndex = 0;
+
+    // Parse composite ID to extract price ID and index
     if (selectedPurchasePriceId) {
-      const found = matchingPrices.find(p => p.id === selectedPurchasePriceId);
-      if (found) selectedPrice = found;
-    } else if (editData && editData.purchasePriceId) {
-      const found = matchingPrices.find(p => p.id === editData.purchasePriceId);
-      if (found) selectedPrice = found;
+      const parts = selectedPurchasePriceId.split('-');
+      if (parts.length >= 5) {
+        const priceId = parts.slice(0, -1).join('-');
+        selectedIndex = parseInt(parts[parts.length - 1]);
+        const found = matchingPrices.find(p => p.id === priceId);
+        if (found) selectedPrice = found;
+      }
     }
 
-    if (selectedPrice && selectedPrice.priceValues && selectedPrice.priceValues.length > 0) {
+    if (selectedPrice && selectedPrice.priceValues && selectedPrice.priceValues.length > selectedIndex) {
       try {
-        const priceObj = JSON.parse(selectedPrice.priceValues[0]);
+        const priceObj = JSON.parse(selectedPrice.priceValues[selectedIndex]);
         return parseFloat(priceObj.price || "0");
       } catch {
         return null;
@@ -253,17 +272,22 @@ export function OptForm({
     if (matchingPrices.length === 0) return null;
 
     let selectedPrice = matchingPrices[0];
+    let selectedIndex = 0;
+
+    // Parse composite ID to extract price ID and index
     if (selectedSalePriceId) {
-      const found = matchingPrices.find(p => p.id === selectedSalePriceId);
-      if (found) selectedPrice = found;
-    } else if (editData && editData.salePriceId) {
-      const found = matchingPrices.find(p => p.id === editData.salePriceId);
-      if (found) selectedPrice = found;
+      const parts = selectedSalePriceId.split('-');
+      if (parts.length >= 5) {
+        const priceId = parts.slice(0, -1).join('-');
+        selectedIndex = parseInt(parts[parts.length - 1]);
+        const found = matchingPrices.find(p => p.id === priceId);
+        if (found) selectedPrice = found;
+      }
     }
 
-    if (selectedPrice && selectedPrice.priceValues && selectedPrice.priceValues.length > 0) {
+    if (selectedPrice && selectedPrice.priceValues && selectedPrice.priceValues.length > selectedIndex) {
       try {
-        const priceObj = JSON.parse(selectedPrice.priceValues[0]);
+        const priceObj = JSON.parse(selectedPrice.priceValues[selectedIndex]);
         return parseFloat(priceObj.price || "0");
       } catch {
         return null;

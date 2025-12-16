@@ -145,6 +145,20 @@ export function RefuelingForm({
       const supplier = suppliers.find(s => s.name === editData.supplierId || s.id === editData.supplierId);
       const buyer = customers.find(c => c.name === editData.buyerId || c.id === editData.buyerId);
 
+      // Set basis from editData
+      if (editData.basis) {
+        setSelectedBasis(editData.basis);
+      }
+
+      // Construct composite price IDs with indices
+      const purchasePriceCompositeId = editData.purchasePriceId && editData.purchasePriceIndex !== undefined
+        ? `${editData.purchasePriceId}-${editData.purchasePriceIndex}`
+        : editData.purchasePriceId || "";
+      
+      const salePriceCompositeId = editData.salePriceId && editData.salePriceIndex !== undefined
+        ? `${editData.salePriceId}-${editData.salePriceIndex}`
+        : editData.salePriceId || "";
+
       form.reset({
         refuelingDate: new Date(editData.refuelingDate),
         productType: editData.productType,
@@ -159,14 +173,13 @@ export function RefuelingForm({
         quantityKg: editData.quantityKg || "",
         notes: editData.notes || "",
         isApproxVolume: editData.isApproxVolume || false,
-        selectedPurchasePriceId: editData.purchasePriceId || "",
-        selectedSalePriceId: editData.salePriceId || "",
+        selectedPurchasePriceId: purchasePriceCompositeId,
+        selectedSalePriceId: salePriceCompositeId,
         basis: editData.basis || "",
       });
 
-      setSelectedPurchasePriceId(editData.purchasePriceId || "");
-      setSelectedSalePriceId(editData.salePriceId || "");
-      setSelectedBasis(editData.basis || "");
+      setSelectedPurchasePriceId(purchasePriceCompositeId);
+      setSelectedSalePriceId(salePriceCompositeId);
 
       if (editData.quantityLiters) {
         setInputMode("liters");
@@ -236,24 +249,28 @@ export function RefuelingForm({
   const salePrices = getMatchingSalePrices();
 
   const getPurchasePrice = (): number | null => {
-    // Для услуги заправки
+    // Для услуги заправки - всегда из таблицы цен (никогда не из склада)
     if (watchProductType === "service") {
-      if (selectedSupplier?.servicePrice) {
-        return parseFloat(selectedSupplier.servicePrice);
-      }
-
       const matchingPrices = getMatchingPurchasePrices();
       if (matchingPrices.length === 0) return null;
 
       let selectedPrice = matchingPrices[0];
+      let selectedIndex = 0;
+
+      // Parse composite ID to extract price ID and index
       if (selectedPurchasePriceId) {
-        const found = matchingPrices.find(p => p.id === selectedPurchasePriceId);
-        if (found) selectedPrice = found;
+        const parts = selectedPurchasePriceId.split('-');
+        if (parts.length >= 5) {
+          const priceId = parts.slice(0, -1).join('-');
+          selectedIndex = parseInt(parts[parts.length - 1]);
+          const found = matchingPrices.find(p => p.id === priceId);
+          if (found) selectedPrice = found;
+        }
       }
 
-      if (selectedPrice?.priceValues?.[0]) {
+      if (selectedPrice?.priceValues?.[selectedIndex]) {
         try {
-          const priceObj = JSON.parse(selectedPrice.priceValues[0]);
+          const priceObj = JSON.parse(selectedPrice.priceValues[selectedIndex]);
           return parseFloat(priceObj.price || "0");
         } catch {
           return null;
@@ -268,22 +285,26 @@ export function RefuelingForm({
         return parseFloat(supplierWarehouse.pvkjAverageCost || "0");
       }
 
-      if (selectedSupplier?.pvkjPrice) {
-        return parseFloat(selectedSupplier.pvkjPrice);
-      }
-
       const matchingPrices = getMatchingPurchasePrices();
       if (matchingPrices.length === 0) return null;
 
       let selectedPrice = matchingPrices[0];
+      let selectedIndex = 0;
+
+      // Parse composite ID to extract price ID and index
       if (selectedPurchasePriceId) {
-        const found = matchingPrices.find(p => p.id === selectedPurchasePriceId);
-        if (found) selectedPrice = found;
+        const parts = selectedPurchasePriceId.split('-');
+        if (parts.length >= 5) {
+          const priceId = parts.slice(0, -1).join('-');
+          selectedIndex = parseInt(parts[parts.length - 1]);
+          const found = matchingPrices.find(p => p.id === priceId);
+          if (found) selectedPrice = found;
+        }
       }
 
-      if (selectedPrice?.priceValues?.[0]) {
+      if (selectedPrice?.priceValues?.[selectedIndex]) {
         try {
-          const priceObj = JSON.parse(selectedPrice.priceValues[0]);
+          const priceObj = JSON.parse(selectedPrice.priceValues[selectedIndex]);
           return parseFloat(priceObj.price || "0");
         } catch {
           return null;
@@ -301,17 +322,22 @@ export function RefuelingForm({
     if (matchingPrices.length === 0) return null;
 
     let selectedPrice = matchingPrices[0];
+    let selectedIndex = 0;
+
+    // Parse composite ID to extract price ID and index
     if (selectedPurchasePriceId) {
-      const found = matchingPrices.find(p => p.id === selectedPurchasePriceId);
-      if (found) selectedPrice = found;
-    } else if (editData && editData.purchasePriceId) {
-      const found = matchingPrices.find(p => p.id === editData.purchasePriceId);
-      if (found) selectedPrice = found;
+      const parts = selectedPurchasePriceId.split('-');
+      if (parts.length >= 5) {
+        const priceId = parts.slice(0, -1).join('-');
+        selectedIndex = parseInt(parts[parts.length - 1]);
+        const found = matchingPrices.find(p => p.id === priceId);
+        if (found) selectedPrice = found;
+      }
     }
 
-    if (selectedPrice && selectedPrice.priceValues && selectedPrice.priceValues.length > 0) {
+    if (selectedPrice && selectedPrice.priceValues && selectedPrice.priceValues.length > selectedIndex) {
       try {
-        const priceObj = JSON.parse(selectedPrice.priceValues[0]);
+        const priceObj = JSON.parse(selectedPrice.priceValues[selectedIndex]);
         return parseFloat(priceObj.price || "0");
       } catch {
         return null;
@@ -326,17 +352,22 @@ export function RefuelingForm({
     if (matchingPrices.length === 0) return null;
 
     let selectedPrice = matchingPrices[0];
+    let selectedIndex = 0;
+
+    // Parse composite ID to extract price ID and index
     if (selectedSalePriceId) {
-      const found = matchingPrices.find(p => p.id === selectedSalePriceId);
-      if (found) selectedPrice = found;
-    } else if (editData && editData.salePriceId) {
-      const found = matchingPrices.find(p => p.id === editData.salePriceId);
-      if (found) selectedPrice = found;
+      const parts = selectedSalePriceId.split('-');
+      if (parts.length >= 5) {
+        const priceId = parts.slice(0, -1).join('-');
+        selectedIndex = parseInt(parts[parts.length - 1]);
+        const found = matchingPrices.find(p => p.id === priceId);
+        if (found) selectedPrice = found;
+      }
     }
 
-    if (selectedPrice && selectedPrice.priceValues && selectedPrice.priceValues.length > 0) {
+    if (selectedPrice && selectedPrice.priceValues && selectedPrice.priceValues.length > selectedIndex) {
       try {
-        const priceObj = JSON.parse(selectedPrice.priceValues[0]);
+        const priceObj = JSON.parse(selectedPrice.priceValues[selectedIndex]);
         return parseFloat(priceObj.price || "0");
       } catch {
         return null;
@@ -358,6 +389,11 @@ export function RefuelingForm({
     : null;
 
   const getWarehouseStatus = (): { status: "ok" | "warning" | "error"; message: string } => {
+    // Для услуги заправки склад не проверяем
+    if (watchProductType === "service") {
+      return { status: "ok", message: "—" };
+    }
+
     if (!isWarehouseSupplier) {
       return { status: "ok", message: "ОК" };
     }
