@@ -145,6 +145,11 @@ export function RefuelingForm({
       const supplier = suppliers.find(s => s.name === editData.supplierId || s.id === editData.supplierId);
       const buyer = customers.find(c => c.name === editData.buyerId || c.id === editData.buyerId);
 
+      // Set basis from editData
+      if (editData.basis) {
+        setSelectedBasis(editData.basis);
+      }
+      
       // Construct composite price IDs with indices
       const purchasePriceCompositeId = editData.purchasePriceId && editData.purchasePriceIndex !== undefined
         ? `${editData.purchasePriceId}-${editData.purchasePriceIndex}`
@@ -175,11 +180,6 @@ export function RefuelingForm({
 
       setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);
-      
-      // Set basis from editData
-      if (editData.basis) {
-        setSelectedBasis(editData.basis);
-      }
 
       if (editData.quantityLiters) {
         setInputMode("liters");
