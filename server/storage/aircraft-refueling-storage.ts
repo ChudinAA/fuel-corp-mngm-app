@@ -70,7 +70,8 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
   async createRefueling(data: InsertAircraftRefueling): Promise<AircraftRefueling> {
     const [created] = await db.insert(aircraftRefueling).values(data).returning();
 
-    if (data.warehouseId) {
+    // Для услуги заправки не создаем транзакции на складе
+    if (data.warehouseId && data.productType !== "service") {
       const [warehouse] = await db.select().from(warehouses).where(eq(warehouses.id, data.warehouseId)).limit(1);
       if (!warehouse) {
         throw new Error("Warehouse not found");
@@ -126,7 +127,8 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
     if (!currentRefueling) return undefined;
 
     // Проверяем изменилось ли количество КГ и есть ли привязанная транзакция
-    if (data.quantityKg && currentRefueling.transactionId && currentRefueling.warehouseId) {
+    // Для услуг заправки пропускаем обновление склада
+    if (data.quantityKg && currentRefueling.transactionId && currentRefueling.warehouseId && currentRefueling.productType !== "service") {
       const oldQuantityKg = parseFloat(currentRefueling.quantityKg);
       const newQuantityKg = parseFloat(data.quantityKg.toString());
 
@@ -187,7 +189,8 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
   async deleteRefueling(id: string): Promise<boolean> {
     const [currentRefueling] = await db.select().from(aircraftRefueling).where(eq(aircraftRefueling.id, id)).limit(1);
 
-    if (currentRefueling && currentRefueling.transactionId && currentRefueling.warehouseId) {
+    // Для услуг заправки пропускаем восстановление баланса на складе
+    if (currentRefueling && currentRefueling.transactionId && currentRefueling.warehouseId && currentRefueling.productType !== "service") {
       const quantityKg = parseFloat(currentRefueling.quantityKg);
       const isPvkj = currentRefueling.productType === "pvkj";
 
