@@ -10,6 +10,7 @@ import {
   type InsertAircraftRefueling,
 } from "@shared/schema";
 import { IAircraftRefuelingStorage } from "./types";
+import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 
 export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
   async getRefuelings(page: number = 1, pageSize: number = 10, search?: string): Promise<{ data: any[]; total: number }> {
@@ -71,14 +72,14 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
     const [created] = await db.insert(aircraftRefueling).values(data).returning();
 
     // Для услуги заправки не создаем транзакции на складе
-    if (data.warehouseId && data.productType !== "service") {
+    if (data.warehouseId && data.productType !== PRODUCT_TYPE.SERVICE) {
       const [warehouse] = await db.select().from(warehouses).where(eq(warehouses.id, data.warehouseId)).limit(1);
       if (!warehouse) {
         throw new Error("Warehouse not found");
       }
 
       const quantity = parseFloat(data.quantityKg);
-      const isPvkj = data.productType === "pvkj";
+      const isPvkj = data.productType === PRODUCT_TYPE.PVKJ;
 
       // Для ПВКЖ используем pvkjBalance, для керосина - currentBalance
       const currentBalance = parseFloat(isPvkj ? (warehouse.pvkjBalance || "0") : (warehouse.currentBalance || "0"));
@@ -101,8 +102,8 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
 
       const [transaction] = await db.insert(warehouseTransactions).values({
         warehouseId: data.warehouseId,
-        transactionType: "sale",
-        productType: data.productType || "kerosene",
+        transactionType: TRANSACTION_TYPE.SALE,
+        productType: data.productType || PRODUCT_TYPE.KEROSENE,
         sourceType: "refueling",
         sourceId: created.id,
         quantity: (-quantity).toString(),
@@ -123,12 +124,12 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
 
   async updateRefueling(id: string, data: Partial<InsertAircraftRefueling>): Promise<AircraftRefueling | undefined> {
     const [currentRefueling] = await db.select().from(aircraftRefueling).where(eq(aircraftRefueling.id, id)).limit(1);
-    
+
     if (!currentRefueling) return undefined;
 
     // Проверяем изменилось ли количество КГ и есть ли привязанная транзакция
     // Для услуг заправки пропускаем обновление склада
-    if (data.quantityKg && currentRefueling.transactionId && currentRefueling.warehouseId && currentRefueling.productType !== "service") {
+    if (data.quantityKg && currentRefueling.transactionId && currentRefueling.warehouseId && currentRefueling.productType !== PRODUCT_TYPE.SERVICE) {
       const oldQuantityKg = parseFloat(currentRefueling.quantityKg);
       const newQuantityKg = parseFloat(data.quantityKg.toString());
 
@@ -143,7 +144,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         const [transaction] = await db.select().from(warehouseTransactions).where(eq(warehouseTransactions.id, currentRefueling.transactionId)).limit(1);
 
         if (warehouse && transaction) {
-          const isPvkj = currentRefueling.productType === "pvkj";
+          const isPvkj = currentRefueling.productType === PRODUCT_TYPE.PVKJ;
           const currentBalance = parseFloat(isPvkj ? (warehouse.pvkjBalance || "0") : (warehouse.currentBalance || "0"));
           // Уменьшаем баланс на разницу (если quantityDiff отрицательный, баланс увеличится)
           const newBalance = Math.max(0, currentBalance - quantityDiff);
@@ -190,9 +191,9 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
     const [currentRefueling] = await db.select().from(aircraftRefueling).where(eq(aircraftRefueling.id, id)).limit(1);
 
     // Для услуг заправки пропускаем восстановление баланса на складе
-    if (currentRefueling && currentRefueling.transactionId && currentRefueling.warehouseId && currentRefueling.productType !== "service") {
+    if (currentRefueling && currentRefueling.transactionId && currentRefueling.warehouseId && currentRefueling.productType !== PRODUCT_TYPE.SERVICE) {
       const quantityKg = parseFloat(currentRefueling.quantityKg);
-      const isPvkj = currentRefueling.productType === "pvkj";
+      const isPvkj = currentRefueling.productType === PRODUCT_TYPE.PVKJ;
 
       const [warehouse] = await db.select().from(warehouses).where(eq(warehouses.id, currentRefueling.warehouseId)).limit(1);
 

@@ -12,6 +12,7 @@ import {
   type InsertOpt,
 } from "@shared/schema";
 import { IOptStorage } from "./types";
+import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 
 export class OptStorage implements IOptStorage {
   async getOptDeals(page: number = 1, pageSize: number = 10, search?: string): Promise<{ data: any[]; total: number }> {
@@ -56,7 +57,7 @@ export class OptStorage implements IOptStorage {
     }
 
     const rawData = await query.orderBy(desc(opt.createdAt)).limit(pageSize).offset(offset);
-    
+
     // Преобразуем данные в нужный формат с полными объектами
     const data = rawData.map(row => ({
       ...row.opt,
@@ -112,8 +113,8 @@ export class OptStorage implements IOptStorage {
         // Создаем запись транзакции
         const [transaction] = await db.insert(warehouseTransactions).values({
           warehouseId: created.warehouseId,
-          transactionType: 'sale',
-          productType: 'kerosene',
+          transactionType: TRANSACTION_TYPE.SALE,
+          productType: PRODUCT_TYPE.KEROSENE,
           sourceType: 'opt',
           sourceId: created.id,
           quantity: (-quantityKg).toString(),
@@ -137,7 +138,7 @@ export class OptStorage implements IOptStorage {
   async updateOpt(id: string, data: Partial<InsertOpt>): Promise<Opt | undefined> {
     // Получаем текущую сделку
     const [currentOpt] = await db.select().from(opt).where(eq(opt.id, id)).limit(1);
-    
+
     if (!currentOpt) return undefined;
 
     // Проверяем изменилось ли количество КГ и есть ли привязанная транзакция
@@ -162,7 +163,7 @@ export class OptStorage implements IOptStorage {
 
           // Обновляем баланс склада
           await db.update(warehouses)
-            .set({ 
+            .set({
               currentBalance: newBalance.toFixed(2),
               updatedAt: sql`NOW()`,
               updatedById: data.updatedById

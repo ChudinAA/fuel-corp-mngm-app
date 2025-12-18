@@ -10,7 +10,7 @@ import {
   type DeliveryCost,
   type InsertDeliveryCost,
 } from "@shared/schema";
-import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
+import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, PRODUCT_TYPE } from "@shared/constants";
 import type { IPriceStorage } from "./types";
 
 export class PriceStorage implements IPriceStorage {

@@ -1,4 +1,3 @@
-
 import { eq, desc, sql, asc } from "drizzle-orm";
 import { db } from "../db";
 import {
@@ -10,6 +9,7 @@ import {
   type WarehouseTransaction,
 } from "@shared/schema";
 import { IWarehouseStorage } from "./types";
+import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 
 export class WarehouseStorage implements IWarehouseStorage {
   async getAllWarehouses(): Promise<Warehouse[]> {
@@ -78,7 +78,7 @@ export class WarehouseStorage implements IWarehouseStorage {
       transactionType: tx.transactionType,
       sourceType: tx.sourceType,
       sourceId: tx.sourceId,
-      productType: tx.productType || "kerosene",
+      productType: tx.productType || PRODUCT_TYPE.KEROSENE,
       quantityKg: tx.quantity,
       balanceBefore: tx.balanceBefore || "0",
       balanceAfter: tx.balanceAfter || "0",
@@ -90,7 +90,7 @@ export class WarehouseStorage implements IWarehouseStorage {
 
   async getWarehouseStatsForDashboard(): Promise<any[]> {
     const warehousesList = await db.select().from(warehouses).where(eq(warehouses.isActive, true));
-    
+
     const stats = warehousesList.map(wh => {
       const currentBalance = parseFloat(wh.currentBalance || "0");
       const maxCapacity = parseFloat(wh.storageCost || "100000");

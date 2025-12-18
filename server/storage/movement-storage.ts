@@ -1,4 +1,3 @@
-
 import { eq, desc, sql } from "drizzle-orm";
 import { db } from "../db";
 import {
@@ -11,6 +10,7 @@ import {
   type InsertMovement,
 } from "@shared/schema";
 import { IMovementStorage } from "./types";
+import { PRODUCT_TYPE, MOVEMENT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 
 export class MovementStorage implements IMovementStorage {
   async getMovements(page: number, pageSize: number): Promise<{ data: Movement[]; total: number }> {
@@ -31,7 +31,7 @@ export class MovementStorage implements IMovementStorage {
         }
 
         // Получаем название источника (склад или поставщик)
-        if (mov.movementType === 'supply' && mov.supplierId) {
+        if (mov.movementType === MOVEMENT_TYPE.SUPPLY && mov.supplierId) {
           const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, mov.supplierId)).limit(1);
           fromName = supplier?.name || mov.supplierId;
         } else if (mov.fromWarehouseId) {
@@ -63,7 +63,7 @@ export class MovementStorage implements IMovementStorage {
 
     // Обновляем остатки на складах
     const quantityKg = parseFloat(created.quantityKg);
-    const isPvkj = created.productType === 'pvkj';
+    const isPvkj = created.productType === PRODUCT_TYPE.PVKJ;
 
     // Если это покупка или внутреннее перемещение - увеличиваем остаток на складе назначения
     if (created.toWarehouseId) {
@@ -92,8 +92,8 @@ export class MovementStorage implements IMovementStorage {
 
           await db.insert(warehouseTransactions).values({
             warehouseId: created.toWarehouseId,
-            transactionType: created.movementType === 'supply' ? 'receipt' : 'transfer_in',
-            productType: 'pvkj',
+            transactionType: created.movementType === MOVEMENT_TYPE.SUPPLY ? TRANSACTION_TYPE.RECEIPT : TRANSACTION_TYPE.TRANSFER_IN,
+            productType: PRODUCT_TYPE.PVKJ,
             sourceType: 'movement',
             sourceId: created.id,
             quantity: quantityKg.toString(),
@@ -123,8 +123,8 @@ export class MovementStorage implements IMovementStorage {
 
           await db.insert(warehouseTransactions).values({
             warehouseId: created.toWarehouseId,
-            transactionType: created.movementType === 'supply' ? 'receipt' : 'transfer_in',
-            productType: 'kerosene',
+            transactionType: created.movementType === MOVEMENT_TYPE.SUPPLY ? TRANSACTION_TYPE.RECEIPT : TRANSACTION_TYPE.TRANSFER_IN,
+            productType: PRODUCT_TYPE.KEROSENE,
             sourceType: 'movement',
             sourceId: created.id,
             quantity: quantityKg.toString(),
@@ -139,7 +139,7 @@ export class MovementStorage implements IMovementStorage {
     }
 
     // Если это внутреннее перемещение - уменьшаем остаток на складе-источнике
-    if (created.movementType === 'internal' && created.fromWarehouseId) {
+    if (created.movementType === MOVEMENT_TYPE.INTERNAL && created.fromWarehouseId) {
       const [sourceWarehouse] = await db.select().from(warehouses).where(eq(warehouses.id, created.fromWarehouseId)).limit(1);
 
       if (sourceWarehouse) {
@@ -158,8 +158,8 @@ export class MovementStorage implements IMovementStorage {
 
           await db.insert(warehouseTransactions).values({
             warehouseId: created.fromWarehouseId,
-            transactionType: 'transfer_out',
-            productType: 'pvkj',
+            transactionType: TRANSACTION_TYPE.TRANSFER_OUT,
+            productType: PRODUCT_TYPE.PVKJ,
             sourceType: 'movement',
             sourceId: created.id,
             quantity: (-quantityKg).toString(),
@@ -184,8 +184,8 @@ export class MovementStorage implements IMovementStorage {
 
           await db.insert(warehouseTransactions).values({
             warehouseId: created.fromWarehouseId,
-            transactionType: 'transfer_out',
-            productType: 'kerosene',
+            transactionType: TRANSACTION_TYPE.TRANSFER_OUT,
+            productType: PRODUCT_TYPE.KEROSENE,
             sourceType: 'movement',
             sourceId: created.id,
             quantity: (-quantityKg).toString(),

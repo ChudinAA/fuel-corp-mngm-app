@@ -1,4 +1,3 @@
-
 import { eq, desc, sql } from "drizzle-orm";
 import { db } from "../db";
 import {
@@ -7,6 +6,7 @@ import {
   type InsertExchange,
 } from "@shared/schema";
 import { IExchangeStorage } from "./types";
+import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 
 export class ExchangeStorage implements IExchangeStorage {
   async getExchangeDeals(page: number, pageSize: number): Promise<{ data: Exchange[]; total: number }> {
