@@ -161,7 +161,7 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
                   <SelectItem value={PRODUCT_TYPE.SERVICE}>Услуга</SelectItem>
                   <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
                   <SelectItem value={PRODUCT_TYPE.AGENT}>Агентские</SelectItem>
-                  <SelectItem value={PRODUCT_TYPE.STO}>Хранение</SelectItem>
+                  <SelectItem value={PRODUCT_TYPE.STORAGE}>Хранение</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
