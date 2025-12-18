@@ -35,7 +35,7 @@ export function ExchangeDialog({
       dealDate: editExchange?.dealDate ? new Date(editExchange.dealDate) : new Date(),
       dealNumber: editExchange?.dealNumber || "",
       counterparty: editExchange?.counterparty || "",
-      productType: editExchange?.productType || "kerosene",
+      productType: editExchange?.productType || PRODUCT_TYPE.KEROSENE,
       quantityKg: editExchange?.quantityKg?.toString() || "",
       pricePerKg: editExchange?.pricePerKg?.toString() || "",
       warehouseId: editExchange?.warehouseId || "",

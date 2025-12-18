@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Form } from "@/components/ui/form";
 import { Plus, Loader2 } from "lucide-react";
 import type { Base, Supplier, Customer } from "@shared/schema";
-import { COUNTERPARTY_ROLE } from "@shared/constants";
+import { COUNTERPARTY_ROLE, COUNTERPARTY_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { priceFormSchema } from "../schemas";
 import type { PriceFormData, PriceDialogProps } from "../types";
 import { useDateCheck } from "../hooks/use-date-check";
@@ -29,10 +29,10 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
     defaultValues: {
       dateFrom: new Date(),
       dateTo: new Date(),
-      counterpartyType: "wholesale",
+      counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
       counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
       counterpartyId: "",
-      productType: "kerosine",
+      productType: PRODUCT_TYPE.KEROSINE,
       basis: "",
       volume: "",
       priceValues: [{ price: "" }],
@@ -185,10 +185,10 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
       form.reset({
         dateFrom: new Date(),
         dateTo: new Date(),
-        counterpartyType: "wholesale",
+        counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
         counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
         counterpartyId: "",
-        productType: "kerosine",
+        productType: PRODUCT_TYPE.KEROSINE,
         basis: "",
         volume: "",
         priceValues: [{ price: "" }],

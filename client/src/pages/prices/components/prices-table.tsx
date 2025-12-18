@@ -16,7 +16,7 @@ import type { Price, Supplier, Customer } from "@shared/schema";
 import type { PricesTableProps } from "../types";
 import { formatNumber, formatDate, getPriceDisplay, getProductTypeLabel } from "../utils";
 import { usePriceSelection } from "../hooks/use-price-selection";
-import { COUNTERPARTY_TYPE } from "@/shared/constants";
+import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, PRODUCT_TYPE } from "@shared/constants";
 
 export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onEdit }: PricesTableProps) {
   const [search, setSearch] = useState("");
@@ -43,7 +43,7 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
 
   const getContractorName = (id: string, type: string, role: string) => {
     let contractors;
-    if (role === "buyer") {
+    if (role === COUNTERPARTY_ROLE.BUYER) {
       contractors = customers;
     } else {
       contractors = allContractors;
@@ -161,7 +161,7 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="flex items-center justify-center">
-                          {price.counterpartyRole === "supplier" ? (
+                          {price.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER ? (
                             <TruckIcon className="h-5 w-5 text-green-500/70" />
                           ) : (
                             <ShoppingCart className="h-5 w-5 text-orange-500/70" />
@@ -169,7 +169,7 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
-                        {price.counterpartyRole === "supplier" ? "Поставщик" : "Покупатель"}
+                        {price.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER ? "Поставщик" : "Покупатель"}
                       </TooltipContent>
                     </Tooltip>
                   </TableCell>
@@ -179,11 +179,11 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                     <Badge 
                       variant="outline"
                       className={
-                        price.productType === "kerosine" ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30" :
-                        price.productType === "pvkj" ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" :
-                        price.productType === "service" ? "bg-green-50/50 dark:bg-green-950/20 border-green-200/30 dark:border-green-800/30" :
-                        price.productType === "agent" ? "bg-orange-50/50 dark:bg-orange-950/20 border-orange-200/30 dark:border-orange-800/30" :
-                        price.productType === "storage" ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/30 dark:border-amber-800/30" :
+                        price.productType === PRODUCT_TYPE.KEROSINE ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30" :
+                        price.productType === PRODUCT_TYPE.PVKJ ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" :
+                        price.productType === PRODUCT_TYPE.SERVICE ? "bg-green-50/50 dark:bg-green-950/20 border-green-200/30 dark:border-green-800/30" :
+                        price.productType === PRODUCT_TYPE.AGENT ? "bg-orange-50/50 dark:bg-orange-950/20 border-orange-200/30 dark:border-orange-800/30" :
+                        price.productType === PRODUCT_TYPE.STORAGE ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/30 dark:border-amber-800/30" :
                         ""
                       }
                     >

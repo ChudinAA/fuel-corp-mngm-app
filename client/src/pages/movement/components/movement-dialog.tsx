@@ -49,8 +49,8 @@ export function MovementDialog({
     resolver: zodResolver(movementFormSchema),
     defaultValues: {
       movementDate: new Date(),
-      movementType: "supply",
-      productType: "kerosene",
+      movementType: MOVEMENT_TYPE.SUPPLY,
+      productType: PRODUCT_TYPE.KEROSENE,
       supplierId: "",
       fromWarehouseId: "",
       toWarehouseId: "",
@@ -83,8 +83,8 @@ export function MovementDialog({
     } else {
       form.reset({
         movementDate: new Date(),
-        movementType: "supply",
-        productType: "kerosene",
+        movementType: MOVEMENT_TYPE.SUPPLY,
+        productType: PRODUCT_TYPE.KEROSENE,
         supplierId: "",
         fromWarehouseId: "",
         toWarehouseId: "",
@@ -415,8 +415,8 @@ export function MovementDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="kerosene">Керосин</SelectItem>
-                        <SelectItem value="pvkj">ПВКЖ</SelectItem>
+                        <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
+                        <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

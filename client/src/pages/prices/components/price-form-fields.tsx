@@ -11,7 +11,7 @@ import { ru } from "date-fns/locale";
 import type { Control, FieldArrayWithId, UseFieldArrayRemove, UseFieldArrayAppend } from "react-hook-form";
 import type { PriceFormData } from "../types";
 import type { Base, Supplier, Customer } from "@shared/schema";
-import { PRODUCT_TYPE } from "@shared/constants";
+import { PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
 
 interface PriceFormFieldsProps {
   control: Control<PriceFormData>;
@@ -88,8 +88,8 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="wholesale">ОПТ</SelectItem>
-                  <SelectItem value="refueling">Заправка ВС</SelectItem>
+                  <SelectItem value={COUNTERPARTY_TYPE.WHOLESALE}>ОПТ</SelectItem>
+                  <SelectItem value={COUNTERPARTY_TYPE.REFUELING}>Заправка ВС</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -110,8 +110,8 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="supplier">Поставщик</SelectItem>
-                  <SelectItem value="buyer">Покупатель</SelectItem>
+                  <SelectItem value={COUNTERPARTY_ROLE.SUPPLIER}>Поставщик</SelectItem>
+                  <SelectItem value={COUNTERPARTY_ROLE.BUYER}>Покупатель</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

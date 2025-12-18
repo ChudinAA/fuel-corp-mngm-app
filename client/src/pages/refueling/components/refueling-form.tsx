@@ -47,7 +47,7 @@ export function RefuelingForm({
     resolver: zodResolver(refuelingFormSchema),
     defaultValues: {
       refuelingDate: editData ? new Date(editData.refuelingDate) : new Date(),
-      productType: "kerosene",
+      productType: PRODUCT_TYPE.KEROSENE,
       aircraftNumber: "",
       orderNumber: "",
       supplierId: "",
@@ -196,11 +196,11 @@ export function RefuelingForm({
     if (!supplier) return [];
 
     // Определяем тип продукта для поиска цены
-    let priceProductType = "kerosine";
-    if (watchProductType === "pvkj") {
-      priceProductType = "pvkj";
-    } else if (watchProductType === "service") {
-      priceProductType = "service";
+    let priceProductType = PRODUCT_TYPE.KEROSINE;
+    if (watchProductType === PRODUCT_TYPE.PVKJ) {
+      priceProductType = PRODUCT_TYPE.PVKJ;
+    } else if (watchProductType === PRODUCT_TYPE.SERVICE) {
+      priceProductType = PRODUCT_TYPE.SERVICE;
     }
 
     return allPrices?.filter(p => {
@@ -227,8 +227,8 @@ export function RefuelingForm({
     if (!buyer) return [];
 
     // Определяем тип продукта для поиска цены
-    let priceProductType = "kerosine";
-    if (watchProductType === "pvkj") {
+    let priceProductType = PRODUCT_TYPE.KEROSINE;
+    if (watchProductType === PRODUCT_TYPE.PVKJ) {
       priceProductType = PRODUCT_TYPE.PVKJ;
     } else if (watchProductType === PRODUCT_TYPE.SERVICE) {
       priceProductType = PRODUCT_TYPE.SERVICE;
@@ -397,7 +397,7 @@ export function RefuelingForm({
 
   const getWarehouseStatus = (): { status: "ok" | "warning" | "error"; message: string } => {
     // Для услуги заправки склад не проверяем
-    if (watchProductType === "service") {
+    if (watchProductType === PRODUCT_TYPE.SERVICE) {
       return { status: "ok", message: "—" };
     }
 
@@ -410,7 +410,7 @@ export function RefuelingForm({
     }
 
     // Для ПВКЖ проверяем баланс ПВКЖ
-    if (watchProductType === "pvkj") {
+    if (watchProductType === PRODUCT_TYPE.PVKJ) {
       const currentBalance = parseFloat(supplierWarehouse.pvkjBalance || "0");
       const remaining = currentBalance - finalKg;
 
