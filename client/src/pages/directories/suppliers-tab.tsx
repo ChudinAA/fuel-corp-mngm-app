@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -18,6 +17,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Search, Building2, Pencil, Trash2, Warehouse, Droplets, Fuel } from "lucide-react";
 import type { Supplier, Base } from "@shared/schema";
+import { BASE_TYPE } from "@shared/constants";
 import { AddSupplierDialog } from "./suppliers-dialog";
 
 export function SuppliersTab() {
@@ -145,7 +145,7 @@ export function SuppliersTab() {
                                 supplier.baseIds.map((baseId) => {
                                   const base = bases.find(b => b.id === baseId);
                                   if (!base) return null;
-                                  const isWholesale = base.baseType === 'wholesale';
+                                  const isWholesale = base.baseType === BASE_TYPE.WHOLESALE;
                                   return (
                                     <div key={baseId} className="flex items-center gap-1">
                                       <span className="text-sm">{base.name}</span>

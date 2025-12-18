@@ -1,9 +1,9 @@
-
 import type { Express } from "express";
 import { storage } from "../../storage/index";
 import { insertSupplierSchema } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth } from "../middleware";
+import { BASE_TYPE } from "@shared/constants";
 
 export function registerSuppliersRoutes(app: Express) {
   app.get("/api/suppliers", requireAuth, async (req, res) => {
@@ -26,13 +26,13 @@ export function registerSuppliersRoutes(app: Express) {
         ...req.body,
         createdById: req.session.userId,
       });
-      
+
       // First, create the supplier
       const item = await storage.suppliers.createSupplier({
         ...data,
         warehouseId: data.warehouseId || null,
       });
-      
+
       // Then create warehouse if supplier is marked as warehouse and doesn't have one
       if (data.isWarehouse && !data.warehouseId && data.baseIds && data.baseIds.length > 0) {
         const warehouse = await storage.warehouses.createWarehouse({
@@ -43,13 +43,13 @@ export function registerSuppliersRoutes(app: Express) {
           isActive: data.isActive ?? true,
           createdById: req.session.userId,
         });
-        
+
         // Link warehouse back to supplier
         await storage.suppliers.updateSupplier(item.id, {
           warehouseId: warehouse.id,
         });
       }
-      
+
       res.status(201).json(item);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -80,7 +80,7 @@ export function registerSuppliersRoutes(app: Express) {
   app.delete("/api/suppliers/:id", requireAuth, async (req, res) => {
     try {
       const id = req.params.id;
-      
+
       // Check if supplier has a warehouse
       const supplier = await storage.suppliers.getSupplier(id);
       if (supplier?.warehouseId) {
@@ -88,7 +88,7 @@ export function registerSuppliersRoutes(app: Express) {
           isActive: false,
         });
       }
-      
+
       await storage.suppliers.deleteSupplier(id);
       res.json({ message: "Поставщик удален" });
     } catch (error) {

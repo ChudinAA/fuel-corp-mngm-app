@@ -3,6 +3,7 @@ import { storage } from "../storage/index";
 import { insertPriceSchema } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth } from "./middleware";
+import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
 
 export function registerPricesRoutes(app: Express) {
 

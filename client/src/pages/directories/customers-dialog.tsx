@@ -1,23 +1,24 @@
-
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { CUSTOMER_MODULE } from "@shared/constants";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Loader2 } from "lucide-react";
+import type { Customer } from "@shared/schema";
 
 const customerFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
-  module: z.enum(["wholesale", "refueling", "both"]),
+  module: z.enum([CUSTOMER_MODULE.WHOLESALE, CUSTOMER_MODULE.REFUELING, CUSTOMER_MODULE.BOTH]),
   description: z.string().optional(),
   contactPerson: z.string().optional(),
   phone: z.string().optional(),
@@ -37,7 +38,7 @@ export function AddCustomerDialog({ editCustomer, onEditComplete }: { editCustom
     resolver: zodResolver(customerFormSchema),
     defaultValues: {
       name: "",
-      module: "both",
+      module: CUSTOMER_MODULE.BOTH,
       description: "",
       contactPerson: "",
       phone: "",
@@ -78,7 +79,7 @@ export function AddCustomerDialog({ editCustomer, onEditComplete }: { editCustom
         contractNumber: data.contractNumber,
         isActive: data.isActive,
       };
-      
+
       if (editCustomer) {
         const res = await apiRequest("PATCH", `/api/customers/${editCustomer.id}`, payload);
         return res.json();
@@ -112,7 +113,7 @@ export function AddCustomerDialog({ editCustomer, onEditComplete }: { editCustom
       // Сбрасываем форму при открытии диалога для создания новой записи
       form.reset({
         name: "",
-        module: "both",
+        module: CUSTOMER_MODULE.BOTH,
         description: "",
         contactPerson: "",
         phone: "",
@@ -152,9 +153,9 @@ export function AddCustomerDialog({ editCustomer, onEditComplete }: { editCustom
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="both">Общий (ОПТ и Заправка)</SelectItem>
-                      <SelectItem value="wholesale">Только ОПТ</SelectItem>
-                      <SelectItem value="refueling">Только Заправка ВС</SelectItem>
+                      <SelectItem value={CUSTOMER_MODULE.BOTH}>Общий (ОПТ и Заправка)</SelectItem>
+                      <SelectItem value={CUSTOMER_MODULE.WHOLESALE}>Только ОПТ</SelectItem>
+                      <SelectItem value={CUSTOMER_MODULE.REFUELING}>Только Заправка ВС</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

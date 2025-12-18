@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { BASE_TYPE } from "@shared/constants";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -129,7 +129,7 @@ export function AddSupplierDialog({
 
   const getBaseTypeLabel = (baseId: string) => {
     const base = bases.find(b => b.id === baseId);
-    return base?.baseType === 'wholesale' ? 'ОПТ' : 'Заправка';
+    return base?.baseType === BASE_TYPE.WHOLESALE ? 'ОПТ' : 'Заправка';
   };
 
   return (
@@ -189,7 +189,7 @@ export function AddSupplierDialog({
                             <div className="flex items-center gap-2">
                               {b.name}
                               <Badge variant="outline" className="text-xs">
-                                {b.baseType === 'wholesale' ? 'ОПТ' : 'Заправка'}
+                                {b.baseType === BASE_TYPE.WHOLESALE ? 'ОПТ' : 'Заправка'}
                               </Badge>
                             </div>
                           </SelectItem>
