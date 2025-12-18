@@ -972,102 +972,60 @@ export function OptForm({
               <FormField
                 control={form.control}
                 name="carrierId"
-                render={({ field }) => {
-                  // Фильтруем перевозчиков, у которых есть тарифы с текущим базисом
-                  const availableCarriers = carriers?.filter(carrier => {
-                    if (!selectedBasis || !deliveryCosts) return true;
-
-                    const base = bases?.find(b => b.name === selectedBasis);
-                    if (!base) return true;
-
-                    const warehouse = supplierWarehouse;
-
-                    return deliveryCosts.some(dc => 
-                      dc.carrierId === carrier.id &&
-                      (
-                        (dc.fromEntityType === "base" && dc.fromEntityId === base.id) ||
-                        (warehouse && dc.fromEntityType === "warehouse" && dc.fromEntityId === warehouse.id)
-                      )
-                    );
-                  }) || [];
-
-                  return (
-                    <FormItem>
-                      <FormLabel>Перевозчик</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-carrier">
-                            <SelectValue placeholder="Выберите перевозчика" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {availableCarriers.length > 0 ? (
-                            availableCarriers.map((carrier) => (
-                              <SelectItem key={carrier.id} value={carrier.id}>
-                                {carrier.name}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="none" disabled>Нет доступных перевозчиков</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Перевозчик</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-carrier">
+                          <SelectValue placeholder="Выберите перевозчика" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {formData.availableCarriers.length > 0 ? (
+                          formData.availableCarriers.map((carrier: any) => (
+                            <SelectItem key={carrier.id} value={carrier.id}>
+                              {carrier.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>Нет доступных перевозчиков</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
 
               <FormField
                 control={form.control}
                 name="deliveryLocationId"
-                render={({ field }) => {
-                  // Фильтруем места доставки, для которых есть тарифы с выбранным перевозчиком и базисом/складом
-                  const availableLocations = deliveryLocations?.filter(location => {
-                    if (!watchCarrierId || !deliveryCosts) return true;
-
-                    const base = bases?.find(b => b.name === selectedBasis);
-                    const warehouse = supplierWarehouse;
-
-                    return deliveryCosts.some(dc => 
-                      dc.carrierId === watchCarrierId &&
-                      dc.toEntityType === "delivery_location" &&
-                      dc.toEntityId === location.id &&
-                      (
-                        (base && dc.fromEntityType === "base" && dc.fromEntityId === base.id) ||
-                        (warehouse && dc.fromEntityType === "warehouse" && dc.fromEntityId === warehouse.id)
-                      )
-                    );
-                  }) || [];
-
-                  return (
-                    <FormItem>
-                      <FormLabel>Место доставки</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-delivery-location">
-                            <SelectValue placeholder="Выберите место" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {availableLocations.length > 0 ? (
-                            availableLocations.map((location) => (
-                              <SelectItem key={location.id} value={location.id}>
-                                {location.name}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="none" disabled>Нет доступных мест доставки</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Место доставки</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-delivery-location">
+                          <SelectValue placeholder="Выберите место" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {formData.availableLocations.length > 0 ? (
+                          formData.availableLocations.map((location: any) => (
+                            <SelectItem key={location.id} value={location.id}>
+                              {location.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>Нет доступных мест доставки</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-
-
             </div>
           </CardContent>
         </Card>
