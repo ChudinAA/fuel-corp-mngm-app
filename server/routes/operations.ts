@@ -3,7 +3,7 @@ import { registerWarehousesOperationsRoutes } from "./operations/warehouses";
 import { registerExchangeRoutes } from "./operations/exchange";
 import { registerMovementRoutes } from "./operations/movement";
 import { registerOptRoutes } from "./operations/opt";
-import { registerAircraftRefuelingRoutes } from "./operations/refueling";
+import { registerRefuelingOperationsRoutes } from "./operations/refueling";
 import { registerDashboardRoutes } from "./operations/dashboard";
 
 export function registerOperationsRoutes(app: Express) {
@@ -11,6 +11,6 @@ export function registerOperationsRoutes(app: Express) {
   registerExchangeRoutes(app);
   registerMovementRoutes(app);
   registerOptRoutes(app);
-  registerAircraftRefuelingRoutes(app);
+  registerRefuelingOperationsRoutes(app);
   registerDashboardRoutes(app);
 }

@@ -6,9 +6,6 @@ import { registerAdminRoutes } from "./routes/admin";
 import { registerDirectoriesRoutes } from "./routes/directories";
 import { registerPricesRoutes } from "./routes/prices";
 import { registerDeliveryRoutes } from "./routes/delivery"; // Import new delivery routes
-import { registerOptRoutes } from "./routes/operations/opt";
-import { registerOptHelpersRoutes } from "./routes/operations/opt-helpers";
-import { registerAircraftRefuelingRoutes } from "./routes/operations/refueling";
 import { registerOperationsRoutes } from "./routes/operations";
 import { seedDefaultRoles } from "./routes/utils";
 
@@ -44,9 +41,6 @@ export async function registerRoutes(
   registerDirectoriesRoutes(app);
   registerPricesRoutes(app);
   registerDeliveryRoutes(app); // Register new delivery routes
-  registerOptRoutes(app);
-  registerOptHelpersRoutes(app);
-  registerAircraftRefuelingRoutes(app);
   registerOperationsRoutes(app);
 
   return httpServer;
