@@ -5,7 +5,7 @@ import { insertAircraftRefuelingSchema } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth } from "../middleware";
 
-export function registerRefuelingOperationsRoutes(app: Express) {
+export function registerAircraftRefuelingRoutes(app: Express) {
   app.get("/api/refueling", requireAuth, async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;

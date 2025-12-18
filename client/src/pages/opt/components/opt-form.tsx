@@ -23,6 +23,7 @@ import { CalculatedField } from "./calculated-field";
 import { optFormSchema, type OptFormData } from "../schemas";
 import { formatNumber, formatCurrency } from "../utils";
 import type { OptFormProps } from "../types";
+import { useOptFormData } from "../hooks/use-opt-form-data";
 
 export function OptForm({ 
   onSuccess, 
@@ -118,13 +119,7 @@ export function OptForm({
     queryKey: ["/api/warehouses"],
   });
 
-  const { data: carriers } = useQuery<LogisticsCarrier[]>({
-    queryKey: ["/api/logistics/carriers"],
-  });
-
-  const { data: deliveryLocations } = useQuery<LogisticsDeliveryLocation[]>({
-    queryKey: ["/api/logistics/delivery-locations"],
-  });
+  
 
   const { data: allPrices } = useQuery<Price[]>({
     queryKey: ["/api/prices"],
@@ -132,6 +127,18 @@ export function OptForm({
 
   const { data: deliveryCosts } = useQuery<DeliveryCost[]>({
     queryKey: ["/api/delivery-costs"],
+  });
+
+  // Use the opt form data hook
+  const formData = useOptFormData({
+    supplierId: watchSupplierId,
+    buyerId: watchBuyerId,
+    dealDate: watchDealDate,
+    basis: selectedBasis,
+    carrierId: watchCarrierId,
+    deliveryLocationId: watchDeliveryLocationId,
+    warehouseId: supplierWarehouse?.id,
+    quantityKg: finalKg,
   });
 
   const watchSupplierId = form.watch("supplierId");
@@ -186,54 +193,26 @@ export function OptForm({
     }
   }, [watchSupplierId, suppliers, allBases, warehouses, form]);
 
-  // Фильтрация цен покупки (от поставщика)
-  const getMatchingPurchasePrices = () => {
-    if (!watchSupplierId || !selectedBasis || !watchDealDate) return [];
+  // Get prices from backend
+  const purchasePrices = formData.purchasePrices.flatMap(p => 
+    (p.values || []).map((v: any, idx: number) => ({
+      id: p.id,
+      priceValues: [JSON.stringify({ price: v.price })],
+    }))
+  );
 
-    const dateStr = format(watchDealDate, "yyyy-MM-dd");
-    const supplier = suppliers?.find(s => s.id === watchSupplierId);
-    if (!supplier) return [];
-
-    return allPrices?.filter(p =>
-      p.counterpartyId === watchSupplierId &&
-      p.counterpartyType === "wholesale" &&
-      p.counterpartyRole === "supplier" &&
-      p.productType === "kerosine" &&
-      p.basis === selectedBasis &&
-      p.dateFrom <= dateStr &&
-      p.dateTo >= dateStr &&
-      p.isActive
-    ) || [];
-  };
-
-  const purchasePrices = getMatchingPurchasePrices();
-
-  // Фильтрация цен продажи (для покупателя)
-  const getMatchingSalePrices = () => {
-    if (!watchBuyerId || !selectedBasis || !watchDealDate) return [];
-
-    const dateStr = format(watchDealDate, "yyyy-MM-dd");
-    const buyer = customers?.find(c => c.id === watchBuyerId);
-    if (!buyer) return [];
-
-    return allPrices?.filter(p =>
-      p.counterpartyId === watchBuyerId &&
-      p.counterpartyType === "wholesale" &&
-      p.counterpartyRole === "buyer" &&
-      p.productType === "kerosine" &&
-      p.dateFrom <= dateStr &&
-      p.dateTo >= dateStr &&
-      p.isActive
-    ) || [];
-  };
-
-  const salePrices = getMatchingSalePrices();
+  const salePrices = formData.salePrices.flatMap(p => 
+    (p.values || []).map((v: any, idx: number) => ({
+      id: p.id,
+      priceValues: [JSON.stringify({ price: v.price })],
+    }))
+  );
 
   // Получение цены покупки
   const getPurchasePrice = (): number | null => {
     // Если поставщик-склад, берем себестоимость со склада
-    if (isWarehouseSupplier && supplierWarehouse) {
-      return parseFloat(supplierWarehouse.averageCost || "0");
+    if (isWarehouseSupplier && formData.warehouseAverageCost) {
+      return parseFloat(formData.warehouseAverageCost);
     }
 
     // Иначе берем из таблицы цен
@@ -296,42 +275,9 @@ export function OptForm({
     return null;
   };
 
-  // Получение стоимости доставки
-  const getDeliveryCost = (): number | null => {
-    if (!watchDeliveryLocationId || !watchCarrierId || !deliveryCosts || !finalKg || finalKg <= 0) {
-      return null;
-    }
-
-    // Находим baseId по selectedBasis
-    const base = bases?.find(b => b.name === selectedBasis);
-    const warehouse = supplierWarehouse;
-
-    // Ищем тариф по baseId/warehouseId и destinationId
-    const cost = deliveryCosts.find(dc => {
-      const matchesCarrier = dc.carrierId === watchCarrierId;
-      const matchesDestination = dc.toEntityType === "delivery_location" && dc.toEntityId === watchDeliveryLocationId;
-
-      let matchesSource = false;
-      if (warehouse && dc.fromEntityType === "warehouse" && dc.fromEntityId === warehouse.id) {
-        matchesSource = true;
-      } else if (base && dc.fromEntityType === "base" && dc.fromEntityId === base.id) {
-        matchesSource = true;
-      }
-
-      return matchesCarrier && matchesDestination && matchesSource && dc.isActive;
-    });
-
-    if (cost?.costPerKg) {
-      const totalCost = parseFloat(cost.costPerKg) * finalKg;
-      return totalCost;
-    }
-
-    return null;
-  };
-
   const purchasePrice = getPurchasePrice();
   const salePrice = getSalePrice();
-  const calculatedDeliveryCost = getDeliveryCost();
+  const calculatedDeliveryCost = formData.deliveryCost;
 
   const purchaseAmount = purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
   const saleAmount = salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
@@ -346,17 +292,15 @@ export function OptForm({
 
   // Проверка остатка на складе
   const getWarehouseStatus = (): { status: "ok" | "warning" | "error"; message: string } => {
-    // Если поставщик не со склада
     if (!isWarehouseSupplier) {
       return { status: "ok", message: "ОК" };
     }
 
-    // Если поставщик-склад
-    if (!supplierWarehouse || finalKg <= 0) {
+    if (!formData.warehouseBalance || finalKg <= 0) {
       return { status: "ok", message: "—" };
     }
 
-    const currentBalance = parseFloat(supplierWarehouse.currentBalance || "0");
+    const currentBalance = parseFloat(formData.warehouseBalance);
     const remaining = currentBalance - finalKg;
 
     if (remaining >= 0) {
@@ -368,69 +312,68 @@ export function OptForm({
 
   const warehouseStatus = getWarehouseStatus();
 
+  const buildMutationPayload = (data: OptFormData) => {
+    let purchasePriceId = null;
+    let purchasePriceIndex = 0;
+    
+    if (!isWarehouseSupplier && selectedPurchasePriceId) {
+      const parts = selectedPurchasePriceId.split('-');
+      if (parts.length >= 5) {
+        purchasePriceIndex = parseInt(parts[parts.length - 1]);
+        purchasePriceId = parts.slice(0, -1).join('-');
+      } else {
+        purchasePriceId = selectedPurchasePriceId;
+      }
+    } else if (!isWarehouseSupplier && formData.purchasePrices.length > 0) {
+      purchasePriceId = formData.purchasePrices[0].id;
+      purchasePriceIndex = 0;
+    }
+    
+    let salePriceId = null;
+    let salePriceIndex = 0;
+    
+    if (selectedSalePriceId) {
+      const parts = selectedSalePriceId.split('-');
+      if (parts.length >= 5) {
+        salePriceIndex = parseInt(parts[parts.length - 1]);
+        salePriceId = parts.slice(0, -1).join('-');
+      } else {
+        salePriceId = selectedSalePriceId;
+      }
+    } else if (formData.salePrices.length > 0) {
+      salePriceId = formData.salePrices[0].id;
+      salePriceIndex = 0;
+    }
+
+    return {
+      ...data,
+      supplierId: data.supplierId,
+      buyerId: data.buyerId,
+      warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
+      basis: selectedBasis,
+      carrierId: data.carrierId || null,
+      deliveryLocationId: data.deliveryLocationId || null,
+      dealDate: format(data.dealDate, "yyyy-MM-dd"),
+      quantityKg: parseFloat(calculatedKg),
+      quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
+      density: data.density ? parseFloat(data.density) : null,
+      purchasePrice: purchasePrice,
+      purchasePriceId: purchasePriceId,
+      purchasePriceIndex: purchasePriceIndex,
+      salePrice: salePrice,
+      salePriceId: salePriceId,
+      salePriceIndex: salePriceIndex,
+      purchaseAmount: purchaseAmount,
+      saleAmount: saleAmount,
+      deliveryCost: calculatedDeliveryCost,
+      deliveryTariff: deliveryTariff,
+      profit: profit,
+    };
+  };
+
   const createMutation = useMutation({
     mutationFn: async (data: OptFormData) => {
-      const purchasePrices = getMatchingPurchasePrices();
-      const salePrices = getMatchingSalePrices();
-      
-      // Извлекаем ID цены и индекс из составного ID
-      let purchasePriceId = null;
-      let purchasePriceIndex = 0;
-      
-      if (!isWarehouseSupplier && selectedPurchasePriceId) {
-        const parts = selectedPurchasePriceId.split('-');
-        if (parts.length >= 5) {
-          // Это UUID формата "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx-index"
-          purchasePriceIndex = parseInt(parts[parts.length - 1]);
-          purchasePriceId = parts.slice(0, -1).join('-');
-        } else {
-          purchasePriceId = selectedPurchasePriceId;
-        }
-      } else if (!isWarehouseSupplier && purchasePrices.length > 0) {
-        purchasePriceId = purchasePrices[0].id;
-        purchasePriceIndex = 0;
-      }
-      
-      let salePriceId = null;
-      let salePriceIndex = 0;
-      
-      if (selectedSalePriceId) {
-        const parts = selectedSalePriceId.split('-');
-        if (parts.length >= 5) {
-          salePriceIndex = parseInt(parts[parts.length - 1]);
-          salePriceId = parts.slice(0, -1).join('-');
-        } else {
-          salePriceId = selectedSalePriceId;
-        }
-      } else if (salePrices.length > 0) {
-        salePriceId = salePrices[0].id;
-        salePriceIndex = 0;
-      }
-
-      const payload = {
-        ...data,
-        supplierId: data.supplierId,
-        buyerId: data.buyerId,
-        warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
-        basis: selectedBasis,
-        carrierId: data.carrierId || null,
-        deliveryLocationId: data.deliveryLocationId || null,
-        dealDate: format(data.dealDate, "yyyy-MM-dd"),
-        quantityKg: parseFloat(calculatedKg),
-        quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
-        density: data.density ? parseFloat(data.density) : null,
-        purchasePrice: purchasePrice,
-        purchasePriceId: purchasePriceId,
-        purchasePriceIndex: purchasePriceIndex,
-        salePrice: salePrice,
-        salePriceId: salePriceId,
-        salePriceIndex: salePriceIndex,
-        purchaseAmount: purchaseAmount,
-        saleAmount: saleAmount,
-        deliveryCost: calculatedDeliveryCost,
-        deliveryTariff: deliveryTariff,
-        profit: profit,
-      };
+      const payload = buildMutationPayload(data);
       const res = await apiRequest("POST", "/api/opt", payload);
       return res.json();
     },
@@ -458,66 +401,7 @@ export function OptForm({
 
   const updateMutation = useMutation({
     mutationFn: async (data: OptFormData & { id: string }) => {
-      const purchasePrices = getMatchingPurchasePrices();
-      const salePrices = getMatchingSalePrices();
-      
-      // Извлекаем ID цены и индекс из составного ID
-      let purchasePriceId = null;
-      let purchasePriceIndex = 0;
-      
-      if (!isWarehouseSupplier && selectedPurchasePriceId) {
-        const parts = selectedPurchasePriceId.split('-');
-        if (parts.length >= 5) {
-          purchasePriceIndex = parseInt(parts[parts.length - 1]);
-          purchasePriceId = parts.slice(0, -1).join('-');
-        } else {
-          purchasePriceId = selectedPurchasePriceId;
-        }
-      } else if (!isWarehouseSupplier && purchasePrices.length > 0) {
-        purchasePriceId = purchasePrices[0].id;
-        purchasePriceIndex = 0;
-      }
-      
-      let salePriceId = null;
-      let salePriceIndex = 0;
-      
-      if (selectedSalePriceId) {
-        const parts = selectedSalePriceId.split('-');
-        if (parts.length >= 5) {
-          salePriceIndex = parseInt(parts[parts.length - 1]);
-          salePriceId = parts.slice(0, -1).join('-');
-        } else {
-          salePriceId = selectedSalePriceId;
-        }
-      } else if (salePrices.length > 0) {
-        salePriceId = salePrices[0].id;
-        salePriceIndex = 0;
-      }
-
-      const payload = {
-        ...data,
-        supplierId: data.supplierId,
-        buyerId: data.buyerId,
-        warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
-        basis: selectedBasis,
-        carrierId: data.carrierId || null,
-        deliveryLocationId: data.deliveryLocationId || null,
-        dealDate: format(data.dealDate, "yyyy-MM-dd"),
-        quantityKg: parseFloat(calculatedKg),
-        quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
-        density: data.density ? parseFloat(data.density) : null,
-        purchasePrice: purchasePrice,
-        purchasePriceId: purchasePriceId,
-        purchasePriceIndex: purchasePriceIndex,
-        salePrice: salePrice,
-        salePriceId: salePriceId,
-        salePriceIndex: salePriceIndex,
-        purchaseAmount: purchaseAmount,
-        saleAmount: saleAmount,
-        deliveryCost: calculatedDeliveryCost,
-        deliveryTariff: deliveryTariff,
-        profit: profit,
-      };
+      const payload = buildMutationPayload(data);
       const res = await apiRequest("PATCH", `/api/opt/${data.id}`, payload);
       return res.json();
     },
