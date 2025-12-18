@@ -9,7 +9,7 @@ export const priceFormSchema = z.object({
   counterpartyType: z.enum([COUNTERPARTY_TYPE.WHOLESALE, COUNTERPARTY_TYPE.REFUELING]),
   counterpartyRole: z.enum([COUNTERPARTY_ROLE.SUPPLIER, COUNTERPARTY_ROLE.BUYER]),
   counterpartyId: z.string().min(1, "Выберите контрагента"),
-  productType: z.enum([PRODUCT_TYPE.KEROSINE, PRODUCT_TYPE.SERVICE, PRODUCT_TYPE.PVKJ, PRODUCT_TYPE.AGENT, PRODUCT_TYPE.STORAGE]),
+  productType: z.enum([PRODUCT_TYPE.KEROSENE, PRODUCT_TYPE.SERVICE, PRODUCT_TYPE.PVKJ, PRODUCT_TYPE.AGENT, PRODUCT_TYPE.STORAGE]),
   basis: z.string().min(1, "Выберите базис"),
   volume: z.string().optional(),
   priceValues: z.array(z.object({

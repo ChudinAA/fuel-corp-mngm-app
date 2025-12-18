@@ -32,7 +32,7 @@ export const getPriceDisplay = (priceValues: string[] | null) => {
 
 export const getProductTypeLabel = (productType: string) => {
   const labels: Record<string, string> = {
-    [PRODUCT_TYPE.KEROSINE]: "Керосин",
+    [PRODUCT_TYPE.KEROSENE]: "Керосин",
     [PRODUCT_TYPE.PVKJ]: "ПВКЖ",
     [PRODUCT_TYPE.SERVICE]: "Услуга",
     [PRODUCT_TYPE.AGENT]: "Агентские",

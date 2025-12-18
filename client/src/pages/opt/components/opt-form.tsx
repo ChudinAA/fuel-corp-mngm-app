@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, BASE_TYPE, CUSTOMER_MODULE } from "@shared/constants";
+import { PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, BASE_TYPE, CUSTOMER_MODULE, ENTITY_TYPE } from "@shared/constants";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -197,9 +197,9 @@ export function OptForm({
 
     return allPrices?.filter(p =>
       p.counterpartyId === watchSupplierId &&
-      p.counterpartyType === "wholesale" &&
-      p.counterpartyRole === "supplier" &&
-      p.productType === "kerosine" &&
+      p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
+      p.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER &&
+      p.productType === PRODUCT_TYPE.KEROSENE &&
       p.basis === selectedBasis &&
       p.dateFrom <= dateStr &&
       p.dateTo >= dateStr &&
@@ -221,7 +221,7 @@ export function OptForm({
       p.counterpartyId === watchBuyerId &&
       p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
       p.counterpartyRole === COUNTERPARTY_ROLE.BUYER &&
-      p.productType === PRODUCT_TYPE.KEROSINE &&
+      p.productType === PRODUCT_TYPE.KEROSENE &&
       p.dateFrom <= dateStr &&
       p.dateTo >= dateStr &&
       p.isActive
@@ -310,12 +310,12 @@ export function OptForm({
     // Ищем тариф по baseId/warehouseId и destinationId
     const cost = deliveryCosts.find(dc => {
       const matchesCarrier = dc.carrierId === watchCarrierId;
-      const matchesDestination = dc.toEntityType === "delivery_location" && dc.toEntityId === watchDeliveryLocationId;
+      const matchesDestination = dc.toEntityType === ENTITY_TYPE.DELIVERY_LOCATION && dc.toEntityId === watchDeliveryLocationId;
 
       let matchesSource = false;
-      if (warehouse && dc.fromEntityType === "warehouse" && dc.fromEntityId === warehouse.id) {
+      if (warehouse && dc.fromEntityType === ENTITY_TYPE.WAREHOUSE && dc.fromEntityId === warehouse.id) {
         matchesSource = true;
-      } else if (base && dc.fromEntityType === "base" && dc.fromEntityId === base.id) {
+      } else if (base && dc.fromEntityType === ENTITY_TYPE.BASE && dc.fromEntityId === base.id) {
         matchesSource = true;
       }
 

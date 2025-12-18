@@ -179,7 +179,7 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                     <Badge 
                       variant="outline"
                       className={
-                        price.productType === PRODUCT_TYPE.KEROSINE ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30" :
+                        price.productType === PRODUCT_TYPE.KEROSENE ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30" :
                         price.productType === PRODUCT_TYPE.PVKJ ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" :
                         price.productType === PRODUCT_TYPE.SERVICE ? "bg-green-50/50 dark:bg-green-950/20 border-green-200/30 dark:border-green-800/30" :
                         price.productType === PRODUCT_TYPE.AGENT ? "bg-orange-50/50 dark:bg-orange-950/20 border-orange-200/30 dark:border-orange-800/30" :

@@ -7,6 +7,7 @@ import { Package, Plane, TruckIcon, ShoppingCart } from "lucide-react";
 import type { Price } from "@shared/schema";
 import { AddPriceDialog } from "./prices/components/add-price-dialog";
 import { PricesTable } from "./prices/components/prices-table";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 export default function PricesPage() {
   const [editingPrice, setEditingPrice] = useState<Price | null>(null);
@@ -92,11 +93,11 @@ export default function PricesPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Все продукты</SelectItem>
-                <SelectItem value="kerosine">Керосин</SelectItem>
-                <SelectItem value="service">Услуги</SelectItem>
-                <SelectItem value="pvkj">ПВКЖ</SelectItem>
-                <SelectItem value="agent">Агентское</SelectItem>
-                <SelectItem value="storage">Хранение</SelectItem>
+                <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
+                <SelectItem value={PRODUCT_TYPE.SERVICE}>Услуги</SelectItem>
+                <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
+                <SelectItem value={PRODUCT_TYPE.AGENT}>Агентское</SelectItem>
+                <SelectItem value={PRODUCT_TYPE.STORAGE}>Хранение</SelectItem>
               </SelectContent>
             </Select>
           </div>

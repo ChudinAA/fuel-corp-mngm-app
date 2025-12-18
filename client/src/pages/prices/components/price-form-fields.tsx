@@ -157,7 +157,7 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value={PRODUCT_TYPE.KEROSINE}>Керосин</SelectItem>
+                  <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
                   <SelectItem value={PRODUCT_TYPE.SERVICE}>Услуга</SelectItem>
                   <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
                   <SelectItem value={PRODUCT_TYPE.AGENT}>Агентские</SelectItem>

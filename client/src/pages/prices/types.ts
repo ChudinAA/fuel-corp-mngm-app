@@ -6,7 +6,7 @@ export interface PriceFormData {
   counterpartyType: "wholesale" | "refueling";
   counterpartyRole: "supplier" | "buyer";
   counterpartyId: string;
-  productType: "kerosine" | "service" | "pvkj" | "agent" | "storage";
+  productType: "kerosene" | "service" | "pvkj" | "agent" | "storage";
   basis: string;
   volume?: string;
   priceValues: Array<{ price: string }>;

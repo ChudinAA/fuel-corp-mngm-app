@@ -2,7 +2,6 @@
 // Product types used across the application
 export const PRODUCT_TYPE = {
   KEROSENE: 'kerosene',
-  KEROSINE: 'kerosine', // Alternative spelling used in prices
   PVKJ: 'pvkj',
   SERVICE: 'service',
   STORAGE: 'storage',
