@@ -392,7 +392,7 @@ export function MovementDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="supply">Поставка</SelectItem>
+                        <SelectItem value="supply">Покупка</SelectItem>
                         <SelectItem value="internal">Внутреннее перемещение</SelectItem>
                       </SelectContent>
                     </Select>

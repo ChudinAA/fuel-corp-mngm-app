@@ -127,7 +127,7 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
                 <TableCell>{formatDate(item.movementDate)}</TableCell>
                 <TableCell>
                   <Badge variant="outline">
-                    {item.movementType === "supply" ? "Поставка" : "Внутреннее"}
+                    {item.movementType === "supply" ? "Покупка" : "Внутреннее"}
                   </Badge>
                 </TableCell>
                 <TableCell>

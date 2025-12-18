@@ -1,67 +1,20 @@
 import React, { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm, useFieldArray } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { format } from "date-fns";
-import { ru } from "date-fns/locale";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
 import {
   Plus,
-  Pencil,
-  Trash2,
-  Loader2,
   Search,
-  Warehouse,
-  AlertTriangle,
-  TrendingUp,
-  TrendingDown,
-  ArrowUpCircle,
-  ArrowDownCircle,
-  Package,
-  X
+  Warehouse
 } from "lucide-react";
-import type { Warehouse as WarehouseType, WholesaleBase, RefuelingBase } from "@shared/schema";
+import type { Warehouse as WarehouseType } from "@shared/schema";
 import { WarehouseStatsCards } from "./warehouses/components/warehouse-stats-cards";
 import { WarehouseCard } from "./warehouses/components/warehouse-card";
 import { AddWarehouseDialog } from "./warehouses/components/add-warehouse-dialog";
 import { WarehouseDetailsDialog } from "./warehouses/components/warehouse-details-dialog";
-
-
-interface WarehouseTransaction {
-  id: string;
-  warehouseId: string;
-  transactionType: string;
-  sourceType: string;
-  sourceId: string;
-  quantityKg: string;
-  balanceBefore: string;
-  balanceAfter: string;
-  averageCostBefore: string;
-  averageCostAfter: string;
-  createdAt: string;
-}
-
-const warehouseFormSchema = z.object({
-  name: z.string().min(1, "Укажите название"),
-  baseId: z.string().min(1, "Выберите базис"),
-});
-
-type WarehouseFormData = z.infer<typeof warehouseFormSchema>;
 
 // WarehouseDetailsDialog component is now imported from ./warehouses/components/warehouse-details-dialog
 // WarehouseCard component is now imported from ./warehouses/components/warehouse-card
@@ -107,14 +60,6 @@ export default function WarehousesPage() {
 
   const formatNumber = (value: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value);
   const formatCurrency = (value: number) => new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 2 }).format(value);
-
-  const getBaseNames = (baseIds: string[] | null | undefined) => {
-    if (!baseIds || baseIds.length === 0 || !allBases) return null;
-    return baseIds
-      .map(id => allBases.find((b: any) => b.id === id)?.name)
-      .filter(Boolean)
-      .join(", ");
-  };
 
   const handleSave = () => {
     setEditingWarehouse(null);

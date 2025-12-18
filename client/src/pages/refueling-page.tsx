@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Maximize2 } from "lucide-react";
 import type { AircraftRefueling } from "@shared/schema";
 import { AddRefuelingDialog } from "./refueling/components/add-refueling-dialog";
@@ -15,7 +14,7 @@ export default function RefuelingPage() {
   const [editingRefueling, setEditingRefueling] = useState<AircraftRefueling | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
+  const [productTypeFilter] = useState<string>("all");
   const queryClient = useQueryClient();
 
   const { data: refuelingDeals } = useQuery<{ data: AircraftRefueling[]; total: number }>({

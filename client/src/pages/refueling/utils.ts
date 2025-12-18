@@ -16,10 +16,10 @@ export const formatNumberForTable = (value: string | number | null | undefined):
 
   if (num >= 1000) {
     const kValue = num / 1000;
-    return `${kValue.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}к`;
+    return `${kValue.toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}к`;
   }
 
-  return num.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return num.toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 };
 
 export const formatCurrency = (value: string | number | null | undefined): string => {

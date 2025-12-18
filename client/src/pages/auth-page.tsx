@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Fuel, Building2, Plane, Warehouse, BarChart3, Shield, Loader2 } from "lucide-react";
+import { Fuel, Loader2 } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Введите корректный email"),

@@ -65,7 +65,7 @@ export class MovementStorage implements IMovementStorage {
     const quantityKg = parseFloat(created.quantityKg);
     const isPvkj = created.productType === 'pvkj';
 
-    // Если это поставка или внутреннее перемещение - увеличиваем остаток на складе назначения
+    // Если это покупка или внутреннее перемещение - увеличиваем остаток на складе назначения
     if (created.toWarehouseId) {
       const [targetWarehouse] = await db.select().from(warehouses).where(eq(warehouses.id, created.toWarehouseId)).limit(1);
 

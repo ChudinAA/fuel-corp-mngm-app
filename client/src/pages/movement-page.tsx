@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -10,7 +10,6 @@ import { Plus, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import type { Movement, Warehouse } from "@shared/schema";
 import { MovementDialog } from "./movement/components/movement-dialog";
 import { MovementTable } from "./movement/components/movement-table";
-import type { AllSupplier } from "./movement/types";
 
 export default function MovementPage() {
   const [page, setPage] = useState(1);
@@ -50,30 +49,6 @@ export default function MovementPage() {
     queryKey: ["/api/logistics/carriers"],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/logistics/carriers");
-      return res.json();
-    },
-  });
-
-  const { data: vehicles } = useQuery({
-    queryKey: ["/api/logistics/vehicles"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/logistics/vehicles");
-      return res.json();
-    },
-  });
-
-  const { data: trailers } = useQuery({
-    queryKey: ["/api/logistics/trailers"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/logistics/trailers");
-      return res.json();
-    },
-  });
-
-  const { data: drivers } = useQuery({
-    queryKey: ["/api/logistics/drivers"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/logistics/drivers");
       return res.json();
     },
   });
@@ -147,11 +122,6 @@ export default function MovementPage() {
     setIsDialogOpen(true);
   };
 
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
-    setEditingMovement(null);
-  };
-
   const handleOpenDialog = () => {
     setEditingMovement(null);
     setIsDialogOpen(true);
@@ -184,7 +154,7 @@ export default function MovementPage() {
       <Card>
         <CardHeader>
           <CardTitle>Список перемещений</CardTitle>
-          <CardDescription>История поставок и внутренних перемещений</CardDescription>
+          <CardDescription>История покупок и внутренних перемещений</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -199,7 +169,7 @@ export default function MovementPage() {
                   size="sm"
                   onClick={() => setTypeFilter(typeFilter === "supply" ? null : "supply")}
                 >
-                  Поставка
+                  Покупка
                 </Button>
                 <Button
                   variant={typeFilter === "internal" ? "default" : "outline"}
