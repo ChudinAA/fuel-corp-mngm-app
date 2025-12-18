@@ -10,6 +10,7 @@ import {
   type DeliveryCost,
   type InsertDeliveryCost,
 } from "@shared/schema";
+import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
 import type { IPriceStorage } from "./types";
 
 export class PriceStorage implements IPriceStorage {
@@ -75,8 +76,8 @@ export class PriceStorage implements IPriceStorage {
       return 0;
     }
 
-    if (counterpartyType === "wholesale") {
-      if (price.counterpartyRole === "supplier") {
+    if (counterpartyType === COUNTERPARTY_TYPE.WHOLESALE) {
+      if (price.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER) {
         // Ищем сделки, где этот контрагент - поставщик
         const optDeals = await db.select({
           total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`
@@ -89,7 +90,7 @@ export class PriceStorage implements IPriceStorage {
           )
         );
         totalVolume += parseFloat(optDeals[0]?.total || "0");
-      } else if (price.counterpartyRole === "buyer") {
+      } else if (price.counterpartyRole === COUNTERPARTY_ROLE.BUYER) {
         // Ищем сделки, где этот контрагент - покупатель
         const optDeals = await db.select({
           total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`
@@ -103,8 +104,8 @@ export class PriceStorage implements IPriceStorage {
         );
         totalVolume += parseFloat(optDeals[0]?.total || "0");
       }
-    } else if (counterpartyType === "refueling") {
-      if (price.counterpartyRole === "supplier") {
+    } else if (counterpartyType === COUNTERPARTY_TYPE.REFUELING) {
+      if (price.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER) {
         // Ищем сделки, где этот контрагент - поставщик
         const refuelingDeals = await db.select({
           total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`
@@ -117,7 +118,7 @@ export class PriceStorage implements IPriceStorage {
           )
         );
         totalVolume += parseFloat(refuelingDeals[0]?.total || "0");
-      } else if (price.counterpartyRole === "buyer") {
+      } else if (price.counterpartyRole === COUNTERPARTY_ROLE.BUYER) {
         // Ищем сделки, где этот контрагент - покупатель
         const refuelingDeals = await db.select({
           total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`

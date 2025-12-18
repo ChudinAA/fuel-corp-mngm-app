@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -17,6 +16,7 @@ import type { Price, Supplier, Customer } from "@shared/schema";
 import type { PricesTableProps } from "../types";
 import { formatNumber, formatDate, getPriceDisplay, getProductTypeLabel } from "../utils";
 import { usePriceSelection } from "../hooks/use-price-selection";
+import { COUNTERPARTY_TYPE } from "@/shared/constants";
 
 export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onEdit }: PricesTableProps) {
   const [search, setSearch] = useState("");
@@ -56,17 +56,17 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
     if (dealTypeFilter !== "all" && p.counterpartyType !== dealTypeFilter) {
       return false;
     }
-    
+
     // Фильтр по роли
     if (roleFilter !== "all" && p.counterpartyRole !== roleFilter) {
       return false;
     }
-    
+
     // Фильтр по типу продукта
     if (productTypeFilter !== "all" && p.productType !== productTypeFilter) {
       return false;
     }
-    
+
     // Поиск
     if (search) {
       const searchLower = search.toLowerCase();
@@ -76,7 +76,7 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
         return false;
       }
     }
-    
+
     return true;
   }).sort((a, b) => {
     // Сортировка по дате создания (новые сверху)
@@ -145,7 +145,7 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="flex items-center justify-center">
-                          {price.counterpartyType === "wholesale" ? (
+                          {price.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE ? (
                             <Package className="h-5 w-5 text-blue-500/70" />
                           ) : (
                             <Plane className="h-5 w-5 text-purple-500/70" />
@@ -153,7 +153,7 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
-                        {price.counterpartyType === "wholesale" ? "ОПТ" : "Заправка ВС"}
+                        {price.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE ? "ОПТ" : "Заправка ВС"}
                       </TooltipContent>
                     </Tooltip>
                   </TableCell>

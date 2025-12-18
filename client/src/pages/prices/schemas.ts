@@ -1,13 +1,15 @@
 
 import { z } from "zod";
 
+import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, PRODUCT_TYPE } from "@shared/constants";
+
 export const priceFormSchema = z.object({
   dateFrom: z.date({ required_error: "Укажите дату начала" }),
   dateTo: z.date({ required_error: "Укажите дату окончания" }),
-  counterpartyType: z.enum(["wholesale", "refueling"]),
-  counterpartyRole: z.enum(["supplier", "buyer"]),
+  counterpartyType: z.enum([COUNTERPARTY_TYPE.WHOLESALE, COUNTERPARTY_TYPE.REFUELING] as const),
+  counterpartyRole: z.enum([COUNTERPARTY_ROLE.SUPPLIER, COUNTERPARTY_ROLE.BUYER] as const),
   counterpartyId: z.string().min(1, "Выберите контрагента"),
-  productType: z.enum(["kerosine", "service", "pvkj", "agent", "storage"]),
+  productType: z.enum([PRODUCT_TYPE.KEROSINE, PRODUCT_TYPE.SERVICE, PRODUCT_TYPE.PVKJ, PRODUCT_TYPE.AGENT, PRODUCT_TYPE.STORAGE] as const),
   basis: z.string().min(1, "Выберите базис"),
   volume: z.string().optional(),
   priceValues: z.array(z.object({

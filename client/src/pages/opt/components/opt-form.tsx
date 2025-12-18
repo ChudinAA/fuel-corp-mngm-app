@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
+import { PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, BASE_TYPE, CUSTOMER_MODULE } from "@shared/constants";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -159,7 +159,7 @@ export function OptForm({
   );
 
   // Фильтруем базисы типа wholesale
-  const bases = allBases?.filter(b => b.baseType === 'wholesale') || [];
+  const bases = allBases?.filter(b => b.baseType === BASE_TYPE.WHOLESALE) || [];
 
   // Автоматический выбор базиса при выборе поставщика
   useEffect(() => {
@@ -167,7 +167,7 @@ export function OptForm({
       const supplier = suppliers.find(s => s.id === watchSupplierId);
       if (supplier?.baseIds && supplier.baseIds.length > 0) {
         const baseId = supplier.baseIds[0];
-        const base = allBases.find(b => b.id === baseId && b.baseType === 'wholesale');
+        const base = allBases.find(b => b.id === baseId && b.baseType === BASE_TYPE.WHOLESALE);
         if (base) {
           setSelectedBasis(base.name);
         }
@@ -597,7 +597,7 @@ export function OptForm({
               const wholesaleSuppliers = suppliers?.filter(supplier => {
                 if (!supplier.baseIds || supplier.baseIds.length === 0) return false;
                 return allBases?.some(base => 
-                  supplier.baseIds.includes(base.id) && base.baseType === 'wholesale'
+                  supplier.baseIds.includes(base.id) && base.baseType === BASE_TYPE.WHOLESALE
                 );
               }) || [];
 
@@ -641,7 +641,7 @@ export function OptForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {customers?.filter(c => c.module === "wholesale" || c.module === "both").map((buyer) => (
+                    {customers?.filter(c => c.module === CUSTOMER_MODULE.WHOLESALE || c.module === CUSTOMER_MODULE.BOTH).map((buyer) => (
                       <SelectItem key={buyer.id} value={buyer.id}>
                         {buyer.name}
                       </SelectItem>

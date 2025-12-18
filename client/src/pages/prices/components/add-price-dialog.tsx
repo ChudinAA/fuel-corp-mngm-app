@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -11,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Form } from "@/components/ui/form";
 import { Plus, Loader2 } from "lucide-react";
 import type { Base, Supplier, Customer } from "@shared/schema";
+import { COUNTERPARTY_ROLE } from "@shared/constants";
 import { priceFormSchema } from "../schemas";
 import type { PriceFormData, PriceDialogProps } from "../types";
 import { useDateCheck } from "../hooks/use-date-check";
@@ -30,7 +30,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
       dateFrom: new Date(),
       dateTo: new Date(),
       counterpartyType: "wholesale",
-      counterpartyRole: "supplier",
+      counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
       counterpartyId: "",
       productType: "kerosine",
       basis: "",
@@ -98,12 +98,12 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
   const { data: customers } = useQuery<Customer[]>({ queryKey: ["/api/customers"] });
 
   const allBases = bases || [];
-  const contractors = watchCounterpartyRole === "supplier" 
+  const contractors = watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER
     ? suppliers || []
     : customers || [];
 
   // Фильтруем базисы для поставщика
-  const availableBases = watchCounterpartyRole === "supplier" && watchCounterpartyId
+  const availableBases = watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER && watchCounterpartyId
     ? (() => {
         const supplier = suppliers?.find(s => s.id === watchCounterpartyId);
         if (supplier && supplier.baseIds && supplier.baseIds.length > 0) {
@@ -115,7 +115,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
 
   // Автоматически выбираем первый базис для поставщика
   useEffect(() => {
-    if (watchCounterpartyRole === "supplier" && watchCounterpartyId && !editPrice) {
+    if (watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER && watchCounterpartyId && !editPrice) {
       const supplier = suppliers?.find(s => s.id === watchCounterpartyId);
       if (supplier && supplier.baseIds && supplier.baseIds.length > 0) {
         const firstBase = allBases.find(b => b.id === supplier.baseIds[0]);
@@ -131,7 +131,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
       toast({ title: "Ошибка", description: "Заполните все обязательные поля", variant: "destructive" });
       return;
     }
-    
+
     dateCheck.check({
       counterpartyId: watchCounterpartyId,
       counterpartyType: watchCounterpartyType,
@@ -186,7 +186,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
         dateFrom: new Date(),
         dateTo: new Date(),
         counterpartyType: "wholesale",
-        counterpartyRole: "supplier",
+        counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
         counterpartyId: "",
         productType: "kerosine",
         basis: "",
@@ -224,7 +224,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
         toast({ title: "Ошибка", description: "Заполните все обязательные поля", variant: "destructive" });
         return;
       }
-      
+
       // Запускаем проверку
       const checkParams = {
         counterpartyId: watchCounterpartyId,
@@ -236,7 +236,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
         dateTo: watchDateTo,
         excludeId: editPrice?.id,
       };
-      
+
       try {
         await dateCheck.checkAsync(checkParams);
         // Проверяем результат после выполнения
@@ -244,7 +244,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
           // Небольшая задержка для получения результата
           setTimeout(() => resolve(dateCheck.result), 100);
         });
-        
+
         if (result && result.status === "error") {
           toast({ 
             title: "Ошибка пересечения дат!", 
@@ -262,7 +262,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
         return;
       }
     }
-    
+
     createMutation.mutate(data);
   };
 
@@ -274,7 +274,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
           dateFrom: new Date(),
           dateTo: new Date(),
           counterpartyType: "wholesale",
-          counterpartyRole: "supplier",
+          counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
           counterpartyId: "",
           productType: "kerosine",
           basis: "",

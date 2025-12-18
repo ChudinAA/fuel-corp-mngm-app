@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
+import { PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, BASE_TYPE, CUSTOMER_MODULE } from "@shared/constants";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -109,7 +109,7 @@ export function RefuelingForm({
   // Фильтруем базисы для поставщика (только refueling)
   const availableBases = watchSupplierId && selectedSupplier?.baseIds
     ? allBases?.filter(b => 
-        b.baseType === "refueling" && 
+        b.baseType === BASE_TYPE.REFUELING && 
         selectedSupplier.baseIds.includes(b.id)
       ) || []
     : [];
@@ -132,7 +132,7 @@ export function RefuelingForm({
       // Автоматически выбираем первый базис
       if (!editData && supplier?.baseIds && supplier.baseIds.length >= 1) {
         const baseId = supplier.baseIds[0];
-        const base = allBases.find(b => b.id === baseId && b.baseType === "refueling");
+        const base = allBases.find(b => b.id === baseId && b.baseType === BASE_TYPE.REFUELING);
         if (base) {
           form.setValue("basis", base.name);
           setSelectedBasis(base.name);
@@ -718,7 +718,7 @@ export function RefuelingForm({
               const refuelingSuppliers = suppliers?.filter(supplier => {
                 if (!supplier.baseIds || supplier.baseIds.length === 0) return false;
                 return allBases?.some(base => 
-                  supplier.baseIds.includes(base.id) && base.baseType === 'refueling'
+                  supplier.baseIds.includes(base.id) && base.baseType === BASE_TYPE.REFUELING
                 );
               }) || [];
 
@@ -797,7 +797,7 @@ export function RefuelingForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {customers?.filter(c => c.module === "refueling" || c.module === "both").map((buyer) => (
+                    {customers?.filter(c => c.module === CUSTOMER_MODULE.REFUELING || c.module === CUSTOMER_MODULE.BOTH).map((buyer) => (
                       <SelectItem key={buyer.id} value={buyer.id}>
                         {buyer.name}
                       </SelectItem>
