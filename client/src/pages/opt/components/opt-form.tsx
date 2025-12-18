@@ -3,32 +3,25 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { CalendarIcon, Plus, Loader2 } from "lucide-react";
-import type { Supplier, Base, Customer, Warehouse, Price, DeliveryCost, LogisticsCarrier, LogisticsDeliveryLocation } from "@shared/schema";
-import { CalculatedField } from "./calculated-field";
+import { Form } from "@/components/ui/form";
+import { Loader2, Plus } from "lucide-react";
+import type { Supplier, Base, Customer, Warehouse } from "@shared/schema";
 import { optFormSchema, type OptFormData } from "../schemas";
-import { formatNumber, formatCurrency } from "../utils";
+import { formatNumber } from "../utils";
 import type { OptFormProps } from "../types";
 import { useOptFormData } from "../hooks/use-opt-form-data";
+import { useOptCalculations } from "../hooks/use-opt-calculations";
+import { OptFormMainSection } from "./opt-form-main-section";
+import { OptFormVolumeSection } from "./opt-form-volume-section";
+import { OptFormBasisWarehouseSection } from "./opt-form-basis-warehouse-section";
+import { OptFormPricingSection } from "./opt-form-pricing-section";
+import { OptFormLogisticsSection } from "./opt-form-logistics-section";
+import { OptFormNotesSection } from "./opt-form-notes-section";
 
-export function OptForm({ 
-  onSuccess, 
-  editData 
-}: OptFormProps) {
+export function OptForm({ onSuccess, editData }: OptFormProps) {
   const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
   const [selectedBasis, setSelectedBasis] = useState<string>("");
@@ -68,26 +61,136 @@ export function OptForm({
     queryKey: ["/api/customers"],
   });
 
-  // Update form when editData changes
+  const { data: warehouses } = useQuery<Warehouse[]>({
+    queryKey: ["/api/warehouses"],
+  });
+
+  const watchSupplierId = form.watch("supplierId");
+  const watchBuyerId = form.watch("buyerId");
+  const watchDealDate = form.watch("dealDate");
+  const watchLiters = form.watch("quantityLiters");
+  const watchDensity = form.watch("density");
+  const watchKg = form.watch("quantityKg");
+  const watchCarrierId = form.watch("carrierId");
+  const watchDeliveryLocationId = form.watch("deliveryLocationId");
+
+  // Получение данных поставщика
+  const selectedSupplier = suppliers?.find((s) => s.id === watchSupplierId);
+  const isWarehouseSupplier = selectedSupplier?.isWarehouse || false;
+  const supplierWarehouse = warehouses?.find((w) => w.supplierId === watchSupplierId);
+
+  // Фильтруем базисы типа wholesale
+  const bases = allBases?.filter((b) => b.baseType === "wholesale") || [];
+
+  // Вычисления
+  const calculations = useOptCalculations({
+    inputMode,
+    quantityLiters: watchLiters,
+    density: watchDensity,
+    quantityKg: watchKg,
+    selectedPurchasePriceId,
+    selectedSalePriceId,
+    purchasePrices: [],
+    salePrices: [],
+    deliveryCost: null,
+    isWarehouseSupplier,
+    warehouseAverageCost: null,
+  });
+
+  // Получение данных формы с бэкенда
+  const formData = useOptFormData({
+    supplierId: watchSupplierId,
+    buyerId: watchBuyerId,
+    dealDate: watchDealDate,
+    basis: selectedBasis,
+    carrierId: watchCarrierId,
+    deliveryLocationId: watchDeliveryLocationId,
+    warehouseId: supplierWarehouse?.id,
+    quantityKg: calculations.finalKg,
+  });
+
+  // Обновляем вычисления с реальными данными
+  const finalCalculations = useOptCalculations({
+    inputMode,
+    quantityLiters: watchLiters,
+    density: watchDensity,
+    quantityKg: watchKg,
+    selectedPurchasePriceId,
+    selectedSalePriceId,
+    purchasePrices: formData.purchasePrices,
+    salePrices: formData.salePrices,
+    deliveryCost: formData.deliveryCost,
+    isWarehouseSupplier,
+    warehouseAverageCost: formData.warehouseAverageCost,
+  });
+
+  // Автоматический выбор базиса при выборе поставщика
+  useEffect(() => {
+    if (watchSupplierId && suppliers && allBases) {
+      const supplier = suppliers.find((s) => s.id === watchSupplierId);
+      if (supplier?.baseIds && supplier.baseIds.length > 0) {
+        const baseId = supplier.baseIds[0];
+        const base = allBases.find((b) => b.id === baseId && b.baseType === "wholesale");
+        if (base) {
+          setSelectedBasis(base.name);
+        }
+      }
+
+      if (supplier?.isWarehouse) {
+        const warehouse = warehouses?.find((w) => w.supplierId === supplier.id);
+        if (warehouse) {
+          form.setValue("warehouseId", warehouse.id);
+        }
+      } else {
+        form.setValue("warehouseId", "");
+      }
+    }
+  }, [watchSupplierId, suppliers, allBases, warehouses, form]);
+
+  // Автовыбор первой цены
+  useEffect(() => {
+    if (!selectedPurchasePriceId && formData.purchasePrices.length > 0) {
+      const firstOption = formData.purchasePrices[0]?.values?.[0];
+      if (firstOption) {
+        setSelectedPurchasePriceId(firstOption.compositeId);
+        form.setValue("selectedPurchasePriceId", firstOption.compositeId);
+      }
+    }
+  }, [formData.purchasePrices, selectedPurchasePriceId, form]);
+
+  useEffect(() => {
+    if (!selectedSalePriceId && formData.salePrices.length > 0) {
+      const firstOption = formData.salePrices[0]?.values?.[0];
+      if (firstOption) {
+        setSelectedSalePriceId(firstOption.compositeId);
+        form.setValue("selectedSalePriceId", firstOption.compositeId);
+      }
+    }
+  }, [formData.salePrices, selectedSalePriceId, form]);
+
+  // Обновление формы при редактировании
   useEffect(() => {
     if (editData && suppliers && customers && allBases) {
-      // Find supplier by name (since enrichedData has names in supplierId field)
-      const supplier = suppliers.find(s => s.name === editData.supplierId || s.id === editData.supplierId);
-      const buyer = customers.find(c => c.name === editData.buyerId || c.id === editData.buyerId);
+      const supplier = suppliers.find(
+        (s) => s.name === editData.supplierId || s.id === editData.supplierId
+      );
+      const buyer = customers.find(
+        (c) => c.name === editData.buyerId || c.id === editData.buyerId
+      );
 
-      // Set basis from editData
       if (editData.basis) {
         setSelectedBasis(editData.basis);
       }
 
-      // Construct composite price IDs with indices
-      const purchasePriceCompositeId = editData.purchasePriceId && editData.purchasePriceIndex !== undefined
-        ? `${editData.purchasePriceId}-${editData.purchasePriceIndex}`
-        : editData.purchasePriceId || "";
-      
-      const salePriceCompositeId = editData.salePriceId && editData.salePriceIndex !== undefined
-        ? `${editData.salePriceId}-${editData.salePriceIndex}`
-        : editData.salePriceId || "";
+      const purchasePriceCompositeId =
+        editData.purchasePriceId && editData.purchasePriceIndex !== undefined
+          ? `${editData.purchasePriceId}-${editData.purchasePriceIndex}`
+          : editData.purchasePriceId || "";
+
+      const salePriceCompositeId =
+        editData.salePriceId && editData.salePriceIndex !== undefined
+          ? `${editData.salePriceId}-${editData.salePriceIndex}`
+          : editData.salePriceId || "";
 
       form.reset({
         dealDate: new Date(editData.createdAt),
@@ -115,198 +218,32 @@ export function OptForm({
     }
   }, [editData, suppliers, customers, allBases, form]);
 
-  const { data: warehouses } = useQuery<Warehouse[]>({
-    queryKey: ["/api/warehouses"],
-  });
-
-  
-
-  const { data: allPrices } = useQuery<Price[]>({
-    queryKey: ["/api/prices"],
-  });
-
-  const { data: deliveryCosts } = useQuery<DeliveryCost[]>({
-    queryKey: ["/api/delivery-costs"],
-  });
-
-  // Use the opt form data hook
-  const formData = useOptFormData({
-    supplierId: watchSupplierId,
-    buyerId: watchBuyerId,
-    dealDate: watchDealDate,
-    basis: selectedBasis,
-    carrierId: watchCarrierId,
-    deliveryLocationId: watchDeliveryLocationId,
-    warehouseId: supplierWarehouse?.id,
-    quantityKg: finalKg,
-  });
-
-  const watchSupplierId = form.watch("supplierId");
-  const watchBuyerId = form.watch("buyerId");
-  const watchDealDate = form.watch("dealDate");
-  const watchLiters = form.watch("quantityLiters");
-  const watchDensity = form.watch("density");
-  const watchKg = form.watch("quantityKg");
-  const watchCarrierId = form.watch("carrierId");
-  const watchDeliveryLocationId = form.watch("deliveryLocationId");
-
-  // Вычисление КГ
-  const calculatedKg = inputMode === "liters" && watchLiters && watchDensity
-    ? (parseFloat(watchLiters) * parseFloat(watchDensity)).toFixed(2)
-    : watchKg || "0";
-
-  const finalKg = parseFloat(calculatedKg || "0");
-
-  // Получение данных поставщика
-  const selectedSupplier = suppliers?.find(s => s.id === watchSupplierId);
-  const isWarehouseSupplier = selectedSupplier?.isWarehouse || false;
-  const supplierWarehouse = warehouses?.find(w => 
-    w.supplierId === watchSupplierId
-  );
-
-  // Фильтруем базисы типа wholesale
-  const bases = allBases?.filter(b => b.baseType === 'wholesale') || [];
-
-  // Автоматический выбор базиса при выборе поставщика
-  useEffect(() => {
-    if (watchSupplierId && suppliers && allBases) {
-      const supplier = suppliers.find(s => s.id === watchSupplierId);
-      if (supplier?.baseIds && supplier.baseIds.length > 0) {
-        const baseId = supplier.baseIds[0];
-        const base = allBases.find(b => b.id === baseId && b.baseType === 'wholesale');
-        if (base) {
-          setSelectedBasis(base.name);
-        }
-      }
-
-      // Установить склад если поставщик-склад
-      if (supplier?.isWarehouse) {
-        const warehouse = warehouses?.find(w => 
-          w.supplierId === supplier.id
-        );
-        if (warehouse) {
-          form.setValue("warehouseId", warehouse.id);
-        }
-      } else {
-        form.setValue("warehouseId", "");
-      }
-    }
-  }, [watchSupplierId, suppliers, allBases, warehouses, form]);
-
-  // Get prices from backend
-  const purchasePrices = formData.purchasePrices.flatMap(p => 
-    (p.values || []).map((v: any, idx: number) => ({
-      id: p.id,
-      priceValues: [JSON.stringify({ price: v.price })],
-    }))
-  );
-
-  const salePrices = formData.salePrices.flatMap(p => 
-    (p.values || []).map((v: any, idx: number) => ({
-      id: p.id,
-      priceValues: [JSON.stringify({ price: v.price })],
-    }))
-  );
-
-  // Получение цены покупки
-  const getPurchasePrice = (): number | null => {
-    // Если поставщик-склад, берем себестоимость со склада
-    if (isWarehouseSupplier && formData.warehouseAverageCost) {
-      return parseFloat(formData.warehouseAverageCost);
-    }
-
-    // Иначе берем из таблицы цен
-    const matchingPrices = getMatchingPurchasePrices();
-    if (matchingPrices.length === 0) return null;
-
-    let selectedPrice = matchingPrices[0];
-    let selectedIndex = 0;
-
-    // Parse composite ID to extract price ID and index
-    if (selectedPurchasePriceId) {
-      const parts = selectedPurchasePriceId.split('-');
-      if (parts.length >= 5) {
-        const priceId = parts.slice(0, -1).join('-');
-        selectedIndex = parseInt(parts[parts.length - 1]);
-        const found = matchingPrices.find(p => p.id === priceId);
-        if (found) selectedPrice = found;
-      }
-    }
-
-    if (selectedPrice && selectedPrice.priceValues && selectedPrice.priceValues.length > selectedIndex) {
-      try {
-        const priceObj = JSON.parse(selectedPrice.priceValues[selectedIndex]);
-        return parseFloat(priceObj.price || "0");
-      } catch {
-        return null;
-      }
-    }
-
-    return null;
-  };
-
-  // Получение цены продажи
-  const getSalePrice = (): number | null => {
-    const matchingPrices = getMatchingSalePrices();
-    if (matchingPrices.length === 0) return null;
-
-    let selectedPrice = matchingPrices[0];
-    let selectedIndex = 0;
-
-    // Parse composite ID to extract price ID and index
-    if (selectedSalePriceId) {
-      const parts = selectedSalePriceId.split('-');
-      if (parts.length >= 5) {
-        const priceId = parts.slice(0, -1).join('-');
-        selectedIndex = parseInt(parts[parts.length - 1]);
-        const found = matchingPrices.find(p => p.id === priceId);
-        if (found) selectedPrice = found;
-      }
-    }
-
-    if (selectedPrice && selectedPrice.priceValues && selectedPrice.priceValues.length > selectedIndex) {
-      try {
-        const priceObj = JSON.parse(selectedPrice.priceValues[selectedIndex]);
-        return parseFloat(priceObj.price || "0");
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  };
-
-  const purchasePrice = getPurchasePrice();
-  const salePrice = getSalePrice();
-  const calculatedDeliveryCost = formData.deliveryCost;
-
-  const purchaseAmount = purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
-  const saleAmount = salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
-
-  const profit = purchaseAmount !== null && saleAmount !== null && calculatedDeliveryCost !== null 
-    ? saleAmount - purchaseAmount - calculatedDeliveryCost 
-    : purchaseAmount !== null && saleAmount !== null 
-      ? saleAmount - purchaseAmount 
-      : null;
-
-  const deliveryTariff = calculatedDeliveryCost && finalKg > 0 ? calculatedDeliveryCost / finalKg : null;
-
   // Проверка остатка на складе
-  const getWarehouseStatus = (): { status: "ok" | "warning" | "error"; message: string } => {
+  const getWarehouseStatus = (): {
+    status: "ok" | "warning" | "error";
+    message: string;
+  } => {
     if (!isWarehouseSupplier) {
       return { status: "ok", message: "ОК" };
     }
 
-    if (!formData.warehouseBalance || finalKg <= 0) {
+    if (!formData.warehouseBalance || finalCalculations.finalKg <= 0) {
       return { status: "ok", message: "—" };
     }
 
     const currentBalance = parseFloat(formData.warehouseBalance);
-    const remaining = currentBalance - finalKg;
+    const remaining = currentBalance - finalCalculations.finalKg;
 
     if (remaining >= 0) {
-      return { status: "ok", message: `ОК: ${formatNumber(remaining)} кг` };
+      return {
+        status: "ok",
+        message: `ОК: ${formatNumber(remaining)} кг`,
+      };
     } else {
-      return { status: "error", message: `Недостаточно! Доступно: ${formatNumber(currentBalance)} кг` };
+      return {
+        status: "error",
+        message: `Недостаточно! Доступно: ${formatNumber(currentBalance)} кг`,
+      };
     }
   };
 
@@ -315,34 +252,42 @@ export function OptForm({
   const buildMutationPayload = (data: OptFormData) => {
     let purchasePriceId = null;
     let purchasePriceIndex = 0;
-    
+
     if (!isWarehouseSupplier && selectedPurchasePriceId) {
-      const parts = selectedPurchasePriceId.split('-');
+      const parts = selectedPurchasePriceId.split("-");
       if (parts.length >= 5) {
         purchasePriceIndex = parseInt(parts[parts.length - 1]);
-        purchasePriceId = parts.slice(0, -1).join('-');
+        purchasePriceId = parts.slice(0, -1).join("-");
       } else {
         purchasePriceId = selectedPurchasePriceId;
       }
     } else if (!isWarehouseSupplier && formData.purchasePrices.length > 0) {
-      purchasePriceId = formData.purchasePrices[0].id;
-      purchasePriceIndex = 0;
+      const firstOption = formData.purchasePrices[0]?.values?.[0];
+      if (firstOption) {
+        const parts = firstOption.compositeId.split("-");
+        purchasePriceIndex = parseInt(parts[parts.length - 1]);
+        purchasePriceId = parts.slice(0, -1).join("-");
+      }
     }
-    
+
     let salePriceId = null;
     let salePriceIndex = 0;
-    
+
     if (selectedSalePriceId) {
-      const parts = selectedSalePriceId.split('-');
+      const parts = selectedSalePriceId.split("-");
       if (parts.length >= 5) {
         salePriceIndex = parseInt(parts[parts.length - 1]);
-        salePriceId = parts.slice(0, -1).join('-');
+        salePriceId = parts.slice(0, -1).join("-");
       } else {
         salePriceId = selectedSalePriceId;
       }
     } else if (formData.salePrices.length > 0) {
-      salePriceId = formData.salePrices[0].id;
-      salePriceIndex = 0;
+      const firstOption = formData.salePrices[0]?.values?.[0];
+      if (firstOption) {
+        const parts = firstOption.compositeId.split("-");
+        salePriceIndex = parseInt(parts[parts.length - 1]);
+        salePriceId = parts.slice(0, -1).join("-");
+      }
     }
 
     return {
@@ -354,20 +299,20 @@ export function OptForm({
       carrierId: data.carrierId || null,
       deliveryLocationId: data.deliveryLocationId || null,
       dealDate: format(data.dealDate, "yyyy-MM-dd"),
-      quantityKg: parseFloat(calculatedKg),
+      quantityKg: parseFloat(finalCalculations.calculatedKg),
       quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
       density: data.density ? parseFloat(data.density) : null,
-      purchasePrice: purchasePrice,
+      purchasePrice: finalCalculations.purchasePrice,
       purchasePriceId: purchasePriceId,
       purchasePriceIndex: purchasePriceIndex,
-      salePrice: salePrice,
+      salePrice: finalCalculations.salePrice,
       salePriceId: salePriceId,
       salePriceIndex: salePriceIndex,
-      purchaseAmount: purchaseAmount,
-      saleAmount: saleAmount,
-      deliveryCost: calculatedDeliveryCost,
-      deliveryTariff: deliveryTariff,
-      profit: profit,
+      purchaseAmount: finalCalculations.purchaseAmount,
+      saleAmount: finalCalculations.saleAmount,
+      deliveryCost: finalCalculations.deliveryCost,
+      deliveryTariff: finalCalculations.deliveryTariff,
+      profit: finalCalculations.profit,
     };
   };
 
@@ -378,11 +323,11 @@ export function OptForm({
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
-          return key?.startsWith('/api/opt') || key?.startsWith('/api/warehouses');
-        }
+          return key?.startsWith("/api/opt") || key?.startsWith("/api/warehouses");
+        },
       });
       toast({ title: "Сделка создана", description: "Оптовая сделка успешно сохранена" });
       form.reset();
@@ -391,10 +336,10 @@ export function OptForm({
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast({ 
-        title: "Ошибка", 
-        description: error.message, 
-        variant: "destructive" 
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
@@ -406,11 +351,11 @@ export function OptForm({
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
-          return key?.startsWith('/api/opt') || key?.startsWith('/api/warehouses');
-        }
+          return key?.startsWith("/api/opt") || key?.startsWith("/api/warehouses");
+        },
       });
       toast({ title: "Сделка обновлена", description: "Оптовая сделка успешно обновлена" });
       form.reset();
@@ -419,10 +364,10 @@ export function OptForm({
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast({ 
-        title: "Ошибка", 
-        description: error.message, 
-        variant: "destructive" 
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
@@ -438,525 +383,60 @@ export function OptForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <FormField
-            control={form.control}
-            name="dealDate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Дата сделки</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                        data-testid="input-deal-date"
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {field.value ? format(field.value, "dd.MM.yyyy", { locale: ru }) : "Выберите дату"}
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      locale={ru}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <OptFormMainSection
+          form={form}
+          suppliers={suppliers}
+          customers={customers}
+          bases={bases}
+          selectedSupplier={selectedSupplier}
+          supplierWarehouseName={supplierWarehouse?.name}
+          isWarehouseSupplier={isWarehouseSupplier}
+        />
 
-          <FormField
-            control={form.control}
-            name="supplierId"
-            render={({ field }) => {
-              // Фильтруем поставщиков, у которых есть хотя бы один базис типа wholesale
-              const wholesaleSuppliers = suppliers?.filter(supplier => {
-                if (!supplier.baseIds || supplier.baseIds.length === 0) return false;
-                return allBases?.some(base => 
-                  supplier.baseIds.includes(base.id) && base.baseType === 'wholesale'
-                );
-              }) || [];
+        <OptFormVolumeSection
+          form={form}
+          inputMode={inputMode}
+          setInputMode={setInputMode}
+          calculatedKg={finalCalculations.calculatedKg}
+        />
 
-              return (
-                <FormItem>
-                  <FormLabel>Поставщик</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-supplier">
-                        <SelectValue placeholder="Выберите поставщика" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {wholesaleSuppliers.length > 0 ? (
-                        wholesaleSuppliers.map((supplier) => (
-                          <SelectItem key={supplier.id} value={supplier.id}>
-                            {supplier.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="none" disabled>Нет данных</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
-          />
+        <OptFormBasisWarehouseSection
+          form={form}
+          selectedSupplier={selectedSupplier}
+          bases={bases}
+          selectedBasis={selectedBasis}
+          setSelectedBasis={setSelectedBasis}
+          warehouseStatus={warehouseStatus}
+        />
 
-          <FormField
-            control={form.control}
-            name="buyerId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Покупатель</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-buyer">
-                      <SelectValue placeholder="Выберите покупателя" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {customers?.filter(c => c.module === "wholesale" || c.module === "both").map((buyer) => (
-                      <SelectItem key={buyer.id} value={buyer.id}>
-                        {buyer.name}
-                      </SelectItem>
-                    )) || (
-                      <SelectItem value="none" disabled>Нет данных</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <OptFormPricingSection
+          form={form}
+          purchasePrices={formData.purchasePrices}
+          salePrices={formData.salePrices}
+          isWarehouseSupplier={isWarehouseSupplier}
+          purchasePrice={finalCalculations.purchasePrice}
+          salePrice={finalCalculations.salePrice}
+          purchaseAmount={finalCalculations.purchaseAmount}
+          saleAmount={finalCalculations.saleAmount}
+          deliveryCost={finalCalculations.deliveryCost}
+          profit={finalCalculations.profit}
+          selectedPurchasePriceId={selectedPurchasePriceId}
+          selectedSalePriceId={selectedSalePriceId}
+          setSelectedPurchasePriceId={setSelectedPurchasePriceId}
+          setSelectedSalePriceId={setSelectedSalePriceId}
+        />
 
-          <FormItem>
-            <FormLabel>Склад</FormLabel>
-            <FormControl>
-              <Input 
-                value={
-                  isWarehouseSupplier && supplierWarehouse 
-                    ? supplierWarehouse.name 
-                    : "Объем не со склада"
-                }
-                disabled
-                className="bg-muted"
-              />
-            </FormControl>
-          </FormItem>
-        </div>
+        <OptFormLogisticsSection
+          form={form}
+          availableCarriers={formData.availableCarriers}
+          availableLocations={formData.availableLocations}
+        />
 
-        <Card>
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between gap-4">
-              <CardTitle className="text-lg">Объем топлива</CardTitle>
-              <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground">Литры/Плотность</Label>
-                <Switch
-                  checked={inputMode === "kg"}
-                  onCheckedChange={(checked) => setInputMode(checked ? "kg" : "liters")}
-                  data-testid="switch-input-mode"
-                />
-                <Label className="text-sm text-muted-foreground">КГ</Label>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
-              {inputMode === "liters" ? (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="quantityLiters"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Литры</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            data-testid="input-liters"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="density"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Плотность</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            min="0"
-                            step="0.0001"
-                            placeholder="0.8000"
-                            data-testid="input-density"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <CalculatedField 
-                    label="КГ (расчет)" 
-                    value={formatNumber(calculatedKg)}
-                    suffix=" кг"
-                  />
-                </>
-              ) : (
-                <FormField
-                  control={form.control}
-                  name="quantityKg"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-3">
-                      <FormLabel>Количество (КГ)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          min="0"
-                          step="0.01"
-                          placeholder="0.00"
-                          data-testid="input-kg"
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 1 ? (
-            <FormItem>
-              <FormLabel className="flex items-center gap-2">
-                Базис
-              </FormLabel>
-              <Select 
-                value={selectedBasis} 
-                onValueChange={(value) => {
-                  const base = bases?.find(b => b.name === value);
-                  if (base) setSelectedBasis(base.name);
-                }}
-              >
-                <FormControl>
-                  <SelectTrigger data-testid="select-basis">
-                    <SelectValue placeholder="Выберите базис" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {selectedSupplier.baseIds.map((baseId) => {
-                    const base = bases?.find(b => b.id === baseId);
-                    return base ? (
-                      <SelectItem key={base.id} value={base.name}>
-                        {base.name}
-                      </SelectItem>
-                    ) : null;
-                  })}
-                </SelectContent>
-              </Select>
-            </FormItem>
-          ) : (
-            <CalculatedField 
-              label="Базис" 
-              value={selectedBasis || "—"}
-            />
-          )}
-
-          <CalculatedField 
-            label="Объем на складе" 
-            value={warehouseStatus.message}
-            status={warehouseStatus.status}
-          />
-
-          {!isWarehouseSupplier && purchasePrices.length > 0 ? (
-            <FormField
-              control={form.control}
-              name="selectedPurchasePriceId"
-              render={({ field }) => {
-                // Автоматически выбираем первую цену при загрузке
-                const firstPriceId = purchasePrices.length > 0 ? `${purchasePrices[0].id}-0` : undefined;
-                const effectiveValue = selectedPurchasePriceId || field.value || firstPriceId;
-
-                // Устанавливаем первую цену, если ничего не выбрано
-                if (!selectedPurchasePriceId && !field.value && firstPriceId) {
-                  setSelectedPurchasePriceId(firstPriceId);
-                  field.onChange(firstPriceId);
-                }
-
-                return (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">Покупка</FormLabel>
-                    <Select 
-                      onValueChange={(value) => { 
-                        field.onChange(value); 
-                        setSelectedPurchasePriceId(value); 
-                      }} 
-                      value={effectiveValue}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-purchase-price">
-                          <SelectValue placeholder="Выберите цену" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {purchasePrices.map((price) => {
-                          const priceValues = price.priceValues || [];
-                          if (priceValues.length === 0) return null;
-
-                          return priceValues.map((priceValueStr, idx) => {
-                            try {
-                              const parsed = JSON.parse(priceValueStr);
-                              const priceVal = parsed.price || "0";
-                              return (
-                                <SelectItem key={`${price.id}-${idx}`} value={`${price.id}-${idx}`}>
-                                  {formatNumber(priceVal)} ₽/кг
-                                </SelectItem>
-                              );
-                            } catch {
-                              return null;
-                            }
-                          });
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-          ) : !isWarehouseSupplier ? (
-            <CalculatedField 
-              label="Покупка" 
-              value="Нет цены!"
-              status="error"
-            />
-          ) : (
-            <CalculatedField 
-              label="Покупка" 
-              value={purchasePrice !== null ? formatNumber(purchasePrice) : "Нет цены!"}
-              suffix={purchasePrice !== null ? " ₽/кг" : ""}
-              status={purchasePrice !== null ? "ok" : "error"}
-            />
-          )}
-
-          <CalculatedField 
-            label="Сумма закупки" 
-            value={purchaseAmount !== null ? formatCurrency(purchaseAmount) : "Ошибка"}
-            status={purchaseAmount !== null ? "ok" : "error"}
-          />
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {salePrices.length > 0 ? (
-            <FormField
-              control={form.control}
-              name="selectedSalePriceId"
-              render={({ field }) => {
-                // Автоматически выбираем первую цену при загрузке
-                const firstPriceId = salePrices.length > 0 ? `${salePrices[0].id}-0` : undefined;
-                const effectiveValue = selectedSalePriceId || field.value || firstPriceId;
-
-                // Устанавливаем первую цену, если ничего не выбрано
-                if (!selectedSalePriceId && !field.value && firstPriceId) {
-                  setSelectedSalePriceId(firstPriceId);
-                  field.onChange(firstPriceId);
-                }
-
-                return (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">Продажа</FormLabel>
-                    <Select 
-                      onValueChange={(value) => { 
-                        field.onChange(value); 
-                        setSelectedSalePriceId(value); 
-                      }} 
-                      value={effectiveValue}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-sale-price">
-                          <SelectValue placeholder="Выберите цену" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {salePrices.map((price) => {
-                          const priceValues = price.priceValues || [];
-                          if (priceValues.length === 0) return null;
-
-                          return priceValues.map((priceValueStr, idx) => {
-                            try {
-                              const parsed = JSON.parse(priceValueStr);
-                              const priceVal = parsed.price || "0";
-                              return (
-                                <SelectItem key={`${price.id}-${idx}`} value={`${price.id}-${idx}`}>
-                                  {formatNumber(priceVal)} ₽/кг
-                                </SelectItem>
-                              );
-                            } catch {
-                              return null;
-                            }
-                          });
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-          ) : (
-            <CalculatedField 
-              label="Продажа" 
-              value="Нет цены!"
-              status="error"
-            />
-          )}
-
-          <CalculatedField 
-            label="Сумма продажи" 
-            value={saleAmount !== null ? formatCurrency(saleAmount) : "Ошибка"}
-            status={saleAmount !== null ? "ok" : "error"}
-          />
-          <CalculatedField 
-            label="Доставка" 
-            value={calculatedDeliveryCost !== null ? formatCurrency(calculatedDeliveryCost) : "—"}
-          />
-          <CalculatedField 
-            label="Прибыль" 
-            value={profit !== null ? formatCurrency(profit) : "—"}
-            status={profit !== null && profit >= 0 ? "ok" : profit !== null ? "warning" : undefined}
-          />
-        </div>
-
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Логистика</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <FormField
-                control={form.control}
-                name="carrierId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Перевозчик</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-carrier">
-                          <SelectValue placeholder="Выберите перевозчика" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {formData.availableCarriers.length > 0 ? (
-                          formData.availableCarriers.map((carrier: any) => (
-                            <SelectItem key={carrier.id} value={carrier.id}>
-                              {carrier.name}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="none" disabled>Нет доступных перевозчиков</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="deliveryLocationId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Место доставки</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-delivery-location">
-                          <SelectValue placeholder="Выберите место" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {formData.availableLocations.length > 0 ? (
-                          formData.availableLocations.map((location: any) => (
-                            <SelectItem key={location.id} value={location.id}>
-                              {location.name}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="none" disabled>Нет доступных мест доставки</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="notes"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Примечания</FormLabel>
-                <FormControl>
-                  <Textarea 
-                    placeholder="Дополнительная информация..."
-                    className="resize-none"
-                    data-testid="input-notes"
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="isApproxVolume"
-            render={({ field }) => (
-              <FormItem className="flex items-center gap-2 space-y-0 pt-6">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    data-testid="checkbox-approx-volume"
-                  />
-                </FormControl>
-                <FormLabel className="text-sm font-normal cursor-pointer">
-                  Примерный объем (требует уточнения)
-                </FormLabel>
-              </FormItem>
-            )}
-          />
-        </div>
+        <OptFormNotesSection form={form} />
 
         <div className="flex justify-end gap-4 pt-4 border-t">
-          <Button 
-            type="button" 
+          <Button
+            type="button"
             variant="outline"
             onClick={() => {
               form.reset();
@@ -967,8 +447,8 @@ export function OptForm({
           >
             {editData ? "Отмена" : "Очистить"}
           </Button>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={createMutation.isPending || updateMutation.isPending}
             data-testid="button-submit-opt"
           >
