@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/tooltip";
 import { formatNumber, formatNumberForTable, formatCurrencyForTable, getProductLabel } from "../utils";
 import { useRefuelingTable } from "../hooks/use-refueling-table";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 interface RefuelingTableProps {
   onEdit: (refueling: any) => void;
@@ -139,9 +140,9 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Все продукты</SelectItem>
-            <SelectItem value="kerosene">Керосин</SelectItem>
-            <SelectItem value="pvkj">ПВКЖ</SelectItem>
-            <SelectItem value="service">Услуга заправки</SelectItem>
+            <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
+            <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
+            <SelectItem value={PRODUCT_TYPE.SERVICE}>Услуга заправки</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -179,8 +180,8 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
                     <Badge 
                       variant="outline"
                       className={
-                        deal.productType === "kerosene" ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30" :
-                        deal.productType === "pvkj" ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" :
+                        deal.productType === PRODUCT_TYPE.KEROSENE ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30" :
+                        deal.productType === PRODUCT_TYPE.PVKJ ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" :
                         ""
                       }
                     >

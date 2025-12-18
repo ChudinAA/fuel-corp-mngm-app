@@ -7,7 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Pencil, Trash2, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { formatNumber, formatCurrency, formatDate } from "../utils";
+import { formatNumber, formatDate } from "../utils";
+import type { MovementTableProps } from "../types";
+import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 
 const formatNumberWithK = (value: string | number) => {
   const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -16,7 +18,6 @@ const formatNumberWithK = (value: string | number) => {
   }
   return formatNumber(num);
 };
-import type { MovementTableProps } from "../types";
 
 export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }: MovementTableProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -25,7 +26,7 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
   const [selectedNotes, setSelectedNotes] = useState("");
 
   const getProductLabel = (productType: string) => {
-    if (productType === "pvkj") return "ПВКЖ";
+    if (productType === PRODUCT_TYPE.PVKJ) return "ПВКЖ";
     return "Керосин";
   };
 
@@ -127,12 +128,12 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
                 <TableCell>{formatDate(item.movementDate)}</TableCell>
                 <TableCell>
                   <Badge variant="outline">
-                    {item.movementType === "supply" ? "Покупка" : "Внутреннее"}
+                    {item.movementType === MOVEMENT_TYPE.SUPPLY ? "Покупка" : "Внутреннее"}
                   </Badge>
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline" className={item.productType === 'pvkj' ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30' : 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30'}>
-                    {getProductLabel(item.productType || "kerosene")}
+                    {getProductLabel(item.productType || PRODUCT_TYPE.KEROSENE)}
                   </Badge>
                 </TableCell>
                 <TableCell>{(item as any).fromName || "—"}</TableCell>

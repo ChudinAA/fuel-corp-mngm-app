@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Warehouse, Base } from "@shared/schema";
 import type { WarehouseTransaction } from "../types";
 import { formatNumber, formatCurrency } from "../utils";
+import { BASE_TYPE, PRODUCT_TYPE } from "@shared/constants";
 
 interface WarehouseCardProps {
   warehouse: Warehouse;
@@ -47,7 +48,7 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
   };
 
   const getBaseIcon = (baseType: string) => {
-    if (baseType === 'refueling') {
+    if (baseType === BASE_TYPE.REFUELING) {
       return { icon: Fuel, color: "text-green-400", label: "Заправка" };
     }
     return { icon: Droplets, color: "text-orange-400", label: "ОПТ" };
@@ -69,7 +70,7 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
       const txDate = new Date(tx.createdAt);
       if (txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear) {
         const qty = parseFloat(tx.quantityKg);
-        const isPvkj = tx.productType === 'pvkj';
+        const isPvkj = tx.productType === PRODUCT_TYPE.PVKJ;
         
         if (qty > 0) {
           if (isPvkj) {

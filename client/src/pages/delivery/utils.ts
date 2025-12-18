@@ -1,3 +1,4 @@
+import { ENTITY_TYPE } from "@shared/constants";
 
 export const formatNumber = (value: string | number | null) => {
   if (value === null || value === undefined) return "—";
@@ -12,11 +13,11 @@ export const getEntitiesByType = (
   deliveryLocations: any[] = []
 ) => {
   switch (type) {
-    case "base":
+    case ENTITY_TYPE.BASE:
       return allBases;
-    case "warehouse":
+    case ENTITY_TYPE.WAREHOUSE:
       return warehouses;
-    case "delivery_location":
+    case ENTITY_TYPE.DELIVERY_LOCATION:
       return deliveryLocations;
     default:
       return [];

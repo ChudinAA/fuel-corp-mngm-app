@@ -12,7 +12,7 @@ import {
   type InsertOpt,
 } from "@shared/schema";
 import { IOptStorage } from "./types";
-import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
+import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 
 export class OptStorage implements IOptStorage {
   async getOptDeals(page: number = 1, pageSize: number = 10, search?: string): Promise<{ data: any[]; total: number }> {
@@ -115,7 +115,7 @@ export class OptStorage implements IOptStorage {
           warehouseId: created.warehouseId,
           transactionType: TRANSACTION_TYPE.SALE,
           productType: PRODUCT_TYPE.KEROSENE,
-          sourceType: 'opt',
+          sourceType: SOURCE_TYPE.OPT,
           sourceId: created.id,
           quantity: (-quantityKg).toString(),
           balanceBefore: currentBalance.toString(),

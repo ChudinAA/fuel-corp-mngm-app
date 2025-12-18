@@ -11,6 +11,7 @@ import {
   bases,
 } from "@shared/schema";
 import { IDashboardStorage } from "./types";
+import { MOVEMENT_TYPE } from "@shared/constants";
 
 export class DashboardStorage implements IDashboardStorage {
   async getDashboardStats(): Promise<{
@@ -149,7 +150,7 @@ export class DashboardStorage implements IDashboardStorage {
         toName = toWarehouse?.name || mov.toWarehouseId;
       }
 
-      if (mov.movementType === 'supply' && mov.supplierId) {
+      if (mov.movementType === MOVEMENT_TYPE.SUPPLY && mov.supplierId) {
         const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, mov.supplierId)).limit(1);
         fromName = supplier?.name || mov.supplierId;
       } else if (mov.fromWarehouseId) {
@@ -161,7 +162,7 @@ export class DashboardStorage implements IDashboardStorage {
         type: 'movement',
         description: `${fromName} → ${toName}: ${parseFloat(mov.quantityKg || "0").toLocaleString('ru-RU')} кг`,
         time: mov.createdAt,
-        status: mov.movementType === 'supply' ? 'success' : 'pending',
+        status: mov.movementType === MOVEMENT_TYPE.SUPPLY ? 'success' : 'pending',
       });
     }
 

@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, Users, Pencil, Trash2 } from "lucide-react";
 import type { Customer } from "@shared/schema";
 import { AddCustomerDialog } from "./customers-dialog";
+import { CUSTOMER_MODULE } from "@shared/constants";
 
 export function CustomersTab() {
   const [search, setSearch] = useState("");
@@ -100,7 +101,7 @@ export function CustomersTab() {
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {item.module === "wholesale" ? "ОПТ" : item.module === "refueling" ? "Заправка" : "Общий"}
+                            {item.module === CUSTOMER_MODULE.WHOLESALE ? "ОПТ" : item.module === CUSTOMER_MODULE.REFUELING ? "Заправка" : "Общий"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground">{item.contactPerson || "—"}</TableCell>

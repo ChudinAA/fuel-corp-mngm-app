@@ -10,7 +10,7 @@ import {
   type InsertAircraftRefueling,
 } from "@shared/schema";
 import { IAircraftRefuelingStorage } from "./types";
-import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
+import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 
 export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
   async getRefuelings(page: number = 1, pageSize: number = 10, search?: string): Promise<{ data: any[]; total: number }> {
@@ -104,7 +104,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         warehouseId: data.warehouseId,
         transactionType: TRANSACTION_TYPE.SALE,
         productType: data.productType || PRODUCT_TYPE.KEROSENE,
-        sourceType: "refueling",
+        sourceType: SOURCE_TYPE.REFUELING,
         sourceId: created.id,
         quantity: (-quantity).toString(),
         balanceBefore: currentBalance.toString(),

@@ -16,6 +16,13 @@ export const TRANSACTION_TYPE = {
   TRANSFER_OUT: 'transfer_out',
 } as const;
 
+// Transaction source types for warehouse operations
+export const SOURCE_TYPE = {
+  MOVEMENT: 'movement',
+  OPT: 'opt',
+  REFUELING: 'refueling',
+} as const;
+
 // Movement types
 export const MOVEMENT_TYPE = {
   SUPPLY: 'supply',

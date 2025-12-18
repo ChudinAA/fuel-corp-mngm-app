@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, MapPin, Pencil, Trash2, Droplets, Fuel } from "lucide-react";
 import type { Base } from "@shared/schema";
 import { AddBaseDialog } from "./bases-dialog";
+import { BASE_TYPE } from "@shared/constants";
 
 export function BasesTab() {
   const [search, setSearch] = useState("");
@@ -75,8 +76,8 @@ export function BasesTab() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Все типы</SelectItem>
-                <SelectItem value="wholesale">ОПТ</SelectItem>
-                <SelectItem value="refueling">Заправка</SelectItem>
+                <SelectItem value={BASE_TYPE.WHOLESALE}>ОПТ</SelectItem>
+                <SelectItem value={BASE_TYPE.REFUELING}>Заправка</SelectItem>
               </SelectContent>
             </Select>
             <AddBaseDialog editItem={editingItem} onEditComplete={() => setEditingItem(null)} />
@@ -112,7 +113,7 @@ export function BasesTab() {
                         <TableCell className="font-medium">{base.name}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className="flex items-center gap-1.5 w-fit">
-                            {base.baseType === 'wholesale' ? (
+                            {base.baseType === BASE_TYPE.WHOLESALE ? (
                               <>
                                 <Droplets className="h-3.5 w-3.5 text-orange-400" />
                                 <span>ОПТ</span>

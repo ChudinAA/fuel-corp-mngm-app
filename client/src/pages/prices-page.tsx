@@ -7,7 +7,7 @@ import { Package, Plane, TruckIcon, ShoppingCart } from "lucide-react";
 import type { Price } from "@shared/schema";
 import { AddPriceDialog } from "./prices/components/add-price-dialog";
 import { PricesTable } from "./prices/components/prices-table";
-import { PRODUCT_TYPE } from "@shared/constants";
+import { COUNTERPARTY_ROLE, COUNTERPARTY_TYPE, PRODUCT_TYPE } from "@shared/constants";
 
 export default function PricesPage() {
   const [editingPrice, setEditingPrice] = useState<Price | null>(null);
@@ -20,16 +20,16 @@ export default function PricesPage() {
   const getDealTypeFilter = (): "all" | "wholesale" | "refueling" => {
     if (!wholesaleEnabled && !refuelingEnabled) return "all";
     if (wholesaleEnabled && refuelingEnabled) return "all";
-    if (wholesaleEnabled) return "wholesale";
-    if (refuelingEnabled) return "refueling";
+    if (wholesaleEnabled) return COUNTERPARTY_TYPE.WHOLESALE;
+    if (refuelingEnabled) return COUNTERPARTY_TYPE.REFUELING;
     return "all";
   };
 
   const getRoleFilter = (): "all" | "supplier" | "buyer" => {
     if (!supplierEnabled && !buyerEnabled) return "all";
     if (supplierEnabled && buyerEnabled) return "all";
-    if (supplierEnabled) return "supplier";
-    if (buyerEnabled) return "buyer";
+    if (supplierEnabled) return COUNTERPARTY_ROLE.SUPPLIER;
+    if (buyerEnabled) return COUNTERPARTY_ROLE.BUYER;
     return "all";
   };
 

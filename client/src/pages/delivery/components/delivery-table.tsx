@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Truck, Pencil, Trash2, Droplets, Fuel, Warehouse, MapPin } from "lucide-react";
 import type { DeliveryCost } from "@shared/schema";
 import { formatNumber } from "../utils";
+import { BASE_TYPE, ENTITY_TYPE } from "@shared/constants";
 
 interface DeliveryTableProps {
   costs: DeliveryCost[];
@@ -28,15 +29,15 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
 
   const getEntityIcon = (entityType: string, entityId: string) => {
     switch (entityType) {
-      case "base":
+      case ENTITY_TYPE.BASE:
         const base = bases.find(b => b.id === entityId);
-        if (base?.baseType === "refueling") {
+        if (base?.baseType === BASE_TYPE.REFUELING) {
           return { icon: Fuel, color: "text-green-400", label: "Базис (Заправка)" };
         }
         return { icon: Droplets, color: "text-orange-400", label: "Базис (ОПТ)" };
-      case "warehouse":
+      case ENTITY_TYPE.WAREHOUSE:
         return { icon: Warehouse, color: "text-sky-400", label: "Склад" };
-      case "delivery_location":
+      case ENTITY_TYPE.DELIVERY_LOCATION:
         return { icon: MapPin, color: "text-purple-400", label: "Место доставки" };
       default:
         return { icon: MapPin, color: "text-gray-400", label: "Неизвестно" };

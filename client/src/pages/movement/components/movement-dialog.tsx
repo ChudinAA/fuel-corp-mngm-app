@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { MOVEMENT_TYPE, PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
+import { MOVEMENT_TYPE, PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, ENTITY_TYPE } from "@shared/constants";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -118,10 +118,10 @@ export function MovementDialog({
   // Получение цены закупки
   const getPurchasePrice = (): number | null => {
     // Для внутреннего перемещения берем себестоимость со склада-источника
-    if (watchMovementType === "internal" && watchFromWarehouseId) {
+    if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
       const fromWarehouse = warehouses.find(w => w.id === watchFromWarehouseId);
       if (fromWarehouse) {
-        const isPvkj = watchProductType === "pvkj";
+        const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
         const averageCost = isPvkj ? fromWarehouse.pvkjAverageCost : fromWarehouse.averageCost;
         if (averageCost) {
           return parseFloat(averageCost);
@@ -205,28 +205,28 @@ export function MovementDialog({
     let fromEntityId = "";
 
     // Для поставки - берем от поставщика
-    if (watchMovementType === "supply" && watchSupplierId) {
+    if (watchMovementType === MOVEMENT_TYPE.SUPPLY && watchSupplierId) {
       const supplier = suppliers.find(s => s.id === watchSupplierId);
       if (!supplier) return carriers || [];
 
       // Если у поставщика есть склад, используем его
       if (supplier.isWarehouse) {
-        fromEntityType = "warehouse";
+        fromEntityType = ENTITY_TYPE.WAREHOUSE;
         const supplierWarehouse = warehouses.find(w => w.supplierId === supplier.id);
         if (supplierWarehouse) {
           fromEntityId = supplierWarehouse.id;
         }
       } else {
         // Используем базис (первый)
-        fromEntityType = "base";
+        fromEntityType = ENTITY_TYPE.BASE;
         if (supplier.baseIds && supplier.baseIds.length > 0) {
           fromEntityId = supplier.baseIds[0];
         }
       }
     }
     // Для внутреннего перемещения - берем от склада-источника
-    else if (watchMovementType === "internal" && watchFromWarehouseId) {
-      fromEntityType = "warehouse";
+    else if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
+      fromEntityType = ENTITY_TYPE.WAREHOUSE;
       fromEntityId = watchFromWarehouseId;
     }
 
@@ -238,7 +238,7 @@ export function MovementDialog({
         .filter(dc =>
           dc.fromEntityType === fromEntityType &&
           dc.fromEntityId === fromEntityId &&
-          dc.toEntityType === "warehouse" &&
+          dc.toEntityType === ENTITY_TYPE.WAREHOUSE &&
           dc.toEntityId === toWarehouse.id
         )
         .map(dc => dc.carrierId)
@@ -258,28 +258,28 @@ export function MovementDialog({
     let fromEntityId = "";
 
     // Для поставки - берем от поставщика
-    if (watchMovementType === "supply" && watchSupplierId) {
+    if (watchMovementType === MOVEMENT_TYPE.SUPPLY && watchSupplierId) {
       const supplier = suppliers.find(s => s.id === watchSupplierId);
       if (!supplier) return 0;
 
       // Если у поставщика есть склад, используем его
       if (supplier.isWarehouse) {
-        fromEntityType = "warehouse";
+        fromEntityType = ENTITY_TYPE.WAREHOUSE;
         const supplierWarehouse = warehouses.find(w => w.supplierId === supplier.id);
         if (supplierWarehouse) {
           fromEntityId = supplierWarehouse.id;
         }
       } else {
         // Используем базис (первый)
-        fromEntityType = "base";
+        fromEntityType = ENTITY_TYPE.BASE;
         if (supplier.baseIds && supplier.baseIds.length > 0) {
           fromEntityId = supplier.baseIds[0];
         }
       }
     }
     // Для внутреннего перемещения - берем от склада-источника
-    else if (watchMovementType === "internal" && watchFromWarehouseId) {
-      fromEntityType = "warehouse";
+    else if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
+      fromEntityType = ENTITY_TYPE.WAREHOUSE;
       fromEntityId = watchFromWarehouseId;
     }
 
@@ -290,7 +290,7 @@ export function MovementDialog({
       dc.carrierId === watchCarrierId &&
       dc.fromEntityType === fromEntityType &&
       dc.fromEntityId === fromEntityId &&
-      dc.toEntityType === "warehouse" &&
+      dc.toEntityType === ENTITY_TYPE.WAREHOUSE &&
       dc.toEntityId === toWarehouse.id
     );
 
@@ -424,7 +424,7 @@ export function MovementDialog({
                 )}
               />
 
-              {watchMovementType === "supply" ? (
+              {watchMovementType === MOVEMENT_TYPE.s ? (
                 <FormField
                   control={form.control}
                   name="supplierId"

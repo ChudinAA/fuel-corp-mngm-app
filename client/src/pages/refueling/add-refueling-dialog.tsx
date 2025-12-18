@@ -23,6 +23,7 @@ import type { AircraftRefueling } from "@shared/schema";
 import { PRODUCT_TYPES } from "./constants";
 import { CalculatedField } from "./calculated-field";
 import { formatNumber, formatCurrency } from "./utils";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 const refuelingFormSchema = z.object({
   refuelingDate: z.date({ required_error: "Укажите дату заправки" }),
@@ -73,7 +74,7 @@ export function AddRefuelingDialog({
     resolver: zodResolver(refuelingFormSchema),
     defaultValues: {
       refuelingDate: editRefueling ? new Date(editRefueling.refuelingDate) : new Date(),
-      productType: editRefueling?.productType || "kerosene",
+      productType: editRefueling?.productType || PRODUCT_TYPE.KEROSENE,
       aircraftNumber: editRefueling?.aircraftNumber || "",
       orderNumber: editRefueling?.orderNumber || "",
       supplierId: editRefueling?.supplierId || "",
@@ -123,7 +124,7 @@ export function AddRefuelingDialog({
     ? (parseFloat(watchLiters) * parseFloat(watchDensity)).toFixed(2)
     : watchKg;
 
-  const isServiceType = ["service", "storage", "agent"].includes(watchProductType);
+  const isServiceType = [PRODUCT_TYPE.SERVICE, PRODUCT_TYPE.STORAGE, PRODUCT_TYPE.AGENT].includes(watchProductType);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -431,8 +432,8 @@ export function AddRefuelingDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {watchProductType === "service" ? "Количество заправок" :
-                       watchProductType === "storage" ? "Объем хранения (кг)" :
+                      {watchProductType === PRODUCT_TYPE.SERVICE ? "Количество заправок" :
+                       watchProductType === PRODUCT_TYPE.STORAGE ? "Объем хранения (кг)" :
                        "Сумма услуги"}
                     </FormLabel>
                     <FormControl>

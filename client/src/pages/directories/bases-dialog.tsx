@@ -14,10 +14,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Switch } from "@/components/ui/switch";
 import { Plus, Loader2 } from "lucide-react";
 import type { Base } from "@shared/schema";
+import { BASE_TYPE } from "@shared/constants";
 
 const baseFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
-  baseType: z.enum(["wholesale", "refueling"], { required_error: "Выберите тип базиса" }),
+  baseType: z.enum([BASE_TYPE.WHOLESALE, BASE_TYPE.REFUELING], { required_error: "Выберите тип базиса" }),
   location: z.string().optional(),
   isActive: z.boolean().default(true),
 });
@@ -38,7 +39,7 @@ export function AddBaseDialog({
     resolver: zodResolver(baseFormSchema),
     defaultValues: {
       name: "",
-      baseType: "wholesale",
+      baseType: BASE_TYPE.WHOLESALE,
       location: "",
       isActive: true,
     },
@@ -128,8 +129,8 @@ export function AddBaseDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="wholesale">ОПТ</SelectItem>
-                      <SelectItem value="refueling">Заправка</SelectItem>
+                      <SelectItem value={BASE_TYPE.WHOLESALE}>ОПТ</SelectItem>
+                      <SelectItem value={BASE_TYPE.REFUELING}>Заправка</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

@@ -18,19 +18,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { CalendarIcon, Plus, Loader2, AlertCircle, ChevronDown } from "lucide-react";
-import type { Supplier, Base, Customer, Warehouse, Price, AircraftRefueling } from "@shared/schema";
+import { CalendarIcon, Plus, Loader2, AlertCircle } from "lucide-react";
+import type { Supplier, Base, Customer, Warehouse, Price } from "@shared/schema";
 import { CalculatedField } from "../calculated-field";
 import { refuelingFormSchema, type RefuelingFormData } from "../schemas";
 import { formatNumber, formatCurrency } from "../utils";
 import type { RefuelingFormProps } from "../types";
 import { PRODUCT_TYPES } from "../constants";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 export function RefuelingForm({ 
   onSuccess, 
@@ -205,8 +199,8 @@ export function RefuelingForm({
 
     return allPrices?.filter(p => {
       const basicMatch = p.counterpartyId === watchSupplierId &&
-        p.counterpartyType === "refueling" &&
-        p.counterpartyRole === "supplier" &&
+        p.counterpartyType === COUNTERPARTY_TYPE.REFUELING &&
+        p.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER &&
         p.productType === priceProductType &&
         p.basis === watchBasis &&
         p.dateFrom <= dateStr &&
@@ -981,7 +975,7 @@ export function RefuelingForm({
                 );
               }}
             />
-          ) : !isWarehouseSupplier && watchProductType !== "service" ? (
+          ) : !isWarehouseSupplier && watchProductType !== PRODUCT_TYPE.SERVICE ? (
             <CalculatedField 
               label="Покупка" 
               value="Нет цены!"

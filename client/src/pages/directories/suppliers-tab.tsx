@@ -59,7 +59,7 @@ export function SuppliersTab() {
     return baseIds
       .map(id => {
         const base = bases.find(b => b.id === id);
-        return base ? `${base.name} (${base.baseType === 'wholesale' ? 'ОПТ' : 'Заправка'})` : null;
+        return base ? `${base.name} (${base.baseType === BASE_TYPE.WHOLESALE ? 'ОПТ' : 'Заправка'})` : null;
       })
       .filter(Boolean)
       .join(", ");

@@ -10,7 +10,7 @@ import {
   type InsertMovement,
 } from "@shared/schema";
 import { IMovementStorage } from "./types";
-import { PRODUCT_TYPE, MOVEMENT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
+import { PRODUCT_TYPE, MOVEMENT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 
 export class MovementStorage implements IMovementStorage {
   async getMovements(page: number, pageSize: number): Promise<{ data: Movement[]; total: number }> {
@@ -94,7 +94,7 @@ export class MovementStorage implements IMovementStorage {
             warehouseId: created.toWarehouseId,
             transactionType: created.movementType === MOVEMENT_TYPE.SUPPLY ? TRANSACTION_TYPE.RECEIPT : TRANSACTION_TYPE.TRANSFER_IN,
             productType: PRODUCT_TYPE.PVKJ,
-            sourceType: 'movement',
+            sourceType: SOURCE_TYPE.MOVEMENT,
             sourceId: created.id,
             quantity: quantityKg.toString(),
             balanceBefore: currentBalance.toString(),
@@ -125,7 +125,7 @@ export class MovementStorage implements IMovementStorage {
             warehouseId: created.toWarehouseId,
             transactionType: created.movementType === MOVEMENT_TYPE.SUPPLY ? TRANSACTION_TYPE.RECEIPT : TRANSACTION_TYPE.TRANSFER_IN,
             productType: PRODUCT_TYPE.KEROSENE,
-            sourceType: 'movement',
+            sourceType: SOURCE_TYPE.MOVEMENT,
             sourceId: created.id,
             quantity: quantityKg.toString(),
             balanceBefore: currentBalance.toString(),
@@ -160,7 +160,7 @@ export class MovementStorage implements IMovementStorage {
             warehouseId: created.fromWarehouseId,
             transactionType: TRANSACTION_TYPE.TRANSFER_OUT,
             productType: PRODUCT_TYPE.PVKJ,
-            sourceType: 'movement',
+            sourceType: SOURCE_TYPE.MOVEMENT,
             sourceId: created.id,
             quantity: (-quantityKg).toString(),
             balanceBefore: currentBalance.toString(),
@@ -186,7 +186,7 @@ export class MovementStorage implements IMovementStorage {
             warehouseId: created.fromWarehouseId,
             transactionType: TRANSACTION_TYPE.TRANSFER_OUT,
             productType: PRODUCT_TYPE.KEROSENE,
-            sourceType: 'movement',
+            sourceType: SOURCE_TYPE.MOVEMENT,
             sourceId: created.id,
             quantity: (-quantityKg).toString(),
             balanceBefore: currentBalance.toString(),

@@ -986,8 +986,8 @@ export function OptForm({
                     return deliveryCosts.some(dc => 
                       dc.carrierId === carrier.id &&
                       (
-                        (dc.fromEntityType === "base" && dc.fromEntityId === base.id) ||
-                        (warehouse && dc.fromEntityType === "warehouse" && dc.fromEntityId === warehouse.id)
+                        (dc.fromEntityType === ENTITY_TYPE.BASE && dc.fromEntityId === base.id) ||
+                        (warehouse && dc.fromEntityType === ENTITY_TYPE.WAREHOUSE && dc.fromEntityId === warehouse.id)
                       )
                     );
                   }) || [];
@@ -1032,11 +1032,11 @@ export function OptForm({
 
                     return deliveryCosts.some(dc => 
                       dc.carrierId === watchCarrierId &&
-                      dc.toEntityType === "delivery_location" &&
+                      dc.toEntityType === ENTITY_TYPE.DELIVERY_LOCATION &&
                       dc.toEntityId === location.id &&
                       (
-                        (base && dc.fromEntityType === "base" && dc.fromEntityId === base.id) ||
-                        (warehouse && dc.fromEntityType === "warehouse" && dc.fromEntityId === warehouse.id)
+                        (base && dc.fromEntityType === ENTITY_TYPE.BASE && dc.fromEntityId === base.id) ||
+                        (warehouse && dc.fromEntityType === ENTITY_TYPE.WAREHOUSE && dc.fromEntityId === warehouse.id)
                       )
                     );
                   }) || [];

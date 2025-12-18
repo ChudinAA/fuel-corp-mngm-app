@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Pencil, Trash2 } from "lucide-react";
 import type { ExchangeTableProps } from "../types";
 import { formatNumber, formatCurrency, formatDate } from "../utils";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 export function ExchangeTable({ 
   data, 
@@ -54,7 +55,7 @@ export function ExchangeTable({
                 <TableCell>{item.counterparty}</TableCell>
                 <TableCell>
                   <Badge variant="outline">
-                    {item.productType === "kerosene" ? "Керосин" : "ПВКЖ"}
+                    {item.productType === PRODUCT_TYPE.KEROSENE ? "Керосин" : "ПВКЖ"}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right font-medium">{formatNumber(item.quantityKg)}</TableCell>

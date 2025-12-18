@@ -10,6 +10,7 @@ import { Plus, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import type { Movement, Warehouse } from "@shared/schema";
 import { MovementDialog } from "./movement/components/movement-dialog";
 import { MovementTable } from "./movement/components/movement-table";
+import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 
 export default function MovementPage() {
   const [page, setPage] = useState(1);
@@ -165,16 +166,16 @@ export default function MovementPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Button
-                  variant={typeFilter === "supply" ? "default" : "outline"}
+                  variant={typeFilter === MOVEMENT_TYPE.SUPPLY ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setTypeFilter(typeFilter === "supply" ? null : "supply")}
+                  onClick={() => setTypeFilter(typeFilter === MOVEMENT_TYPE.SUPPLY ? null : MOVEMENT_TYPE.SUPPLY)}
                 >
                   Покупка
                 </Button>
                 <Button
-                  variant={typeFilter === "internal" ? "default" : "outline"}
+                  variant={typeFilter === MOVEMENT_TYPE.INTERNAL ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setTypeFilter(typeFilter === "internal" ? null : "internal")}
+                  onClick={() => setTypeFilter(typeFilter === MOVEMENT_TYPE.INTERNAL ? null : MOVEMENT_TYPE.INTERNAL)}
                 >
                   Внутреннее
                 </Button>
@@ -185,8 +186,8 @@ export default function MovementPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Все продукты</SelectItem>
-                  <SelectItem value="kerosene">Керосин</SelectItem>
-                  <SelectItem value="pvkj">ПВКЖ</SelectItem>
+                  <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
+                  <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
                 </SelectContent>
               </Select>
             </div>
