@@ -1,6 +1,7 @@
 
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 export const formatNumber = (value: string | number | null) => {
   if (value === null) return "—";
@@ -31,11 +32,11 @@ export const getPriceDisplay = (priceValues: string[] | null) => {
 
 export const getProductTypeLabel = (productType: string) => {
   const labels: Record<string, string> = {
-    kerosine: "Керосин",
-    pvkj: "ПВКЖ",
-    service: "Услуга",
-    agent: "Агентские",
-    storage: "Хранение"
+    [PRODUCT_TYPE.KEROSINE]: "Керосин",
+    [PRODUCT_TYPE.PVKJ]: "ПВКЖ",
+    [PRODUCT_TYPE.SERVICE]: "Услуга",
+    [PRODUCT_TYPE.AGENT]: "Агентские",
+    [PRODUCT_TYPE.STORAGE]: "Хранение"
   };
   return labels[productType] || productType;
 };

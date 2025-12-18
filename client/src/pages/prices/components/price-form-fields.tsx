@@ -1,4 +1,3 @@
-
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +11,7 @@ import { ru } from "date-fns/locale";
 import type { Control, FieldArrayWithId, UseFieldArrayRemove, UseFieldArrayAppend } from "react-hook-form";
 import type { PriceFormData } from "../types";
 import type { Base, Supplier, Customer } from "@shared/schema";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 interface PriceFormFieldsProps {
   control: Control<PriceFormData>;
@@ -157,11 +157,11 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="kerosine">Керосин</SelectItem>
-                  <SelectItem value="service">Услуга</SelectItem>
-                  <SelectItem value="pvkj">ПВКЖ</SelectItem>
-                  <SelectItem value="agent">Агентские</SelectItem>
-                  <SelectItem value="storage">Хранение</SelectItem>
+                  <SelectItem value={PRODUCT_TYPE.KEROSINE}>Керосин</SelectItem>
+                  <SelectItem value={PRODUCT_TYPE.SERVICE}>Услуга</SelectItem>
+                  <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
+                  <SelectItem value={PRODUCT_TYPE.AGENT}>Агентские</SelectItem>
+                  <SelectItem value={PRODUCT_TYPE.STO}>Хранение</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

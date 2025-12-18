@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -228,15 +229,15 @@ export function RefuelingForm({
     // Определяем тип продукта для поиска цены
     let priceProductType = "kerosine";
     if (watchProductType === "pvkj") {
-      priceProductType = "pvkj";
-    } else if (watchProductType === "service") {
-      priceProductType = "service";
+      priceProductType = PRODUCT_TYPE.PVKJ;
+    } else if (watchProductType === PRODUCT_TYPE.SERVICE) {
+      priceProductType = PRODUCT_TYPE.SERVICE;
     }
 
     return allPrices?.filter(p => {
       const basicMatch = p.counterpartyId === watchBuyerId &&
-        p.counterpartyType === "refueling" &&
-        p.counterpartyRole === "buyer" &&
+        p.counterpartyType === COUNTERPARTY_TYPE.REFUELING &&
+        p.counterpartyRole === COUNTERPARTY_ROLE.BUYER &&
         p.productType === priceProductType &&
         p.dateFrom <= dateStr &&
         p.dateTo >= dateStr &&
@@ -250,7 +251,7 @@ export function RefuelingForm({
 
   const getPurchasePrice = (): number | null => {
     // Для услуги заправки - сначала проверяем service_price у поставщика
-    if (watchProductType === "service") {
+    if (watchProductType === PRODUCT_TYPE.SERVICE) {
       // Проверяем service_price у поставщика
       if (selectedSupplier?.servicePrice) {
         return parseFloat(selectedSupplier.servicePrice);
@@ -286,7 +287,7 @@ export function RefuelingForm({
     }
 
     // Для ПВКЖ
-    if (watchProductType === "pvkj") {
+    if (watchProductType === PRODUCT_TYPE.PVKJ) {
       if (isWarehouseSupplier && supplierWarehouse) {
         return parseFloat(supplierWarehouse.pvkjAverageCost || "0");
       }

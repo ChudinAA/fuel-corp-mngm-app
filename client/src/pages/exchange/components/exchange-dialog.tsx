@@ -1,6 +1,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { PRODUCT_TYPE } from "@shared/constants";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useMutation } from "@tanstack/react-query";
@@ -157,8 +158,8 @@ export function ExchangeDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="kerosene">Керосин</SelectItem>
-                        <SelectItem value="pvkj">ПВКЖ</SelectItem>
+                        <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
+                        <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

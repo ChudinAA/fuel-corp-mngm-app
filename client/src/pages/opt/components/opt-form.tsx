@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -218,9 +219,9 @@ export function OptForm({
 
     return allPrices?.filter(p =>
       p.counterpartyId === watchBuyerId &&
-      p.counterpartyType === "wholesale" &&
-      p.counterpartyRole === "buyer" &&
-      p.productType === "kerosine" &&
+      p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
+      p.counterpartyRole === COUNTERPARTY_ROLE.BUYER &&
+      p.productType === PRODUCT_TYPE.KEROSINE &&
       p.dateFrom <= dateStr &&
       p.dateTo >= dateStr &&
       p.isActive

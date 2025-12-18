@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { MOVEMENT_TYPE, PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -136,9 +137,9 @@ export function MovementDialog({
     if (!supplier) return null;
 
     // Определяем тип продукта для поиска цены
-    let priceProductType = "kerosene";
-    if (watchProductType === "pvkj") {
-      priceProductType = "pvkj";
+    let priceProductType = PRODUCT_TYPE.KEROSENE;
+    if (watchProductType === PRODUCT_TYPE.PVKJ) {
+      priceProductType = PRODUCT_TYPE.PVKJ;
     }
 
     // Определяем базис - берем первый базис поставщика
@@ -155,8 +156,8 @@ export function MovementDialog({
     // Ищем цену в таблице цен
     const matchingPrice = prices.find(p =>
       p.counterpartyId === watchSupplierId &&
-      p.counterpartyType === "wholesale" &&
-      p.counterpartyRole === "supplier" &&
+      p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
+      p.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER &&
       p.productType === priceProductType &&
       p.basis === baseName &&
       p.dateFrom <= dateStr &&
@@ -392,8 +393,8 @@ export function MovementDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="supply">Покупка</SelectItem>
-                        <SelectItem value="internal">Внутреннее перемещение</SelectItem>
+                        <SelectItem value={MOVEMENT_TYPE.SUPPLY}>Покупка</SelectItem>
+                        <SelectItem value={MOVEMENT_TYPE.INTERNAL}>Внутреннее перемещение</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
