@@ -57,7 +57,7 @@ export function MovementDialog({
       inputMode: "kg",
       quantityLiters: undefined,
       density: undefined,
-      quantityKg: 0,
+      quantityKg: undefined,
       carrierId: "",
       notes: "",
     },
@@ -74,9 +74,9 @@ export function MovementDialog({
         fromWarehouseId: editMovement.fromWarehouseId || "",
         toWarehouseId: editMovement.toWarehouseId,
         inputMode: "kg",
-        quantityLiters: editMovement.quantityLiters ? parseFloat(editMovement.quantityLiters) : undefined,
-        density: editMovement.density ? parseFloat(editMovement.density) : undefined,
-        quantityKg: editMovement.quantityKg ? parseFloat(editMovement.quantityKg) : 0,
+        quantityLiters: editMovement.quantityLiters ? String(editMovement.quantityLiters) : undefined,
+        density: editMovement.density ? String(editMovement.density) : undefined,
+        quantityKg: editMovement.quantityKg ? String(editMovement.quantityKg) : undefined,
         carrierId: editMovement.carrierId || "",
         notes: editMovement.notes || "",
       });
@@ -91,7 +91,7 @@ export function MovementDialog({
         inputMode: "kg",
         quantityLiters: undefined,
         density: undefined,
-        quantityKg: 0,
+        quantityKg: undefined,
         carrierId: "",
         notes: "",
       });
@@ -111,7 +111,7 @@ export function MovementDialog({
 
   const calculatedKg = inputMode === "liters" && watchLiters && watchDensity
     ? calculateKgFromLiters(parseFloat(watchLiters), parseFloat(watchDensity))
-    : (watchKg ? parseFloat(watchKg) : 0);
+    : (watchKg && watchKg !== "" ? parseFloat(watchKg) : 0);
 
   const kgNum = calculatedKg || 0;
 
