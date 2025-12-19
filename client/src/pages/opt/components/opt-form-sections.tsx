@@ -39,57 +39,57 @@ export function VolumeInputSection({ form, inputMode, setInputMode, calculatedKg
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 md:grid-cols-3">
+          <FormField
+            control={form.control}
+            name="quantityLiters"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Литры</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="number" 
+                    placeholder="0.00"
+                    data-testid="input-liters"
+                    disabled={inputMode === "kg"}
+                    {...field} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="density"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Плотность</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="number" 
+                    step="0.0001"
+                    placeholder="0.8000"
+                    data-testid="input-density"
+                    disabled={inputMode === "kg"}
+                    {...field} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           {inputMode === "liters" ? (
-            <>
-              <FormField
-                control={form.control}
-                name="quantityLiters"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Литры</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="0.00"
-                        data-testid="input-liters"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="density"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Плотность</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        step="0.0001"
-                        placeholder="0.8000"
-                        data-testid="input-density"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <CalculatedField 
-                label="КГ (расчет)" 
-                value={watchLiters && watchDensity ? formatNumber(calculatedKg) : "—"}
-                suffix={watchLiters && watchDensity ? " кг" : ""}
-              />
-            </>
+            <CalculatedField 
+              label="КГ (расчет)" 
+              value={watchLiters && watchDensity ? formatNumber(calculatedKg) : "—"}
+              suffix={watchLiters && watchDensity ? " кг" : ""}
+            />
           ) : (
             <FormField
               control={form.control}
               name="quantityKg"
               render={({ field }) => (
-                <FormItem className="md:col-span-3">
+                <FormItem>
                   <FormLabel>Количество (КГ)</FormLabel>
                   <FormControl>
                     <Input 

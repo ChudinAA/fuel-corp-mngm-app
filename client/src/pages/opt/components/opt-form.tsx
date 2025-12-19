@@ -410,6 +410,10 @@ export function OptForm({
           form={form}
           wholesaleSuppliers={wholesaleSuppliers}
           customers={customers}
+          selectedSupplier={selectedSupplier}
+          selectedBasis={selectedBasis}
+          setSelectedBasis={setSelectedBasis}
+          wholesaleBases={wholesaleBases}
         />
 
         <VolumeInputSection
@@ -417,18 +421,6 @@ export function OptForm({
           inputMode={inputMode}
           setInputMode={setInputMode}
           calculatedKg={calculatedKg}
-        />
-
-        <OptBasisWarehouseSection
-          selectedSupplier={selectedSupplier}
-          selectedBasis={selectedBasis}
-          setSelectedBasis={setSelectedBasis}
-          wholesaleBases={wholesaleBases}
-          isWarehouseSupplier={isWarehouseSupplier}
-          supplierWarehouse={supplierWarehouse}
-          finalKg={finalKg}
-          isEditing={isEditing}
-          initialWarehouseBalance={initialWarehouseBalance}
         />
 
         <OptPricingSection
@@ -446,6 +438,10 @@ export function OptForm({
           saleAmount={saleAmount}
           deliveryCost={deliveryCost}
           profit={profit}
+          supplierWarehouse={supplierWarehouse}
+          finalKg={finalKg}
+          isEditing={isEditing}
+          initialWarehouseBalance={initialWarehouseBalance}
         />
 
         <LogisticsSection

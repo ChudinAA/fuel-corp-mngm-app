@@ -17,15 +17,23 @@ interface OptMainFieldsProps {
   form: UseFormReturn<OptFormData>;
   wholesaleSuppliers: Supplier[];
   customers: Customer[] | undefined;
+  selectedSupplier: Supplier | undefined;
+  selectedBasis: string;
+  setSelectedBasis: (value: string) => void;
+  wholesaleBases: any[];
 }
 
 export function OptMainFields({
   form,
   wholesaleSuppliers,
   customers,
+  selectedSupplier,
+  selectedBasis,
+  setSelectedBasis,
+  wholesaleBases,
 }: OptMainFieldsProps) {
   return (
-    <div className="grid gap-6 md:grid-cols-3">
+    <div className="grid gap-6 md:grid-cols-4">
       <FormField
         control={form.control}
         name="dealDate"
@@ -114,6 +122,42 @@ export function OptMainFields({
           </FormItem>
         )}
       />
+
+      {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 1 ? (
+        <FormItem>
+          <FormLabel className="flex items-center gap-2">Базис</FormLabel>
+          <Select 
+            value={selectedBasis} 
+            onValueChange={(value) => {
+              const base = wholesaleBases?.find(b => b.name === value);
+              if (base) setSelectedBasis(base.name);
+            }}
+          >
+            <FormControl>
+              <SelectTrigger data-testid="select-basis">
+                <SelectValue placeholder="Выберите базис" />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              {selectedSupplier.baseIds.map((baseId) => {
+                const base = wholesaleBases?.find(b => b.id === baseId);
+                return base ? (
+                  <SelectItem key={base.id} value={base.name}>
+                    {base.name}
+                  </SelectItem>
+                ) : null;
+              })}
+            </SelectContent>
+          </Select>
+        </FormItem>
+      ) : (
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Базис</label>
+          <div className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm">
+            {selectedBasis || "—"}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
