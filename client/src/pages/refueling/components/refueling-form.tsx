@@ -163,11 +163,13 @@ export function RefuelingForm({
 
       // Автоматически выбираем первый базис при выборе поставщика
       if (supplier?.baseIds && supplier.baseIds.length >= 1 && !editData) {
-        const baseId = supplier.baseIds[0];
-        const base = allBases.find(b => b.id === baseId && b.baseType === BASE_TYPE.REFUELING);
-        if (base) {
-          form.setValue("basis", base.name);
-          setSelectedBasis(base.name);
+        const refuelingBases = allBases.filter(b => 
+          supplier.baseIds?.includes(b.id) && b.baseType === BASE_TYPE.REFUELING
+        );
+        if (refuelingBases.length > 0) {
+          const firstBase = refuelingBases[0];
+          form.setValue("basis", firstBase.name);
+          setSelectedBasis(firstBase.name);
         }
       }
     }

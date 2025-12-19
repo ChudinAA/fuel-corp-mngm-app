@@ -9,9 +9,9 @@ export const movementFormSchema = z.object({
   fromWarehouseId: z.string().optional(),
   toWarehouseId: z.string().min(1, "Выберите склад назначения"),
   inputMode: z.enum(["liters", "kg"]),
-  quantityLiters: z.coerce.number().positive().optional().nullable(),
-  density: z.coerce.number().positive().optional().nullable(),
-  quantityKg: z.coerce.number().positive({ message: "Укажите положительное количество" }),
+  quantityLiters: z.string().optional(),
+  density: z.string().optional(),
+  quantityKg: z.string().optional(),
   carrierId: z.string().optional(),
   notes: z.string().optional(),
 });
