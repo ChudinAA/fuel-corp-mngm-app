@@ -22,6 +22,7 @@ import { movementFormSchema, type MovementFormData } from "../schemas";
 import { calculateKgFromLiters, formatNumber, formatCurrency } from "../utils";
 import type { MovementDialogProps } from "../types";
 import { CalculatedField } from "./calculated-field";
+import { VolumeInputSection } from "../../opt/components/opt-form-sections";
 
 export function MovementDialog({
   warehouses,
@@ -546,80 +547,12 @@ export function MovementDialog({
               )} />
             </div>
 
-            <Card>
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between gap-4">
-                  <CardTitle className="text-lg">Объем топлива</CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-sm text-muted-foreground">Литры/Плотность</Label>
-                    <Switch checked={inputMode === "kg"} onCheckedChange={(c) => setInputMode(c ? "kg" : "liters")} data-testid="switch-movement-input" />
-                    <Label className="text-sm text-muted-foreground">КГ</Label>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {inputMode === "liters" ? (
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <FormField control={form.control} name="quantityLiters" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Литры</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            min="0" 
-                            step="0.01" 
-                            placeholder="0.00" 
-                            data-testid="input-movement-liters" 
-                            {...field}
-                            value={field.value || ""}
-                            onChange={(e) => field.onChange(e.target.valueAsNumber || null)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="density" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Плотность</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            min="0" 
-                            step="0.0001" 
-                            placeholder="0.8000" 
-                            data-testid="input-movement-density" 
-                            {...field}
-                            value={field.value || ""}
-                            onChange={(e) => field.onChange(e.target.valueAsNumber || null)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <CalculatedField label="КГ (расчет)" value={formatNumber(calculatedKg)} suffix=" кг" />
-                  </div>
-                ) : (
-                  <FormField control={form.control} name="quantityKg" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Количество (КГ)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          min="0" 
-                          step="0.01" 
-                          placeholder="0.00" 
-                          data-testid="input-movement-kg" 
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                )}
-              </CardContent>
-            </Card>
+            <VolumeInputSection
+              form={form}
+              inputMode={inputMode}
+              setInputMode={setInputMode}
+              calculatedKg={calculatedKg?.toString() || "0"}
+            />
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <CalculatedField 
