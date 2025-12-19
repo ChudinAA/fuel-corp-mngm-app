@@ -392,11 +392,21 @@ export function OptForm({
   });
 
   const onSubmit = (data: OptFormData) => {
+    // Проверяем наличие количества
+    if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
+      toast({
+        title: "Ошибка: отсутствует объем",
+        description: "Укажите корректное количество топлива в килограммах или литрах.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Проверяем наличие ошибок в ценах
     if (!isWarehouseSupplier && purchasePrice === null) {
       toast({
-        title: "Ошибка валидации",
-        description: "Не указана цена покупки. Выберите цену или проверьте настройки поставщика.",
+        title: "Ошибка: отсутствует цена покупки",
+        description: "Не указана цена покупки. Выберите цену из списка или проверьте настройки поставщика и базиса.",
         variant: "destructive"
       });
       return;
@@ -404,8 +414,8 @@ export function OptForm({
 
     if (salePrice === null) {
       toast({
-        title: "Ошибка валидации",
-        description: "Не указана цена продажи. Выберите цену или проверьте настройки покупателя.",
+        title: "Ошибка: отсутствует цена продажи",
+        description: "Не указана цена продажи. Выберите цену из списка или проверьте настройки покупателя.",
         variant: "destructive"
       });
       return;
@@ -418,22 +428,12 @@ export function OptForm({
       
       if (remaining < 0) {
         toast({
-          title: "Ошибка валидации",
-          description: `Недостаточно объема на складе! Доступно: ${availableBalance.toFixed(2)} кг`,
+          title: "Ошибка: недостаточно объема на складе",
+          description: `На складе "${supplierWarehouse.name}" недостаточно топлива. Доступно: ${availableBalance.toFixed(2)} кг, требуется: ${finalKg.toFixed(2)} кг`,
           variant: "destructive"
         });
         return;
       }
-    }
-
-    // Проверяем наличие количества
-    if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
-      toast({
-        title: "Ошибка валидации",
-        description: "Укажите корректное количество топлива.",
-        variant: "destructive"
-      });
-      return;
     }
 
     if (editData) {

@@ -162,7 +162,7 @@ export function RefuelingForm({
       }
 
       // Автоматически выбираем первый базис при выборе поставщика
-      if (supplier?.baseIds && supplier.baseIds.length >= 1) {
+      if (supplier?.baseIds && supplier.baseIds.length >= 1 && !editData) {
         const baseId = supplier.baseIds[0];
         const base = allBases.find(b => b.id === baseId && b.baseType === BASE_TYPE.REFUELING);
         if (base) {
@@ -171,7 +171,16 @@ export function RefuelingForm({
         }
       }
     }
-  }, [watchSupplierId, suppliers, allBases, warehouses, form]);
+  }, [watchSupplierId, suppliers, allBases, warehouses, form, editData]);
+
+  // Автоматический выбор первой цены продажи при выборе покупателя
+  useEffect(() => {
+    if (watchBuyerId && salePrices.length > 0 && !editData && !selectedSalePriceId) {
+      const firstSalePriceId = `${salePrices[0].id}-0`;
+      setSelectedSalePriceId(firstSalePriceId);
+      form.setValue("selectedSalePriceId", firstSalePriceId);
+    }
+  }, [watchBuyerId, salePrices, editData, selectedSalePriceId, form]);
 
   useEffect(() => {
     if (editData && suppliers && customers && allBases && warehouses) { // Added warehouses dependency
@@ -397,6 +406,18 @@ export function RefuelingForm({
   });
 
   const onSubmit = (data: RefuelingFormData) => {
+    const productType = watchProductType;
+    
+    // Проверяем наличие количества
+    if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
+      toast({
+        title: "Ошибка валидации",
+        description: "Укажите корректное количество топлива.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Проверяем наличие ошибок в ценах
     if (!isWarehouseSupplier && productType !== "service" && purchasePrice === null) {
       toast({
@@ -421,16 +442,6 @@ export function RefuelingForm({
       toast({
         title: "Ошибка валидации",
         description: warehouseStatus.message,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Проверяем наличие количества
-    if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
-      toast({
-        title: "Ошибка валидации",
-        description: "Укажите корректное количество топлива.",
         variant: "destructive"
       });
       return;
