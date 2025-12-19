@@ -43,7 +43,7 @@ export function VolumeInputSection({ form, inputMode, setInputMode, calculatedKg
             name="quantityLiters"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Литры</FormLabel>
+                <FormLabel className="flex items-center gap-2">Литры</FormLabel>
                 <FormControl>
                   <Input 
                     type="number" 
@@ -64,7 +64,7 @@ export function VolumeInputSection({ form, inputMode, setInputMode, calculatedKg
             name="density"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Плотность</FormLabel>
+                <FormLabel className="flex items-center gap-2">Плотность</FormLabel>
                 <FormControl>
                   <Input 
                     type="number" 
@@ -92,7 +92,7 @@ export function VolumeInputSection({ form, inputMode, setInputMode, calculatedKg
               name="quantityKg"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Количество (КГ)</FormLabel>
+                  <FormLabel className="flex items-center gap-2">Количество (КГ)</FormLabel>
                   <FormControl>
                     <Input 
                       type="number" 
