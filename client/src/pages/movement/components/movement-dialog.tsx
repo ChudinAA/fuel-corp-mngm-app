@@ -110,8 +110,8 @@ export function MovementDialog({
   const watchKg = form.watch("quantityKg");
 
   const calculatedKg = inputMode === "liters" && watchLiters && watchDensity
-    ? calculateKgFromLiters(watchLiters, watchDensity)
-    : watchKg;
+    ? calculateKgFromLiters(parseFloat(watchLiters), parseFloat(watchDensity))
+    : (watchKg ? parseFloat(watchKg) : 0);
 
   const kgNum = calculatedKg || 0;
 
@@ -346,7 +346,7 @@ export function MovementDialog({
         carrierId: data.carrierId || null,
         quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
         density: data.density ? parseFloat(data.density) : null,
-        quantityKg: calculatedKg || (data.quantityKg ? parseFloat(data.quantityKg as string) : 0),
+        quantityKg: calculatedKg,
         purchasePrice: purchasePrice,
         deliveryPrice: deliveryCost > 0 && kgNum > 0 ? deliveryCost / kgNum : null,
         deliveryCost: deliveryCost,
