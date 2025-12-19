@@ -392,6 +392,50 @@ export function OptForm({
   });
 
   const onSubmit = (data: OptFormData) => {
+    // Проверяем наличие ошибок в ценах
+    if (!isWarehouseSupplier && purchasePrice === null) {
+      toast({
+        title: "Ошибка валидации",
+        description: "Не указана цена покупки. Выберите цену или проверьте настройки поставщика.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (salePrice === null) {
+      toast({
+        title: "Ошибка валидации",
+        description: "Не указана цена продажи. Выберите цену или проверьте настройки покупателя.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Проверяем достаточность объема на складе для складских поставщиков
+    if (isWarehouseSupplier && supplierWarehouse) {
+      const availableBalance = isEditing ? initialWarehouseBalance : parseFloat(supplierWarehouse.currentBalance || "0");
+      const remaining = availableBalance - finalKg;
+      
+      if (remaining < 0) {
+        toast({
+          title: "Ошибка валидации",
+          description: `Недостаточно объема на складе! Доступно: ${availableBalance.toFixed(2)} кг`,
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
+    // Проверяем наличие количества
+    if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
+      toast({
+        title: "Ошибка валидации",
+        description: "Укажите корректное количество топлива.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (editData) {
       updateMutation.mutate({ ...data, id: editData.id });
     } else {
@@ -446,7 +490,7 @@ export function OptForm({
           deliveryLocations={availableLocations}
         />
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 items-end">
           <FormField
             control={form.control}
             name="notes"
@@ -454,9 +498,8 @@ export function OptForm({
               <FormItem>
                 <FormLabel>Примечания</FormLabel>
                 <FormControl>
-                  <Textarea 
+                  <Input 
                     placeholder="Дополнительная информация..."
-                    className="resize-none"
                     data-testid="input-notes"
                     {...field} 
                   />
@@ -470,7 +513,7 @@ export function OptForm({
             control={form.control}
             name="isApproxVolume"
             render={({ field }) => (
-              <FormItem className="flex items-center gap-2 space-y-0 pt-6">
+              <FormItem className="flex items-center gap-2 space-y-0 pb-2">
                 <FormControl>
                   <Checkbox
                     checked={field.value}

@@ -161,8 +161,8 @@ export function RefuelingForm({
         form.setValue("warehouseId", "");
       }
 
-      // Автоматически выбираем первый базис
-      if (!editData && supplier?.baseIds && supplier.baseIds.length >= 1) {
+      // Автоматически выбираем первый базис при выборе поставщика
+      if (supplier?.baseIds && supplier.baseIds.length >= 1) {
         const baseId = supplier.baseIds[0];
         const base = allBases.find(b => b.id === baseId && b.baseType === BASE_TYPE.REFUELING);
         if (base) {
@@ -171,7 +171,7 @@ export function RefuelingForm({
         }
       }
     }
-  }, [watchSupplierId, suppliers, allBases, warehouses, form, editData]);
+  }, [watchSupplierId, suppliers, allBases, warehouses, form]);
 
   useEffect(() => {
     if (editData && suppliers && customers && allBases && warehouses) { // Added warehouses dependency
@@ -397,6 +397,45 @@ export function RefuelingForm({
   });
 
   const onSubmit = (data: RefuelingFormData) => {
+    // Проверяем наличие ошибок в ценах
+    if (!isWarehouseSupplier && productType !== "service" && purchasePrice === null) {
+      toast({
+        title: "Ошибка валидации",
+        description: "Не указана цена покупки. Выберите цену или проверьте настройки поставщика.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (salePrice === null) {
+      toast({
+        title: "Ошибка валидации",
+        description: "Не указана цена продажи. Выберите цену или проверьте настройки покупателя.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Проверяем достаточность объема на складе
+    if (warehouseStatus.status === "error") {
+      toast({
+        title: "Ошибка валидации",
+        description: warehouseStatus.message,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Проверяем наличие количества
+    if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
+      toast({
+        title: "Ошибка валидации",
+        description: "Укажите корректное количество топлива.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (editData) {
       updateMutation.mutate({ ...data, id: editData.id });
     } else {
@@ -443,7 +482,7 @@ export function RefuelingForm({
           productType={watchProductType}
         />
 
-        <div className="grid gap-4 md:grid-cols-1">
+        <div className="grid gap-4 md:grid-cols-2 items-end">
           <FormField
             control={form.control}
             name="notes"
@@ -451,9 +490,8 @@ export function RefuelingForm({
               <FormItem>
                 <FormLabel>Примечания</FormLabel>
                 <FormControl>
-                  <Textarea 
+                  <Input 
                     placeholder="Дополнительная информация..."
-                    className="resize-none"
                     data-testid="input-notes"
                     {...field} 
                   />
@@ -467,7 +505,7 @@ export function RefuelingForm({
             control={form.control}
             name="isApproxVolume"
             render={({ field }) => (
-              <FormItem className="flex items-center gap-2 space-y-0">
+              <FormItem className="flex items-center gap-2 space-y-0 pb-2">
                 <FormControl>
                   <Checkbox
                     checked={field.value}

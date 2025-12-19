@@ -48,13 +48,7 @@ export function RefuelingPricingSection({
 }: RefuelingPricingSectionProps) {
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-3">
-        <CalculatedField 
-          label="Объем на складе" 
-          value={warehouseStatus.message}
-          status={warehouseStatus.status}
-        />
-
+      <div className="grid gap-4 md:grid-cols-4">
         {!isWarehouseSupplier && purchasePrices.length > 0 ? (
           <FormField
             control={form.control}
@@ -129,18 +123,6 @@ export function RefuelingPricingSection({
           value={purchaseAmount !== null ? formatCurrency(purchaseAmount) : "—"}
           variant="neutral"
         />
-      </div>
-
-      {agentFee > 0 && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Агентское вознаграждение: {formatCurrency(agentFee)}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <div className="grid gap-4 md:grid-cols-3">
         {salePrices.length > 0 ? (
           <FormField
             control={form.control}
@@ -207,6 +189,23 @@ export function RefuelingPricingSection({
           label="Сумма продажи" 
           value={saleAmount !== null ? formatCurrency(saleAmount) : "—"}
           variant="neutral"
+        />
+      </div>
+
+      {agentFee > 0 && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Агентское вознаграждение: {formatCurrency(agentFee)}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <CalculatedField 
+          label="Объем на складе" 
+          value={warehouseStatus.message}
+          status={warehouseStatus.status}
         />
 
         <CalculatedField 

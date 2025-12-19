@@ -307,8 +307,36 @@ export function MovementDialog({
   const totalCost = purchaseAmount + storageCost + deliveryCost;
   const costPerKg = kgNum > 0 ? totalCost / kgNum : 0;
 
+  const validateForm = (): boolean => {
+    // Проверяем цену закупки
+    if (purchasePrice === null) {
+      toast({
+        title: "Ошибка валидации",
+        description: "Не указана цена закупки. Проверьте настройки поставщика или маршрута.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    // Проверяем количество
+    if (!calculatedKg || kgNum <= 0) {
+      toast({
+        title: "Ошибка валидации",
+        description: "Укажите корректное количество топлива.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    return true;
+  };
+
   const createMutation = useMutation({
     mutationFn: async (data: MovementFormData) => {
+      if (!validateForm()) {
+        throw new Error("Validation failed");
+      }
+
       const payload = {
         ...data,
         movementDate: format(data.movementDate, "yyyy-MM-dd"),
