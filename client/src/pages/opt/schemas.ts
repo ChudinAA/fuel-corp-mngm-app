@@ -6,7 +6,6 @@ export const optFormSchema = z.object({
   supplierId: z.string().min(1, "Выберите поставщика"),
   buyerId: z.string().min(1, "Выберите покупателя"),
   warehouseId: z.string().optional(),
-  inputMode: z.enum(["liters", "kg"]),
   quantityLiters: z.string().optional(),
   density: z.string().optional(),
   quantityKg: z.string().optional(),

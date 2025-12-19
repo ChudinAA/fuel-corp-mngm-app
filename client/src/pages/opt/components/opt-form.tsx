@@ -34,6 +34,7 @@ export function OptForm({
   const [selectedBasis, setSelectedBasis] = useState<string>("");
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] = useState<string>("");
   const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
+  const [initialWarehouseBalance, setInitialWarehouseBalance] = useState<number>(0);
   const isEditing = !!editData;
 
   const form = useForm<OptFormData>({
@@ -43,7 +44,6 @@ export function OptForm({
       supplierId: "",
       buyerId: "",
       warehouseId: "",
-      inputMode: "kg",
       quantityLiters: "",
       density: "",
       quantityKg: "",
@@ -155,7 +155,7 @@ export function OptForm({
 
   // Update form when editData changes
   useEffect(() => {
-    if (editData && suppliers && customers && allBases) {
+    if (editData && suppliers && customers && allBases && warehouses) {
       const supplier = suppliers.find(s => s.name === editData.supplierId || s.id === editData.supplierId);
       const buyer = customers.find(c => c.name === editData.buyerId || c.id === editData.buyerId);
 
@@ -163,20 +163,29 @@ export function OptForm({
         setSelectedBasis(editData.basis);
       }
 
-      const purchasePriceCompositeId = editData.purchasePriceId && editData.purchasePriceIndex !== undefined
+      const purchasePriceCompositeId = editData.purchasePriceId && editData.purchasePriceIndex !== undefined && editData.purchasePriceIndex !== null
         ? `${editData.purchasePriceId}-${editData.purchasePriceIndex}`
         : editData.purchasePriceId || "";
 
-      const salePriceCompositeId = editData.salePriceId && editData.salePriceIndex !== undefined
+      const salePriceCompositeId = editData.salePriceId && editData.salePriceIndex !== undefined && editData.salePriceIndex !== null
         ? `${editData.salePriceId}-${editData.salePriceIndex}`
         : editData.salePriceId || "";
+
+      // Сохраняем изначальный остаток на складе (с учетом текущей сделки)
+      if (editData.warehouseId) {
+        const warehouse = warehouses.find(w => w.id === editData.warehouseId);
+        if (warehouse) {
+          const currentBalance = parseFloat(warehouse.currentBalance || "0");
+          const dealQuantity = parseFloat(editData.quantityKg || "0");
+          setInitialWarehouseBalance(currentBalance + dealQuantity);
+        }
+      }
 
       form.reset({
         dealDate: new Date(editData.createdAt),
         supplierId: supplier?.id || "",
         buyerId: buyer?.id || "",
         warehouseId: editData.warehouseId || "",
-        inputMode: editData.quantityLiters ? "liters" : "kg",
         quantityLiters: editData.quantityLiters || "",
         density: editData.density || "",
         quantityKg: editData.quantityKg || "",
@@ -195,7 +204,7 @@ export function OptForm({
         setInputMode("liters");
       }
     }
-  }, [editData, suppliers, customers, allBases, form]);
+  }, [editData, suppliers, customers, allBases, warehouses, form]);
 
   // Автоматический выбор базиса при выборе поставщика
   useEffect(() => {
@@ -401,8 +410,6 @@ export function OptForm({
           form={form}
           wholesaleSuppliers={wholesaleSuppliers}
           customers={customers}
-          isWarehouseSupplier={isWarehouseSupplier}
-          supplierWarehouse={supplierWarehouse}
         />
 
         <VolumeInputSection
@@ -420,6 +427,8 @@ export function OptForm({
           isWarehouseSupplier={isWarehouseSupplier}
           supplierWarehouse={supplierWarehouse}
           finalKg={finalKg}
+          isEditing={isEditing}
+          initialWarehouseBalance={initialWarehouseBalance}
         />
 
         <OptPricingSection
@@ -435,19 +444,9 @@ export function OptForm({
           salePrice={salePrice}
           purchaseAmount={purchaseAmount}
           saleAmount={saleAmount}
+          deliveryCost={deliveryCost}
+          profit={profit}
         />
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <CalculatedField 
-            label="Доставка" 
-            value={deliveryCost !== null ? formatCurrency(deliveryCost) : "—"}
-          />
-          <CalculatedField 
-            label="Прибыль" 
-            value={profit !== null ? formatCurrency(profit) : "—"}
-            status={profit !== null && profit >= 0 ? "ok" : profit !== null ? "warning" : undefined}
-          />
-        </div>
 
         <LogisticsSection
           form={form}

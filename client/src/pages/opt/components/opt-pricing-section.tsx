@@ -20,6 +20,8 @@ interface OptPricingSectionProps {
   salePrice: number | null;
   purchaseAmount: number | null;
   saleAmount: number | null;
+  deliveryCost: number | null;
+  profit: number | null;
 }
 
 export function OptPricingSection({
@@ -35,9 +37,11 @@ export function OptPricingSection({
   salePrice,
   purchaseAmount,
   saleAmount,
+  deliveryCost,
+  profit,
 }: OptPricingSectionProps) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {!isWarehouseSupplier && purchasePrices.length > 0 ? (
         <FormField
           control={form.control}
@@ -179,6 +183,17 @@ export function OptPricingSection({
         label="Сумма продажи" 
         value={saleAmount !== null ? formatCurrency(saleAmount) : "Ошибка"}
         status={saleAmount !== null ? "ok" : "error"}
+      />
+
+      <CalculatedField 
+        label="Доставка" 
+        value={deliveryCost !== null ? formatCurrency(deliveryCost) : "—"}
+      />
+
+      <CalculatedField 
+        label="Прибыль" 
+        value={profit !== null ? formatCurrency(profit) : "—"}
+        status={profit !== null && profit >= 0 ? "ok" : profit !== null ? "warning" : undefined}
       />
     </div>
   );

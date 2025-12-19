@@ -18,6 +18,9 @@ interface VolumeInputSectionProps {
 }
 
 export function VolumeInputSection({ form, inputMode, setInputMode, calculatedKg }: VolumeInputSectionProps) {
+  const watchLiters = form.watch("quantityLiters");
+  const watchDensity = form.watch("density");
+
   return (
     <Card>
       <CardHeader className="pb-4">
@@ -77,8 +80,8 @@ export function VolumeInputSection({ form, inputMode, setInputMode, calculatedKg
               />
               <CalculatedField 
                 label="КГ (расчет)" 
-                value={formatNumber(calculatedKg)}
-                suffix=" кг"
+                value={watchLiters && watchDensity ? formatNumber(calculatedKg) : "—"}
+                suffix={watchLiters && watchDensity ? " кг" : ""}
               />
             </>
           ) : (

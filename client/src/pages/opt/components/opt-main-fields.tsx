@@ -17,19 +17,15 @@ interface OptMainFieldsProps {
   form: UseFormReturn<OptFormData>;
   wholesaleSuppliers: Supplier[];
   customers: Customer[] | undefined;
-  isWarehouseSupplier: boolean;
-  supplierWarehouse: Warehouse | undefined;
 }
 
 export function OptMainFields({
   form,
   wholesaleSuppliers,
   customers,
-  isWarehouseSupplier,
-  supplierWarehouse,
 }: OptMainFieldsProps) {
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-6 md:grid-cols-3">
       <FormField
         control={form.control}
         name="dealDate"
@@ -118,21 +114,6 @@ export function OptMainFields({
           </FormItem>
         )}
       />
-
-      <FormItem>
-        <FormLabel>Склад</FormLabel>
-        <FormControl>
-          <Input 
-            value={
-              isWarehouseSupplier && supplierWarehouse 
-                ? supplierWarehouse.name 
-                : "Объем не со склада"
-            }
-            disabled
-            className="bg-muted"
-          />
-        </FormControl>
-      </FormItem>
     </div>
   );
 }
