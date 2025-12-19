@@ -1,6 +1,5 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import session from "express-session";
 import { registerAuthRoutes } from "./routes/auth";
 import { registerAdminRoutes } from "./routes/admin";
 import { registerDirectoriesRoutes } from "./routes/directories";
@@ -15,23 +14,6 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Trust proxy - required for Replit deployment
   app.set("trust proxy", 1);
-
-  const isProduction = process.env.NODE_ENV === "production";
-
-  app.use(
-    session({
-      secret: process.env.SESSION_SECRET || "aviation-fuel-secret-key",
-      resave: false,
-      saveUninitialized: false,
-      proxy: isProduction, // Trust the reverse proxy
-      cookie: {
-        secure: isProduction, // Use secure cookies in production (HTTPS)
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000,
-        sameSite: isProduction ? "none" : "lax", // Required for cross-site cookies in production
-      },
-    })
-  );
 
   await seedDefaultRoles();
 
