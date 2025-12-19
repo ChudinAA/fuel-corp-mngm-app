@@ -5,25 +5,21 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Plus, Loader2 } from "lucide-react";
 import type { Supplier, Base, Customer, Warehouse, Price, DeliveryCost, LogisticsCarrier, LogisticsDeliveryLocation } from "@shared/schema";
-import { CalculatedField } from "./calculated-field";
 import { OptMainFields } from "./opt-main-fields";
-import { OptBasisWarehouseSection } from "./opt-basis-warehouse-section";
 import { OptPricingSection } from "./opt-pricing-section";
 import { VolumeInputSection } from "./opt-form-sections";
 import { LogisticsSection } from "./opt-form-sections";
 import { optFormSchema, type OptFormData } from "../schemas";
-import { formatCurrency } from "../utils";
 import type { OptFormProps } from "../types";
 import { useOptCalculations } from "../hooks/use-opt-calculations";
 import { useOptFilters } from "../hooks/use-opt-filters";
-import { BASE_TYPE, ENTITY_TYPE } from "@shared/constants";
+import { BASE_TYPE } from "@shared/constants";
 
 export function OptForm({ 
   onSuccess, 

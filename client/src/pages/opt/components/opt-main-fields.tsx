@@ -1,7 +1,6 @@
 
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -9,7 +8,7 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { UseFormReturn } from "react-hook-form";
-import type { Supplier, Customer, Warehouse } from "@shared/schema";
+import type { Supplier, Customer } from "@shared/schema";
 import type { OptFormData } from "../schemas";
 import { CUSTOMER_MODULE } from "@shared/constants";
 
@@ -125,7 +124,7 @@ export function OptMainFields({
 
       {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 1 ? (
         <FormItem>
-          <FormLabel className="flex items-center gap-2">Базис</FormLabel>
+          <FormLabel>Базис</FormLabel>
           <Select 
             value={selectedBasis} 
             onValueChange={(value) => {
@@ -152,8 +151,8 @@ export function OptMainFields({
         </FormItem>
       ) : (
         <div className="space-y-2">
-          <label className="text-sm font-medium">Базис</label>
-          <div className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm">
+          <label className="text-sm font-medium flex items-center">Базис</label>
+          <div className="flex items-center gap-2 h-10 px-3 bg-muted rounded-md">
             {selectedBasis || "—"}
           </div>
         </div>
