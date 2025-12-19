@@ -424,7 +424,7 @@ export function MovementDialog({
                 )}
               />
 
-              {watchMovementType === MOVEMENT_TYPE.s ? (
+              {watchMovementType === MOVEMENT_TYPE.SUPPLY ? (
                 <FormField
                   control={form.control}
                   name="supplierId"

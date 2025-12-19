@@ -45,15 +45,20 @@ export function WarehouseDetailsDialog({
   };
 
   const getTransactionTypeLabel = (transactionType: string, sourceType?: string) => {
-    if (transactionType === TRANSACTION_TYPE.RECEIPT) return 'Поступление';
-    if (transactionType === TRANSACTION_TYPE.TRANSFER_IN) return 'Перемещение (приход)';
-    if (transactionType === TRANSACTION_TYPE.TRANSFER_OUT) return 'Перемещение (расход)';
-    if (transactionType === TRANSACTION_TYPE.SALE) {
-      if (sourceType === SOURCE_TYPE.REFUELING) return 'Продажа (Заправка ВС)';
-      if (sourceType === SOURCE_TYPE.OPT) return 'Продажа (ОПТ)';
-      return 'Продажа';
+    switch (transactionType) {
+      case TRANSACTION_TYPE.RECEIPT:
+        return 'Поступление';
+      case TRANSACTION_TYPE.TRANSFER_IN:
+        return 'Перемещение (приход)';
+      case TRANSACTION_TYPE.TRANSFER_OUT:
+        return 'Перемещение (расход)';
+      case TRANSACTION_TYPE.SALE:
+        if (sourceType === SOURCE_TYPE.REFUELING) return 'Продажа (Заправка ВС)';
+        if (sourceType === SOURCE_TYPE.OPT) return 'Продажа (ОПТ)';
+        return 'Продажа';
+      default:
+        return transactionType;
     }
-    return transactionType;
   };
 
   const getBaseIcon = (baseType: string) => {
