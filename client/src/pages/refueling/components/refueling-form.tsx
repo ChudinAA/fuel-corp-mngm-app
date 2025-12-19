@@ -25,6 +25,12 @@ import { refuelingFormSchema, type RefuelingFormData } from "../schemas";
 import { formatNumber, formatCurrency } from "../utils";
 import type { RefuelingFormProps } from "../types";
 import { PRODUCT_TYPES } from "../constants";
+import { RefuelingMainFields } from "./refueling-main-fields";
+import { RefuelingPricingSection } from "./refueling-pricing-section";
+import { VolumeInputSection } from "./refueling-form-sections";
+import { useRefuelingCalculations } from "../hooks/use-refueling-calculations";
+import { useRefuelingFilters } from "../hooks/use-refueling-filters";
+
 
 export function RefuelingForm({ 
   onSuccess, 
@@ -35,6 +41,7 @@ export function RefuelingForm({
   const [selectedBasis, setSelectedBasis] = useState<string>("");
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] = useState<string>("");
   const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
+  const [initialWarehouseBalance, setInitialWarehouseBalance] = useState<number>(0); // State for initial balance
   const isEditing = !!editData;
 
   const form = useForm<RefuelingFormData>({
@@ -86,13 +93,6 @@ export function RefuelingForm({
   const watchDensity = form.watch("density");
   const watchKg = form.watch("quantityKg");
   const watchProductType = form.watch("productType");
-  const watchBasis = form.watch("basis");
-
-  const calculatedKg = inputMode === "liters" && watchLiters && watchDensity
-    ? (parseFloat(watchLiters) * parseFloat(watchDensity)).toFixed(2)
-    : watchKg || "0";
-
-  const finalKg = parseFloat(calculatedKg || "0");
 
   const selectedSupplier = suppliers?.find(s => s.id === watchSupplierId);
   const isWarehouseSupplier = selectedSupplier?.isWarehouse || false;
@@ -100,13 +100,51 @@ export function RefuelingForm({
     w.supplierId === watchSupplierId
   );
 
-  // Фильтруем базисы для поставщика (только refueling)
-  const availableBases = watchSupplierId && selectedSupplier?.baseIds
-    ? allBases?.filter(b => 
-        b.baseType === BASE_TYPE.REFUELING && 
-        selectedSupplier.baseIds.includes(b.id)
-      ) || []
-    : [];
+  // Use filtering hook
+  const {
+    refuelingSuppliers,
+    availableBases,
+    purchasePrices,
+    salePrices,
+  } = useRefuelingFilters({
+    supplierId: watchSupplierId,
+    buyerId: watchBuyerId,
+    refuelingDate: watchRefuelingDate,
+    selectedBasis,
+    productType: watchProductType,
+    allPrices,
+    suppliers,
+    allBases,
+  });
+
+  // Use calculations hook
+  const {
+    calculatedKg,
+    finalKg,
+    purchasePrice,
+    salePrice,
+    purchaseAmount,
+    saleAmount,
+    agentFee,
+    profit,
+    warehouseStatus,
+  } = useRefuelingCalculations({
+    inputMode,
+    quantityLiters: watchLiters,
+    density: watchDensity,
+    quantityKg: watchKg,
+    isWarehouseSupplier,
+    supplierWarehouse,
+    selectedBasis,
+    purchasePrices,
+    salePrices,
+    selectedPurchasePriceId,
+    selectedSalePriceId,
+    selectedSupplier,
+    productType: watchProductType,
+    isEditing,
+    initialWarehouseBalance, // Pass the initial balance
+  });
 
   useEffect(() => {
     if (watchSupplierId && suppliers && allBases) {
@@ -136,7 +174,7 @@ export function RefuelingForm({
   }, [watchSupplierId, suppliers, allBases, warehouses, form, editData]);
 
   useEffect(() => {
-    if (editData && suppliers && customers && allBases) {
+    if (editData && suppliers && customers && allBases && warehouses) { // Added warehouses dependency
       const supplier = suppliers.find(s => s.name === editData.supplierId || s.id === editData.supplierId);
       const buyer = customers.find(c => c.name === editData.buyerId || c.id === editData.buyerId);
 
@@ -148,6 +186,19 @@ export function RefuelingForm({
       const salePriceCompositeId = editData.salePriceId && editData.salePriceIndex !== undefined
         ? `${editData.salePriceId}-${editData.salePriceIndex}`
         : editData.salePriceId || "";
+
+      // Сохраняем изначальный остаток на складе (с учетом текущей сделки)
+      if (editData.warehouseId) {
+        const warehouse = warehouses.find(w => w.id === editData.warehouseId);
+        if (warehouse) {
+          // Determine the correct balance based on product type
+          const currentBalance = watchProductType === PRODUCT_TYPE.PVKJ 
+            ? parseFloat(warehouse.pvkjBalance || "0")
+            : parseFloat(warehouse.currentBalance || "0");
+          const dealQuantity = parseFloat(editData.quantityKg || "0"); // Assuming quantityKg is the relevant quantity for balance adjustment
+          setInitialWarehouseBalance(currentBalance + dealQuantity);
+        }
+      }
 
       form.reset({
         refuelingDate: new Date(editData.refuelingDate),
@@ -180,259 +231,11 @@ export function RefuelingForm({
         setInputMode("liters");
       }
     }
-  }, [editData, suppliers, customers, allBases, form]);
+  }, [editData, suppliers, customers, allBases, warehouses, form, watchProductType]); // Added watchProductType dependency
 
-  const getMatchingPurchasePrices = () => {
-    if (!watchSupplierId || !watchRefuelingDate || !watchBasis) return [];
-
-    const dateStr = format(watchRefuelingDate, "yyyy-MM-dd");
-    const supplier = suppliers?.find(s => s.id === watchSupplierId);
-    if (!supplier) return [];
-
-    // Определяем тип продукта для поиска цены
-    let priceProductType = PRODUCT_TYPE.KEROSENE;
-    if (watchProductType === PRODUCT_TYPE.PVKJ) {
-      priceProductType = PRODUCT_TYPE.PVKJ;
-    } else if (watchProductType === PRODUCT_TYPE.SERVICE) {
-      priceProductType = PRODUCT_TYPE.SERVICE;
-    }
-
-    return allPrices?.filter(p => {
-      const basicMatch = p.counterpartyId === watchSupplierId &&
-        p.counterpartyType === COUNTERPARTY_TYPE.REFUELING &&
-        p.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER &&
-        p.productType === priceProductType &&
-        p.basis === watchBasis &&
-        p.dateFrom <= dateStr &&
-        p.dateTo >= dateStr &&
-        p.isActive;
-
-      return basicMatch;
-    }) || [];
-  };
-
-  const purchasePrices = getMatchingPurchasePrices();
-
-  const getMatchingSalePrices = () => {
-    if (!watchBuyerId || !watchRefuelingDate || !watchBasis) return [];
-
-    const dateStr = format(watchRefuelingDate, "yyyy-MM-dd");
-    const buyer = customers?.find(c => c.id === watchBuyerId);
-    if (!buyer) return [];
-
-    // Определяем тип продукта для поиска цены
-    let priceProductType = PRODUCT_TYPE.KEROSENE;
-    if (watchProductType === PRODUCT_TYPE.PVKJ) {
-      priceProductType = PRODUCT_TYPE.PVKJ;
-    } else if (watchProductType === PRODUCT_TYPE.SERVICE) {
-      priceProductType = PRODUCT_TYPE.SERVICE;
-    }
-
-    return allPrices?.filter(p => {
-      const basicMatch = p.counterpartyId === watchBuyerId &&
-        p.counterpartyType === COUNTERPARTY_TYPE.REFUELING &&
-        p.counterpartyRole === COUNTERPARTY_ROLE.BUYER &&
-        p.productType === priceProductType &&
-        p.dateFrom <= dateStr &&
-        p.dateTo >= dateStr &&
-        p.isActive;
-
-      return basicMatch;
-    }) || [];
-  };
-
-  const salePrices = getMatchingSalePrices();
-
-  const getPurchasePrice = (): number | null => {
-    // Для услуги заправки - сначала проверяем service_price у поставщика
-    if (watchProductType === PRODUCT_TYPE.SERVICE) {
-      // Проверяем service_price у поставщика
-      if (selectedSupplier?.servicePrice) {
-        return parseFloat(selectedSupplier.servicePrice);
-      }
-
-      // Если service_price нет, ищем в таблице цен
-      const matchingPrices = getMatchingPurchasePrices();
-      if (matchingPrices.length === 0) return null;
-
-      let selectedPrice = matchingPrices[0];
-      let selectedIndex = 0;
-
-      // Parse composite ID to extract price ID and index
-      if (selectedPurchasePriceId) {
-        const parts = selectedPurchasePriceId.split('-');
-        if (parts.length >= 5) {
-          const priceId = parts.slice(0, -1).join('-');
-          selectedIndex = parseInt(parts[parts.length - 1]);
-          const found = matchingPrices.find(p => p.id === priceId);
-          if (found) selectedPrice = found;
-        }
-      }
-
-      if (selectedPrice?.priceValues?.[selectedIndex]) {
-        try {
-          const priceObj = JSON.parse(selectedPrice.priceValues[selectedIndex]);
-          return parseFloat(priceObj.price || "0");
-        } catch {
-          return null;
-        }
-      }
-      return null;
-    }
-
-    // Для ПВКЖ
-    if (watchProductType === PRODUCT_TYPE.PVKJ) {
-      if (isWarehouseSupplier && supplierWarehouse) {
-        return parseFloat(supplierWarehouse.pvkjAverageCost || "0");
-      }
-
-      const matchingPrices = getMatchingPurchasePrices();
-      if (matchingPrices.length === 0) return null;
-
-      let selectedPrice = matchingPrices[0];
-      let selectedIndex = 0;
-
-      // Parse composite ID to extract price ID and index
-      if (selectedPurchasePriceId) {
-        const parts = selectedPurchasePriceId.split('-');
-        if (parts.length >= 5) {
-          const priceId = parts.slice(0, -1).join('-');
-          selectedIndex = parseInt(parts[parts.length - 1]);
-          const found = matchingPrices.find(p => p.id === priceId);
-          if (found) selectedPrice = found;
-        }
-      }
-
-      if (selectedPrice?.priceValues?.[selectedIndex]) {
-        try {
-          const priceObj = JSON.parse(selectedPrice.priceValues[selectedIndex]);
-          return parseFloat(priceObj.price || "0");
-        } catch {
-          return null;
-        }
-      }
-      return null;
-    }
-
-    // Для керосина
-    if (isWarehouseSupplier && supplierWarehouse) {
-      return parseFloat(supplierWarehouse.averageCost || "0");
-    }
-
-    const matchingPrices = getMatchingPurchasePrices();
-    if (matchingPrices.length === 0) return null;
-
-    let selectedPrice = matchingPrices[0];
-    let selectedIndex = 0;
-
-    // Parse composite ID to extract price ID and index
-    if (selectedPurchasePriceId) {
-      const parts = selectedPurchasePriceId.split('-');
-      if (parts.length >= 5) {
-        const priceId = parts.slice(0, -1).join('-');
-        selectedIndex = parseInt(parts[parts.length - 1]);
-        const found = matchingPrices.find(p => p.id === priceId);
-        if (found) selectedPrice = found;
-      }
-    }
-
-    if (selectedPrice && selectedPrice.priceValues && selectedPrice.priceValues.length > selectedIndex) {
-      try {
-        const priceObj = JSON.parse(selectedPrice.priceValues[selectedIndex]);
-        return parseFloat(priceObj.price || "0");
-      } catch {
-        return null;
-      }
-    }
-
-    return null;
-  };
-
-  const getSalePrice = (): number | null => {
-    const matchingPrices = getMatchingSalePrices();
-    if (matchingPrices.length === 0) return null;
-
-    let selectedPrice = matchingPrices[0];
-    let selectedIndex = 0;
-
-    // Parse composite ID to extract price ID and index
-    if (selectedSalePriceId) {
-      const parts = selectedSalePriceId.split('-');
-      if (parts.length >= 5) {
-        const priceId = parts.slice(0, -1).join('-');
-        selectedIndex = parseInt(parts[parts.length - 1]);
-        const found = matchingPrices.find(p => p.id === priceId);
-        if (found) selectedPrice = found;
-      }
-    }
-
-    if (selectedPrice && selectedPrice.priceValues && selectedPrice.priceValues.length > selectedIndex) {
-      try {
-        const priceObj = JSON.parse(selectedPrice.priceValues[selectedIndex]);
-        return parseFloat(priceObj.price || "0");
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  };
-
-  const purchasePrice = getPurchasePrice();
-  const salePrice = getSalePrice();
-
-  const purchaseAmount = purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
-  const saleAmount = salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
-
-  const agentFee = selectedSupplier?.agentFee ? parseFloat(selectedSupplier.agentFee) * finalKg : 0;
-
-  const profit = purchaseAmount !== null && saleAmount !== null 
-    ? saleAmount - purchaseAmount - agentFee
-    : null;
-
-  const getWarehouseStatus = (): { status: "ok" | "warning" | "error"; message: string } => {
-    // Для услуги заправки склад не проверяем
-    if (watchProductType === PRODUCT_TYPE.SERVICE) {
-      return { status: "ok", message: "—" };
-    }
-
-    if (!isWarehouseSupplier) {
-      return { status: "ok", message: "ОК" };
-    }
-
-    if (!supplierWarehouse || finalKg <= 0) {
-      return { status: "ok", message: "—" };
-    }
-
-    // Для ПВКЖ проверяем баланс ПВКЖ
-    if (watchProductType === PRODUCT_TYPE.PVKJ) {
-      const currentBalance = parseFloat(supplierWarehouse.pvkjBalance || "0");
-      const remaining = currentBalance - finalKg;
-
-      if (remaining >= 0) {
-        return { status: "ok", message: `ОК: ${formatNumber(remaining)} кг` };
-      } else {
-        return { status: "error", message: `Недостаточно! Доступно: ${formatNumber(currentBalance)} кг` };
-      }
-    }
-
-    // Для керосина проверяем обычный баланс
-    const currentBalance = parseFloat(supplierWarehouse.currentBalance || "0");
-    const remaining = currentBalance - finalKg;
-
-    if (remaining >= 0) {
-      return { status: "ok", message: `ОК: ${formatNumber(remaining)} кг` };
-    } else {
-      return { status: "error", message: `Недостаточно! Доступно: ${formatNumber(currentBalance)} кг` };
-    }
-  };
-
-  const warehouseStatus = getWarehouseStatus();
 
   const createMutation = useMutation({
     mutationFn: async (data: RefuelingFormData) => {
-      const purchasePrices = getMatchingPurchasePrices();
-      const salePrices = getMatchingSalePrices();
-
       // Извлекаем ID цены и индекс из составного ID
       let purchasePriceId = null;
       let purchasePriceIndex = 0;
@@ -471,7 +274,7 @@ export function RefuelingForm({
         supplierId: data.supplierId,
         buyerId: data.buyerId,
         warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
-        basis: String(watchBasis || selectedBasis || ""),
+        basis: String(selectedBasis || ""), // Use selectedBasis
         refuelingDate: format(data.refuelingDate, "yyyy-MM-dd"),
         quantityKg: String(parseFloat(calculatedKg)),
         quantityLiters: data.quantityLiters ? String(parseFloat(data.quantityLiters)) : null,
@@ -514,9 +317,6 @@ export function RefuelingForm({
 
   const updateMutation = useMutation({
     mutationFn: async (data: RefuelingFormData & { id: string }) => {
-      const purchasePrices = getMatchingPurchasePrices();
-      const salePrices = getMatchingSalePrices();
-
       // Извлекаем ID цены и индекс из составного ID
       let purchasePriceId = null;
       let purchasePriceIndex = 0;
@@ -555,7 +355,7 @@ export function RefuelingForm({
         supplierId: data.supplierId,
         buyerId: data.buyerId,
         warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
-        basis: String(watchBasis || selectedBasis || ""),
+        basis: String(selectedBasis || ""), // Use selectedBasis
         refuelingDate: format(data.refuelingDate, "yyyy-MM-dd"),
         quantityKg: String(parseFloat(calculatedKg)),
         quantityLiters: data.quantityLiters ? String(parseFloat(data.quantityLiters)) : null,
@@ -607,484 +407,41 @@ export function RefuelingForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <FormField
-            control={form.control}
-            name="refuelingDate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Дата заправки</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                        data-testid="input-refueling-date"
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {field.value ? format(field.value, "dd.MM.yyyy", { locale: ru }) : "Выберите дату"}
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      locale={ru}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <RefuelingMainFields
+          form={form}
+          refuelingSuppliers={refuelingSuppliers}
+          customers={customers}
+          selectedSupplier={selectedSupplier}
+          selectedBasis={selectedBasis}
+          setSelectedBasis={setSelectedBasis}
+          availableBases={availableBases}
+        />
 
-          <FormField
-            control={form.control}
-            name="productType"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Продукт</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-product-type">
-                      <SelectValue placeholder="Выберите продукт" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {PRODUCT_TYPES.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <VolumeInputSection
+          form={form}
+          inputMode={inputMode}
+          setInputMode={setInputMode}
+          calculatedKg={calculatedKg}
+        />
 
-          <FormField
-            control={form.control}
-            name="aircraftNumber"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Бортовой номер</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="RA-12345"
-                    data-testid="input-aircraft-number"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="orderNumber"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Номер РТ</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="RT-001234"
-                    data-testid="input-order-number"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <FormField
-            control={form.control}
-            name="supplierId"
-            render={({ field }) => {
-              // Фильтруем поставщиков, у которых есть хотя бы один базис типа refueling
-              const refuelingSuppliers = suppliers?.filter(supplier => {
-                if (!supplier.baseIds || supplier.baseIds.length === 0) return false;
-                return allBases?.some(base => 
-                  supplier.baseIds.includes(base.id) && base.baseType === BASE_TYPE.REFUELING
-                );
-              }) || [];
-
-              return (
-                <FormItem>
-                  <FormLabel>Поставщик</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-supplier">
-                        <SelectValue placeholder="Выберите поставщика" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {refuelingSuppliers.length > 0 ? (
-                        refuelingSuppliers.map((supplier) => (
-                          <SelectItem key={supplier.id} value={supplier.id}>
-                            {supplier.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="none" disabled>Нет данных</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
-          />
-
-          <FormField
-            control={form.control}
-            name="basis"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Базис</FormLabel>
-                <Select 
-                  onValueChange={(value) => { 
-                    field.onChange(value); 
-                    setSelectedBasis(value); 
-                  }} 
-                  value={field.value || selectedBasis}
-                  disabled={availableBases.length === 0}
-                >
-                  <FormControl>
-                    <SelectTrigger data-testid="select-basis">
-                      <SelectValue placeholder="Выберите базис" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {availableBases.map((base) => (
-                      <SelectItem key={base.id} value={base.name}>
-                        {base.name}
-                      </SelectItem>
-                    ))}
-                    {availableBases.length === 0 && (
-                      <SelectItem value="none" disabled>Нет данных</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="buyerId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Покупатель</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-buyer">
-                      <SelectValue placeholder="Выберите покупателя" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {customers?.filter(c => c.module === CUSTOMER_MODULE.REFUELING || c.module === CUSTOMER_MODULE.BOTH).map((buyer) => (
-                      <SelectItem key={buyer.id} value={buyer.id}>
-                        {buyer.name}
-                      </SelectItem>
-                    )) || (
-                      <SelectItem value="none" disabled>Нет данных</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormItem>
-            <FormLabel>Склад</FormLabel>
-            <FormControl>
-              <Input 
-                value={
-                  isWarehouseSupplier && supplierWarehouse 
-                    ? supplierWarehouse.name 
-                    : "Объем не со склада"
-                }
-                disabled
-                className="bg-muted"
-              />
-            </FormControl>
-          </FormItem>
-        </div>
-
-        <Card>
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between gap-4">
-              <CardTitle className="text-lg">Объем топлива</CardTitle>
-              <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground">Литры/Плотность</Label>
-                <Switch
-                  checked={inputMode === "kg"}
-                  onCheckedChange={(checked) => setInputMode(checked ? "kg" : "liters")}
-                  data-testid="switch-input-mode"
-                />
-                <Label className="text-sm text-muted-foreground">КГ</Label>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
-              {inputMode === "liters" ? (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="quantityLiters"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Литры</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            data-testid="input-liters"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="density"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Плотность</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            min="0"
-                            step="0.0001"
-                            placeholder="0.8000"
-                            data-testid="input-density"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <CalculatedField 
-                    label="КГ (расчет)" 
-                    value={formatNumber(calculatedKg)}
-                    suffix=" кг"
-                  />
-                </>
-              ) : (
-                <FormField
-                  control={form.control}
-                  name="quantityKg"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-3">
-                      <FormLabel>Количество (КГ)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          min="0"
-                          step="0.01"
-                          placeholder="0.00"
-                          data-testid="input-kg"
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <CalculatedField 
-            label="Объем на складе" 
-            value={warehouseStatus.message}
-            status={warehouseStatus.status}
-          />
-
-          {!isWarehouseSupplier && purchasePrices.length > 0 ? (
-            <FormField
-              control={form.control}
-              name="selectedPurchasePriceId"
-              render={({ field }) => {
-                // Автоматически выбираем первую цену при загрузке
-                const firstPriceId = purchasePrices.length > 0 ? `${purchasePrices[0].id}-0` : undefined;
-                const effectiveValue = selectedPurchasePriceId || field.value || firstPriceId;
-
-                // Устанавливаем первую цену, если ничего не выбрано
-                if (!selectedPurchasePriceId && !field.value && firstPriceId) {
-                  setSelectedPurchasePriceId(firstPriceId);
-                  field.onChange(firstPriceId);
-                }
-
-                return (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">Покупка</FormLabel>
-                    <Select 
-                      onValueChange={(value) => { 
-                        field.onChange(value); 
-                        setSelectedPurchasePriceId(value); 
-                      }} 
-                      value={effectiveValue}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-purchase-price">
-                          <SelectValue placeholder="Выберите цену" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {purchasePrices.map((price) => {
-                          const priceValues = price.priceValues || [];
-                          if (priceValues.length === 0) return null;
-
-                          return priceValues.map((priceValueStr, idx) => {
-                            try {
-                              const parsed = JSON.parse(priceValueStr);
-                              const priceVal = parsed.price || "0";
-                              return (
-                                <SelectItem key={`${price.id}-${idx}`} value={`${price.id}-${idx}`}>
-                                  {formatNumber(priceVal)} ₽/кг
-                                </SelectItem>
-                              );
-                            } catch {
-                              return null;
-                            }
-                          });
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-          ) : !isWarehouseSupplier && watchProductType !== PRODUCT_TYPE.SERVICE ? (
-            <CalculatedField 
-              label="Покупка" 
-              value="Нет цены!"
-              status="error"
-            />
-          ) : (
-            <CalculatedField 
-              label="Покупка" 
-              value={purchasePrice !== null ? formatNumber(purchasePrice) : "Нет цены!"}
-              suffix={purchasePrice !== null ? " ₽/кг" : ""}
-              status={purchasePrice !== null ? "ok" : "error"}
-            />
-          )}
-
-          <CalculatedField 
-            label="Сумма закупки" 
-            value={purchaseAmount !== null ? `${purchaseAmount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽` : "—"}
-            variant="neutral"
-          />
-        </div>
-
-        {agentFee > 0 && (
-          <div className="p-3 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-md">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-              <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                Агентское вознаграждение: {formatCurrency(agentFee)}
-              </span>
-            </div>
-          </div>
-        )}
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {salePrices.length > 0 ? (
-            <FormField
-              control={form.control}
-              name="selectedSalePriceId"
-              render={({ field }) => {
-                // Автоматически выбираем первую цену при загрузке
-                const firstPriceId = salePrices.length > 0 ? `${salePrices[0].id}-0` : undefined;
-                const effectiveValue = selectedSalePriceId || field.value || firstPriceId;
-
-                // Устанавливаем первую цену, если ничего не выбрано
-                if (!selectedSalePriceId && !field.value && firstPriceId) {
-                  setSelectedSalePriceId(firstPriceId);
-                  field.onChange(firstPriceId);
-                }
-
-                return (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">Продажа</FormLabel>
-                    <Select 
-                      onValueChange={(value) => { 
-                        field.onChange(value); 
-                        setSelectedSalePriceId(value); 
-                      }} 
-                      value={effectiveValue}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-sale-price">
-                          <SelectValue placeholder="Выберите цену" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {salePrices.map((price) => {
-                          const priceValues = price.priceValues || [];
-                          if (priceValues.length === 0) return null;
-
-                          return priceValues.map((priceValueStr, idx) => {
-                            try {
-                              const parsed = JSON.parse(priceValueStr);
-                              const priceVal = parsed.price || "0";
-                              return (
-                                <SelectItem key={`${price.id}-${idx}`} value={`${price.id}-${idx}`}>
-                                  {formatNumber(priceVal)} ₽/кг
-                                </SelectItem>
-                              );
-                            } catch {
-                              return null;
-                            }
-                          });
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-          ) : (
-            <CalculatedField 
-              label="Продажа" 
-              value="Нет цены!"
-              status="error"
-            />
-          )}
-
-          <CalculatedField 
-            label="Сумма продажи" 
-            value={saleAmount !== null ? `${saleAmount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽` : "—"}
-            variant="neutral"
-          />
-
-          <CalculatedField 
-            label="Прибыль" 
-            value={profit !== null ? `${profit.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽` : "—"}
-            variant={profit && profit > 0 ? "positive" : "neutral"}
-          />
-        </div>
+        <RefuelingPricingSection
+          form={form}
+          isWarehouseSupplier={isWarehouseSupplier}
+          purchasePrices={purchasePrices}
+          salePrices={salePrices}
+          selectedPurchasePriceId={selectedPurchasePriceId}
+          selectedSalePriceId={selectedSalePriceId}
+          setSelectedPurchasePriceId={setSelectedPurchasePriceId}
+          setSelectedSalePriceId={setSelectedSalePriceId}
+          purchasePrice={purchasePrice}
+          salePrice={salePrice}
+          purchaseAmount={purchaseAmount}
+          saleAmount={saleAmount}
+          profit={profit}
+          agentFee={agentFee}
+          warehouseStatus={warehouseStatus}
+          productType={watchProductType}
+        />
 
         <div className="grid gap-4 md:grid-cols-1">
           <FormField
