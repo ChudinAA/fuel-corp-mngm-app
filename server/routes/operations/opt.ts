@@ -6,7 +6,7 @@ import { z } from "zod";
 import { requireAuth } from "../middleware";
 
 export function registerOptRoutes(app: Express) {
-  app.get("/api/opt", requireAuth, async (req, res) => {
+  app.get("/api/opt", requireAuth, requirePermission("opt", "view"), async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
     const search = req.query.search as string | undefined;
@@ -14,7 +14,7 @@ export function registerOptRoutes(app: Express) {
     res.json(result);
   });
 
-  app.post("/api/opt", requireAuth, async (req, res) => {
+  app.post("/api/opt", requireAuth, requirePermission("opt", "create"), async (req, res) => {
     try {
       const data = insertOptSchema.parse({
         ...req.body,
@@ -32,7 +32,7 @@ export function registerOptRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/opt/:id", requireAuth, async (req, res) => {
+  app.patch("/api/opt/:id", requireAuth, requirePermission("opt", "edit"), async (req, res) => {
     try {
       const id = req.params.id;
       const item = await storage.opt.updateOpt(id, {
@@ -48,7 +48,7 @@ export function registerOptRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/opt/:id", requireAuth, async (req, res) => {
+  app.delete("/api/opt/:id", requireAuth, requirePermission("opt", "delete"), async (req, res) => {
     try {
       const id = req.params.id;
       await storage.opt.deleteOpt(id);

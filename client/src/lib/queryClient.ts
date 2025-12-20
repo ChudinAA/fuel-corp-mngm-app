@@ -7,11 +7,11 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest(
+export const apiRequest = async (
   method: string,
   url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
+  data?: any
+): Promise<Response> => {
   const res = await fetch(url, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
@@ -19,9 +19,18 @@ export async function apiRequest(
     credentials: "include",
   });
 
-  await throwIfResNotOk(res);
+  if (!res.ok) {
+    // Redirect to auth page on 401 Unauthorized
+    if (res.status === 401) {
+      window.location.href = "/auth";
+    }
+
+    const errorData = await res.json().catch(() => ({ message: "Request failed" }));
+    throw new Error(errorData.message || `Request failed with status ${res.status}`);
+  }
+
   return res;
-}
+};
 
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {

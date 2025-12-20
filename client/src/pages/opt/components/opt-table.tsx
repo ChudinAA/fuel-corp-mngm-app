@@ -39,6 +39,8 @@ import {
 } from "@/components/ui/tooltip";
 import { formatNumberForTable, formatCurrencyForTable } from "../utils";
 import { useOptTable } from "../hooks/use-opt-table";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 interface OptTableProps {
   onEdit: (opt: any) => void;
@@ -57,6 +59,9 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
     deleteMutation,
     handleDelete,
   } = useOptTable();
+
+  const { toast } = useToast();
+  const { hasPermission } = useAuth();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dealToDelete, setDealToDelete] = useState<any>(null);
@@ -224,25 +229,29 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
                           <FileText className="h-4 w-4 mr-2" />
                           Примечания
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onEdit(deal)}
-                          data-testid={`button-edit-opt-${deal.id}`}
-                        >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Редактировать
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setDealToDelete(deal);
-                            setDeleteDialogOpen(true);
-                          }}
-                          disabled={deleteMutation.isPending}
-                          className="text-destructive focus:text-destructive"
-                          data-testid={`button-delete-opt-${deal.id}`}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Удалить
-                        </DropdownMenuItem>
+                        {hasPermission("opt", "edit") && (
+                          <DropdownMenuItem
+                            onClick={() => onEdit(deal)}
+                            data-testid={`button-edit-opt-${deal.id}`}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Редактировать
+                          </DropdownMenuItem>
+                        )}
+                        {hasPermission("opt", "delete") && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setDealToDelete(deal);
+                              setDeleteDialogOpen(true);
+                            }}
+                            disabled={deleteMutation.isPending}
+                            className="text-destructive focus:text-destructive"
+                            data-testid={`button-delete-opt-${deal.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Удалить
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

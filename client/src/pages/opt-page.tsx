@@ -8,12 +8,16 @@ import { Plus, Maximize2 } from "lucide-react";
 import type { Opt } from "@shared/schema";
 import { AddOptDialog } from "./opt/components/add-opt-dialog";
 import { OptTable } from "./opt/components/opt-table";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function OptPage() {
   const [editingOpt, setEditingOpt] = useState<Opt | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { hasPermission } = useAuth();
 
   const { data: optDeals } = useQuery<{ data: Opt[]; total: number }>({
     queryKey: ["/api/opt?page=1&pageSize=1000"],
@@ -60,10 +64,12 @@ export default function OptPage() {
             Прибыль накопительно (текущий месяц): <span className="text-green-600">{cumulativeProfit.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽</span>
           </p>
         </div>
-        <Button onClick={handleOpenDialog} data-testid="button-add-opt">
-          <Plus className="mr-2 h-4 w-4" />
-          Новая сделка
-        </Button>
+        {hasPermission("opt", "create") && (
+          <Button onClick={handleOpenDialog} data-testid="button-add-opt">
+            <Plus className="mr-2 h-4 w-4" />
+            Новая сделка
+          </Button>
+        )}
       </div>
 
       <AddOptDialog
@@ -94,7 +100,7 @@ export default function OptPage() {
                 </DialogDescription>
               </DialogHeader>
               <ScrollArea className="flex-1">
-                <OptTable 
+                <OptTable
                   onEdit={handleEditOpt}
                   onDelete={handleOptDeleted}
                 />
@@ -103,7 +109,7 @@ export default function OptPage() {
           </Dialog>
         </CardHeader>
         <CardContent>
-          <OptTable 
+          <OptTable
             onEdit={handleEditOpt}
             onDelete={handleOptDeleted}
           />

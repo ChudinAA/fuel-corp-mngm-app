@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { requireAuth, requirePermission } from "./middleware";
 import { registerWarehousesOperationsRoutes } from "./operations/warehouses";
 import { registerExchangeRoutes } from "./operations/exchange";
 import { registerMovementRoutes } from "./operations/movement";

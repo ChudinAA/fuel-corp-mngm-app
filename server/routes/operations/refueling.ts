@@ -1,12 +1,11 @@
-
 import type { Express } from "express";
 import { storage } from "../../storage/index";
 import { insertAircraftRefuelingSchema } from "@shared/schema";
 import { z } from "zod";
-import { requireAuth } from "../middleware";
+import { requireAuth, requirePermission } from "../middleware";
 
 export function registerRefuelingOperationsRoutes(app: Express) {
-  app.get("/api/refueling", requireAuth, async (req, res) => {
+  app.get("/api/refueling", requireAuth, requirePermission("refueling", "view"), async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
     const search = req.query.search as string | undefined;
@@ -14,7 +13,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     res.json(result);
   });
 
-  app.post("/api/refueling", requireAuth, async (req, res) => {
+  app.post("/api/refueling", requireAuth, requirePermission("refueling", "create"), async (req, res) => {
     try {
       const data = insertAircraftRefuelingSchema.parse({
         ...req.body,
@@ -30,7 +29,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/refueling/:id", requireAuth, async (req, res) => {
+  app.patch("/api/refueling/:id", requireAuth, requirePermission("refueling", "update"), async (req, res) => {
     try {
       const id = req.params.id;
       const item = await storage.aircraftRefueling.updateRefueling(id, {
@@ -46,7 +45,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/refueling/:id", requireAuth, async (req, res) => {
+  app.delete("/api/refueling/:id", requireAuth, requirePermission("refueling", "delete"), async (req, res) => {
     try {
       const id = req.params.id;
       await storage.aircraftRefueling.deleteRefueling(id);
