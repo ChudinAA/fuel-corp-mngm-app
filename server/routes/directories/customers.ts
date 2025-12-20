@@ -6,13 +6,13 @@ import { requireAuth } from "../middleware";
 import { CUSTOMER_MODULE } from "@shared/constants";
 
 export function registerCustomersRoutes(app: Express) {
-  app.get("/api/customers", requireAuth, async (req, res) => {
+  app.get("/api/customers", requireAuth, requirePermission("directories", "view"), async (req, res) => {
     const module = req.query.module as string | undefined;
     const data = await storage.customers.getAllCustomers(module);
     res.json(data);
   });
 
-  app.get("/api/customers/:id", requireAuth, async (req, res) => {
+  app.get("/api/customers/:id", requireAuth, requirePermission("directories", "view"), async (req, res) => {
     const id = req.params.id;
     const customer = await storage.customers.getCustomer(id);
     if (!customer) {
@@ -21,7 +21,7 @@ export function registerCustomersRoutes(app: Express) {
     res.json(customer);
   });
 
-  app.post("/api/customers", requireAuth, async (req, res) => {
+  app.post("/api/customers", requireAuth, requirePermission("directories", "create"), async (req, res) => {
     try {
       const data = insertCustomerSchema.parse({
         ...req.body,
@@ -37,7 +37,7 @@ export function registerCustomersRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/customers/:id", requireAuth, async (req, res) => {
+  app.patch("/api/customers/:id", requireAuth, requirePermission("directories", "edit"), async (req, res) => {
     try {
       const id = req.params.id;
       const item = await storage.customers.updateCustomer(id, {
@@ -53,7 +53,7 @@ export function registerCustomersRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/customers/:id", requireAuth, async (req, res) => {
+  app.delete("/api/customers/:id", requireAuth, requirePermission("directories", "delete"), async (req, res) => {
     try {
       const id = req.params.id;
       await storage.customers.deleteCustomer(id);

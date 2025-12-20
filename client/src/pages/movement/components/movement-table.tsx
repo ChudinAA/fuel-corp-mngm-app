@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,6 +25,7 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
   const [itemToDelete, setItemToDelete] = useState<any>(null);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState("");
+  const { hasPermission } = useAuth();
 
   const getProductLabel = (productType: string) => {
     if (productType === PRODUCT_TYPE.PVKJ) return "ПВКЖ";
@@ -155,10 +157,12 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEdit(item)}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Редактировать
-                      </DropdownMenuItem>
+                      {hasPermission("movement", "edit") && (
+                        <DropdownMenuItem onClick={() => onEdit(item)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Редактировать
+                        </DropdownMenuItem>
+                      )}
                       {item.notes && (
                         <DropdownMenuItem
                           onClick={() => {
@@ -170,17 +174,19 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
                           Примечание
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => {
-                          setItemToDelete(item);
-                          setDeleteDialogOpen(true);
-                        }}
-                        disabled={isDeleting}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Удалить
-                      </DropdownMenuItem>
+                      {hasPermission("movement", "delete") && (
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => {
+                            setItemToDelete(item);
+                            setDeleteDialogOpen(true);
+                          }}
+                          disabled={isDeleting}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Удалить
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

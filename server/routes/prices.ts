@@ -7,7 +7,7 @@ import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
 
 export function registerPricesRoutes(app: Express) {
 
-  app.get("/api/prices", requireAuth, async (req, res) => {
+  app.get("/api/prices", requireAuth, requirePermission("prices", "view"), async (req, res) => {
     const { counterpartyRole, counterpartyType } = req.query;
     if (counterpartyRole && counterpartyType) {
       const data = await storage.prices.getPricesByRole(counterpartyRole as string, counterpartyType as string);
@@ -17,7 +17,7 @@ export function registerPricesRoutes(app: Express) {
     res.json(data);
   });
 
-  app.post("/api/prices", requireAuth, async (req, res) => {
+  app.post("/api/prices", requireAuth, requirePermission("prices", "create"), async (req, res) => {
     try {
       const body = req.body;
       const processedData = {
@@ -41,7 +41,7 @@ export function registerPricesRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/prices/:id", requireAuth, async (req, res) => {
+  app.patch("/api/prices/:id", requireAuth, requirePermission("prices", "edit"), async (req, res) => {
     try {
       const id = req.params.id;
       const body = req.body;
@@ -66,7 +66,7 @@ export function registerPricesRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/prices/:id", requireAuth, async (req, res) => {
+  app.delete("/api/prices/:id", requireAuth, requirePermission("prices", "delete"), async (req, res) => {
     try {
       const id = req.params.id;
       await storage.prices.deletePrice(id);
@@ -76,7 +76,7 @@ export function registerPricesRoutes(app: Express) {
     }
   });
 
-  app.get("/api/prices/calculate-selection", requireAuth, async (req, res) => {
+  app.get("/api/prices/calculate-selection", requireAuth, requirePermission("prices", "view"), async (req, res) => {
     try {
       const { counterpartyId, counterpartyType, basis, dateFrom, dateTo, priceId } = req.query;
 
@@ -100,7 +100,7 @@ export function registerPricesRoutes(app: Express) {
     }
   });
 
-  app.get("/api/prices/check-date-overlaps", requireAuth, async (req, res) => {
+  app.get("/api/prices/check-date-overlaps", requireAuth, requirePermission("prices", "view"), async (req, res) => {
     const { counterpartyId, counterpartyType, counterpartyRole, basis, productType, dateFrom, dateTo, excludeId } = req.query;
     const result = await storage.prices.checkPriceDateOverlaps(
       String(counterpartyId),

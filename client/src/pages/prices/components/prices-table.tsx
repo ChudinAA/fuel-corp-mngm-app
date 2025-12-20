@@ -18,6 +18,10 @@ import { formatNumber, formatDate, getPriceDisplay, getProductTypeLabel } from "
 import { usePriceSelection } from "../hooks/use-price-selection";
 import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, PRODUCT_TYPE } from "@shared/constants";
 
+// Assume hasPermission is available in the scope, perhaps from a context or hook
+// Example: const { hasPermission } = usePermissions();
+declare function hasPermission(resource: string, action: string): boolean;
+
 export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onEdit }: PricesTableProps) {
   const [search, setSearch] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -220,10 +224,12 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEdit(price)} data-testid={`button-edit-price-${price.id}`}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Редактировать
-                        </DropdownMenuItem>
+                        {hasPermission("prices", "edit") && (
+                          <DropdownMenuItem onClick={() => onEdit(price)} data-testid={`button-edit-price-${price.id}`}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Редактировать
+                          </DropdownMenuItem>
+                        )}
                         {price.notes && (
                           <DropdownMenuItem onClick={() => {
                             setSelectedPrice(price);
@@ -243,18 +249,20 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            setPriceToDelete(price);
-                            setDeleteDialogOpen(true);
-                          }}
-                          disabled={deleteMutation.isPending}
-                          className="text-destructive"
-                          data-testid={`button-delete-price-${price.id}`}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Удалить
-                        </DropdownMenuItem>
+                        {hasPermission("prices", "delete") && (
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setPriceToDelete(price);
+                              setDeleteDialogOpen(true);
+                            }}
+                            disabled={deleteMutation.isPending}
+                            className="text-destructive"
+                            data-testid={`button-delete-price-${price.id}`}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Удалить
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

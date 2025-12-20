@@ -5,14 +5,14 @@ import { insertExchangeSchema } from "@shared/schema";
 import { z } from "zod";
 
 export function registerExchangeRoutes(app: Express) {
-  app.get("/api/exchange", requireAuth, async (req, res) => {
+  app.get("/api/exchange", requireAuth, requirePermission("exchange", "view"), async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
     const result = await storage.exchange.getExchangeDeals(page, pageSize);
     res.json(result);
   });
 
-  app.post("/api/exchange", requireAuth, async (req, res) => {
+  app.post("/api/exchange", requireAuth, requirePermission("exchange", "create"), async (req, res) => {
     try {
       const data = insertExchangeSchema.parse({
         ...req.body,
@@ -28,7 +28,7 @@ export function registerExchangeRoutes(app: Express) {
     }
   });
 
-  app.put("/api/exchange/:id", requireAuth, async (req, res) => {
+  app.put("/api/exchange/:id", requireAuth, requirePermission("exchange", "edit"), async (req, res) => {
     try {
       const id = req.params.id;
       const data = insertExchangeSchema.partial().parse({
@@ -48,7 +48,7 @@ export function registerExchangeRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/exchange/:id", requireAuth, async (req, res) => {
+  app.delete("/api/exchange/:id", requireAuth, requirePermission("exchange", "delete"), async (req, res) => {
     try {
       const id = req.params.id;
       await storage.exchange.deleteExchange(id);

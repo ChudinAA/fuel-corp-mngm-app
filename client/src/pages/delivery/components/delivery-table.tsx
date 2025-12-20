@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,7 @@ interface DeliveryTableProps {
 
 export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases = [] }: DeliveryTableProps) {
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [costToDelete, setCostToDelete] = useState<DeliveryCost | null>(null);
 
@@ -129,26 +131,30 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        data-testid={`button-edit-delivery-${cost.id}`}
-                        onClick={() => onEdit(cost)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => {
-                          setCostToDelete(cost);
-                          setDeleteDialogOpen(true);
-                        }}
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {hasPermission("delivery_cost", "edit") && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          data-testid={`button-edit-delivery-${cost.id}`}
+                          onClick={() => onEdit(cost)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {hasPermission("delivery_cost", "delete") && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-destructive"
+                          onClick={() => {
+                            setCostToDelete(cost);
+                            setDeleteDialogOpen(true);
+                          }}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

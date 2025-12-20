@@ -135,10 +135,12 @@ export default function MovementPage() {
           <h1 className="text-2xl font-semibold">Перемещение</h1>
           <p className="text-muted-foreground">Учет поставок и внутренних перемещений топлива</p>
         </div>
-        <Button onClick={handleOpenDialog} data-testid="button-add-movement">
-          <Plus className="mr-2 h-4 w-4" />
-          Новое перемещение
-        </Button>
+        {hasPermission("movement", "create") && (
+          <Button onClick={handleOpenDialog} data-testid="button-add-movement">
+            <Plus className="mr-2 h-4 w-4" />
+            Новое перемещение
+          </Button>
+        )}
       </div>
 
       <MovementDialog

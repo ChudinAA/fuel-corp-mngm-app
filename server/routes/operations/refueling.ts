@@ -29,7 +29,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/refueling/:id", requireAuth, requirePermission("refueling", "update"), async (req, res) => {
+  app.patch("/api/refueling/:id", requireAuth, requirePermission("refueling", "edit"), async (req, res) => {
     try {
       const id = req.params.id;
       const item = await storage.aircraftRefueling.updateRefueling(id, {

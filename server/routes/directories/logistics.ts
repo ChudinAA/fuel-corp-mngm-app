@@ -13,12 +13,12 @@ import { requireAuth } from "../middleware";
 export function registerLogisticsRoutes(app: Express) {
   // ============ LOGISTICS CARRIERS ============
 
-  app.get("/api/logistics/carriers", requireAuth, async (req, res) => {
+  app.get("/api/logistics/carriers", requireAuth, requirePermission("directories", "view"), async (req, res) => {
     const data = await storage.logistics.getAllLogisticsCarriers();
     res.json(data);
   });
 
-  app.get("/api/logistics/carriers/:id", requireAuth, async (req, res) => {
+  app.get("/api/logistics/carriers/:id", requireAuth, requirePermission("directories", "view"), async (req, res) => {
     const id = req.params.id;
     const carrier = await storage.logistics.getLogisticsCarrier(id);
     if (!carrier) {
@@ -27,7 +27,7 @@ export function registerLogisticsRoutes(app: Express) {
     res.json(carrier);
   });
 
-  app.post("/api/logistics/carriers", requireAuth, async (req, res) => {
+  app.post("/api/logistics/carriers", requireAuth, requirePermission("directories", "create"), async (req, res) => {
     try {
       const data = insertLogisticsCarrierSchema.parse({
         ...req.body,
@@ -43,7 +43,7 @@ export function registerLogisticsRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/logistics/carriers/:id", requireAuth, async (req, res) => {
+  app.patch("/api/logistics/carriers/:id", requireAuth, requirePermission("directories", "edit"), async (req, res) => {
     try {
       const id = req.params.id;
       const item = await storage.logistics.updateLogisticsCarrier(id, {
@@ -59,7 +59,7 @@ export function registerLogisticsRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/logistics/carriers/:id", requireAuth, async (req, res) => {
+  app.delete("/api/logistics/carriers/:id", requireAuth, requirePermission("directories", "delete"), async (req, res) => {
     try {
       const id = req.params.id;
       await storage.logistics.deleteLogisticsCarrier(id);
@@ -71,12 +71,12 @@ export function registerLogisticsRoutes(app: Express) {
 
   // ============ LOGISTICS DELIVERY LOCATIONS ============
 
-  app.get("/api/logistics/delivery-locations", requireAuth, async (req, res) => {
+  app.get("/api/logistics/delivery-locations", requireAuth, requirePermission("directories", "view"), async (req, res) => {
     const data = await storage.logistics.getAllLogisticsDeliveryLocations();
     res.json(data);
   });
 
-  app.get("/api/logistics/delivery-locations/:id", requireAuth, async (req, res) => {
+  app.get("/api/logistics/delivery-locations/:id", requireAuth, requirePermission("directories", "view"), async (req, res) => {
     const id = req.params.id;
     const location = await storage.logistics.getLogisticsDeliveryLocation(id);
     if (!location) {
@@ -85,7 +85,7 @@ export function registerLogisticsRoutes(app: Express) {
     res.json(location);
   });
 
-  app.post("/api/logistics/delivery-locations", requireAuth, async (req, res) => {
+  app.post("/api/logistics/delivery-locations", requireAuth, requirePermission("directories", "create"), async (req, res) => {
     try {
       const data = insertLogisticsDeliveryLocationSchema.parse({
         ...req.body,
@@ -101,7 +101,7 @@ export function registerLogisticsRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/logistics/delivery-locations/:id", requireAuth, async (req, res) => {
+  app.patch("/api/logistics/delivery-locations/:id", requireAuth, requirePermission("directories", "edit"), async (req, res) => {
     try {
       const id = req.params.id;
       const item = await storage.logistics.updateLogisticsDeliveryLocation(id, {
@@ -117,7 +117,7 @@ export function registerLogisticsRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/logistics/delivery-locations/:id", requireAuth, async (req, res) => {
+  app.delete("/api/logistics/delivery-locations/:id", requireAuth, requirePermission("directories", "delete"), async (req, res) => {
     try {
       const id = req.params.id;
       await storage.logistics.deleteLogisticsDeliveryLocation(id);
@@ -129,13 +129,13 @@ export function registerLogisticsRoutes(app: Express) {
 
   // ============ LOGISTICS VEHICLES ============
 
-  app.get("/api/logistics/vehicles", requireAuth, async (req, res) => {
+  app.get("/api/logistics/vehicles", requireAuth, requirePermission("directories", "view"), async (req, res) => {
     const carrierId = req.query.carrierId as string | undefined;
     const data = await storage.logistics.getAllLogisticsVehicles(carrierId);
     res.json(data);
   });
 
-  app.get("/api/logistics/vehicles/:id", requireAuth, async (req, res) => {
+  app.get("/api/logistics/vehicles/:id", requireAuth, requirePermission("directories", "view"), async (req, res) => {
     const id = req.params.id;
     const vehicle = await storage.logistics.getLogisticsVehicle(id);
     if (!vehicle) {
@@ -144,7 +144,7 @@ export function registerLogisticsRoutes(app: Express) {
     res.json(vehicle);
   });
 
-  app.post("/api/logistics/vehicles", requireAuth, async (req, res) => {
+  app.post("/api/logistics/vehicles", requireAuth, requirePermission("directories", "create"), async (req, res) => {
     try {
       const data = insertLogisticsVehicleSchema.parse({
         ...req.body,
@@ -160,7 +160,7 @@ export function registerLogisticsRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/logistics/vehicles/:id", requireAuth, async (req, res) => {
+  app.patch("/api/logistics/vehicles/:id", requireAuth, requirePermission("directories", "edit"), async (req, res) => {
     try {
       const id = req.params.id;
       const item = await storage.logistics.updateLogisticsVehicle(id, {
@@ -176,7 +176,7 @@ export function registerLogisticsRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/logistics/vehicles/:id", requireAuth, async (req, res) => {
+  app.delete("/api/logistics/vehicles/:id", requireAuth, requirePermission("directories", "delete"), async (req, res) => {
     try {
       const id = req.params.id;
       await storage.logistics.deleteLogisticsVehicle(id);
@@ -188,13 +188,13 @@ export function registerLogisticsRoutes(app: Express) {
 
   // ============ LOGISTICS TRAILERS ============
 
-  app.get("/api/logistics/trailers", requireAuth, async (req, res) => {
+  app.get("/api/logistics/trailers", requireAuth, requirePermission("directories", "view"), async (req, res) => {
     const carrierId = req.query.carrierId as string | undefined;
     const data = await storage.logistics.getAllLogisticsTrailers(carrierId);
     res.json(data);
   });
 
-  app.get("/api/logistics/trailers/:id", requireAuth, async (req, res) => {
+  app.get("/api/logistics/trailers/:id", requireAuth, requirePermission("directories", "view"), async (req, res) => {
     const id = req.params.id;
     const trailer = await storage.logistics.getLogisticsTrailer(id);
     if (!trailer) {
@@ -203,7 +203,7 @@ export function registerLogisticsRoutes(app: Express) {
     res.json(trailer);
   });
 
-  app.post("/api/logistics/trailers", requireAuth, async (req, res) => {
+  app.post("/api/logistics/trailers", requireAuth, requirePermission("directories", "create"), async (req, res) => {
     try {
       const data = insertLogisticsTrailerSchema.parse({
         ...req.body,
@@ -219,7 +219,7 @@ export function registerLogisticsRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/logistics/trailers/:id", requireAuth, async (req, res) => {
+  app.patch("/api/logistics/trailers/:id", requireAuth, requirePermission("directories", "edit"), async (req, res) => {
     try {
       const id = req.params.id;
       const item = await storage.logistics.updateLogisticsTrailer(id, {
@@ -235,7 +235,7 @@ export function registerLogisticsRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/logistics/trailers/:id", requireAuth, async (req, res) => {
+  app.delete("/api/logistics/trailers/:id", requireAuth, requirePermission("directories", "delete"), async (req, res) => {
     try {
       const id = req.params.id;
       await storage.logistics.deleteLogisticsTrailer(id);
@@ -247,13 +247,13 @@ export function registerLogisticsRoutes(app: Express) {
 
   // ============ LOGISTICS DRIVERS ============
 
-  app.get("/api/logistics/drivers", requireAuth, async (req, res) => {
+  app.get("/api/logistics/drivers", requireAuth, requirePermission("directories", "view"), async (req, res) => {
     const carrierId = req.query.carrierId as string | undefined;
     const data = await storage.logistics.getAllLogisticsDrivers(carrierId);
     res.json(data);
   });
 
-  app.get("/api/logistics/drivers/:id", requireAuth, async (req, res) => {
+  app.get("/api/logistics/drivers/:id", requireAuth, requirePermission("directories", "view"), async (req, res) => {
     const id = req.params.id;
     const driver = await storage.logistics.getLogisticsDriver(id);
     if (!driver) {
@@ -262,7 +262,7 @@ export function registerLogisticsRoutes(app: Express) {
     res.json(driver);
   });
 
-  app.post("/api/logistics/drivers", requireAuth, async (req, res) => {
+  app.post("/api/logistics/drivers", requireAuth, requirePermission("directories", "create"), async (req, res) => {
     try {
       const data = insertLogisticsDriverSchema.parse({
         ...req.body,
@@ -278,7 +278,7 @@ export function registerLogisticsRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/logistics/drivers/:id", requireAuth, async (req, res) => {
+  app.patch("/api/logistics/drivers/:id", requireAuth, requirePermission("directories", "edit"), async (req, res) => {
     try {
       const id = req.params.id;
       const item = await storage.logistics.updateLogisticsDriver(id, {
@@ -294,7 +294,7 @@ export function registerLogisticsRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/logistics/drivers/:id", requireAuth, async (req, res) => {
+  app.delete("/api/logistics/drivers/:id", requireAuth, requirePermission("directories", "delete"), async (req, res) => {
     try {
       const id = req.params.id;
       await storage.logistics.deleteLogisticsDriver(id);

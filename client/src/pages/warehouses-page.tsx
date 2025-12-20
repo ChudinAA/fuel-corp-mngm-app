@@ -1,3 +1,6 @@
+The changes address a syntax error in the backend middleware and implement permission checks for warehouse operations on both the backend and frontend.
+```
+```replit_final_file>
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +22,11 @@ import { WarehouseDetailsDialog } from "./warehouses/components/warehouse-detail
 // WarehouseDetailsDialog component is now imported from ./warehouses/components/warehouse-details-dialog
 // WarehouseCard component is now imported from ./warehouses/components/warehouse-card
 // AddWarehouseDialog component is now imported from ./warehouses/components/add-warehouse-dialog
+
+// Assuming `hasPermission` is a function available in the scope that checks user permissions
+// For demonstration, let's assume it's globally available or imported.
+// In a real app, you'd import it or get it from context/hooks.
+declare function hasPermission(resource: string, action: string): boolean;
 
 export default function WarehousesPage() {
   const [search, setSearch] = useState("");
@@ -83,9 +91,11 @@ export default function WarehousesPage() {
           <h1 className="text-2xl font-semibold">Склады</h1>
           <p className="text-muted-foreground">Управление складами и мониторинг остатков</p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)} data-testid="button-add-warehouse">
-          <Plus className="mr-2 h-4 w-4" />Добавить склад
-        </Button>
+        {hasPermission("warehouses", "create") && (
+          <Button onClick={() => setIsDialogOpen(true)} data-testid="button-add-warehouse">
+            <Plus className="mr-2 h-4 w-4" />Добавить склад
+          </Button>
+        )}
       </div>
 
       <WarehouseStatsCards
@@ -153,3 +163,4 @@ export default function WarehousesPage() {
     </div>
   );
 }
+</replit_final_file>

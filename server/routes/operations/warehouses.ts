@@ -7,12 +7,12 @@ import { requireAuth } from "../middleware";
 import { sql } from "drizzle-orm";
 
 export function registerWarehousesOperationsRoutes(app: Express) {
-  app.get("/api/warehouses", requireAuth, async (req, res) => {
+  app.get("/api/warehouses", requireAuth, requirePermission("warehouses", "view"), async (req, res) => {
     const data = await storage.warehouses.getAllWarehouses();
     res.json(data);
   });
 
-  app.get("/api/warehouses/:id", requireAuth, async (req, res) => {
+  app.get("/api/warehouses/:id", requireAuth, requirePermission("warehouses", "view"), async (req, res) => {
     const id = req.params.id;
     const warehouse = await storage.warehouses.getWarehouse(id);
     if (!warehouse) {
@@ -21,7 +21,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     res.json(warehouse);
   });
 
-  app.post("/api/warehouses", requireAuth, async (req, res) => {
+  app.post("/api/warehouses", requireAuth, requirePermission("warehouses", "create"), async (req, res) => {
     try {
       const { createSupplier, bases, ...warehouseData } = req.body;
       
@@ -66,7 +66,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/warehouses/:id", requireAuth, async (req, res) => {
+  app.patch("/api/warehouses/:id", requireAuth, requirePermission("warehouses", "edit"), async (req, res) => {
     try {
       const id = req.params.id;
       const item = await storage.warehouses.updateWarehouse(id, {
@@ -82,7 +82,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/warehouses/:id", requireAuth, async (req, res) => {
+  app.delete("/api/warehouses/:id", requireAuth, requirePermission("warehouses", "delete"), async (req, res) => {
     try {
       const id = req.params.id;
       
@@ -115,7 +115,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     }
   });
 
-  app.get("/api/warehouses/:id/transactions", requireAuth, async (req, res) => {
+  app.get("/api/warehouses/:id/transactions", requireAuth, requirePermission("warehouses", "view"), async (req, res) => {
     try {
       const id = req.params.id;
       const transactions = await storage.warehouses.getWarehouseTransactions(id);

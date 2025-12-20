@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,14 +8,19 @@ import { Pencil, Trash2 } from "lucide-react";
 import type { ExchangeTableProps } from "../types";
 import { formatNumber, formatCurrency, formatDate } from "../utils";
 import { PRODUCT_TYPE } from "@shared/constants";
+import { useAuth } from "@/hooks/use-auth";
 
-export function ExchangeTable({ 
-  data, 
-  isLoading, 
-  onEdit, 
-  onDelete, 
-  isDeletingId 
+export function ExchangeTable({
+  data,
+  isLoading,
+  onEdit,
+  onDelete,
+  isDeletingId
 }: ExchangeTableProps) {
+  const { user } = useAuth();
+  const canEdit = user?.permissions?.includes("exchange:edit");
+  const canDelete = user?.permissions?.includes("exchange:delete");
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
   return (
@@ -63,27 +67,31 @@ export function ExchangeTable({
                 <TableCell className="text-right font-medium">{formatCurrency(item.totalAmount)}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8"
-                      data-testid={`button-edit-exchange-${item.id}`}
-                      onClick={() => onEdit(item)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => {
-                        setItemToDelete(item);
-                        setDeleteDialogOpen(true);
-                      }}
-                      disabled={isDeletingId === item.id}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {canEdit && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        data-testid={`button-edit-exchange-${item.id}`}
+                        onClick={() => onEdit(item)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        onClick={() => {
+                          setItemToDelete(item);
+                          setDeleteDialogOpen(true);
+                        }}
+                        disabled={isDeletingId === item.id}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

@@ -6,13 +6,13 @@ import { z } from "zod";
 import { requireAuth } from "../middleware";
 
 export function registerBasesRoutes(app: Express) {
-  app.get("/api/bases", requireAuth, async (req, res) => {
+  app.get("/api/bases", requireAuth, requirePermission("directories", "view"), async (req, res) => {
     const baseType = req.query.baseType as string | undefined;
     const data = await storage.bases.getAllBases(baseType);
     res.json(data);
   });
 
-  app.get("/api/bases/:id", requireAuth, async (req, res) => {
+  app.get("/api/bases/:id", requireAuth, requirePermission("directories", "view"), async (req, res) => {
     const id = req.params.id;
     const base = await storage.bases.getBase(id);
     if (!base) {
@@ -21,7 +21,7 @@ export function registerBasesRoutes(app: Express) {
     res.json(base);
   });
 
-  app.post("/api/bases", requireAuth, async (req, res) => {
+  app.post("/api/bases", requireAuth, requirePermission("directories", "create"), async (req, res) => {
     try {
       const data = insertBaseSchema.parse({
         ...req.body,
@@ -37,7 +37,7 @@ export function registerBasesRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/bases/:id", requireAuth, async (req, res) => {
+  app.patch("/api/bases/:id", requireAuth, requirePermission("directories", "edit"), async (req, res) => {
     try {
       const id = req.params.id;
       const item = await storage.bases.updateBase(id, {
@@ -53,7 +53,7 @@ export function registerBasesRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/bases/:id", requireAuth, async (req, res) => {
+  app.delete("/api/bases/:id", requireAuth, requirePermission("directories", "delete"), async (req, res) => {
     try {
       const id = req.params.id;
       await storage.bases.deleteBase(id);

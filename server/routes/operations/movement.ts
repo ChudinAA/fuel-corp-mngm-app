@@ -5,14 +5,14 @@ import { insertMovementSchema } from "@shared/schema";
 import { z } from "zod";
 
 export function registerMovementRoutes(app: Express) {
-  app.get("/api/movement", requireAuth, async (req, res) => {
+  app.get("/api/movement", requireAuth, requirePermission("movement", "view"), async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
     const result = await storage.movement.getMovements(page, pageSize);
     res.json(result);
   });
 
-  app.post("/api/movement", requireAuth, async (req, res) => {
+  app.post("/api/movement", requireAuth, requirePermission("movement", "create"), async (req, res) => {
     try {
       const data = insertMovementSchema.parse({
         ...req.body,
@@ -42,7 +42,7 @@ export function registerMovementRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/movement/:id", requireAuth, async (req, res) => {
+  app.patch("/api/movement/:id", requireAuth, requirePermission("movement", "edit"), async (req, res) => {
     try {
       const id = req.params.id;
       const item = await storage.movement.updateMovement(id, {
@@ -58,7 +58,7 @@ export function registerMovementRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/movement/:id", requireAuth, async (req, res) => {
+  app.delete("/api/movement/:id", requireAuth, requirePermission("movement", "delete"), async (req, res) => {
     try {
       const id = req.params.id;
       await storage.movement.deleteMovement(id);

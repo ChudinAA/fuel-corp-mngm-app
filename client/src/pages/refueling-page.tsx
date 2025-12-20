@@ -62,10 +62,12 @@ export default function RefuelingPage() {
             Прибыль накопительно (текущий месяц): <span className="text-green-600">{cumulativeProfit.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽</span>
           </p>
         </div>
-        <Button onClick={handleOpenDialog} data-testid="button-add-refueling">
-          <Plus className="mr-2 h-4 w-4" />
-          Новая заправка
-        </Button>
+        {hasPermission("refueling", "create") && (
+          <Button onClick={handleOpenDialog} data-testid="button-add-refueling">
+            <Plus className="mr-2 h-4 w-4" />
+            Новая заправка
+          </Button>
+        )}
       </div>
 
       <AddRefuelingDialog

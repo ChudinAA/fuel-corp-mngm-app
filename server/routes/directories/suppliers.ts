@@ -6,12 +6,12 @@ import { requireAuth } from "../middleware";
 import { BASE_TYPE } from "@shared/constants";
 
 export function registerSuppliersRoutes(app: Express) {
-  app.get("/api/suppliers", requireAuth, async (req, res) => {
+  app.get("/api/suppliers", requireAuth, requirePermission("directories", "view"), async (req, res) => {
     const data = await storage.suppliers.getAllSuppliers();
     res.json(data);
   });
 
-  app.get("/api/suppliers/:id", requireAuth, async (req, res) => {
+  app.get("/api/suppliers/:id", requireAuth, requirePermission("directories", "view"), async (req, res) => {
     const id = req.params.id;
     const supplier = await storage.suppliers.getSupplier(id);
     if (!supplier) {
@@ -20,7 +20,7 @@ export function registerSuppliersRoutes(app: Express) {
     res.json(supplier);
   });
 
-  app.post("/api/suppliers", requireAuth, async (req, res) => {
+  app.post("/api/suppliers", requireAuth, requirePermission("directories", "create"), async (req, res) => {
     try {
       const data = insertSupplierSchema.parse({
         ...req.body,
@@ -60,7 +60,7 @@ export function registerSuppliersRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/suppliers/:id", requireAuth, async (req, res) => {
+  app.patch("/api/suppliers/:id", requireAuth, requirePermission("directories", "edit"), async (req, res) => {
     try {
       const id = req.params.id;
       const item = await storage.suppliers.updateSupplier(id, {
@@ -77,7 +77,7 @@ export function registerSuppliersRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/suppliers/:id", requireAuth, async (req, res) => {
+  app.delete("/api/suppliers/:id", requireAuth, requirePermission("directories", "delete"), async (req, res) => {
     try {
       const id = req.params.id;
 

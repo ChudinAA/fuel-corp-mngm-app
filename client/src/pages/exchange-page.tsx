@@ -70,10 +70,12 @@ export default function ExchangePage() {
             Учет биржевых сделок с автоматическим обновлением складов
           </p>
         </div>
-        <Button onClick={handleOpenDialog} data-testid="button-add-exchange">
-          <Plus className="mr-2 h-4 w-4" />
-          Новая сделка
-        </Button>
+        {hasPermission("exchange", "create") && (
+          <Button onClick={handleOpenDialog} data-testid="button-add-exchange">
+            <Plus className="mr-2 h-4 w-4" />
+            Новая сделка
+          </Button>
+        )}
       </div>
 
       <ExchangeDialog 

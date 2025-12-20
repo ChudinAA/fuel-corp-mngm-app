@@ -40,7 +40,9 @@ export default function PricesPage() {
           <h1 className="text-2xl font-semibold">Цены</h1>
           <p className="text-muted-foreground">Управление ценами с проверкой пересечения диапазонов</p>
         </div>
-        <AddPriceDialog editPrice={editingPrice} onEditComplete={() => setEditingPrice(null)} />
+        {hasPermission("prices", "create") && (
+          <AddPriceDialog editPrice={editingPrice} onEditComplete={() => setEditingPrice(null)} />
+        )}
       </div>
 
       <Card>
