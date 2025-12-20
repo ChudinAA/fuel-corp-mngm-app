@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Truck, Pencil, Trash2, Droplets, Fuel, Warehouse, MapPin } from "lucide-react";
+import { Truck, Pencil, Trash2, Droplets, Fuel, Warehouse, MapPin, MoreVertical } from "lucide-react";
 import type { DeliveryCost } from "@shared/schema";
 import { formatNumber } from "../utils";
 import { BASE_TYPE, ENTITY_TYPE } from "@shared/constants";
@@ -141,7 +141,7 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
-                            <Pencil className="h-4 w-4" />
+                            <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
