@@ -8,7 +8,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,6 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { useAuth } from "@/hooks/use-auth";
 import { 
   Plus, 
   Pencil, 
@@ -31,7 +31,7 @@ import {
   Plus as PlusIcon,
   Trash
 } from "lucide-react";
-import type { Role, Permission } from "@shared/schema";
+import type { Role } from "@shared/schema";
 
 const PERMISSION_MODULES = {
   opt: { name: "ОПТ", permissions: ["view", "create", "edit", "delete"] },

@@ -19,6 +19,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { useAuth } from "@/hooks/use-auth";
 import { 
   Plus, 
   Pencil, 

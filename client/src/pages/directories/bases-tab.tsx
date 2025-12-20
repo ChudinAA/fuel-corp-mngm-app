@@ -14,19 +14,7 @@ import { Search, MapPin, Pencil, Trash2, Droplets, Fuel } from "lucide-react";
 import type { Base } from "@shared/schema";
 import { AddBaseDialog } from "./bases-dialog";
 import { BASE_TYPE } from "@shared/constants";
-
-// Assume hasPermission is imported or defined elsewhere in the scope
-// For demonstration purposes, let's assume it's a global function or imported from a auth module
-// import { hasPermission } from "@/lib/auth"; 
-
-// Mock hasPermission for local testing if not available
-const hasPermission = (resource: string, action: string): boolean => {
-  // In a real application, this would check user roles and permissions
-  console.log(`Checking permission for: ${resource}.${action}`);
-  // For now, let's assume all permissions are granted for demonstration
-  return true; 
-};
-
+import { useAuth } from "@/hooks/use-auth";
 
 export function BasesTab() {
   const [search, setSearch] = useState("");
@@ -35,6 +23,7 @@ export function BasesTab() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
 
   const { data: bases, isLoading } = useQuery<Base[]>({
     queryKey: ["/api/bases"],
