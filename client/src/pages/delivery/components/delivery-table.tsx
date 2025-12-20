@@ -130,9 +130,9 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
                     <Badge variant="outline" className="text-green-600 border-green-600">Активен</Badge>
                   </TableCell>
                   <TableCell>
-                    {(hasPermission("delivery_cost", "edit") || hasPermission("delivery_cost", "delete")) && (
+                    {(hasPermission("delivery", "edit") || hasPermission("delivery", "delete")) && (
                       <div className="flex items-center gap-1">
-                        {hasPermission("delivery_cost", "edit") && (
+                        {hasPermission("delivery", "edit") && (
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -142,7 +142,7 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
                             <Pencil className="h-4 w-4" />
                           </Button>
                         )}
-                        {hasPermission("delivery_cost", "delete") && (
+                        {hasPermission("delivery", "delete") && (
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -154,9 +154,10 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
                           disabled={deleteMutation.isPending}
                         >
                           <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               );

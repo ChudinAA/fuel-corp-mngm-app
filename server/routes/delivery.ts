@@ -10,7 +10,7 @@ import { eq, sql } from "drizzle-orm";
 export function registerDeliveryRoutes(app: Express) {
 
   // Получить все тарифы доставки
-  app.get("/api/delivery-costs", requireAuth, requirePermission("delivery_cost", "view"), async (req: Request, res: Response) => {
+  app.get("/api/delivery-costs", requireAuth, requirePermission("delivery", "view"), async (req: Request, res: Response) => {
     try {
       const costs = await db.select().from(deliveryCost);
       res.json(costs);
@@ -21,7 +21,7 @@ export function registerDeliveryRoutes(app: Express) {
   });
 
   // Создать тариф доставки
-  app.post("/api/delivery-costs", requireAuth, requirePermission("delivery_cost", "create"), async (req: Request, res: Response) => {
+  app.post("/api/delivery-costs", requireAuth, requirePermission("delivery", "create"), async (req: Request, res: Response) => {
     try {
       const data = insertDeliveryCostSchema.parse(req.body);
 
@@ -49,7 +49,7 @@ export function registerDeliveryRoutes(app: Express) {
   });
 
   // Обновить тариф доставки
-  app.patch("/api/delivery-costs/:id", requireAuth, requirePermission("delivery_cost", "edit"), async (req: Request, res: Response) => {
+  app.patch("/api/delivery-costs/:id", requireAuth, requirePermission("delivery", "edit"), async (req: Request, res: Response) => {
     try {
       const id = req.params.id;
       const data = insertDeliveryCostSchema.partial().parse(req.body);
@@ -78,7 +78,7 @@ export function registerDeliveryRoutes(app: Express) {
   });
 
   // Удалить тариф доставки
-  app.delete("/api/delivery-costs/:id", requireAuth, requirePermission("delivery_cost", "delete"), async (req: Request, res: Response) => {
+  app.delete("/api/delivery-costs/:id", requireAuth, requirePermission("delivery", "delete"), async (req: Request, res: Response) => {
     try {
       const id = req.params.id;
       await db.delete(deliveryCost).where(eq(deliveryCost.id, id));

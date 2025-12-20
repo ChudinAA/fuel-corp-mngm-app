@@ -49,7 +49,7 @@ export default function DeliveryPage() {
           <h1 className="text-2xl font-semibold">Доставка</h1>
           <p className="text-muted-foreground">Управление тарифами на доставку</p>
         </div>
-        {hasPermission("delivery_cost", "create") && (
+        {hasPermission("delivery", "create") && (
           <AddDeliveryCostDialog editDeliveryCost={editingDeliveryCost} onClose={() => setEditingDeliveryCost(null)} />
         )}
       </div>
