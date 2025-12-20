@@ -209,51 +209,55 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
                   <TableCell className="text-right text-sm">{deal.deliveryCost ? formatCurrencyForTable(deal.deliveryCost) : '—'}</TableCell>
                   <TableCell className="text-right text-green-600 font-medium text-sm">{formatCurrencyForTable(deal.profit)}</TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedDealNotes(deal.notes || "");
-                            setNotesDialogOpen(true);
-                          }}
-                        >
-                          <FileText className="h-4 w-4 mr-2" />
-                          Примечания
-                        </DropdownMenuItem>
-                        {hasPermission("opt", "edit") && (
-                          <DropdownMenuItem
-                            onClick={() => onEdit(deal)}
-                            data-testid={`button-edit-opt-${deal.id}`}
+                    {(hasPermission("opt", "edit") || hasPermission("opt", "delete") || deal.notes) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8"
                           >
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Редактировать
-                          </DropdownMenuItem>
-                        )}
-                        {hasPermission("opt", "delete") && (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setDealToDelete(deal);
-                              setDeleteDialogOpen(true);
-                            }}
-                            disabled={deleteMutation.isPending}
-                            className="text-destructive focus:text-destructive"
-                            data-testid={`button-delete-opt-${deal.id}`}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Удалить
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {deal.notes && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedDealNotes(deal.notes || "");
+                                setNotesDialogOpen(true);
+                              }}
+                            >
+                              <FileText className="h-4 w-4 mr-2" />
+                              Примечания
+                            </DropdownMenuItem>
+                          )}
+                          {hasPermission("opt", "edit") && (
+                            <DropdownMenuItem
+                              onClick={() => onEdit(deal)}
+                              data-testid={`button-edit-opt-${deal.id}`}
+                            >
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Редактировать
+                            </DropdownMenuItem>
+                          )}
+                          {hasPermission("opt", "delete") && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setDealToDelete(deal);
+                                setDeleteDialogOpen(true);
+                              }}
+                              disabled={deleteMutation.isPending}
+                              className="text-destructive focus:text-destructive"
+                              data-testid={`button-delete-opt-${deal.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Удалить
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

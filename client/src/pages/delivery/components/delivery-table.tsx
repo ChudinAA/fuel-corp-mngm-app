@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -14,6 +13,12 @@ import { Truck, Pencil, Trash2, Droplets, Fuel, Warehouse, MapPin } from "lucide
 import type { DeliveryCost } from "@shared/schema";
 import { formatNumber } from "../utils";
 import { BASE_TYPE, ENTITY_TYPE } from "@shared/constants";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface DeliveryTableProps {
   costs: DeliveryCost[];
@@ -92,6 +97,8 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
               const FromIcon = fromEntityIcon.icon;
               const ToIcon = toEntityIcon.icon;
 
+              const hasActions = hasPermission("delivery", "edit") || hasPermission("delivery", "delete");
+
               return (
                 <TableRow key={cost.id}>
                   <TableCell>{getCarrierName(cost.carrierId)}</TableCell>
@@ -130,33 +137,39 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
                     <Badge variant="outline" className="text-green-600 border-green-600">Активен</Badge>
                   </TableCell>
                   <TableCell>
-                    {(hasPermission("delivery", "edit") || hasPermission("delivery", "delete")) && (
-                      <div className="flex items-center gap-1">
-                        {hasPermission("delivery", "edit") && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            data-testid={`button-edit-delivery-${cost.id}`}
-                            onClick={() => onEdit(cost)}
-                          >
+                    {hasActions && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
                             <Pencil className="h-4 w-4" />
                           </Button>
-                        )}
-                        {hasPermission("delivery", "delete") && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => {
-                              setCostToDelete(cost);
-                            setDeleteDialogOpen(true);
-                          }}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {hasPermission("delivery", "edit") && (
+                            <DropdownMenuItem
+                              data-testid={`button-edit-delivery-${cost.id}`}
+                              onClick={() => onEdit(cost)}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Редактировать
+                            </DropdownMenuItem>
+                          )}
+                          {hasPermission("delivery", "delete") && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setCostToDelete(cost);
+                                setDeleteDialogOpen(true);
+                              }}
+                              disabled={deleteMutation.isPending}
+                              className="text-destructive"
+                              data-testid={`button-delete-cost-${cost.id}`}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Удалить
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </TableCell>
                 </TableRow>

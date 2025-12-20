@@ -215,54 +215,58 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                     </div>
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-menu-price-${price.id}`}>
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {hasPermission("prices", "edit") && (
-                          <DropdownMenuItem onClick={() => onEdit(price)} data-testid={`button-edit-price-${price.id}`}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Редактировать
-                          </DropdownMenuItem>
-                        )}
-                        {price.notes && (
-                          <DropdownMenuItem onClick={() => {
-                            setSelectedPrice(price);
-                            setNotesDialogOpen(true);
-                          }}>
-                            <StickyNote className="mr-2 h-4 w-4" />
-                            Примечания
-                          </DropdownMenuItem>
-                        )}
-                        {price.contractNumber && (
-                          <DropdownMenuItem onClick={() => {
-                            setSelectedPrice(price);
-                            setContractDialogOpen(true);
-                          }}>
-                            <FileText className="mr-2 h-4 w-4" />
-                            Договор
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        {hasPermission("prices", "delete") && (
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              setPriceToDelete(price);
-                              setDeleteDialogOpen(true);
-                            }}
-                            disabled={deleteMutation.isPending}
-                            className="text-destructive"
-                            data-testid={`button-delete-price-${price.id}`}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Удалить
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {(hasPermission("prices", "edit") || hasPermission("prices", "delete") || price.notes || price.contractNumber) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-menu-price-${price.id}`}>
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {hasPermission("prices", "edit") && (
+                            <DropdownMenuItem onClick={() => onEdit(price)} data-testid={`button-edit-price-${price.id}`}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Редактировать
+                            </DropdownMenuItem>
+                          )}
+                          {price.notes && (
+                            <DropdownMenuItem onClick={() => {
+                              setSelectedPrice(price);
+                              setNotesDialogOpen(true);
+                            }}>
+                              <StickyNote className="mr-2 h-4 w-4" />
+                              Примечания
+                            </DropdownMenuItem>
+                          )}
+                          {price.contractNumber && (
+                            <DropdownMenuItem onClick={() => {
+                              setSelectedPrice(price);
+                              setContractDialogOpen(true);
+                            }}>
+                              <FileText className="mr-2 h-4 w-4" />
+                              Договор
+                            </DropdownMenuItem>
+                          )}
+                          {(hasPermission("prices", "edit") || price.notes || price.contractNumber) && hasPermission("prices", "delete") && (
+                            <DropdownMenuSeparator />
+                          )}
+                          {hasPermission("prices", "delete") && (
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setPriceToDelete(price);
+                                setDeleteDialogOpen(true);
+                              }}
+                              disabled={deleteMutation.isPending}
+                              className="text-destructive"
+                              data-testid={`button-delete-price-${price.id}`}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Удалить
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </TableCell>
                 </TableRow>
               );

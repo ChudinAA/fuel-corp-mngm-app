@@ -155,39 +155,41 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
               </CardDescription>
             )}
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {hasPermission("warehouses", "edit") && (
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(warehouse); }}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Редактировать
-                </DropdownMenuItem>
-              )}
-              {hasPermission("warehouses", "delete") && (
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (warehouse.supplierId && warehouse.isActive) {
-                      setConfirmMessage("Данный склад привязан к поставщику. После удаления у поставщика не будет склада. Продолжить?");
-                    } else {
-                      setConfirmMessage("Вы уверены, что хотите удалить этот склад? Это действие нельзя отменить.");
-                    }
-                    setDeleteDialogOpen(true);
-                  }}
-                  disabled={deleteMutation.isPending}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Удалить
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {(hasPermission("warehouses", "edit") || hasPermission("warehouses", "delete")) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {hasPermission("warehouses", "edit") && (
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(warehouse); }}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Редактировать
+                  </DropdownMenuItem>
+                )}
+                {hasPermission("warehouses", "delete") && (
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (warehouse.supplierId && warehouse.isActive) {
+                        setConfirmMessage("Данный склад привязан к поставщику. После удаления у поставщика не будет склада. Продолжить?");
+                      } else {
+                        setConfirmMessage("Вы уверены, что хотите удалить этот склад? Это действие нельзя отменить.");
+                      }
+                      setDeleteDialogOpen(true);
+                    }}
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Удалить
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
