@@ -255,18 +255,6 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
         description={confirmMessage}
         itemName={warehouse.name}
       />
-      
-      {hasPermission("warehouses", "view") && (
-        <div className="px-6 pb-4">
-          <Button 
-            variant="outline" 
-            className="w-full"
-            onClick={() => onViewDetails(warehouse)}
-          >
-            Подробнее
-          </Button>
-        </div>
-      )}
     </Card>
   );
 }
