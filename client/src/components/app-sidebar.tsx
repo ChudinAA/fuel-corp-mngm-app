@@ -72,6 +72,9 @@ const getOperationsMenuItems = (hasPermission: (module: string, action: string) 
     icon: ArrowLeftRight,
     permission: "movement.view",
   },
+].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
+
+const getDataMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
   {
     title: "Склады",
     url: "/warehouses",
@@ -90,9 +93,6 @@ const getOperationsMenuItems = (hasPermission: (module: string, action: string) 
     icon: Truck,
     permission: "delivery.view",
   },
-].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
-
-const getDataMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
   {
     title: "Справочники",
     url: "/directories",

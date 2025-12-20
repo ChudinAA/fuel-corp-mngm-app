@@ -162,7 +162,7 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {hasPermission("warehouses", "update") && (
+              {hasPermission("warehouses", "edit") && (
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(warehouse); }}>
                   <Pencil className="mr-2 h-4 w-4" />
                   Редактировать
