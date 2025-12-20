@@ -90,6 +90,9 @@ const getOperationsMenuItems = (hasPermission: (module: string, action: string) 
     icon: Truck,
     permission: "delivery.view",
   },
+].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
+
+const getDataMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
   {
     title: "Справочники",
     url: "/directories",
@@ -135,6 +138,7 @@ export function AppSidebar() {
 
   const mainMenuItems = getMainMenuItems();
   const operationsMenuItems = getOperationsMenuItems(hasPermission);
+  const dataMenuItems = getDataMenuItems(hasPermission);
   const adminMenuItems = getAdminMenuItems(hasPermission);
 
   return (
@@ -194,27 +198,29 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Данные</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {dataMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={isActive(item.url)}
-                    data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {dataMenuItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Данные</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {dataMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton 
+                      asChild 
+                      isActive={isActive(item.url)}
+                      data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
+                    >
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {adminMenuItems.length > 0 && (
           <SidebarGroup>
