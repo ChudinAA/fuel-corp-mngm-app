@@ -13,6 +13,7 @@ import type { Warehouse, Base } from "@shared/schema";
 import type { WarehouseTransaction } from "../types";
 import { formatNumber, formatCurrency } from "../utils";
 import { BASE_TYPE, PRODUCT_TYPE } from "@shared/constants";
+import { useAuth } from "@/hooks/use-auth";
 
 interface WarehouseCardProps {
   warehouse: Warehouse;
@@ -29,6 +30,7 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
   const pvkjBalance = parseFloat(warehouse.pvkjBalance || "0");
   const pvkjCost = parseFloat(warehouse.pvkjAverageCost || "0");
   const isInactive = !warehouse.isActive;
+  const { hasPermission } = useAuth();
 
   const { data: allBases } = useQuery<Base[]>({
     queryKey: ["/api/bases"],
@@ -71,7 +73,7 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
       if (txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear) {
         const qty = parseFloat(tx.quantityKg);
         const isPvkj = tx.productType === PRODUCT_TYPE.PVKJ;
-        
+
         if (qty > 0) {
           if (isPvkj) {
             pvkjIncome += qty;
@@ -160,26 +162,30 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(warehouse); }}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Редактировать
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (warehouse.supplierId && warehouse.isActive) {
-                    setConfirmMessage("Данный склад привязан к поставщику. После удаления у поставщика не будет склада. Продолжить?");
-                  } else {
-                    setConfirmMessage("Вы уверены, что хотите удалить этот склад? Это действие нельзя отменить.");
-                  }
-                  setDeleteDialogOpen(true);
-                }}
-                disabled={deleteMutation.isPending}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Удалить
-              </DropdownMenuItem>
+              {hasPermission("warehouses", "update") && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(warehouse); }}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Редактировать
+                </DropdownMenuItem>
+              )}
+              {hasPermission("warehouses", "delete") && (
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (warehouse.supplierId && warehouse.isActive) {
+                      setConfirmMessage("Данный склад привязан к поставщику. После удаления у поставщика не будет склада. Продолжить?");
+                    } else {
+                      setConfirmMessage("Вы уверены, что хотите удалить этот склад? Это действие нельзя отменить.");
+                    }
+                    setDeleteDialogOpen(true);
+                  }}
+                  disabled={deleteMutation.isPending}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Удалить
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -249,6 +255,18 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
         description={confirmMessage}
         itemName={warehouse.name}
       />
+      
+      {hasPermission("warehouses", "view") && (
+        <div className="px-6 pb-4">
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={() => onViewDetails(warehouse)}
+          >
+            Подробнее
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }

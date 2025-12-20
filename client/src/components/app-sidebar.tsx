@@ -39,7 +39,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-const mainMenuItems = [
+const getMainMenuItems = () => [
   {
     title: "Дашборд",
     url: "/",
@@ -47,69 +47,78 @@ const mainMenuItems = [
   },
 ];
 
-const operationsMenuItems = [
+const getOperationsMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
   {
     title: "ОПТ",
     url: "/opt",
     icon: ShoppingCart,
+    permission: "opt.view",
   },
   {
     title: "Заправка ВС",
     url: "/refueling",
     icon: Plane,
+    permission: "refueling.view",
   },
   {
     title: "Биржа",
     url: "/exchange",
     icon: TrendingUp,
+    permission: "exchange.view",
   },
   {
     title: "Перемещение",
     url: "/movement",
     icon: ArrowLeftRight,
+    permission: "movement.view",
   },
-];
-
-const dataMenuItems = [
   {
     title: "Склады",
     url: "/warehouses",
     icon: Warehouse,
+    permission: "warehouses.view",
   },
   {
     title: "Цены",
     url: "/prices",
     icon: DollarSign,
+    permission: "prices.view",
   },
   {
     title: "Доставка",
     url: "/delivery",
     icon: Truck,
+    permission: "delivery.view",
   },
   {
     title: "Справочники",
     url: "/directories",
     icon: BookOpen,
+    permission: "directories.view",
   },
-];
+].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
 
-const adminMenuItems = [
+const getAdminMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
   {
     title: "Пользователи",
     url: "/admin/users",
     icon: Users,
+    permission: "users.view",
   },
   {
     title: "Роли",
     url: "/admin/roles",
     icon: Shield,
+    permission: "roles.view",
   },
   {
     title: "Настройки",
     url: "/admin/settings",
     icon: Settings,
+    permission: "settings.view",
   },
-];
+].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
+
 
 export function AppSidebar() {
   const [location] = useLocation();
@@ -124,6 +133,10 @@ export function AppSidebar() {
     return location.startsWith(url);
   };
 
+  const mainMenuItems = getMainMenuItems();
+  const operationsMenuItems = getOperationsMenuItems(hasPermission);
+  const adminMenuItems = getAdminMenuItems(hasPermission);
+
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
@@ -134,7 +147,7 @@ export function AppSidebar() {
           <span className="text-lg font-semibold">АвиаСервис</span>
         </Link>
       </SidebarHeader>
-      
+
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
@@ -157,27 +170,29 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Операции</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {operationsMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={isActive(item.url)}
-                    data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {operationsMenuItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Операции</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {operationsMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton 
+                      asChild 
+                      isActive={isActive(item.url)}
+                      data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
+                    >
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         <SidebarGroup>
           <SidebarGroupLabel>Данные</SidebarGroupLabel>
@@ -201,7 +216,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {hasPermission("admin", "view") && (
+        {adminMenuItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>Администрирование</SidebarGroupLabel>
             <SidebarGroupContent>
