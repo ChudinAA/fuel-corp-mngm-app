@@ -1,6 +1,3 @@
-The changes address a syntax error in the backend middleware and implement permission checks for warehouse operations on both the backend and frontend.
-```
-```replit_final_file>
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -18,15 +15,7 @@ import { WarehouseStatsCards } from "./warehouses/components/warehouse-stats-car
 import { WarehouseCard } from "./warehouses/components/warehouse-card";
 import { AddWarehouseDialog } from "./warehouses/components/add-warehouse-dialog";
 import { WarehouseDetailsDialog } from "./warehouses/components/warehouse-details-dialog";
-
-// WarehouseDetailsDialog component is now imported from ./warehouses/components/warehouse-details-dialog
-// WarehouseCard component is now imported from ./warehouses/components/warehouse-card
-// AddWarehouseDialog component is now imported from ./warehouses/components/add-warehouse-dialog
-
-// Assuming `hasPermission` is a function available in the scope that checks user permissions
-// For demonstration, let's assume it's globally available or imported.
-// In a real app, you'd import it or get it from context/hooks.
-declare function hasPermission(resource: string, action: string): boolean;
+import { useAuth } from "@/hooks/use-auth";
 
 export default function WarehousesPage() {
   const [search, setSearch] = useState("");
@@ -35,6 +24,7 @@ export default function WarehousesPage() {
   const [viewingWarehouse, setViewingWarehouse] = useState<WarehouseType | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
 
   const { data: warehouses, isLoading } = useQuery<WarehouseType[]>({
     queryKey: ["/api/warehouses"],
@@ -163,4 +153,3 @@ export default function WarehousesPage() {
     </div>
   );
 }
-</replit_final_file>

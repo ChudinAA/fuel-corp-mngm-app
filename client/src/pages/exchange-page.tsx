@@ -10,6 +10,7 @@ import { ChevronLeft, ChevronRight, Search, Filter, Plus } from "lucide-react";
 import type { Exchange, Warehouse } from "@shared/schema";
 import { ExchangeDialog } from "./exchange/components/exchange-dialog";
 import { ExchangeTable } from "./exchange/components/exchange-table";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function ExchangePage() {
   const [page, setPage] = useState(1);
@@ -17,6 +18,7 @@ export default function ExchangePage() {
   const [editingExchange, setEditingExchange] = useState<Exchange | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
   const pageSize = 10;
 
   const { data: warehouses } = useQuery<Warehouse[]>({

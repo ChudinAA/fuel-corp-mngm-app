@@ -1,9 +1,8 @@
-import type { Express, Request, Response } from "express";
+import type { Express } from "express";
 import { storage } from "../storage/index";
 import { insertPriceSchema } from "@shared/schema";
 import { z } from "zod";
-import { requireAuth } from "./middleware";
-import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
+import { requireAuth, requirePermission } from "./middleware";
 
 export function registerPricesRoutes(app: Express) {
 

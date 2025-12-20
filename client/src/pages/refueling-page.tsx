@@ -9,6 +9,7 @@ import { Plus, Maximize2 } from "lucide-react";
 import type { AircraftRefueling } from "@shared/schema";
 import { AddRefuelingDialog } from "./refueling/components/add-refueling-dialog";
 import { RefuelingTable } from "./refueling/components/refueling-table";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function RefuelingPage() {
   const [editingRefueling, setEditingRefueling] = useState<AircraftRefueling | null>(null);
@@ -16,6 +17,7 @@ export default function RefuelingPage() {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [productTypeFilter] = useState<string>("all");
   const queryClient = useQueryClient();
+  const { hasPermission } = useAuth();
 
   const { data: refuelingDeals } = useQuery<{ data: AircraftRefueling[]; total: number }>({
     queryKey: ["/api/refueling?page=1&pageSize=1000"],

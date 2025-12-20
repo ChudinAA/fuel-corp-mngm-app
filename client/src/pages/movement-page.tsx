@@ -11,6 +11,7 @@ import type { Movement, Warehouse } from "@shared/schema";
 import { MovementDialog } from "./movement/components/movement-dialog";
 import { MovementTable } from "./movement/components/movement-table";
 import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function MovementPage() {
   const [page, setPage] = useState(1);
@@ -20,6 +21,7 @@ export default function MovementPage() {
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
   const pageSize = 10;
 
   const { data: movementData, isLoading } = useQuery({

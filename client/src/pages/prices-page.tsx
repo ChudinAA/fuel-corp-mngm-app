@@ -8,8 +8,10 @@ import type { Price } from "@shared/schema";
 import { AddPriceDialog } from "./prices/components/add-price-dialog";
 import { PricesTable } from "./prices/components/prices-table";
 import { COUNTERPARTY_ROLE, COUNTERPARTY_TYPE, PRODUCT_TYPE } from "@shared/constants";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function PricesPage() {
+  const { hasPermission } = useAuth();
   const [editingPrice, setEditingPrice] = useState<Price | null>(null);
   const [wholesaleEnabled, setWholesaleEnabled] = useState(false);
   const [refuelingEnabled, setRefuelingEnabled] = useState(false);

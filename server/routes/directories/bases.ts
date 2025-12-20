@@ -3,7 +3,7 @@ import type { Express } from "express";
 import { storage } from "../../storage/index";
 import { insertBaseSchema } from "@shared/schema";
 import { z } from "zod";
-import { requireAuth } from "../middleware";
+import { requireAuth, requirePermission } from "../middleware";
 
 export function registerBasesRoutes(app: Express) {
   app.get("/api/bases", requireAuth, requirePermission("directories", "view"), async (req, res) => {

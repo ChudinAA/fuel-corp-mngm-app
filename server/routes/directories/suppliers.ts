@@ -2,8 +2,7 @@ import type { Express } from "express";
 import { storage } from "../../storage/index";
 import { insertSupplierSchema } from "@shared/schema";
 import { z } from "zod";
-import { requireAuth } from "../middleware";
-import { BASE_TYPE } from "@shared/constants";
+import { requireAuth, requirePermission } from "../middleware";
 
 export function registerSuppliersRoutes(app: Express) {
   app.get("/api/suppliers", requireAuth, requirePermission("directories", "view"), async (req, res) => {

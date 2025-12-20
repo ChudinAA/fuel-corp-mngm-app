@@ -10,8 +10,10 @@ import { AddDeliveryCostDialog } from "./delivery/components/delivery-cost-dialo
 import { DeliveryStatsCards } from "./delivery/components/delivery-stats-cards";
 import { DeliveryTable } from "./delivery/components/delivery-table";
 import { useDeliveryStats } from "./delivery/hooks/use-delivery-stats";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function DeliveryPage() {
+  const { hasPermission } = useAuth();
   const [search, setSearch] = useState("");
   const [editingDeliveryCost, setEditingDeliveryCost] = useState<DeliveryCost | null>(null);
 

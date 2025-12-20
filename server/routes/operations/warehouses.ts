@@ -1,10 +1,8 @@
 
 import type { Express } from "express";
 import { storage } from "../../storage/index";
-import { insertWarehouseSchema } from "@shared/schema";
 import { z } from "zod";
-import { requireAuth } from "../middleware";
-import { sql } from "drizzle-orm";
+import { requireAuth, requirePermission } from "../middleware";
 
 export function registerWarehousesOperationsRoutes(app: Express) {
   app.get("/api/warehouses", requireAuth, requirePermission("warehouses", "view"), async (req, res) => {

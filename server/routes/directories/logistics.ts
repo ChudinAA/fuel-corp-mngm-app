@@ -8,7 +8,7 @@ import {
   insertLogisticsDriverSchema,
 } from "@shared/schema";
 import { z } from "zod";
-import { requireAuth } from "../middleware";
+import { requireAuth, requirePermission } from "../middleware";
 
 export function registerLogisticsRoutes(app: Express) {
   // ============ LOGISTICS CARRIERS ============

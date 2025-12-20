@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "../../storage/index";
-import { requireAuth } from "../middleware";
+import { requireAuth, requirePermission } from "../middleware";
 import { insertMovementSchema } from "@shared/schema";
 import { z } from "zod";
 

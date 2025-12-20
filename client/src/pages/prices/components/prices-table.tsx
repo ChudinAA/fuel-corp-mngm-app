@@ -17,10 +17,7 @@ import type { PricesTableProps } from "../types";
 import { formatNumber, formatDate, getPriceDisplay, getProductTypeLabel } from "../utils";
 import { usePriceSelection } from "../hooks/use-price-selection";
 import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, PRODUCT_TYPE } from "@shared/constants";
-
-// Assume hasPermission is available in the scope, perhaps from a context or hook
-// Example: const { hasPermission } = usePermissions();
-declare function hasPermission(resource: string, action: string): boolean;
+import { useAuth } from "@/hooks/use-auth";
 
 export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onEdit }: PricesTableProps) {
   const [search, setSearch] = useState("");
@@ -30,6 +27,7 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [selectedPrice, setSelectedPrice] = useState<Price | null>(null);
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
 
   const { data: prices, isLoading } = useQuery<Price[]>({
     queryKey: ["/api/prices"],
