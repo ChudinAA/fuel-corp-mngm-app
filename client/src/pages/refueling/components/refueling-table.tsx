@@ -232,16 +232,17 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
                   <TableCell className="text-right text-sm">{formatCurrencyForTable(deal.saleAmount)}</TableCell>
                   <TableCell className="text-right text-green-600 font-medium text-sm">{formatCurrencyForTable(deal.profit)}</TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
+                    {(hasPermission("refueling", "edit") || hasPermission("refueling", "delete")) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
                           onClick={() => {
@@ -276,7 +277,8 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
                           </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
-                    </DropdownMenu>
+                      </DropdownMenu>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

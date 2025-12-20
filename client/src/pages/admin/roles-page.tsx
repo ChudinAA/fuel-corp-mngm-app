@@ -294,7 +294,9 @@ export default function RolesPage() {
           <h1 className="text-2xl font-semibold">Роли</h1>
           <p className="text-muted-foreground">Управление ролями и правами доступа</p>
         </div>
-        <RoleFormDialog />
+        {hasPermission("roles", "create") && (
+          <RoleFormDialog />
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -381,25 +383,27 @@ export default function RolesPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            {hasPermission("roles", "edit") && (
-                              <RoleFormDialog editRole={role} />
-                            )}
-                            {hasPermission("roles", "delete") && !role.isSystem && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-8 w-8 text-destructive"
-                                onClick={() => {
-                                  setRoleToDelete(role);
-                                  setDeleteDialogOpen(true);
-                                }}
-                                disabled={deleteMutation.isPending}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
+                          {(hasPermission("roles", "edit") || (hasPermission("roles", "delete") && !role.isSystem)) && (
+                            <div className="flex items-center gap-1">
+                              {hasPermission("roles", "edit") && (
+                                <RoleFormDialog editRole={role} />
+                              )}
+                              {hasPermission("roles", "delete") && !role.isSystem && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-destructive"
+                                  onClick={() => {
+                                    setRoleToDelete(role);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                  disabled={deleteMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))

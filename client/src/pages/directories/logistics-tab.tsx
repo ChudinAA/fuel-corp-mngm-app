@@ -172,7 +172,9 @@ export function LogisticsTab() {
                 ))}
               </SelectContent>
             </Select>
-            <AddLogisticsDialog carriers={carriers || []} editItem={editingItem} onEditComplete={() => setEditingItem(null)} />
+            {hasPermission("directories", "create") && (
+              <AddLogisticsDialog carriers={carriers || []} editItem={editingItem} onEditComplete={() => setEditingItem(null)} />
+            )}
           </div>
 
           {isLoading ? (
@@ -224,33 +226,35 @@ export function LogisticsTab() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            {hasPermission("directories", "edit") && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                data-testid={`button-edit-${item.type}-${item.id}`}
-                                onClick={() => setEditingItem({ type: item.type, data: item })}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {hasPermission("directories", "delete") && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="text-destructive" 
-                                data-testid={`button-delete-${item.type}-${item.id}`}
-                                onClick={() => {
-                                  setItemToDelete({ type: item.type, id: item.id, name: getItemDisplayName(item) });
-                                  setDeleteDialogOpen(true);
-                                }}
-                                disabled={deleteMutation.isPending}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
+                          {(hasPermission("directories", "edit") || hasPermission("directories", "delete")) && (
+                            <div className="flex items-center gap-1">
+                              {hasPermission("directories", "edit") && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  data-testid={`button-edit-${item.type}-${item.id}`}
+                                  onClick={() => setEditingItem({ type: item.type, data: item })}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {hasPermission("directories", "delete") && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="text-destructive" 
+                                  data-testid={`button-delete-${item.type}-${item.id}`}
+                                  onClick={() => {
+                                    setItemToDelete({ type: item.type, id: item.id, name: getItemDisplayName(item) });
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                  disabled={deleteMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))

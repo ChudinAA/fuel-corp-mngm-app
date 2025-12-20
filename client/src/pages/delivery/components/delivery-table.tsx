@@ -130,24 +130,25 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
                     <Badge variant="outline" className="text-green-600 border-green-600">Активен</Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      {hasPermission("delivery_cost", "edit") && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          data-testid={`button-edit-delivery-${cost.id}`}
-                          onClick={() => onEdit(cost)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {hasPermission("delivery_cost", "delete") && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-destructive"
-                          onClick={() => {
-                            setCostToDelete(cost);
+                    {(hasPermission("delivery_cost", "edit") || hasPermission("delivery_cost", "delete")) && (
+                      <div className="flex items-center gap-1">
+                        {hasPermission("delivery_cost", "edit") && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            data-testid={`button-edit-delivery-${cost.id}`}
+                            onClick={() => onEdit(cost)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {hasPermission("delivery_cost", "delete") && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-destructive"
+                            onClick={() => {
+                              setCostToDelete(cost);
                             setDeleteDialogOpen(true);
                           }}
                           disabled={deleteMutation.isPending}

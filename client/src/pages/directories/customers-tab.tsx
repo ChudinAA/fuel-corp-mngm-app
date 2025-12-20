@@ -68,7 +68,9 @@ export function CustomersTab() {
                 data-testid="input-search-customers" 
               />
             </div>
-            <AddCustomerDialog editCustomer={editingCustomer} onEditComplete={() => setEditingCustomer(null)} />
+            {hasPermission("directories", "create") && (
+              <AddCustomerDialog editCustomer={editingCustomer} onEditComplete={() => setEditingCustomer(null)} />
+            )}
           </div>
 
           {isLoading ? (
@@ -117,33 +119,35 @@ export function CustomersTab() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            {hasPermission("directories", "edit") && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                data-testid={`button-edit-customer-${item.id}`}
-                                onClick={() => setEditingCustomer(item)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {hasPermission("directories", "delete") && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="text-destructive" 
-                                data-testid={`button-delete-customer-${item.id}`}
-                                onClick={() => {
-                                  setCustomerToDelete(item);
-                                  setDeleteDialogOpen(true);
-                                }}
-                                disabled={deleteMutation.isPending}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
+                          {(hasPermission("directories", "edit") || hasPermission("directories", "delete")) && (
+                            <div className="flex items-center gap-1">
+                              {hasPermission("directories", "edit") && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  data-testid={`button-edit-customer-${item.id}`}
+                                  onClick={() => setEditingCustomer(item)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {hasPermission("directories", "delete") && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="text-destructive" 
+                                  data-testid={`button-delete-customer-${item.id}`}
+                                  onClick={() => {
+                                    setCustomerToDelete(item);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                  disabled={deleteMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))

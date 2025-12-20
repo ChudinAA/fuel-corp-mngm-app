@@ -339,7 +339,9 @@ export default function UsersPage() {
           <h1 className="text-2xl font-semibold">Пользователи</h1>
           <p className="text-muted-foreground">Управление учетными записями</p>
         </div>
-        <AddUserDialog roles={roles || []} editUser={editingUser} onEditComplete={() => setEditingUser(null)} />
+        {hasPermission("users", "create") && (
+          <AddUserDialog roles={roles || []} editUser={editingUser} onEditComplete={() => setEditingUser(null)} />
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -457,38 +459,40 @@ export default function UsersPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            {hasPermission("users", "edit") && (
-                              <>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <Key className="h-4 w-4" />
-                                </Button>
+                          {(hasPermission("users", "edit") || hasPermission("users", "delete")) && (
+                            <div className="flex items-center gap-1">
+                              {hasPermission("users", "edit") && (
+                                <>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <Key className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8"
+                                    data-testid={`button-edit-user-${user.id}`}
+                                    onClick={() => setEditingUser(user)}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+                              {hasPermission("users", "delete") && (
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
-                                  className="h-8 w-8"
-                                  data-testid={`button-edit-user-${user.id}`}
-                                  onClick={() => setEditingUser(user)}
+                                  className="h-8 w-8 text-destructive"
+                                  onClick={() => {
+                                    setUserToDelete(user);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                  disabled={deleteMutation.isPending}
                                 >
-                                  <Pencil className="h-4 w-4" />
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
-                              </>
-                            )}
-                            {hasPermission("users", "delete") && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-8 w-8 text-destructive"
-                                onClick={() => {
-                                  setUserToDelete(user);
-                                  setDeleteDialogOpen(true);
-                                }}
-                                disabled={deleteMutation.isPending}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
+                              )}
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))

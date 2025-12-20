@@ -91,7 +91,7 @@ const getDataMenuItems = (hasPermission: (module: string, action: string) => boo
     title: "Доставка",
     url: "/delivery",
     icon: Truck,
-    permission: "delivery_cost.view",
+    permission: "delivery.view",
   },
   {
     title: "Справочники",
