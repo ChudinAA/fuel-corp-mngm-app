@@ -49,6 +49,7 @@ import {
 import { formatNumber, formatNumberForTable, formatCurrencyForTable, getProductLabel } from "../utils";
 import { useRefuelingTable } from "../hooks/use-refueling-table";
 import { PRODUCT_TYPE } from "@shared/constants";
+import { useAuth } from "@/hooks/use-auth";
 
 interface RefuelingTableProps {
   onEdit: (refueling: any) => void;
@@ -57,6 +58,7 @@ interface RefuelingTableProps {
 
 export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
   const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
+  const { hasPermission } = useAuth();
   const {
     page,
     setPage,
@@ -250,25 +252,29 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
                           <FileText className="h-4 w-4 mr-2" />
                           Примечания
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onEdit(deal)}
-                          data-testid={`button-edit-refueling-${deal.id}`}
-                        >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Редактировать
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setDealToDelete(deal);
-                            setDeleteDialogOpen(true);
-                          }}
-                          disabled={deleteMutation.isPending}
-                          className="text-destructive focus:text-destructive"
-                          data-testid={`button-delete-refueling-${deal.id}`}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Удалить
-                        </DropdownMenuItem>
+                        {hasPermission("refueling", "edit") && (
+                          <DropdownMenuItem
+                            onClick={() => onEdit(deal)}
+                            data-testid={`button-edit-refueling-${deal.id}`}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Редактировать
+                          </DropdownMenuItem>
+                        )}
+                        {hasPermission("refueling", "delete") && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setDealToDelete(deal);
+                              setDeleteDialogOpen(true);
+                            }}
+                            disabled={deleteMutation.isPending}
+                            className="text-destructive focus:text-destructive"
+                            data-testid={`button-delete-refueling-${deal.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Удалить
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

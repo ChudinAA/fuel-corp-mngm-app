@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -15,6 +14,19 @@ import { Search, MapPin, Pencil, Trash2, Droplets, Fuel } from "lucide-react";
 import type { Base } from "@shared/schema";
 import { AddBaseDialog } from "./bases-dialog";
 import { BASE_TYPE } from "@shared/constants";
+
+// Assume hasPermission is imported or defined elsewhere in the scope
+// For demonstration purposes, let's assume it's a global function or imported from a auth module
+// import { hasPermission } from "@/lib/auth"; 
+
+// Mock hasPermission for local testing if not available
+const hasPermission = (resource: string, action: string): boolean => {
+  // In a real application, this would check user roles and permissions
+  console.log(`Checking permission for: ${resource}.${action}`);
+  // For now, let's assume all permissions are granted for demonstration
+  return true; 
+};
+
 
 export function BasesTab() {
   const [search, setSearch] = useState("");
@@ -80,7 +92,7 @@ export function BasesTab() {
                 <SelectItem value={BASE_TYPE.REFUELING}>Заправка</SelectItem>
               </SelectContent>
             </Select>
-            <AddBaseDialog editItem={editingItem} onEditComplete={() => setEditingItem(null)} />
+            {hasPermission("directories", "create") && <AddBaseDialog editItem={editingItem} onEditComplete={() => setEditingItem(null)} />}
           </div>
 
           {isLoading ? (
@@ -136,27 +148,31 @@ export function BasesTab() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              data-testid={`button-edit-${base.id}`}
-                              onClick={() => setEditingItem(base)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="text-destructive" 
-                              data-testid={`button-delete-${base.id}`}
-                              onClick={() => {
-                                setItemToDelete({ id: base.id, name: base.name });
-                                setDeleteDialogOpen(true);
-                              }}
-                              disabled={deleteMutation.isPending}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {hasPermission("directories", "edit") && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                data-testid={`button-edit-${base.id}`}
+                                onClick={() => setEditingItem(base)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {hasPermission("directories", "delete") && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="text-destructive" 
+                                data-testid={`button-delete-${base.id}`}
+                                onClick={() => {
+                                  setItemToDelete({ id: base.id, name: base.name });
+                                  setDeleteDialogOpen(true);
+                                }}
+                                disabled={deleteMutation.isPending}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

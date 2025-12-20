@@ -19,8 +19,10 @@ import { Search, Building2, Pencil, Trash2, Warehouse, Droplets, Fuel } from "lu
 import type { Supplier, Base } from "@shared/schema";
 import { BASE_TYPE } from "@shared/constants";
 import { AddSupplierDialog } from "./suppliers-dialog";
+import { useAuth } from "@/hooks/use-auth";
 
 export function SuppliersTab() {
+  const { hasPermission } = useAuth();
   const [search, setSearch] = useState("");
   const [editingItem, setEditingItem] = useState<Supplier | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -201,31 +203,35 @@ export function SuppliersTab() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              data-testid={`button-edit-${supplier.id}`}
-                              onClick={() => setEditingItem(supplier)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="text-destructive" 
-                              data-testid={`button-delete-${supplier.id}`}
-                              onClick={() => {
-                                setItemToDelete({
-                                  id: supplier.id,
-                                  name: supplier.name,
-                                  hasWarehouse: !!supplier.warehouseId
-                                });
-                                setDeleteDialogOpen(true);
-                              }}
-                              disabled={deleteMutation.isPending}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {hasPermission("directories", "edit") && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                data-testid={`button-edit-${supplier.id}`}
+                                onClick={() => setEditingItem(supplier)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {hasPermission("directories", "delete") && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="text-destructive" 
+                                data-testid={`button-delete-${supplier.id}`}
+                                onClick={() => {
+                                  setItemToDelete({
+                                    id: supplier.id,
+                                    name: supplier.name,
+                                    hasWarehouse: !!supplier.warehouseId
+                                  });
+                                  setDeleteDialogOpen(true);
+                                }}
+                                disabled={deleteMutation.isPending}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

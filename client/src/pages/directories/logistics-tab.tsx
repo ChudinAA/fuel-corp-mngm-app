@@ -20,10 +20,12 @@ import type {
   LogisticsWarehouse
 } from "@shared/schema";
 import { AddLogisticsDialog, LOGISTICS_TYPES } from "./logistics-dialog";
+import { useAuth } from "@/hooks/use-auth";
 
 type LogisticsType = typeof LOGISTICS_TYPES[number]["value"];
 
 export function LogisticsTab() {
+  const { hasPermission } = useAuth();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<LogisticsType | "all">("all");
   const [editingItem, setEditingItem] = useState<{ type: string; data: any } | null>(null);
@@ -223,27 +225,31 @@ export function LogisticsTab() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              data-testid={`button-edit-${item.type}-${item.id}`}
-                              onClick={() => setEditingItem({ type: item.type, data: item })}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="text-destructive" 
-                              data-testid={`button-delete-${item.type}-${item.id}`}
-                              onClick={() => {
-                                setItemToDelete({ type: item.type, id: item.id, name: getItemDisplayName(item) });
-                                setDeleteDialogOpen(true);
-                              }}
-                              disabled={deleteMutation.isPending}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {hasPermission("directories", "edit") && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                data-testid={`button-edit-${item.type}-${item.id}`}
+                                onClick={() => setEditingItem({ type: item.type, data: item })}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {hasPermission("directories", "delete") && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="text-destructive" 
+                                data-testid={`button-delete-${item.type}-${item.id}`}
+                                onClick={() => {
+                                  setItemToDelete({ type: item.type, id: item.id, name: getItemDisplayName(item) });
+                                  setDeleteDialogOpen(true);
+                                }}
+                                disabled={deleteMutation.isPending}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

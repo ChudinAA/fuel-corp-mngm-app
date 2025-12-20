@@ -261,6 +261,7 @@ export default function RolesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
 
   const { data: roles, isLoading } = useQuery<Role[]>({
     queryKey: ["/api/roles"],
@@ -381,8 +382,10 @@ export default function RolesPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <RoleFormDialog editRole={role} />
-                            {!role.isSystem && (
+                            {hasPermission("roles", "edit") && (
+                              <RoleFormDialog editRole={role} />
+                            )}
+                            {hasPermission("roles", "delete") && !role.isSystem && (
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
