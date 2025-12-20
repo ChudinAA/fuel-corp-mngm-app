@@ -133,7 +133,7 @@ export function LogisticsSection({
             name="carrierId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Перевозчик</FormLabel>
+                <FormLabel className="flex items-center gap-2">Перевозчик</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger data-testid="select-carrier">
@@ -160,7 +160,7 @@ export function LogisticsSection({
             name="deliveryLocationId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Место доставки</FormLabel>
+                <FormLabel className="flex items-center gap-2">Место доставки</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger data-testid="select-delivery-location">
