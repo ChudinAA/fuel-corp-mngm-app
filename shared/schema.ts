@@ -366,12 +366,58 @@ export const aircraftRefueling = pgTable("aircraft_refueling", {
 
 // ============ RELATIONS ============
 
+export const rolesRelations = relations(roles, ({ many }) => ({
+  users: many(users),
+}));
+
 export const usersRelations = relations(users, ({ one }) => ({
   role: one(roles, { fields: [users.roleId], references: [roles.id] }),
 }));
 
-export const warehousesRelations = relations(warehouses, ({ many }) => ({
+export const customersRelations = relations(customers, ({ many }) => ({
+  optDeals: many(opt),
+  refuelings: many(aircraftRefueling),
+}));
+
+export const suppliersRelations = relations(suppliers, ({ many, one }) => ({
+  warehouse: one(warehouses, { fields: [suppliers.warehouseId], references: [warehouses.id] }),
+  optDeals: many(opt),
+  refuelings: many(aircraftRefueling),
+  movements: many(movement),
+}));
+
+export const logisticsCarriersRelations = relations(logisticsCarriers, ({ many }) => ({
+  vehicles: many(logisticsVehicles),
+  trailers: many(logisticsTrailers),
+  drivers: many(logisticsDrivers),
+  optDeals: many(opt),
+  movements: many(movement),
+  deliveryCosts: many(deliveryCost),
+}));
+
+export const logisticsDeliveryLocationsRelations = relations(logisticsDeliveryLocations, ({ many }) => ({
+  optDeals: many(opt),
+}));
+
+export const pricesRelations = relations(prices, ({ many }) => ({
+  optPurchases: many(opt, { relationName: "purchasePrice" }),
+  optSales: many(opt, { relationName: "salePrice" }),
+  refuelingPurchases: many(aircraftRefueling, { relationName: "purchasePrice" }),
+  refuelingSales: many(aircraftRefueling, { relationName: "salePrice" }),
+}));
+
+export const deliveryCostRelations = relations(deliveryCost, ({ one }) => ({
+  carrier: one(logisticsCarriers, { fields: [deliveryCost.carrierId], references: [logisticsCarriers.id] }),
+}));
+
+export const warehousesRelations = relations(warehouses, ({ many, one }) => ({
   transactions: many(warehouseTransactions),
+  supplier: one(suppliers, { fields: [warehouses.supplierId], references: [suppliers.id] }),
+  optDeals: many(opt),
+  refuelings: many(aircraftRefueling),
+  movementsFrom: many(movement, { relationName: "fromWarehouse" }),
+  movementsTo: many(movement, { relationName: "toWarehouse" }),
+  exchangeDeals: many(exchange),
 }));
 
 export const warehouseTransactionsRelations = relations(warehouseTransactions, ({ one }) => ({
