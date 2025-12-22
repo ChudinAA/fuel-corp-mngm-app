@@ -230,17 +230,15 @@ export function OptForm({
       let purchasePriceId = null;
       let purchasePriceIndex = 0;
 
-      if (!isWarehouseSupplier && selectedPurchasePriceId) {
-        const parts = selectedPurchasePriceId.split('-');
-        if (parts.length >= 5) {
-          purchasePriceIndex = parseInt(parts[parts.length - 1]);
+      if (!isWarehouseSupplier) {
+        if (selectedPurchasePriceId) {
+          const parts = selectedPurchasePriceId.split('-');
+          purchasePriceIndex = parseInt(parts[parts.length - 1]) || 0;
           purchasePriceId = parts.slice(0, -1).join('-');
-        } else {
-          purchasePriceId = selectedPurchasePriceId;
+        } else if (purchasePrices.length > 0) {
+          purchasePriceId = purchasePrices[0].id;
+          purchasePriceIndex = 0;
         }
-      } else if (!isWarehouseSupplier && purchasePrices.length > 0) {
-        purchasePriceId = purchasePrices[0].id;
-        purchasePriceIndex = 0;
       }
 
       let salePriceId = null;
@@ -248,12 +246,8 @@ export function OptForm({
 
       if (selectedSalePriceId) {
         const parts = selectedSalePriceId.split('-');
-        if (parts.length >= 5) {
-          salePriceIndex = parseInt(parts[parts.length - 1]);
-          salePriceId = parts.slice(0, -1).join('-');
-        } else {
-          salePriceId = selectedSalePriceId;
-        }
+        salePriceIndex = parseInt(parts[parts.length - 1]) || 0;
+        salePriceId = parts.slice(0, -1).join('-');
       } else if (salePrices.length > 0) {
         salePriceId = salePrices[0].id;
         salePriceIndex = 0;
@@ -313,17 +307,15 @@ export function OptForm({
       let purchasePriceId = null;
       let purchasePriceIndex = 0;
 
-      if (!isWarehouseSupplier && selectedPurchasePriceId) {
-        const parts = selectedPurchasePriceId.split('-');
-        if (parts.length >= 5) {
-          purchasePriceIndex = parseInt(parts[parts.length - 1]);
+      if (!isWarehouseSupplier) {
+        if (selectedPurchasePriceId) {
+          const parts = selectedPurchasePriceId.split('-');
+          purchasePriceIndex = parseInt(parts[parts.length - 1]) || 0;
           purchasePriceId = parts.slice(0, -1).join('-');
-        } else {
-          purchasePriceId = selectedPurchasePriceId;
+        } else if (purchasePrices.length > 0) {
+          purchasePriceId = purchasePrices[0].id;
+          purchasePriceIndex = 0;
         }
-      } else if (!isWarehouseSupplier && purchasePrices.length > 0) {
-        purchasePriceId = purchasePrices[0].id;
-        purchasePriceIndex = 0;
       }
 
       let salePriceId = null;
@@ -331,12 +323,8 @@ export function OptForm({
 
       if (selectedSalePriceId) {
         const parts = selectedSalePriceId.split('-');
-        if (parts.length >= 5) {
-          salePriceIndex = parseInt(parts[parts.length - 1]);
-          salePriceId = parts.slice(0, -1).join('-');
-        } else {
-          salePriceId = selectedSalePriceId;
-        }
+        salePriceIndex = parseInt(parts[parts.length - 1]) || 0;
+        salePriceId = parts.slice(0, -1).join('-');
       } else if (salePrices.length > 0) {
         salePriceId = salePrices[0].id;
         salePriceIndex = 0;

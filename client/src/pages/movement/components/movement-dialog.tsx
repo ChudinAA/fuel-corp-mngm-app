@@ -76,7 +76,7 @@ export function MovementDialog({
 
   // Обновляем форму при изменении editMovement
   useEffect(() => {
-    if (editMovement) {
+    if (editMovement && warehouses) {
       // При редактировании внутреннего перемещения вычисляем начальный баланс
       if (editMovement.movementType === MOVEMENT_TYPE.INTERNAL && editMovement.fromWarehouseId) {
         const fromWarehouse = warehouses.find(w => w.id === editMovement.fromWarehouseId);
@@ -91,21 +91,24 @@ export function MovementDialog({
         setInitialWarehouseBalance(0);
       }
 
-      form.reset({
-        movementDate: new Date(editMovement.movementDate),
-        movementType: editMovement.movementType,
-        productType: editMovement.productType,
-        supplierId: editMovement.supplierId || "",
-        fromWarehouseId: editMovement.fromWarehouseId || "",
-        toWarehouseId: editMovement.toWarehouseId,
-        inputMode: "kg",
-        quantityLiters: editMovement.quantityLiters ? String(editMovement.quantityLiters) : undefined,
-        density: editMovement.density ? String(editMovement.density) : undefined,
-        quantityKg: editMovement.quantityKg ? String(editMovement.quantityKg) : undefined,
-        carrierId: editMovement.carrierId || "",
-        notes: editMovement.notes || "",
-      });
-    } else {
+      // Небольшая задержка для гарантии загрузки данных
+      setTimeout(() => {
+        form.reset({
+          movementDate: new Date(editMovement.movementDate),
+          movementType: editMovement.movementType,
+          productType: editMovement.productType,
+          supplierId: editMovement.supplierId || "",
+          fromWarehouseId: editMovement.fromWarehouseId || "",
+          toWarehouseId: editMovement.toWarehouseId,
+          inputMode: "kg",
+          quantityLiters: editMovement.quantityLiters ? String(editMovement.quantityLiters) : undefined,
+          density: editMovement.density ? String(editMovement.density) : undefined,
+          quantityKg: editMovement.quantityKg ? String(editMovement.quantityKg) : undefined,
+          carrierId: editMovement.carrierId || "",
+          notes: editMovement.notes || "",
+        });
+      }, 0);
+    } else if (!editMovement) {
       setInitialWarehouseBalance(0);
       form.reset({
         movementDate: new Date(),
