@@ -615,22 +615,51 @@ export function MovementDialog({
                 )}
               />
 
-              <FormField control={form.control} name="carrierId" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Перевозчик</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ""}>
-                    <FormControl><SelectTrigger data-testid="select-movement-carrier"><SelectValue placeholder="Выберите перевозчика" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      {availableCarriers.length > 0 ? (
-                        availableCarriers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
-                      ) : (
-                        <SelectItem value="none" disabled>Нет перевозчиков для данного маршрута</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
+              {watchMovementType === MOVEMENT_TYPE.INTERNAL ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="carrierId" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Перевозчик</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <FormControl><SelectTrigger data-testid="select-movement-carrier"><SelectValue placeholder="Выберите перевозчика" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          {availableCarriers.length > 0 ? (
+                            availableCarriers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
+                          ) : (
+                            <SelectItem value="none" disabled>Нет перевозчиков для данного маршрута</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
+                  {watchFromWarehouseId && (
+                    <CalculatedField 
+                      label="Объем на складе" 
+                      value={warehouseBalance.message}
+                      status={warehouseBalance.status}
+                    />
+                  )}
+                </div>
+              ) : (
+                <FormField control={form.control} name="carrierId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Перевозчик</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <FormControl><SelectTrigger data-testid="select-movement-carrier"><SelectValue placeholder="Выберите перевозчика" /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        {availableCarriers.length > 0 ? (
+                          availableCarriers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
+                        ) : (
+                          <SelectItem value="none" disabled>Нет перевозчиков для данного маршрута</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              )}
             </div>
 
             <VolumeInputSection
@@ -639,17 +668,6 @@ export function MovementDialog({
               setInputMode={setInputMode}
               calculatedKg={calculatedKg?.toString() || "0"}
             />
-
-            {watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId && (
-              <div className="grid gap-4 md:grid-cols-2">
-                <CalculatedField 
-                  label="Объем на складе" 
-                  value={warehouseBalance.message}
-                  status={warehouseBalance.status}
-                />
-                <div></div>
-              </div>
-            )}
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <CalculatedField 
