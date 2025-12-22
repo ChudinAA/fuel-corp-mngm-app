@@ -243,7 +243,7 @@ export const warehouseTransactions = pgTable("warehouse_transactions", {
 
 export const exchange = pgTable("exchange", {
   id: uuid("id").defaultRandom().primaryKey(),
-  dealDate: date("deal_date").notNull(),
+  dealDate: timestamp("deal_date", { mode: "string" }).notNull(),
   dealNumber: text("deal_number"),
   counterparty: text("counterparty").notNull(),
   productType: text("product_type").notNull(),
@@ -252,10 +252,10 @@ export const exchange = pgTable("exchange", {
   totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
   warehouseId: uuid("warehouse_id").references(() => warehouses.id),
   notes: text("notes"),
-  dealDatetime: timestamp("deal_date", { mode: "string" }),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
 // ============ MOVEMENT (Перемещение) ============
@@ -268,7 +268,7 @@ export const movement = pgTable("movement", {
   supplierId: uuid("supplier_id").references(() => suppliers.id),
   fromWarehouseId: uuid("from_warehouse_id").references(() => warehouses.id),
   toWarehouseId: uuid("to_warehouse_id").notNull().references(() => warehouses.id),
-  dealDate: timestamp("deal_date", { mode: "string" }),
+  dealDate: timestamp("deal_date", { mode: "string" }).notNull(),
   quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
   density: decimal("density", { precision: 6, scale: 4 }),
   quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
@@ -296,16 +296,16 @@ export const opt = pgTable("opt", {
   buyerId: uuid("buyer_id").notNull().references(() => customers.id),
   warehouseId: uuid("warehouse_id").references(() => warehouses.id),
   transactionId: uuid("transaction_id").references(() => warehouseTransactions.id),
-  dealDate: timestamp("deal_date", { mode: "string" }),
+  dealDate: timestamp("deal_date", { mode: "string" }).notNull(),
   basis: text("basis"),
   quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
   density: decimal("density", { precision: 6, scale: 4 }),
   quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
   purchasePrice: decimal("purchase_price", { precision: 12, scale: 4 }),
-  purchasePriceId: uuid("purchase_price_id"),
+  purchasePriceId: uuid("purchase_price_id").references(() => prices.id),
   purchasePriceIndex: integer("purchase_price_index").default(0),
   salePrice: decimal("sale_price", { precision: 12, scale: 4 }),
-  salePriceId: uuid("sale_price_id"),
+  salePriceId: uuid("sale_price_id").references(() => prices.id),
   salePriceIndex: integer("sale_price_index").default(0),
   purchaseAmount: decimal("purchase_amount", { precision: 15, scale: 2 }),
   saleAmount: decimal("sale_amount", { precision: 15, scale: 2 }),
@@ -336,15 +336,15 @@ export const aircraftRefueling = pgTable("aircraft_refueling", {
   buyerId: uuid("buyer_id").notNull().references(() => customers.id),
   warehouseId: uuid("warehouse_id").references(() => warehouses.id),
   transactionId: uuid("transaction_id").references(() => warehouseTransactions.id),
-  dealDate: timestamp("deal_date", { mode: "string" }),
+  dealDate: timestamp("deal_date", { mode: "string" }).notNull(),
   quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
   density: decimal("density", { precision: 6, scale: 4 }),
   quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
   purchasePrice: decimal("purchase_price", { precision: 12, scale: 4 }),
-  purchasePriceId: uuid("purchase_price_id"),
+  purchasePriceId: uuid("purchase_price_id").references(() => prices.id),
   purchasePriceIndex: integer("purchase_price_index").default(0),
   salePrice: decimal("sale_price", { precision: 12, scale: 4 }),
-  salePriceId: uuid("sale_price_id"),
+  salePriceId: uuid("sale_price_id").references(() => prices.id),
   salePriceIndex: integer("sale_price_index").default(0),
   purchaseAmount: decimal("purchase_amount", { precision: 15, scale: 2 }),
   saleAmount: decimal("sale_amount", { precision: 15, scale: 2 }),
@@ -382,6 +382,45 @@ export const logisticsTrailersRelations = relations(logisticsTrailers, ({ one })
 
 export const logisticsDriversRelations = relations(logisticsDrivers, ({ one }) => ({
   carrier: one(logisticsCarriers, { fields: [logisticsDrivers.carrierId], references: [logisticsCarriers.id] }),
+}));
+
+export const optRelations = relations(opt, ({ one }) => ({
+  supplier: one(suppliers, { fields: [opt.supplierId], references: [suppliers.id] }),
+  buyer: one(customers, { fields: [opt.buyerId], references: [customers.id] }),
+  warehouse: one(warehouses, { fields: [opt.warehouseId], references: [warehouses.id] }),
+  transaction: one(warehouseTransactions, { fields: [opt.transactionId], references: [warehouseTransactions.id] }),
+  carrier: one(logisticsCarriers, { fields: [opt.carrierId], references: [logisticsCarriers.id] }),
+  deliveryLocation: one(logisticsDeliveryLocations, { fields: [opt.deliveryLocationId], references: [logisticsDeliveryLocations.id] }),
+  purchasePrice: one(prices, { fields: [opt.purchasePriceId], references: [prices.id] }),
+  salePrice: one(prices, { fields: [opt.salePriceId], references: [prices.id] }),
+  createdBy: one(users, { fields: [opt.createdById], references: [users.id] }),
+  updatedBy: one(users, { fields: [opt.updatedById], references: [users.id] }),
+}));
+
+export const aircraftRefuelingRelations = relations(aircraftRefueling, ({ one }) => ({
+  supplier: one(suppliers, { fields: [aircraftRefueling.supplierId], references: [suppliers.id] }),
+  buyer: one(customers, { fields: [aircraftRefueling.buyerId], references: [customers.id] }),
+  warehouse: one(warehouses, { fields: [aircraftRefueling.warehouseId], references: [warehouses.id] }),
+  transaction: one(warehouseTransactions, { fields: [aircraftRefueling.transactionId], references: [warehouseTransactions.id] }),
+  purchasePrice: one(prices, { fields: [aircraftRefueling.purchasePriceId], references: [prices.id] }),
+  salePrice: one(prices, { fields: [aircraftRefueling.salePriceId], references: [prices.id] }),
+  createdBy: one(users, { fields: [aircraftRefueling.createdById], references: [users.id] }),
+  updatedBy: one(users, { fields: [aircraftRefueling.updatedById], references: [users.id] }),
+}));
+
+export const movementRelations = relations(movement, ({ one }) => ({
+  supplier: one(suppliers, { fields: [movement.supplierId], references: [suppliers.id] }),
+  fromWarehouse: one(warehouses, { fields: [movement.fromWarehouseId], references: [warehouses.id] }),
+  toWarehouse: one(warehouses, { fields: [movement.toWarehouseId], references: [warehouses.id] }),
+  carrier: one(logisticsCarriers, { fields: [movement.carrierId], references: [logisticsCarriers.id] }),
+  createdBy: one(users, { fields: [movement.createdById], references: [users.id] }),
+  updatedBy: one(users, { fields: [movement.updatedById], references: [users.id] }),
+}));
+
+export const exchangeRelations = relations(exchange, ({ one }) => ({
+  warehouse: one(warehouses, { fields: [exchange.warehouseId], references: [warehouses.id] }),
+  createdBy: one(users, { fields: [exchange.createdById], references: [users.id] }),
+  updatedBy: one(users, { fields: [exchange.updatedById], references: [users.id] }),
 }));
 
 // ============ INSERT SCHEMAS ============
@@ -429,13 +468,13 @@ export const insertWarehouseSchema = z.object({
 export const insertWarehouseTransactionSchema = createInsertSchema(warehouseTransactions).omit({ id: true });
 
 export const insertExchangeSchema = createInsertSchema(exchange).omit({ id: true, createdAt: true }).extend({
-  dealDatetime: z.string().optional(),
+  dealDate: z.string(),
 });
 export const insertMovementSchema = z.object({
   movementDate: z.string(),
   movementType: z.string(),
   productType: z.string(),
-  dealDate: z.string().optional(),
+  dealDate: z.string(),
   supplierId: z.string().nullable().optional(),
   fromWarehouseId: z.string().nullable().optional(),
   toWarehouseId: z.string(),
@@ -459,7 +498,7 @@ export const insertOptSchema = z.object({
   buyerId: z.string(),
   warehouseId: z.string().nullable().optional(),
   basis: z.string().nullable().optional(),
-  dealDate: z.string().optional(),
+  dealDate: z.string(),
   quantityLiters: z.number().nullable().optional(),
   density: z.number().nullable().optional(),
   quantityKg: z.number(),
@@ -481,7 +520,7 @@ export const insertOptSchema = z.object({
   updatedById: z.string().nullable().optional()
 });
 export const insertAircraftRefuelingSchema = createInsertSchema(aircraftRefueling).omit({ id: true, createdAt: true }).extend({
-  dealDate: z.string().optional(),
+  dealDate: z.string(),
 });
 
 // ============ TYPES ============
