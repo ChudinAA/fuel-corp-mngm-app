@@ -597,7 +597,7 @@ export function MovementDialog({
                 name="toWarehouseId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Куда (склад)</FormLabel>
+                    <FormLabel className="flex items-center gap-2">Куда (склад)</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-movement-to">
@@ -619,7 +619,7 @@ export function MovementDialog({
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="carrierId" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Перевозчик</FormLabel>
+                      <FormLabel className="flex items-center gap-2">Перевозчик</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value || ""}>
                         <FormControl><SelectTrigger data-testid="select-movement-carrier"><SelectValue placeholder="Выберите перевозчика" /></SelectTrigger></FormControl>
                         <SelectContent>
@@ -645,7 +645,7 @@ export function MovementDialog({
               ) : (
                 <FormField control={form.control} name="carrierId" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Перевозчик</FormLabel>
+                    <FormLabel className="flex items-center gap-2">Перевозчик</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl><SelectTrigger data-testid="select-movement-carrier"><SelectValue placeholder="Выберите перевозчика" /></SelectTrigger></FormControl>
                       <SelectContent>
