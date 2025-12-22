@@ -75,13 +75,11 @@ export function MovementDestinationSection({
             )} 
           />
 
-          {watchFromWarehouseId && (
-            <CalculatedField 
-              label="Объем на складе" 
-              value={warehouseBalance.message}
-              status={warehouseBalance.status}
-            />
-          )}
+          <CalculatedField 
+            label="Объем на складе" 
+            value={watchFromWarehouseId ? warehouseBalance.message : "—"}
+            status={watchFromWarehouseId ? warehouseBalance.status : "ok"}
+          />
         </div>
       ) : (
         <FormField 
