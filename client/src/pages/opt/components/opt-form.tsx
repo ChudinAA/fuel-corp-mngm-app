@@ -227,7 +227,6 @@ export function OptForm({
 
   const createMutation = useMutation({
     mutationFn: async (data: OptFormData) => {
-      // Извлекаем ID цены и индекс из составного ID
       let purchasePriceId = null;
       let purchasePriceIndex = 0;
 
@@ -311,7 +310,6 @@ export function OptForm({
 
   const updateMutation = useMutation({
     mutationFn: async (data: OptFormData & { id: string }) => {
-      // Извлекаем ID цены и индекс из составного ID
       let purchasePriceId = null;
       let purchasePriceIndex = 0;
 
@@ -427,7 +425,7 @@ export function OptForm({
     if (isWarehouseSupplier && supplierWarehouse) {
       const availableBalance = isEditing ? initialWarehouseBalance : parseFloat(supplierWarehouse.currentBalance || "0");
       const remaining = availableBalance - finalKg;
-
+      
       if (remaining < 0) {
         toast({
           title: "Ошибка: недостаточно объема на складе",
