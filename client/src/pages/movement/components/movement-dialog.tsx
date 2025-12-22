@@ -304,11 +304,47 @@ export function MovementDialog({
   const totalCost = purchaseAmount + storageCost + deliveryCost;
   const costPerKg = kgNum > 0 ? totalCost / kgNum : 0;
 
+  // Получение баланса склада-источника
+  const getWarehouseBalance = (): { balance: number; cost: number; status: "ok" | "error" | "warning"; message: string } => {
+    if (watchMovementType !== MOVEMENT_TYPE.INTERNAL || !watchFromWarehouseId) {
+      return { balance: 0, cost: 0, status: "ok", message: "—" };
+    }
+
+    const fromWarehouse = warehouses.find(w => w.id === watchFromWarehouseId);
+    if (!fromWarehouse) {
+      return { balance: 0, cost: 0, status: "error", message: "Склад не найден" };
+    }
+
+    const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
+    const balance = parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
+    const cost = parseFloat(isPvkj ? fromWarehouse.pvkjAverageCost || "0" : fromWarehouse.averageCost || "0");
+
+    if (balance <= 0) {
+      return { balance, cost, status: "error", message: "Склад пуст" };
+    }
+
+    if (cost <= 0) {
+      return { balance, cost, status: "error", message: "Нет себестоимости" };
+    }
+
+    if (kgNum > 0) {
+      const remaining = balance - kgNum;
+      if (remaining < 0) {
+        return { balance, cost, status: "error", message: `Недостаточно! Доступно: ${balance.toLocaleString()} кг` };
+      }
+      return { balance, cost, status: "ok", message: `ОК: ${remaining.toLocaleString()} кг` };
+    }
+
+    return { balance, cost, status: "ok", message: `${balance.toLocaleString()} кг` };
+  };
+
+  const warehouseBalance = getWarehouseBalance();
+
   const validateForm = (): boolean => {
     // Проверяем количество
     if (!calculatedKg || kgNum <= 0) {
       toast({
-        title: "Ошибка: отсутствует объем",
+        title: "Ошибка валидации",
         description: "Укажите корректное количество топлива в килограммах или литрах.",
         variant: "destructive"
       });
@@ -320,7 +356,7 @@ export function MovementDialog({
       const fromWarehouse = warehouses.find(w => w.id === watchFromWarehouseId);
       if (!fromWarehouse) {
         toast({
-          title: "Ошибка: склад не найден",
+          title: "Ошибка валидации",
           description: "Склад-источник не найден.",
           variant: "destructive"
         });
@@ -333,7 +369,7 @@ export function MovementDialog({
 
       if (currentBalance < kgNum) {
         toast({
-          title: "Ошибка: недостаточно топлива",
+          title: "Ошибка валидации",
           description: `На складе "${fromWarehouse.name}" недостаточно ${isPvkj ? "ПВКЖ" : "керосина"}. Доступно: ${currentBalance.toLocaleString()} кг, требуется: ${kgNum.toLocaleString()} кг.`,
           variant: "destructive"
         });
@@ -342,7 +378,7 @@ export function MovementDialog({
 
       if (currentCost <= 0) {
         toast({
-          title: "Ошибка: отсутствует себестоимость",
+          title: "Ошибка валидации",
           description: `На складе "${fromWarehouse.name}" отсутствует себестоимость ${isPvkj ? "ПВКЖ" : "керосина"}. Невозможно выполнить перемещение.`,
           variant: "destructive"
         });
@@ -353,7 +389,7 @@ export function MovementDialog({
     // Проверяем цену закупки (для поставки)
     if (watchMovementType === MOVEMENT_TYPE.SUPPLY && purchasePrice === null) {
       toast({
-        title: "Ошибка: отсутствует цена закупки",
+        title: "Ошибка валидации",
         description: "Не указана цена закупки. Проверьте настройки поставщика, базиса или маршрута.",
         variant: "destructive"
       });
@@ -366,7 +402,7 @@ export function MovementDialog({
   const createMutation = useMutation({
     mutationFn: async (data: MovementFormData) => {
       if (!validateForm()) {
-        throw new Error("Validation failed");
+        throw new Error("Ошибка валидации данных");
       }
 
       const payload = {
@@ -402,7 +438,10 @@ export function MovementDialog({
       onOpenChange(false);
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      const errorMessage = error.message === "Ошибка валидации данных" 
+        ? error.message 
+        : "Произошла ошибка при сохранении. Проверьте введенные данные и повторите попытку.";
+      toast({ title: "Ошибка", description: errorMessage, variant: "destructive" });
     },
   });
 
@@ -601,6 +640,17 @@ export function MovementDialog({
               calculatedKg={calculatedKg?.toString() || "0"}
             />
 
+            {watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId && (
+              <div className="grid gap-4 md:grid-cols-2">
+                <CalculatedField 
+                  label="Объем на складе" 
+                  value={warehouseBalance.message}
+                  status={warehouseBalance.status}
+                />
+                <div></div>
+              </div>
+            )}
+
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <CalculatedField 
                 label="Цена закупки" 
@@ -629,7 +679,14 @@ export function MovementDialog({
 
             <div className="flex justify-end gap-4 pt-4 border-t">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
-              <Button type="submit" disabled={createMutation.isPending} data-testid="button-create-movement">
+              <Button 
+                type="submit" 
+                disabled={
+                  createMutation.isPending || 
+                  (watchMovementType === MOVEMENT_TYPE.INTERNAL && warehouseBalance.status === "error")
+                } 
+                data-testid="button-create-movement"
+              >
                 {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isEditing ? "Обновление..." : "Сохранение..."}</> : <><Plus className="mr-2 h-4 w-4" />{isEditing ? "Обновить" : "Создать"}</>}
               </Button>
             </div>
