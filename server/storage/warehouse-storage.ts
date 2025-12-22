@@ -1,49 +1,49 @@
+
 import { eq, desc, sql, asc } from "drizzle-orm";
 import { db } from "../db";
 import {
   warehouses,
   warehouseTransactions,
-  bases,
   type Warehouse,
   type InsertWarehouse,
   type WarehouseTransaction,
 } from "@shared/schema";
 import { IWarehouseStorage } from "./types";
-import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 export class WarehouseStorage implements IWarehouseStorage {
   async getAllWarehouses(): Promise<Warehouse[]> {
-    const warehousesList = await db.select().from(warehouses).orderBy(asc(warehouses.name));
-
-    // Enrich with basis name
-    const enrichedWarehouses = await Promise.all(
-      warehousesList.map(async (wh) => {
-        if (wh.baseId) {
-          const [base] = await db.select().from(bases).where(eq(bases.id, wh.baseId)).limit(1);
-          if (base) {
-            return { ...wh, basis: base.name };
+    const warehousesList = await db.query.warehouses.findMany({
+      orderBy: (warehouses, { asc }) => [asc(warehouses.name)],
+      with: {
+        supplier: {
+          columns: {
+            id: true,
+            name: true,
           }
         }
-        return wh;
-      })
-    );
+      }
+    });
 
-    return enrichedWarehouses;
+    // TODO: Рефакторинг baseIds - сейчас это массив, лучше создать связующую таблицу warehouse_bases
+    // Это позволит использовать proper relations и foreign keys
+    return warehousesList;
   }
 
   async getWarehouse(id: string): Promise<Warehouse | undefined> {
-    const [wh] = await db.select().from(warehouses).where(eq(warehouses.id, id)).limit(1);
-
-    if (!wh) return undefined;
-
-    if (wh.baseId) {
-      const [base] = await db.select().from(bases).where(eq(bases.id, wh.baseId)).limit(1);
-      if (base) {
-        return { ...wh, basis: base.name };
+    const warehouse = await db.query.warehouses.findFirst({
+      where: eq(warehouses.id, id),
+      with: {
+        supplier: {
+          columns: {
+            id: true,
+            name: true,
+          }
+        }
       }
-    }
+    });
 
-    return wh;
+    return warehouse;
   }
 
   async createWarehouse(data: InsertWarehouse): Promise<Warehouse> {
@@ -65,13 +65,26 @@ export class WarehouseStorage implements IWarehouseStorage {
   }
 
   async getWarehouseTransactions(warehouseId: string): Promise<WarehouseTransaction[]> {
-    const transactions = await db
-      .select()
-      .from(warehouseTransactions)
-      .where(eq(warehouseTransactions.warehouseId, warehouseId))
-      .orderBy(desc(warehouseTransactions.createdAt));
+    const transactions = await db.query.warehouseTransactions.findMany({
+      where: eq(warehouseTransactions.warehouseId, warehouseId),
+      orderBy: (warehouseTransactions, { desc }) => [desc(warehouseTransactions.createdAt)],
+      with: {
+        warehouse: {
+          columns: {
+            id: true,
+            name: true,
+          }
+        },
+        createdBy: {
+          columns: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          }
+        }
+      }
+    });
 
-    // Маппим поля из БД в формат для фронтенда
     return transactions.map(tx => ({
       id: tx.id,
       warehouseId: tx.warehouseId,
@@ -89,7 +102,9 @@ export class WarehouseStorage implements IWarehouseStorage {
   }
 
   async getWarehouseStatsForDashboard(): Promise<any[]> {
-    const warehousesList = await db.select().from(warehouses).where(eq(warehouses.isActive, true));
+    const warehousesList = await db.query.warehouses.findMany({
+      where: eq(warehouses.isActive, true),
+    });
 
     const stats = warehousesList.map(wh => {
       const currentBalance = parseFloat(wh.currentBalance || "0");

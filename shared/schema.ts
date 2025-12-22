@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, date, boolean, timestamp, jsonb, serial, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, date, boolean, timestamp, jsonb, serial, uuid, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -399,15 +399,24 @@ export const logisticsDeliveryLocationsRelations = relations(logisticsDeliveryLo
   optDeals: many(opt),
 }));
 
-export const pricesRelations = relations(prices, ({ many }) => ({
+export const pricesRelations = relations(prices, ({ many, one }) => ({
   optPurchases: many(opt, { relationName: "purchasePrice" }),
   optSales: many(opt, { relationName: "salePrice" }),
   refuelingPurchases: many(aircraftRefueling, { relationName: "purchasePrice" }),
   refuelingSales: many(aircraftRefueling, { relationName: "salePrice" }),
+  createdBy: one(users, { fields: [prices.createdById], references: [users.id], relationName: "priceCreatedBy" }),
+  updatedBy: one(users, { fields: [prices.updatedById], references: [users.id], relationName: "priceUpdatedBy" }),
 }));
 
 export const deliveryCostRelations = relations(deliveryCost, ({ one }) => ({
   carrier: one(logisticsCarriers, { fields: [deliveryCost.carrierId], references: [logisticsCarriers.id] }),
+  createdBy: one(users, { fields: [deliveryCost.createdById], references: [users.id], relationName: "deliveryCostCreatedBy" }),
+  updatedBy: one(users, { fields: [deliveryCost.updatedById], references: [users.id], relationName: "deliveryCostUpdatedBy" }),
+}));
+
+export const basesRelations = relations(bases, ({ one }) => ({
+  createdBy: one(users, { fields: [bases.createdById], references: [users.id], relationName: "baseCreatedBy" }),
+  updatedBy: one(users, { fields: [bases.updatedById], references: [users.id], relationName: "baseUpdatedBy" }),
 }));
 
 export const warehousesRelations = relations(warehouses, ({ many, one }) => ({
@@ -418,10 +427,14 @@ export const warehousesRelations = relations(warehouses, ({ many, one }) => ({
   movementsFrom: many(movement, { relationName: "fromWarehouse" }),
   movementsTo: many(movement, { relationName: "toWarehouse" }),
   exchangeDeals: many(exchange),
+  createdBy: one(users, { fields: [warehouses.createdById], references: [users.id], relationName: "warehouseCreatedBy" }),
+  updatedBy: one(users, { fields: [warehouses.updatedById], references: [users.id], relationName: "warehouseUpdatedBy" }),
 }));
 
 export const warehouseTransactionsRelations = relations(warehouseTransactions, ({ one }) => ({
   warehouse: one(warehouses, { fields: [warehouseTransactions.warehouseId], references: [warehouses.id] }),
+  createdBy: one(users, { fields: [warehouseTransactions.createdById], references: [users.id], relationName: "warehouseTransactionCreatedBy" }),
+  updatedBy: one(users, { fields: [warehouseTransactions.updatedById], references: [users.id], relationName: "warehouseTransactionUpdatedBy" }),
 }));
 
 export const logisticsVehiclesRelations = relations(logisticsVehicles, ({ one }) => ({
