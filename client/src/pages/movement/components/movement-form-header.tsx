@@ -17,7 +17,7 @@ interface MovementFormHeaderProps {
 
 export function MovementFormHeader({ form }: MovementFormHeaderProps) {
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+    <>
       <FormField
         control={form.control}
         name="movementDate"
@@ -85,6 +85,6 @@ export function MovementFormHeader({ form }: MovementFormHeaderProps) {
           </FormItem>
         )}
       />
-    </div>
+    </>
   );
 }
