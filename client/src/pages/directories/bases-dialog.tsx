@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Switch } from "@/components/ui/switch";
 import { Plus, Loader2 } from "lucide-react";
 import type { Base } from "@shared/schema";
-import { BASE_TYPE } from "@shared/constants";
+import { BASE_TYPE, BaseType } from "@shared/constants";
 
 const baseFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
@@ -70,7 +70,7 @@ export function AddBaseDialog({
       setOpen(true);
       form.reset({
         name: editItem.name,
-        baseType: editItem.baseType as "wholesale" | "refueling",
+        baseType: editItem.baseType as BaseType,
         location: editItem.location || "",
         isActive: editItem.isActive,
       });

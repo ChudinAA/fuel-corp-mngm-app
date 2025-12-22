@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Fuel, Loader2 } from "lucide-react";
+import { Loader2, Plane } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Введите корректный email"),
@@ -74,7 +74,7 @@ export default function AuthPage() {
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1 text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <Fuel className="h-8 w-8 text-primary" />
+              <Plane className="h-8 w-8 text-primary" />
               <span className="text-2xl font-semibold">АвиаСервис</span>
             </div>
             <CardTitle className="text-xl">

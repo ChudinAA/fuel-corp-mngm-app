@@ -1,12 +1,13 @@
+import { CounterpartyRole, CounterpartyType, ProductType } from "@shared/constants";
 import type { Price } from "@shared/schema";
 
 export interface PriceFormData {
   dateFrom: Date;
   dateTo: Date;
-  counterpartyType: "wholesale" | "refueling";
-  counterpartyRole: "supplier" | "buyer";
+  counterpartyType: CounterpartyType;
+  counterpartyRole: CounterpartyRole;
   counterpartyId: string;
-  productType: "kerosene" | "service" | "pvkj" | "agent" | "storage";
+  productType: ProductType;
   basis: string;
   volume?: string;
   priceValues: Array<{ price: string }>;

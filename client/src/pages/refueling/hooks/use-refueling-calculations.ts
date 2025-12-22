@@ -1,6 +1,7 @@
 
 import { useMemo } from "react";
 import type { Supplier, Warehouse, Price } from "@shared/schema";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 interface UseRefuelingCalculationsProps {
   inputMode: "liters" | "kg";
@@ -47,7 +48,7 @@ export function useRefuelingCalculations({
 
   const purchasePrice = useMemo((): number | null => {
     // Для услуги заправки - сначала проверяем service_price у поставщика
-    if (productType === "service") {
+    if (productType === PRODUCT_TYPE.SERVICE) {
       if (selectedSupplier?.servicePrice) {
         return parseFloat(selectedSupplier.servicePrice);
       }
@@ -79,7 +80,7 @@ export function useRefuelingCalculations({
     }
 
     // Для ПВКЖ
-    if (productType === "pvkj") {
+    if (productType === PRODUCT_TYPE.PVKJ) {
       if (isWarehouseSupplier && supplierWarehouse) {
         return parseFloat(supplierWarehouse.pvkjAverageCost || "0");
       }
@@ -187,7 +188,7 @@ export function useRefuelingCalculations({
 
   const getWarehouseStatus = (): { status: "ok" | "warning" | "error"; message: string } => {
     // Для услуги заправки склад не проверяем
-    if (productType === "service") {
+    if (productType === PRODUCT_TYPE.SERVICE) {
       return { status: "ok", message: "—" };
     }
 
@@ -200,7 +201,7 @@ export function useRefuelingCalculations({
     }
 
     // Для ПВКЖ проверяем баланс ПВКЖ
-    if (productType === "pvkj") {
+    if (productType === PRODUCT_TYPE.PVKJ) {
       const availableBalance = isEditing ? initialWarehouseBalance : parseFloat(supplierWarehouse.pvkjBalance || "0");
       const remaining = availableBalance - finalKg;
 

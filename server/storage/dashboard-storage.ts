@@ -8,10 +8,9 @@ import {
   movement,
   suppliers,
   customers,
-  bases,
 } from "@shared/schema";
 import { IDashboardStorage } from "./types";
-import { MOVEMENT_TYPE } from "@shared/constants";
+import { MOVEMENT_TYPE, SOURCE_TYPE } from "@shared/constants";
 
 export class DashboardStorage implements IDashboardStorage {
   async getDashboardStats(): Promise<{
@@ -111,7 +110,7 @@ export class DashboardStorage implements IDashboardStorage {
       const [buyer] = await db.select().from(customers).where(eq(customers.id, deal.buyerId)).limit(1);
       
       operations.push({
-        type: 'opt',
+        type: SOURCE_TYPE.OPT,
         description: `${supplier?.name || deal.supplierId} → ${buyer?.name || deal.buyerId}: ${parseFloat(deal.quantityKg || "0").toLocaleString('ru-RU')} кг`,
         time: deal.createdAt,
         status: 'success',
@@ -127,7 +126,7 @@ export class DashboardStorage implements IDashboardStorage {
 
     for (const refueling of refuelings) {
       operations.push({
-        type: 'refueling',
+        type: SOURCE_TYPE.REFUELING,
         description: `${refueling.basis || 'База'}: ${refueling.aircraftNumber || 'ВС'}, ${parseFloat(refueling.quantityKg || "0").toLocaleString('ru-RU')} кг`,
         time: refueling.createdAt,
         status: 'success',
@@ -159,7 +158,7 @@ export class DashboardStorage implements IDashboardStorage {
       }
 
       operations.push({
-        type: 'movement',
+        type: SOURCE_TYPE.MOVEMENT,
         description: `${fromName} → ${toName}: ${parseFloat(mov.quantityKg || "0").toLocaleString('ru-RU')} кг`,
         time: mov.createdAt,
         status: mov.movementType === MOVEMENT_TYPE.SUPPLY ? 'success' : 'pending',

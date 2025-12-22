@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CUSTOMER_MODULE } from "@shared/constants";
+import { CUSTOMER_MODULE, CustomerModule } from "@shared/constants";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -54,7 +54,7 @@ export function AddCustomerDialog({ editCustomer, onEditComplete }: { editCustom
       setOpen(true);
       form.reset({
         name: editCustomer.name,
-        module: editCustomer.module as "wholesale" | "refueling" | "both",
+        module: editCustomer.module as CustomerModule,
         description: editCustomer.description || "",
         contactPerson: editCustomer.contactPerson || "",
         phone: editCustomer.phone || "",

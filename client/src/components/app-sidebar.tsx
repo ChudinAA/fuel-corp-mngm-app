@@ -146,7 +146,7 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <Link href="/" className="flex items-center gap-2">
           <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary text-primary-foreground">
-            <Fuel className="h-5 w-5" />
+            <Plane className="h-5 w-5" />
           </div>
           <span className="text-lg font-semibold">АвиаСервис</span>
         </Link>

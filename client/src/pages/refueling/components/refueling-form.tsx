@@ -430,7 +430,7 @@ export function RefuelingForm({
     }
 
     // Проверяем наличие ошибок в ценах
-    if (!isWarehouseSupplier && productType !== "service" && purchasePrice === null) {
+    if (!isWarehouseSupplier && productType !== PRODUCT_TYPE.SERVICE && purchasePrice === null) {
       toast({
         title: "Ошибка валидации",
         description: "Не указана цена покупки. Выберите цену или проверьте настройки поставщика.",

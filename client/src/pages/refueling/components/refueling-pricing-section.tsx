@@ -8,6 +8,7 @@ import type { Price, Warehouse } from "@shared/schema";
 import type { RefuelingFormData } from "../schemas";
 import { CalculatedField } from "../calculated-field";
 import { formatNumber, formatCurrency } from "../utils";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 interface RefuelingPricingSectionProps {
   form: UseFormReturn<RefuelingFormData>;
@@ -103,7 +104,7 @@ export function RefuelingPricingSection({
               );
             }}
           />
-        ) : !isWarehouseSupplier && productType !== "service" ? (
+        ) : !isWarehouseSupplier && productType !== PRODUCT_TYPE.SERVICE ? (
           <CalculatedField 
             label="Покупка" 
             value="Нет цены!"
