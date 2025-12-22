@@ -60,12 +60,20 @@ export default function AuthPage() {
   }
 
   const onLogin = (data: LoginFormData) => {
-    loginMutation.mutate(data);
+    loginMutation.mutate(data, {
+      onSuccess: () => {
+        setLocation("/");
+      }
+    });
   };
 
   const onRegister = (data: RegisterFormData) => {
     const { confirmPassword, ...registerData } = data;
-    registerMutation.mutate(registerData);
+    registerMutation.mutate(registerData, {
+      onSuccess: () => {
+        setLocation("/");
+      }
+    });
   };
 
   return (

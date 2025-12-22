@@ -315,8 +315,43 @@ export function MovementDialog({
       return false;
     }
 
-    // Проверяем цену закупки
-    if (purchasePrice === null) {
+    // Для внутреннего перемещения проверяем остаток на складе-источнике
+    if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
+      const fromWarehouse = warehouses.find(w => w.id === watchFromWarehouseId);
+      if (!fromWarehouse) {
+        toast({
+          title: "Ошибка: склад не найден",
+          description: "Склад-источник не найден.",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
+      const currentBalance = parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
+      const currentCost = parseFloat(isPvkj ? fromWarehouse.pvkjAverageCost || "0" : fromWarehouse.averageCost || "0");
+
+      if (currentBalance < kgNum) {
+        toast({
+          title: "Ошибка: недостаточно топлива",
+          description: `На складе "${fromWarehouse.name}" недостаточно ${isPvkj ? "ПВКЖ" : "керосина"}. Доступно: ${currentBalance.toLocaleString()} кг, требуется: ${kgNum.toLocaleString()} кг.`,
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      if (currentCost <= 0) {
+        toast({
+          title: "Ошибка: отсутствует себестоимость",
+          description: `На складе "${fromWarehouse.name}" отсутствует себестоимость ${isPvkj ? "ПВКЖ" : "керосина"}. Невозможно выполнить перемещение.`,
+          variant: "destructive"
+        });
+        return false;
+      }
+    }
+
+    // Проверяем цену закупки (для поставки)
+    if (watchMovementType === MOVEMENT_TYPE.SUPPLY && purchasePrice === null) {
       toast({
         title: "Ошибка: отсутствует цена закупки",
         description: "Не указана цена закупки. Проверьте настройки поставщика, базиса или маршрута.",
@@ -478,28 +513,41 @@ export function MovementDialog({
                 <FormField
                   control={form.control}
                   name="fromWarehouseId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Откуда (склад)</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || undefined}
-                        defaultValue={field.value || undefined}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-movement-from">
-                            <SelectValue placeholder="Выберите склад" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {warehouses?.map((w) => (
-                            <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                          )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const selectedWarehouse = warehouses?.find(w => w.id === field.value);
+                    const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
+                    const balance = selectedWarehouse 
+                      ? parseFloat(isPvkj ? selectedWarehouse.pvkjBalance || "0" : selectedWarehouse.currentBalance || "0")
+                      : 0;
+                    
+                    return (
+                      <FormItem>
+                        <FormLabel>Откуда (склад)</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value || undefined}
+                          defaultValue={field.value || undefined}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-movement-from">
+                              <SelectValue placeholder="Выберите склад" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {warehouses?.map((w) => (
+                              <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                            )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                          </SelectContent>
+                        </Select>
+                        {selectedWarehouse && (
+                          <p className="text-sm text-muted-foreground">
+                            Остаток {isPvkj ? "ПВКЖ" : "керосина"}: {balance.toLocaleString()} кг
+                          </p>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
               )}
             </div>
