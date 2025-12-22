@@ -3,6 +3,14 @@ import { pgTable, text, varchar, integer, decimal, date, boolean, timestamp, jso
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// ============ SESSION ============
+// Session table for express-session storage
+export const session = pgTable("session", {
+  sid: varchar("sid").primaryKey(),
+  sess: jsonb("sess").notNull(),
+  expire: timestamp("expire", { precision: 6, mode: "string" }).notNull(),
+});
+
 // ============ ROLES & PERMISSIONS ============
 
 export const roles = pgTable("roles", {
@@ -262,7 +270,7 @@ export const exchange = pgTable("exchange", {
 
 export const movement = pgTable("movement", {
   id: uuid("id").defaultRandom().primaryKey(),
-  movementDate: date("movement_date").notNull(),
+  movementDate: timestamp("movement_date", { mode: "string" }).notNull(),
   movementType: text("movement_type").notNull(),
   productType: text("product_type").notNull(),
   supplierId: uuid("supplier_id").references(() => suppliers.id),
@@ -327,7 +335,7 @@ export const opt = pgTable("opt", {
 
 export const aircraftRefueling = pgTable("aircraft_refueling", {
   id: uuid("id").defaultRandom().primaryKey(),
-  refuelingDate: date("refueling_date").notNull(),
+  refuelingDate: timestamp("refueling_date", { mode: "string" }).notNull(),
   productType: text("product_type").notNull(),
   aircraftNumber: text("aircraft_number"),
   orderNumber: text("order_number"),
@@ -471,10 +479,10 @@ export const insertExchangeSchema = createInsertSchema(exchange).omit({ id: true
   dealDate: z.string(),
 });
 export const insertMovementSchema = z.object({
-  movementDate: z.string(),
+  movementDate: z.string(), // timestamp as string
   movementType: z.string(),
   productType: z.string(),
-  dealDate: z.string(),
+  dealDate: z.string(), // timestamp as string
   supplierId: z.string().nullable().optional(),
   fromWarehouseId: z.string().nullable().optional(),
   toWarehouseId: z.string(),
@@ -520,7 +528,8 @@ export const insertOptSchema = z.object({
   updatedById: z.string().nullable().optional()
 });
 export const insertAircraftRefuelingSchema = createInsertSchema(aircraftRefueling).omit({ id: true, createdAt: true }).extend({
-  dealDate: z.string(),
+  refuelingDate: z.string(), // timestamp as string
+  dealDate: z.string(), // timestamp as string
 });
 
 // ============ TYPES ============
