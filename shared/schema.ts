@@ -18,27 +18,6 @@ export const roles = pgTable("roles", {
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
 
-export const permissions = pgTable("permissions", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  module: text("module").notNull(),
-  action: text("action").notNull(),
-  description: text("description"),
-  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: "string" }),
-  createdById: uuid("created_by_id").references(() => users.id),
-  updatedById: uuid("updated_by_id").references(() => users.id),
-});
-
-export const rolePermissions = pgTable("role_permissions", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  roleId: uuid("role_id").notNull().references(() => roles.id, { onDelete: "cascade" }),
-  permissionId: uuid("permission_id").notNull().references(() => permissions.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: "string" }),
-  createdById: uuid("created_by_id").references(() => users.id),
-  updatedById: uuid("updated_by_id").references(() => users.id),
-});
-
 // ============ USERS ============
 
 export const users = pgTable("users", {
