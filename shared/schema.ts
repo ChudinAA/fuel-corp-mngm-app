@@ -276,7 +276,6 @@ export const movement = pgTable("movement", {
   supplierId: uuid("supplier_id").references(() => suppliers.id),
   fromWarehouseId: uuid("from_warehouse_id").references(() => warehouses.id),
   toWarehouseId: uuid("to_warehouse_id").notNull().references(() => warehouses.id),
-  dealDate: timestamp("deal_date", { mode: "string" }).notNull(),
   quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
   density: decimal("density", { precision: 6, scale: 4 }),
   quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
@@ -344,7 +343,6 @@ export const aircraftRefueling = pgTable("aircraft_refueling", {
   buyerId: uuid("buyer_id").notNull().references(() => customers.id),
   warehouseId: uuid("warehouse_id").references(() => warehouses.id),
   transactionId: uuid("transaction_id").references(() => warehouseTransactions.id),
-  dealDate: timestamp("deal_date", { mode: "string" }).notNull(),
   quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
   density: decimal("density", { precision: 6, scale: 4 }),
   quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
@@ -482,7 +480,6 @@ export const insertMovementSchema = z.object({
   movementDate: z.string(), // timestamp as string
   movementType: z.string(),
   productType: z.string(),
-  dealDate: z.string(), // timestamp as string
   supplierId: z.string().nullable().optional(),
   fromWarehouseId: z.string().nullable().optional(),
   toWarehouseId: z.string(),
@@ -529,7 +526,6 @@ export const insertOptSchema = z.object({
 });
 export const insertAircraftRefuelingSchema = createInsertSchema(aircraftRefueling).omit({ id: true, createdAt: true }).extend({
   refuelingDate: z.string(), // timestamp as string
-  dealDate: z.string(), // timestamp as string
 });
 
 // ============ TYPES ============
