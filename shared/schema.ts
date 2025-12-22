@@ -360,20 +360,6 @@ export const aircraftRefueling = pgTable("aircraft_refueling", {
 
 // ============ RELATIONS ============
 
-export const rolesRelations = relations(roles, ({ many }) => ({
-  permissions: many(rolePermissions),
-  users: many(users),
-}));
-
-export const permissionsRelations = relations(permissions, ({ many }) => ({
-  rolePermissions: many(rolePermissions),
-}));
-
-export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => ({
-  role: one(roles, { fields: [rolePermissions.roleId], references: [roles.id] }),
-  permission: one(permissions, { fields: [rolePermissions.permissionId], references: [permissions.id] }),
-}));
-
 export const usersRelations = relations(users, ({ one }) => ({
   role: one(roles, { fields: [users.roleId], references: [roles.id] }),
 }));
@@ -401,8 +387,6 @@ export const logisticsDriversRelations = relations(logisticsDrivers, ({ one }) =
 // ============ INSERT SCHEMAS ============
 
 export const insertRoleSchema = createInsertSchema(roles).omit({ id: true });
-export const insertPermissionSchema = createInsertSchema(permissions).omit({ id: true });
-export const insertRolePermissionSchema = createInsertSchema(rolePermissions).omit({ id: true });
 
 export const registerUserSchema = z.object({
   email: z.string().email("Некорректный email"),
@@ -505,12 +489,6 @@ export const insertAircraftRefuelingSchema = createInsertSchema(aircraftRefuelin
 export type Role = typeof roles.$inferSelect;
 export type InsertRole = z.infer<typeof insertRoleSchema>;
 
-export type Permission = typeof permissions.$inferSelect;
-export type InsertPermission = z.infer<typeof insertPermissionSchema>;
-
-export type RolePermission = typeof rolePermissions.$inferSelect;
-export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
-
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type RegisterUser = z.infer<typeof registerUserSchema>;
@@ -573,7 +551,7 @@ export const MODULES = [
   "movement",
   "warehouses",
   "prices",
-  "delivery_cost",
+  "delivery",
   "directories",
   "admin"
 ] as const;
