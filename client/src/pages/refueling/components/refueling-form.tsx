@@ -295,7 +295,7 @@ export function RefuelingForm({
         buyerId: data.buyerId,
         warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
         basis: String(selectedBasis || ""), // Use selectedBasis
-        refuelingDate: format(data.refuelingDate, "yyyy-MM-dd"),
+        refuelingDate: format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss"),
         quantityKg: String(parseFloat(calculatedKg)),
         quantityLiters: data.quantityLiters ? String(parseFloat(data.quantityLiters)) : null,
         density: data.density ? String(parseFloat(data.density)) : null,
@@ -376,7 +376,7 @@ export function RefuelingForm({
         buyerId: data.buyerId,
         warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
         basis: String(selectedBasis || ""), // Use selectedBasis
-        refuelingDate: format(data.refuelingDate, "yyyy-MM-dd"),
+        refuelingDate: format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss"),
         quantityKg: String(parseFloat(calculatedKg)),
         quantityLiters: data.quantityLiters ? String(parseFloat(data.quantityLiters)) : null,
         density: data.density ? String(parseFloat(data.density)) : null,

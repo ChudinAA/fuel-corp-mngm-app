@@ -95,7 +95,7 @@ export function AddRefuelingDialog({
         ...data,
         supplierId: data.supplierId,
         buyerId: data.buyerId,
-        refuelingDate: format(data.refuelingDate, "yyyy-MM-dd"),
+        refuelingDate: format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss"),
       };
       const res = await apiRequest(isEditing ? "PATCH" : "POST", isEditing ? `/api/refueling/${editRefueling?.id}` : "/api/refueling", payload);
       return res.json();

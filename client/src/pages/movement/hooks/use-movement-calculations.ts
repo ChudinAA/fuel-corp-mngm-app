@@ -70,7 +70,7 @@ export function useMovementCalculations({
 
     if (!watchSupplierId || !watchMovementDate) return null;
 
-    const dateStr = format(watchMovementDate, "yyyy-MM-dd");
+    const dateStr = format(watchMovementDate, "yyyy-MM-dd'T'HH:mm:ss");
     const supplier = suppliers.find(s => s.id === watchSupplierId);
     if (!supplier) return null;
 

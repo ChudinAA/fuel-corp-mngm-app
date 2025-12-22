@@ -185,7 +185,7 @@ export function MovementDialog({
 
       const payload = {
         ...data,
-        movementDate: format(data.movementDate, "yyyy-MM-dd"),
+        movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),
         supplierId: data.supplierId || null,
         fromWarehouseId: data.fromWarehouseId || null,
         toWarehouseId: data.toWarehouseId,

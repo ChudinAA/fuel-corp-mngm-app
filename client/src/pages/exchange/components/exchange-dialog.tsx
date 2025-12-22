@@ -49,7 +49,7 @@ export function ExchangeDialog({
       const price = parseFloat(data.pricePerKg);
       const payload = {
         ...data,
-        dealDate: format(data.dealDate, "yyyy-MM-dd"),
+        dealDate: format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss"),
         warehouseId: data.warehouseId || null,
         totalAmount: (quantity * price).toString(),
       };
