@@ -20,6 +20,17 @@ import { calculateKgFromLiters, formatNumber, formatCurrency } from "../utils";
 import type { MovementDialogProps } from "../types";
 import { CalculatedField } from "./calculated-field";
 import { VolumeInputSection } from "../../opt/components/opt-form-sections";
+import { MovementFormHeader } from "./movement-form-header";
+import { MovementSourceSection } from "./movement-source-section";
+import { MovementDestinationSection } from "./movement-destination-section";
+import { MovementCostSummary } from "./movement-cost-summary";
+import { 
+  useMovementCalculations, 
+  useAvailableCarriers, 
+  useWarehouseBalance,
+  useMovementValidation 
+} from "../hooks";
+
 
 export function MovementDialog({
   warehouses,
@@ -95,6 +106,7 @@ export function MovementDialog({
     }
   }, [editMovement, form]);
 
+  // Watch form values
   const watchMovementType = form.watch("movementType");
   const watchProductType = form.watch("productType");
   const watchSupplierId = form.watch("supplierId");
@@ -106,298 +118,64 @@ export function MovementDialog({
   const watchDensity = form.watch("density");
   const watchKg = form.watch("quantityKg");
 
-  const calculatedKg = inputMode === "liters" && watchLiters && watchDensity
-    ? calculateKgFromLiters(parseFloat(watchLiters), parseFloat(watchDensity))
-    : (watchKg && watchKg !== "" ? parseFloat(watchKg) : 0);
+  // Use custom hooks for calculations and logic
+  const {
+    calculatedKg,
+    kgNum,
+    purchasePrice,
+    purchaseAmount,
+    storageCost,
+    deliveryCost,
+    totalCost,
+    costPerKg,
+  } = useMovementCalculations({
+    watchMovementType,
+    watchProductType,
+    watchSupplierId,
+    watchFromWarehouseId,
+    watchToWarehouseId,
+    watchCarrierId,
+    watchMovementDate,
+    watchLiters,
+    watchDensity,
+    watchKg,
+    inputMode,
+    warehouses,
+    suppliers,
+    prices,
+    deliveryCosts,
+    allBases,
+  });
 
-  const kgNum = calculatedKg || 0;
+  const availableCarriers = useAvailableCarriers({
+    watchMovementType,
+    watchSupplierId,
+    watchFromWarehouseId,
+    watchToWarehouseId,
+    warehouses,
+    suppliers,
+    carriers,
+    deliveryCosts,
+  });
 
-  // Получение цены закупки
-  const getPurchasePrice = (): number | null => {
-    // Для внутреннего перемещения берем себестоимость со склада-источника
-    if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
-      const fromWarehouse = warehouses.find(w => w.id === watchFromWarehouseId);
-      if (fromWarehouse) {
-        const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
-        const averageCost = isPvkj ? fromWarehouse.pvkjAverageCost : fromWarehouse.averageCost;
-        if (averageCost) {
-          return parseFloat(averageCost);
-        }
-      }
-      return null;
-    }
+  const warehouseBalance = useWarehouseBalance({
+    watchMovementType,
+    watchProductType,
+    watchFromWarehouseId,
+    kgNum,
+    warehouses,
+  });
 
-    if (!watchSupplierId || !watchMovementDate) return null;
-
-    const dateStr = format(watchMovementDate, "yyyy-MM-dd");
-    const supplier = suppliers.find(s => s.id === watchSupplierId);
-    if (!supplier) return null;
-
-    // Определяем тип продукта для поиска цены
-    let priceProductType = PRODUCT_TYPE.KEROSENE;
-    if (watchProductType === PRODUCT_TYPE.PVKJ) {
-      priceProductType = PRODUCT_TYPE.PVKJ;
-    }
-
-    // Определяем базис - берем первый базис поставщика
-    let baseName = null;
-    if (supplier.baseIds && supplier.baseIds.length > 0) {
-      const firstBase = allBases?.find(b => b.id === supplier.baseIds[0]);
-      if (firstBase) {
-        baseName = firstBase.name;
-      }
-    }
-
-    if (!baseName) return null;
-
-    // Ищем цену в таблице цен
-    const matchingPrice = prices.find(p =>
-      p.counterpartyId === watchSupplierId &&
-      p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
-      p.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER &&
-      p.productType === priceProductType &&
-      p.basis === baseName &&
-      p.dateFrom <= dateStr &&
-      p.dateTo >= dateStr &&
-      p.isActive
-    );
-
-    if (matchingPrice && matchingPrice.priceValues && matchingPrice.priceValues.length > 0) {
-      try {
-        const priceObj = JSON.parse(matchingPrice.priceValues[0]);
-        return parseFloat(priceObj.price || "0");
-      } catch {
-        return null;
-      }
-    }
-
-    return null;
-  };
-
-  const purchasePrice = getPurchasePrice();
-  const purchaseAmount = purchasePrice && kgNum > 0 ? purchasePrice * kgNum : 0;
-
-  // Получение стоимости хранения
-  const getStorageCost = (): number => {
-    if (!watchToWarehouseId || kgNum <= 0) return 0;
-
-    const warehouse = warehouses.find(w => w.id === watchToWarehouseId);
-    if (!warehouse || !warehouse.storageCost) return 0;
-
-    const storageCostPerTon = parseFloat(warehouse.storageCost);
-    // Делим на 1000 так как стоимость хранения считается за тонну
-    return (storageCostPerTon / 1000) * kgNum;
-  };
-
-  const storageCost = getStorageCost();
-
-  // Получение доступных перевозчиков для выбранного маршрута
-  const getAvailableCarriers = () => {
-    if (!watchToWarehouseId) return carriers || [];
-
-    const toWarehouse = warehouses.find(w => w.id === watchToWarehouseId);
-    if (!toWarehouse) return carriers || [];
-
-    let fromEntityType = "";
-    let fromEntityId = "";
-
-    // Для поставки - берем от поставщика
-    if (watchMovementType === MOVEMENT_TYPE.SUPPLY && watchSupplierId) {
-      const supplier = suppliers.find(s => s.id === watchSupplierId);
-      if (!supplier) return carriers || [];
-
-      // Если у поставщика есть склад, используем его
-      if (supplier.isWarehouse) {
-        fromEntityType = ENTITY_TYPE.WAREHOUSE;
-        const supplierWarehouse = warehouses.find(w => w.supplierId === supplier.id);
-        if (supplierWarehouse) {
-          fromEntityId = supplierWarehouse.id;
-        }
-      } else {
-        // Используем базис (первый)
-        fromEntityType = ENTITY_TYPE.BASE;
-        if (supplier.baseIds && supplier.baseIds.length > 0) {
-          fromEntityId = supplier.baseIds[0];
-        }
-      }
-    }
-    // Для внутреннего перемещения - берем от склада-источника
-    else if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
-      fromEntityType = ENTITY_TYPE.WAREHOUSE;
-      fromEntityId = watchFromWarehouseId;
-    }
-
-    if (!fromEntityId) return carriers || [];
-
-    // Фильтруем перевозчиков, у которых есть тариф для данного маршрута
-    const availableCarrierIds = new Set(
-      deliveryCosts
-        .filter(dc =>
-          dc.fromEntityType === fromEntityType &&
-          dc.fromEntityId === fromEntityId &&
-          dc.toEntityType === ENTITY_TYPE.WAREHOUSE &&
-          dc.toEntityId === toWarehouse.id
-        )
-        .map(dc => dc.carrierId)
-    );
-
-    return carriers?.filter(c => availableCarrierIds.has(c.id)) || [];
-  };
-
-  // Получение стоимости доставки
-  const getDeliveryCost = (): number => {
-    if (!watchToWarehouseId || !watchCarrierId || kgNum <= 0) return 0;
-
-    const toWarehouse = warehouses.find(w => w.id === watchToWarehouseId);
-    if (!toWarehouse) return 0;
-
-    let fromEntityType = "";
-    let fromEntityId = "";
-
-    // Для поставки - берем от поставщика
-    if (watchMovementType === MOVEMENT_TYPE.SUPPLY && watchSupplierId) {
-      const supplier = suppliers.find(s => s.id === watchSupplierId);
-      if (!supplier) return 0;
-
-      // Если у поставщика есть склад, используем его
-      if (supplier.isWarehouse) {
-        fromEntityType = ENTITY_TYPE.WAREHOUSE;
-        const supplierWarehouse = warehouses.find(w => w.supplierId === supplier.id);
-        if (supplierWarehouse) {
-          fromEntityId = supplierWarehouse.id;
-        }
-      } else {
-        // Используем базис (первый)
-        fromEntityType = ENTITY_TYPE.BASE;
-        if (supplier.baseIds && supplier.baseIds.length > 0) {
-          fromEntityId = supplier.baseIds[0];
-        }
-      }
-    }
-    // Для внутреннего перемещения - берем от склада-источника
-    else if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
-      fromEntityType = ENTITY_TYPE.WAREHOUSE;
-      fromEntityId = watchFromWarehouseId;
-    }
-
-    if (!fromEntityId) return 0;
-
-    // Ищем тариф доставки
-    const deliveryCost = deliveryCosts.find(dc =>
-      dc.carrierId === watchCarrierId &&
-      dc.fromEntityType === fromEntityType &&
-      dc.fromEntityId === fromEntityId &&
-      dc.toEntityType === ENTITY_TYPE.WAREHOUSE &&
-      dc.toEntityId === toWarehouse.id
-    );
-
-    if (deliveryCost && deliveryCost.costPerKg) {
-      return parseFloat(deliveryCost.costPerKg) * kgNum;
-    }
-
-    return 0;
-  };
-
-  const availableCarriers = getAvailableCarriers();
-
-  const deliveryCost = getDeliveryCost();
-  const totalCost = purchaseAmount + storageCost + deliveryCost;
-  const costPerKg = kgNum > 0 ? totalCost / kgNum : 0;
-
-  // Получение баланса склада-источника
-  const getWarehouseBalance = (): { balance: number; cost: number; status: "ok" | "error" | "warning"; message: string } => {
-    if (watchMovementType !== MOVEMENT_TYPE.INTERNAL || !watchFromWarehouseId) {
-      return { balance: 0, cost: 0, status: "ok", message: "—" };
-    }
-
-    const fromWarehouse = warehouses.find(w => w.id === watchFromWarehouseId);
-    if (!fromWarehouse) {
-      return { balance: 0, cost: 0, status: "error", message: "Склад не найден" };
-    }
-
-    const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
-    const balance = parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
-    const cost = parseFloat(isPvkj ? fromWarehouse.pvkjAverageCost || "0" : fromWarehouse.averageCost || "0");
-
-    if (balance <= 0) {
-      return { balance, cost, status: "error", message: "Склад пуст" };
-    }
-
-    if (cost <= 0) {
-      return { balance, cost, status: "error", message: "Нет себестоимости" };
-    }
-
-    if (kgNum > 0) {
-      const remaining = balance - kgNum;
-      if (remaining < 0) {
-        return { balance, cost, status: "error", message: `Недостаточно! Доступно: ${balance.toLocaleString()} кг` };
-      }
-      return { balance, cost, status: "ok", message: `ОК: ${remaining.toLocaleString()} кг` };
-    }
-
-    return { balance, cost, status: "ok", message: `${balance.toLocaleString()} кг` };
-  };
-
-  const warehouseBalance = getWarehouseBalance();
-
-  const validateForm = (): boolean => {
-    // Проверяем количество
-    if (!calculatedKg || kgNum <= 0) {
-      toast({
-        title: "Ошибка валидации",
-        description: "Укажите корректное количество топлива в килограммах или литрах.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    // Для внутреннего перемещения проверяем остаток на складе-источнике
-    if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
-      const fromWarehouse = warehouses.find(w => w.id === watchFromWarehouseId);
-      if (!fromWarehouse) {
-        toast({
-          title: "Ошибка валидации",
-          description: "Склад-источник не найден.",
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
-      const currentBalance = parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
-      const currentCost = parseFloat(isPvkj ? fromWarehouse.pvkjAverageCost || "0" : fromWarehouse.averageCost || "0");
-
-      if (currentBalance < kgNum) {
-        toast({
-          title: "Ошибка валидации",
-          description: `На складе "${fromWarehouse.name}" недостаточно ${isPvkj ? "ПВКЖ" : "керосина"}. Доступно: ${currentBalance.toLocaleString()} кг, требуется: ${kgNum.toLocaleString()} кг.`,
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      if (currentCost <= 0) {
-        toast({
-          title: "Ошибка валидации",
-          description: `На складе "${fromWarehouse.name}" отсутствует себестоимость ${isPvkj ? "ПВКЖ" : "керосина"}. Невозможно выполнить перемещение.`,
-          variant: "destructive"
-        });
-        return false;
-      }
-    }
-
-    // Проверяем цену закупки (для поставки)
-    if (watchMovementType === MOVEMENT_TYPE.SUPPLY && purchasePrice === null) {
-      toast({
-        title: "Ошибка валидации",
-        description: "Не указана цена закупки. Проверьте настройки поставщика, базиса или маршрута.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    return true;
-  };
+  const { validateForm } = useMovementValidation({
+    watchMovementType,
+    watchProductType,
+    watchFromWarehouseId,
+    calculatedKg,
+    kgNum,
+    purchasePrice,
+    warehouses,
+    toast,
+  });
 
   const createMutation = useMutation({
     mutationFn: async (data: MovementFormData) => {
@@ -456,211 +234,24 @@ export function MovementDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              <FormField
-                control={form.control}
-                name="movementDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Дата</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="input-movement-date">
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? format(field.value, "dd.MM.yyyy", { locale: ru }) : "Выберите дату"}
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} locale={ru} />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <MovementFormHeader form={form} />
 
-              <FormField
-                control={form.control}
-                name="movementType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Тип перемещения</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-movement-type">
-                          <SelectValue placeholder="Выберите тип" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value={MOVEMENT_TYPE.SUPPLY}>Покупка</SelectItem>
-                        <SelectItem value={MOVEMENT_TYPE.INTERNAL}>Внутреннее перемещение</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <MovementSourceSection
+              form={form}
+              watchMovementType={watchMovementType}
+              watchProductType={watchProductType}
+              suppliers={suppliers}
+              warehouses={warehouses}
+            />
 
-              <FormField
-                control={form.control}
-                name="productType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Тип продукта</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-movement-product">
-                          <SelectValue placeholder="Выберите тип" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
-                        <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {watchMovementType === MOVEMENT_TYPE.SUPPLY ? (
-                <FormField
-                  control={form.control}
-                  name="supplierId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Поставщик</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-movement-supplier">
-                            <SelectValue placeholder="Выберите поставщика" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {suppliers?.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                          )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              ) : (
-                <FormField
-                  control={form.control}
-                  name="fromWarehouseId"
-                  render={({ field }) => {
-                    const selectedWarehouse = warehouses?.find(w => w.id === field.value);
-                    const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
-                    const balance = selectedWarehouse 
-                      ? parseFloat(isPvkj ? selectedWarehouse.pvkjBalance || "0" : selectedWarehouse.currentBalance || "0")
-                      : 0;
-                    
-                    return (
-                      <FormItem>
-                        <FormLabel>Откуда (склад)</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          value={field.value || undefined}
-                          defaultValue={field.value || undefined}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-movement-from">
-                              <SelectValue placeholder="Выберите склад" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {warehouses?.map((w) => (
-                              <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                            )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                          </SelectContent>
-                        </Select>
-                        {selectedWarehouse && (
-                          <p className="text-sm text-muted-foreground">
-                            Остаток {isPvkj ? "ПВКЖ" : "керосина"}: {balance.toLocaleString()} кг
-                          </p>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
-                />
-              )}
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="toWarehouseId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">Куда (склад)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-movement-to">
-                          <SelectValue placeholder="Выберите склад" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {warehouses?.map((w) => (
-                          <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                        )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {watchMovementType === MOVEMENT_TYPE.INTERNAL ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="carrierId" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">Перевозчик</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ""}>
-                        <FormControl><SelectTrigger data-testid="select-movement-carrier"><SelectValue placeholder="Выберите перевозчика" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          {availableCarriers.length > 0 ? (
-                            availableCarriers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
-                          ) : (
-                            <SelectItem value="none" disabled>Нет перевозчиков для данного маршрута</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-
-                  {watchFromWarehouseId && (
-                    <CalculatedField 
-                      label="Объем на складе" 
-                      value={warehouseBalance.message}
-                      status={warehouseBalance.status}
-                    />
-                  )}
-                </div>
-              ) : (
-                <FormField control={form.control} name="carrierId" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">Перевозчик</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
-                      <FormControl><SelectTrigger data-testid="select-movement-carrier"><SelectValue placeholder="Выберите перевозчика" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        {availableCarriers.length > 0 ? (
-                          availableCarriers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
-                        ) : (
-                          <SelectItem value="none" disabled>Нет перевозчиков для данного маршрута</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              )}
-            </div>
+            <MovementDestinationSection
+              form={form}
+              watchMovementType={watchMovementType}
+              watchFromWarehouseId={watchFromWarehouseId}
+              warehouses={warehouses}
+              availableCarriers={availableCarriers}
+              warehouseBalance={warehouseBalance}
+            />
 
             <VolumeInputSection
               form={form}
@@ -669,17 +260,13 @@ export function MovementDialog({
               calculatedKg={calculatedKg?.toString() || "0"}
             />
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-              <CalculatedField 
-                label="Цена закупки" 
-                value={purchasePrice !== null ? formatNumber(purchasePrice) : "нет цены!"} 
-                suffix={purchasePrice !== null ? " ₽/кг" : ""} 
-              />
-              <CalculatedField label="Сумма покупки" value={formatCurrency(purchaseAmount)} />
-              <CalculatedField label="Хранение" value={formatCurrency(storageCost)} />
-              <CalculatedField label="Доставка" value={formatCurrency(deliveryCost)} />
-              <CalculatedField label="Себестоимость" value={formatNumber(costPerKg)} suffix=" ₽/кг" />
-            </div>
+            <MovementCostSummary
+              purchasePrice={purchasePrice}
+              purchaseAmount={purchaseAmount}
+              storageCost={storageCost}
+              deliveryCost={deliveryCost}
+              costPerKg={costPerKg}
+            />
 
             <FormField control={form.control} name="notes" render={({ field }) => (
               <FormItem>

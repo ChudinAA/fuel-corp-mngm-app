@@ -1,0 +1,92 @@
+
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
+import type { UseFormReturn } from "react-hook-form";
+import type { MovementFormData } from "../schemas";
+import type { AllSupplier } from "../types";
+
+interface MovementSourceSectionProps {
+  form: UseFormReturn<MovementFormData>;
+  watchMovementType: string;
+  watchProductType: string;
+  suppliers: AllSupplier[];
+  warehouses: any[];
+}
+
+export function MovementSourceSection({ 
+  form, 
+  watchMovementType, 
+  watchProductType,
+  suppliers, 
+  warehouses 
+}: MovementSourceSectionProps) {
+  if (watchMovementType === MOVEMENT_TYPE.SUPPLY) {
+    return (
+      <FormField
+        control={form.control}
+        name="supplierId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Поставщик</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger data-testid="select-movement-supplier">
+                  <SelectValue placeholder="Выберите поставщика" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {suppliers?.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    );
+  }
+
+  return (
+    <FormField
+      control={form.control}
+      name="fromWarehouseId"
+      render={({ field }) => {
+        const selectedWarehouse = warehouses?.find(w => w.id === field.value);
+        const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
+        const balance = selectedWarehouse 
+          ? parseFloat(isPvkj ? selectedWarehouse.pvkjBalance || "0" : selectedWarehouse.currentBalance || "0")
+          : 0;
+        
+        return (
+          <FormItem>
+            <FormLabel>Откуда (склад)</FormLabel>
+            <Select 
+              onValueChange={field.onChange} 
+              value={field.value || undefined}
+              defaultValue={field.value || undefined}
+            >
+              <FormControl>
+                <SelectTrigger data-testid="select-movement-from">
+                  <SelectValue placeholder="Выберите склад" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {warehouses?.map((w) => (
+                  <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+              </SelectContent>
+            </Select>
+            {selectedWarehouse && (
+              <p className="text-sm text-muted-foreground">
+                Остаток {isPvkj ? "ПВКЖ" : "керосина"}: {balance.toLocaleString()} кг
+              </p>
+            )}
+            <FormMessage />
+          </FormItem>
+        );
+      }}
+    />
+  );
+}
