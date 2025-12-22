@@ -8,6 +8,8 @@ interface UseWarehouseBalanceProps {
   watchFromWarehouseId: string;
   kgNum: number;
   warehouses: any[];
+  isEditing?: boolean;
+  initialWarehouseBalance?: number;
 }
 
 interface WarehouseBalanceResult {
@@ -23,6 +25,8 @@ export function useWarehouseBalance({
   watchFromWarehouseId,
   kgNum,
   warehouses,
+  isEditing = false,
+  initialWarehouseBalance = 0,
 }: UseWarehouseBalanceProps): WarehouseBalanceResult {
   
   return useMemo(() => {
@@ -36,7 +40,10 @@ export function useWarehouseBalance({
     }
 
     const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
-    const balance = parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
+    // При редактировании используем начальный баланс (до вычета текущей сделки)
+    const balance = isEditing && initialWarehouseBalance > 0 
+      ? initialWarehouseBalance 
+      : parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
     const cost = parseFloat(isPvkj ? fromWarehouse.pvkjAverageCost || "0" : fromWarehouse.averageCost || "0");
 
     if (balance <= 0) {
@@ -56,5 +63,5 @@ export function useWarehouseBalance({
     }
 
     return { balance, cost, status: "ok", message: `${balance.toLocaleString()} кг` };
-  }, [watchMovementType, watchProductType, watchFromWarehouseId, kgNum, warehouses]);
+  }, [watchMovementType, watchProductType, watchFromWarehouseId, kgNum, warehouses, isEditing, initialWarehouseBalance]);
 }

@@ -71,9 +71,26 @@ export function MovementDialog({
     },
   });
 
+  // Состояние для отслеживания начального баланса при редактировании
+  const [initialWarehouseBalance, setInitialWarehouseBalance] = useState<number>(0);
+
   // Обновляем форму при изменении editMovement
   useEffect(() => {
     if (editMovement) {
+      // При редактировании внутреннего перемещения вычисляем начальный баланс
+      if (editMovement.movementType === MOVEMENT_TYPE.INTERNAL && editMovement.fromWarehouseId) {
+        const fromWarehouse = warehouses.find(w => w.id === editMovement.fromWarehouseId);
+        if (fromWarehouse) {
+          const isPvkj = editMovement.productType === PRODUCT_TYPE.PVKJ;
+          const currentBalance = parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
+          const movementKg = parseFloat(editMovement.quantityKg || "0");
+          // Восстанавливаем баланс на момент создания сделки
+          setInitialWarehouseBalance(currentBalance + movementKg);
+        }
+      } else {
+        setInitialWarehouseBalance(0);
+      }
+
       form.reset({
         movementDate: new Date(editMovement.movementDate),
         movementType: editMovement.movementType,
@@ -89,6 +106,7 @@ export function MovementDialog({
         notes: editMovement.notes || "",
       });
     } else {
+      setInitialWarehouseBalance(0);
       form.reset({
         movementDate: new Date(),
         movementType: MOVEMENT_TYPE.SUPPLY,
@@ -104,7 +122,7 @@ export function MovementDialog({
         notes: "",
       });
     }
-  }, [editMovement, form]);
+  }, [editMovement, form, warehouses]);
 
   // Watch form values
   const watchMovementType = form.watch("movementType");
@@ -164,6 +182,8 @@ export function MovementDialog({
     watchFromWarehouseId,
     kgNum,
     warehouses,
+    isEditing,
+    initialWarehouseBalance,
   });
 
   const { validateForm } = useMovementValidation({
