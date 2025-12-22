@@ -227,18 +227,21 @@ export function OptForm({
 
   const createMutation = useMutation({
     mutationFn: async (data: OptFormData) => {
+      // Извлекаем ID цены и индекс из составного ID
       let purchasePriceId = null;
       let purchasePriceIndex = 0;
 
-      if (!isWarehouseSupplier) {
-        if (selectedPurchasePriceId) {
-          const parts = selectedPurchasePriceId.split('-');
-          purchasePriceIndex = parseInt(parts[parts.length - 1]) || 0;
+      if (!isWarehouseSupplier && selectedPurchasePriceId) {
+        const parts = selectedPurchasePriceId.split('-');
+        if (parts.length >= 5) {
+          purchasePriceIndex = parseInt(parts[parts.length - 1]);
           purchasePriceId = parts.slice(0, -1).join('-');
-        } else if (purchasePrices.length > 0) {
-          purchasePriceId = purchasePrices[0].id;
-          purchasePriceIndex = 0;
+        } else {
+          purchasePriceId = selectedPurchasePriceId;
         }
+      } else if (!isWarehouseSupplier && purchasePrices.length > 0) {
+        purchasePriceId = purchasePrices[0].id;
+        purchasePriceIndex = 0;
       }
 
       let salePriceId = null;
@@ -246,8 +249,12 @@ export function OptForm({
 
       if (selectedSalePriceId) {
         const parts = selectedSalePriceId.split('-');
-        salePriceIndex = parseInt(parts[parts.length - 1]) || 0;
-        salePriceId = parts.slice(0, -1).join('-');
+        if (parts.length >= 5) {
+          salePriceIndex = parseInt(parts[parts.length - 1]);
+          salePriceId = parts.slice(0, -1).join('-');
+        } else {
+          salePriceId = selectedSalePriceId;
+        }
       } else if (salePrices.length > 0) {
         salePriceId = salePrices[0].id;
         salePriceIndex = 0;
@@ -304,18 +311,21 @@ export function OptForm({
 
   const updateMutation = useMutation({
     mutationFn: async (data: OptFormData & { id: string }) => {
+      // Извлекаем ID цены и индекс из составного ID
       let purchasePriceId = null;
       let purchasePriceIndex = 0;
 
-      if (!isWarehouseSupplier) {
-        if (selectedPurchasePriceId) {
-          const parts = selectedPurchasePriceId.split('-');
-          purchasePriceIndex = parseInt(parts[parts.length - 1]) || 0;
+      if (!isWarehouseSupplier && selectedPurchasePriceId) {
+        const parts = selectedPurchasePriceId.split('-');
+        if (parts.length >= 5) {
+          purchasePriceIndex = parseInt(parts[parts.length - 1]);
           purchasePriceId = parts.slice(0, -1).join('-');
-        } else if (purchasePrices.length > 0) {
-          purchasePriceId = purchasePrices[0].id;
-          purchasePriceIndex = 0;
+        } else {
+          purchasePriceId = selectedPurchasePriceId;
         }
+      } else if (!isWarehouseSupplier && purchasePrices.length > 0) {
+        purchasePriceId = purchasePrices[0].id;
+        purchasePriceIndex = 0;
       }
 
       let salePriceId = null;
@@ -323,8 +333,12 @@ export function OptForm({
 
       if (selectedSalePriceId) {
         const parts = selectedSalePriceId.split('-');
-        salePriceIndex = parseInt(parts[parts.length - 1]) || 0;
-        salePriceId = parts.slice(0, -1).join('-');
+        if (parts.length >= 5) {
+          salePriceIndex = parseInt(parts[parts.length - 1]);
+          salePriceId = parts.slice(0, -1).join('-');
+        } else {
+          salePriceId = selectedSalePriceId;
+        }
       } else if (salePrices.length > 0) {
         salePriceId = salePrices[0].id;
         salePriceIndex = 0;
@@ -413,7 +427,7 @@ export function OptForm({
     if (isWarehouseSupplier && supplierWarehouse) {
       const availableBalance = isEditing ? initialWarehouseBalance : parseFloat(supplierWarehouse.currentBalance || "0");
       const remaining = availableBalance - finalKg;
-      
+
       if (remaining < 0) {
         toast({
           title: "Ошибка: недостаточно объема на складе",
