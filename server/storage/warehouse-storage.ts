@@ -3,6 +3,7 @@ import { eq, desc, sql, asc } from "drizzle-orm";
 import { db } from "../db";
 import {
   warehouses,
+  warehouseBases,
   warehouseTransactions,
   type Warehouse,
   type InsertWarehouse,
@@ -21,13 +22,20 @@ export class WarehouseStorage implements IWarehouseStorage {
             id: true,
             name: true,
           }
+        },
+        warehouseBases: {
+          with: {
+            base: true,
+          }
         }
       }
     });
 
-    // TODO: Рефакторинг baseIds - сейчас это массив, лучше создать связующую таблицу warehouse_bases
-    // Это позволит использовать proper relations и foreign keys
-    return warehousesList;
+    // Map to include baseIds for backward compatibility
+    return warehousesList.map(w => ({
+      ...w,
+      baseIds: w.warehouseBases?.map(wb => wb.baseId) || [],
+    }));
   }
 
   async getWarehouse(id: string): Promise<Warehouse | undefined> {
@@ -39,24 +47,81 @@ export class WarehouseStorage implements IWarehouseStorage {
             id: true,
             name: true,
           }
+        },
+        warehouseBases: {
+          with: {
+            base: true,
+          }
         }
       }
     });
 
-    return warehouse;
+    if (!warehouse) return undefined;
+
+    // Map to include baseIds for backward compatibility
+    return {
+      ...warehouse,
+      baseIds: warehouse.warehouseBases?.map(wb => wb.baseId) || [],
+    };
   }
 
-  async createWarehouse(data: InsertWarehouse): Promise<Warehouse> {
-    const [created] = await db.insert(warehouses).values(data).returning();
-    return created;
+  async createWarehouse(data: InsertWarehouse & { baseIds?: string[] }): Promise<Warehouse> {
+    const { baseIds, ...warehouseData } = data;
+    
+    return await db.transaction(async (tx) => {
+      // Create warehouse
+      const [created] = await tx.insert(warehouses).values(warehouseData).returning();
+      
+      // Create warehouse-base relations
+      if (baseIds && baseIds.length > 0) {
+        await tx.insert(warehouseBases).values(
+          baseIds.map(baseId => ({
+            warehouseId: created.id,
+            baseId,
+          }))
+        );
+      }
+      
+      return {
+        ...created,
+        baseIds: baseIds || [],
+      };
+    });
   }
 
-  async updateWarehouse(id: string, data: Partial<InsertWarehouse>): Promise<Warehouse | undefined> {
-    const [updated] = await db.update(warehouses).set({
-      ...data,
-      updatedAt: sql`NOW()`
-    }).where(eq(warehouses.id, id)).returning();
-    return updated;
+  async updateWarehouse(id: string, data: Partial<InsertWarehouse> & { baseIds?: string[] }): Promise<Warehouse | undefined> {
+    const { baseIds, ...warehouseData } = data;
+    
+    return await db.transaction(async (tx) => {
+      // Update warehouse
+      const [updated] = await tx.update(warehouses).set({
+        ...warehouseData,
+        updatedAt: sql`NOW()`
+      }).where(eq(warehouses.id, id)).returning();
+
+      if (!updated) return undefined;
+
+      // Update warehouse-base relations if baseIds provided
+      if (baseIds !== undefined) {
+        // Delete existing relations
+        await tx.delete(warehouseBases).where(eq(warehouseBases.warehouseId, id));
+        
+        // Create new relations
+        if (baseIds.length > 0) {
+          await tx.insert(warehouseBases).values(
+            baseIds.map(baseId => ({
+              warehouseId: id,
+              baseId,
+            }))
+          );
+        }
+      }
+
+      return {
+        ...updated,
+        baseIds: baseIds || [],
+      };
+    });
   }
 
   async deleteWarehouse(id: string): Promise<boolean> {

@@ -82,7 +82,6 @@ export const suppliers = pgTable("suppliers", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  baseIds: text("base_ids").array(),
   servicePrice: decimal("service_price", { precision: 12, scale: 2 }),
   pvkjPrice: decimal("pvkj_price", { precision: 12, scale: 2 }),
   agentFee: decimal("agent_fee", { precision: 12, scale: 2 }),
@@ -95,6 +94,17 @@ export const suppliers = pgTable("suppliers", {
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
+
+// Junction table for supplier-base many-to-many relationship
+export const supplierBases = pgTable("supplier_bases", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  supplierId: uuid("supplier_id").notNull().references(() => suppliers.id, { onDelete: "cascade" }),
+  baseId: uuid("base_id").notNull().references(() => bases.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+}, (table) => ({
+  // Composite unique constraint to prevent duplicate supplier-base pairs
+  uniqueSupplierBase: index("unique_supplier_base_idx").on(table.supplierId, table.baseId),
+}));
 
 // ============ DIRECTORIES: Логистика ============
 
@@ -215,7 +225,6 @@ export const deliveryCost = pgTable("delivery_cost", {
 export const warehouses = pgTable("warehouses", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
-  baseIds: text("base_ids").array(), // Changed from baseId to array
   supplierId: uuid("supplier_id"), // Link to auto-created supplier
   currentBalance: decimal("current_balance", { precision: 15, scale: 2 }).default("0"),
   averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default("0"),
@@ -228,6 +237,17 @@ export const warehouses = pgTable("warehouses", {
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
 });
+
+// Junction table for warehouse-base many-to-many relationship
+export const warehouseBases = pgTable("warehouse_bases", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  warehouseId: uuid("warehouse_id").notNull().references(() => warehouses.id, { onDelete: "cascade" }),
+  baseId: uuid("base_id").notNull().references(() => bases.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+}, (table) => ({
+  // Composite unique constraint to prevent duplicate warehouse-base pairs
+  uniqueWarehouseBase: index("unique_warehouse_base_idx").on(table.warehouseId, table.baseId),
+}));
 
 export const warehouseTransactions = pgTable("warehouse_transactions", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -381,9 +401,15 @@ export const customersRelations = relations(customers, ({ many }) => ({
 
 export const suppliersRelations = relations(suppliers, ({ many, one }) => ({
   warehouse: one(warehouses, { fields: [suppliers.warehouseId], references: [warehouses.id] }),
+  supplierBases: many(supplierBases),
   optDeals: many(opt),
   refuelings: many(aircraftRefueling),
   movements: many(movement),
+}));
+
+export const supplierBasesRelations = relations(supplierBases, ({ one }) => ({
+  supplier: one(suppliers, { fields: [supplierBases.supplierId], references: [suppliers.id] }),
+  base: one(bases, { fields: [supplierBases.baseId], references: [bases.id] }),
 }));
 
 export const logisticsCarriersRelations = relations(logisticsCarriers, ({ many }) => ({
@@ -414,7 +440,9 @@ export const deliveryCostRelations = relations(deliveryCost, ({ one }) => ({
   updatedBy: one(users, { fields: [deliveryCost.updatedById], references: [users.id], relationName: "deliveryCostUpdatedBy" }),
 }));
 
-export const basesRelations = relations(bases, ({ one }) => ({
+export const basesRelations = relations(bases, ({ one, many }) => ({
+  supplierBases: many(supplierBases),
+  warehouseBases: many(warehouseBases),
   createdBy: one(users, { fields: [bases.createdById], references: [users.id], relationName: "baseCreatedBy" }),
   updatedBy: one(users, { fields: [bases.updatedById], references: [users.id], relationName: "baseUpdatedBy" }),
 }));
@@ -422,6 +450,7 @@ export const basesRelations = relations(bases, ({ one }) => ({
 export const warehousesRelations = relations(warehouses, ({ many, one }) => ({
   transactions: many(warehouseTransactions),
   supplier: one(suppliers, { fields: [warehouses.supplierId], references: [suppliers.id] }),
+  warehouseBases: many(warehouseBases),
   optDeals: many(opt),
   refuelings: many(aircraftRefueling),
   movementsFrom: many(movement, { relationName: "fromWarehouse" }),
@@ -429,6 +458,11 @@ export const warehousesRelations = relations(warehouses, ({ many, one }) => ({
   exchangeDeals: many(exchange),
   createdBy: one(users, { fields: [warehouses.createdById], references: [users.id], relationName: "warehouseCreatedBy" }),
   updatedBy: one(users, { fields: [warehouses.updatedById], references: [users.id], relationName: "warehouseUpdatedBy" }),
+}));
+
+export const warehouseBasesRelations = relations(warehouseBases, ({ one }) => ({
+  warehouse: one(warehouses, { fields: [warehouseBases.warehouseId], references: [warehouses.id] }),
+  base: one(bases, { fields: [warehouseBases.baseId], references: [bases.id] }),
 }));
 
 export const warehouseTransactionsRelations = relations(warehouseTransactions, ({ one }) => ({
@@ -522,7 +556,6 @@ export const insertPriceSchema = createInsertSchema(prices).omit({ id: true });
 export const insertDeliveryCostSchema = createInsertSchema(deliveryCost).omit({ id: true });
 export const insertWarehouseSchema = z.object({
   name: z.string().min(1),
-  baseIds: z.array(z.string()).optional(),
   supplierId: z.string().uuid().optional().nullable(),
   storageCost: z.string().optional().nullable(),
   pvkjBalance: z.string().optional().nullable(),
@@ -633,6 +666,9 @@ export type InsertWarehouse = z.infer<typeof insertWarehouseSchema>;
 
 export type WarehouseTransaction = typeof warehouseTransactions.$inferSelect;
 export type InsertWarehouseTransaction = z.infer<typeof insertWarehouseTransactionSchema>;
+
+export type SupplierBase = typeof supplierBases.$inferSelect;
+export type WarehouseBase = typeof warehouseBases.$inferSelect;
 
 export type Exchange = typeof exchange.$inferSelect;
 export type InsertExchange = z.infer<typeof insertExchangeSchema>;
