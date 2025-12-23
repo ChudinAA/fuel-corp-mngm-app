@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { insertDeliveryCostSchema } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
-import { db } from "../../../db";
+import { db } from "server/db";
 import { deliveryCost } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 

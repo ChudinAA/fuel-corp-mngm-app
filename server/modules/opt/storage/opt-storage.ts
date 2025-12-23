@@ -1,6 +1,6 @@
 
 import { eq, desc, sql, or } from "drizzle-orm";
-import { db } from "../db";
+import { db } from "server/db";
 import {
   opt,
   warehouses,

@@ -1,5 +1,5 @@
 import { eq, desc, sql } from "drizzle-orm";
-import { db } from "../db";
+import { db } from "server/db";
 import {
   exchange,
   type Exchange,

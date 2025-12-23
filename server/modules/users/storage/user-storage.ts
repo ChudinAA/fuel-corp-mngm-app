@@ -1,5 +1,5 @@
 import { eq, asc } from "drizzle-orm";
-import { db } from "../../../db";
+import { db } from "server/db";
 import { users, type User, type InsertUser } from "@shared/schema";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";

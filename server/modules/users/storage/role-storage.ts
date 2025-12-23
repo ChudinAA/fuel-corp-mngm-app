@@ -1,5 +1,5 @@
 import { eq, asc } from "drizzle-orm";
-import { db } from "../../../db";
+import { db } from "server/db";
 import { roles, type Role, type InsertRole } from "@shared/schema";
 import type { IRoleStorage } from "../../../storage/types";
 

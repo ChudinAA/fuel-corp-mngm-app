@@ -1,6 +1,6 @@
 
 import { eq, asc, sql } from "drizzle-orm";
-import { db } from "../db";
+import { db } from "server/db";
 import {
   bases,
   type Base,
