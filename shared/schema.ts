@@ -637,7 +637,9 @@ export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type Base = typeof bases.$inferSelect;
 export type InsertBase = z.infer<typeof insertBaseSchema>;
 
-export type Supplier = typeof suppliers.$inferSelect;
+export type Supplier = typeof suppliers.$inferSelect & {
+  baseIds?: string[];
+};
 export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
 
 export type LogisticsCarrier = typeof logisticsCarriers.$inferSelect;
@@ -661,7 +663,9 @@ export type InsertPrice = z.infer<typeof insertPriceSchema>;
 export type DeliveryCost = typeof deliveryCost.$inferSelect;
 export type InsertDeliveryCost = z.infer<typeof insertDeliveryCostSchema>;
 
-export type Warehouse = typeof warehouses.$inferSelect;
+export type Warehouse = typeof warehouses.$inferSelect & {
+  baseIds?: string[];
+};
 export type InsertWarehouse = z.infer<typeof insertWarehouseSchema>;
 
 export type WarehouseTransaction = typeof warehouseTransactions.$inferSelect;
