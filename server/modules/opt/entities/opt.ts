@@ -16,8 +16,8 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
-import { suppliers } from "../../../schemas/suppliers";
-import { customers } from "./customers";
+import { suppliers } from "@shared/schema";
+import { customers } from "@shared/schema";
 import {
   warehouses,
   warehouseTransactions,

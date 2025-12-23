@@ -15,9 +15,9 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import { users } from "../modules/users/entities/users";
-import { aircraftRefueling } from "./refueling";
-import { opt } from "./opt";
+import { users } from "@shared/schema";
+import { aircraftRefueling } from "@shared/schema";
+import { opt } from "@shared/schema";
 
 export const customers = pgTable("customers", {
   id: uuid("id").defaultRandom().primaryKey(),

@@ -15,12 +15,12 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import { users } from "../modules/users/entities/users";
-import { warehouses } from "./warehouses";
-import { aircraftRefueling } from "../modules/refueling/entities/refueling";
-import { movement } from "../modules/movement/entities/movement";
-import { bases } from "../modules/bases/entities/bases";
-import { opt } from "../modules/opt/entities/opt";
+import { users } from "@shared/schema";
+import { warehouses } from "@shared/schema";
+import { aircraftRefueling } from "@shared/schema";
+import { movement } from "@shared/schema";
+import { bases } from "@shared/schema";
+import { opt } from "@shared/schema";
 
 export const suppliers = pgTable("suppliers", {
   id: uuid("id").defaultRandom().primaryKey(),

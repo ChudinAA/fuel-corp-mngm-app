@@ -16,7 +16,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
-import { supplierBases } from "../../../schemas/suppliers";
+import { supplierBases } from "@shared/schema";
 import { warehouseBases } from "../../warehouses/entities/warehouses";
 
 export const bases = pgTable("bases", {
