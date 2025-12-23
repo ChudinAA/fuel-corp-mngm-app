@@ -23,8 +23,10 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     try {
       const { createSupplier, bases, ...warehouseData } = req.body;
       
-      // Extract baseIds from bases array
-      const baseIds = bases?.map((b: { baseId: string }) => b.baseId).filter(Boolean) || [];
+      // Extract baseIds from bases array or use empty array
+      const baseIds = Array.isArray(bases) 
+        ? bases.map((b: { baseId: string }) => b.baseId).filter(Boolean) 
+        : [];
       
       const data = {
         ...warehouseData,
@@ -67,15 +69,27 @@ export function registerWarehousesOperationsRoutes(app: Express) {
   app.patch("/api/warehouses/:id", requireAuth, requirePermission("warehouses", "edit"), async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.warehouses.updateWarehouse(id, {
-        ...req.body,
+      const { bases, ...warehouseData } = req.body;
+      
+      // Extract baseIds from bases array if provided
+      const updateData: any = {
+        ...warehouseData,
         updatedById: req.session.userId,
-      });
+      };
+      
+      if (bases !== undefined) {
+        updateData.baseIds = Array.isArray(bases) 
+          ? bases.map((b: { baseId: string }) => b.baseId).filter(Boolean) 
+          : [];
+      }
+      
+      const item = await storage.warehouses.updateWarehouse(id, updateData);
       if (!item) {
         return res.status(404).json({ message: "Склад не найден" });
       }
       res.json(item);
     } catch (error) {
+      console.error("Warehouse update error:", error);
       res.status(500).json({ message: "Ошибка обновления склада" });
     }
   });

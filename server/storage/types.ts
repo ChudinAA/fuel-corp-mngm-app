@@ -37,6 +37,11 @@ import type {
   InsertAircraftRefueling,
 } from "@shared/schema";
 
+// Assuming WarehouseTransaction type is defined elsewhere or needs to be imported/defined.
+// For the purpose of this edit, we'll assume it exists and is correctly typed.
+// If WarehouseTransaction is not defined, this would be another point of error.
+type WarehouseTransaction = any; // Placeholder, replace with actual type if available
+
 export interface IUserStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -132,10 +137,10 @@ export interface IPriceStorage {
 export interface IWarehouseStorage {
   getAllWarehouses(): Promise<Warehouse[]>;
   getWarehouse(id: string): Promise<Warehouse | undefined>;
-  createWarehouse(data: InsertWarehouse): Promise<Warehouse>;
-  updateWarehouse(id: string, data: Partial<InsertWarehouse>): Promise<Warehouse | undefined>;
+  createWarehouse(data: InsertWarehouse & { baseIds?: string[] }): Promise<Warehouse>;
+  updateWarehouse(id: string, data: Partial<InsertWarehouse> & { baseIds?: string[] }): Promise<Warehouse | undefined>;
   deleteWarehouse(id: string): Promise<boolean>;
-  getWarehouseTransactions(warehouseId: string): Promise<any[]>;
+  getWarehouseTransactions(warehouseId: string): Promise<WarehouseTransaction[]>;
   getWarehouseStatsForDashboard(): Promise<any[]>;
 }
 

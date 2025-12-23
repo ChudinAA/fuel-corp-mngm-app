@@ -544,7 +544,9 @@ export const loginSchema = z.object({
 // Directory schemas
 export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true });
 export const insertBaseSchema = createInsertSchema(bases).omit({ id: true });
-export const insertSupplierSchema = createInsertSchema(suppliers).omit({ id: true });
+export const insertSupplierSchema = createInsertSchema(suppliers).omit({ id: true }).extend({
+  baseIds: z.array(z.string().uuid()).optional(),
+});
 
 export const insertLogisticsCarrierSchema = createInsertSchema(logisticsCarriers).omit({ id: true });
 export const insertLogisticsDeliveryLocationSchema = createInsertSchema(logisticsDeliveryLocations).omit({ id: true });
@@ -562,6 +564,7 @@ export const insertWarehouseSchema = z.object({
   pvkjAverageCost: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
   createdById: z.string().uuid(),
+  baseIds: z.array(z.string().uuid()).optional(),
 });
 export const insertWarehouseTransactionSchema = createInsertSchema(warehouseTransactions).omit({ id: true });
 

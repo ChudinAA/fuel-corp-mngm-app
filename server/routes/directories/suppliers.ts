@@ -21,22 +21,28 @@ export function registerSuppliersRoutes(app: Express) {
 
   app.post("/api/suppliers", requireAuth, requirePermission("directories", "create"), async (req, res) => {
     try {
+      const { baseIds, ...restData } = req.body;
+      
+      // Ensure baseIds is an array
+      const normalizedBaseIds = Array.isArray(baseIds) ? baseIds : [];
+      
       const data = insertSupplierSchema.parse({
-        ...req.body,
+        ...restData,
         createdById: req.session.userId,
       });
 
-      // First, create the supplier
+      // First, create the supplier with baseIds
       const item = await storage.suppliers.createSupplier({
         ...data,
+        baseIds: normalizedBaseIds,
         warehouseId: data.warehouseId || null,
       });
 
       // Then create warehouse if supplier is marked as warehouse and doesn't have one
-      if (data.isWarehouse && !data.warehouseId && data.baseIds && data.baseIds.length > 0) {
+      if (data.isWarehouse && !data.warehouseId && normalizedBaseIds.length > 0) {
         const warehouse = await storage.warehouses.createWarehouse({
           name: data.name,
-          baseIds: data.baseIds,
+          baseIds: normalizedBaseIds,
           supplierId: item.id,
           storageCost: data.storageCost || null,
           isActive: data.isActive ?? true,
@@ -62,10 +68,19 @@ export function registerSuppliersRoutes(app: Express) {
   app.patch("/api/suppliers/:id", requireAuth, requirePermission("directories", "edit"), async (req, res) => {
     try {
       const id = req.params.id;
-      const item = await storage.suppliers.updateSupplier(id, {
-        ...req.body,
+      const { baseIds, ...restData } = req.body;
+      
+      const updateData: any = {
+        ...restData,
         updatedById: req.session.userId,
-      });
+      };
+      
+      // Include baseIds if provided
+      if (baseIds !== undefined) {
+        updateData.baseIds = Array.isArray(baseIds) ? baseIds : [];
+      }
+      
+      const item = await storage.suppliers.updateSupplier(id, updateData);
       if (!item) {
         return res.status(404).json({ message: "Поставщик не найден" });
       }
