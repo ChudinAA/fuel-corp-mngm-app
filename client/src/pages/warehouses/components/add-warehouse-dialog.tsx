@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Warehouse, WholesaleBase, RefuelingBase } from "@shared/schema";
 import { newWarehouseFormSchema } from "../schemas";
 import type { NewWarehouseFormValues } from "../types";
+import { BASE_TYPE } from "@shared/constants";
 
 interface AddWarehouseDialogProps {
   warehouseToEdit: Warehouse | null;
@@ -177,7 +178,7 @@ export function AddWarehouseDialog({
                             <div className="flex items-center gap-2">
                               {base.name}
                               <Badge variant="outline" className="text-xs">
-                                {base.baseType === 'wholesale' ? 'ОПТ' : 'Заправка'}
+                                {base.baseType === BASE_TYPE.WHOLESALE ? 'ОПТ' : 'Заправка'}
                               </Badge>
                             </div>
                           </SelectItem>
