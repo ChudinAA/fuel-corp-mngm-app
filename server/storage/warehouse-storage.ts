@@ -117,9 +117,23 @@ export class WarehouseStorage implements IWarehouseStorage {
         }
       }
 
+      // Fetch the updated warehouse with bases
+      const warehouseWithBases = await tx.query.warehouses.findFirst({
+        where: eq(warehouses.id, id),
+        with: {
+          warehouseBases: {
+            with: {
+              base: true,
+            }
+          }
+        }
+      });
+
+      if (!warehouseWithBases) return undefined;
+
       return {
-        ...updated,
-        baseIds: baseIds || [],
+        ...warehouseWithBases,
+        baseIds: warehouseWithBases.warehouseBases?.map(wb => wb.baseId) || [],
       };
     });
   }

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Loader2, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Warehouse, WholesaleBase, RefuelingBase } from "@shared/schema";
@@ -61,9 +62,13 @@ export function AddWarehouseDialog({
 
   React.useEffect(() => {
     if (warehouseToEdit) {
+      const basesList = warehouseToEdit.baseIds && warehouseToEdit.baseIds.length > 0 
+        ? warehouseToEdit.baseIds.map(id => ({ baseId: id }))
+        : [{ baseId: "" }];
+      
       form.reset({
         name: warehouseToEdit.name,
-        bases: warehouseToEdit.baseIds.map(id => ({ baseId: id })),
+        bases: basesList,
         storageCost: warehouseToEdit.storageCost || "",
         createSupplier: !!warehouseToEdit.supplierId,
       });
@@ -158,21 +163,33 @@ export function AddWarehouseDialog({
               </div>
               {fields.map((field, index) => (
                 <div key={field.id} className="flex gap-2">
-                  <Select
-                    value={form.watch(`bases.${index}.baseId`) || ""}
-                    onValueChange={(value) => form.setValue(`bases.${index}.baseId`, value)}
-                  >
-                    <SelectTrigger data-testid={`select-warehouse-basis-${index}`}>
-                      <SelectValue placeholder="Выберите базис" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allBases.map((base) => (
-                        <SelectItem key={base.id} value={base.id}>
-                          {base.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex-1">
+                    <Select
+                      value={form.watch(`bases.${index}.baseId`) || ""}
+                      onValueChange={(value) => form.setValue(`bases.${index}.baseId`, value)}
+                    >
+                      <SelectTrigger data-testid={`select-warehouse-basis-${index}`}>
+                        <SelectValue placeholder="Выберите базис" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allBases.map((base) => (
+                          <SelectItem key={base.id} value={base.id}>
+                            <div className="flex items-center gap-2">
+                              {base.name}
+                              <Badge variant="outline" className="text-xs">
+                                {base.baseType === 'wholesale' ? 'ОПТ' : 'Заправка'}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {form.formState.errors.bases?.[index]?.baseId && (
+                      <p className="text-sm text-destructive mt-1">
+                        {form.formState.errors.bases[index]?.baseId?.message}
+                      </p>
+                    )}
+                  </div>
                   {fields.length > 1 && (
                     <Button
                       type="button"

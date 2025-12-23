@@ -8,7 +8,11 @@ export const warehouseFormSchema = z.object({
 
 export const newWarehouseFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
-  bases: z.array(z.object({ baseId: z.string() })).min(1, "Выберите хотя бы один базис"),
+  bases: z.array(
+    z.object({ 
+      baseId: z.string().min(1, "Выберите базис") 
+    })
+  ).min(1, "Добавьте хотя бы один базис"),
   storageCost: z.string().optional(),
   createSupplier: z.boolean(),
 });
