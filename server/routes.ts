@@ -1,12 +1,20 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { registerAuthRoutes } from "./routes/auth";
-import { registerAdminRoutes } from "./routes/admin";
-import { registerDirectoriesRoutes } from "./routes/directories";
-import { registerPricesRoutes } from "./routes/prices";
-import { registerDeliveryRoutes } from "./routes/delivery"; // Import new delivery routes
-import { registerOperationsRoutes } from "./routes/operations";
-import { seedDefaultRoles } from "./routes/utils";
+import { registerAuthRoutes } from "./modules/users/routes/auth";
+import { registerAdminRoutes } from "./modules/users/routes/admin";
+import { registerPricesRoutes } from "./modules/prices/routes/prices";
+import { registerDeliveryRoutes } from "./modules/delivery/routes/delivery";
+import { seedDefaultRoles } from "./modules/users/routes/utils";
+import { registerSuppliersRoutes } from "./modules/suppliers/routes/suppliers";
+import { registerBasesRoutes } from "./modules/bases/routes/bases";
+import { registerCustomersRoutes } from "./modules/customers/routes/customers";
+import { registerLogisticsRoutes } from "./modules/logistics/routes/logistics";
+import { registerWarehousesOperationsRoutes } from "./modules/warehouses/routes/warehouses";
+import { registerExchangeRoutes } from "./modules/exchange/routes/exchange";
+import { registerMovementRoutes } from "./modules/movement/routes/movement";
+import { registerOptRoutes } from "./modules/opt/routes/opt";
+import { registerRefuelingOperationsRoutes } from "./modules/refueling/routes/refueling";
+import { registerDashboardRoutes } from "./modules/dashboard/routes/dashboard";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -20,10 +28,18 @@ export async function registerRoutes(
   // Register all route modules
   registerAuthRoutes(app);
   registerAdminRoutes(app);
-  registerDirectoriesRoutes(app);
+  registerSuppliersRoutes(app);
+  registerBasesRoutes(app);
+  registerCustomersRoutes(app);
+  registerLogisticsRoutes(app);
   registerPricesRoutes(app);
-  registerDeliveryRoutes(app); // Register new delivery routes
-  registerOperationsRoutes(app);
+  registerDeliveryRoutes(app);
+  registerWarehousesOperationsRoutes(app);
+  registerExchangeRoutes(app);
+  registerMovementRoutes(app);
+  registerOptRoutes(app);
+  registerRefuelingOperationsRoutes(app);
+  registerDashboardRoutes(app);
 
   return httpServer;
 }

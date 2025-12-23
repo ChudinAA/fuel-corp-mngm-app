@@ -1,16 +1,16 @@
-import { UserStorage } from "./user-storage";
-import { RoleStorage } from "./role-storage";
-import { CustomerStorage } from "./customer-storage";
-import { BaseStorage } from "./base-storage";
-import { SupplierStorage } from "./supplier-storage";
-import { LogisticsStorage } from "./logistics-storage";
-import { PriceStorage } from "./price-storage";
-import { WarehouseStorage } from "./warehouse-storage";
-import { ExchangeStorage } from "./exchange-storage";
-import { MovementStorage } from "./movement-storage";
-import { OptStorage } from "./opt-storage";
-import { AircraftRefuelingStorage } from "./aircraft-refueling-storage";
-import { DashboardStorage } from "./dashboard-storage";
+import { UserStorage } from "../modules/users/storage/user-storage";
+import { RoleStorage } from "../modules/users/storage/role-storage";
+import { PriceStorage } from "../modules/prices/storage/price-storage";
+import { DashboardStorage } from "../modules/dashboard/storage/dashboard-storage";
+import { CustomerStorage } from "../modules/customers/storage/customer-storage";
+import { BaseStorage } from "../modules/bases/storage/base-storage";
+import { SupplierStorage } from "../modules/suppliers/storage/supplier-storage";
+import { LogisticsStorage } from "../modules/logistics/storage/logistics-storage";
+import { WarehouseStorage } from "../modules/warehouses/storage/warehouse-storage";
+import { ExchangeStorage } from "../modules/exchange/storage/exchange-storage";
+import { MovementStorage } from "../modules/movement/storage/movement-storage";
+import { OptStorage } from "../modules/opt/storage/opt-storage";
+import { AircraftRefuelingStorage } from "../modules/refueling/storage/aircraft-refueling-storage";
 
 export * from "./types";
 
