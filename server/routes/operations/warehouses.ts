@@ -77,6 +77,17 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         updatedById: req.session.userId,
       };
       
+      // Convert empty strings to null for numeric fields
+      if (updateData.storageCost === "") {
+        updateData.storageCost = null;
+      }
+      if (updateData.pvkjBalance === "") {
+        updateData.pvkjBalance = null;
+      }
+      if (updateData.pvkjAverageCost === "") {
+        updateData.pvkjAverageCost = null;
+      }
+      
       if (bases !== undefined) {
         updateData.baseIds = Array.isArray(bases) 
           ? bases.map((b: { baseId: string }) => b.baseId).filter(Boolean) 
