@@ -63,6 +63,7 @@ export const opt = pgTable("opt", {
   contractNumber: text("contract_number"),
   notes: text("notes"),
   isApproxVolume: boolean("is_approx_volume").default(false),
+  purchasePriceModified: boolean("purchase_price_modified").default(false),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),

@@ -17,7 +17,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
 import { suppliers } from "@shared/schema";
-import { warehouses } from "../../warehouses/entities/warehouses";
+import { warehouses, warehouseTransactions } from "../../warehouses/entities/warehouses";
 import { logisticsCarriers } from "../../logistics/entities/logistics";
 
 export const movement = pgTable("movement", {
@@ -43,6 +43,7 @@ export const movement = pgTable("movement", {
   trailerNumber: text("trailer_number"),
   driverName: text("driver_name"),
   notes: text("notes"),
+  transactionId: uuid("transaction_id").references(() => warehouseTransactions.id),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
@@ -67,6 +68,10 @@ export const movementRelations = relations(movement, ({ one }) => ({
   carrier: one(logisticsCarriers, {
     fields: [movement.carrierId],
     references: [logisticsCarriers.id],
+  }),
+  transaction: one(warehouseTransactions, {
+    fields: [movement.transactionId],
+    references: [warehouseTransactions.id],
   }),
   createdBy: one(users, {
     fields: [movement.createdById],
