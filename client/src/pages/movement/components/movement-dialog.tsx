@@ -204,8 +204,9 @@ export function MovementDialog({
       }
 
       const payload = {
-        ...data,
         movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),
+        movementType: data.movementType,
+        productType: data.productType,
         supplierId: data.supplierId || null,
         fromWarehouseId: data.fromWarehouseId || null,
         toWarehouseId: data.toWarehouseId,
@@ -218,6 +219,7 @@ export function MovementDialog({
         deliveryCost: deliveryCost,
         totalCost: totalCost,
         costPerKg: costPerKg,
+        notes: data.notes || null,
       };
       const res = await apiRequest(isEditing ? "PATCH" : "POST", isEditing ? `/api/movement/${editMovement?.id}` : "/api/movement", payload);
       return res.json();

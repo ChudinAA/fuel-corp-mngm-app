@@ -80,15 +80,42 @@ export function registerMovementRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        const item = await storage.movement.updateMovement(id, {
+        
+        // Преобразуем числовые поля в строки для БД
+        const dbData = {
           ...req.body,
+          quantityKg: req.body.quantityKg ? req.body.quantityKg.toString() : undefined,
+          quantityLiters: req.body.quantityLiters !== null && req.body.quantityLiters !== undefined
+            ? req.body.quantityLiters.toString()
+            : null,
+          density: req.body.density !== null && req.body.density !== undefined
+            ? req.body.density.toString()
+            : null,
+          purchasePrice: req.body.purchasePrice !== null && req.body.purchasePrice !== undefined
+            ? req.body.purchasePrice.toString()
+            : null,
+          deliveryPrice: req.body.deliveryPrice !== null && req.body.deliveryPrice !== undefined
+            ? req.body.deliveryPrice.toString()
+            : null,
+          deliveryCost: req.body.deliveryCost !== null && req.body.deliveryCost !== undefined
+            ? req.body.deliveryCost.toString()
+            : null,
+          totalCost: req.body.totalCost !== null && req.body.totalCost !== undefined
+            ? req.body.totalCost.toString()
+            : null,
+          costPerKg: req.body.costPerKg !== null && req.body.costPerKg !== undefined
+            ? req.body.costPerKg.toString()
+            : null,
           updatedById: req.session.userId,
-        });
+        };
+
+        const item = await storage.movement.updateMovement(id, dbData);
         if (!item) {
           return res.status(404).json({ message: "Перемещение не найдено" });
         }
         res.json(item);
       } catch (error) {
+        console.error("Error updating movement:", error);
         res.status(500).json({ message: "Ошибка обновления перемещения" });
       }
     }
