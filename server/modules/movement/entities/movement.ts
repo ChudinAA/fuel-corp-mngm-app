@@ -44,6 +44,7 @@ export const movement = pgTable("movement", {
   driverName: text("driver_name"),
   notes: text("notes"),
   transactionId: uuid("transaction_id").references(() => warehouseTransactions.id),
+  sourceTransactionId: uuid("source_transaction_id").references(() => warehouseTransactions.id),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
@@ -72,6 +73,12 @@ export const movementRelations = relations(movement, ({ one }) => ({
   transaction: one(warehouseTransactions, {
     fields: [movement.transactionId],
     references: [warehouseTransactions.id],
+    relationName: "destinationTransaction",
+  }),
+  sourceTransaction: one(warehouseTransactions, {
+    fields: [movement.sourceTransactionId],
+    references: [warehouseTransactions.id],
+    relationName: "sourceTransaction",
   }),
   createdBy: one(users, {
     fields: [movement.createdById],
