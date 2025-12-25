@@ -12,6 +12,7 @@ import {
 import { IMovementStorage } from "./types";
 import { PRODUCT_TYPE, MOVEMENT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { WarehouseTransactionService } from "../../warehouses/services/warehouse-transaction-service";
+import { WarehouseRecalculationService } from "../../warehouses/services/warehouse-recalculation-service";
 
 export class MovementStorage implements IMovementStorage {
   async getMovements(page: number, pageSize: number): Promise<{ data: Movement[]; total: number }> {
@@ -138,7 +139,7 @@ export class MovementStorage implements IMovementStorage {
 
       // Обновляем склад назначения, если изменились показатели
       if (needsRecalculation && currentMovement.transactionId && currentMovement.toWarehouseId && currentMovement.toWarehouse) {
-        const { newAverageCost } = await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
+        await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
           tx,
           currentMovement.transactionId,
           currentMovement.toWarehouseId,
@@ -147,16 +148,6 @@ export class MovementStorage implements IMovementStorage {
           newQuantityKg,
           newTotalCost,
           currentMovement.productType,
-          data.updatedById
-        );
-
-        // Пересчитываем связанные сделки и транзакции
-        await WarehouseTransactionService.recalculateDealsAfterDate(
-          tx,
-          currentMovement.toWarehouseId,
-          currentMovement.movementDate,
-          currentMovement.productType,
-          newAverageCost,
           data.updatedById
         );
       }
@@ -172,6 +163,20 @@ export class MovementStorage implements IMovementStorage {
           newQuantityKg,
           0,
           currentMovement.productType,
+          data.updatedById
+        );
+      }
+
+      // КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ: пересчитываем все затронутые склады и связанные транзакции
+      if (needsRecalculation) {
+        const affectedWarehouses = WarehouseRecalculationService.getAffectedWarehouses(
+          currentMovement,
+          currentMovement.movementDate
+        );
+
+        await WarehouseRecalculationService.recalculateAllAffectedTransactions(
+          tx,
+          affectedWarehouses,
           data.updatedById
         );
       }
@@ -206,23 +211,13 @@ export class MovementStorage implements IMovementStorage {
 
       // Откатываем изменения на складе назначения
       if (currentMovement.transactionId && currentMovement.toWarehouseId && currentMovement.toWarehouse) {
-        const { newAverageCost } = await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
+        await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
           tx,
           currentMovement.transactionId,
           currentMovement.toWarehouseId,
           quantityKg,
           totalCost,
           currentMovement.productType
-        );
-
-        // Пересчитываем связанные сделки и транзакции
-        await WarehouseTransactionService.recalculateDealsAfterDate(
-          tx,
-          currentMovement.toWarehouseId,
-          currentMovement.movementDate,
-          currentMovement.productType,
-          newAverageCost,
-          undefined
         );
       }
 
@@ -237,6 +232,18 @@ export class MovementStorage implements IMovementStorage {
           currentMovement.productType
         );
       }
+
+      // КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ: пересчитываем все затронутые склады и связанные транзакции
+      const affectedWarehouses = WarehouseRecalculationService.getAffectedWarehouses(
+        currentMovement,
+        currentMovement.movementDate
+      );
+
+      await WarehouseRecalculationService.recalculateAllAffectedTransactions(
+        tx,
+        affectedWarehouses,
+        undefined
+      );
 
       await tx.delete(movement).where(eq(movement.id, id));
     });

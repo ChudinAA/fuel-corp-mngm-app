@@ -307,6 +307,8 @@ export class WarehouseTransactionService {
 
   /**
    * Пересчитывает все сделки (ОПТ и Заправки) после определенной даты
+   * Deprecated: используйте WarehouseRecalculationService.recalculateAllAffectedTransactions
+   * Оставлено для обратной совместимости
    */
   static async recalculateDealsAfterDate(
     tx: any,
@@ -316,97 +318,13 @@ export class WarehouseTransactionService {
     newAverageCost: number,
     updatedById?: string
   ) {
-    // Получаем все сделки ОПТ после даты
-    const affectedOptDeals = await tx.query.opt.findMany({
-      where: and(
-        eq(opt.warehouseId, warehouseId),
-        gt(opt.dealDate, afterDate)
-      ),
-      with: {
-        transaction: true,
-      }
-    });
-
-    // Обновляем сделки ОПТ
-    for (const deal of affectedOptDeals) {
-      if (deal.transactionId) {
-        const quantityKg = parseFloat(deal.quantityKg);
-        const salePrice = parseFloat(deal.salePrice || "0");
-        const deliveryCost = parseFloat(deal.deliveryCost || "0");
-        const purchaseAmount = quantityKg * newAverageCost;
-        const saleAmount = quantityKg * salePrice;
-        const profit = saleAmount - purchaseAmount - deliveryCost;
-
-        await tx.update(opt)
-          .set({
-            purchasePrice: newAverageCost.toFixed(4),
-            purchaseAmount: purchaseAmount.toFixed(2),
-            profit: profit.toFixed(2),
-            purchasePriceModified: true,
-            updatedAt: sql`NOW()`,
-            updatedById,
-          })
-          .where(eq(opt.id, deal.id));
-
-        // Обновляем связанную транзакцию
-        if (deal.transaction) {
-          await tx.update(warehouseTransactions)
-            .set({
-              averageCostBefore: newAverageCost.toFixed(4),
-              updatedAt: sql`NOW()`,
-              updatedById,
-            })
-            .where(eq(warehouseTransactions.id, deal.transactionId));
-        }
-      }
-    }
-
-    // Получаем все заправки после даты
-    const affectedRefuelings = await tx.query.aircraftRefueling.findMany({
-      where: and(
-        eq(aircraftRefueling.warehouseId, warehouseId),
-        eq(aircraftRefueling.productType, productType),
-        gt(aircraftRefueling.refuelingDate, afterDate)
-      ),
-      with: {
-        transaction: true,
-      }
-    });
-
-    // Обновляем заправки
-    for (const refuel of affectedRefuelings) {
-      if (refuel.transactionId && refuel.productType !== PRODUCT_TYPE.SERVICE) {
-        const quantityKg = parseFloat(refuel.quantityKg);
-        const salePrice = parseFloat(refuel.salePrice || "0");
-        const purchaseAmount = quantityKg * newAverageCost;
-        const saleAmount = quantityKg * salePrice;
-        const profit = saleAmount - purchaseAmount;
-
-        await tx.update(aircraftRefueling)
-          .set({
-            purchasePrice: newAverageCost.toFixed(4),
-            purchaseAmount: purchaseAmount.toFixed(2),
-            profit: profit.toFixed(2),
-            purchasePriceModified: true,
-            updatedAt: sql`NOW()`,
-            updatedById,
-          })
-          .where(eq(aircraftRefueling.id, refuel.id));
-
-        // Обновляем связанную транзакцию
-        if (refuel.transaction) {
-          await tx.update(warehouseTransactions)
-            .set({
-              averageCostBefore: newAverageCost.toFixed(4),
-              updatedAt: sql`NOW()`,
-              updatedById,
-            })
-            .where(eq(warehouseTransactions.id, refuel.transactionId));
-        }
-      }
-    }
-
-    // Пересчитываем транзакции других перемещений после этой даты
-    await this.recalculateTransactionsAfterDate(tx, warehouseId, afterDate, productType, updatedById);
+    // Импортируем новый сервис динамически для избежания циклических зависимостей
+    const { WarehouseRecalculationService } = await import('./warehouse-recalculation-service');
+    
+    await WarehouseRecalculationService.recalculateAllAffectedTransactions(
+      tx,
+      [{ warehouseId, afterDate, productType }],
+      updatedById
+    );
   }
 }
