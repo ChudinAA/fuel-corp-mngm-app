@@ -244,7 +244,7 @@ export class WarehouseTransactionService {
     // Обновляем транзакцию
     await tx.update(warehouseTransactions)
       .set({
-        quantity: newQuantity.toString(),
+        quantity: isReceipt ? newQuantity.toString() : (-newQuantity).toString(),
         balanceAfter: newBalance.toString(),
         averageCostAfter: newAverageCost.toFixed(4),
         updatedAt: sql`NOW()`,

@@ -147,7 +147,6 @@ export class MovementStorage implements IMovementStorage {
       const oldTotalCost = parseFloat(currentMovement.totalCost || "0");
       const newQuantityKg = data.quantityKg ? parseFloat(data.quantityKg.toString()) : oldQuantityKg;
       const newTotalCost = data.totalCost ? parseFloat(data.totalCost.toString()) : oldTotalCost;
-      const isPvkj = currentMovement.productType === PRODUCT_TYPE.PVKJ;
 
       const hasQuantityChanged = oldQuantityKg !== newQuantityKg;
       const hasCostChanged = oldTotalCost !== newTotalCost;
@@ -206,30 +205,30 @@ export class MovementStorage implements IMovementStorage {
       }
 
       // КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ: пересчитываем все затронутые склады и связанные транзакции
-      if (needsRecalculation) {
-        console.log('\n--- ШАГ 3: КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ всех затронутых складов ---');
+      // if (needsRecalculation) {
+      //   console.log('\n--- ШАГ 3: КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ всех затронутых складов ---');
         
-        const affectedWarehouses = WarehouseRecalculationService.getAffectedWarehouses(
-          currentMovement,
-          currentMovement.movementDate
-        );
+      //   const affectedWarehouses = WarehouseRecalculationService.getAffectedWarehouses(
+      //     currentMovement,
+      //     currentMovement.movementDate
+      //   );
         
-        console.log('Затронутые склады:', affectedWarehouses.map(w => ({
-          warehouseId: w.warehouseId,
-          afterDate: w.afterDate,
-          productType: w.productType,
-        })));
+      //   console.log('Затронутые склады:', affectedWarehouses.map(w => ({
+      //     warehouseId: w.warehouseId,
+      //     afterDate: w.afterDate,
+      //     productType: w.productType,
+      //   })));
 
-        await WarehouseRecalculationService.recalculateAllAffectedTransactions(
-          tx,
-          affectedWarehouses,
-          data.updatedById
-        );
+      //   await WarehouseRecalculationService.recalculateAllAffectedTransactions(
+      //     tx,
+      //     affectedWarehouses,
+      //     data.updatedById
+      //   );
         
-        console.log('✓ Комплексный пересчет завершен');
-      } else {
-        console.log('\n⚠ Пересчет не требуется (значения не изменились)');
-      }
+      //   console.log('✓ Комплексный пересчет завершен');
+      // } else {
+      //   console.log('\n⚠ Пересчет не требуется (значения не изменились)');
+      // }
 
       // Обновляем перемещение
       console.log('\n--- ШАГ 4: Обновление записи перемещения в БД ---');
