@@ -81,33 +81,49 @@ export function registerMovementRoutes(app: Express) {
       try {
         const id = req.params.id;
         
-        // Преобразуем числовые поля в строки для БД
-        const dbData = {
-          ...req.body,
-          quantityKg: req.body.quantityKg ? req.body.quantityKg.toString() : undefined,
-          quantityLiters: req.body.quantityLiters !== null && req.body.quantityLiters !== undefined
-            ? req.body.quantityLiters.toString()
-            : null,
-          density: req.body.density !== null && req.body.density !== undefined
-            ? req.body.density.toString()
-            : null,
-          purchasePrice: req.body.purchasePrice !== null && req.body.purchasePrice !== undefined
-            ? req.body.purchasePrice.toString()
-            : null,
-          deliveryPrice: req.body.deliveryPrice !== null && req.body.deliveryPrice !== undefined
-            ? req.body.deliveryPrice.toString()
-            : null,
-          deliveryCost: req.body.deliveryCost !== null && req.body.deliveryCost !== undefined
-            ? req.body.deliveryCost.toString()
-            : null,
-          totalCost: req.body.totalCost !== null && req.body.totalCost !== undefined
-            ? req.body.totalCost.toString()
-            : null,
-          costPerKg: req.body.costPerKg !== null && req.body.costPerKg !== undefined
-            ? req.body.costPerKg.toString()
-            : null,
+        // Создаем объект только с переданными полями
+        const dbData: any = {
           updatedById: req.session.userId,
         };
+
+        // Добавляем только те поля, которые были переданы
+        if (req.body.movementDate !== undefined) dbData.movementDate = req.body.movementDate;
+        if (req.body.movementType !== undefined) dbData.movementType = req.body.movementType;
+        if (req.body.productType !== undefined) dbData.productType = req.body.productType;
+        if (req.body.supplierId !== undefined) dbData.supplierId = req.body.supplierId;
+        if (req.body.fromWarehouseId !== undefined) dbData.fromWarehouseId = req.body.fromWarehouseId;
+        if (req.body.toWarehouseId !== undefined) dbData.toWarehouseId = req.body.toWarehouseId;
+        if (req.body.carrierId !== undefined) dbData.carrierId = req.body.carrierId;
+        if (req.body.notes !== undefined) dbData.notes = req.body.notes;
+        if (req.body.vehicleNumber !== undefined) dbData.vehicleNumber = req.body.vehicleNumber;
+        if (req.body.trailerNumber !== undefined) dbData.trailerNumber = req.body.trailerNumber;
+        if (req.body.driverName !== undefined) dbData.driverName = req.body.driverName;
+
+        // Преобразуем числовые поля в строки для БД
+        if (req.body.quantityKg !== undefined) {
+          dbData.quantityKg = req.body.quantityKg.toString();
+        }
+        if (req.body.quantityLiters !== undefined && req.body.quantityLiters !== null) {
+          dbData.quantityLiters = req.body.quantityLiters.toString();
+        }
+        if (req.body.density !== undefined && req.body.density !== null) {
+          dbData.density = req.body.density.toString();
+        }
+        if (req.body.purchasePrice !== undefined && req.body.purchasePrice !== null) {
+          dbData.purchasePrice = req.body.purchasePrice.toString();
+        }
+        if (req.body.deliveryPrice !== undefined && req.body.deliveryPrice !== null) {
+          dbData.deliveryPrice = req.body.deliveryPrice.toString();
+        }
+        if (req.body.deliveryCost !== undefined && req.body.deliveryCost !== null) {
+          dbData.deliveryCost = req.body.deliveryCost.toString();
+        }
+        if (req.body.totalCost !== undefined && req.body.totalCost !== null) {
+          dbData.totalCost = req.body.totalCost.toString();
+        }
+        if (req.body.costPerKg !== undefined && req.body.costPerKg !== null) {
+          dbData.costPerKg = req.body.costPerKg.toString();
+        }
 
         const item = await storage.movement.updateMovement(id, dbData);
         if (!item) {

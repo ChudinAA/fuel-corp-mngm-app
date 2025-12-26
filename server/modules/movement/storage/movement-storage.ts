@@ -201,30 +201,10 @@ export class MovementStorage implements IMovementStorage {
       
       // Создаем объект обновления только с переданными полями
       const updateData: any = {
+        ...data,
         updatedAt: sql`NOW()`,
         updatedById: data.updatedById
       };
-
-      // Добавляем только те поля, которые были переданы
-      if (data.movementDate !== undefined) updateData.movementDate = data.movementDate;
-      if (data.movementType !== undefined) updateData.movementType = data.movementType;
-      if (data.productType !== undefined) updateData.productType = data.productType;
-      if (data.supplierId !== undefined) updateData.supplierId = data.supplierId;
-      if (data.fromWarehouseId !== undefined) updateData.fromWarehouseId = data.fromWarehouseId;
-      if (data.toWarehouseId !== undefined) updateData.toWarehouseId = data.toWarehouseId;
-      if (data.carrierId !== undefined) updateData.carrierId = data.carrierId;
-      if (data.quantityLiters !== undefined) updateData.quantityLiters = data.quantityLiters;
-      if (data.density !== undefined) updateData.density = data.density;
-      if (data.quantityKg !== undefined) updateData.quantityKg = data.quantityKg;
-      if (data.purchasePrice !== undefined) updateData.purchasePrice = data.purchasePrice;
-      if (data.deliveryPrice !== undefined) updateData.deliveryPrice = data.deliveryPrice;
-      if (data.deliveryCost !== undefined) updateData.deliveryCost = data.deliveryCost;
-      if (data.totalCost !== undefined) updateData.totalCost = data.totalCost;
-      if (data.costPerKg !== undefined) updateData.costPerKg = data.costPerKg;
-      if (data.notes !== undefined) updateData.notes = data.notes;
-      if (data.vehicleNumber !== undefined) updateData.vehicleNumber = data.vehicleNumber;
-      if (data.trailerNumber !== undefined) updateData.trailerNumber = data.trailerNumber;
-      if (data.driverName !== undefined) updateData.driverName = data.driverName;
 
       console.log('Поля для обновления:', Object.keys(updateData));
 
