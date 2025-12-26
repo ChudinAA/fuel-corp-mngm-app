@@ -196,13 +196,23 @@ export class MovementStorage implements IMovementStorage {
         console.log('✓ Транзакция склада-источника обновлена');
       }
 
+      // Обновляем перемещение в БД ПЕРЕД пересчетом
+      console.log('\n--- ШАГ 3: Обновление записи перемещения в БД ---');
+      const [updated] = await tx.update(movement).set({
+        ...data,
+        updatedAt: sql`NOW()`,
+        updatedById: data.updatedById
+      }).where(eq(movement.id, id)).returning();
+
+      console.log('✓ Перемещение обновлено в БД');
+
       // КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ: пересчитываем все затронутые склады и связанные транзакции
       if (needsRecalculation) {
-        console.log('\n--- ШАГ 3: КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ всех затронутых складов ---');
+        console.log('\n--- ШАГ 4: КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ всех затронутых складов ---');
         
         const affectedWarehouses = WarehouseRecalculationService.getAffectedWarehouses(
-          currentMovement,
-          currentMovement.movementDate
+          updated, // Используем обновленную запись
+          updated.movementDate
         );
         
         console.log('Затронутые склады:', affectedWarehouses.map(w => ({
@@ -222,15 +232,6 @@ export class MovementStorage implements IMovementStorage {
         console.log('\n⚠ Пересчет не требуется (значения не изменились)');
       }
 
-      // Обновляем перемещение
-      console.log('\n--- ШАГ 4: Обновление записи перемещения в БД ---');
-      const [updated] = await tx.update(movement).set({
-        ...data,
-        updatedAt: sql`NOW()`,
-        updatedById: data.updatedById
-      }).where(eq(movement.id, id)).returning();
-
-      console.log('✓ Перемещение обновлено в БД');
       console.log('========== ОБНОВЛЕНИЕ ПЕРЕМЕЩЕНИЯ ЗАВЕРШЕНО ==========\n');
 
       return updated;
