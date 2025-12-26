@@ -2,23 +2,17 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { MOVEMENT_TYPE, PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, ENTITY_TYPE } from "@shared/constants";
+import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CalendarIcon, Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { movementFormSchema, type MovementFormData } from "../schemas";
-import { calculateKgFromLiters, formatNumber, formatCurrency } from "../utils";
 import type { MovementDialogProps } from "../types";
-import { CalculatedField } from "./calculated-field";
 import { VolumeInputSection } from "../../opt/components/opt-form-sections";
 import { MovementFormHeader } from "./movement-form-header";
 import { MovementSourceSection } from "./movement-source-section";
@@ -76,39 +70,53 @@ export function MovementDialog({
 
   // Обновляем форму при изменении editMovement или открытии диалога
   useEffect(() => {
-    if (editMovement && open) {
-      setInputMode(editMovement.quantityLiters ? "liters" : "kg");
-
-      // Set initial warehouse balance for editing
-      if (editMovement.fromWarehouseId) {
-        const warehouse = warehouses.find(w => w.id === editMovement.fromWarehouseId);
-        if (warehouse) {
-          const currentBalance = editMovement.productType === PRODUCT_TYPE.PVKJ 
-            ? parseFloat(warehouse.pvkjBalance || "0")
-            : parseFloat(warehouse.currentBalance || "0");
-          const dealQuantity = parseFloat(editMovement.quantityKg || "0");
-          setInitialWarehouseBalance(currentBalance + dealQuantity);
+    if (editMovement) {
+      // При редактировании внутреннего перемещения вычисляем начальный баланс
+      if (editMovement.movementType === MOVEMENT_TYPE.INTERNAL && editMovement.fromWarehouseId) {
+        const fromWarehouse = warehouses.find(w => w.id === editMovement.fromWarehouseId);
+        if (fromWarehouse) {
+          const isPvkj = editMovement.productType === PRODUCT_TYPE.PVKJ;
+          const currentBalance = parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
+          const movementKg = parseFloat(editMovement.quantityKg || "0");
+          // Восстанавливаем баланс на момент создания сделки
+          setInitialWarehouseBalance(currentBalance + movementKg);
         }
+      } else {
+        setInitialWarehouseBalance(0);
       }
 
-      const formData = {
+      form.reset({
         movementDate: new Date(editMovement.movementDate),
         movementType: editMovement.movementType,
         productType: editMovement.productType,
         supplierId: editMovement.supplierId || "",
         fromWarehouseId: editMovement.fromWarehouseId || "",
-        toWarehouseId: editMovement.toWarehouseId || "",
-        inputMode: editMovement.quantityLiters ? "liters" : "kg",
-        quantityLiters: editMovement.quantityLiters || undefined,
-        density: editMovement.density || undefined,
-        quantityKg: editMovement.quantityKg || undefined,
+        toWarehouseId: editMovement.toWarehouseId,
+        inputMode: "kg",
+        quantityLiters: editMovement.quantityLiters ? String(editMovement.quantityLiters) : undefined,
+        density: editMovement.density ? String(editMovement.density) : undefined,
+        quantityKg: editMovement.quantityKg ? String(editMovement.quantityKg) : undefined,
         carrierId: editMovement.carrierId || "",
         notes: editMovement.notes || "",
-      };
-
-      form.reset(formData);
+      });
+    } else {
+      setInitialWarehouseBalance(0);
+      form.reset({
+        movementDate: new Date(),
+        movementType: MOVEMENT_TYPE.SUPPLY,
+        productType: PRODUCT_TYPE.KEROSENE,
+        supplierId: "",
+        fromWarehouseId: "",
+        toWarehouseId: "",
+        inputMode: "kg",
+        quantityLiters: undefined,
+        density: undefined,
+        quantityKg: undefined,
+        carrierId: "",
+        notes: "",
+      });
     }
-  }, [editMovement, warehouses, form, open]);
+  }, [editMovement, form, warehouses]);
 
   // Watch form values
   const watchMovementType = form.watch("movementType");
