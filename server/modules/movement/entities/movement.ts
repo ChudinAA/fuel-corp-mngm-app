@@ -49,7 +49,14 @@ export const movement = pgTable("movement", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
-});
+}, (table) => ({
+  movementDateIdx: index("movement_date_idx").on(table.movementDate),
+  createdAtIdx: index("movement_created_at_idx").on(table.createdAt),
+  movementTypeIdx: index("movement_type_idx").on(table.movementType),
+  toWarehouseIdx: index("movement_to_warehouse_idx").on(table.toWarehouseId),
+  fromWarehouseIdx: index("movement_from_warehouse_idx").on(table.fromWarehouseId),
+  productTypeIdx: index("movement_product_type_idx").on(table.productType),
+}));
 
 // ============ RELATIONS ============
 

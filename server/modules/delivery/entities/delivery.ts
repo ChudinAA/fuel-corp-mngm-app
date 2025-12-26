@@ -36,7 +36,12 @@ export const deliveryCost = pgTable("delivery_cost", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
-});
+}, (table) => ({
+  carrierIdx: index("delivery_cost_carrier_idx").on(table.carrierId),
+  fromEntityIdx: index("delivery_cost_from_entity_idx").on(table.fromEntityType, table.fromEntityId),
+  toEntityIdx: index("delivery_cost_to_entity_idx").on(table.toEntityType, table.toEntityId),
+  isActiveIdx: index("delivery_cost_is_active_idx").on(table.isActive),
+}));
 
 // ============ RELATIONS ============
 

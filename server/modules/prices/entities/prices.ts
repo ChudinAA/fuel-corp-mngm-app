@@ -40,7 +40,13 @@ export const prices = pgTable("prices", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
-});
+}, (table) => ({
+  counterpartyRoleTypeIdx: index("prices_counterparty_role_type_idx").on(table.counterpartyRole, table.counterpartyType),
+  counterpartyIdIdx: index("prices_counterparty_id_idx").on(table.counterpartyId),
+  dateRangeIdx: index("prices_date_range_idx").on(table.dateFrom, table.dateTo),
+  activeIdx: index("prices_is_active_idx").on(table.isActive),
+  basisProductIdx: index("prices_basis_product_idx").on(table.basis, table.productType),
+}));
 
 // ============ RELATIONS ============
 

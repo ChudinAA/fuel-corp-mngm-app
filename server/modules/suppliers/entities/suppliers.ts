@@ -37,7 +37,11 @@ export const suppliers = pgTable("suppliers", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
-});
+}, (table) => ({
+  nameIdx: index("suppliers_name_idx").on(table.name),
+  isActiveIdx: index("suppliers_is_active_idx").on(table.isActive),
+  isWarehouseIdx: index("suppliers_is_warehouse_idx").on(table.isWarehouse),
+}));
 
 // Junction table for supplier-base many-to-many relationship
 export const supplierBases = pgTable(

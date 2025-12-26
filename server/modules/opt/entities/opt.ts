@@ -68,7 +68,13 @@ export const opt = pgTable("opt", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
-});
+}, (table) => ({
+  dealDateIdx: index("opt_deal_date_idx").on(table.dealDate),
+  createdAtIdx: index("opt_created_at_idx").on(table.createdAt),
+  supplierBasisIdx: index("opt_supplier_basis_idx").on(table.supplierId, table.basis),
+  buyerBasisIdx: index("opt_buyer_basis_idx").on(table.buyerId, table.basis),
+  warehouseIdx: index("opt_warehouse_idx").on(table.warehouseId),
+}));
 
 // ============ RELATIONS ============
 

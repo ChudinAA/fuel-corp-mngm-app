@@ -47,7 +47,11 @@ export const warehouses = pgTable("warehouses", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
-});
+}, (table) => ({
+  nameIdx: index("warehouses_name_idx").on(table.name),
+  isActiveIdx: index("warehouses_is_active_idx").on(table.isActive),
+  supplierIdx: index("warehouses_supplier_idx").on(table.supplierId),
+}));
 
 // Junction table for warehouse-base many-to-many relationship
 export const warehouseBases = pgTable(
@@ -92,7 +96,13 @@ export const warehouseTransactions = pgTable("warehouse_transactions", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
-});
+}, (table) => ({
+  warehouseIdIdx: index("warehouse_transactions_warehouse_id_idx").on(table.warehouseId),
+  createdAtIdx: index("warehouse_transactions_created_at_idx").on(table.createdAt),
+  sourceIdx: index("warehouse_transactions_source_idx").on(table.sourceType, table.sourceId),
+  warehouseProductIdx: index("warehouse_transactions_warehouse_product_idx").on(table.warehouseId, table.productType),
+  warehouseDateIdx: index("warehouse_transactions_warehouse_date_idx").on(table.warehouseId, table.createdAt),
+}));
 
 export const warehousesRelations = relations(warehouses, ({ many, one }) => ({
   transactions: many(warehouseTransactions),

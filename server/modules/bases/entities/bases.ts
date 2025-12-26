@@ -29,7 +29,11 @@ export const bases = pgTable("bases", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
-});
+}, (table) => ({
+  baseTypeIdx: index("bases_base_type_idx").on(table.baseType),
+  nameIdx: index("bases_name_idx").on(table.name),
+  isActiveIdx: index("bases_is_active_idx").on(table.isActive),
+}));
 
 // ============ RELATIONS ============
 

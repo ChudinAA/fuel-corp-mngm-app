@@ -31,7 +31,10 @@ export const logisticsCarriers = pgTable("logistics_carriers", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
-});
+}, (table) => ({
+  nameIdx: index("logistics_carriers_name_idx").on(table.name),
+  isActiveIdx: index("logistics_carriers_is_active_idx").on(table.isActive),
+}));
 
 // Места доставки
 export const logisticsDeliveryLocations = pgTable(
@@ -63,7 +66,11 @@ export const logisticsVehicles = pgTable("logistics_vehicles", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
-});
+}, (table) => ({
+  carrierIdx: index("logistics_vehicles_carrier_idx").on(table.carrierId),
+  regNumberIdx: index("logistics_vehicles_reg_number_idx").on(table.regNumber),
+  isActiveIdx: index("logistics_vehicles_is_active_idx").on(table.isActive),
+}));
 
 // Прицепы
 export const logisticsTrailers = pgTable("logistics_trailers", {

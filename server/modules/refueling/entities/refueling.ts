@@ -61,7 +61,14 @@ export const aircraftRefueling = pgTable("aircraft_refueling", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
-});
+}, (table) => ({
+  refuelingDateIdx: index("aircraft_refueling_date_idx").on(table.refuelingDate),
+  createdAtIdx: index("aircraft_refueling_created_at_idx").on(table.createdAt),
+  supplierBasisIdx: index("aircraft_refueling_supplier_basis_idx").on(table.supplierId, table.basis),
+  buyerBasisIdx: index("aircraft_refueling_buyer_basis_idx").on(table.buyerId, table.basis),
+  productTypeIdx: index("aircraft_refueling_product_type_idx").on(table.productType),
+  warehouseIdx: index("aircraft_refueling_warehouse_idx").on(table.warehouseId),
+}));
 
 // ============ RELATIONS ============
 
