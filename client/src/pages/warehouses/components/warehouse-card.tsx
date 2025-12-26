@@ -249,7 +249,8 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
       <DeleteConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
-        onConfirm={() => {
+        onConfirm={(e) => {
+          e?.stopPropagation();
           deleteMutation.mutate(warehouse.id);
           setDeleteDialogOpen(false);
         }}

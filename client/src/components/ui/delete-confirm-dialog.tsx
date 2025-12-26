@@ -1,4 +1,3 @@
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,7 +12,7 @@ import {
 interface DeleteConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
+  onConfirm: (e?: React.MouseEvent) => void;
   title?: string;
   description?: string;
   itemName?: string;
@@ -43,7 +42,10 @@ export function DeleteConfirmDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>Отмена</AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent event from bubbling up to the card
+              onConfirm(e);
+            }}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             Удалить
