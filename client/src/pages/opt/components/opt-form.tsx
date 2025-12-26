@@ -185,6 +185,8 @@ export function OptForm({
     setSelectedPurchasePriceId,
     setSelectedSalePriceId,
     formSetValue: form.setValue,
+    selectedPurchasePriceId,
+    selectedSalePriceId,
   });
 
   // Update form when editData changes
