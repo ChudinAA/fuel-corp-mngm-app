@@ -30,6 +30,8 @@ import { RefuelingPricingSection } from "./refueling-pricing-section";
 import { VolumeInputSection } from "./refueling-form-sections";
 import { useRefuelingCalculations } from "../hooks/use-refueling-calculations";
 import { useRefuelingFilters } from "../hooks/use-refueling-filters";
+import { useAutoPriceSelection } from "../../shared/hooks/use-auto-price-selection";
+import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 
 
 export function RefuelingForm({ 
@@ -175,23 +177,18 @@ export function RefuelingForm({
     }
   }, [watchSupplierId, suppliers, allBases, warehouses, form, editData]);
 
-  // Автоматический выбор первой цены покупки при выборе поставщика
-  useEffect(() => {
-    if (watchSupplierId && purchasePrices.length > 0 && !editData && !isWarehouseSupplier) {
-      const firstPurchasePriceId = `${purchasePrices[0].id}-0`;
-      setSelectedPurchasePriceId(firstPurchasePriceId);
-      form.setValue("selectedPurchasePriceId", firstPurchasePriceId);
-    }
-  }, [watchSupplierId, purchasePrices, editData, isWarehouseSupplier, form]);
-
-  // Автоматический выбор первой цены продажи при выборе покупателя
-  useEffect(() => {
-    if (watchBuyerId && salePrices.length > 0 && !editData) {
-      const firstSalePriceId = `${salePrices[0].id}-0`;
-      setSelectedSalePriceId(firstSalePriceId);
-      form.setValue("selectedSalePriceId", firstSalePriceId);
-    }
-  }, [watchBuyerId, salePrices, editData, form]);
+  // Используем общий хук для автоматического выбора цен
+  useAutoPriceSelection({
+    supplierId: watchSupplierId,
+    buyerId: watchBuyerId,
+    purchasePrices,
+    salePrices,
+    isWarehouseSupplier,
+    editData,
+    setSelectedPurchasePriceId,
+    setSelectedSalePriceId,
+    formSetValue: form.setValue,
+  });
 
   useEffect(() => {
     if (editData && suppliers && customers && allBases && warehouses) { // Added warehouses dependency
@@ -256,38 +253,18 @@ export function RefuelingForm({
 
   const createMutation = useMutation({
     mutationFn: async (data: RefuelingFormData) => {
-      // Извлекаем ID цены и индекс из составного ID
-      let purchasePriceId = null;
-      let purchasePriceIndex = 0;
-      
-      if (!isWarehouseSupplier && selectedPurchasePriceId) {
-        const parts = selectedPurchasePriceId.split('-');
-        if (parts.length >= 5) {
-          purchasePriceIndex = parseInt(parts[parts.length - 1]);
-          purchasePriceId = parts.slice(0, -1).join('-');
-        } else {
-          purchasePriceId = selectedPurchasePriceId;
-        }
-      } else if (!isWarehouseSupplier && purchasePrices.length > 0) {
-        purchasePriceId = purchasePrices[0].id;
-        purchasePriceIndex = 0;
-      }
-      
-      let salePriceId = null;
-      let salePriceIndex = 0;
-      
-      if (selectedSalePriceId) {
-        const parts = selectedSalePriceId.split('-');
-        if (parts.length >= 5) {
-          salePriceIndex = parseInt(parts[parts.length - 1]);
-          salePriceId = parts.slice(0, -1).join('-');
-        } else {
-          salePriceId = selectedSalePriceId;
-        }
-      } else if (salePrices.length > 0) {
-        salePriceId = salePrices[0].id;
-        salePriceIndex = 0;
-      }
+      const {
+        purchasePriceId,
+        purchasePriceIndex,
+        salePriceId,
+        salePriceIndex,
+      } = extractPriceIdsForSubmit(
+        selectedPurchasePriceId,
+        selectedSalePriceId,
+        purchasePrices,
+        salePrices,
+        isWarehouseSupplier
+      );
 
       const payload = {
         ...data,
@@ -337,38 +314,18 @@ export function RefuelingForm({
 
   const updateMutation = useMutation({
     mutationFn: async (data: RefuelingFormData & { id: string }) => {
-      // Извлекаем ID цены и индекс из составного ID
-      let purchasePriceId = null;
-      let purchasePriceIndex = 0;
-      
-      if (!isWarehouseSupplier && selectedPurchasePriceId) {
-        const parts = selectedPurchasePriceId.split('-');
-        if (parts.length >= 5) {
-          purchasePriceIndex = parseInt(parts[parts.length - 1]);
-          purchasePriceId = parts.slice(0, -1).join('-');
-        } else {
-          purchasePriceId = selectedPurchasePriceId;
-        }
-      } else if (!isWarehouseSupplier && purchasePrices.length > 0) {
-        purchasePriceId = purchasePrices[0].id;
-        purchasePriceIndex = 0;
-      }
-      
-      let salePriceId = null;
-      let salePriceIndex = 0;
-      
-      if (selectedSalePriceId) {
-        const parts = selectedSalePriceId.split('-');
-        if (parts.length >= 5) {
-          salePriceIndex = parseInt(parts[parts.length - 1]);
-          salePriceId = parts.slice(0, -1).join('-');
-        } else {
-          salePriceId = selectedSalePriceId;
-        }
-      } else if (salePrices.length > 0) {
-        salePriceId = salePrices[0].id;
-        salePriceIndex = 0;
-      }
+      const {
+        purchasePriceId,
+        purchasePriceIndex,
+        salePriceId,
+        salePriceIndex,
+      } = extractPriceIdsForSubmit(
+        selectedPurchasePriceId,
+        selectedSalePriceId,
+        purchasePrices,
+        salePrices,
+        isWarehouseSupplier
+      );
 
       const payload = {
         ...data,

@@ -2,6 +2,8 @@
 import { useMemo } from "react";
 import type { Price, Warehouse, DeliveryCost, Base } from "@shared/schema";
 import { ENTITY_TYPE } from "@shared/constants";
+import { useQuantityCalculation } from "../../shared/hooks/use-quantity-calculation";
+import { usePriceExtraction } from "../../shared/hooks/use-price-extraction";
 
 interface UseOptCalculationsProps {
   inputMode: "liters" | "kg";
@@ -38,76 +40,21 @@ export function useOptCalculations({
   deliveryLocationId,
   bases,
 }: UseOptCalculationsProps) {
-  // Вычисление КГ
-  const calculatedKg = useMemo(() => {
-    if (inputMode === "liters" && quantityLiters && density) {
-      return (parseFloat(quantityLiters) * parseFloat(density)).toFixed(2);
-    }
-    return quantityKg || "0";
-  }, [inputMode, quantityLiters, density, quantityKg]);
+  const { calculatedKg, finalKg } = useQuantityCalculation({
+    inputMode,
+    quantityLiters,
+    density,
+    quantityKg,
+  });
 
-  const finalKg = parseFloat(calculatedKg || "0");
-
-  // Получение цены покупки
-  const purchasePrice = useMemo((): number | null => {
-    if (isWarehouseSupplier && supplierWarehouse) {
-      return parseFloat(supplierWarehouse.averageCost || "0");
-    }
-
-    if (purchasePrices.length === 0) return null;
-
-    let selectedPrice = purchasePrices[0];
-    let selectedIndex = 0;
-
-    if (selectedPurchasePriceId) {
-      const parts = selectedPurchasePriceId.split('-');
-      if (parts.length >= 5) {
-        const priceId = parts.slice(0, -1).join('-');
-        selectedIndex = parseInt(parts[parts.length - 1]);
-        const found = purchasePrices.find(p => p.id === priceId);
-        if (found) selectedPrice = found;
-      }
-    }
-
-    if (selectedPrice?.priceValues && selectedPrice.priceValues.length > selectedIndex) {
-      try {
-        const priceObj = JSON.parse(selectedPrice.priceValues[selectedIndex]);
-        return parseFloat(priceObj.price || "0");
-      } catch {
-        return null;
-      }
-    }
-
-    return null;
-  }, [isWarehouseSupplier, supplierWarehouse, purchasePrices, selectedPurchasePriceId]);
-
-  // Получение цены продажи
-  const salePrice = useMemo((): number | null => {
-    if (salePrices.length === 0) return null;
-
-    let selectedPrice = salePrices[0];
-    let selectedIndex = 0;
-
-    if (selectedSalePriceId) {
-      const parts = selectedSalePriceId.split('-');
-      if (parts.length >= 5) {
-        const priceId = parts.slice(0, -1).join('-');
-        selectedIndex = parseInt(parts[parts.length - 1]);
-        const found = salePrices.find(p => p.id === priceId);
-        if (found) selectedPrice = found;
-      }
-    }
-
-    if (selectedPrice?.priceValues && selectedPrice.priceValues.length > selectedIndex) {
-      try {
-        const priceObj = JSON.parse(selectedPrice.priceValues[selectedIndex]);
-        return parseFloat(priceObj.price || "0");
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  }, [salePrices, selectedSalePriceId]);
+  const { purchasePrice, salePrice } = usePriceExtraction({
+    purchasePrices,
+    salePrices,
+    selectedPurchasePriceId,
+    selectedSalePriceId,
+    isWarehouseSupplier,
+    supplierWarehouse,
+  });
 
   // Получение стоимости доставки
   const deliveryCost = useMemo((): number | null => {
