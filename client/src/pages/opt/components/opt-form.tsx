@@ -197,11 +197,11 @@ export function OptForm({
         setSelectedBasis(editData.basis);
       }
 
-      const purchasePriceCompositeId = editData.purchasePriceId && editData.purchasePriceIndex !== undefined && editData.purchasePriceIndex !== null
+      const purchasePriceCompositeId = editData.purchasePriceId && editData.purchasePriceIndex !== undefined
         ? `${editData.purchasePriceId}-${editData.purchasePriceIndex}`
         : editData.purchasePriceId || "";
 
-      const salePriceCompositeId = editData.salePriceId && editData.salePriceIndex !== undefined && editData.salePriceIndex !== null
+      const salePriceCompositeId = editData.salePriceId && editData.salePriceIndex !== undefined
         ? `${editData.salePriceId}-${editData.salePriceIndex}`
         : editData.salePriceId || "";
 
