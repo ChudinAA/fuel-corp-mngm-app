@@ -57,37 +57,37 @@ export class WarehouseRecalculationService {
    * Пересчитывает всю цепочку транзакций для конкретного склада
    * 
    * Алгоритм:
-   * 1. Получаем начальное состояние склада на момент afterDate
-   * 2. Получаем все транзакции после этой даты в хронологическом порядке
+   * 1. Получаем начальное состояние склада ДО указанной даты
+   * 2. Получаем все транзакции начиная с этой даты (включая её) в хронологическом порядке
    * 3. Последовательно пересчитываем каждую транзакцию
    * 4. Для каждой транзакции обновляем связанные сделки
    */
   private static async recalculateWarehouseChain(
     tx: any,
     warehouseId: string,
-    afterDate: string,
+    fromDate: string,
     productType: string,
     updatedById?: string
   ) {
     console.log('      [recalculateWarehouseChain] Начало пересчета цепочки');
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
 
-    // Получаем текущее состояние склада до afterDate
-    const initialState = await this.getWarehouseStateAtDate(
+    // Получаем состояние склада ДО fromDate (не включая саму дату)
+    const initialState = await this.getWarehouseStateBeforeDate(
       tx,
       warehouseId,
-      afterDate,
+      fromDate,
       productType
     );
 
-    console.log('      Начальное состояние на', afterDate, ':', initialState);
+    console.log('      Начальное состояние ДО', fromDate, ':', initialState);
 
-    // Получаем все транзакции после указанной даты, отсортированные по времени
+    // Получаем все транзакции начиная с fromDate (включительно), отсортированные по времени
     const transactions = await tx.query.warehouseTransactions.findMany({
       where: and(
         eq(warehouseTransactions.warehouseId, warehouseId),
         eq(warehouseTransactions.productType, productType),
-        gt(warehouseTransactions.createdAt, afterDate)
+        sql`${warehouseTransactions.createdAt} >= ${fromDate}`
       ),
       orderBy: (warehouseTransactions, { asc }) => [asc(warehouseTransactions.createdAt)],
       with: {
@@ -95,7 +95,7 @@ export class WarehouseRecalculationService {
       }
     });
 
-    console.log('      Найдено транзакций для пересчета:', transactions.length);
+    console.log('      Найдено транзакций для пересчета (включая измененную):', transactions.length);
 
     let currentBalance = initialState.balance;
     let currentAverageCost = initialState.averageCost;
@@ -172,7 +172,7 @@ export class WarehouseRecalculationService {
           tx,
           transaction.sourceType,
           transaction.sourceId,
-          currentAverageCost,
+          newAverageCost, // Используем новую себестоимость после пересчета
           updatedById
         );
       }
@@ -220,9 +220,9 @@ export class WarehouseRecalculationService {
   }
 
   /**
-   * Получает состояние склада на определенную дату
+   * Получает состояние склада ДО определенной даты (не включая саму дату)
    */
-  private static async getWarehouseStateAtDate(
+  private static async getWarehouseStateBeforeDate(
     tx: any,
     warehouseId: string,
     beforeDate: string,
@@ -230,12 +230,12 @@ export class WarehouseRecalculationService {
   ): Promise<{ balance: number; averageCost: number }> {
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
 
-    // Получаем последнюю транзакцию до указанной даты
+    // Получаем последнюю транзакцию СТРОГО ДО указанной даты (не включая саму дату)
     const lastTransaction = await tx.query.warehouseTransactions.findFirst({
       where: and(
         eq(warehouseTransactions.warehouseId, warehouseId),
         eq(warehouseTransactions.productType, productType),
-        sql`${warehouseTransactions.createdAt} <= ${beforeDate}`
+        sql`${warehouseTransactions.createdAt} < ${beforeDate}`
       ),
       orderBy: (warehouseTransactions, { desc }) => [desc(warehouseTransactions.createdAt)],
     });
@@ -419,18 +419,9 @@ export class WarehouseRecalculationService {
 
       if (destinationTransaction) {
         console.log('        Транзакция прихода найдена:', destinationTransaction.id);
-        console.log('        Пересчет склада-получателя с даты:', destinationTransaction.createdAt);
-        
-        // Пересчитываем склад-получатель, так как себестоимость источника изменилась
-        await this.recalculateWarehouseChain(
-          tx,
-          movementRecord.toWarehouseId,
-          destinationTransaction.createdAt,
-          movementRecord.productType,
-          updatedById
-        );
-        
-        console.log('        ✓ Склад-получатель пересчитан');
+        console.log('        ⚠ Склад-получатель будет пересчитан автоматически в основном цикле');
+        // НЕ вызываем рекурсивный пересчет здесь, так как склад-получатель
+        // уже включен в список affectedWarehouses и будет пересчитан в основном цикле
       } else {
         console.log('        ⚠ Транзакция прихода на склад-получатель не найдена');
       }

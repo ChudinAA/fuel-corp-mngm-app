@@ -114,29 +114,23 @@ export class WarehouseTransactionService {
   }
 
   /**
-   * Обновляет транзакцию и пересчитывает баланс склада
+   * Обновляет только транзакцию без изменения склада
+   * Используется ТОЛЬКО для обновления записи перемещения в БД
+   * Пересчет склада и последующих транзакций делает WarehouseRecalculationService
    */
-  static async updateTransactionAndRecalculateWarehouse(
+  static async updateTransactionRecord(
     tx: any,
     transactionId: string,
-    warehouseId: string,
-    oldQuantity: number,
-    oldTotalCost: number,
     newQuantity: number,
     newTotalCost: number,
     productType: string,
     updatedById?: string
   ) {
-    console.log('  [WarehouseTransactionService] updateTransactionAndRecalculateWarehouse');
+    console.log('  [WarehouseTransactionService] updateTransactionRecord');
     console.log('    Transaction ID:', transactionId);
-    console.log('    Warehouse ID:', warehouseId);
-    console.log('    Old:', { quantity: oldQuantity, totalCost: oldTotalCost });
-    console.log('    New:', { quantity: newQuantity, totalCost: newTotalCost });
-    console.log('    Product Type:', productType);
+    console.log('    New quantity:', newQuantity);
+    console.log('    New total cost:', newTotalCost);
     
-    const isPvkj = productType === PRODUCT_TYPE.PVKJ;
-    
-    // Получаем информацию о транзакции для определения типа операции
     const transaction = await tx.query.warehouseTransactions.findFirst({
       where: eq(warehouseTransactions.id, transactionId),
     });
@@ -150,111 +144,18 @@ export class WarehouseTransactionService {
                      transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
     
     console.log('    Тип транзакции:', transaction.transactionType, isReceipt ? '(приход)' : '(расход)');
-    
-    const warehouse = await tx.query.warehouses.findFirst({
-      where: eq(warehouses.id, warehouseId),
-    });
 
-    if (!warehouse) {
-      console.log('    ❌ Склад не найден');
-      throw new Error(`Warehouse ${warehouseId} not found`);
-    }
-
-    console.log('    ✓ Склад найден:', warehouse.name);
-
-    let currentBalance: number;
-    let currentCost: number;
-
-    if (isPvkj) {
-      currentBalance = parseFloat(warehouse.pvkjBalance || "0");
-      currentCost = parseFloat(warehouse.pvkjAverageCost || "0");
-    } else {
-      currentBalance = parseFloat(warehouse.currentBalance || "0");
-      currentCost = parseFloat(warehouse.averageCost || "0");
-    }
-
-    console.log('    Текущее состояние склада:', {
-      balance: currentBalance,
-      averageCost: currentCost,
-    });
-
-    let balanceBeforeOldOperation: number;
-    let totalCostBeforeOldOperation: number;
-    let newBalance: number;
-    let newTotalCostInWarehouse: number;
-    let newAverageCost: number;
-
-    if (isReceipt) {
-      // Для прихода: откатываем добавление, затем применяем новое
-      balanceBeforeOldOperation = currentBalance - oldQuantity;
-      totalCostBeforeOldOperation = (currentBalance * currentCost) - oldTotalCost;
-      
-      console.log('    После отката старой операции (приход):', {
-        balance: balanceBeforeOldOperation,
-        totalCost: totalCostBeforeOldOperation,
-      });
-      
-      newBalance = balanceBeforeOldOperation + newQuantity;
-      newTotalCostInWarehouse = totalCostBeforeOldOperation + newTotalCost;
-      newAverageCost = newBalance > 0 ? newTotalCostInWarehouse / newBalance : 0;
-    } else {
-      // Для расхода: откатываем вычитание (добавляем обратно), затем применяем новое вычитание
-      balanceBeforeOldOperation = currentBalance + oldQuantity;
-      totalCostBeforeOldOperation = balanceBeforeOldOperation * currentCost;
-      
-      console.log('    После отката старой операции (расход):', {
-        balance: balanceBeforeOldOperation,
-        totalCost: totalCostBeforeOldOperation,
-      });
-      
-      newBalance = Math.max(0, balanceBeforeOldOperation - newQuantity);
-      newTotalCostInWarehouse = totalCostBeforeOldOperation; // При расходе себестоимость не меняется
-      newAverageCost = currentCost; // Сохраняем текущую себестоимость
-    }
-
-    console.log('    После применения новой операции:', {
-      newBalance,
-      newTotalCostInWarehouse,
-      newAverageCost,
-    });
-
-    // Обновляем склад
-    if (isPvkj) {
-      await tx.update(warehouses)
-        .set({
-          pvkjBalance: newBalance.toFixed(2),
-          pvkjAverageCost: newAverageCost.toFixed(4),
-          updatedAt: sql`NOW()`,
-          updatedById,
-        })
-        .where(eq(warehouses.id, warehouseId));
-    } else {
-      await tx.update(warehouses)
-        .set({
-          currentBalance: newBalance.toFixed(2),
-          averageCost: newAverageCost.toFixed(4),
-          updatedAt: sql`NOW()`,
-          updatedById,
-        })
-        .where(eq(warehouses.id, warehouseId));
-    }
-
-    console.log('    ✓ Склад обновлен');
-
-    // Обновляем транзакцию
+    // Обновляем только quantity в транзакции
+    // balanceBefore, balanceAfter, averageCost будут пересчитаны в WarehouseRecalculationService
     await tx.update(warehouseTransactions)
       .set({
         quantity: isReceipt ? newQuantity.toString() : (-newQuantity).toString(),
-        balanceAfter: newBalance.toString(),
-        averageCostAfter: newAverageCost.toFixed(4),
         updatedAt: sql`NOW()`,
         updatedById,
       })
       .where(eq(warehouseTransactions.id, transactionId));
 
-    console.log('    ✓ Транзакция обновлена');
-
-    return { newAverageCost, newBalance };
+    console.log('    ✓ Транзакция обновлена (только quantity)');
   }
 
   /**
