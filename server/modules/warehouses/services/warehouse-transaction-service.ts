@@ -136,6 +136,21 @@ export class WarehouseTransactionService {
     
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
     
+    // Получаем информацию о транзакции для определения типа операции
+    const transaction = await tx.query.warehouseTransactions.findFirst({
+      where: eq(warehouseTransactions.id, transactionId),
+    });
+
+    if (!transaction) {
+      console.log('    ❌ Транзакция не найдена');
+      throw new Error(`Transaction ${transactionId} not found`);
+    }
+
+    const isReceipt = transaction.transactionType === TRANSACTION_TYPE.RECEIPT || 
+                     transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
+    
+    console.log('    Тип транзакции:', transaction.transactionType, isReceipt ? '(приход)' : '(расход)');
+    
     const warehouse = await tx.query.warehouses.findFirst({
       where: eq(warehouses.id, warehouseId),
     });
@@ -163,19 +178,39 @@ export class WarehouseTransactionService {
       averageCost: currentCost,
     });
 
-    // Откатываем старую операцию
-    const balanceBeforeOldOperation = currentBalance - oldQuantity;
-    const totalCostBeforeOldOperation = balanceBeforeOldOperation * currentCost;
-    
-    console.log('    После отката старой операции:', {
-      balance: balanceBeforeOldOperation,
-      totalCost: totalCostBeforeOldOperation,
-    });
-    
-    // Применяем новую операцию
-    const newBalance = balanceBeforeOldOperation + newQuantity;
-    const newTotalCostInWarehouse = totalCostBeforeOldOperation + newTotalCost;
-    const newAverageCost = newBalance > 0 ? newTotalCostInWarehouse / newBalance : 0;
+    let balanceBeforeOldOperation: number;
+    let totalCostBeforeOldOperation: number;
+    let newBalance: number;
+    let newTotalCostInWarehouse: number;
+    let newAverageCost: number;
+
+    if (isReceipt) {
+      // Для прихода: откатываем добавление, затем применяем новое
+      balanceBeforeOldOperation = currentBalance - oldQuantity;
+      totalCostBeforeOldOperation = (currentBalance * currentCost) - oldTotalCost;
+      
+      console.log('    После отката старой операции (приход):', {
+        balance: balanceBeforeOldOperation,
+        totalCost: totalCostBeforeOldOperation,
+      });
+      
+      newBalance = balanceBeforeOldOperation + newQuantity;
+      newTotalCostInWarehouse = totalCostBeforeOldOperation + newTotalCost;
+      newAverageCost = newBalance > 0 ? newTotalCostInWarehouse / newBalance : 0;
+    } else {
+      // Для расхода: откатываем вычитание (добавляем обратно), затем применяем новое вычитание
+      balanceBeforeOldOperation = currentBalance + oldQuantity;
+      totalCostBeforeOldOperation = balanceBeforeOldOperation * currentCost;
+      
+      console.log('    После отката старой операции (расход):', {
+        balance: balanceBeforeOldOperation,
+        totalCost: totalCostBeforeOldOperation,
+      });
+      
+      newBalance = Math.max(0, balanceBeforeOldOperation - newQuantity);
+      newTotalCostInWarehouse = totalCostBeforeOldOperation; // При расходе себестоимость не меняется
+      newAverageCost = currentCost; // Сохраняем текущую себестоимость
+    }
 
     console.log('    После применения новой операции:', {
       newBalance,
