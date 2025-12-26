@@ -213,12 +213,6 @@ export function AddLogisticsDialog({
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      form.reset();
-      if (onEditComplete) {
-        onEditComplete();
-      }
-    } else if (isOpen && !editItem) {
-      // Сбрасываем форму при открытии диалога для создания новой записи
       form.reset({
         type: "carrier",
         name: "",
@@ -237,6 +231,9 @@ export function AddLogisticsDialog({
         licenseExpiry: "",
         notes: "",
       });
+      if (onEditComplete) {
+        onEditComplete();
+      }
     }
   };
 

@@ -29,7 +29,10 @@ export function MovementSourceSection({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Поставщик</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
+            <Select 
+              onValueChange={field.onChange} 
+              value={field.value}
+            >
               <FormControl>
                 <SelectTrigger data-testid="select-movement-supplier">
                   <SelectValue placeholder="Выберите поставщика" />
@@ -57,8 +60,7 @@ export function MovementSourceSection({
           <FormLabel>Откуда (склад)</FormLabel>
           <Select 
             onValueChange={field.onChange} 
-            value={field.value || undefined}
-            defaultValue={field.value || undefined}
+            value={field.value}
           >
             <FormControl>
               <SelectTrigger data-testid="select-movement-from">

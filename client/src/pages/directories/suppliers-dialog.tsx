@@ -120,7 +120,17 @@ export function AddSupplierDialog({
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      form.reset();
+      form.reset({
+        name: "",
+        description: "",
+        baseIds: [""],
+        servicePrice: undefined,
+        pvkjPrice: undefined,
+        agentFee: undefined,
+        isWarehouse: false,
+        storageCost: undefined,
+        isActive: true,
+      });
       if (onEditComplete) {
         onEditComplete();
       }

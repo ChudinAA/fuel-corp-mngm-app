@@ -80,7 +80,12 @@ export function AddBaseDialog({
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      form.reset();
+      form.reset({
+        name: "",
+        baseType: BASE_TYPE.WHOLESALE,
+        location: "",
+        isActive: true,
+      });
       if (onEditComplete) {
         onEditComplete();
       }

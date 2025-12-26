@@ -105,12 +105,6 @@ export function AddCustomerDialog({ editCustomer, onEditComplete }: { editCustom
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      form.reset();
-      if (onEditComplete) {
-        onEditComplete();
-      }
-    } else if (isOpen && !editCustomer) {
-      // Сбрасываем форму при открытии диалога для создания новой записи
       form.reset({
         name: "",
         module: CUSTOMER_MODULE.BOTH,
@@ -122,6 +116,9 @@ export function AddCustomerDialog({ editCustomer, onEditComplete }: { editCustom
         contractNumber: "",
         isActive: true,
       });
+      if (onEditComplete) {
+        onEditComplete();
+      }
     }
   };
 
