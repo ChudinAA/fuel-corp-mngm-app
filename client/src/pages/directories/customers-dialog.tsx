@@ -94,8 +94,21 @@ export function AddCustomerDialog({ editCustomer, onEditComplete }: { editCustom
         title: editCustomer ? "Покупатель обновлен" : "Покупатель добавлен", 
         description: editCustomer ? "Изменения сохранены" : "Новый покупатель сохранен в справочнике" 
       });
-      form.reset();
+      form.reset({
+        name: "",
+        module: CUSTOMER_MODULE.BOTH,
+        description: "",
+        contactPerson: "",
+        phone: "",
+        email: "",
+        inn: "",
+        contractNumber: "",
+        isActive: true,
+      });
       setOpen(false);
+      if (onEditComplete) {
+        onEditComplete();
+      }
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });

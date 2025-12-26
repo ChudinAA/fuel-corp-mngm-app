@@ -91,8 +91,21 @@ export function AddSupplierDialog({
         title: editItem ? "Поставщик обновлен" : "Поставщик добавлен", 
         description: editItem ? "Изменения сохранены" : "Новый поставщик сохранен в справочнике" 
       });
-      form.reset();
+      form.reset({
+        name: "",
+        description: "",
+        baseIds: [""],
+        servicePrice: undefined,
+        pvkjPrice: undefined,
+        agentFee: undefined,
+        isWarehouse: false,
+        storageCost: undefined,
+        isActive: true,
+      });
       setOpen(false);
+      if (onEditComplete) {
+        onEditComplete();
+      }
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });

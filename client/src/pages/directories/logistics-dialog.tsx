@@ -160,8 +160,28 @@ export function AddLogisticsDialog({
         title: editItem ? "Запись обновлена" : "Запись добавлена", 
         description: editItem ? "Изменения сохранены" : "Новая запись сохранена в справочнике" 
       });
-      form.reset();
+      form.reset({
+        type: "carrier",
+        name: "",
+        description: "",
+        isActive: true,
+        inn: "",
+        contactPerson: "",
+        phone: "",
+        address: "",
+        coordinates: "",
+        carrierId: undefined,
+        plateNumber: "",
+        vehicleType: "",
+        capacityKg: "",
+        licenseNumber: "",
+        licenseExpiry: "",
+        notes: "",
+      });
       setOpen(false);
+      if (onEditComplete) {
+        onEditComplete();
+      }
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });

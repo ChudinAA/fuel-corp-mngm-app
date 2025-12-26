@@ -57,8 +57,16 @@ export function AddBaseDialog({
         title: editItem ? "Базис обновлен" : "Базис добавлен", 
         description: editItem ? "Изменения сохранены" : "Новый базис сохранен в справочнике" 
       });
-      form.reset();
+      form.reset({
+        name: "",
+        baseType: BASE_TYPE.WHOLESALE,
+        location: "",
+        isActive: true,
+      });
       setOpen(false);
+      if (onEditComplete) {
+        onEditComplete();
+      }
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
