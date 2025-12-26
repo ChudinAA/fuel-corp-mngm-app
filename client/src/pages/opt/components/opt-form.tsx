@@ -186,7 +186,7 @@ export function OptForm({
     setSelectedSalePriceId,
     formSetValue: form.setValue,
   });
-  
+
   // Update form when editData changes
   useEffect(() => {
     if (editData && suppliers && customers && allBases && warehouses) {
@@ -256,7 +256,6 @@ export function OptForm({
       );
 
       const payload = {
-        ...data,
         supplierId: data.supplierId,
         buyerId: data.buyerId,
         warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
@@ -267,17 +266,19 @@ export function OptForm({
         quantityKg: parseFloat(calculatedKg),
         quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
         density: data.density ? parseFloat(data.density) : null,
-        purchasePrice: purchasePrice,
+        purchasePrice: purchasePrice !== null ? purchasePrice : null,
         purchasePriceId: purchasePriceId,
-        purchasePriceIndex: purchasePriceIndex,
-        salePrice: salePrice,
+        purchasePriceIndex: purchasePriceIndex ?? 0,
+        salePrice: salePrice !== null ? salePrice : null,
         salePriceId: salePriceId,
-        salePriceIndex: salePriceIndex,
-        purchaseAmount: purchaseAmount,
-        saleAmount: saleAmount,
-        deliveryCost: deliveryCost,
-        deliveryTariff: deliveryTariff,
-        profit: profit,
+        salePriceIndex: salePriceIndex ?? 0,
+        purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
+        saleAmount: saleAmount !== null ? saleAmount : null,
+        deliveryCost: deliveryCost !== null ? deliveryCost : null,
+        deliveryTariff: deliveryTariff !== null ? deliveryTariff : null,
+        profit: profit !== null ? profit : null,
+        notes: data.notes || null,
+        isApproxVolume: data.isApproxVolume || false,
       };
       const res = await apiRequest("POST", "/api/opt", payload);
       return res.json();
@@ -335,7 +336,6 @@ export function OptForm({
       );
 
       const payload = {
-        ...data,
         supplierId: data.supplierId,
         buyerId: data.buyerId,
         warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
@@ -346,17 +346,19 @@ export function OptForm({
         quantityKg: parseFloat(calculatedKg),
         quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
         density: data.density ? parseFloat(data.density) : null,
-        purchasePrice: purchasePrice,
+        purchasePrice: purchasePrice !== null ? purchasePrice : null,
         purchasePriceId: purchasePriceId,
-        purchasePriceIndex: purchasePriceIndex,
-        salePrice: salePrice,
+        purchasePriceIndex: purchasePriceIndex ?? 0,
+        salePrice: salePrice !== null ? salePrice : null,
         salePriceId: salePriceId,
-        salePriceIndex: salePriceIndex,
-        purchaseAmount: purchaseAmount,
-        saleAmount: saleAmount,
-        deliveryCost: deliveryCost,
-        deliveryTariff: deliveryTariff,
-        profit: profit,
+        salePriceIndex: salePriceIndex ?? 0,
+        purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
+        saleAmount: saleAmount !== null ? saleAmount : null,
+        deliveryCost: deliveryCost !== null ? deliveryCost : null,
+        deliveryTariff: deliveryTariff !== null ? deliveryTariff : null,
+        profit: profit !== null ? profit : null,
+        notes: data.notes || null,
+        isApproxVolume: data.isApproxVolume || false,
       };
       const res = await apiRequest("PATCH", `/api/opt/${data.id}`, payload);
       return res.json();
@@ -432,7 +434,7 @@ export function OptForm({
     if (isWarehouseSupplier && supplierWarehouse) {
       const availableBalance = isEditing ? initialWarehouseBalance : parseFloat(supplierWarehouse.currentBalance || "0");
       const remaining = availableBalance - finalKg;
-      
+
       if (remaining < 0) {
         toast({
           title: "Ошибка: недостаточно объема на складе",
