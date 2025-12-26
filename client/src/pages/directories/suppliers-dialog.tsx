@@ -20,7 +20,7 @@ import type { Supplier, Base } from "@shared/schema";
 const supplierFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
   description: z.string().optional(),
-  baseIds: z.array(z.string()).default([]),
+  baseIds: z.array(z.string().min(1, "Выберите базис")).min(1, "Добавьте хотя бы один базис"),
   servicePrice: z.coerce.number().optional(),
   pvkjPrice: z.coerce.number().optional(),
   agentFee: z.coerce.number().optional(),
@@ -219,6 +219,11 @@ export function AddSupplierDialog({
                         ))}
                       </SelectContent>
                     </Select>
+                    {form.formState.errors.baseIds?.[index] && (
+                      <p className="text-sm text-destructive mt-1">
+                        {form.formState.errors.baseIds[index]?.message}
+                      </p>
+                    )}
                   </div>
                   {fields.length > 1 && (
                     <Button
@@ -232,8 +237,10 @@ export function AddSupplierDialog({
                   )}
                 </div>
               ))}
-              {fields.length === 0 && (
-                <p className="text-sm text-muted-foreground">Нажмите + для добавления базиса</p>
+              {form.formState.errors.baseIds && !Array.isArray(form.formState.errors.baseIds) && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.baseIds.message}
+                </p>
               )}
             </div>
 
