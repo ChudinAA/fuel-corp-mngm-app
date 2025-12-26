@@ -63,6 +63,13 @@ export function AddSupplierDialog({
     name: "baseIds"
   });
 
+  // Ensure at least one field is always present
+  useEffect(() => {
+    if (fields.length === 0) {
+      append("");
+    }
+  }, [fields.length, append]);
+
   const isWarehouse = form.watch("isWarehouse");
 
   const createMutation = useMutation({
