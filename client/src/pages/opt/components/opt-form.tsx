@@ -149,6 +149,47 @@ export function OptForm({
     bases: wholesaleBases,
   });
 
+  // Автоматический выбор базиса при выборе поставщика
+  useEffect(() => {
+    if (watchSupplierId && suppliers && allBases) {
+      const supplier = suppliers.find(s => s.id === watchSupplierId);
+      if (supplier?.baseIds && supplier.baseIds.length > 0) {
+        const baseId = supplier.baseIds[0];
+        const base = allBases.find(b => b.id === baseId && b.baseType === BASE_TYPE.WHOLESALE);
+        if (base) {
+          setSelectedBasis(base.name);
+        }
+      }
+
+      if (supplier?.isWarehouse) {
+        const warehouse = warehouses?.find(w => w.supplierId === supplier.id);
+        if (warehouse) {
+          form.setValue("warehouseId", warehouse.id);
+        }
+      } else {
+        form.setValue("warehouseId", "");
+      }
+    }
+  }, [watchSupplierId, suppliers, allBases, warehouses, form]);
+
+  // Автоматический выбор первой цены покупки при выборе поставщика
+  useEffect(() => {
+    if (watchSupplierId && purchasePrices.length > 0 && !editData && !isWarehouseSupplier) {
+      const firstPurchasePriceId = `${purchasePrices[0].id}-0`;
+      setSelectedPurchasePriceId(firstPurchasePriceId);
+      form.setValue("selectedPurchasePriceId", firstPurchasePriceId);
+    }
+  }, [watchSupplierId, purchasePrices, editData, isWarehouseSupplier, form]);
+
+  // Автоматический выбор первой цены продажи при выборе покупателя
+  useEffect(() => {
+    if (watchBuyerId && salePrices.length > 0 && !editData) {
+      const firstSalePriceId = `${salePrices[0].id}-0`;
+      setSelectedSalePriceId(firstSalePriceId);
+      form.setValue("selectedSalePriceId", firstSalePriceId);
+    }
+  }, [watchBuyerId, salePrices, editData, form]);
+  
   // Update form when editData changes
   useEffect(() => {
     if (editData && suppliers && customers && allBases && warehouses) {
@@ -201,29 +242,6 @@ export function OptForm({
       }
     }
   }, [editData, suppliers, customers, allBases, warehouses, form]);
-
-  // Автоматический выбор базиса при выборе поставщика
-  useEffect(() => {
-    if (watchSupplierId && suppliers && allBases) {
-      const supplier = suppliers.find(s => s.id === watchSupplierId);
-      if (supplier?.baseIds && supplier.baseIds.length > 0) {
-        const baseId = supplier.baseIds[0];
-        const base = allBases.find(b => b.id === baseId && b.baseType === BASE_TYPE.WHOLESALE);
-        if (base) {
-          setSelectedBasis(base.name);
-        }
-      }
-
-      if (supplier?.isWarehouse) {
-        const warehouse = warehouses?.find(w => w.supplierId === supplier.id);
-        if (warehouse) {
-          form.setValue("warehouseId", warehouse.id);
-        }
-      } else {
-        form.setValue("warehouseId", "");
-      }
-    }
-  }, [watchSupplierId, suppliers, allBases, warehouses, form]);
 
   const createMutation = useMutation({
     mutationFn: async (data: OptFormData) => {
