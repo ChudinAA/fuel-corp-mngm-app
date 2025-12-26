@@ -74,9 +74,9 @@ export function MovementDialog({
   // Состояние для отслеживания начального баланса при редактировании
   const [initialWarehouseBalance, setInitialWarehouseBalance] = useState<number>(0);
 
-  // Обновляем форму при изменении editMovement
+  // Обновляем форму при изменении editMovement или открытии диалога
   useEffect(() => {
-    if (editMovement) {
+    if (editMovement && open) {
       setInputMode(editMovement.quantityLiters ? "liters" : "kg");
 
       // Set initial warehouse balance for editing
@@ -107,21 +107,8 @@ export function MovementDialog({
       };
 
       form.reset(formData);
-
-      // Explicitly set values to ensure they stick
-      if (editMovement.movementType === MOVEMENT_TYPE.INTERNAL && editMovement.fromWarehouseId) {
-        setTimeout(() => {
-          form.setValue("fromWarehouseId", editMovement.fromWarehouseId || "");
-        }, 0);
-      }
-
-      if (editMovement.movementType === MOVEMENT_TYPE.SUPPLY && editMovement.supplierId) {
-        setTimeout(() => {
-          form.setValue("supplierId", editMovement.supplierId || "");
-        }, 0);
-      }
     }
-  }, [editMovement, warehouses, form]);
+  }, [editMovement, warehouses, form, open]);
 
   // Watch form values
   const watchMovementType = form.watch("movementType");

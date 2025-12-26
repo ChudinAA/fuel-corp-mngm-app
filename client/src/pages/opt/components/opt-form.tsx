@@ -174,27 +174,21 @@ export function OptForm({
 
   // Автоматический выбор первой цены покупки при выборе поставщика
   useEffect(() => {
-    if (watchSupplierId && purchasePrices.length > 0 && !isWarehouseSupplier) {
-      // При создании новой записи (не редактировании) или если цена не выбрана
-      if (!editData || !selectedPurchasePriceId) {
-        const firstPurchasePriceId = `${purchasePrices[0].id}-0`;
-        setSelectedPurchasePriceId(firstPurchasePriceId);
-        form.setValue("selectedPurchasePriceId", firstPurchasePriceId);
-      }
+    if (watchSupplierId && purchasePrices.length > 0 && !isWarehouseSupplier && !editData) {
+      const firstPurchasePriceId = `${purchasePrices[0].id}-0`;
+      setSelectedPurchasePriceId(firstPurchasePriceId);
+      form.setValue("selectedPurchasePriceId", firstPurchasePriceId);
     }
-  }, [watchSupplierId, purchasePrices, editData, isWarehouseSupplier, form, selectedPurchasePriceId]);
+  }, [watchSupplierId, purchasePrices, editData, isWarehouseSupplier, form]);
 
   // Автоматический выбор первой цены продажи при выборе покупателя
   useEffect(() => {
-    if (watchBuyerId && salePrices.length > 0) {
-      // При создании новой записи (не редактировании) или если цена не выбрана
-      if (!editData || !selectedSalePriceId) {
-        const firstSalePriceId = `${salePrices[0].id}-0`;
-        setSelectedSalePriceId(firstSalePriceId);
-        form.setValue("selectedSalePriceId", firstSalePriceId);
-      }
+    if (watchBuyerId && salePrices.length > 0 && !editData) {
+      const firstSalePriceId = `${salePrices[0].id}-0`;
+      setSelectedSalePriceId(firstSalePriceId);
+      form.setValue("selectedSalePriceId", firstSalePriceId);
     }
-  }, [watchBuyerId, salePrices, editData, form, selectedSalePriceId]);
+  }, [watchBuyerId, salePrices, editData, form]);
   
   // Update form when editData changes
   useEffect(() => {
