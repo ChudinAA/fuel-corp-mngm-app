@@ -28,8 +28,17 @@ export class WarehouseRecalculationService {
     }>,
     updatedById?: string
   ) {
+    console.log('  [WarehouseRecalculationService] recalculateAllAffectedTransactions');
+    console.log('    Количество затронутых складов:', affectedWarehouses.length);
+    
     // Обрабатываем каждый затронутый склад
-    for (const { warehouseId, afterDate, productType } of affectedWarehouses) {
+    for (let i = 0; i < affectedWarehouses.length; i++) {
+      const { warehouseId, afterDate, productType } = affectedWarehouses[i];
+      console.log(`\n    === Пересчет склада ${i + 1} из ${affectedWarehouses.length} ===`);
+      console.log('    Warehouse ID:', warehouseId);
+      console.log('    After Date:', afterDate);
+      console.log('    Product Type:', productType);
+      
       await this.recalculateWarehouseChain(
         tx,
         warehouseId,
@@ -37,7 +46,11 @@ export class WarehouseRecalculationService {
         productType,
         updatedById
       );
+      
+      console.log(`    ✓ Склад ${i + 1} пересчитан`);
     }
+    
+    console.log('\n  ✓ Все затронутые склады пересчитаны');
   }
 
   /**
@@ -56,6 +69,7 @@ export class WarehouseRecalculationService {
     productType: string,
     updatedById?: string
   ) {
+    console.log('      [recalculateWarehouseChain] Начало пересчета цепочки');
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
 
     // Получаем текущее состояние склада до afterDate
@@ -65,6 +79,8 @@ export class WarehouseRecalculationService {
       afterDate,
       productType
     );
+
+    console.log('      Начальное состояние на', afterDate, ':', initialState);
 
     // Получаем все транзакции после указанной даты, отсортированные по времени
     const transactions = await tx.query.warehouseTransactions.findMany({
@@ -79,14 +95,29 @@ export class WarehouseRecalculationService {
       }
     });
 
+    console.log('      Найдено транзакций для пересчета:', transactions.length);
+
     let currentBalance = initialState.balance;
     let currentAverageCost = initialState.averageCost;
 
     // Последовательно пересчитываем каждую транзакцию
-    for (const transaction of transactions) {
+    for (let i = 0; i < transactions.length; i++) {
+      const transaction = transactions[i];
+      console.log(`\n      --- Транзакция ${i + 1}/${transactions.length} ---`);
+      console.log('      ID:', transaction.id);
+      console.log('      Type:', transaction.transactionType);
+      console.log('      Source:', transaction.sourceType, transaction.sourceId);
+      console.log('      Date:', transaction.createdAt);
+      
       const quantity = Math.abs(parseFloat(transaction.quantity));
       const isReceipt = transaction.transactionType === TRANSACTION_TYPE.RECEIPT || 
                        transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
+      
+      console.log('      Quantity:', quantity, isReceipt ? '(приход)' : '(расход)');
+      console.log('      До пересчета:', {
+        balance: currentBalance,
+        averageCost: currentAverageCost,
+      });
       
       let newBalance: number;
       let newAverageCost: number;
@@ -103,6 +134,8 @@ export class WarehouseRecalculationService {
           quantity
         );
         
+        console.log('      Incoming cost:', incomingCost);
+        
         const totalCurrentCost = currentBalance * currentAverageCost;
         newAverageCost = newBalance > 0 
           ? (totalCurrentCost + incomingCost) / newBalance 
@@ -112,6 +145,11 @@ export class WarehouseRecalculationService {
         newBalance = Math.max(0, currentBalance - quantity);
         newAverageCost = currentAverageCost;
       }
+
+      console.log('      После пересчета:', {
+        balance: newBalance,
+        averageCost: newAverageCost,
+      });
 
       // Обновляем транзакцию
       await tx.update(warehouseTransactions)
@@ -125,8 +163,11 @@ export class WarehouseRecalculationService {
         })
         .where(eq(warehouseTransactions.id, transaction.id));
 
+      console.log('      ✓ Транзакция обновлена в БД');
+
       // Обновляем связанную сделку, если это продажа
       if (transaction.transactionType === TRANSACTION_TYPE.SALE) {
+        console.log('      → Обновление связанной сделки (продажа)');
         await this.updateRelatedDeal(
           tx,
           transaction.sourceType,
@@ -138,6 +179,7 @@ export class WarehouseRecalculationService {
 
       // Если это перемещение, обновляем связанное перемещение
       if (transaction.sourceType === SOURCE_TYPE.MOVEMENT) {
+        console.log('      → Распространение пересчета на связанное перемещение');
         await this.propagateMovementRecalculation(
           tx,
           transaction.sourceId,
@@ -152,6 +194,11 @@ export class WarehouseRecalculationService {
     }
 
     // Обновляем финальное состояние склада
+    console.log('\n      Финальное состояние склада:', {
+      balance: currentBalance,
+      averageCost: currentAverageCost,
+    });
+    
     const updateData: any = {
       updatedAt: sql`NOW()`,
       updatedById,
@@ -168,6 +215,8 @@ export class WarehouseRecalculationService {
     await tx.update(warehouses)
       .set(updateData)
       .where(eq(warehouses.id, warehouseId));
+
+    console.log('      ✓ Склад обновлен с финальными значениями');
   }
 
   /**
@@ -235,6 +284,9 @@ export class WarehouseRecalculationService {
     newAverageCost: number,
     updatedById?: string
   ) {
+    console.log('        [updateRelatedDeal]', sourceType, sourceId);
+    console.log('        New average cost:', newAverageCost);
+    
     if (sourceType === SOURCE_TYPE.OPT) {
       const deal = await tx.query.opt.findFirst({
         where: eq(opt.id, sourceId),
@@ -248,6 +300,18 @@ export class WarehouseRecalculationService {
         const saleAmount = quantityKg * salePrice;
         const profit = saleAmount - purchaseAmount - deliveryCost;
 
+        console.log('        ОПТ сделка до обновления:', {
+          purchasePrice: deal.purchasePrice,
+          purchaseAmount: deal.purchaseAmount,
+          profit: deal.profit,
+        });
+
+        console.log('        ОПТ сделка после обновления:', {
+          purchasePrice: newAverageCost.toFixed(4),
+          purchaseAmount: purchaseAmount.toFixed(2),
+          profit: profit.toFixed(2),
+        });
+
         await tx.update(opt)
           .set({
             purchasePrice: newAverageCost.toFixed(4),
@@ -258,6 +322,8 @@ export class WarehouseRecalculationService {
             updatedById,
           })
           .where(eq(opt.id, sourceId));
+
+        console.log('        ✓ ОПТ сделка обновлена');
       }
     } else if (sourceType === SOURCE_TYPE.REFUELING) {
       const refuel = await tx.query.aircraftRefueling.findFirst({
@@ -271,6 +337,18 @@ export class WarehouseRecalculationService {
         const saleAmount = quantityKg * salePrice;
         const profit = saleAmount - purchaseAmount;
 
+        console.log('        Заправка до обновления:', {
+          purchasePrice: refuel.purchasePrice,
+          purchaseAmount: refuel.purchaseAmount,
+          profit: refuel.profit,
+        });
+
+        console.log('        Заправка после обновления:', {
+          purchasePrice: newAverageCost.toFixed(4),
+          purchaseAmount: purchaseAmount.toFixed(2),
+          profit: profit.toFixed(2),
+        });
+
         await tx.update(aircraftRefueling)
           .set({
             purchasePrice: newAverageCost.toFixed(4),
@@ -281,6 +359,8 @@ export class WarehouseRecalculationService {
             updatedById,
           })
           .where(eq(aircraftRefueling.id, sourceId));
+
+        console.log('        ✓ Заправка обновлена');
       }
     }
   }
@@ -297,6 +377,10 @@ export class WarehouseRecalculationService {
     newSourceAverageCost: number,
     updatedById?: string
   ) {
+    console.log('        [propagateMovementRecalculation]');
+    console.log('        Movement ID:', movementId);
+    console.log('        New source average cost:', newSourceAverageCost);
+    
     const movementRecord = await tx.query.movement.findFirst({
       where: eq(movement.id, movementId),
       with: {
@@ -305,10 +389,21 @@ export class WarehouseRecalculationService {
       }
     });
 
-    if (!movementRecord) return;
+    if (!movementRecord) {
+      console.log('        ⚠ Перемещение не найдено');
+      return;
+    }
+
+    console.log('        Перемещение найдено:', {
+      type: movementRecord.movementType,
+      from: movementRecord.fromWarehouse?.name,
+      to: movementRecord.toWarehouse?.name,
+    });
 
     // Для внутренних перемещений пересчитываем склад-получатель
     if (movementRecord.toWarehouseId && movementRecord.fromWarehouseId) {
+      console.log('        → Внутреннее перемещение, пересчитываем склад-получатель');
+      
       // Получаем транзакцию прихода на склад-получатель
       const destinationTransaction = await tx.query.warehouseTransactions.findFirst({
         where: and(
@@ -323,6 +418,9 @@ export class WarehouseRecalculationService {
       });
 
       if (destinationTransaction) {
+        console.log('        Транзакция прихода найдена:', destinationTransaction.id);
+        console.log('        Пересчет склада-получателя с даты:', destinationTransaction.createdAt);
+        
         // Пересчитываем склад-получатель, так как себестоимость источника изменилась
         await this.recalculateWarehouseChain(
           tx,
@@ -331,7 +429,13 @@ export class WarehouseRecalculationService {
           movementRecord.productType,
           updatedById
         );
+        
+        console.log('        ✓ Склад-получатель пересчитан');
+      } else {
+        console.log('        ⚠ Транзакция прихода на склад-получатель не найдена');
       }
+    } else {
+      console.log('        ⚠ Не внутреннее перемещение, пропускаем');
     }
   }
 

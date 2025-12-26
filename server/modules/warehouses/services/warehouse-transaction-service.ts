@@ -127,6 +127,13 @@ export class WarehouseTransactionService {
     productType: string,
     updatedById?: string
   ) {
+    console.log('  [WarehouseTransactionService] updateTransactionAndRecalculateWarehouse');
+    console.log('    Transaction ID:', transactionId);
+    console.log('    Warehouse ID:', warehouseId);
+    console.log('    Old:', { quantity: oldQuantity, totalCost: oldTotalCost });
+    console.log('    New:', { quantity: newQuantity, totalCost: newTotalCost });
+    console.log('    Product Type:', productType);
+    
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
     
     const warehouse = await tx.query.warehouses.findFirst({
@@ -134,8 +141,11 @@ export class WarehouseTransactionService {
     });
 
     if (!warehouse) {
+      console.log('    ❌ Склад не найден');
       throw new Error(`Warehouse ${warehouseId} not found`);
     }
+
+    console.log('    ✓ Склад найден:', warehouse.name);
 
     let currentBalance: number;
     let currentCost: number;
@@ -148,14 +158,30 @@ export class WarehouseTransactionService {
       currentCost = parseFloat(warehouse.averageCost || "0");
     }
 
+    console.log('    Текущее состояние склада:', {
+      balance: currentBalance,
+      averageCost: currentCost,
+    });
+
     // Откатываем старую операцию
     const balanceBeforeOldOperation = currentBalance - oldQuantity;
     const totalCostBeforeOldOperation = balanceBeforeOldOperation * currentCost;
+    
+    console.log('    После отката старой операции:', {
+      balance: balanceBeforeOldOperation,
+      totalCost: totalCostBeforeOldOperation,
+    });
     
     // Применяем новую операцию
     const newBalance = balanceBeforeOldOperation + newQuantity;
     const newTotalCostInWarehouse = totalCostBeforeOldOperation + newTotalCost;
     const newAverageCost = newBalance > 0 ? newTotalCostInWarehouse / newBalance : 0;
+
+    console.log('    После применения новой операции:', {
+      newBalance,
+      newTotalCostInWarehouse,
+      newAverageCost,
+    });
 
     // Обновляем склад
     if (isPvkj) {
@@ -178,6 +204,8 @@ export class WarehouseTransactionService {
         .where(eq(warehouses.id, warehouseId));
     }
 
+    console.log('    ✓ Склад обновлен');
+
     // Обновляем транзакцию
     await tx.update(warehouseTransactions)
       .set({
@@ -188,6 +216,8 @@ export class WarehouseTransactionService {
         updatedById,
       })
       .where(eq(warehouseTransactions.id, transactionId));
+
+    console.log('    ✓ Транзакция обновлена');
 
     return { newAverageCost, newBalance };
   }

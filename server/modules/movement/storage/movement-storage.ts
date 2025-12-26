@@ -114,6 +114,10 @@ export class MovementStorage implements IMovementStorage {
   }
 
   async updateMovement(id: string, data: Partial<InsertMovement>): Promise<Movement | undefined> {
+    console.log('\n========== НАЧАЛО ОБНОВЛЕНИЯ ПЕРЕМЕЩЕНИЯ ==========');
+    console.log('Movement ID:', id);
+    console.log('Update data:', data);
+    
     return await db.transaction(async (tx) => {
       const currentMovement = await tx.query.movement.findFirst({
         where: eq(movement.id, id),
@@ -125,7 +129,19 @@ export class MovementStorage implements IMovementStorage {
         }
       });
 
-      if (!currentMovement) return undefined;
+      if (!currentMovement) {
+        console.log('❌ Перемещение не найдено');
+        return undefined;
+      }
+
+      console.log('✓ Текущее перемещение найдено:', {
+        id: currentMovement.id,
+        type: currentMovement.movementType,
+        productType: currentMovement.productType,
+        date: currentMovement.movementDate,
+        fromWarehouse: currentMovement.fromWarehouse?.name,
+        toWarehouse: currentMovement.toWarehouse?.name,
+      });
 
       const oldQuantityKg = parseFloat(currentMovement.quantityKg);
       const oldTotalCost = parseFloat(currentMovement.totalCost || "0");
@@ -137,8 +153,22 @@ export class MovementStorage implements IMovementStorage {
       const hasCostChanged = oldTotalCost !== newTotalCost;
       const needsRecalculation = hasQuantityChanged || hasCostChanged;
 
+      console.log('Сравнение значений:', {
+        oldQuantityKg,
+        newQuantityKg,
+        hasQuantityChanged,
+        oldTotalCost,
+        newTotalCost,
+        hasCostChanged,
+        needsRecalculation,
+      });
+
       // Обновляем склад назначения, если изменились показатели
       if (needsRecalculation && currentMovement.transactionId && currentMovement.toWarehouseId && currentMovement.toWarehouse) {
+        console.log('\n--- ШАГ 1: Обновление склада назначения ---');
+        console.log('Склад:', currentMovement.toWarehouse.name);
+        console.log('Transaction ID:', currentMovement.transactionId);
+        
         await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
           tx,
           currentMovement.transactionId,
@@ -150,10 +180,16 @@ export class MovementStorage implements IMovementStorage {
           currentMovement.productType,
           data.updatedById
         );
+        
+        console.log('✓ Склад назначения обновлен');
       }
 
       // Обновляем склад-источник для внутренних перемещений
       if (needsRecalculation && currentMovement.movementType === MOVEMENT_TYPE.INTERNAL && currentMovement.sourceTransactionId && currentMovement.fromWarehouseId && currentMovement.fromWarehouse) {
+        console.log('\n--- ШАГ 2: Обновление склада-источника (внутреннее перемещение) ---');
+        console.log('Склад:', currentMovement.fromWarehouse.name);
+        console.log('Source Transaction ID:', currentMovement.sourceTransactionId);
+        
         await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
           tx,
           currentMovement.sourceTransactionId,
@@ -165,34 +201,55 @@ export class MovementStorage implements IMovementStorage {
           currentMovement.productType,
           data.updatedById
         );
+        
+        console.log('✓ Склад-источник обновлен');
       }
 
       // КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ: пересчитываем все затронутые склады и связанные транзакции
       if (needsRecalculation) {
+        console.log('\n--- ШАГ 3: КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ всех затронутых складов ---');
+        
         const affectedWarehouses = WarehouseRecalculationService.getAffectedWarehouses(
           currentMovement,
           currentMovement.movementDate
         );
+        
+        console.log('Затронутые склады:', affectedWarehouses.map(w => ({
+          warehouseId: w.warehouseId,
+          afterDate: w.afterDate,
+          productType: w.productType,
+        })));
 
         await WarehouseRecalculationService.recalculateAllAffectedTransactions(
           tx,
           affectedWarehouses,
           data.updatedById
         );
+        
+        console.log('✓ Комплексный пересчет завершен');
+      } else {
+        console.log('\n⚠ Пересчет не требуется (значения не изменились)');
       }
 
       // Обновляем перемещение
+      console.log('\n--- ШАГ 4: Обновление записи перемещения в БД ---');
       const [updated] = await tx.update(movement).set({
         ...data,
         updatedAt: sql`NOW()`,
         updatedById: data.updatedById
       }).where(eq(movement.id, id)).returning();
 
+      console.log('✓ Перемещение обновлено в БД');
+      console.log('========== ОБНОВЛЕНИЕ ПЕРЕМЕЩЕНИЯ ЗАВЕРШЕНО ==========\n');
+
       return updated;
     });
   }
 
   async deleteMovement(id: string): Promise<boolean> {
+    console.log('\n========== НАЧАЛО УДАЛЕНИЯ ПЕРЕМЕЩЕНИЯ ==========');
+    console.log('Movement ID:', id);
+    
     await db.transaction(async (tx) => {
       const currentMovement = await tx.query.movement.findFirst({
         where: eq(movement.id, id),
@@ -204,13 +261,31 @@ export class MovementStorage implements IMovementStorage {
         }
       });
 
-      if (!currentMovement) return;
+      if (!currentMovement) {
+        console.log('❌ Перемещение не найдено');
+        return;
+      }
+
+      console.log('✓ Перемещение найдено:', {
+        id: currentMovement.id,
+        type: currentMovement.movementType,
+        productType: currentMovement.productType,
+        date: currentMovement.movementDate,
+        fromWarehouse: currentMovement.fromWarehouse?.name,
+        toWarehouse: currentMovement.toWarehouse?.name,
+      });
 
       const quantityKg = parseFloat(currentMovement.quantityKg);
       const totalCost = parseFloat(currentMovement.totalCost || "0");
 
+      console.log('Параметры для отката:', { quantityKg, totalCost });
+
       // Откатываем изменения на складе назначения
       if (currentMovement.transactionId && currentMovement.toWarehouseId && currentMovement.toWarehouse) {
+        console.log('\n--- ШАГ 1: Откат изменений на складе назначения ---');
+        console.log('Склад:', currentMovement.toWarehouse.name);
+        console.log('Transaction ID:', currentMovement.transactionId);
+        
         await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
           tx,
           currentMovement.transactionId,
@@ -219,10 +294,16 @@ export class MovementStorage implements IMovementStorage {
           totalCost,
           currentMovement.productType
         );
+        
+        console.log('✓ Откат на складе назначения выполнен');
       }
 
       // Откатываем изменения на складе-источнике для внутренних перемещений
       if (currentMovement.movementType === MOVEMENT_TYPE.INTERNAL && currentMovement.sourceTransactionId && currentMovement.fromWarehouseId && currentMovement.fromWarehouse) {
+        console.log('\n--- ШАГ 2: Откат изменений на складе-источнике ---');
+        console.log('Склад:', currentMovement.fromWarehouse.name);
+        console.log('Source Transaction ID:', currentMovement.sourceTransactionId);
+        
         await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
           tx,
           currentMovement.sourceTransactionId,
@@ -231,21 +312,36 @@ export class MovementStorage implements IMovementStorage {
           0,
           currentMovement.productType
         );
+        
+        console.log('✓ Откат на складе-источнике выполнен');
       }
 
       // КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ: пересчитываем все затронутые склады и связанные транзакции
+      console.log('\n--- ШАГ 3: КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ после удаления ---');
+      
       const affectedWarehouses = WarehouseRecalculationService.getAffectedWarehouses(
         currentMovement,
         currentMovement.movementDate
       );
+      
+      console.log('Затронутые склады:', affectedWarehouses.map(w => ({
+        warehouseId: w.warehouseId,
+        afterDate: w.afterDate,
+        productType: w.productType,
+      })));
 
       await WarehouseRecalculationService.recalculateAllAffectedTransactions(
         tx,
         affectedWarehouses,
         undefined
       );
+      
+      console.log('✓ Комплексный пересчет завершен');
 
+      console.log('\n--- ШАГ 4: Удаление записи перемещения из БД ---');
       await tx.delete(movement).where(eq(movement.id, id));
+      console.log('✓ Запись перемещения удалена');
+      console.log('========== УДАЛЕНИЕ ПЕРЕМЕЩЕНИЯ ЗАВЕРШЕНО ==========\n');
     });
 
     return true;
