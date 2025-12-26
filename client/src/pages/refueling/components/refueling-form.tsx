@@ -188,8 +188,6 @@ export function RefuelingForm({
     setSelectedPurchasePriceId,
     setSelectedSalePriceId,
     formSetValue: form.setValue,
-    selectedPurchasePriceId,
-    selectedSalePriceId,
   });
 
   useEffect(() => {
