@@ -46,6 +46,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           baseIds,
           createdById: req.session.userId,
           supplierId: warehouseData.supplierId || null,
+          storageCost: warehouseData.storageCost === "" ? null : warehouseData.storageCost,
         };
 
         const item = await storage.warehouses.createWarehouse(data);
