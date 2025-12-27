@@ -364,7 +364,10 @@ export class MovementStorage implements IMovementStorage {
       console.log('✓ Комплексный пересчет завершен');
 
       console.log('\n--- ШАГ 4: Удаление записи перемещения из БД ---');
-      await tx.delete(movement).where(eq(movement.id, id));
+      // Soft delete
+      await tx.update(movement).set({
+        deletedAt: sql`NOW()`,
+      }).where(eq(movement.id, id));
       console.log('✓ Запись перемещения удалена');
       console.log('========== УДАЛЕНИЕ ПЕРЕМЕЩЕНИЯ ЗАВЕРШЕНО ==========\n');
     });

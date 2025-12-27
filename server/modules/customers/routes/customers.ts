@@ -40,6 +40,7 @@ export function registerCustomersRoutes(app: Express) {
     auditLog({
       entityType: ENTITY_TYPES.CUSTOMER,
       operation: AUDIT_OPERATIONS.CREATE,
+      getNewData: (req) => req.body,
     }),
     async (req, res) => {
       try {
@@ -68,6 +69,7 @@ export function registerCustomersRoutes(app: Express) {
       getOldData: async (req) => {
         return await storage.customers.getCustomer(req.params.id);
       },
+      getNewData: (req) => req.body,
     }),
     async (req, res) => {
       try {

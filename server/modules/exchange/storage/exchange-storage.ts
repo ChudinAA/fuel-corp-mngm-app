@@ -54,7 +54,10 @@ export class ExchangeStorage implements IExchangeStorage {
   }
 
   async deleteExchange(id: string): Promise<boolean> {
-    await db.delete(exchange).where(eq(exchange.id, id));
+    // Soft delete
+    await db.update(exchange).set({
+      deletedAt: sql`NOW()`,
+    }).where(eq(exchange.id, id));
     return true;
   }
 }

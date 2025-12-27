@@ -38,6 +38,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     auditLog({
       entityType: ENTITY_TYPES.WAREHOUSE,
       operation: AUDIT_OPERATIONS.CREATE,
+      getNewData: (req) => req.body,
     }),
     async (req, res) => {
       try {
@@ -100,6 +101,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       getOldData: async (req) => {
         return await storage.warehouses.getWarehouse(req.params.id);
       },
+      getNewData: (req) => req.body,
     }),
     async (req, res) => {
       try {

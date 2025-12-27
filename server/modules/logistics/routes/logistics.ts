@@ -47,6 +47,7 @@ export function registerLogisticsRoutes(app: Express) {
     auditLog({
       entityType: ENTITY_TYPES.LOGISTICS_CARRIER,
       operation: AUDIT_OPERATIONS.CREATE,
+      getNewData: (req) => req.body,
     }),
     async (req, res) => {
       try {
@@ -75,6 +76,7 @@ export function registerLogisticsRoutes(app: Express) {
       getOldData: async (req) => {
         return await storage.logistics.getLogisticsCarrier(req.params.id);
       },
+      getNewData: (req) => req.body,
     }),
     async (req, res) => {
       try {
@@ -131,6 +133,7 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/delivery-locations/:id",
     requireAuth,
     requirePermission("directories", "view"),
+    auditView(ENTITY_TYPES.LOGISTICS_DELIVERY_LOCATION),
     async (req, res) => {
       const id = req.params.id;
       const location = await storage.logistics.getLogisticsDeliveryLocation(id);
@@ -145,6 +148,11 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/delivery-locations",
     requireAuth,
     requirePermission("directories", "create"),
+    auditLog({
+      entityType: ENTITY_TYPES.LOGISTICS_DELIVERY_LOCATION,
+      operation: AUDIT_OPERATIONS.CREATE,
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const data = insertLogisticsDeliveryLocationSchema.parse({
@@ -168,6 +176,14 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/delivery-locations/:id",
     requireAuth,
     requirePermission("directories", "edit"),
+    auditLog({
+      entityType: ENTITY_TYPES.LOGISTICS_DELIVERY_LOCATION,
+      operation: AUDIT_OPERATIONS.UPDATE,
+      getOldData: async (req) => {
+        return await storage.logistics.getLogisticsDeliveryLocation(req.params.id);
+      },
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -192,6 +208,13 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/delivery-locations/:id",
     requireAuth,
     requirePermission("directories", "delete"),
+    auditLog({
+      entityType: ENTITY_TYPES.LOGISTICS_DELIVERY_LOCATION,
+      operation: AUDIT_OPERATIONS.DELETE,
+      getOldData: async (req) => {
+        return await storage.logistics.getLogisticsDeliveryLocation(req.params.id);
+      },
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -220,6 +243,7 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/vehicles/:id",
     requireAuth,
     requirePermission("directories", "view"),
+    auditView(ENTITY_TYPES.LOGISTICS_VEHICLE),
     async (req, res) => {
       const id = req.params.id;
       const vehicle = await storage.logistics.getLogisticsVehicle(id);
@@ -234,6 +258,11 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/vehicles",
     requireAuth,
     requirePermission("directories", "create"),
+    auditLog({
+      entityType: ENTITY_TYPES.LOGISTICS_VEHICLE,
+      operation: AUDIT_OPERATIONS.CREATE,
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const data = insertLogisticsVehicleSchema.parse({
@@ -255,6 +284,14 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/vehicles/:id",
     requireAuth,
     requirePermission("directories", "edit"),
+    auditLog({
+      entityType: ENTITY_TYPES.LOGISTICS_VEHICLE,
+      operation: AUDIT_OPERATIONS.UPDATE,
+      getOldData: async (req) => {
+        return await storage.logistics.getLogisticsVehicle(req.params.id);
+      },
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -276,6 +313,13 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/vehicles/:id",
     requireAuth,
     requirePermission("directories", "delete"),
+    auditLog({
+      entityType: ENTITY_TYPES.LOGISTICS_VEHICLE,
+      operation: AUDIT_OPERATIONS.DELETE,
+      getOldData: async (req) => {
+        return await storage.logistics.getLogisticsVehicle(req.params.id);
+      },
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -304,6 +348,7 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/trailers/:id",
     requireAuth,
     requirePermission("directories", "view"),
+    auditView(ENTITY_TYPES.LOGISTICS_TRAILER),
     async (req, res) => {
       const id = req.params.id;
       const trailer = await storage.logistics.getLogisticsTrailer(id);
@@ -318,6 +363,11 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/trailers",
     requireAuth,
     requirePermission("directories", "create"),
+    auditLog({
+      entityType: ENTITY_TYPES.LOGISTICS_TRAILER,
+      operation: AUDIT_OPERATIONS.CREATE,
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const data = insertLogisticsTrailerSchema.parse({
@@ -339,6 +389,14 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/trailers/:id",
     requireAuth,
     requirePermission("directories", "edit"),
+    auditLog({
+      entityType: ENTITY_TYPES.LOGISTICS_TRAILER,
+      operation: AUDIT_OPERATIONS.UPDATE,
+      getOldData: async (req) => {
+        return await storage.logistics.getLogisticsTrailer(req.params.id);
+      },
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -360,6 +418,13 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/trailers/:id",
     requireAuth,
     requirePermission("directories", "delete"),
+    auditLog({
+      entityType: ENTITY_TYPES.LOGISTICS_TRAILER,
+      operation: AUDIT_OPERATIONS.DELETE,
+      getOldData: async (req) => {
+        return await storage.logistics.getLogisticsTrailer(req.params.id);
+      },
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -388,6 +453,7 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/drivers/:id",
     requireAuth,
     requirePermission("directories", "view"),
+    auditView(ENTITY_TYPES.LOGISTICS_DRIVER),
     async (req, res) => {
       const id = req.params.id;
       const driver = await storage.logistics.getLogisticsDriver(id);
@@ -402,6 +468,11 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/drivers",
     requireAuth,
     requirePermission("directories", "create"),
+    auditLog({
+      entityType: ENTITY_TYPES.LOGISTICS_DRIVER,
+      operation: AUDIT_OPERATIONS.CREATE,
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const data = insertLogisticsDriverSchema.parse({
@@ -423,6 +494,14 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/drivers/:id",
     requireAuth,
     requirePermission("directories", "edit"),
+    auditLog({
+      entityType: ENTITY_TYPES.LOGISTICS_DRIVER,
+      operation: AUDIT_OPERATIONS.UPDATE,
+      getOldData: async (req) => {
+        return await storage.logistics.getLogisticsDriver(req.params.id);
+      },
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -444,6 +523,13 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/drivers/:id",
     requireAuth,
     requirePermission("directories", "delete"),
+    auditLog({
+      entityType: ENTITY_TYPES.LOGISTICS_DRIVER,
+      operation: AUDIT_OPERATIONS.DELETE,
+      getOldData: async (req) => {
+        return await storage.logistics.getLogisticsDriver(req.params.id);
+      },
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;

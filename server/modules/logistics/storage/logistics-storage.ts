@@ -44,7 +44,10 @@ export class LogisticsStorage implements ILogisticsStorage {
   }
 
   async deleteLogisticsCarrier(id: string): Promise<boolean> {
-    await db.delete(logisticsCarriers).where(eq(logisticsCarriers.id, id));
+    // Soft delete
+    await db.update(logisticsCarriers).set({
+      deletedAt: sql`NOW()`,
+    }).where(eq(logisticsCarriers.id, id));
     return true;
   }
 

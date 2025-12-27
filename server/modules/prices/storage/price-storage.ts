@@ -26,6 +26,15 @@ export class PriceStorage implements IPriceStorage {
     return allPrices.map((p) => this.enrichPriceWithCalculations(p));
   }
 
+  async getPrice(id: string): Promise<Price | undefined> {
+    const [price] = await db
+      .select()
+      .from(prices)
+      .where(eq(prices.id, id))
+      .limit(1);
+    return price ? this.enrichPriceWithCalculations(price) : undefined;
+  }
+
   async getPricesByRole(
     counterpartyRole: string,
     counterpartyType: string
@@ -76,7 +85,10 @@ export class PriceStorage implements IPriceStorage {
   }
 
   async deletePrice(id: string): Promise<boolean> {
-    await db.delete(prices).where(eq(prices.id, id));
+    // Soft delete
+    await db.update(prices).set({
+      deletedAt: sql`NOW()`,
+    }).where(eq(prices.id, id));
     return true;
   }
 

@@ -40,6 +40,7 @@ export function registerBasesRoutes(app: Express) {
     auditLog({
       entityType: ENTITY_TYPES.BASE,
       operation: AUDIT_OPERATIONS.CREATE,
+      getNewData: (req) => req.body,
     }),
     async (req, res) => {
       try {
@@ -68,6 +69,7 @@ export function registerBasesRoutes(app: Express) {
       getOldData: async (req) => {
         return await storage.bases.getBase(req.params.id);
       },
+      getNewData: (req) => req.body,
     }),
     async (req, res) => {
       try {

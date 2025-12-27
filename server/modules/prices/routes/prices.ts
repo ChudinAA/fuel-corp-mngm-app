@@ -8,6 +8,21 @@ import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 
 export function registerPricesRoutes(app: Express) {
   app.get(
+    "/api/prices/:id",
+    requireAuth,
+    requirePermission("prices", "view"),
+    auditView(ENTITY_TYPES.PRICE),
+    async (req, res) => {
+      const id = req.params.id;
+      const price = await storage.prices.getPrice(id);
+      if (!price) {
+        return res.status(404).json({ message: "Цена не найдена" });
+      }
+      res.json(price);
+    }
+  );
+
+  app.get(
     "/api/prices",
     requireAuth,
     requirePermission("prices", "view"),
@@ -32,6 +47,7 @@ export function registerPricesRoutes(app: Express) {
     auditLog({
       entityType: ENTITY_TYPES.PRICE,
       operation: AUDIT_OPERATIONS.CREATE,
+      getNewData: (req) => req.body,
     }),
     async (req, res) => {
       try {
@@ -71,6 +87,7 @@ export function registerPricesRoutes(app: Express) {
         const prices = await storage.prices.getAllPrices();
         return prices.find(p => p.id === req.params.id);
       },
+      getNewData: (req) => req.body,
     }),
     async (req, res) => {
       try {

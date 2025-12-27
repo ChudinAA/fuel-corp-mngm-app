@@ -39,6 +39,7 @@ export function registerSuppliersRoutes(app: Express) {
     auditLog({
       entityType: ENTITY_TYPES.SUPPLIER,
       operation: AUDIT_OPERATIONS.CREATE,
+      getNewData: (req) => req.body,
     }),
     async (req, res) => {
       try {
@@ -101,6 +102,7 @@ export function registerSuppliersRoutes(app: Express) {
       getOldData: async (req) => {
         return await storage.suppliers.getSupplier(req.params.id);
       },
+      getNewData: (req) => req.body,
     }),
     async (req, res) => {
       try {

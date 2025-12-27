@@ -139,7 +139,10 @@ export class WarehouseStorage implements IWarehouseStorage {
   }
 
   async deleteWarehouse(id: string): Promise<boolean> {
-    await db.delete(warehouses).where(eq(warehouses.id, id));
+    // Soft delete
+    await db.update(warehouses).set({
+      deletedAt: sql`NOW()`,
+    }).where(eq(warehouses.id, id));
     return true;
   }
 

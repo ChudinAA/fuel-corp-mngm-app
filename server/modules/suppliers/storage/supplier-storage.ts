@@ -1,4 +1,3 @@
-
 import { eq, asc, sql } from "drizzle-orm";
 import { db } from "server/db";
 import {
@@ -64,11 +63,11 @@ export class SupplierStorage implements ISupplierStorage {
 
   async createSupplier(data: InsertSupplier & { baseIds?: string[] }): Promise<Supplier> {
     const { baseIds, ...supplierData } = data;
-    
+
     return await db.transaction(async (tx) => {
       // Create supplier
       const [created] = await tx.insert(suppliers).values(supplierData).returning();
-      
+
       // Create supplier-base relations
       if (baseIds && baseIds.length > 0) {
         await tx.insert(supplierBases).values(
@@ -78,7 +77,7 @@ export class SupplierStorage implements ISupplierStorage {
           }))
         );
       }
-      
+
       return {
         ...created,
         baseIds: baseIds || [],
@@ -88,7 +87,7 @@ export class SupplierStorage implements ISupplierStorage {
 
   async updateSupplier(id: string, data: Partial<InsertSupplier> & { baseIds?: string[] }): Promise<Supplier | undefined> {
     const { baseIds, ...supplierData } = data;
-    
+
     return await db.transaction(async (tx) => {
       // Update supplier
       const [updated] = await tx.update(suppliers).set({
@@ -102,7 +101,7 @@ export class SupplierStorage implements ISupplierStorage {
       if (baseIds !== undefined) {
         // Delete existing relations
         await tx.delete(supplierBases).where(eq(supplierBases.supplierId, id));
-        
+
         // Create new relations
         if (baseIds.length > 0) {
           await tx.insert(supplierBases).values(
@@ -122,8 +121,10 @@ export class SupplierStorage implements ISupplierStorage {
   }
 
   async deleteSupplier(id: string): Promise<boolean> {
-    // CASCADE will automatically delete supplier_bases records
-    await db.delete(suppliers).where(eq(suppliers.id, id));
+    // Soft delete
+    await db.update(suppliers).set({
+      deletedAt: sql`NOW()`,
+    }).where(eq(suppliers.id, id));
     return true;
   }
 }

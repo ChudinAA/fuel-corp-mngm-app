@@ -35,7 +35,10 @@ export class BaseStorage implements IBaseStorage {
   }
 
   async deleteBase(id: string): Promise<boolean> {
-    await db.delete(bases).where(eq(bases.id, id));
+    // Soft delete
+    await db.update(bases).set({
+      deletedAt: sql`NOW()`,
+    }).where(eq(bases.id, id));
     return true;
   }
 }

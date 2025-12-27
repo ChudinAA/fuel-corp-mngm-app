@@ -67,6 +67,11 @@ export const ENTITY_TYPES = {
   CUSTOMER: 'customers',
   BASE: 'bases',
   LOGISTICS_CARRIER: 'logistics_carriers',
+  LOGISTICS_DELIVERY_LOCATION: 'logistics_delivery_locations',
+  LOGISTICS_VEHICLE: 'logistics_vehicles',
+  LOGISTICS_TRAILER: 'logistics_trailers',
+  LOGISTICS_DRIVER: 'logistics_drivers',
+  DELIVERY_COST: 'delivery_cost',
   USER: 'users',
   ROLE: 'roles',
 } as const;
