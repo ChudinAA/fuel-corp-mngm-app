@@ -16,7 +16,8 @@ import {
   Warehouse,
   MoreVertical,
   FileText,
-  AlertCircle
+  AlertCircle,
+  History
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -41,6 +42,7 @@ import { formatNumberForTable, formatCurrencyForTable } from "../utils";
 import { useOptTable } from "../hooks/use-opt-table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { AuditHistoryButton } from "@/components/audit-history-button";
 
 interface OptTableProps {
   onEdit: (opt: any) => void;
@@ -58,6 +60,7 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
     isLoading,
     deleteMutation,
     handleDelete,
+    isDeletingId // Assuming isDeletingId is available from useOptTable for disabling delete buttons
   } = useOptTable();
 
   const { toast } = useToast();
@@ -221,56 +224,61 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
                   <TableCell className="text-sm">{deal.carrier?.name || '—'}</TableCell>
                   <TableCell className="text-right text-sm">{deal.deliveryCost ? formatCurrencyForTable(deal.deliveryCost) : '—'}</TableCell>
                   <TableCell className="text-right text-green-600 font-medium text-sm">{formatCurrencyForTable(deal.profit)}</TableCell>
-                  <TableCell>
-                    {(hasPermission("opt", "edit") || hasPermission("opt", "delete") || deal.notes) && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
+                  <TableCell className="flex items-center gap-1">
+                    <AuditHistoryButton
+                      entityType="opt"
+                      entityId={deal.id}
+                      entityName={`Сделка от ${formatDate(deal.createdAt)}`}
+                      variant="ghost"
+                      size="icon"
+                    />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {deal.notes && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedDealNotes(deal.notes || "");
+                              setNotesDialogOpen(true);
+                            }}
                           >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {deal.notes && (
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedDealNotes(deal.notes || "");
-                                setNotesDialogOpen(true);
-                              }}
-                            >
-                              <FileText className="h-4 w-4 mr-2" />
-                              Примечания
-                            </DropdownMenuItem>
-                          )}
-                          {hasPermission("opt", "edit") && (
-                            <DropdownMenuItem
-                              onClick={() => onEdit(deal)}
-                              data-testid={`button-edit-opt-${deal.id}`}
-                            >
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Редактировать
-                            </DropdownMenuItem>
-                          )}
-                          {hasPermission("opt", "delete") && (
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setDealToDelete(deal);
-                                setDeleteDialogOpen(true);
-                              }}
-                              disabled={deleteMutation.isPending}
-                              className="text-destructive focus:text-destructive"
-                              data-testid={`button-delete-opt-${deal.id}`}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Удалить
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                            <FileText className="h-4 w-4 mr-2" />
+                            Примечания
+                          </DropdownMenuItem>
+                        )}
+                        {hasPermission("opt", "edit") && (
+                          <DropdownMenuItem
+                            onClick={() => onEdit(deal)}
+                            data-testid={`button-edit-opt-${deal.id}`}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Редактировать
+                          </DropdownMenuItem>
+                        )}
+                        {hasPermission("opt", "delete") && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setDealToDelete(deal);
+                              setDeleteDialogOpen(true);
+                            }}
+                            disabled={deleteMutation.isPending}
+                            className="text-destructive focus:text-destructive"
+                            data-testid={`button-delete-opt-${deal.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Удалить
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))

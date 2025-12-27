@@ -17,8 +17,10 @@ import {
   Warehouse,
   MoreVertical,
   FileText,
-  AlertCircle
+  AlertCircle,
+  History
 } from "lucide-react";
+import { AuditHistoryButton } from "@/components/audit-history-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -163,7 +165,7 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
               <TableHead className="text-right text-sm font-semibold">Цена прод.</TableHead>
               <TableHead className="text-right text-sm font-semibold">Продажа</TableHead>
               <TableHead className="text-right text-sm font-semibold">Прибыль</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="w-[100px] text-right text-sm font-semibold">Действия</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -245,7 +247,14 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
                   <TableCell className="text-right text-sm">{formatNumber(deal.salePrice)} ₽/кг</TableCell>
                   <TableCell className="text-right text-sm">{formatCurrencyForTable(deal.saleAmount)}</TableCell>
                   <TableCell className="text-right text-green-600 font-medium text-sm">{formatCurrencyForTable(deal.profit)}</TableCell>
-                  <TableCell>
+                  <TableCell className="flex items-center justify-end gap-1">
+                    <AuditHistoryButton
+                      entityType="refueling"
+                      entityId={deal.id}
+                      entityName={`Заправка ${deal.aircraftNumber || deal.id}`}
+                      variant="ghost"
+                      size="icon"
+                    />
                     {(hasPermission("refueling", "edit") || hasPermission("refueling", "delete") || deal.notes) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
