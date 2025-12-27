@@ -1,5 +1,5 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { Switch, Route, useLocation } from "wouter";
+import { queryClient, setGlobalRedirectHandler } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 
 import AuthPage from "@/pages/auth-page";
 import DashboardPage from "@/pages/dashboard-page";
@@ -82,6 +83,18 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 function Router() {
+  const [, setLocation] = useLocation();
+
+  // Set up global 401 redirect handler
+  useEffect(() => {
+    setGlobalRedirectHandler(() => {
+      // Clear user data from cache
+      queryClient.setQueryData(["/api/auth/user"], null);
+      // Redirect to auth page
+      setLocation("/auth");
+    });
+  }, [setLocation]);
+
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />

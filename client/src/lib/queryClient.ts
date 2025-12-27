@@ -1,4 +1,12 @@
+
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+
+// Global redirect handler
+let globalRedirectTo401: (() => void) | null = null;
+
+export function setGlobalRedirectHandler(handler: () => void) {
+  globalRedirectTo401 = handler;
+}
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -20,10 +28,11 @@ export const apiRequest = async (
   });
 
   if (!res.ok) {
-    // Immediate redirect on 401
-    if (res.status === 401 && window.location.pathname !== '/auth') {
-      window.location.href = '/auth';
-      // Throw error to prevent further processing
+    // Handle 401 with global redirect
+    if (res.status === 401) {
+      if (globalRedirectTo401) {
+        globalRedirectTo401();
+      }
       throw new Error("Необходима авторизация");
     }
 
@@ -48,9 +57,9 @@ export const getQueryFn: <T>(options: {
       if (unauthorizedBehavior === "returnNull") {
         return null;
       }
-      // Immediate redirect on 401 for protected queries
-      if (window.location.pathname !== '/auth') {
-        window.location.href = '/auth';
+      // Handle 401 with global redirect
+      if (globalRedirectTo401) {
+        globalRedirectTo401();
       }
       throw new Error("Необходима авторизация");
     }
