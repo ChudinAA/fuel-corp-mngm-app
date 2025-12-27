@@ -6,7 +6,7 @@ import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { db } from "server/db";
 import { deliveryCost } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, isNull } from "drizzle-orm";
 
 export function registerDeliveryRoutes(app: Express) {
   // Получить все тарифы доставки
@@ -16,13 +16,16 @@ export function registerDeliveryRoutes(app: Express) {
     requirePermission("delivery", "view"),
     async (req: Request, res: Response) => {
       try {
-        const costs = await db.select().from(deliveryCost);
+        const costs = await db
+          .select()
+          .from(deliveryCost)
+          .where(isNull(deliveryCost.deletedAt));
         res.json(costs);
       } catch (error) {
         console.error("Error fetching delivery costs:", error);
         res.status(500).json({ message: "Ошибка получения тарифов доставки" });
       }
-    }
+    },
   );
 
   // Получить один тариф доставки
@@ -34,7 +37,11 @@ export function registerDeliveryRoutes(app: Express) {
     async (req: Request, res: Response) => {
       try {
         const id = req.params.id;
-        const [cost] = await db.select().from(deliveryCost).where(eq(deliveryCost.id, id)).limit(1);
+        const [cost] = await db
+          .select()
+          .from(deliveryCost)
+          .where(and(eq(deliveryCost.id, id), isNull(deliveryCost.deletedAt)))
+          .limit(1);
         if (!cost) {
           return res.status(404).json({ message: "Тариф доставки не найден" });
         }
@@ -43,7 +50,7 @@ export function registerDeliveryRoutes(app: Express) {
         console.error("Error fetching delivery cost:", error);
         res.status(500).json({ message: "Ошибка получения тарифа доставки" });
       }
-    }
+    },
   );
 
   // Создать тариф доставки
@@ -84,7 +91,7 @@ export function registerDeliveryRoutes(app: Express) {
         console.error("Error creating delivery cost:", error);
         res.status(500).json({ message: "Ошибка создания тарифа доставки" });
       }
-    }
+    },
   );
 
   // Обновить тариф доставки
@@ -96,7 +103,11 @@ export function registerDeliveryRoutes(app: Express) {
       entityType: ENTITY_TYPES.DELIVERY_COST,
       operation: AUDIT_OPERATIONS.UPDATE,
       getOldData: async (req) => {
-        const [cost] = await db.select().from(deliveryCost).where(eq(deliveryCost.id, req.params.id)).limit(1);
+        const [cost] = await db
+          .select()
+          .from(deliveryCost)
+          .where(eq(deliveryCost.id, req.params.id))
+          .limit(1);
         return cost;
       },
       getNewData: (req) => req.body,
@@ -128,7 +139,7 @@ export function registerDeliveryRoutes(app: Express) {
         console.error("Error updating delivery cost:", error);
         res.status(500).json({ message: "Ошибка обновления тарифа доставки" });
       }
-    }
+    },
   );
 
   // Удалить тариф доставки
@@ -140,7 +151,11 @@ export function registerDeliveryRoutes(app: Express) {
       entityType: ENTITY_TYPES.DELIVERY_COST,
       operation: AUDIT_OPERATIONS.DELETE,
       getOldData: async (req) => {
-        const [cost] = await db.select().from(deliveryCost).where(eq(deliveryCost.id, req.params.id)).limit(1);
+        const [cost] = await db
+          .select()
+          .from(deliveryCost)
+          .where(eq(deliveryCost.id, req.params.id))
+          .limit(1);
         return cost;
       },
     }),
@@ -148,15 +163,18 @@ export function registerDeliveryRoutes(app: Express) {
       try {
         const id = req.params.id;
         // Soft delete
-        await db.update(deliveryCost).set({
-          deletedAt: sql`NOW()`,
-          deletedById: req.session.userId,
-        }).where(eq(deliveryCost.id, id));
+        await db
+          .update(deliveryCost)
+          .set({
+            deletedAt: sql`NOW()`,
+            deletedById: req.session.userId,
+          })
+          .where(eq(deliveryCost.id, id));
         res.json({ message: "Тариф доставки удален" });
       } catch (error) {
         console.error("Error deleting delivery cost:", error);
         res.status(500).json({ message: "Ошибка удаления тарифа доставки" });
       }
-    }
+    },
   );
 }
