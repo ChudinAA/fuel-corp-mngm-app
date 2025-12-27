@@ -20,9 +20,9 @@ export const apiRequest = async (
   });
 
   if (!res.ok) {
-    // Redirect to auth page on 401 Unauthorized
+    // Clear user data on 401 to trigger auth redirect
     if (res.status === 401) {
-      window.location.href = "/auth";
+      queryClient.setQueryData(["/api/auth/user"], null);
     }
 
     const errorData = await res.json().catch(() => ({ message: "Request failed" }));
@@ -46,8 +46,8 @@ export const getQueryFn: <T>(options: {
       if (unauthorizedBehavior === "returnNull") {
         return null;
       }
-      // Redirect to auth page on 401 for protected queries
-      window.location.href = "/auth";
+      // Clear user data to trigger auth redirect via ProtectedRoute
+      queryClient.setQueryData(["/api/auth/user"], null);
       throw new Error("Необходима авторизация");
     }
 
