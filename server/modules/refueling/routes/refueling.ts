@@ -3,6 +3,8 @@ import { storage } from "../../../storage/index";
 import { insertAircraftRefuelingSchema } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
+import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 
 export function registerRefuelingOperationsRoutes(app: Express) {
   app.get(
@@ -22,10 +24,30 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     }
   );
 
+  app.get(
+    "/api/refueling/:id",
+    requireAuth,
+    requirePermission("refueling", "view"),
+    auditView(ENTITY_TYPES.AIRCRAFT_REFUELING),
+    async (req, res) => {
+      const id = req.params.id;
+      const item = await storage.aircraftRefueling.getRefueling(id);
+      if (!item) {
+        return res.status(404).json({ message: "Заправка не найдена" });
+      }
+      res.json(item);
+    }
+  );
+
   app.post(
     "/api/refueling",
     requireAuth,
     requirePermission("refueling", "create"),
+    auditLog({
+      entityType: ENTITY_TYPES.AIRCRAFT_REFUELING,
+      operation: AUDIT_OPERATIONS.CREATE,
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const data = insertAircraftRefuelingSchema.parse({
@@ -47,6 +69,15 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     "/api/refueling/:id",
     requireAuth,
     requirePermission("refueling", "edit"),
+    auditLog({
+      entityType: ENTITY_TYPES.AIRCRAFT_REFUELING,
+      operation: AUDIT_OPERATIONS.UPDATE,
+      getOldData: async (req) => {
+        const item = await storage.aircraftRefueling.getRefueling(req.params.id);
+        return item;
+      },
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -68,6 +99,14 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     "/api/refueling/:id",
     requireAuth,
     requirePermission("refueling", "delete"),
+    auditLog({
+      entityType: ENTITY_TYPES.AIRCRAFT_REFUELING,
+      operation: AUDIT_OPERATIONS.DELETE,
+      getOldData: async (req) => {
+        const item = await storage.aircraftRefueling.getRefueling(req.params.id);
+        return item;
+      },
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;

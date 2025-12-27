@@ -15,6 +15,31 @@ import { WarehouseTransactionService } from "../../warehouses/services/warehouse
 import { WarehouseRecalculationService } from "../../warehouses/services/warehouse-recalculation-service";
 
 export class MovementStorage implements IMovementStorage {
+  async getMovement(id: string): Promise<Movement | undefined> {
+    return db.query.movement.findFirst({
+      where: eq(movement.id, id),
+      with: {
+        sourceWarehouse: true,
+        destinationWarehouse: true,
+        carrier: true,
+        createdBy: {
+          columns: {
+            id: true,
+            username: true,
+            email: true,
+          }
+        },
+        updatedBy: {
+          columns: {
+            id: true,
+            username: true,
+            email: true,
+          }
+        },
+      }
+    });
+  }
+
   async getMovements(page: number, pageSize: number): Promise<{ data: Movement[]; total: number }> {
     const offset = (page - 1) * pageSize;
 
@@ -117,7 +142,7 @@ export class MovementStorage implements IMovementStorage {
     console.log('\n========== НАЧАЛО ОБНОВЛЕНИЯ ПЕРЕМЕЩЕНИЯ ==========');
     console.log('Movement ID:', id);
     console.log('Update data:', data);
-    
+
     return await db.transaction(async (tx) => {
       const currentMovement = await tx.query.movement.findFirst({
         where: eq(movement.id, id),
@@ -167,7 +192,7 @@ export class MovementStorage implements IMovementStorage {
         console.log('\n--- ШАГ 1: Обновление склада назначения ---');
         console.log('Склад:', currentMovement.toWarehouse.name);
         console.log('Transaction ID:', currentMovement.transactionId);
-        
+
         await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
           tx,
           currentMovement.transactionId,
@@ -179,7 +204,7 @@ export class MovementStorage implements IMovementStorage {
           currentMovement.productType,
           data.updatedById
         );
-        
+
         console.log('✓ Склад назначения обновлен');
       }
 
@@ -188,7 +213,7 @@ export class MovementStorage implements IMovementStorage {
         console.log('\n--- ШАГ 2: Обновление склада-источника (внутреннее перемещение) ---');
         console.log('Склад:', currentMovement.fromWarehouse.name);
         console.log('Source Transaction ID:', currentMovement.sourceTransactionId);
-        
+
         await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
           tx,
           currentMovement.sourceTransactionId,
@@ -200,7 +225,7 @@ export class MovementStorage implements IMovementStorage {
           currentMovement.productType,
           data.updatedById
         );
-        
+
         console.log('✓ Склад-источник обновлен');
       }
 
@@ -208,12 +233,12 @@ export class MovementStorage implements IMovementStorage {
       // КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ: пересчитываем все затронутые склады и связанные транзакции
       // if (needsRecalculation) {
       //   console.log('\n--- ШАГ 3: КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ всех затронутых складов ---');
-        
+
       //   const affectedWarehouses = WarehouseRecalculationService.getAffectedWarehouses(
       //     currentMovement,
       //     currentMovement.movementDate
       //   );
-        
+
       //   console.log('Затронутые склады:', affectedWarehouses.map(w => ({
       //     warehouseId: w.warehouseId,
       //     afterDate: w.afterDate,
@@ -225,7 +250,7 @@ export class MovementStorage implements IMovementStorage {
       //     affectedWarehouses,
       //     data.updatedById
       //   );
-        
+
       //   console.log('✓ Комплексный пересчет завершен');
       // } else {
       //   console.log('\n⚠ Пересчет не требуется (значения не изменились)');
@@ -249,7 +274,7 @@ export class MovementStorage implements IMovementStorage {
   async deleteMovement(id: string): Promise<boolean> {
     console.log('\n========== НАЧАЛО УДАЛЕНИЯ ПЕРЕМЕЩЕНИЯ ==========');
     console.log('Movement ID:', id);
-    
+
     await db.transaction(async (tx) => {
       const currentMovement = await tx.query.movement.findFirst({
         where: eq(movement.id, id),
@@ -285,7 +310,7 @@ export class MovementStorage implements IMovementStorage {
         console.log('\n--- ШАГ 1: Откат изменений на складе назначения ---');
         console.log('Склад:', currentMovement.toWarehouse.name);
         console.log('Transaction ID:', currentMovement.transactionId);
-        
+
         await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
           tx,
           currentMovement.transactionId,
@@ -294,7 +319,7 @@ export class MovementStorage implements IMovementStorage {
           totalCost,
           currentMovement.productType
         );
-        
+
         console.log('✓ Откат на складе назначения выполнен');
       }
 
@@ -303,7 +328,7 @@ export class MovementStorage implements IMovementStorage {
         console.log('\n--- ШАГ 2: Откат изменений на складе-источнике ---');
         console.log('Склад:', currentMovement.fromWarehouse.name);
         console.log('Source Transaction ID:', currentMovement.sourceTransactionId);
-        
+
         await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
           tx,
           currentMovement.sourceTransactionId,
@@ -312,18 +337,18 @@ export class MovementStorage implements IMovementStorage {
           0,
           currentMovement.productType
         );
-        
+
         console.log('✓ Откат на складе-источнике выполнен');
       }
 
       // КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ: пересчитываем все затронутые склады и связанные транзакции
       console.log('\n--- ШАГ 3: КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ после удаления ---');
-      
+
       const affectedWarehouses = WarehouseRecalculationService.getAffectedWarehouses(
         currentMovement,
         currentMovement.movementDate
       );
-      
+
       console.log('Затронутые склады:', affectedWarehouses.map(w => ({
         warehouseId: w.warehouseId,
         afterDate: w.afterDate,
@@ -335,7 +360,7 @@ export class MovementStorage implements IMovementStorage {
         affectedWarehouses,
         undefined
       );
-      
+
       console.log('✓ Комплексный пересчет завершен');
 
       console.log('\n--- ШАГ 4: Удаление записи перемещения из БД ---');

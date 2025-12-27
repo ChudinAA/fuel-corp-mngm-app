@@ -1,4 +1,3 @@
-
 import { eq, desc, sql, or } from "drizzle-orm";
 import { db } from "server/db";
 import {
@@ -10,11 +9,36 @@ import {
   type AircraftRefueling,
   type InsertAircraftRefueling,
 } from "@shared/schema";
-import { IAircraftRefuelingStorage } from "./types";
+import { IAircraftRefuelingStorage, PaginatedRefuelings } from "./types";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 
 export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
-  async getRefuelings(page: number = 1, pageSize: number = 10, search?: string): Promise<{ data: any[]; total: number }> {
+  async getRefueling(id: string): Promise<AircraftRefueling | undefined> {
+    return db.query.aircraftRefueling.findFirst({
+      where: eq(aircraftRefueling.id, id),
+      with: {
+        customer: true,
+        base: true,
+        warehouseOrigin: true,
+        createdBy: {
+          columns: {
+            id: true,
+            username: true,
+            email: true,
+          }
+        },
+        updatedBy: {
+          columns: {
+            id: true,
+            username: true,
+            email: true,
+          }
+        },
+      }
+    });
+  }
+
+  async getRefuelings(page: number = 1, pageSize: number = 10, search?: string): Promise<PaginatedRefuelings> {
     const offset = (page - 1) * pageSize;
 
     // Если есть поиск, используем старый подход с joins
@@ -99,13 +123,13 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
 
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(aircraftRefueling);
 
-    return { 
+    return {
       data: data.map(item => ({
         ...item,
         supplier: item.supplier || { id: item.supplierId, name: 'Не указан', isWarehouse: false },
         buyer: item.buyer || { id: item.buyerId, name: 'Не указан' },
-      })), 
-      total: Number(countResult?.count || 0) 
+      })),
+      total: Number(countResult?.count || 0)
     };
   }
 

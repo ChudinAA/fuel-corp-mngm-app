@@ -9,7 +9,31 @@ import { IExchangeStorage } from "./types";
 import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 
 export class ExchangeStorage implements IExchangeStorage {
-  async getExchangeDeals(page: number, pageSize: number): Promise<{ data: Exchange[]; total: number }> {
+  async getExchange(id: string): Promise<Exchange | undefined> {
+    return db.query.exchange.findFirst({
+      where: eq(exchange.id, id),
+      with: {
+        counterparty: true,
+        baseDelivery: true,
+        createdBy: {
+          columns: {
+            id: true,
+            username: true,
+            email: true,
+          }
+        },
+        updatedBy: {
+          columns: {
+            id: true,
+            username: true,
+            email: true,
+          }
+        },
+      }
+    });
+  }
+
+  async getExchangeDeals(page: number = 1, pageSize: number = 10): Promise<{ data: Exchange[]; total: number }> {
     const offset = (page - 1) * pageSize;
     const data = await db.select().from(exchange).orderBy(desc(exchange.dealDate)).limit(pageSize).offset(offset);
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(exchange);

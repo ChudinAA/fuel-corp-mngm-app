@@ -1,4 +1,3 @@
-
 import { eq, desc, sql, or } from "drizzle-orm";
 import { db } from "server/db";
 import {
@@ -15,8 +14,41 @@ import {
 import { IOptStorage } from "./types";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 
+// Assuming PaginatedOptDeals is defined elsewhere and is compatible with the return type of getOptDeals
+// For the purpose of this edit, we'll keep the original return type for getOptDeals and focus on the new method.
+type PaginatedOptDeals = { data: any[]; total: number };
+
 export class OptStorage implements IOptStorage {
-  async getOptDeals(page: number = 1, pageSize: number = 10, search?: string): Promise<{ data: any[]; total: number }> {
+  async getOpt(id: string): Promise<Opt | undefined> {
+    return db.query.opt.findFirst({
+      where: eq(opt.id, id),
+      with: {
+        customer: true, // Assuming 'customer' is a relation defined in schema
+        base: true,     // Assuming 'base' is a relation defined in schema
+        warehouseOrigin: true, // Assuming 'warehouseOrigin' is a relation defined in schema
+        createdBy: {
+          columns: {
+            id: true,
+            username: true,
+            email: true,
+          }
+        },
+        updatedBy: {
+          columns: {
+            id: true,
+            username: true,
+            email: true,
+          }
+        },
+      }
+    });
+  }
+
+  async getOptDeals(
+    page: number = 1,
+    pageSize: number = 10,
+    search?: string
+  ): Promise<PaginatedOptDeals> {
     const offset = (page - 1) * pageSize;
 
     let baseQuery = db.query.opt.findMany({
@@ -131,14 +163,14 @@ export class OptStorage implements IOptStorage {
     const data = await baseQuery;
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(opt);
 
-    return { 
+    return {
       data: data.map(item => ({
         ...item,
         supplier: item.supplier || { id: item.supplierId, name: 'Не указан', isWarehouse: false },
         buyer: item.buyer || { id: item.buyerId, name: 'Не указан' },
         isApproxVolume: item.isApproxVolume || false,
-      })), 
-      total: Number(countResult?.count || 0) 
+      })),
+      total: Number(countResult?.count || 0)
     };
   }
 

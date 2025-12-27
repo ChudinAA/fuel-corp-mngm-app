@@ -3,6 +3,8 @@ import { storage } from "../../../storage/index";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { insertExchangeSchema } from "@shared/schema";
 import { z } from "zod";
+import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
+import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 
 export function registerExchangeRoutes(app: Express) {
   app.get(
@@ -17,10 +19,30 @@ export function registerExchangeRoutes(app: Express) {
     }
   );
 
+  app.get(
+    "/api/exchange/:id",
+    requireAuth,
+    requirePermission("exchange", "view"),
+    auditView(ENTITY_TYPES.EXCHANGE),
+    async (req, res) => {
+      const id = req.params.id;
+      const item = await storage.exchange.getExchange(id);
+      if (!item) {
+        return res.status(404).json({ message: "Сделка не найдена" });
+      }
+      res.json(item);
+    }
+  );
+
   app.post(
     "/api/exchange",
     requireAuth,
     requirePermission("exchange", "create"),
+    auditLog({
+      entityType: ENTITY_TYPES.EXCHANGE,
+      operation: AUDIT_OPERATIONS.CREATE,
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const data = insertExchangeSchema.parse({
@@ -42,6 +64,15 @@ export function registerExchangeRoutes(app: Express) {
     "/api/exchange/:id",
     requireAuth,
     requirePermission("exchange", "edit"),
+    auditLog({
+      entityType: ENTITY_TYPES.EXCHANGE,
+      operation: AUDIT_OPERATIONS.UPDATE,
+      getOldData: async (req) => {
+        const item = await storage.exchange.getExchange(req.params.id);
+        return item;
+      },
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -67,6 +98,14 @@ export function registerExchangeRoutes(app: Express) {
     "/api/exchange/:id",
     requireAuth,
     requirePermission("exchange", "delete"),
+    auditLog({
+      entityType: ENTITY_TYPES.EXCHANGE,
+      operation: AUDIT_OPERATIONS.DELETE,
+      getOldData: async (req) => {
+        const item = await storage.exchange.getExchange(req.params.id);
+        return item;
+      },
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;
