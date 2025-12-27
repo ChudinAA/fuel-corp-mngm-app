@@ -36,7 +36,12 @@ interface AuditPanelProps {
   entityName?: string;
 }
 
-const ACTION_CONFIG = {
+const ACTION_CONFIG: Record<string, {
+  icon: any;
+  label: string;
+  color: string;
+  bgColor: string;
+}> = {
   create: {
     icon: Plus,
     label: "Создание",
@@ -55,11 +60,35 @@ const ACTION_CONFIG = {
     color: "text-red-600",
     bgColor: "bg-red-50 dark:bg-red-950",
   },
+  CREATE: {
+    icon: Plus,
+    label: "Создание",
+    color: "text-green-600",
+    bgColor: "bg-green-50 dark:bg-green-950",
+  },
+  UPDATE: {
+    icon: Pencil,
+    label: "Изменение",
+    color: "text-blue-600",
+    bgColor: "bg-blue-50 dark:bg-blue-950",
+  },
+  DELETE: {
+    icon: Trash2,
+    label: "Удаление",
+    color: "text-red-600",
+    bgColor: "bg-red-50 dark:bg-red-950",
+  },
+  RESTORE: {
+    icon: History,
+    label: "Восстановление",
+    color: "text-purple-600",
+    bgColor: "bg-purple-50 dark:bg-purple-950",
+  },
 };
 
 function AuditEntryItem({ entry }: { entry: AuditEntry }) {
   const [expanded, setExpanded] = useState(false);
-  const config = ACTION_CONFIG[entry.action];
+  const config = ACTION_CONFIG[entry.action] || ACTION_CONFIG.update;
   const Icon = config.icon;
 
   const hasChanges = entry.changes && Object.keys(entry.changes).length > 0;

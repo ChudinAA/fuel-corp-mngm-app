@@ -25,6 +25,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -43,14 +44,64 @@ import {
 } from "@/components/ui/dialog";
 import {
   Tooltip,
-  TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+  TooltipContent,
 } from "@/components/ui/tooltip";
 import { formatNumber, formatNumberForTable, formatCurrencyForTable, getProductLabel } from "../utils";
 import { useRefuelingTable } from "../hooks/use-refueling-table";
 import { PRODUCT_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
+import { useNavigate } from "react-router-dom";
+import { AuditPanel } from "@/components/audit-panel";
+
+interface RefuelingDealActionsProps {
+  deal: any;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+function RefuelingDealActions({ deal, onEdit, onDelete }: RefuelingDealActionsProps) {
+  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon">
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={onEdit}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Редактировать
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="text-destructive"
+            onClick={onDelete}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Удалить
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setAuditPanelOpen(true)}>
+            <History className="mr-2 h-4 w-4" />
+            История изменений
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AuditPanel
+        open={auditPanelOpen}
+        onOpenChange={setAuditPanelOpen}
+        entityType="aircraft_refueling"
+        entityId={deal.id}
+        entityName={`Заправка от ${new Date(deal.dealDate).toLocaleDateString('ru-RU')}`}
+      />
+    </>
+  );
+}
 
 interface RefuelingTableProps {
   onEdit: (refueling: any) => void;
@@ -79,6 +130,8 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
   const [searchInput, setSearchInput] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const cursorPositionRef = useRef<number>(0);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedDeal, setSelectedDeal] = useState<any>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -247,63 +300,18 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
                   <TableCell className="text-right text-sm">{formatNumber(deal.salePrice)} ₽/кг</TableCell>
                   <TableCell className="text-right text-sm">{formatCurrencyForTable(deal.saleAmount)}</TableCell>
                   <TableCell className="text-right text-green-600 font-medium text-sm">{formatCurrencyForTable(deal.profit)}</TableCell>
-                  <TableCell className="flex items-center justify-end gap-1">
-                    <AuditHistoryButton
-                      entityType="refueling"
-                      entityId={deal.id}
-                      entityName={`Заправка ${deal.aircraftNumber || deal.id}`}
-                      variant="ghost"
-                      size="icon"
+                  <TableCell className="flex items-center justify-end gap-2 py-3">
+                    <RefuelingDealActions 
+                      deal={deal}
+                      onEdit={() => {
+                        setSelectedDeal(deal);
+                        setIsEditDialogOpen(true);
+                      }}
+                      onDelete={() => {
+                        setDealToDelete(deal.id);
+                        setIsDeleteDialogOpen(true);
+                      }}
                     />
-                    {(hasPermission("refueling", "edit") || hasPermission("refueling", "delete") || deal.notes) && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {deal.notes && (
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedDealNotes(deal.notes || "");
-                                setNotesDialogOpen(true);
-                              }}
-                            >
-                              <FileText className="h-4 w-4 mr-2" />
-                              Примечания
-                            </DropdownMenuItem>
-                          )}
-                          {hasPermission("refueling", "edit") && (
-                            <DropdownMenuItem
-                              onClick={() => onEdit(deal)}
-                              data-testid={`button-edit-refueling-${deal.id}`}
-                            >
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Редактировать
-                            </DropdownMenuItem>
-                          )}
-                          {hasPermission("refueling", "delete") && (
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setDealToDelete(deal);
-                                setDeleteDialogOpen(true);
-                              }}
-                              disabled={deleteMutation.isPending}
-                              className="text-destructive focus:text-destructive"
-                              data-testid={`button-delete-refueling-${deal.id}`}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Удалить
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
                   </TableCell>
                 </TableRow>
               ))

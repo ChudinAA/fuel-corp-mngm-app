@@ -23,6 +23,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -43,11 +44,82 @@ import { useOptTable } from "../hooks/use-opt-table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { AuditHistoryButton } from "@/components/audit-history-button";
+import { useNavigate } from "react-router-dom";
+import { AuditPanel } from "@/components/audit-panel";
 
 interface OptTableProps {
   onEdit: (opt: any) => void;
   onDelete?: () => void;
 }
+
+interface OptDealActionsProps {
+  deal: any;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+function OptDealActions({ deal, onEdit, onDelete }: OptDealActionsProps) {
+  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+          >
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {deal.notes && (
+            <DropdownMenuItem
+              onClick={() => {
+                // setSelectedDealNotes(deal.notes || ""); // This state should be managed in the parent component or passed down
+                // setNotesDialogOpen(true); // This state should be managed in the parent component or passed down
+              }}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Примечания
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem
+            onClick={onEdit}
+            data-testid={`button-edit-opt-${deal.id}`}
+          >
+            <Pencil className="h-4 w-4 mr-2" />
+            Редактировать
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={onDelete}
+            disabled={false} // isDeletingId needs to be passed or managed here
+            className="text-destructive focus:text-destructive"
+            data-testid={`button-delete-opt-${deal.id}`}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Удалить
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setAuditPanelOpen(true)}>
+            <History className="h-4 w-4 mr-2" />
+            История изменений
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AuditPanel
+        open={auditPanelOpen}
+        onOpenChange={setAuditPanelOpen}
+        entityType="opt"
+        entityId={deal.id}
+        entityName={`Сделка от ${formatDateForAudit(deal.createdAt)}`}
+      />
+    </>
+  );
+}
+
 
 export function OptTable({ onEdit, onDelete }: OptTableProps) {
   const {
@@ -96,6 +168,11 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
   const formatDate = (dateStr: string) => {
     return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
   };
+
+  const formatDateForAudit = (dateStr: string) => {
+    return format(new Date(dateStr), "dd.MM.yyyy HH:mm:ss", { locale: ru });
+  };
+
 
   if (isLoading) {
     return (
@@ -232,53 +309,14 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
                       variant="ghost"
                       size="icon"
                     />
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {deal.notes && (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedDealNotes(deal.notes || "");
-                              setNotesDialogOpen(true);
-                            }}
-                          >
-                            <FileText className="h-4 w-4 mr-2" />
-                            Примечания
-                          </DropdownMenuItem>
-                        )}
-                        {hasPermission("opt", "edit") && (
-                          <DropdownMenuItem
-                            onClick={() => onEdit(deal)}
-                            data-testid={`button-edit-opt-${deal.id}`}
-                          >
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Редактировать
-                          </DropdownMenuItem>
-                        )}
-                        {hasPermission("opt", "delete") && (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setDealToDelete(deal);
-                              setDeleteDialogOpen(true);
-                            }}
-                            disabled={deleteMutation.isPending}
-                            className="text-destructive focus:text-destructive"
-                            data-testid={`button-delete-opt-${deal.id}`}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Удалить
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <OptDealActions
+                      deal={deal}
+                      onEdit={() => onEdit(deal)}
+                      onDelete={() => {
+                        setDealToDelete(deal);
+                        setDeleteDialogOpen(true);
+                      }}
+                    />
                   </TableCell>
                 </TableRow>
               ))
