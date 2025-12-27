@@ -4,9 +4,7 @@ import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
-import { DeliveryStorage } from "../storage/delivery-storage";
-
-const deliveryStorage = new DeliveryStorage();
+import { storage } from "../../../storage/index";
 
 export function registerDeliveryRoutes(app: Express) {
   // Получить все тарифы доставки
@@ -16,7 +14,7 @@ export function registerDeliveryRoutes(app: Express) {
     requirePermission("delivery", "view"),
     async (req: Request, res: Response) => {
       try {
-        const costs = await deliveryStorage.getAllDeliveryCosts();
+        const costs = await storage.delivery.getAllDeliveryCosts();
         res.json(costs);
       } catch (error) {
         console.error("Error fetching delivery costs:", error);
@@ -34,7 +32,7 @@ export function registerDeliveryRoutes(app: Express) {
     async (req: Request, res: Response) => {
       try {
         const id = req.params.id;
-        const cost = await deliveryStorage.getDeliveryCost(id);
+        const cost = await storage.delivery.getDeliveryCost(id);
         if (!cost) {
           return res.status(404).json({ message: "Тариф доставки не найден" });
         }
@@ -59,9 +57,9 @@ export function registerDeliveryRoutes(app: Express) {
     async (req: Request, res: Response) => {
       try {
         const data = insertDeliveryCostSchema.parse(req.body);
-        const created = await deliveryStorage.createDeliveryCost(
+        const created = await storage.delivery.createDeliveryCost(
           data,
-          req.session.userId!
+          req.session.userId
         );
         res.status(201).json(created);
       } catch (error) {
@@ -83,7 +81,7 @@ export function registerDeliveryRoutes(app: Express) {
       entityType: ENTITY_TYPES.DELIVERY_COST,
       operation: AUDIT_OPERATIONS.UPDATE,
       getOldData: async (req) => {
-        return await deliveryStorage.getDeliveryCost(req.params.id);
+        return await storage.delivery.getDeliveryCost(req.params.id);
       },
       getNewData: (req) => req.body,
     }),
@@ -92,10 +90,10 @@ export function registerDeliveryRoutes(app: Express) {
         const id = req.params.id;
         const data = insertDeliveryCostSchema.partial().parse(req.body);
 
-        const updated = await deliveryStorage.updateDeliveryCost(
+        const updated = await storage.delivery.updateDeliveryCost(
           id,
           data,
-          req.session.userId!
+          req.session.userId
         );
 
         if (!updated) {
@@ -122,13 +120,13 @@ export function registerDeliveryRoutes(app: Express) {
       entityType: ENTITY_TYPES.DELIVERY_COST,
       operation: AUDIT_OPERATIONS.DELETE,
       getOldData: async (req) => {
-        return await deliveryStorage.getDeliveryCost(req.params.id);
+        return await storage.delivery.getDeliveryCost(req.params.id);
       },
     }),
     async (req: Request, res: Response) => {
       try {
         const id = req.params.id;
-        await deliveryStorage.deleteDeliveryCost(id, req.session.userId!);
+        await storage.delivery.deleteDeliveryCost(id, req.session.userId);
         res.json({ message: "Тариф доставки удален" });
       } catch (error) {
         console.error("Error deleting delivery cost:", error);

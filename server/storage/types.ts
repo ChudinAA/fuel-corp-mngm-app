@@ -9,5 +9,6 @@ export * from "server/modules/suppliers/storage/types";
 export * from "server/modules/customers/storage/types";
 export * from "server/modules/logistics/storage/types";
 export * from "server/modules/prices/storage/types";
+export * from "server/modules/delivery/storage/types";
 export * from "server/modules/dashboard/storage/types";
 export * from "server/modules/users/storage/types";

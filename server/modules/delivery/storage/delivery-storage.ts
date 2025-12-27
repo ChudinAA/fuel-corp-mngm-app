@@ -25,7 +25,7 @@ export class DeliveryStorage implements IDeliveryStorage {
 
   async createDeliveryCost(
     data: InsertDeliveryCost,
-    userId: string
+    userId?: string
   ): Promise<DeliveryCost> {
     const [created] = await db
       .insert(deliveryCost)
@@ -49,7 +49,7 @@ export class DeliveryStorage implements IDeliveryStorage {
   async updateDeliveryCost(
     id: string,
     data: Partial<InsertDeliveryCost>,
-    userId: string
+    userId?: string
   ): Promise<DeliveryCost | undefined> {
     const [updated] = await db
       .update(deliveryCost)
@@ -64,7 +64,7 @@ export class DeliveryStorage implements IDeliveryStorage {
     return updated;
   }
 
-  async deleteDeliveryCost(id: string, userId: string): Promise<boolean> {
+  async deleteDeliveryCost(id: string, userId?: string): Promise<boolean> {
     await db
       .update(deliveryCost)
       .set({
