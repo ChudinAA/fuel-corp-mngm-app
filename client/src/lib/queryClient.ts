@@ -23,6 +23,13 @@ export const apiRequest = async (
     // Clear user data on 401 to trigger auth redirect
     if (res.status === 401) {
       queryClient.setQueryData(["/api/auth/user"], null);
+      queryClient.invalidateQueries();
+      // Force redirect after a small delay to allow state to update
+      setTimeout(() => {
+        if (window.location.pathname !== '/auth') {
+          window.location.href = '/auth';
+        }
+      }, 100);
     }
 
     const errorData = await res.json().catch(() => ({ message: "Request failed" }));
@@ -46,8 +53,14 @@ export const getQueryFn: <T>(options: {
       if (unauthorizedBehavior === "returnNull") {
         return null;
       }
-      // Clear user data to trigger auth redirect via ProtectedRoute
+      // Clear user data and force redirect
       queryClient.setQueryData(["/api/auth/user"], null);
+      queryClient.invalidateQueries();
+      setTimeout(() => {
+        if (window.location.pathname !== '/auth') {
+          window.location.href = '/auth';
+        }
+      }, 100);
       throw new Error("Необходима авторизация");
     }
 
