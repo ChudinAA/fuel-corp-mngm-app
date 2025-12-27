@@ -60,6 +60,7 @@ interface OptDealActionsProps {
 
 function OptDealActions({ deal, onEdit, onDelete }: OptDealActionsProps) {
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
+  const { hasPermission } = useAuth();
 
   return (
     <>
@@ -85,22 +86,26 @@ function OptDealActions({ deal, onEdit, onDelete }: OptDealActionsProps) {
               Примечания
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem
-            onClick={onEdit}
-            data-testid={`button-edit-opt-${deal.id}`}
-          >
-            <Pencil className="h-4 w-4 mr-2" />
-            Редактировать
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={onDelete}
-            disabled={false} // isDeletingId needs to be passed or managed here
-            className="text-destructive focus:text-destructive"
-            data-testid={`button-delete-opt-${deal.id}`}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Удалить
-          </DropdownMenuItem>
+          {hasPermission("opt", "edit") && (
+            <DropdownMenuItem
+              onClick={onEdit}
+              data-testid={`button-edit-opt-${deal.id}`}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Редактировать
+            </DropdownMenuItem>
+          )}
+          {hasPermission("opt", "delete") && (
+            <DropdownMenuItem
+              onClick={onDelete}
+              disabled={false} // isDeletingId needs to be passed or managed here
+              className="text-destructive focus:text-destructive"
+              data-testid={`button-delete-opt-${deal.id}`}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Удалить
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setAuditPanelOpen(true)}>
             <History className="h-4 w-4 mr-2" />

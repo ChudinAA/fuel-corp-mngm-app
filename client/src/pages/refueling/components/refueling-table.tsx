@@ -63,6 +63,7 @@ interface RefuelingDealActionsProps {
 
 function RefuelingDealActions({ deal, onEdit, onDelete }: RefuelingDealActionsProps) {
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
+  const { hasPermission } = useAuth();
 
   return (
     <>
@@ -73,17 +74,21 @@ function RefuelingDealActions({ deal, onEdit, onDelete }: RefuelingDealActionsPr
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onEdit}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Редактировать
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="text-destructive"
-            onClick={onDelete}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Удалить
-          </DropdownMenuItem>
+          {hasPermission("refueling", "edit") && (
+            <DropdownMenuItem onClick={onEdit}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Редактировать
+            </DropdownMenuItem>
+          )}
+          {hasPermission("refueling", "delete") && (
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={onDelete}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Удалить
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setAuditPanelOpen(true)}>
             <History className="mr-2 h-4 w-4" />

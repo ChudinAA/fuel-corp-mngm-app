@@ -70,7 +70,7 @@ const ACTION_CONFIG: Record<string, {
 
 function AuditEntryItem({ entry }: { entry: AuditEntry }) {
   const [expanded, setExpanded] = useState(false);
-  const config = ACTION_CONFIG[entry.action] || ACTION_CONFIG.update;
+  const config = ACTION_CONFIG[entry.action] || ACTION_CONFIG.UPDATE;
   const Icon = config.icon;
 
   const hasChanges = entry.changes && Object.keys(entry.changes).length > 0;
