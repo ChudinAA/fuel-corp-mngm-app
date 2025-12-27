@@ -182,7 +182,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           }
         }
 
-        await storage.warehouses.deleteWarehouse(id);
+        await storage.warehouses.deleteWarehouse(id, req.session.userId);
         res.json({ message: "Склад удален" });
       } catch (error) {
         console.error("Warehouse deletion error:", error);

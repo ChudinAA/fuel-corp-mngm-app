@@ -250,7 +250,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
     });
   }
 
-  async deleteRefueling(id: string): Promise<boolean> {
+  async deleteRefueling(id: string, userId?: string): Promise<boolean> {
     await db.transaction(async (tx) => {
       const currentRefueling = await tx.query.aircraftRefueling.findFirst({
         where: eq(aircraftRefueling.id, id),
@@ -280,12 +280,16 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
 
           await tx.update(warehouses).set(updateData).where(eq(warehouses.id, currentRefueling.warehouseId));
 
-          await tx.delete(warehouseTransactions).where(eq(warehouseTransactions.id, currentRefueling.transactionId));
+          // Soft delete транзакции
+          await tx.update(warehouseTransactions).set({
+            deletedAt: sql`NOW()`,
+          }).where(eq(warehouseTransactions.id, currentRefueling.transactionId));
         }
       }
 
       await tx.update(aircraftRefueling).set({
           deletedAt: sql`NOW()`,
+          deletedById: userId,
         }).where(eq(aircraftRefueling.id, id));
     });
 

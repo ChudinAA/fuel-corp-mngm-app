@@ -102,7 +102,7 @@ export function registerBasesRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        await storage.bases.deleteBase(id);
+        await storage.bases.deleteBase(id, req.session.userId);
         res.json({ message: "Базис удален" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления базиса" });

@@ -34,10 +34,11 @@ export class BaseStorage implements IBaseStorage {
     return updated;
   }
 
-  async deleteBase(id: string): Promise<boolean> {
+  async deleteBase(id: string, userId?: string): Promise<boolean> {
     // Soft delete
     await db.update(bases).set({
       deletedAt: sql`NOW()`,
+      deletedById: userId,
     }).where(eq(bases.id, id));
     return true;
   }

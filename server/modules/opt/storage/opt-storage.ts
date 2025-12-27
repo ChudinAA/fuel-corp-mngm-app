@@ -280,7 +280,7 @@ export class OptStorage implements IOptStorage {
     });
   }
 
-  async deleteOpt(id: string): Promise<boolean> {
+  async deleteOpt(id: string, userId?: string): Promise<boolean> {
     await db.transaction(async (tx) => {
       // Получаем сделку с relations
       const currentOpt = await tx.query.opt.findFirst({
@@ -299,12 +299,15 @@ export class OptStorage implements IOptStorage {
           .set({ currentBalance: newBalance.toFixed(2), updatedAt: sql`NOW()` })
           .where(eq(warehouses.id, currentOpt.warehouseId));
 
-        // Удаляем транзакцию
-        await tx.delete(warehouseTransactions).where(eq(warehouseTransactions.id, currentOpt.transactionId));
+        // Soft delete транзакции
+        await tx.update(warehouseTransactions).set({
+          deletedAt: sql`NOW()`,
+        }).where(eq(warehouseTransactions.id, currentOpt.transactionId));
       }
 
       await tx.update(opt).set({
           deletedAt: sql`NOW()`,
+          deletedById: userId,
         }).where(eq(opt.id, id));
     });
 

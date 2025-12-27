@@ -109,7 +109,7 @@ export function registerLogisticsRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        await storage.logistics.deleteLogisticsCarrier(id);
+        await storage.logistics.deleteLogisticsCarrier(id, req.session.userId);
         res.json({ message: "Перевозчик удален" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления перевозчика" });
@@ -218,7 +218,7 @@ export function registerLogisticsRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        await storage.logistics.deleteLogisticsDeliveryLocation(id);
+        await storage.logistics.deleteLogisticsDeliveryLocation(id, req.session.userId);
         res.json({ message: "Место доставки удалено" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления места доставки" });
@@ -323,7 +323,7 @@ export function registerLogisticsRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        await storage.logistics.deleteLogisticsVehicle(id);
+        await storage.logistics.deleteLogisticsVehicle(id, req.session.userId);
         res.json({ message: "Транспорт удален" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления транспорта" });
@@ -428,7 +428,7 @@ export function registerLogisticsRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        await storage.logistics.deleteLogisticsTrailer(id);
+        await storage.logistics.deleteLogisticsTrailer(id, req.session.userId);
         res.json({ message: "Прицеп удален" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления прицепа" });
@@ -533,7 +533,7 @@ export function registerLogisticsRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        await storage.logistics.deleteLogisticsDriver(id);
+        await storage.logistics.deleteLogisticsDriver(id, req.session.userId);
         res.json({ message: "Водитель удален" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления водителя" });

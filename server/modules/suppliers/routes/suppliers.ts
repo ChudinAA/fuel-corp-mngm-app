@@ -154,7 +154,7 @@ export function registerSuppliersRoutes(app: Express) {
           });
         }
 
-        await storage.suppliers.deleteSupplier(id);
+        await storage.suppliers.deleteSupplier(id, req.session.userId);
         res.json({ message: "Поставщик удален" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления поставщика" });

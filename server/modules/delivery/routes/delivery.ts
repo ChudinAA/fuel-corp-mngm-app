@@ -147,7 +147,11 @@ export function registerDeliveryRoutes(app: Express) {
     async (req: Request, res: Response) => {
       try {
         const id = req.params.id;
-        await db.delete(deliveryCost).where(eq(deliveryCost.id, id));
+        // Soft delete
+        await db.update(deliveryCost).set({
+          deletedAt: sql`NOW()`,
+          deletedById: req.session.userId,
+        }).where(eq(deliveryCost.id, id));
         res.json({ message: "Тариф доставки удален" });
       } catch (error) {
         console.error("Error deleting delivery cost:", error);

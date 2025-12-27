@@ -120,10 +120,11 @@ export class SupplierStorage implements ISupplierStorage {
     });
   }
 
-  async deleteSupplier(id: string): Promise<boolean> {
+  async deleteSupplier(id: string, userId?: string): Promise<boolean> {
     // Soft delete
     await db.update(suppliers).set({
       deletedAt: sql`NOW()`,
+      deletedById: userId,
     }).where(eq(suppliers.id, id));
     return true;
   }

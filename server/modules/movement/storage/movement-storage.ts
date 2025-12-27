@@ -271,7 +271,7 @@ export class MovementStorage implements IMovementStorage {
     });
   }
 
-  async deleteMovement(id: string): Promise<boolean> {
+  async deleteMovement(id: string, userId?: string): Promise<boolean> {
     console.log('\n========== НАЧАЛО УДАЛЕНИЯ ПЕРЕМЕЩЕНИЯ ==========');
     console.log('Movement ID:', id);
 
@@ -367,6 +367,7 @@ export class MovementStorage implements IMovementStorage {
       // Soft delete
       await tx.update(movement).set({
         deletedAt: sql`NOW()`,
+        deletedById: userId,
       }).where(eq(movement.id, id));
       console.log('✓ Запись перемещения удалена');
       console.log('========== УДАЛЕНИЕ ПЕРЕМЕЩЕНИЯ ЗАВЕРШЕНО ==========\n');

@@ -167,8 +167,13 @@ export function registerMovementRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        await storage.movement.deleteMovement(id);
+        await storage.movement.deleteMovement(id, req.session.userId);
         res.json({ message: "Перемещение удалено" });
+      } catch (error) {
+        res.status(500).json({ message: "Ошибка удаления перемещения" });
+      }
+    }
+  );s.json({ message: "Перемещение удалено" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления перемещения" });
       }

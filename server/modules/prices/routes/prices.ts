@@ -132,7 +132,7 @@ export function registerPricesRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        await storage.prices.deletePrice(id);
+        await storage.prices.deletePrice(id, req.session.userId);
         res.json({ message: "Цена удалена" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления цены" });

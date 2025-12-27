@@ -110,7 +110,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        await storage.aircraftRefueling.deleteRefueling(id);
+        await storage.aircraftRefueling.deleteRefueling(id, req.session.userId);
         res.json({ message: "Заправка удалена" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления заправки" });

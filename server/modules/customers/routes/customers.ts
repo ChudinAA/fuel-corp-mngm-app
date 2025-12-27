@@ -102,7 +102,7 @@ export function registerCustomersRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        await storage.customers.deleteCustomer(id);
+        await storage.customers.deleteCustomer(id, req.session.userId);
         res.json({ message: "Покупатель удален" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления покупателя" });

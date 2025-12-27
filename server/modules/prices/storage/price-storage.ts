@@ -84,10 +84,11 @@ export class PriceStorage implements IPriceStorage {
     return updated;
   }
 
-  async deletePrice(id: string): Promise<boolean> {
+  async deletePrice(id: string, userId?: string): Promise<boolean> {
     // Soft delete
     await db.update(prices).set({
       deletedAt: sql`NOW()`,
+      deletedById: userId,
     }).where(eq(prices.id, id));
     return true;
   }

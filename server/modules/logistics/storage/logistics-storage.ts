@@ -43,10 +43,11 @@ export class LogisticsStorage implements ILogisticsStorage {
     return updated;
   }
 
-  async deleteLogisticsCarrier(id: string): Promise<boolean> {
+  async deleteLogisticsCarrier(id: string, userId?: string): Promise<boolean> {
     // Soft delete
     await db.update(logisticsCarriers).set({
       deletedAt: sql`NOW()`,
+      deletedById: userId,
     }).where(eq(logisticsCarriers.id, id));
     return true;
   }
@@ -73,8 +74,12 @@ export class LogisticsStorage implements ILogisticsStorage {
     return updated;
   }
 
-  async deleteLogisticsDeliveryLocation(id: string): Promise<boolean> {
-    await db.delete(logisticsDeliveryLocations).where(eq(logisticsDeliveryLocations.id, id));
+  async deleteLogisticsDeliveryLocation(id: string, userId?: string): Promise<boolean> {
+    // Soft delete
+    await db.update(logisticsDeliveryLocations).set({
+      deletedAt: sql`NOW()`,
+      deletedById: userId,
+    }).where(eq(logisticsDeliveryLocations.id, id));
     return true;
   }
 
@@ -103,8 +108,12 @@ export class LogisticsStorage implements ILogisticsStorage {
     return updated;
   }
 
-  async deleteLogisticsVehicle(id: string): Promise<boolean> {
-    await db.delete(logisticsVehicles).where(eq(logisticsVehicles.id, id));
+  async deleteLogisticsVehicle(id: string, userId?: string): Promise<boolean> {
+    // Soft delete
+    await db.update(logisticsVehicles).set({
+      deletedAt: sql`NOW()`,
+      deletedById: userId,
+    }).where(eq(logisticsVehicles.id, id));
     return true;
   }
 
@@ -133,8 +142,12 @@ export class LogisticsStorage implements ILogisticsStorage {
     return updated;
   }
 
-  async deleteLogisticsTrailer(id: string): Promise<boolean> {
-    await db.delete(logisticsTrailers).where(eq(logisticsTrailers.id, id));
+  async deleteLogisticsTrailer(id: string, userId?: string): Promise<boolean> {
+    // Soft delete
+    await db.update(logisticsTrailers).set({
+      deletedAt: sql`NOW()`,
+      deletedById: userId,
+    }).where(eq(logisticsTrailers.id, id));
     return true;
   }
 
@@ -163,8 +176,12 @@ export class LogisticsStorage implements ILogisticsStorage {
     return updated;
   }
 
-  async deleteLogisticsDriver(id: string): Promise<boolean> {
-    await db.delete(logisticsDrivers).where(eq(logisticsDrivers.id, id));
+  async deleteLogisticsDriver(id: string, userId?: string): Promise<boolean> {
+    // Soft delete
+    await db.update(logisticsDrivers).set({
+      deletedAt: sql`NOW()`,
+      deletedById: userId,
+    }).where(eq(logisticsDrivers.id, id));
     return true;
   }
 

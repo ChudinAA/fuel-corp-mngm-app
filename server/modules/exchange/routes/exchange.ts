@@ -109,7 +109,7 @@ export function registerExchangeRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        await storage.exchange.deleteExchange(id);
+        await storage.exchange.deleteExchange(id, req.session.userId);
         res.json({ message: "Сделка удалена" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления сделки" });

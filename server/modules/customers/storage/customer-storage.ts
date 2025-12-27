@@ -41,10 +41,11 @@ export class CustomerStorage implements ICustomerStorage {
     return customer;
   }
 
-  async deleteCustomer(id: string): Promise<boolean> {
+  async deleteCustomer(id: string, userId?: string): Promise<boolean> {
     // Soft delete
     await db.update(customers).set({
       deletedAt: sql`NOW()`,
+      deletedById: userId,
     }).where(eq(customers.id, id));
     return true;
   }

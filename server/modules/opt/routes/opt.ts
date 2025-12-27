@@ -115,7 +115,7 @@ export function registerOptRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        await storage.opt.deleteOpt(id);
+        await storage.opt.deleteOpt(id, req.session.userId);
         res.json({ message: "Сделка удалена" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления сделки" });
