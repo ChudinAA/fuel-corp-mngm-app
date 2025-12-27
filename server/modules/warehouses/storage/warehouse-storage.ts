@@ -1,5 +1,5 @@
 
-import { eq, desc, sql, asc } from "drizzle-orm";
+import { eq, desc, sql, asc, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
 import {
   warehouses,
@@ -15,6 +15,7 @@ import { PRODUCT_TYPE } from "@shared/constants";
 export class WarehouseStorage implements IWarehouseStorage {
   async getAllWarehouses(): Promise<Warehouse[]> {
     const warehousesList = await db.query.warehouses.findMany({
+      where: isNull(warehouses.deletedAt),
       orderBy: (warehouses, { asc }) => [asc(warehouses.name)],
       with: {
         supplier: {
@@ -40,7 +41,7 @@ export class WarehouseStorage implements IWarehouseStorage {
 
   async getWarehouse(id: string): Promise<Warehouse | undefined> {
     const warehouse = await db.query.warehouses.findFirst({
-      where: eq(warehouses.id, id),
+      where: and(eq(warehouses.id, id), isNull(warehouses.deletedAt)),
       with: {
         supplier: {
           columns: {
@@ -149,7 +150,7 @@ export class WarehouseStorage implements IWarehouseStorage {
 
   async getWarehouseTransactions(warehouseId: string): Promise<WarehouseTransaction[]> {
     const transactions = await db.query.warehouseTransactions.findMany({
-      where: eq(warehouseTransactions.warehouseId, warehouseId),
+      where: and(eq(warehouseTransactions.warehouseId, warehouseId), isNull(warehouseTransactions.deletedAt)),
       orderBy: (warehouseTransactions, { desc }) => [desc(warehouseTransactions.createdAt)],
       with: {
         warehouse: {
@@ -186,7 +187,7 @@ export class WarehouseStorage implements IWarehouseStorage {
 
   async getWarehouseStatsForDashboard(): Promise<any[]> {
     const warehousesList = await db.query.warehouses.findMany({
-      where: eq(warehouses.isActive, true),
+      where: and(eq(warehouses.isActive, true), isNull(warehouses.deletedAt)),
     });
 
     const stats = warehousesList.map(wh => {

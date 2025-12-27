@@ -1,4 +1,4 @@
-import { eq, desc, sql, or } from "drizzle-orm";
+import { eq, desc, sql, or, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
 import {
   aircraftRefueling,
@@ -15,7 +15,7 @@ import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
   async getRefueling(id: string): Promise<AircraftRefueling | undefined> {
     return db.query.aircraftRefueling.findFirst({
-      where: eq(aircraftRefueling.id, id),
+      where: and(eq(aircraftRefueling.id, id), isNull(aircraftRefueling.deletedAt)),
       with: {
         buyer: true,
         warehouse: true,
@@ -43,11 +43,14 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
     // Если есть поиск, используем старый подход с joins
     if (search && search.trim()) {
       const searchPattern = `%${search.trim()}%`;
-      const searchCondition = or(
-        sql`${suppliers.name} ILIKE ${searchPattern}`,
-        sql`${customers.name} ILIKE ${searchPattern}`,
-        sql`${aircraftRefueling.aircraftNumber}::text ILIKE ${searchPattern}`,
-        sql`${aircraftRefueling.notes}::text ILIKE ${searchPattern}`
+      const searchCondition = and(
+        or(
+          sql`${suppliers.name} ILIKE ${searchPattern}`,
+          sql`${customers.name} ILIKE ${searchPattern}`,
+          sql`${aircraftRefueling.aircraftNumber}::text ILIKE ${searchPattern}`,
+          sql`${aircraftRefueling.notes}::text ILIKE ${searchPattern}`
+        ),
+        isNull(aircraftRefueling.deletedAt)
       );
 
       const rawData = await db.select({
@@ -94,6 +97,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
 
     // Без поиска используем query API с relations
     const data = await db.query.aircraftRefueling.findMany({
+      where: isNull(aircraftRefueling.deletedAt),
       limit: pageSize,
       offset: offset,
       orderBy: (aircraftRefueling, { desc }) => [desc(aircraftRefueling.refuelingDate)],
@@ -120,7 +124,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
       },
     });
 
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(aircraftRefueling);
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(aircraftRefueling).where(isNull(aircraftRefueling.deletedAt));
 
     return {
       data: data.map(item => ({

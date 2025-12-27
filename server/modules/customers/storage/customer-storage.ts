@@ -1,4 +1,4 @@
-import { eq, or, asc, sql } from "drizzle-orm";
+import { eq, or, asc, sql, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
 import { customers, type Customer, type InsertCustomer } from "@shared/schema";
 import type { ICustomerStorage } from "./types";
@@ -9,17 +9,20 @@ export class CustomerStorage implements ICustomerStorage {
       return db
         .select()
         .from(customers)
-        .where(or(eq(customers.module, module), eq(customers.module, "both")))
+        .where(and(
+          or(eq(customers.module, module), eq(customers.module, "both")),
+          isNull(customers.deletedAt)
+        ))
         .orderBy(asc(customers.name));
     }
-    return db.select().from(customers).orderBy(asc(customers.name));
+    return db.select().from(customers).where(isNull(customers.deletedAt)).orderBy(asc(customers.name));
   }
 
   async getCustomer(id: string): Promise<Customer | undefined> {
     const [customer] = await db
       .select()
       .from(customers)
-      .where(eq(customers.id, id))
+      .where(and(eq(customers.id, id), isNull(customers.deletedAt)))
       .limit(1);
     return customer;
   }

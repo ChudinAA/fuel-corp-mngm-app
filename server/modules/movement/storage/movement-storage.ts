@@ -1,4 +1,4 @@
-import { eq, desc, sql, and, gt } from "drizzle-orm";
+import { eq, desc, sql, and, gt, isNull } from "drizzle-orm";
 import { db } from "server/db";
 import {
   movement,
@@ -17,7 +17,7 @@ import { WarehouseRecalculationService } from "../../warehouses/services/warehou
 export class MovementStorage implements IMovementStorage {
   async getMovement(id: string): Promise<Movement | undefined> {
     return db.query.movement.findFirst({
-      where: eq(movement.id, id),
+      where: and(eq(movement.id, id), isNull(movement.deletedAt)),
       with: {
         fromWarehouse: true,
         toWarehouse: true,
@@ -44,6 +44,7 @@ export class MovementStorage implements IMovementStorage {
     const offset = (page - 1) * pageSize;
 
     const data = await db.query.movement.findMany({
+      where: isNull(movement.deletedAt),
       limit: pageSize,
       offset: offset,
       orderBy: (movement, { desc }) => [desc(movement.movementDate)],
@@ -84,7 +85,7 @@ export class MovementStorage implements IMovementStorage {
       carrierName: mov.carrier?.name || null,
     }));
 
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(movement);
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(movement).where(isNull(movement.deletedAt));
     return { data: enrichedData, total: Number(countResult?.count || 0) };
   }
 

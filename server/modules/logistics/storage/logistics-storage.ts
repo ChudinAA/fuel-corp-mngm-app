@@ -1,5 +1,5 @@
 
-import { eq, asc, sql } from "drizzle-orm";
+import { eq, asc, sql, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
 import {
   logisticsCarriers,
@@ -22,11 +22,11 @@ import type { ILogisticsStorage } from "./types";
 
 export class LogisticsStorage implements ILogisticsStorage {
   async getAllLogisticsCarriers(): Promise<LogisticsCarrier[]> {
-    return db.select().from(logisticsCarriers).orderBy(asc(logisticsCarriers.name));
+    return db.select().from(logisticsCarriers).where(isNull(logisticsCarriers.deletedAt)).orderBy(asc(logisticsCarriers.name));
   }
 
   async getLogisticsCarrier(id: string): Promise<LogisticsCarrier | undefined> {
-    const [carrier] = await db.select().from(logisticsCarriers).where(eq(logisticsCarriers.id, id)).limit(1);
+    const [carrier] = await db.select().from(logisticsCarriers).where(and(eq(logisticsCarriers.id, id), isNull(logisticsCarriers.deletedAt))).limit(1);
     return carrier;
   }
 
@@ -53,11 +53,11 @@ export class LogisticsStorage implements ILogisticsStorage {
   }
 
   async getAllLogisticsDeliveryLocations(): Promise<LogisticsDeliveryLocation[]> {
-    return db.select().from(logisticsDeliveryLocations).orderBy(asc(logisticsDeliveryLocations.name));
+    return db.select().from(logisticsDeliveryLocations).where(isNull(logisticsDeliveryLocations.deletedAt)).orderBy(asc(logisticsDeliveryLocations.name));
   }
 
   async getLogisticsDeliveryLocation(id: string): Promise<LogisticsDeliveryLocation | undefined> {
-    const [location] = await db.select().from(logisticsDeliveryLocations).where(eq(logisticsDeliveryLocations.id, id)).limit(1);
+    const [location] = await db.select().from(logisticsDeliveryLocations).where(and(eq(logisticsDeliveryLocations.id, id), isNull(logisticsDeliveryLocations.deletedAt))).limit(1);
     return location;
   }
 
@@ -85,13 +85,13 @@ export class LogisticsStorage implements ILogisticsStorage {
 
   async getAllLogisticsVehicles(carrierId?: string): Promise<LogisticsVehicle[]> {
     if (carrierId) {
-      return db.select().from(logisticsVehicles).where(eq(logisticsVehicles.carrierId, carrierId)).orderBy(asc(logisticsVehicles.regNumber));
+      return db.select().from(logisticsVehicles).where(and(eq(logisticsVehicles.carrierId, carrierId), isNull(logisticsVehicles.deletedAt))).orderBy(asc(logisticsVehicles.regNumber));
     }
-    return db.select().from(logisticsVehicles).orderBy(asc(logisticsVehicles.regNumber));
+    return db.select().from(logisticsVehicles).where(isNull(logisticsVehicles.deletedAt)).orderBy(asc(logisticsVehicles.regNumber));
   }
 
   async getLogisticsVehicle(id: string): Promise<LogisticsVehicle | undefined> {
-    const [vehicle] = await db.select().from(logisticsVehicles).where(eq(logisticsVehicles.id, id)).limit(1);
+    const [vehicle] = await db.select().from(logisticsVehicles).where(and(eq(logisticsVehicles.id, id), isNull(logisticsVehicles.deletedAt))).limit(1);
     return vehicle;
   }
 
@@ -119,13 +119,13 @@ export class LogisticsStorage implements ILogisticsStorage {
 
   async getAllLogisticsTrailers(carrierId?: string): Promise<LogisticsTrailer[]> {
     if (carrierId) {
-      return db.select().from(logisticsTrailers).where(eq(logisticsTrailers.carrierId, carrierId)).orderBy(asc(logisticsTrailers.regNumber));
+      return db.select().from(logisticsTrailers).where(and(eq(logisticsTrailers.carrierId, carrierId), isNull(logisticsTrailers.deletedAt))).orderBy(asc(logisticsTrailers.regNumber));
     }
-    return db.select().from(logisticsTrailers).orderBy(asc(logisticsTrailers.regNumber));
+    return db.select().from(logisticsTrailers).where(isNull(logisticsTrailers.deletedAt)).orderBy(asc(logisticsTrailers.regNumber));
   }
 
   async getLogisticsTrailer(id: string): Promise<LogisticsTrailer | undefined> {
-    const [trailer] = await db.select().from(logisticsTrailers).where(eq(logisticsTrailers.id, id)).limit(1);
+    const [trailer] = await db.select().from(logisticsTrailers).where(and(eq(logisticsTrailers.id, id), isNull(logisticsTrailers.deletedAt))).limit(1);
     return trailer;
   }
 
@@ -153,13 +153,13 @@ export class LogisticsStorage implements ILogisticsStorage {
 
   async getAllLogisticsDrivers(carrierId?: string): Promise<LogisticsDriver[]> {
     if (carrierId) {
-      return db.select().from(logisticsDrivers).where(eq(logisticsDrivers.carrierId, carrierId)).orderBy(asc(logisticsDrivers.fullName));
+      return db.select().from(logisticsDrivers).where(and(eq(logisticsDrivers.carrierId, carrierId), isNull(logisticsDrivers.deletedAt))).orderBy(asc(logisticsDrivers.fullName));
     }
-    return db.select().from(logisticsDrivers).orderBy(asc(logisticsDrivers.fullName));
+    return db.select().from(logisticsDrivers).where(isNull(logisticsDrivers.deletedAt)).orderBy(asc(logisticsDrivers.fullName));
   }
 
   async getLogisticsDriver(id: string): Promise<LogisticsDriver | undefined> {
-    const [driver] = await db.select().from(logisticsDrivers).where(eq(logisticsDrivers.id, id)).limit(1);
+    const [driver] = await db.select().from(logisticsDrivers).where(and(eq(logisticsDrivers.id, id), isNull(logisticsDrivers.deletedAt))).limit(1);
     return driver;
   }
 

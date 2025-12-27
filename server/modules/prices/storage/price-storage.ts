@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, asc } from "drizzle-orm";
+import { eq, and, desc, sql, asc, isNull } from "drizzle-orm";
 import { db } from "server/db";
 import {
   prices,
@@ -22,6 +22,7 @@ export class PriceStorage implements IPriceStorage {
     const allPrices = await db
       .select()
       .from(prices)
+      .where(isNull(prices.deletedAt))
       .orderBy(desc(prices.dateFrom));
     return allPrices.map((p) => this.enrichPriceWithCalculations(p));
   }
@@ -30,7 +31,7 @@ export class PriceStorage implements IPriceStorage {
     const [price] = await db
       .select()
       .from(prices)
-      .where(eq(prices.id, id))
+      .where(and(eq(prices.id, id), isNull(prices.deletedAt)))
       .limit(1);
     return price ? this.enrichPriceWithCalculations(price) : undefined;
   }
@@ -45,7 +46,8 @@ export class PriceStorage implements IPriceStorage {
       .where(
         and(
           eq(prices.counterpartyRole, counterpartyRole),
-          eq(prices.counterpartyType, counterpartyType)
+          eq(prices.counterpartyType, counterpartyType),
+          isNull(prices.deletedAt)
         )
       )
       .orderBy(desc(prices.dateFrom));

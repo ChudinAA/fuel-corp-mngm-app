@@ -1,4 +1,4 @@
-import { eq, asc, sql } from "drizzle-orm";
+import { eq, asc, sql, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
 import {
   suppliers,
@@ -11,6 +11,7 @@ import type { ISupplierStorage } from "./types";
 export class SupplierStorage implements ISupplierStorage {
   async getAllSuppliers(): Promise<Supplier[]> {
     const suppliersList = await db.query.suppliers.findMany({
+      where: isNull(suppliers.deletedAt),
       orderBy: (suppliers, { asc }) => [asc(suppliers.name)],
       with: {
         supplierBases: {
@@ -36,7 +37,7 @@ export class SupplierStorage implements ISupplierStorage {
 
   async getSupplier(id: string): Promise<Supplier | undefined> {
     const supplier = await db.query.suppliers.findFirst({
-      where: eq(suppliers.id, id),
+      where: and(eq(suppliers.id, id), isNull(suppliers.deletedAt)),
       with: {
         supplierBases: {
           with: {

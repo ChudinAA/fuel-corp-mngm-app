@@ -1,4 +1,4 @@
-import { eq, desc, sql, or } from "drizzle-orm";
+import { eq, desc, sql, or, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
 import {
   opt,
@@ -17,7 +17,7 @@ import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 export class OptStorage implements IOptStorage {
   async getOpt(id: string): Promise<Opt | undefined> {
     return db.query.opt.findFirst({
-      where: eq(opt.id, id),
+      where: and(eq(opt.id, id), isNull(opt.deletedAt)),
       with: {
         buyer: true,
         warehouse: true,
@@ -47,6 +47,7 @@ export class OptStorage implements IOptStorage {
     const offset = (page - 1) * pageSize;
 
     let baseQuery = db.query.opt.findMany({
+      where: isNull(opt.deletedAt),
       limit: pageSize,
       offset: offset,
       orderBy: (opt, { desc }) => [desc(opt.dealDate)],
@@ -88,13 +89,16 @@ export class OptStorage implements IOptStorage {
     // Для поиска используем стандартный запрос с joins
     if (search && search.trim()) {
       const searchPattern = `%${search.trim()}%`;
-      const searchCondition = or(
-        sql`${suppliers.name} ILIKE ${searchPattern}`,
-        sql`${customers.name} ILIKE ${searchPattern}`,
-        sql`${opt.basis}::text ILIKE ${searchPattern}`,
-        sql`${opt.notes}::text ILIKE ${searchPattern}`,
-        sql`${logisticsCarriers.name}::text ILIKE ${searchPattern}`,
-        sql`${logisticsDeliveryLocations.name}::text ILIKE ${searchPattern}`
+      const searchCondition = and(
+        or(
+          sql`${suppliers.name} ILIKE ${searchPattern}`,
+          sql`${customers.name} ILIKE ${searchPattern}`,
+          sql`${opt.basis}::text ILIKE ${searchPattern}`,
+          sql`${opt.notes}::text ILIKE ${searchPattern}`,
+          sql`${logisticsCarriers.name}::text ILIKE ${searchPattern}`,
+          sql`${logisticsDeliveryLocations.name}::text ILIKE ${searchPattern}`
+        ),
+        isNull(opt.deletedAt)
       );
 
       const rawData = await db.select({
@@ -156,7 +160,7 @@ export class OptStorage implements IOptStorage {
 
     // Без поиска используем query API с relations
     const data = await baseQuery;
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(opt);
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(opt).where(isNull(opt.deletedAt));
 
     return {
       data: data.map(item => ({

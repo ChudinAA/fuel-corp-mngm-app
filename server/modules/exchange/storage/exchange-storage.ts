@@ -1,4 +1,4 @@
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
 import { exchange, type Exchange, type InsertExchange } from "@shared/schema";
 import { IExchangeStorage } from "./types";
@@ -6,7 +6,7 @@ import { IExchangeStorage } from "./types";
 export class ExchangeStorage implements IExchangeStorage {
   async getExchange(id: string): Promise<Exchange | undefined> {
     return db.query.exchange.findFirst({
-      where: eq(exchange.id, id),
+      where: and(eq(exchange.id, id), isNull(exchange.deletedAt)),
       with: {
         warehouse: true,
         createdBy: {
@@ -35,12 +35,14 @@ export class ExchangeStorage implements IExchangeStorage {
     const data = await db
       .select()
       .from(exchange)
+      .where(isNull(exchange.deletedAt))
       .orderBy(desc(exchange.dealDate))
       .limit(pageSize)
       .offset(offset);
     const [countResult] = await db
       .select({ count: sql<number>`count(*)` })
-      .from(exchange);
+      .from(exchange)
+      .where(isNull(exchange.deletedAt));
     return { data, total: Number(countResult?.count || 0) };
   }
 
