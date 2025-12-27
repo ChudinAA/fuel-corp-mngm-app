@@ -1,9 +1,18 @@
 import type { Request, Response, NextFunction } from "express";
 import { storage } from "../storage/index";
+import { AuditContext } from "../modules/audit/services/audit-service";
 
 declare module "express-session" {
   interface SessionData {
     userId: number;
+  }
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      auditContext?: AuditContext;
+    }
   }
 }
 

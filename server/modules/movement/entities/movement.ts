@@ -49,6 +49,8 @@ export const movement = pgTable("movement", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
+  deletedAt: timestamp("deleted_at", { mode: "string" }),
+  deletedById: uuid("deleted_by_id").references(() => users.id),
 }, (table) => ({
   movementDateIdx: index("movement_date_idx").on(table.movementDate),
   createdAtIdx: index("movement_created_at_idx").on(table.createdAt),

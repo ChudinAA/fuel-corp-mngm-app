@@ -15,6 +15,8 @@ import { registerMovementRoutes } from "./modules/movement/routes/movement";
 import { registerOptRoutes } from "./modules/opt/routes/opt";
 import { registerRefuelingOperationsRoutes } from "./modules/refueling/routes/refueling";
 import { registerDashboardRoutes } from "./modules/dashboard/routes/dashboard";
+import { enrichAuditContext } from "./modules/audit/middleware/audit-middleware";
+import { registerAuditRoutes } from "./modules/audit/routes/audit";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -24,6 +26,9 @@ export async function registerRoutes(
   app.set("trust proxy", 1);
 
   await seedDefaultRoles();
+
+  // Apply audit context enrichment globally
+  app.use(enrichAuditContext);
 
   // Register all route modules
   registerAuthRoutes(app);
@@ -37,6 +42,7 @@ export async function registerRoutes(
   registerWarehousesOperationsRoutes(app);
   registerExchangeRoutes(app);
   registerMovementRoutes(app);
+  registerAuditRoutes(app);
   registerOptRoutes(app);
   registerRefuelingOperationsRoutes(app);
   registerDashboardRoutes(app);

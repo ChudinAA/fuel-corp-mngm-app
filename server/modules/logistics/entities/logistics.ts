@@ -31,6 +31,8 @@ export const logisticsCarriers = pgTable("logistics_carriers", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
+  deletedAt: timestamp("deleted_at", { mode: "string" }),
+  deletedById: uuid("deleted_by_id").references(() => users.id),
 }, (table) => ({
   nameIdx: index("logistics_carriers_name_idx").on(table.name),
   isActiveIdx: index("logistics_carriers_is_active_idx").on(table.isActive),

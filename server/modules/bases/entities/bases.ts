@@ -29,6 +29,8 @@ export const bases = pgTable("bases", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
+  deletedAt: timestamp("deleted_at", { mode: "string" }),
+  deletedById: uuid("deleted_by_id").references(() => users.id),
 }, (table) => ({
   baseTypeIdx: index("bases_base_type_idx").on(table.baseType),
   nameIdx: index("bases_name_idx").on(table.name),

@@ -33,6 +33,8 @@ export const exchange = pgTable("exchange", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
+  deletedAt: timestamp("deleted_at", { mode: "string" }),
+  deletedById: uuid("deleted_by_id").references(() => users.id),
 }, (table) => ({
   dealDateIdx: index("exchange_deal_date_idx").on(table.dealDate),
   warehouseIdx: index("exchange_warehouse_idx").on(table.warehouseId),

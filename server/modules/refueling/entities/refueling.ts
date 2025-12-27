@@ -61,6 +61,8 @@ export const aircraftRefueling = pgTable("aircraft_refueling", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
+  deletedAt: timestamp("deleted_at", { mode: "string" }),
+  deletedById: uuid("deleted_by_id").references(() => users.id),
 }, (table) => ({
   refuelingDateIdx: index("aircraft_refueling_date_idx").on(table.refuelingDate),
   createdAtIdx: index("aircraft_refueling_created_at_idx").on(table.createdAt),
