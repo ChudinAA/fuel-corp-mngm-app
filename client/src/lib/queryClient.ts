@@ -20,16 +20,11 @@ export const apiRequest = async (
   });
 
   if (!res.ok) {
-    // Clear user data on 401 to trigger auth redirect
-    if (res.status === 401) {
-      queryClient.setQueryData(["/api/auth/user"], null);
-      queryClient.invalidateQueries();
-      // Force redirect after a small delay to allow state to update
-      setTimeout(() => {
-        if (window.location.pathname !== '/auth') {
-          window.location.href = '/auth';
-        }
-      }, 100);
+    // Immediate redirect on 401
+    if (res.status === 401 && window.location.pathname !== '/auth') {
+      window.location.href = '/auth';
+      // Throw error to prevent further processing
+      throw new Error("Необходима авторизация");
     }
 
     const errorData = await res.json().catch(() => ({ message: "Request failed" }));
@@ -53,14 +48,10 @@ export const getQueryFn: <T>(options: {
       if (unauthorizedBehavior === "returnNull") {
         return null;
       }
-      // Clear user data and force redirect
-      queryClient.setQueryData(["/api/auth/user"], null);
-      queryClient.invalidateQueries();
-      setTimeout(() => {
-        if (window.location.pathname !== '/auth') {
-          window.location.href = '/auth';
-        }
-      }, 100);
+      // Immediate redirect on 401 for protected queries
+      if (window.location.pathname !== '/auth') {
+        window.location.href = '/auth';
+      }
       throw new Error("Необходима авторизация");
     }
 
