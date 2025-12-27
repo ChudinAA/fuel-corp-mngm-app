@@ -42,24 +42,6 @@ const ACTION_CONFIG: Record<string, {
   color: string;
   bgColor: string;
 }> = {
-  create: {
-    icon: Plus,
-    label: "Создание",
-    color: "text-green-600",
-    bgColor: "bg-green-50 dark:bg-green-950",
-  },
-  update: {
-    icon: Pencil,
-    label: "Изменение",
-    color: "text-blue-600",
-    bgColor: "bg-blue-50 dark:bg-blue-950",
-  },
-  delete: {
-    icon: Trash2,
-    label: "Удаление",
-    color: "text-red-600",
-    bgColor: "bg-red-50 dark:bg-red-950",
-  },
   CREATE: {
     icon: Plus,
     label: "Создание",

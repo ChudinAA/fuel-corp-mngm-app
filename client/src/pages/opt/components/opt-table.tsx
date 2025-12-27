@@ -114,7 +114,7 @@ function OptDealActions({ deal, onEdit, onDelete }: OptDealActionsProps) {
         onOpenChange={setAuditPanelOpen}
         entityType="opt"
         entityId={deal.id}
-        entityName={`Сделка от ${formatDateForAudit(deal.createdAt)}`}
+        entityName={`Сделка от ${new Date(deal.dealDate).toLocaleDateString('ru-RU')}`}
       />
     </>
   );
@@ -302,13 +302,6 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
                   <TableCell className="text-right text-sm">{deal.deliveryCost ? formatCurrencyForTable(deal.deliveryCost) : '—'}</TableCell>
                   <TableCell className="text-right text-green-600 font-medium text-sm">{formatCurrencyForTable(deal.profit)}</TableCell>
                   <TableCell className="flex items-center gap-1">
-                    <AuditHistoryButton
-                      entityType="opt"
-                      entityId={deal.id}
-                      entityName={`Сделка от ${formatDate(deal.createdAt)}`}
-                      variant="ghost"
-                      size="icon"
-                    />
                     <OptDealActions
                       deal={deal}
                       onEdit={() => onEdit(deal)}

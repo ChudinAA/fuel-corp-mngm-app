@@ -6,7 +6,7 @@ export interface AuditEntry {
   id: string;
   entityType: string;
   entityId: string;
-  action: "create" | "update" | "delete";
+  action: "CREATE" | "UPDATE" | "DELETE" | "RESTORE";
   userId: string;
   userName: string;
   userEmail: string;
