@@ -78,7 +78,10 @@ export class DashboardStorage implements IDashboardStorage {
     const [movementsResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(movement)
-      .where(sql`${movement.movementDate} >= ${sevenDaysAgoStr}`);
+      .where(and(
+        sql`${movement.movementDate} >= ${sevenDaysAgoStr}`,
+        isNull(movement.deletedAt)
+      ));
     const pendingDeliveries = Number(movementsResult?.count || 0);
 
     // Общий объем продаж за месяц
@@ -113,12 +116,18 @@ export class DashboardStorage implements IDashboardStorage {
       const [supplier] = await db
         .select()
         .from(suppliers)
-        .where(eq(suppliers.id, deal.supplierId))
+        .where(and(
+          eq(suppliers.id, deal.supplierId),
+          isNull(suppliers.deletedAt)
+        ))
         .limit(1);
       const [buyer] = await db
         .select()
         .from(customers)
-        .where(eq(customers.id, deal.buyerId))
+        .where(and(
+          eq(customers.id, deal.buyerId),
+          isNull(customers.deletedAt)
+        ))
         .limit(1);
 
       operations.push({
@@ -168,7 +177,10 @@ export class DashboardStorage implements IDashboardStorage {
         const [toWarehouse] = await db
           .select()
           .from(warehouses)
-          .where(eq(warehouses.id, mov.toWarehouseId))
+          .where(and(
+            eq(warehouses.id, mov.toWarehouseId),
+            isNull(warehouses.deletedAt)
+          ))
           .limit(1);
         toName = toWarehouse?.name || mov.toWarehouseId;
       }
@@ -177,14 +189,20 @@ export class DashboardStorage implements IDashboardStorage {
         const [supplier] = await db
           .select()
           .from(suppliers)
-          .where(eq(suppliers.id, mov.supplierId))
+          .where(and(
+            eq(suppliers.id, mov.supplierId),
+            isNull(suppliers.deletedAt)
+          ))
           .limit(1);
         fromName = supplier?.name || mov.supplierId;
       } else if (mov.fromWarehouseId) {
         const [fromWarehouse] = await db
           .select()
           .from(warehouses)
-          .where(eq(warehouses.id, mov.fromWarehouseId))
+          .where(and(
+            eq(warehouses.id, mov.fromWarehouseId),
+            isNull(warehouses.deletedAt)
+          ))
           .limit(1);
         fromName = fromWarehouse?.name || mov.fromWarehouseId;
       }
