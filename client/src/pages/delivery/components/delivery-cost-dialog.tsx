@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Loader2 } from "lucide-react";
 import type { DeliveryCost } from "@shared/schema";
-import { deliveryCostFormSchema, ENTITY_TYPES, type DeliveryCostFormData } from "../types";
+import { deliveryCostFormSchema, DELIVERY_ENTITY_TYPES, type DeliveryCostFormData } from "../types";
 import { getEntitiesByType } from "../utils";
 
 interface AddDeliveryCostDialogProps {
@@ -221,7 +221,7 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {ENTITY_TYPES.map((type) => (
+                          {DELIVERY_ENTITY_TYPES.map((type) => (
                             <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                           ))}
                         </SelectContent>
@@ -276,7 +276,7 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {ENTITY_TYPES.map((type) => (
+                          {DELIVERY_ENTITY_TYPES.map((type) => (
                             <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                           ))}
                         </SelectContent>

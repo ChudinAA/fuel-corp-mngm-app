@@ -2,7 +2,7 @@
 import { useMemo } from "react";
 import { format } from "date-fns";
 import type { Price, Supplier, Base, LogisticsCarrier, LogisticsDeliveryLocation, DeliveryCost } from "@shared/schema";
-import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, PRODUCT_TYPE, BASE_TYPE, ENTITY_TYPE } from "@shared/constants";
+import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, PRODUCT_TYPE, BASE_TYPE, DELIVERY_ENTITY_TYPE } from "@shared/constants";
 
 interface UseOptFiltersProps {
   supplierId: string;
@@ -98,8 +98,8 @@ export function useOptFilters({
       return deliveryCosts.some(dc => 
         dc.carrierId === carrier.id &&
         (
-          (dc.fromEntityType === ENTITY_TYPE.BASE && dc.fromEntityId === base.id) ||
-          (warehouse && dc.fromEntityType === ENTITY_TYPE.WAREHOUSE && dc.fromEntityId === warehouse.id)
+          (dc.fromEntityType === DELIVERY_ENTITY_TYPE.BASE && dc.fromEntityId === base.id) ||
+          (warehouse && dc.fromEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE && dc.fromEntityId === warehouse.id)
         )
       );
     }) || [];
@@ -115,11 +115,11 @@ export function useOptFilters({
 
       return deliveryCosts.some(dc => 
         dc.carrierId === carrierId &&
-        dc.toEntityType === ENTITY_TYPE.DELIVERY_LOCATION &&
+        dc.toEntityType === DELIVERY_ENTITY_TYPE.DELIVERY_LOCATION &&
         dc.toEntityId === location.id &&
         (
-          (base && dc.fromEntityType === ENTITY_TYPE.BASE && dc.fromEntityId === base.id) ||
-          (warehouse && dc.fromEntityType === ENTITY_TYPE.WAREHOUSE && dc.fromEntityId === warehouse.id)
+          (base && dc.fromEntityType === DELIVERY_ENTITY_TYPE.BASE && dc.fromEntityId === base.id) ||
+          (warehouse && dc.fromEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE && dc.fromEntityId === warehouse.id)
         )
       );
     }) || [];

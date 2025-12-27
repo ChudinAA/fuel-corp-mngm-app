@@ -1,4 +1,4 @@
-import { ENTITY_TYPE } from "@shared/constants";
+import { DELIVERY_ENTITY_TYPE } from "@shared/constants";
 
 export const formatNumber = (value: string | number | null) => {
   if (value === null || value === undefined) return "—";
@@ -13,11 +13,11 @@ export const getEntitiesByType = (
   deliveryLocations: any[] = []
 ) => {
   switch (type) {
-    case ENTITY_TYPE.BASE:
+    case DELIVERY_ENTITY_TYPE.BASE:
       return allBases;
-    case ENTITY_TYPE.WAREHOUSE:
+    case DELIVERY_ENTITY_TYPE.WAREHOUSE:
       return warehouses;
-    case ENTITY_TYPE.DELIVERY_LOCATION:
+    case DELIVERY_ENTITY_TYPE.DELIVERY_LOCATION:
       return deliveryLocations;
     default:
       return [];

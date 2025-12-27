@@ -30,7 +30,7 @@ export const MOVEMENT_TYPE = {
 } as const;
 
 // Entity types for delivery cost
-export const ENTITY_TYPE = {
+export const DELIVERY_ENTITY_TYPE = {
   BASE: 'base',
   WAREHOUSE: 'warehouse',
   DELIVERY_LOCATION: 'delivery_location',
@@ -65,7 +65,7 @@ export const CUSTOMER_MODULE = {
 export type ProductType = typeof PRODUCT_TYPE[keyof typeof PRODUCT_TYPE];
 export type TransactionType = typeof TRANSACTION_TYPE[keyof typeof TRANSACTION_TYPE];
 export type MovementType = typeof MOVEMENT_TYPE[keyof typeof MOVEMENT_TYPE];
-export type EntityType = typeof ENTITY_TYPE[keyof typeof ENTITY_TYPE];
+export type DeliveryEntityType = typeof DELIVERY_ENTITY_TYPE[keyof typeof DELIVERY_ENTITY_TYPE];
 export type CounterpartyType = typeof COUNTERPARTY_TYPE[keyof typeof COUNTERPARTY_TYPE];
 export type CounterpartyRole = typeof COUNTERPARTY_ROLE[keyof typeof COUNTERPARTY_ROLE];
 export type BaseType = typeof BASE_TYPE[keyof typeof BASE_TYPE];

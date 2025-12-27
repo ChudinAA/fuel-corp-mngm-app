@@ -1,6 +1,6 @@
 
 import { useMemo } from "react";
-import { MOVEMENT_TYPE, ENTITY_TYPE } from "@shared/constants";
+import { MOVEMENT_TYPE, DELIVERY_ENTITY_TYPE } from "@shared/constants";
 import type { AllSupplier } from "../types";
 
 interface UseAvailableCarriersProps {
@@ -41,14 +41,14 @@ export function useAvailableCarriers({
 
       // If supplier has warehouse, use it
       if (supplier.isWarehouse) {
-        fromEntityType = ENTITY_TYPE.WAREHOUSE;
+        fromEntityType = DELIVERY_ENTITY_TYPE.WAREHOUSE;
         const supplierWarehouse = warehouses.find(w => w.supplierId === supplier.id);
         if (supplierWarehouse) {
           fromEntityId = supplierWarehouse.id;
         }
       } else {
         // Use basis (first one)
-        fromEntityType = ENTITY_TYPE.BASE;
+        fromEntityType = DELIVERY_ENTITY_TYPE.BASE;
         if (supplier.baseIds && supplier.baseIds.length > 0) {
           fromEntityId = supplier.baseIds[0];
         }
@@ -56,7 +56,7 @@ export function useAvailableCarriers({
     }
     // For internal movement - get from source warehouse
     else if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
-      fromEntityType = ENTITY_TYPE.WAREHOUSE;
+      fromEntityType = DELIVERY_ENTITY_TYPE.WAREHOUSE;
       fromEntityId = watchFromWarehouseId;
     }
 
@@ -68,7 +68,7 @@ export function useAvailableCarriers({
         .filter(dc =>
           dc.fromEntityType === fromEntityType &&
           dc.fromEntityId === fromEntityId &&
-          dc.toEntityType === ENTITY_TYPE.WAREHOUSE &&
+          dc.toEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE &&
           dc.toEntityId === toWarehouse.id
         )
         .map(dc => dc.carrierId)

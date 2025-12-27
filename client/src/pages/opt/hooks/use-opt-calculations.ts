@@ -1,7 +1,7 @@
 
 import { useMemo } from "react";
 import type { Price, Warehouse, DeliveryCost, Base } from "@shared/schema";
-import { ENTITY_TYPE } from "@shared/constants";
+import { DELIVERY_ENTITY_TYPE } from "@shared/constants";
 import { useQuantityCalculation } from "../../shared/hooks/use-quantity-calculation";
 import { usePriceExtraction } from "../../shared/hooks/use-price-extraction";
 
@@ -67,12 +67,12 @@ export function useOptCalculations({
 
     const cost = deliveryCosts.find(dc => {
       const matchesCarrier = dc.carrierId === carrierId;
-      const matchesDestination = dc.toEntityType === ENTITY_TYPE.DELIVERY_LOCATION && dc.toEntityId === deliveryLocationId;
+      const matchesDestination = dc.toEntityType === DELIVERY_ENTITY_TYPE.DELIVERY_LOCATION && dc.toEntityId === deliveryLocationId;
 
       let matchesSource = false;
-      if (warehouse && dc.fromEntityType === ENTITY_TYPE.WAREHOUSE && dc.fromEntityId === warehouse.id) {
+      if (warehouse && dc.fromEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE && dc.fromEntityId === warehouse.id) {
         matchesSource = true;
-      } else if (base && dc.fromEntityType === ENTITY_TYPE.BASE && dc.fromEntityId === base.id) {
+      } else if (base && dc.fromEntityType === DELIVERY_ENTITY_TYPE.BASE && dc.fromEntityId === base.id) {
         matchesSource = true;
       }
 

@@ -1,6 +1,6 @@
 
 import { z } from "zod";
-import { ENTITY_TYPE } from "@shared/constants";
+import { DELIVERY_ENTITY_TYPE } from "@shared/constants";
 
 export const deliveryCostFormSchema = z.object({
   carrierId: z.string().min(1, "Выберите перевозчика"),
@@ -16,8 +16,8 @@ export const deliveryCostFormSchema = z.object({
 
 export type DeliveryCostFormData = z.infer<typeof deliveryCostFormSchema>;
 
-export const ENTITY_TYPES = [
-  { value: ENTITY_TYPE.BASE, label: "Базис" },
-  { value: ENTITY_TYPE.WAREHOUSE, label: "Склад" },
-  { value: ENTITY_TYPE.DELIVERY_LOCATION, label: "Место доставки" },
+export const DELIVERY_ENTITY_TYPES = [
+  { value: DELIVERY_ENTITY_TYPE.BASE, label: "Базис" },
+  { value: DELIVERY_ENTITY_TYPE.WAREHOUSE, label: "Склад" },
+  { value: DELIVERY_ENTITY_TYPE.DELIVERY_LOCATION, label: "Место доставки" },
 ] as const;

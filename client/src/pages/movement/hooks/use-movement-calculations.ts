@@ -1,6 +1,6 @@
 
 import { useMemo } from "react";
-import { MOVEMENT_TYPE, PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, ENTITY_TYPE } from "@shared/constants";
+import { MOVEMENT_TYPE, PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, DELIVERY_ENTITY_TYPE } from "@shared/constants";
 import { format } from "date-fns";
 import { calculateKgFromLiters } from "../utils";
 import type { AllSupplier } from "../types";
@@ -148,14 +148,14 @@ export function useMovementCalculations({
 
       // If supplier has warehouse, use it
       if (supplier.isWarehouse) {
-        fromEntityType = ENTITY_TYPE.WAREHOUSE;
+        fromEntityType = DELIVERY_ENTITY_TYPE.WAREHOUSE;
         const supplierWarehouse = warehouses.find(w => w.supplierId === supplier.id);
         if (supplierWarehouse) {
           fromEntityId = supplierWarehouse.id;
         }
       } else {
         // Use basis (first one)
-        fromEntityType = ENTITY_TYPE.BASE;
+        fromEntityType = DELIVERY_ENTITY_TYPE.BASE;
         if (supplier.baseIds && supplier.baseIds.length > 0) {
           fromEntityId = supplier.baseIds[0];
         }
@@ -163,7 +163,7 @@ export function useMovementCalculations({
     }
     // For internal movement - get from source warehouse
     else if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
-      fromEntityType = ENTITY_TYPE.WAREHOUSE;
+      fromEntityType = DELIVERY_ENTITY_TYPE.WAREHOUSE;
       fromEntityId = watchFromWarehouseId;
     }
 
@@ -174,7 +174,7 @@ export function useMovementCalculations({
       dc.carrierId === watchCarrierId &&
       dc.fromEntityType === fromEntityType &&
       dc.fromEntityId === fromEntityId &&
-      dc.toEntityType === ENTITY_TYPE.WAREHOUSE &&
+      dc.toEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE &&
       dc.toEntityId === toWarehouse.id
     );
 
