@@ -266,7 +266,8 @@ export class WarehouseTransactionService {
     warehouseId: string,
     quantity: number,
     totalCost: number,
-    productType: string
+    productType: string,
+    updatedById?: string
   ) {
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
     
@@ -303,6 +304,7 @@ export class WarehouseTransactionService {
           pvkjBalance: newBalance.toFixed(2),
           pvkjAverageCost: newAverageCost.toFixed(4),
           updatedAt: sql`NOW()`,
+          updatedById: updatedById,
         })
         .where(eq(warehouses.id, warehouseId));
     } else {
@@ -311,12 +313,16 @@ export class WarehouseTransactionService {
           currentBalance: newBalance.toFixed(2),
           averageCost: newAverageCost.toFixed(4),
           updatedAt: sql`NOW()`,
+          updatedById: updatedById,
         })
         .where(eq(warehouses.id, warehouseId));
     }
 
-    // Удаляем транзакцию
-    await tx.delete(warehouseTransactions).where(eq(warehouseTransactions.id, transactionId));
+    // Soft delete транзакции
+    await tx.update(warehouseTransactions).set({
+        deletedAt: sql`NOW()`,
+        deletedById: updatedById,
+      }).where(eq(warehouseTransactions.id, transactionId));
 
     return { newAverageCost, newBalance };
   }

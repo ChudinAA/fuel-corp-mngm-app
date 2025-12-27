@@ -173,10 +173,5 @@ export function registerMovementRoutes(app: Express) {
         res.status(500).json({ message: "Ошибка удаления перемещения" });
       }
     }
-  );s.json({ message: "Перемещение удалено" });
-      } catch (error) {
-        res.status(500).json({ message: "Ошибка удаления перемещения" });
-      }
-    }
   );
 }

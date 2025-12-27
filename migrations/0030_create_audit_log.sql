@@ -66,11 +66,8 @@ ALTER TABLE logistics_trailers ADD COLUMN IF NOT EXISTS deleted_by_id UUID REFER
 ALTER TABLE logistics_drivers ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE logistics_drivers ADD COLUMN IF NOT EXISTS deleted_by_id UUID REFERENCES users(id);
 
-ALTER TABLE opt ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
-ALTER TABLE opt ADD COLUMN IF NOT EXISTS deleted_by_id UUID REFERENCES users(id);
-
-ALTER TABLE aircraft_refueling ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
-ALTER TABLE aircraft_refueling ADD COLUMN IF NOT EXISTS deleted_by_id UUID REFERENCES users(id);
+ALTER TABLE warehouse_transactions ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+ALTER TABLE warehouse_transactions ADD COLUMN IF NOT EXISTS deleted_by_id UUID REFERENCES users(id);
 
 ALTER TABLE delivery_cost ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE delivery_cost ADD COLUMN IF NOT EXISTS deleted_by_id UUID REFERENCES users(id);

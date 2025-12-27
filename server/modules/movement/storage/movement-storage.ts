@@ -317,7 +317,8 @@ export class MovementStorage implements IMovementStorage {
           currentMovement.toWarehouseId,
           quantityKg,
           totalCost,
-          currentMovement.productType
+          currentMovement.productType,
+          userId,
         );
 
         console.log('✓ Откат на складе назначения выполнен');
@@ -335,33 +336,34 @@ export class MovementStorage implements IMovementStorage {
           currentMovement.fromWarehouseId,
           quantityKg,
           0,
-          currentMovement.productType
+          currentMovement.productType,
+          userId,
         );
 
         console.log('✓ Откат на складе-источнике выполнен');
       }
 
       // КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ: пересчитываем все затронутые склады и связанные транзакции
-      console.log('\n--- ШАГ 3: КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ после удаления ---');
+      // console.log('\n--- ШАГ 3: КОМПЛЕКСНЫЙ ПЕРЕСЧЕТ после удаления ---');
 
-      const affectedWarehouses = WarehouseRecalculationService.getAffectedWarehouses(
-        currentMovement,
-        currentMovement.movementDate
-      );
+      // const affectedWarehouses = WarehouseRecalculationService.getAffectedWarehouses(
+      //   currentMovement,
+      //   currentMovement.movementDate
+      // );
 
-      console.log('Затронутые склады:', affectedWarehouses.map(w => ({
-        warehouseId: w.warehouseId,
-        afterDate: w.afterDate,
-        productType: w.productType,
-      })));
+      // console.log('Затронутые склады:', affectedWarehouses.map(w => ({
+      //   warehouseId: w.warehouseId,
+      //   afterDate: w.afterDate,
+      //   productType: w.productType,
+      // })));
 
-      await WarehouseRecalculationService.recalculateAllAffectedTransactions(
-        tx,
-        affectedWarehouses,
-        undefined
-      );
+      // await WarehouseRecalculationService.recalculateAllAffectedTransactions(
+      //   tx,
+      //   affectedWarehouses,
+      //   undefined
+      // );
 
-      console.log('✓ Комплексный пересчет завершен');
+      // console.log('✓ Комплексный пересчет завершен');
 
       console.log('\n--- ШАГ 4: Удаление записи перемещения из БД ---');
       // Soft delete

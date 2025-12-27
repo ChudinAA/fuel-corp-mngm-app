@@ -55,6 +55,7 @@ export const MODULES = [
   "prices",
   "delivery",
   "directories",
+  "audit",
   "admin",
 ] as const;
 

@@ -270,6 +270,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
 
           const updateData: any = {
             updatedAt: sql`NOW()`,
+            updatedById: userId
           };
 
           if (isPvkj) {
@@ -283,6 +284,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
           // Soft delete транзакции
           await tx.update(warehouseTransactions).set({
             deletedAt: sql`NOW()`,
+            deletedById: userId,
           }).where(eq(warehouseTransactions.id, currentRefueling.transactionId));
         }
       }

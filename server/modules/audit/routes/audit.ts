@@ -75,7 +75,7 @@ router.get(
 router.get(
   "/audit/stats/:entityType",
   requireAuth,
-  requirePermission("audit", "view_stats"),
+  requirePermission("audit", "view"),
   async (req, res) => {
     try {
       const { entityType } = req.params;

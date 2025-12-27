@@ -296,12 +296,13 @@ export class OptStorage implements IOptStorage {
         const newBalance = currentBalance + quantityKg;
 
         await tx.update(warehouses)
-          .set({ currentBalance: newBalance.toFixed(2), updatedAt: sql`NOW()` })
+          .set({ currentBalance: newBalance.toFixed(2), updatedAt: sql`NOW()`, updatedById: userId })
           .where(eq(warehouses.id, currentOpt.warehouseId));
 
         // Soft delete транзакции
         await tx.update(warehouseTransactions).set({
           deletedAt: sql`NOW()`,
+          deletedById: userId,
         }).where(eq(warehouseTransactions.id, currentOpt.transactionId));
       }
 

@@ -51,6 +51,8 @@ export const logisticsDeliveryLocations = pgTable(
     updatedAt: timestamp("updated_at", { mode: "string" }),
     createdById: uuid("created_by_id").references(() => users.id),
     updatedById: uuid("updated_by_id").references(() => users.id),
+    deletedAt: timestamp("deleted_at", { mode: "string" }),
+    deletedById: uuid("deleted_by_id").references(() => users.id),
   }
 );
 
@@ -68,6 +70,8 @@ export const logisticsVehicles = pgTable("logistics_vehicles", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
+  deletedAt: timestamp("deleted_at", { mode: "string" }),
+  deletedById: uuid("deleted_by_id").references(() => users.id),
 }, (table) => ({
   carrierIdx: index("logistics_vehicles_carrier_idx").on(table.carrierId),
   regNumberIdx: index("logistics_vehicles_reg_number_idx").on(table.regNumber),
@@ -87,6 +91,8 @@ export const logisticsTrailers = pgTable("logistics_trailers", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
+  deletedAt: timestamp("deleted_at", { mode: "string" }),
+  deletedById: uuid("deleted_by_id").references(() => users.id),
 });
 
 // Водители
@@ -103,6 +109,8 @@ export const logisticsDrivers = pgTable("logistics_drivers", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
+  deletedAt: timestamp("deleted_at", { mode: "string" }),
+  deletedById: uuid("deleted_by_id").references(() => users.id),
 });
 
 // ============ RELATIONS ============

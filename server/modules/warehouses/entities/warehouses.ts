@@ -98,6 +98,8 @@ export const warehouseTransactions = pgTable("warehouse_transactions", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
+  deletedAt: timestamp("deleted_at", { mode: "string" }),
+  deletedById: uuid("deleted_by_id").references(() => users.id),
 }, (table) => ({
   warehouseIdIdx: index("warehouse_transactions_warehouse_id_idx").on(table.warehouseId),
   createdAtIdx: index("warehouse_transactions_created_at_idx").on(table.createdAt),
