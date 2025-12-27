@@ -1,8 +1,9 @@
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, isNull } from "drizzle-orm";
 import { db } from "server/db";
 import { users, type User, type InsertUser } from "@shared/schema";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
+import { sql } from "drizzle-orm";
 import type { IUserStorage } from "../../../storage/types";
 
 const scryptAsync = promisify(scrypt);
@@ -33,6 +34,7 @@ export class UserStorage implements IUserStorage {
       .select()
       .from(users)
       .where(eq(users.id, id))
+      .where(isNull(users.deletedAt))
       .limit(1);
     return user;
   }
@@ -42,6 +44,7 @@ export class UserStorage implements IUserStorage {
       .select()
       .from(users)
       .where(eq(users.email, email))
+      .where(isNull(users.deletedAt))
       .limit(1);
     return user;
   }
@@ -70,13 +73,16 @@ export class UserStorage implements IUserStorage {
     return user;
   }
 
-  async deleteUser(id: string): Promise<boolean> {
-    await db.delete(users).where(eq(users.id, id));
+  async deleteUser(id: string, deletedById?: string): Promise<boolean> {
+    await db.update(users).set({
+      deletedAt: sql`NOW()`,
+      deletedById: deletedById,
+    }).where(eq(users.id, id));
     return true;
   }
 
   async getAllUsers(): Promise<User[]> {
-    return db.select().from(users).orderBy(asc(users.lastName));
+    return db.select().from(users).where(isNull(users.deletedAt)).orderBy(asc(users.lastName));
   }
 
   async verifyUserPassword(

@@ -36,6 +36,8 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
   updatedById: uuid("updated_by_id").references(() => users.id),
+  deletedAt: timestamp("deleted_at"),
+  deletedById: uuid("deleted_by_id").references(() => users.id),
 });
 
 // ============ RELATIONS ============

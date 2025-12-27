@@ -72,6 +72,12 @@ ALTER TABLE warehouse_transactions ADD COLUMN IF NOT EXISTS deleted_by_id UUID R
 ALTER TABLE delivery_cost ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE delivery_cost ADD COLUMN IF NOT EXISTS deleted_by_id UUID REFERENCES users(id);
 
+ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_by_id UUID REFERENCES users(id);
+
+ALTER TABLE roles ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+ALTER TABLE roles ADD COLUMN IF NOT EXISTS deleted_by_id UUID REFERENCES users(id);
+
 -- Create indexes for soft delete queries
 CREATE INDEX IF NOT EXISTS opt_deleted_at_idx ON opt(deleted_at) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS aircraft_refueling_deleted_at_idx ON aircraft_refueling(deleted_at) WHERE deleted_at IS NULL;
@@ -88,3 +94,5 @@ CREATE INDEX IF NOT EXISTS logistics_vehicles_deleted_at_idx ON logistics_vehicl
 CREATE INDEX IF NOT EXISTS logistics_trailers_deleted_at_idx ON logistics_trailers(deleted_at) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS logistics_drivers_deleted_at_idx ON logistics_drivers(deleted_at) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS delivery_cost_deleted_at_idx ON delivery_cost(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS users_deleted_at_idx ON users(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS roles_deleted_at_idx ON roles(deleted_at) WHERE deleted_at IS NULL;
