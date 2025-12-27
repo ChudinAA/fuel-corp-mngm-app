@@ -42,8 +42,13 @@ export const getQueryFn: <T>(options: {
       credentials: "include",
     });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    if (res.status === 401) {
+      if (unauthorizedBehavior === "returnNull") {
+        return null;
+      }
+      // Redirect to auth page on 401 for protected queries
+      window.location.href = "/auth";
+      throw new Error("Необходима авторизация");
     }
 
     await throwIfResNotOk(res);
