@@ -11,6 +11,7 @@ import { ExchangeStorage } from "../modules/exchange/storage/exchange-storage";
 import { MovementStorage } from "../modules/movement/storage/movement-storage";
 import { OptStorage } from "../modules/opt/storage/opt-storage";
 import { AircraftRefuelingStorage } from "../modules/refueling/storage/aircraft-refueling-storage";
+import { DeliveryStorage } from "../modules/delivery/storage/delivery-storage";
 
 export * from "./types";
 
@@ -28,6 +29,7 @@ export class Storage {
   public opt: OptStorage;
   public aircraftRefueling: AircraftRefuelingStorage;
   public dashboard: DashboardStorage;
+  public delivery: DeliveryStorage;
 
   constructor() {
     this.users = new UserStorage();
@@ -43,6 +45,7 @@ export class Storage {
     this.opt = new OptStorage();
     this.aircraftRefueling = new AircraftRefuelingStorage();
     this.dashboard = new DashboardStorage();
+    this.delivery = new DeliveryStorage();
   }
 }
 

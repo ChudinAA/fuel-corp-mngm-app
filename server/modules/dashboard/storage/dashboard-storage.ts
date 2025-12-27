@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, isNull } from "drizzle-orm";
 import { db } from "server/db";
 import {
   opt,
@@ -32,18 +32,18 @@ export class DashboardStorage implements IDashboardStorage {
     const [optTodayResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(opt)
-      .where(eq(opt.createdAt, todayStr));
+      .where(and(eq(opt.createdAt, todayStr), isNull(opt.deletedAt)));
     const optDealsToday = Number(optTodayResult?.count || 0);
 
     // Заправки ВС сегодня
     const [refuelingTodayResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(aircraftRefueling)
-      .where(eq(aircraftRefueling.refuelingDate, todayStr));
+      .where(and(eq(aircraftRefueling.refuelingDate, todayStr), isNull(aircraftRefueling.deletedAt)));
     const refuelingToday = Number(refuelingTodayResult?.count || 0);
 
     // Проверка складов с низким остатком (< 20%)
-    const warehousesList = await db.select().from(warehouses);
+    const warehousesList = await db.select().from(warehouses).where(isNull(warehouses.deletedAt));
     let warehouseAlerts = 0;
     for (const wh of warehousesList) {
       const currentBalance = parseFloat(wh.currentBalance || "0");
@@ -57,14 +57,14 @@ export class DashboardStorage implements IDashboardStorage {
     const [optProfitResult] = await db
       .select({ total: sql<number>`sum(CAST(${opt.profit} AS DECIMAL))` })
       .from(opt)
-      .where(sql`${opt.createdAt} >= ${monthStartStr}`);
+      .where(and(sql`${opt.createdAt} >= ${monthStartStr}`, isNull(opt.deletedAt)));
 
     const [refuelingProfitResult] = await db
       .select({
         total: sql<number>`sum(CAST(${aircraftRefueling.profit} AS DECIMAL))`,
       })
       .from(aircraftRefueling)
-      .where(sql`${aircraftRefueling.refuelingDate} >= ${monthStartStr}`);
+      .where(and(sql`${aircraftRefueling.refuelingDate} >= ${monthStartStr}`, isNull(aircraftRefueling.deletedAt)));
 
     const totalProfitMonth =
       Number(optProfitResult?.total || 0) +
@@ -85,7 +85,7 @@ export class DashboardStorage implements IDashboardStorage {
     const [volumeResult] = await db
       .select({ total: sql<number>`sum(CAST(${opt.quantityKg} AS DECIMAL))` })
       .from(opt)
-      .where(sql`${opt.createdAt} >= ${monthStartStr}`);
+      .where(and(sql`${opt.createdAt} >= ${monthStartStr}`, isNull(opt.deletedAt)));
     const totalVolumeSold = Number(volumeResult?.total || 0);
 
     return {
@@ -105,6 +105,7 @@ export class DashboardStorage implements IDashboardStorage {
     const optDeals = await db
       .select()
       .from(opt)
+      .where(isNull(opt.deletedAt))
       .orderBy(sql`${opt.createdAt} DESC`)
       .limit(3);
 
@@ -134,6 +135,7 @@ export class DashboardStorage implements IDashboardStorage {
     const refuelings = await db
       .select()
       .from(aircraftRefueling)
+      .where(isNull(aircraftRefueling.deletedAt))
       .orderBy(sql`${aircraftRefueling.createdAt} DESC`)
       .limit(2);
 
@@ -154,6 +156,7 @@ export class DashboardStorage implements IDashboardStorage {
     const movements = await db
       .select()
       .from(movement)
+      .where(isNull(movement.deletedAt))
       .orderBy(sql`${movement.createdAt} DESC`)
       .limit(2);
 
@@ -221,35 +224,50 @@ export class DashboardStorage implements IDashboardStorage {
     const [optWeekResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(opt)
-      .where(sql`${opt.createdAt} >= ${weekAgoStr}`);
+      .where(and(
+        sql`${opt.createdAt} >= ${weekAgoStr}`,
+        isNull(opt.deletedAt)
+      ));
     const optDealsWeek = Number(optWeekResult?.count || 0);
 
     // Заправки за неделю
     const [refuelingsWeekResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(aircraftRefueling)
-      .where(sql`${aircraftRefueling.refuelingDate} >= ${weekAgoStr}`);
+      .where(and(
+        sql`${aircraftRefueling.refuelingDate} >= ${weekAgoStr}`,
+        isNull(aircraftRefueling.deletedAt)
+      ));
     const refuelingsWeek = Number(refuelingsWeekResult?.count || 0);
 
     // Объем продаж за неделю
     const [volumeWeekResult] = await db
       .select({ total: sql<number>`sum(CAST(${opt.quantityKg} AS DECIMAL))` })
       .from(opt)
-      .where(sql`${opt.createdAt} >= ${weekAgoStr}`);
+      .where(and(
+        sql`${opt.createdAt} >= ${weekAgoStr}`,
+        isNull(opt.deletedAt)
+      ));
     const volumeSoldWeek = Number(volumeWeekResult?.total || 0);
 
     // Прибыль за неделю
     const [optProfitWeek] = await db
       .select({ total: sql<number>`sum(CAST(${opt.profit} AS DECIMAL))` })
       .from(opt)
-      .where(sql`${opt.createdAt} >= ${weekAgoStr}`);
+      .where(and(
+        sql`${opt.createdAt} >= ${weekAgoStr}`,
+        isNull(opt.deletedAt)
+      ));
 
     const [refuelingProfitWeek] = await db
       .select({
         total: sql<number>`sum(CAST(${aircraftRefueling.profit} AS DECIMAL))`,
       })
       .from(aircraftRefueling)
-      .where(sql`${aircraftRefueling.refuelingDate} >= ${weekAgoStr}`);
+      .where(and(
+        sql`${aircraftRefueling.refuelingDate} >= ${weekAgoStr}`,
+        isNull(aircraftRefueling.deletedAt)
+      ));
 
     const profitWeek =
       Number(optProfitWeek?.total || 0) +

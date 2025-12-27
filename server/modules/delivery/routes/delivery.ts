@@ -4,9 +4,9 @@ import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
-import { db } from "server/db";
-import { deliveryCost } from "@shared/schema";
-import { eq, sql, and, isNull } from "drizzle-orm";
+import { DeliveryStorage } from "../storage/delivery-storage";
+
+const deliveryStorage = new DeliveryStorage();
 
 export function registerDeliveryRoutes(app: Express) {
   // Получить все тарифы доставки
@@ -16,10 +16,7 @@ export function registerDeliveryRoutes(app: Express) {
     requirePermission("delivery", "view"),
     async (req: Request, res: Response) => {
       try {
-        const costs = await db
-          .select()
-          .from(deliveryCost)
-          .where(isNull(deliveryCost.deletedAt));
+        const costs = await deliveryStorage.getAllDeliveryCosts();
         res.json(costs);
       } catch (error) {
         console.error("Error fetching delivery costs:", error);
@@ -37,11 +34,7 @@ export function registerDeliveryRoutes(app: Express) {
     async (req: Request, res: Response) => {
       try {
         const id = req.params.id;
-        const [cost] = await db
-          .select()
-          .from(deliveryCost)
-          .where(and(eq(deliveryCost.id, id), isNull(deliveryCost.deletedAt)))
-          .limit(1);
+        const cost = await deliveryStorage.getDeliveryCost(id);
         if (!cost) {
           return res.status(404).json({ message: "Тариф доставки не найден" });
         }
@@ -66,23 +59,10 @@ export function registerDeliveryRoutes(app: Express) {
     async (req: Request, res: Response) => {
       try {
         const data = insertDeliveryCostSchema.parse(req.body);
-
-        const [created] = await db
-          .insert(deliveryCost)
-          .values({
-            carrierId: data.carrierId,
-            fromEntityType: data.fromEntityType,
-            fromEntityId: data.fromEntityId,
-            fromLocation: data.fromLocation,
-            toEntityType: data.toEntityType,
-            toEntityId: data.toEntityId,
-            toLocation: data.toLocation,
-            costPerKg: data.costPerKg,
-            distance: data.distance || null,
-            createdById: req.session.userId,
-          })
-          .returning();
-
+        const created = await deliveryStorage.createDeliveryCost(
+          data,
+          req.session.userId!
+        );
         res.status(201).json(created);
       } catch (error) {
         if (error instanceof z.ZodError) {
@@ -103,12 +83,7 @@ export function registerDeliveryRoutes(app: Express) {
       entityType: ENTITY_TYPES.DELIVERY_COST,
       operation: AUDIT_OPERATIONS.UPDATE,
       getOldData: async (req) => {
-        const [cost] = await db
-          .select()
-          .from(deliveryCost)
-          .where(eq(deliveryCost.id, req.params.id))
-          .limit(1);
-        return cost;
+        return await deliveryStorage.getDeliveryCost(req.params.id);
       },
       getNewData: (req) => req.body,
     }),
@@ -117,15 +92,11 @@ export function registerDeliveryRoutes(app: Express) {
         const id = req.params.id;
         const data = insertDeliveryCostSchema.partial().parse(req.body);
 
-        const [updated] = await db
-          .update(deliveryCost)
-          .set({
-            ...data,
-            updatedAt: sql`NOW()`,
-            updatedById: req.session.userId,
-          })
-          .where(eq(deliveryCost.id, id))
-          .returning();
+        const updated = await deliveryStorage.updateDeliveryCost(
+          id,
+          data,
+          req.session.userId!
+        );
 
         if (!updated) {
           return res.status(404).json({ message: "Тариф доставки не найден" });
@@ -151,25 +122,13 @@ export function registerDeliveryRoutes(app: Express) {
       entityType: ENTITY_TYPES.DELIVERY_COST,
       operation: AUDIT_OPERATIONS.DELETE,
       getOldData: async (req) => {
-        const [cost] = await db
-          .select()
-          .from(deliveryCost)
-          .where(eq(deliveryCost.id, req.params.id))
-          .limit(1);
-        return cost;
+        return await deliveryStorage.getDeliveryCost(req.params.id);
       },
     }),
     async (req: Request, res: Response) => {
       try {
         const id = req.params.id;
-        // Soft delete
-        await db
-          .update(deliveryCost)
-          .set({
-            deletedAt: sql`NOW()`,
-            deletedById: req.session.userId,
-          })
-          .where(eq(deliveryCost.id, id));
+        await deliveryStorage.deleteDeliveryCost(id, req.session.userId!);
         res.json({ message: "Тариф доставки удален" });
       } catch (error) {
         console.error("Error deleting delivery cost:", error);
