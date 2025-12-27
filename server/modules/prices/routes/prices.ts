@@ -3,6 +3,8 @@ import { storage } from "../../../storage/index";
 import { insertPriceSchema } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
+import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 
 export function registerPricesRoutes(app: Express) {
   app.get(
@@ -27,6 +29,10 @@ export function registerPricesRoutes(app: Express) {
     "/api/prices",
     requireAuth,
     requirePermission("prices", "create"),
+    auditLog({
+      entityType: ENTITY_TYPES.PRICE,
+      operation: AUDIT_OPERATIONS.CREATE,
+    }),
     async (req, res) => {
       try {
         const body = req.body;
@@ -58,6 +64,14 @@ export function registerPricesRoutes(app: Express) {
     "/api/prices/:id",
     requireAuth,
     requirePermission("prices", "edit"),
+    auditLog({
+      entityType: ENTITY_TYPES.PRICE,
+      operation: AUDIT_OPERATIONS.UPDATE,
+      getOldData: async (req) => {
+        const prices = await storage.prices.getAllPrices();
+        return prices.find(p => p.id === req.params.id);
+      },
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -90,6 +104,14 @@ export function registerPricesRoutes(app: Express) {
     "/api/prices/:id",
     requireAuth,
     requirePermission("prices", "delete"),
+    auditLog({
+      entityType: ENTITY_TYPES.PRICE,
+      operation: AUDIT_OPERATIONS.DELETE,
+      getOldData: async (req) => {
+        const prices = await storage.prices.getAllPrices();
+        return prices.find(p => p.id === req.params.id);
+      },
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;

@@ -3,6 +3,8 @@ import { storage } from "../../../storage/index";
 import { insertSupplierSchema } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
+import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 
 export function registerSuppliersRoutes(app: Express) {
   app.get(
@@ -19,6 +21,7 @@ export function registerSuppliersRoutes(app: Express) {
     "/api/suppliers/:id",
     requireAuth,
     requirePermission("directories", "view"),
+    auditView(ENTITY_TYPES.SUPPLIER),
     async (req, res) => {
       const id = req.params.id;
       const supplier = await storage.suppliers.getSupplier(id);
@@ -33,6 +36,10 @@ export function registerSuppliersRoutes(app: Express) {
     "/api/suppliers",
     requireAuth,
     requirePermission("directories", "create"),
+    auditLog({
+      entityType: ENTITY_TYPES.SUPPLIER,
+      operation: AUDIT_OPERATIONS.CREATE,
+    }),
     async (req, res) => {
       try {
         const { baseIds, ...restData } = req.body;
@@ -88,6 +95,13 @@ export function registerSuppliersRoutes(app: Express) {
     "/api/suppliers/:id",
     requireAuth,
     requirePermission("directories", "edit"),
+    auditLog({
+      entityType: ENTITY_TYPES.SUPPLIER,
+      operation: AUDIT_OPERATIONS.UPDATE,
+      getOldData: async (req) => {
+        return await storage.suppliers.getSupplier(req.params.id);
+      },
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -119,6 +133,13 @@ export function registerSuppliersRoutes(app: Express) {
     "/api/suppliers/:id",
     requireAuth,
     requirePermission("directories", "delete"),
+    auditLog({
+      entityType: ENTITY_TYPES.SUPPLIER,
+      operation: AUDIT_OPERATIONS.DELETE,
+      getOldData: async (req) => {
+        return await storage.suppliers.getSupplier(req.params.id);
+      },
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;

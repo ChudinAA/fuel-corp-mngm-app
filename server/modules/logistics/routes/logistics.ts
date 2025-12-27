@@ -9,6 +9,8 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
+import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 
 export function registerLogisticsRoutes(app: Express) {
   // ============ LOGISTICS CARRIERS ============
@@ -27,6 +29,7 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/carriers/:id",
     requireAuth,
     requirePermission("directories", "view"),
+    auditView(ENTITY_TYPES.LOGISTICS_CARRIER),
     async (req, res) => {
       const id = req.params.id;
       const carrier = await storage.logistics.getLogisticsCarrier(id);
@@ -41,6 +44,10 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/carriers",
     requireAuth,
     requirePermission("directories", "create"),
+    auditLog({
+      entityType: ENTITY_TYPES.LOGISTICS_CARRIER,
+      operation: AUDIT_OPERATIONS.CREATE,
+    }),
     async (req, res) => {
       try {
         const data = insertLogisticsCarrierSchema.parse({
@@ -62,6 +69,13 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/carriers/:id",
     requireAuth,
     requirePermission("directories", "edit"),
+    auditLog({
+      entityType: ENTITY_TYPES.LOGISTICS_CARRIER,
+      operation: AUDIT_OPERATIONS.UPDATE,
+      getOldData: async (req) => {
+        return await storage.logistics.getLogisticsCarrier(req.params.id);
+      },
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -83,6 +97,13 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/carriers/:id",
     requireAuth,
     requirePermission("directories", "delete"),
+    auditLog({
+      entityType: ENTITY_TYPES.LOGISTICS_CARRIER,
+      operation: AUDIT_OPERATIONS.DELETE,
+      getOldData: async (req) => {
+        return await storage.logistics.getLogisticsCarrier(req.params.id);
+      },
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;

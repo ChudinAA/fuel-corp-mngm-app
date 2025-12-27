@@ -2,6 +2,8 @@ import type { Express } from "express";
 import { storage } from "../../../storage/index";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
+import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 
 export function registerWarehousesOperationsRoutes(app: Express) {
   app.get(
@@ -18,6 +20,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     "/api/warehouses/:id",
     requireAuth,
     requirePermission("warehouses", "view"),
+    auditView(ENTITY_TYPES.WAREHOUSE),
     async (req, res) => {
       const id = req.params.id;
       const warehouse = await storage.warehouses.getWarehouse(id);
@@ -32,6 +35,10 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     "/api/warehouses",
     requireAuth,
     requirePermission("warehouses", "create"),
+    auditLog({
+      entityType: ENTITY_TYPES.WAREHOUSE,
+      operation: AUDIT_OPERATIONS.CREATE,
+    }),
     async (req, res) => {
       try {
         const { createSupplier, bases, ...warehouseData } = req.body;
@@ -87,6 +94,13 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     "/api/warehouses/:id",
     requireAuth,
     requirePermission("warehouses", "edit"),
+    auditLog({
+      entityType: ENTITY_TYPES.WAREHOUSE,
+      operation: AUDIT_OPERATIONS.UPDATE,
+      getOldData: async (req) => {
+        return await storage.warehouses.getWarehouse(req.params.id);
+      },
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;
@@ -131,6 +145,13 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     "/api/warehouses/:id",
     requireAuth,
     requirePermission("warehouses", "delete"),
+    auditLog({
+      entityType: ENTITY_TYPES.WAREHOUSE,
+      operation: AUDIT_OPERATIONS.DELETE,
+      getOldData: async (req) => {
+        return await storage.warehouses.getWarehouse(req.params.id);
+      },
+    }),
     async (req, res) => {
       try {
         const id = req.params.id;
