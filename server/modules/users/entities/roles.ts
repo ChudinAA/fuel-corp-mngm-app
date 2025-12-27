@@ -28,7 +28,7 @@ export const roles = pgTable("roles", {
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
   updatedById: uuid("updated_by_id").references(() => users.id),
-  deletedAt: timestamp("deleted_at"),
+  deletedAt: timestamp("deleted_at", { mode: "string" }),
   deletedById: uuid("deleted_by_id").references(() => users.id),
 });
 
