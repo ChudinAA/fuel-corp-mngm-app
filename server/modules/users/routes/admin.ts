@@ -175,7 +175,11 @@ export function registerAdminRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        const user = await storage.users.updateUser(id, req.body);
+        const user = await storage.users.updateUser(
+          id,
+          req.body,
+          req.session.userId,
+        );
         if (!user) {
           return res.status(404).json({ message: "Пользователь не найден" });
         }

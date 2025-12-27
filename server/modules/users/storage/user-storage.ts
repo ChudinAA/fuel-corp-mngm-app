@@ -16,14 +16,14 @@ async function hashPassword(password: string): Promise<string> {
 
 async function verifyPassword(
   storedPassword: string,
-  suppliedPassword: string
+  suppliedPassword: string,
 ): Promise<boolean> {
   const [hashedPassword, salt] = storedPassword.split(".");
   const hashedPasswordBuf = Buffer.from(hashedPassword, "hex");
   const suppliedPasswordBuf = (await scryptAsync(
     suppliedPassword,
     salt,
-    64
+    64,
   )) as Buffer;
   return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
 }
@@ -60,11 +60,15 @@ export class UserStorage implements IUserStorage {
 
   async updateUser(
     id: string,
-    data: Partial<InsertUser>
+    data: Partial<InsertUser>,
+    updatedById?: string,
   ): Promise<User | undefined> {
     if (data.password) {
       data.password = await hashPassword(data.password);
     }
+    data.updatedAt = sql`NOW()`;
+    data.updatedById = updatedById;
+
     const [user] = await db
       .update(users)
       .set(data)
@@ -74,20 +78,27 @@ export class UserStorage implements IUserStorage {
   }
 
   async deleteUser(id: string, deletedById?: string): Promise<boolean> {
-    await db.update(users).set({
-      deletedAt: sql`NOW()`,
-      deletedById: deletedById,
-    }).where(eq(users.id, id));
+    await db
+      .update(users)
+      .set({
+        deletedAt: sql`NOW()`,
+        deletedById: deletedById,
+      })
+      .where(eq(users.id, id));
     return true;
   }
 
   async getAllUsers(): Promise<User[]> {
-    return db.select().from(users).where(isNull(users.deletedAt)).orderBy(asc(users.lastName));
+    return db
+      .select()
+      .from(users)
+      .where(isNull(users.deletedAt))
+      .orderBy(asc(users.lastName));
   }
 
   async verifyUserPassword(
     email: string,
-    password: string
+    password: string,
   ): Promise<User | null> {
     const user = await this.getUserByEmail(email);
     if (!user) return null;
