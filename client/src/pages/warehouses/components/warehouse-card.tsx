@@ -7,6 +7,7 @@ import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Pencil, Trash2, TrendingUp, TrendingDown, Warehouse as WarehouseIcon, Droplets, Fuel, MoreHorizontal } from "lucide-react";
+import { AuditHistoryButton } from "@/components/audit-history-button";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Warehouse, Base } from "@shared/schema";
@@ -123,7 +124,7 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
-          <div>
+          <div className="flex-1">
             <CardTitle className="text-lg flex items-center gap-2">
               <WarehouseIcon className="h-4 w-4 text-sky-400" />
               {warehouse.name}
@@ -155,13 +156,21 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
               </CardDescription>
             )}
           </div>
-          {(hasPermission("warehouses", "edit") || hasPermission("warehouses", "delete")) && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
+          <div className="flex items-center gap-1">
+            <AuditHistoryButton
+              entityType="warehouses"
+              entityId={warehouse.id}
+              entityName={warehouse.name}
+              variant="ghost"
+              size="icon"
+            />
+            {(hasPermission("warehouses", "edit") || hasPermission("warehouses", "delete")) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {hasPermission("warehouses", "edit") && (
                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(warehouse); }}>
@@ -188,8 +197,9 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+              </DropdownMenu>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

@@ -7,6 +7,7 @@ import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Pencil, Trash2, FileText } from "lucide-react";
+import { AuditHistoryButton } from "@/components/audit-history-button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatNumber, formatDate } from "../utils";
 import type { MovementTableProps } from "../types";
@@ -150,47 +151,56 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
                 <TableCell className="text-right">{formatNumberWithK(storageCost)}</TableCell>
                 <TableCell className="text-right font-medium">{formatNumber(costPerKg)} ₽/кг</TableCell>
                 <TableCell>
-                  {(hasPermission("movement", "edit") || hasPermission("movement", "delete") || item.notes) && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {hasPermission("movement", "edit") && (
-                          <DropdownMenuItem onClick={() => onEdit(item)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Редактировать
-                          </DropdownMenuItem>
-                        )}
-                        {item.notes && (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedNotes(item.notes || "");
-                              setNotesDialogOpen(true);
-                            }}
-                          >
-                            <FileText className="mr-2 h-4 w-4" />
-                            Примечание
-                          </DropdownMenuItem>
-                        )}
-                        {hasPermission("movement", "delete") && (
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => {
-                              setItemToDelete(item);
-                              setDeleteDialogOpen(true);
-                            }}
-                            disabled={isDeleting}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Удалить
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <AuditHistoryButton
+                      entityType="movement"
+                      entityId={item.id}
+                      entityName={`Перемещение от ${formatDate(item.movementDate)}`}
+                      variant="ghost"
+                      size="icon"
+                    />
+                    {(hasPermission("movement", "edit") || hasPermission("movement", "delete") || item.notes) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {hasPermission("movement", "edit") && (
+                            <DropdownMenuItem onClick={() => onEdit(item)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Редактировать
+                            </DropdownMenuItem>
+                          )}
+                          {item.notes && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedNotes(item.notes || "");
+                                setNotesDialogOpen(true);
+                              }}
+                            >
+                              <FileText className="mr-2 h-4 w-4" />
+                              Примечание
+                            </DropdownMenuItem>
+                          )}
+                          {hasPermission("movement", "delete") && (
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => {
+                                setItemToDelete(item);
+                                setDeleteDialogOpen(true);
+                              }}
+                              disabled={isDeleting}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Удалить
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             );

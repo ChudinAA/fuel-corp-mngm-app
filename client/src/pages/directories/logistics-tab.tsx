@@ -11,6 +11,7 @@ import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Truck, Pencil, Trash2, MapPin, Car, Container, User, Building2, TruckIcon } from "lucide-react";
+import { AuditHistoryButton } from "@/components/audit-history-button";
 import type { 
   LogisticsCarrier,
   LogisticsDeliveryLocation,
@@ -226,35 +227,40 @@ export function LogisticsTab() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {(hasPermission("directories", "edit") || hasPermission("directories", "delete")) && (
-                            <div className="flex items-center gap-1">
-                              {hasPermission("directories", "edit") && (
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  data-testid={`button-edit-${item.type}-${item.id}`}
-                                  onClick={() => setEditingItem({ type: item.type, data: item })}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                              )}
-                              {hasPermission("directories", "delete") && (
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="text-destructive" 
-                                  data-testid={`button-delete-${item.type}-${item.id}`}
-                                  onClick={() => {
-                                    setItemToDelete({ type: item.type, id: item.id, name: getItemDisplayName(item) });
-                                    setDeleteDialogOpen(true);
-                                  }}
-                                  disabled={deleteMutation.isPending}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1">
+                            <AuditHistoryButton
+                              entityType={`logistics_${item.type}`}
+                              entityId={item.id}
+                              entityName={getItemDisplayName(item)}
+                              variant="ghost"
+                              size="icon"
+                            />
+                            {hasPermission("directories", "edit") && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                data-testid={`button-edit-${item.type}-${item.id}`}
+                                onClick={() => setEditingItem({ type: item.type, data: item })}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {hasPermission("directories", "delete") && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="text-destructive" 
+                                data-testid={`button-delete-${item.type}-${item.id}`}
+                                onClick={() => {
+                                  setItemToDelete({ type: item.type, id: item.id, name: getItemDisplayName(item) });
+                                  setDeleteDialogOpen(true);
+                                }}
+                                disabled={deleteMutation.isPending}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

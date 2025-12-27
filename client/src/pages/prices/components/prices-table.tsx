@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Search, MoreVertical, Pencil, Trash2, RefreshCw, Package, Plane, TruckIcon, ShoppingCart, FileText, StickyNote } from "lucide-react";
+import { AuditHistoryButton } from "@/components/audit-history-button";
 import type { Price, Supplier, Customer } from "@shared/schema";
 import type { PricesTableProps } from "../types";
 import { formatNumber, formatDate, getPriceDisplay, getProductTypeLabel } from "../utils";
@@ -215,13 +216,21 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                     </div>
                   </TableCell>
                   <TableCell>
-                    {(hasPermission("prices", "edit") || hasPermission("prices", "delete") || price.notes || price.contractNumber) && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-menu-price-${price.id}`}>
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
+                    <div className="flex items-center gap-1">
+                      <AuditHistoryButton
+                        entityType="prices"
+                        entityId={price.id}
+                        entityName={`Цена для ${getContractorName(price.counterpartyId, price.counterpartyType, price.counterpartyRole)}`}
+                        variant="ghost"
+                        size="icon"
+                      />
+                      {(hasPermission("prices", "edit") || hasPermission("prices", "delete") || price.notes || price.contractNumber) && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-menu-price-${price.id}`}>
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {hasPermission("prices", "edit") && (
                             <DropdownMenuItem onClick={() => onEdit(price)} data-testid={`button-edit-price-${price.id}`}>
@@ -265,8 +274,9 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               );

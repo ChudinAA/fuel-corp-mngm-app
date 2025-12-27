@@ -11,6 +11,7 @@ import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, MapPin, Pencil, Trash2, Droplets, Fuel } from "lucide-react";
+import { AuditHistoryButton } from "@/components/audit-history-button";
 import type { Base } from "@shared/schema";
 import { AddBaseDialog } from "./bases-dialog";
 import { BASE_TYPE } from "@shared/constants";
@@ -137,6 +138,13 @@ export function BasesTab() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
+                            <AuditHistoryButton
+                              entityType="bases"
+                              entityId={base.id}
+                              entityName={base.name}
+                              variant="ghost"
+                              size="icon"
+                            />
                             {hasPermission("directories", "edit") && (
                               <Button 
                                 variant="ghost" 

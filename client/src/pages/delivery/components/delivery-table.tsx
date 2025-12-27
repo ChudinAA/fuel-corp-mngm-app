@@ -10,6 +10,7 @@ import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Truck, Pencil, Trash2, Droplets, Fuel, Warehouse, MapPin, MoreVertical } from "lucide-react";
+import { AuditHistoryButton } from "@/components/audit-history-button";
 import type { DeliveryCost } from "@shared/schema";
 import { formatNumber } from "../utils";
 import { BASE_TYPE, DELIVERY_ENTITY_TYPE } from "@shared/constants";
@@ -137,13 +138,21 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
                     <Badge variant="outline" className="text-green-600 border-green-600">Активен</Badge>
                   </TableCell>
                   <TableCell>
-                    {hasActions && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
+                    <div className="flex items-center gap-1">
+                      <AuditHistoryButton
+                        entityType="delivery"
+                        entityId={cost.id}
+                        entityName={`${cost.fromLocation} → ${cost.toLocation}`}
+                        variant="ghost"
+                        size="icon"
+                      />
+                      {hasActions && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {hasPermission("delivery", "edit") && (
                             <DropdownMenuItem
@@ -169,8 +178,9 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               );

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pencil, Trash2 } from "lucide-react";
+import { AuditHistoryButton } from "@/components/audit-history-button";
 import type { ExchangeTableProps } from "../types";
 import { formatNumber, formatCurrency, formatDate } from "../utils";
 import { PRODUCT_TYPE } from "@shared/constants";
@@ -67,6 +68,13 @@ export function ExchangeTable({
                 <TableCell className="text-right font-medium">{formatCurrency(item.totalAmount)}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
+                    <AuditHistoryButton
+                      entityType="exchange"
+                      entityId={item.id}
+                      entityName={`Сделка №${item.dealNumber || item.id} от ${formatDate(item.dealDate)}`}
+                      variant="ghost"
+                      size="icon"
+                    />
                     {canEdit && (
                       <Button
                         variant="ghost"
