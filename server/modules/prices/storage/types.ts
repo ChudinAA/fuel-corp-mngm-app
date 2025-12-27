@@ -2,6 +2,7 @@ import { InsertPrice, Price } from "@shared/schema";
 
 export interface IPriceStorage {
   getAllPrices(): Promise<Price[]>;
+  getPrice(id: string): Promise<Price | undefined>;
   getPricesByRole(
     counterpartyRole: string,
     counterpartyType: string

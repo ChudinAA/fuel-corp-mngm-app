@@ -14,18 +14,13 @@ import {
 import { IOptStorage } from "./types";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 
-// Assuming PaginatedOptDeals is defined elsewhere and is compatible with the return type of getOptDeals
-// For the purpose of this edit, we'll keep the original return type for getOptDeals and focus on the new method.
-type PaginatedOptDeals = { data: any[]; total: number };
-
 export class OptStorage implements IOptStorage {
   async getOpt(id: string): Promise<Opt | undefined> {
     return db.query.opt.findFirst({
       where: eq(opt.id, id),
       with: {
-        customer: true, // Assuming 'customer' is a relation defined in schema
-        base: true,     // Assuming 'base' is a relation defined in schema
-        warehouseOrigin: true, // Assuming 'warehouseOrigin' is a relation defined in schema
+        buyer: true,
+        warehouse: true,
         createdBy: {
           columns: {
             id: true,
@@ -48,7 +43,7 @@ export class OptStorage implements IOptStorage {
     page: number = 1,
     pageSize: number = 10,
     search?: string
-  ): Promise<PaginatedOptDeals> {
+  ): Promise<{ data: any[]; total: number }> {
     const offset = (page - 1) * pageSize;
 
     let baseQuery = db.query.opt.findMany({
@@ -308,7 +303,9 @@ export class OptStorage implements IOptStorage {
         await tx.delete(warehouseTransactions).where(eq(warehouseTransactions.id, currentOpt.transactionId));
       }
 
-      await tx.delete(opt).where(eq(opt.id, id));
+      await tx.update(opt).set({
+          deletedAt: sql`NOW()`,
+        }).where(eq(opt.id, id));
     });
 
     return true;

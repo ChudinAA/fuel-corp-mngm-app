@@ -19,8 +19,8 @@ export class MovementStorage implements IMovementStorage {
     return db.query.movement.findFirst({
       where: eq(movement.id, id),
       with: {
-        sourceWarehouse: true,
-        destinationWarehouse: true,
+        fromWarehouse: true,
+        toWarehouse: true,
         carrier: true,
         createdBy: {
           columns: {

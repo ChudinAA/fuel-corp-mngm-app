@@ -9,7 +9,7 @@ import {
   type AircraftRefueling,
   type InsertAircraftRefueling,
 } from "@shared/schema";
-import { IAircraftRefuelingStorage, PaginatedRefuelings } from "./types";
+import { IAircraftRefuelingStorage } from "./types";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 
 export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
@@ -17,9 +17,8 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
     return db.query.aircraftRefueling.findFirst({
       where: eq(aircraftRefueling.id, id),
       with: {
-        customer: true,
-        base: true,
-        warehouseOrigin: true,
+        buyer: true,
+        warehouse: true,
         createdBy: {
           columns: {
             id: true,
@@ -38,7 +37,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
     });
   }
 
-  async getRefuelings(page: number = 1, pageSize: number = 10, search?: string): Promise<PaginatedRefuelings> {
+  async getRefuelings(page: number = 1, pageSize: number = 10, search?: string): Promise<{ data: any[]; total: number }> {
     const offset = (page - 1) * pageSize;
 
     // Если есть поиск, используем старый подход с joins
@@ -285,7 +284,9 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         }
       }
 
-      await tx.delete(aircraftRefueling).where(eq(aircraftRefueling.id, id));
+      await tx.update(aircraftRefueling).set({
+          deletedAt: sql`NOW()`,
+        }).where(eq(aircraftRefueling.id, id));
     });
 
     return true;
