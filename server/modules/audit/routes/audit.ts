@@ -6,6 +6,7 @@ import { RollbackService } from "../services/rollback-service";
 import { ENTITY_TYPES } from "../entities/audit";
 import { z } from "zod";
 import { getAuditContext } from "../middleware/audit-middleware";
+import { storage } from "server/storage";
 
 const router = Router();
 
@@ -139,7 +140,7 @@ router.post(
       
       // Enrich with user data
       if (context.userId) {
-        const user = await (await import("../../../storage/index")).storage.users.getUser(context.userId);
+        const user = await storage.users.getUser(context.userId);
         if (user) {
           context.userName = `${user.firstName} ${user.lastName}`;
           context.userEmail = user.email;
