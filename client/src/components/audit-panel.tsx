@@ -86,11 +86,13 @@ const ACTION_CONFIG: Record<string, {
 function AuditEntryItem({ 
   entry, 
   entityType, 
-  onRollback 
+  onRollback,
+  isRolledBack = false,
 }: { 
   entry: AuditEntry; 
   entityType: string;
   onRollback: (auditLogId: string) => void;
+  isRolledBack?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showRollbackDialog, setShowRollbackDialog] = useState(false);
@@ -126,7 +128,7 @@ function AuditEntryItem({
   };
 
   const hasEditPermission = hasPermission(getPermissionModule(entityType), 'edit');
-  const showRollbackButton = canRollback && hasEditPermission;
+  const showRollbackButton = canRollback && hasEditPermission && !isRolledBack;
 
   const handleRollback = () => {
     setShowRollbackDialog(false);
@@ -193,15 +195,16 @@ function AuditEntryItem({
                 </span>
               </div>
             </div>
-            {showRollbackButton && (
+            {(canRollback && hasEditPermission) && (
               <Button
                 variant="outline"
                 size="sm"
                 className="h-7"
                 onClick={() => setShowRollbackDialog(true)}
+                disabled={isRolledBack}
               >
                 <Undo2 className="mr-1.5 h-3.5 w-3.5" />
-                Откатить
+                {isRolledBack ? 'Откачено' : 'Откатить'}
               </Button>
             )}
           </div>
@@ -298,6 +301,8 @@ export function AuditPanel({
   entityId,
   entityName,
 }: AuditPanelProps) {
+  const [rolledBackIds, setRolledBackIds] = useState<Set<string>>(new Set());
+  
   const { auditHistory, isLoading, refetch } = useAudit({
     entityType,
     entityId,
@@ -308,11 +313,20 @@ export function AuditPanel({
   const handleRollback = (auditLogId: string) => {
     rollback(auditLogId, {
       onSuccess: () => {
+        // Mark this entry as rolled back
+        setRolledBackIds(prev => new Set(prev).add(auditLogId));
         // Refresh audit history after successful rollback
         refetch();
       },
     });
   };
+
+  // Reset rolled back IDs when panel closes or entity changes
+  React.useEffect(() => {
+    if (!open) {
+      setRolledBackIds(new Set());
+    }
+  }, [open, entityId]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -356,6 +370,7 @@ export function AuditPanel({
                   entry={entry} 
                   entityType={entityType}
                   onRollback={handleRollback}
+                  isRolledBack={rolledBackIds.has(entry.id)}
                 />
               ))}
             </div>

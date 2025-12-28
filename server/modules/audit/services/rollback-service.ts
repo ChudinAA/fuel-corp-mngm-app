@@ -169,8 +169,11 @@ export class RollbackService {
       // Get current data before rollback
       const currentData = await this.getEntity(entityType, entityId);
 
+      // Normalize oldData: convert empty strings to null for UUID fields
+      const normalizedOldData = this.normalizeData(oldData);
+
       // Update entity with old data
-      await this.updateEntity(entityType, entityId, oldData, context.userId);
+      await this.updateEntity(entityType, entityId, normalizedOldData, context.userId);
 
       // Log the rollback as an UPDATE operation
       await AuditService.log({
@@ -178,7 +181,7 @@ export class RollbackService {
         entityId,
         operation: AUDIT_OPERATIONS.UPDATE,
         oldData: currentData,
-        newData: oldData,
+        newData: normalizedOldData,
         context: {
           ...context,
           userName: `${context.userName} (откат изменения)`,
@@ -188,7 +191,7 @@ export class RollbackService {
       return {
         success: true,
         message: "Изменения отменены (данные восстановлены)",
-        restoredData: oldData,
+        restoredData: normalizedOldData,
       };
     } catch (error: any) {
       return {
@@ -242,6 +245,22 @@ export class RollbackService {
         message: `Ошибка при откате удаления: ${error.message}`,
       };
     }
+  }
+
+  /**
+   * Normalize data: convert empty strings to null
+   */
+  private static normalizeData(data: any): any {
+    if (!data || typeof data !== 'object') {
+      return data;
+    }
+
+    const normalized: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      // Convert empty strings to null
+      normalized[key] = value === '' ? null : value;
+    }
+    return normalized;
   }
 
   /**
