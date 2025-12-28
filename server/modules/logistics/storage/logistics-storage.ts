@@ -185,4 +185,44 @@ export class LogisticsStorage implements ILogisticsStorage {
     return true;
   }
 
+  async restoreLogisticsCarrier(id: string, userId?: string): Promise<boolean> {
+    await db.update(logisticsCarriers).set({
+      deletedAt: null,
+      deletedById: null,
+    }).where(eq(logisticsCarriers.id, id));
+    return true;
+  }
+
+  async restoreLogisticsDeliveryLocation(id: string, userId?: string): Promise<boolean> {
+    await db.update(logisticsDeliveryLocations).set({
+      deletedAt: null,
+      deletedById: null,
+    }).where(eq(logisticsDeliveryLocations.id, id));
+    return true;
+  }
+
+  async restoreLogisticsVehicle(id: string, userId?: string): Promise<boolean> {
+    await db.update(logisticsVehicles).set({
+      deletedAt: null,
+      deletedById: null,
+    }).where(eq(logisticsVehicles.id, id));
+    return true;
+  }
+
+  async restoreLogisticsTrailer(id: string, userId?: string): Promise<boolean> {
+    await db.update(logisticsTrailers).set({
+      deletedAt: null,
+      deletedById: null,
+    }).where(eq(logisticsTrailers.id, id));
+    return true;
+  }
+
+  async restoreLogisticsDriver(id: string, userId?: string): Promise<boolean> {
+    await db.update(logisticsDrivers).set({
+      deletedAt: null,
+      deletedById: null,
+    }).where(eq(logisticsDrivers.id, id));
+    return true;
+  }
+
   }

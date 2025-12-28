@@ -75,4 +75,16 @@ export class DeliveryStorage implements IDeliveryStorage {
     
     return true;
   }
+
+  async restoreDeliveryCost(id: string, userId?: string): Promise<boolean> {
+    await db
+      .update(deliveryCost)
+      .set({
+        deletedAt: null,
+        deletedById: null,
+      })
+      .where(eq(deliveryCost.id, id));
+    
+    return true;
+  }
 }

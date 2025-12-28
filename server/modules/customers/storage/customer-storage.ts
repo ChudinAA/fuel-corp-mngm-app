@@ -52,4 +52,12 @@ export class CustomerStorage implements ICustomerStorage {
     }).where(eq(customers.id, id));
     return true;
   }
+
+  async restoreCustomer(id: string, userId?: string): Promise<boolean> {
+    await db.update(customers).set({
+      deletedAt: null,
+      deletedById: null,
+    }).where(eq(customers.id, id));
+    return true;
+  }
 }

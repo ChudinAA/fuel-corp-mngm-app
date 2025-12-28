@@ -60,4 +60,15 @@ export class ExchangeStorage implements IExchangeStorage {
       .where(eq(exchange.id, id));
     return true;
   }
+
+  async restoreExchange(id: string, userId?: string): Promise<boolean> {
+    await db
+      .update(exchange)
+      .set({
+        deletedAt: null,
+        deletedById: null,
+      })
+      .where(eq(exchange.id, id));
+    return true;
+  }
 }

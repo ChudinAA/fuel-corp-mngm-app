@@ -148,6 +148,14 @@ export class WarehouseStorage implements IWarehouseStorage {
     return true;
   }
 
+  async restoreWarehouse(id: string, userId?: string): Promise<boolean> {
+    await db.update(warehouses).set({
+      deletedAt: null,
+      deletedById: null,
+    }).where(eq(warehouses.id, id));
+    return true;
+  }
+
   async getWarehouseTransactions(warehouseId: string): Promise<WarehouseTransaction[]> {
     const transactions = await db.query.warehouseTransactions.findMany({
       where: and(eq(warehouseTransactions.warehouseId, warehouseId), isNull(warehouseTransactions.deletedAt)),

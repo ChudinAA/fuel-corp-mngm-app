@@ -48,4 +48,15 @@ export class RoleStorage implements IRoleStorage {
       .where(eq(roles.id, id));
     return true;
   }
+
+  async restoreRole(id: string, userId?: string): Promise<boolean> {
+    await db
+      .update(roles)
+      .set({
+        deletedAt: null,
+        deletedById: null,
+      })
+      .where(eq(roles.id, id));
+    return true;
+  }
 }

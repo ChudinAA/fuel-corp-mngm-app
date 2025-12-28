@@ -359,4 +359,52 @@ export class OptStorage implements IOptStorage {
 
     return true;
   }
+
+  async restoreOpt(id: string, oldData: any, userId?: string): Promise<boolean> {
+    await db.transaction(async (tx) => {
+      // Restore the opt record
+      await tx
+        .update(opt)
+        .set({
+          deletedAt: null,
+          deletedById: null,
+        })
+        .where(eq(opt.id, id));
+
+      // Restore associated transaction if exists
+      if (oldData.transactionId) {
+        await tx
+          .update(warehouseTransactions)
+          .set({
+            deletedAt: null,
+            deletedById: null,
+          })
+          .where(eq(warehouseTransactions.id, oldData.transactionId));
+
+        // Recalculate warehouse balance
+        if (oldData.warehouseId && oldData.quantityKg) {
+          const warehouse = await tx.query.warehouses.findFirst({
+            where: eq(warehouses.id, oldData.warehouseId),
+          });
+
+          if (warehouse) {
+            const quantityKg = parseFloat(oldData.quantityKg);
+            const currentBalance = parseFloat(warehouse.currentBalance || "0");
+            const newBalance = Math.max(0, currentBalance - quantityKg);
+
+            await tx
+              .update(warehouses)
+              .set({
+                currentBalance: newBalance.toFixed(2),
+                updatedAt: sql`NOW()`,
+                updatedById: userId,
+              })
+              .where(eq(warehouses.id, oldData.warehouseId));
+          }
+        }
+      }
+    });
+
+    return true;
+  }
 }

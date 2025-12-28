@@ -90,6 +90,17 @@ export class PriceStorage implements IPriceStorage {
     return true;
   }
 
+  async restorePrice(id: string, userId?: string): Promise<boolean> {
+    await db
+      .update(prices)
+      .set({
+        deletedAt: null,
+        deletedById: null,
+      })
+      .where(eq(prices.id, id));
+    return true;
+  }
+
   async calculatePriceSelection(
     counterpartyId: string,
     counterpartyType: string,

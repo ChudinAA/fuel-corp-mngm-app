@@ -361,189 +361,31 @@ export class RollbackService {
     oldData: any,
     userId?: string
   ): Promise<void> {
-    // For entities with transactions, we need to restore them manually
-    // because storage classes don't have restore methods
-    
-    if (entityType === 'opt') {
-      await this.restoreOptEntity(entityId, oldData, userId);
-    } else if (entityType === 'aircraft_refueling') {
-      await this.restoreRefuelingEntity(entityId, oldData, userId);
-    } else if (entityType === 'movement') {
-      await this.restoreMovementEntity(entityId, oldData, userId);
-    } else {
-      // For simple entities without transactions, just restore the record
-      await this.restoreSimpleEntity(entityType, entityId, userId);
-    }
-  }
-
-  /**
-   * Restore OPT entity with transaction
-   */
-  private static async restoreOptEntity(entityId: string, oldData: any, userId?: string): Promise<void> {
-    await db.transaction(async (tx) => {
-      // Restore the opt record
-      await tx.execute(sql`
-        UPDATE opt 
-        SET deleted_at = NULL, deleted_by_id = NULL 
-        WHERE id = ${entityId}
-      `);
-
-      // Restore associated transaction if exists
-      if (oldData.transactionId) {
-        await tx.execute(sql`
-          UPDATE warehouse_transactions 
-          SET deleted_at = NULL, deleted_by_id = NULL 
-          WHERE id = ${oldData.transactionId}
-        `);
-
-        // Recalculate warehouse balance
-        if (oldData.warehouseId && oldData.quantityKg) {
-          const warehouse = await tx.query.warehouses.findFirst({
-            where: eq(warehouses.id, oldData.warehouseId),
-          });
-
-          if (warehouse) {
-            const quantityKg = parseFloat(oldData.quantityKg);
-            const currentBalance = parseFloat(warehouse.currentBalance || "0");
-            const newBalance = Math.max(0, currentBalance - quantityKg);
-
-            await tx.update(warehouses)
-              .set({
-                currentBalance: newBalance.toFixed(2),
-                updatedAt: sql`NOW()`,
-                updatedById: userId,
-              })
-              .where(eq(warehouses.id, oldData.warehouseId));
-          }
-        }
-      }
-    });
-  }
-
-  /**
-   * Restore Refueling entity with transaction
-   */
-  private static async restoreRefuelingEntity(entityId: string, oldData: any, userId?: string): Promise<void> {
-    await db.transaction(async (tx) => {
-      // Restore the aircraft_refueling record
-      await tx.execute(sql`
-        UPDATE aircraft_refueling 
-        SET deleted_at = NULL, deleted_by_id = NULL 
-        WHERE id = ${entityId}
-      `);
-
-      // Restore associated transaction if exists and not a service
-      if (oldData.transactionId && oldData.productType !== PRODUCT_TYPE.SERVICE) {
-        await tx.execute(sql`
-          UPDATE warehouse_transactions 
-          SET deleted_at = NULL, deleted_by_id = NULL 
-          WHERE id = ${oldData.transactionId}
-        `);
-
-        // Recalculate warehouse balance
-        if (oldData.warehouseId && oldData.quantityKg) {
-          const warehouse = await tx.query.warehouses.findFirst({
-            where: eq(warehouses.id, oldData.warehouseId),
-          });
-
-          if (warehouse) {
-            const quantityKg = parseFloat(oldData.quantityKg);
-            const isPvkj = oldData.productType === PRODUCT_TYPE.PVKJ;
-            const currentBalance = parseFloat(
-              isPvkj ? warehouse.pvkjBalance || "0" : warehouse.currentBalance || "0"
-            );
-            const newBalance = Math.max(0, currentBalance - quantityKg);
-
-            const updateData: any = {
-              updatedAt: sql`NOW()`,
-              updatedById: userId,
-            };
-
-            if (isPvkj) {
-              updateData.pvkjBalance = newBalance.toFixed(2);
-            } else {
-              updateData.currentBalance = newBalance.toFixed(2);
-            }
-
-            await tx.update(warehouses)
-              .set(updateData)
-              .where(eq(warehouses.id, oldData.warehouseId));
-          }
-        }
-      }
-    });
-  }
-
-  /**
-   * Restore Movement entity with transactions
-   */
-  private static async restoreMovementEntity(entityId: string, oldData: any, userId?: string): Promise<void> {
-    await db.transaction(async (tx) => {
-      // Restore the movement record
-      await tx.execute(sql`
-        UPDATE movement 
-        SET deleted_at = NULL, deleted_by_id = NULL 
-        WHERE id = ${entityId}
-      `);
-
-      // Restore associated transactions
-      if (oldData.transactionId) {
-        await tx.execute(sql`
-          UPDATE warehouse_transactions 
-          SET deleted_at = NULL, deleted_by_id = NULL 
-          WHERE id = ${oldData.transactionId}
-        `);
-      }
-
-      if (oldData.sourceTransactionId) {
-        await tx.execute(sql`
-          UPDATE warehouse_transactions 
-          SET deleted_at = NULL, deleted_by_id = NULL 
-          WHERE id = ${oldData.sourceTransactionId}
-        `);
-      }
-
-      // Recalculate warehouse balances
-      // This is complex and should use the same logic as createMovement
-      // For simplicity, we'll just restore the transactions
-      // The warehouse balances will be recalculated on next transaction
-    });
-  }
-
-  /**
-   * Restore simple entity (without complex relations)
-   */
-  private static async restoreSimpleEntity(
-    entityType: EntityType,
-    entityId: string,
-    userId?: string
-  ): Promise<void> {
-    const tableMap: Record<string, string> = {
-      exchange: 'exchange',
-      warehouses: 'warehouses',
-      prices: 'prices',
-      suppliers: 'suppliers',
-      customers: 'customers',
-      bases: 'bases',
-      logistics_carriers: 'logistics_carriers',
-      logistics_delivery_locations: 'logistics_delivery_locations',
-      logistics_vehicles: 'logistics_vehicles',
-      logistics_trailers: 'logistics_trailers',
-      logistics_drivers: 'logistics_drivers',
-      delivery_cost: 'delivery_cost',
-      users: 'users',
-      roles: 'roles',
+    const storageMap: Record<string, (id: string, oldData: any, userId?: string) => Promise<any>> = {
+      opt: (id, oldData, userId) => storage.opt.restoreOpt(id, oldData, userId),
+      aircraft_refueling: (id, oldData, userId) => storage.aircraftRefueling.restoreRefueling(id, oldData, userId),
+      movement: (id, oldData, userId) => storage.movement.restoreMovement(id, oldData, userId),
+      exchange: (id, oldData, userId) => storage.exchange.restoreExchange(id, userId),
+      warehouses: (id, oldData, userId) => storage.warehouses.restoreWarehouse(id, userId),
+      prices: (id, oldData, userId) => storage.prices.restorePrice(id, userId),
+      suppliers: (id, oldData, userId) => storage.suppliers.restoreSupplier(id, userId),
+      customers: (id, oldData, userId) => storage.customers.restoreCustomer(id, userId),
+      bases: (id, oldData, userId) => storage.bases.restoreBase(id, userId),
+      logistics_carriers: (id, oldData, userId) => storage.logistics.restoreLogisticsCarrier(id, userId),
+      logistics_delivery_locations: (id, oldData, userId) => storage.logistics.restoreLogisticsDeliveryLocation(id, userId),
+      logistics_vehicles: (id, oldData, userId) => storage.logistics.restoreLogisticsVehicle(id, userId),
+      logistics_trailers: (id, oldData, userId) => storage.logistics.restoreLogisticsTrailer(id, userId),
+      logistics_drivers: (id, oldData, userId) => storage.logistics.restoreLogisticsDriver(id, userId),
+      delivery_cost: (id, oldData, userId) => storage.delivery.restoreDeliveryCost(id, userId),
+      users: (id, oldData, userId) => storage.users.restoreUser(id, userId),
+      roles: (id, oldData, userId) => storage.roles.restoreRole(id, userId),
     };
 
-    const tableName = tableMap[entityType];
-    if (!tableName) {
-      throw new Error(`Cannot restore entity type: ${entityType}`);
+    const restorer = storageMap[entityType];
+    if (!restorer) {
+      throw new Error(`Unknown entity type: ${entityType}`);
     }
 
-    await db.execute(sql.raw(`
-      UPDATE ${tableName} 
-      SET deleted_at = NULL, deleted_by_id = NULL 
-      WHERE id = '${entityId}'
-    `));
+    await restorer(entityId, oldData, userId);
   }
 }

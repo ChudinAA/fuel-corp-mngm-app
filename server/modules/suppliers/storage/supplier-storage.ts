@@ -129,4 +129,12 @@ export class SupplierStorage implements ISupplierStorage {
     }).where(eq(suppliers.id, id));
     return true;
   }
+
+  async restoreSupplier(id: string, userId?: string): Promise<boolean> {
+    await db.update(suppliers).set({
+      deletedAt: null,
+      deletedById: null,
+    }).where(eq(suppliers.id, id));
+    return true;
+  }
 }

@@ -42,4 +42,12 @@ export class BaseStorage implements IBaseStorage {
     }).where(eq(bases.id, id));
     return true;
   }
+
+  async restoreBase(id: string, userId?: string): Promise<boolean> {
+    await db.update(bases).set({
+      deletedAt: null,
+      deletedById: null,
+    }).where(eq(bases.id, id));
+    return true;
+  }
 }
