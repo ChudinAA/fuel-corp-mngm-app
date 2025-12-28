@@ -113,7 +113,7 @@ export class AuditService {
 
     for (const key of allKeys) {
       // Skip metadata fields
-      if (['updatedAt', 'updatedById'].includes(key)) continue;
+      if (['updatedAt', 'updatedById', 'createdAt', 'createdById', 'deletedAt', 'deletedById'].includes(key)) continue;
 
       const oldValue = oldData?.[key];
       const newValue = newData?.[key];

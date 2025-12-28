@@ -1,7 +1,6 @@
-import { eq, asc, isNull } from "drizzle-orm";
+import { eq, asc, isNull, sql, and } from "drizzle-orm";
 import { db } from "server/db";
 import { roles, type Role, type InsertRole } from "@shared/schema";
-import { sql } from "drizzle-orm";
 import type { IRoleStorage } from "../../../storage/types";
 
 export class RoleStorage implements IRoleStorage {
@@ -9,14 +8,17 @@ export class RoleStorage implements IRoleStorage {
     const [role] = await db
       .select()
       .from(roles)
-      .where(eq(roles.id, id))
-      .where(isNull(roles.deletedAt))
+      .where(and(eq(roles.id, id), isNull(roles.deletedAt)))
       .limit(1);
     return role;
   }
 
   async getAllRoles(): Promise<Role[]> {
-    return db.select().from(roles).where(isNull(roles.deletedAt)).orderBy(asc(roles.name));
+    return db
+      .select()
+      .from(roles)
+      .where(isNull(roles.deletedAt))
+      .orderBy(asc(roles.name));
   }
 
   async createRole(role: InsertRole): Promise<Role> {
@@ -26,7 +28,7 @@ export class RoleStorage implements IRoleStorage {
 
   async updateRole(
     id: string,
-    data: Partial<InsertRole>
+    data: Partial<InsertRole>,
   ): Promise<Role | undefined> {
     const [updated] = await db
       .update(roles)
@@ -37,10 +39,13 @@ export class RoleStorage implements IRoleStorage {
   }
 
   async deleteRole(id: string, deletedById?: string): Promise<boolean> {
-    await db.update(roles).set({
-      deletedAt: sql`NOW()`,
-      deletedById: deletedById,
-    }).where(eq(roles.id, id));
+    await db
+      .update(roles)
+      .set({
+        deletedAt: sql`NOW()`,
+        deletedById: deletedById,
+      })
+      .where(eq(roles.id, id));
     return true;
   }
 }

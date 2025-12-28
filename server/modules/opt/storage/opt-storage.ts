@@ -18,31 +18,13 @@ export class OptStorage implements IOptStorage {
   async getOpt(id: string): Promise<Opt | undefined> {
     return db.query.opt.findFirst({
       where: and(eq(opt.id, id), isNull(opt.deletedAt)),
-      with: {
-        buyer: true,
-        warehouse: true,
-        createdBy: {
-          columns: {
-            id: true,
-            username: true,
-            email: true,
-          }
-        },
-        updatedBy: {
-          columns: {
-            id: true,
-            username: true,
-            email: true,
-          }
-        },
-      }
     });
   }
 
   async getOptDeals(
     page: number = 1,
     pageSize: number = 10,
-    search?: string
+    search?: string,
   ): Promise<{ data: any[]; total: number }> {
     const offset = (page - 1) * pageSize;
 
@@ -57,31 +39,31 @@ export class OptStorage implements IOptStorage {
             id: true,
             name: true,
             isWarehouse: true,
-          }
+          },
         },
         buyer: {
           columns: {
             id: true,
             name: true,
-          }
+          },
         },
         carrier: {
           columns: {
             id: true,
             name: true,
-          }
+          },
         },
         deliveryLocation: {
           columns: {
             id: true,
             name: true,
-          }
+          },
         },
         warehouse: {
           columns: {
             id: true,
             name: true,
-          }
+          },
         },
       },
     });
@@ -96,63 +78,77 @@ export class OptStorage implements IOptStorage {
           sql`${opt.basis}::text ILIKE ${searchPattern}`,
           sql`${opt.notes}::text ILIKE ${searchPattern}`,
           sql`${logisticsCarriers.name}::text ILIKE ${searchPattern}`,
-          sql`${logisticsDeliveryLocations.name}::text ILIKE ${searchPattern}`
+          sql`${logisticsDeliveryLocations.name}::text ILIKE ${searchPattern}`,
         ),
-        isNull(opt.deletedAt)
+        isNull(opt.deletedAt),
       );
 
-      const rawData = await db.select({
-        opt: opt,
-        supplierName: suppliers.name,
-        supplierIsWarehouse: suppliers.isWarehouse,
-        buyerName: customers.name,
-        carrierName: sql<string>`${logisticsCarriers.name}`,
-        deliveryLocationName: sql<string>`${logisticsDeliveryLocations.name}`,
-        warehouseName: sql<string>`${warehouses.name}`,
-      })
+      const rawData = await db
+        .select({
+          opt: opt,
+          supplierName: suppliers.name,
+          supplierIsWarehouse: suppliers.isWarehouse,
+          buyerName: customers.name,
+          carrierName: sql<string>`${logisticsCarriers.name}`,
+          deliveryLocationName: sql<string>`${logisticsDeliveryLocations.name}`,
+          warehouseName: sql<string>`${warehouses.name}`,
+        })
         .from(opt)
         .leftJoin(suppliers, eq(opt.supplierId, suppliers.id))
         .leftJoin(customers, eq(opt.buyerId, customers.id))
         .leftJoin(logisticsCarriers, eq(opt.carrierId, logisticsCarriers.id))
-        .leftJoin(logisticsDeliveryLocations, eq(opt.deliveryLocationId, logisticsDeliveryLocations.id))
+        .leftJoin(
+          logisticsDeliveryLocations,
+          eq(opt.deliveryLocationId, logisticsDeliveryLocations.id),
+        )
         .leftJoin(warehouses, eq(opt.warehouseId, warehouses.id))
         .where(searchCondition)
         .orderBy(desc(opt.dealDate))
         .limit(pageSize)
         .offset(offset);
 
-      const data = rawData.map(row => ({
+      const data = rawData.map((row) => ({
         ...row.opt,
         supplier: {
           id: row.opt.supplierId,
-          name: row.supplierName || 'Не указан',
+          name: row.supplierName || "Не указан",
           isWarehouse: row.supplierIsWarehouse || false,
         },
         buyer: {
           id: row.opt.buyerId,
-          name: row.buyerName || 'Не указан',
+          name: row.buyerName || "Не указан",
         },
-        carrier: row.opt.carrierId ? {
-          id: row.opt.carrierId,
-          name: row.carrierName || 'Не указан',
-        } : null,
-        deliveryLocation: row.opt.deliveryLocationId ? {
-          id: row.opt.deliveryLocationId,
-          name: row.deliveryLocationName || 'Не указано',
-        } : null,
-        warehouse: row.opt.warehouseId ? {
-          id: row.opt.warehouseId,
-          name: row.warehouseName || 'Не указан',
-        } : null,
+        carrier: row.opt.carrierId
+          ? {
+              id: row.opt.carrierId,
+              name: row.carrierName || "Не указан",
+            }
+          : null,
+        deliveryLocation: row.opt.deliveryLocationId
+          ? {
+              id: row.opt.deliveryLocationId,
+              name: row.deliveryLocationName || "Не указано",
+            }
+          : null,
+        warehouse: row.opt.warehouseId
+          ? {
+              id: row.opt.warehouseId,
+              name: row.warehouseName || "Не указан",
+            }
+          : null,
         isApproxVolume: row.opt.isApproxVolume || false,
       }));
 
-      const [countResult] = await db.select({ count: sql<number>`count(*)` })
+      const [countResult] = await db
+        .select({ count: sql<number>`count(*)` })
         .from(opt)
         .leftJoin(suppliers, eq(opt.supplierId, suppliers.id))
         .leftJoin(customers, eq(opt.buyerId, customers.id))
         .leftJoin(logisticsCarriers, eq(opt.carrierId, logisticsCarriers.id))
-        .leftJoin(logisticsDeliveryLocations, eq(opt.deliveryLocationId, logisticsDeliveryLocations.id))
+        .leftJoin(
+          logisticsDeliveryLocations,
+          eq(opt.deliveryLocationId, logisticsDeliveryLocations.id),
+        )
         .where(searchCondition);
 
       return { data, total: Number(countResult?.count || 0) };
@@ -160,16 +156,23 @@ export class OptStorage implements IOptStorage {
 
     // Без поиска используем query API с relations
     const data = await baseQuery;
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(opt).where(isNull(opt.deletedAt));
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(opt)
+      .where(isNull(opt.deletedAt));
 
     return {
-      data: data.map(item => ({
+      data: data.map((item) => ({
         ...item,
-        supplier: item.supplier || { id: item.supplierId, name: 'Не указан', isWarehouse: false },
-        buyer: item.buyer || { id: item.buyerId, name: 'Не указан' },
+        supplier: item.supplier || {
+          id: item.supplierId,
+          name: "Не указан",
+          isWarehouse: false,
+        },
+        buyer: item.buyer || { id: item.buyerId, name: "Не указан" },
         isApproxVolume: item.isApproxVolume || false,
       })),
-      total: Number(countResult?.count || 0)
+      total: Number(countResult?.count || 0),
     };
   }
 
@@ -183,7 +186,7 @@ export class OptStorage implements IOptStorage {
           where: eq(warehouses.id, created.warehouseId),
           with: {
             supplier: true,
-          }
+          },
         });
 
         // Проверяем что это склад поставщика
@@ -192,31 +195,36 @@ export class OptStorage implements IOptStorage {
           const currentBalance = parseFloat(warehouse.currentBalance || "0");
           const newBalance = Math.max(0, currentBalance - quantityKg);
 
-          await tx.update(warehouses)
+          await tx
+            .update(warehouses)
             .set({
               currentBalance: newBalance.toFixed(2),
               updatedAt: sql`NOW()`,
-              updatedById: data.createdById
+              updatedById: data.createdById,
             })
             .where(eq(warehouses.id, created.warehouseId));
 
           // Создаем запись транзакции
-          const [transaction] = await tx.insert(warehouseTransactions).values({
-            warehouseId: created.warehouseId,
-            transactionType: TRANSACTION_TYPE.SALE,
-            productType: PRODUCT_TYPE.KEROSENE,
-            sourceType: SOURCE_TYPE.OPT,
-            sourceId: created.id,
-            quantity: (-quantityKg).toString(),
-            balanceBefore: currentBalance.toString(),
-            balanceAfter: newBalance.toString(),
-            averageCostBefore: warehouse.averageCost || "0",
-            averageCostAfter: warehouse.averageCost || "0",
-            createdById: data.createdById
-          }).returning();
+          const [transaction] = await tx
+            .insert(warehouseTransactions)
+            .values({
+              warehouseId: created.warehouseId,
+              transactionType: TRANSACTION_TYPE.SALE,
+              productType: PRODUCT_TYPE.KEROSENE,
+              sourceType: SOURCE_TYPE.OPT,
+              sourceId: created.id,
+              quantity: (-quantityKg).toString(),
+              balanceBefore: currentBalance.toString(),
+              balanceAfter: newBalance.toString(),
+              averageCostBefore: warehouse.averageCost || "0",
+              averageCostAfter: warehouse.averageCost || "0",
+              createdById: data.createdById,
+            })
+            .returning();
 
           // Сохраняем ID транзакции в сделке
-          await tx.update(opt)
+          await tx
+            .update(opt)
             .set({ transactionId: transaction.id })
             .where(eq(opt.id, created.id));
         }
@@ -226,7 +234,10 @@ export class OptStorage implements IOptStorage {
     });
   }
 
-  async updateOpt(id: string, data: Partial<InsertOpt>): Promise<Opt | undefined> {
+  async updateOpt(
+    id: string,
+    data: Partial<InsertOpt>,
+  ): Promise<Opt | undefined> {
     return await db.transaction(async (tx) => {
       // Получаем текущую сделку с relations
       const currentOpt = await tx.query.opt.findFirst({
@@ -234,13 +245,17 @@ export class OptStorage implements IOptStorage {
         with: {
           warehouse: true,
           transaction: true,
-        }
+        },
       });
 
       if (!currentOpt) return undefined;
 
       // Проверяем изменилось ли количество КГ и есть ли привязанная транзакция
-      if (data.quantityKg && currentOpt.transactionId && currentOpt.warehouseId) {
+      if (
+        data.quantityKg &&
+        currentOpt.transactionId &&
+        currentOpt.warehouseId
+      ) {
         const oldQuantityKg = parseFloat(currentOpt.quantityKg);
         const newQuantityKg = parseFloat(data.quantityKg.toString());
 
@@ -248,25 +263,29 @@ export class OptStorage implements IOptStorage {
           const quantityDiff = newQuantityKg - oldQuantityKg;
 
           if (currentOpt.warehouse && currentOpt.transaction) {
-            const currentBalance = parseFloat(currentOpt.warehouse.currentBalance || "0");
+            const currentBalance = parseFloat(
+              currentOpt.warehouse.currentBalance || "0",
+            );
             const newBalance = Math.max(0, currentBalance - quantityDiff);
 
             // Обновляем баланс склада
-            await tx.update(warehouses)
+            await tx
+              .update(warehouses)
               .set({
                 currentBalance: newBalance.toFixed(2),
                 updatedAt: sql`NOW()`,
-                updatedById: data.updatedById
+                updatedById: data.updatedById,
               })
               .where(eq(warehouses.id, currentOpt.warehouseId));
 
             // Обновляем транзакцию
-            await tx.update(warehouseTransactions)
+            await tx
+              .update(warehouseTransactions)
               .set({
                 quantity: (-newQuantityKg).toString(),
                 balanceAfter: newBalance.toString(),
                 updatedAt: sql`NOW()`,
-                updatedById: data.updatedById
+                updatedById: data.updatedById,
               })
               .where(eq(warehouseTransactions.id, currentOpt.transactionId));
           }
@@ -274,11 +293,15 @@ export class OptStorage implements IOptStorage {
       }
 
       // Обновляем сделку
-      const [updated] = await tx.update(opt).set({
-        ...data,
-        updatedAt: sql`NOW()`,
-        updatedById: data.updatedById
-      }).where(eq(opt.id, id)).returning();
+      const [updated] = await tx
+        .update(opt)
+        .set({
+          ...data,
+          updatedAt: sql`NOW()`,
+          updatedById: data.updatedById,
+        })
+        .where(eq(opt.id, id))
+        .returning();
 
       return updated;
     });
@@ -291,29 +314,47 @@ export class OptStorage implements IOptStorage {
         where: eq(opt.id, id),
         with: {
           warehouse: true,
-        }
+        },
       });
 
-      if (currentOpt && currentOpt.transactionId && currentOpt.warehouseId && currentOpt.warehouse) {
+      if (
+        currentOpt &&
+        currentOpt.transactionId &&
+        currentOpt.warehouseId &&
+        currentOpt.warehouse
+      ) {
         const quantityKg = parseFloat(currentOpt.quantityKg);
-        const currentBalance = parseFloat(currentOpt.warehouse.currentBalance || "0");
+        const currentBalance = parseFloat(
+          currentOpt.warehouse.currentBalance || "0",
+        );
         const newBalance = currentBalance + quantityKg;
 
-        await tx.update(warehouses)
-          .set({ currentBalance: newBalance.toFixed(2), updatedAt: sql`NOW()`, updatedById: userId })
+        await tx
+          .update(warehouses)
+          .set({
+            currentBalance: newBalance.toFixed(2),
+            updatedAt: sql`NOW()`,
+            updatedById: userId,
+          })
           .where(eq(warehouses.id, currentOpt.warehouseId));
 
         // Soft delete транзакции
-        await tx.update(warehouseTransactions).set({
-          deletedAt: sql`NOW()`,
-          deletedById: userId,
-        }).where(eq(warehouseTransactions.id, currentOpt.transactionId));
+        await tx
+          .update(warehouseTransactions)
+          .set({
+            deletedAt: sql`NOW()`,
+            deletedById: userId,
+          })
+          .where(eq(warehouseTransactions.id, currentOpt.transactionId));
       }
 
-      await tx.update(opt).set({
+      await tx
+        .update(opt)
+        .set({
           deletedAt: sql`NOW()`,
           deletedById: userId,
-        }).where(eq(opt.id, id));
+        })
+        .where(eq(opt.id, id));
     });
 
     return true;

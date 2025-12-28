@@ -1,4 +1,4 @@
-import { eq, asc, isNull } from "drizzle-orm";
+import { eq, asc, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
 import { users, type User, type InsertUser } from "@shared/schema";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
@@ -33,8 +33,7 @@ export class UserStorage implements IUserStorage {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.id, id))
-      .where(isNull(users.deletedAt))
+      .where(and(eq(users.id, id), isNull(users.deletedAt)))
       .limit(1);
     return user;
   }
@@ -43,8 +42,7 @@ export class UserStorage implements IUserStorage {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.email, email))
-      .where(isNull(users.deletedAt))
+      .where(and(eq(users.email, email), isNull(users.deletedAt)))
       .limit(1);
     return user;
   }

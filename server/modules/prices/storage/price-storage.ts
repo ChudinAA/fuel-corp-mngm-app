@@ -24,7 +24,7 @@ export class PriceStorage implements IPriceStorage {
       .from(prices)
       .where(isNull(prices.deletedAt))
       .orderBy(desc(prices.dateFrom));
-    return allPrices.map((p) => this.enrichPriceWithCalculations(p));
+    return allPrices;
   }
 
   async getPrice(id: string): Promise<Price | undefined> {
@@ -33,12 +33,12 @@ export class PriceStorage implements IPriceStorage {
       .from(prices)
       .where(and(eq(prices.id, id), isNull(prices.deletedAt)))
       .limit(1);
-    return price ? this.enrichPriceWithCalculations(price) : undefined;
+    return price;
   }
 
   async getPricesByRole(
     counterpartyRole: string,
-    counterpartyType: string
+    counterpartyType: string,
   ): Promise<Price[]> {
     const filtered = await db
       .select()
@@ -47,19 +47,11 @@ export class PriceStorage implements IPriceStorage {
         and(
           eq(prices.counterpartyRole, counterpartyRole),
           eq(prices.counterpartyType, counterpartyType),
-          isNull(prices.deletedAt)
-        )
+          isNull(prices.deletedAt),
+        ),
       )
       .orderBy(desc(prices.dateFrom));
-    return filtered.map((p) => this.enrichPriceWithCalculations(p));
-  }
-
-  private enrichPriceWithCalculations(price: Price): Price {
-    let dateCheckWarning: string | null = null;
-    return {
-      ...price,
-      dateCheckWarning,
-    } as Price;
+    return filtered;
   }
 
   async createPrice(data: InsertPrice): Promise<Price> {
@@ -68,12 +60,12 @@ export class PriceStorage implements IPriceStorage {
       dateCheckWarning: null,
     };
     const [created] = await db.insert(prices).values(enrichedData).returning();
-    return this.enrichPriceWithCalculations(created);
+    return created;
   }
 
   async updatePrice(
     id: string,
-    data: Partial<InsertPrice>
+    data: Partial<InsertPrice>,
   ): Promise<Price | undefined> {
     const [updated] = await db
       .update(prices)
@@ -88,10 +80,13 @@ export class PriceStorage implements IPriceStorage {
 
   async deletePrice(id: string, userId?: string): Promise<boolean> {
     // Soft delete
-    await db.update(prices).set({
-      deletedAt: sql`NOW()`,
-      deletedById: userId,
-    }).where(eq(prices.id, id));
+    await db
+      .update(prices)
+      .set({
+        deletedAt: sql`NOW()`,
+        deletedById: userId,
+      })
+      .where(eq(prices.id, id));
     return true;
   }
 
@@ -101,7 +96,7 @@ export class PriceStorage implements IPriceStorage {
     basis: string,
     dateFrom: string,
     dateTo: string,
-    priceId?: string
+    priceId?: string,
   ): Promise<number> {
     let totalVolume = 0;
 
@@ -132,8 +127,8 @@ export class PriceStorage implements IPriceStorage {
               eq(opt.supplierId, counterpartyId),
               eq(opt.basis, basis),
               sql`${opt.createdAt}::date >= ${dateFrom}`,
-              sql`${opt.createdAt}::date <= ${dateTo}`
-            )
+              sql`${opt.createdAt}::date <= ${dateTo}`,
+            ),
           );
         totalVolume += parseFloat(optDeals[0]?.total || "0");
       } else if (price.counterpartyRole === COUNTERPARTY_ROLE.BUYER) {
@@ -148,8 +143,8 @@ export class PriceStorage implements IPriceStorage {
               eq(opt.buyerId, counterpartyId),
               eq(opt.basis, basis),
               sql`${opt.createdAt}::date >= ${dateFrom}`,
-              sql`${opt.createdAt}::date <= ${dateTo}`
-            )
+              sql`${opt.createdAt}::date <= ${dateTo}`,
+            ),
           );
         totalVolume += parseFloat(optDeals[0]?.total || "0");
       }
@@ -166,8 +161,8 @@ export class PriceStorage implements IPriceStorage {
               eq(aircraftRefueling.supplierId, counterpartyId),
               eq(aircraftRefueling.basis, basis),
               sql`${aircraftRefueling.refuelingDate} >= ${dateFrom}`,
-              sql`${aircraftRefueling.refuelingDate} <= ${dateTo}`
-            )
+              sql`${aircraftRefueling.refuelingDate} <= ${dateTo}`,
+            ),
           );
         totalVolume += parseFloat(refuelingDeals[0]?.total || "0");
       } else if (price.counterpartyRole === COUNTERPARTY_ROLE.BUYER) {
@@ -182,8 +177,8 @@ export class PriceStorage implements IPriceStorage {
               eq(aircraftRefueling.buyerId, counterpartyId),
               eq(aircraftRefueling.basis, basis),
               sql`${aircraftRefueling.refuelingDate} >= ${dateFrom}`,
-              sql`${aircraftRefueling.refuelingDate} <= ${dateTo}`
-            )
+              sql`${aircraftRefueling.refuelingDate} <= ${dateTo}`,
+            ),
           );
         totalVolume += parseFloat(refuelingDeals[0]?.total || "0");
       }
@@ -210,7 +205,7 @@ export class PriceStorage implements IPriceStorage {
     productType: string,
     dateFrom: string,
     dateTo: string,
-    excludeId?: string
+    excludeId?: string,
   ): Promise<{
     status: string;
     message: string;
