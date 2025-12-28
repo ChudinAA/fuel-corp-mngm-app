@@ -26,7 +26,7 @@ export default function ExchangePage() {
   });
 
   const { data: exchanges, isLoading } = useQuery<{ data: Exchange[]; total: number }>({
-    queryKey: ["/api/exchange", page, search],
+    queryKey: ["/api/exchange?page=1&pageSize=1000"],
   });
 
   const deleteMutation = useMutation({

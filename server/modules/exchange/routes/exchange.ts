@@ -30,8 +30,7 @@ export function registerExchangeRoutes(app: Express) {
     requirePermission("exchange", "view"),
     auditView(ENTITY_TYPES.EXCHANGE),
     async (req, res) => {
-      const id = req.params.id;
-      const item = await storage.exchange.getExchange(id);
+      const item = await storage.exchange.getExchange(req.params.id);
       if (!item) {
         return res.status(404).json({ message: "Сделка не найдена" });
       }

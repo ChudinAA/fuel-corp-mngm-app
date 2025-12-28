@@ -7,23 +7,6 @@ export class ExchangeStorage implements IExchangeStorage {
   async getExchange(id: string): Promise<Exchange | undefined> {
     return db.query.exchange.findFirst({
       where: and(eq(exchange.id, id), isNull(exchange.deletedAt)),
-      with: {
-        warehouse: true,
-        createdBy: {
-          columns: {
-            id: true,
-            username: true,
-            email: true,
-          },
-        },
-        updatedBy: {
-          columns: {
-            id: true,
-            username: true,
-            email: true,
-          },
-        },
-      },
     });
   }
 
