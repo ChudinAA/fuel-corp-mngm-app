@@ -42,7 +42,7 @@ export class AuditService {
       // Calculate changed fields for UPDATE operations
       let changedFields: string[] | null = null;
       if (operation === AUDIT_OPERATIONS.UPDATE && normalizedOldData && normalizedNewData) {
-        changedFields = this.calculateChangedFields(normalizedOldData, normalizedNewData);
+        changedFields = getChangedFields(normalizedOldData, normalizedNewData);
       }
 
       // Insert audit log entry

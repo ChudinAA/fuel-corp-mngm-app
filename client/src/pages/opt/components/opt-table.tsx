@@ -191,10 +191,10 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
         <Button
           variant="outline"
           onClick={() => setDeletedDealsAuditOpen(true)}
-          title="Аудит удаленных сделок"
+          title="Аудит всех сделок"
         >
           <History className="h-4 w-4 mr-2" />
-          Удаленные
+          История изменений
         </Button>
       </div>
 
