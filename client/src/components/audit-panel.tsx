@@ -29,6 +29,36 @@ import {
 import { useAudit, type AuditEntry } from "@/hooks/use-audit";
 import { cn } from "@/lib/utils";
 
+// Field name translations
+const FIELD_LABELS: Record<string, string> = {
+  basis: "Базис",
+  buyerId: "Покупатель",
+  supplierId: "Поставщик",
+  carrierId: "Перевозчик",
+  deliveryLocationId: "Место доставки",
+  warehouseId: "Склад",
+  quantityKg: "Количество (КГ)",
+  quantityLiters: "Количество (Л)",
+  purchasePrice: "Цена покупки",
+  salePrice: "Цена продажи",
+  purchaseAmount: "Сумма покупки",
+  saleAmount: "Сумма продажи",
+  profit: "Прибыль",
+  deliveryCost: "Стоимость доставки",
+  deliveryTariff: "Тариф доставки",
+  notes: "Примечания",
+  isApproxVolume: "Примерный объем",
+  density: "Плотность",
+  dealDate: "Дата сделки",
+  refuelingDate: "Дата заправки",
+  aircraftNumber: "Номер ВС",
+  productType: "Тип продукта",
+  contractNumber: "Номер договора",
+  salePriceIndex: "Индекс цены продажи",
+  purchasePriceIndex: "Индекс цены покупки",
+  purchasePriceModified: "Цена покупки изменена",
+};
+
 interface AuditPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -76,7 +106,24 @@ function AuditEntryItem({ entry }: { entry: AuditEntry }) {
 
   // Calculate actual changes from oldData and newData
   const changes = React.useMemo(() => {
-    if (!entry.changedFields || entry.operation === 'CREATE') return null;
+    // For DELETE, show all old data
+    if (entry.operation === 'DELETE' && entry.oldData) {
+      const result: Record<string, { old: any; new: any }> = {};
+      Object.keys(entry.oldData).forEach(field => {
+        // Skip metadata and relation fields
+        if (['id', 'createdAt', 'updatedAt', 'deletedAt', 'createdById', 'updatedById', 'deletedById', 'transactionId'].includes(field)) {
+          return;
+        }
+        result[field] = { old: entry.oldData[field], new: null };
+      });
+      return Object.keys(result).length > 0 ? result : null;
+    }
+    
+    // For CREATE, don't show changes
+    if (entry.operation === 'CREATE') return null;
+    
+    // For UPDATE, show only changed fields
+    if (!entry.changedFields) return null;
     
     const result: Record<string, { old: any; new: any }> = {};
     
@@ -84,7 +131,8 @@ function AuditEntryItem({ entry }: { entry: AuditEntry }) {
       const oldValue = entry.oldData?.[field];
       const newValue = entry.newData?.[field];
       
-      if (oldValue !== newValue) {
+      // Compare as strings to handle numeric vs string inconsistencies
+      if (String(oldValue) !== String(newValue)) {
         result[field] = { old: oldValue, new: newValue };
       }
     });
@@ -93,6 +141,10 @@ function AuditEntryItem({ entry }: { entry: AuditEntry }) {
   }, [entry]);
 
   const hasChanges = changes && Object.keys(changes).length > 0;
+  
+  const getFieldLabel = (field: string): string => {
+    return FIELD_LABELS[field] || field;
+  };
 
   return (
     <div className={cn("p-4 rounded-lg border", config.bgColor)}>
@@ -128,7 +180,10 @@ function AuditEntryItem({ entry }: { entry: AuditEntry }) {
                 onClick={() => setExpanded(!expanded)}
               >
                 <FileText className="mr-1.5 h-3.5 w-3.5" />
-                {expanded ? "Скрыть изменения" : "Показать изменения"}
+                {expanded 
+                  ? (entry.operation === 'DELETE' ? "Скрыть данные" : "Скрыть изменения")
+                  : (entry.operation === 'DELETE' ? "Показать данные" : "Показать изменения")
+                }
                 {expanded ? (
                   <ChevronUp className="ml-1.5 h-3.5 w-3.5" />
                 ) : (
@@ -141,29 +196,31 @@ function AuditEntryItem({ entry }: { entry: AuditEntry }) {
                   {Object.entries(changes).map(([field, change]: [string, any]) => (
                     <div key={field} className="text-sm">
                       <div className="font-medium text-foreground mb-1">
-                        {field}
+                        {getFieldLabel(field)}
                       </div>
                       <div className="flex items-start gap-2 text-muted-foreground">
                         <div className="flex-1">
                           <div className="text-xs text-muted-foreground mb-0.5">
-                            Было:
+                            {entry.operation === 'DELETE' ? 'Значение:' : 'Было:'}
                           </div>
-                          <div className="font-mono text-xs bg-muted p-2 rounded">
+                          <div className="font-mono text-xs bg-muted p-2 rounded break-words">
                             {change.old !== null && change.old !== undefined
                               ? String(change.old)
                               : "—"}
                           </div>
                         </div>
-                        <div className="flex-1">
-                          <div className="text-xs text-muted-foreground mb-0.5">
-                            Стало:
+                        {entry.operation !== 'DELETE' && (
+                          <div className="flex-1">
+                            <div className="text-xs text-muted-foreground mb-0.5">
+                              Стало:
+                            </div>
+                            <div className="font-mono text-xs bg-muted p-2 rounded break-words">
+                              {change.new !== null && change.new !== undefined
+                                ? String(change.new)
+                                : "—"}
+                            </div>
                           </div>
-                          <div className="font-mono text-xs bg-muted p-2 rounded">
-                            {change.new !== null && change.new !== undefined
-                              ? String(change.new)
-                              : "—"}
-                          </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   ))}

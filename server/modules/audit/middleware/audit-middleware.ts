@@ -54,6 +54,37 @@ export interface AuditOptions {
  * Middleware factory for audit logging
  * Usage: router.post('/entity', auditLog({ entityType: 'opt', operation: 'CREATE' }), handler)
  */
+/**
+ * Normalize data format by removing technical fields and converting to strings
+ */
+function normalizeAuditData(data: any): any {
+  if (!data || typeof data !== 'object') return data;
+  
+  const normalized = { ...data };
+  
+  // Remove technical UI fields
+  delete normalized.selectedSalePriceId;
+  delete normalized.selectedPurchasePriceId;
+  delete normalized.createdBy;
+  delete normalized.updatedBy;
+  delete normalized.deletedBy;
+  delete normalized.supplier;
+  delete normalized.buyer;
+  delete normalized.carrier;
+  delete normalized.deliveryLocation;
+  delete normalized.warehouse;
+  delete normalized.base;
+  
+  // Convert numeric fields to strings for consistency
+  for (const key in normalized) {
+    if (typeof normalized[key] === 'number') {
+      normalized[key] = normalized[key].toString();
+    }
+  }
+  
+  return normalized;
+}
+
 export function auditLog(options: AuditOptions) {
   return async (req: Request, res: Response, next: NextFunction) => {
     const { entityType, operation, getEntityId, getOldData, getNewData } = options;
@@ -82,8 +113,12 @@ export function auditLog(options: AuditOptions) {
               return;
             }
 
-            const oldData = getOldData ? await getOldData(req, res) : undefined;
-            const newData = getNewData ? getNewData(req, res) : req.body;
+            const rawOldData = getOldData ? await getOldData(req, res) : undefined;
+            const rawNewData = getNewData ? getNewData(req, res) : req.body;
+            
+            // Normalize data before saving
+            const oldData = normalizeAuditData(rawOldData);
+            const newData = normalizeAuditData(rawNewData);
 
             await AuditService.log({
               entityType,
@@ -136,7 +171,8 @@ export function auditView(entityType: EntityType) {
   return async (req: Request, res: Response, next: NextFunction) => {
     const entityId = req.params.id;
     
-    if (entityId) {
+    // Only log if there's a valid UUID entityId (not for list endpoints)
+    if (entityId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entityId)) {
       const context = (req as any).auditContext as AuditContext;
       
       // Log view asynchronously (don't block request)
