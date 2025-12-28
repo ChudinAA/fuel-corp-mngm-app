@@ -102,7 +102,7 @@ function RefuelingDealActions({ deal, onEdit, onDelete }: RefuelingDealActionsPr
         onOpenChange={setAuditPanelOpen}
         entityType="aircraft_refueling"
         entityId={deal.id}
-        entityName={`Заправка от ${new Date(deal.dealDate).toLocaleDateString('ru-RU')}`}
+        entityName={`Заправка от ${new Date(deal.refuelingDate).toLocaleDateString('ru-RU')}`}
       />
     </>
   );
@@ -135,8 +135,6 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
   const [searchInput, setSearchInput] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const cursorPositionRef = useRef<number>(0);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedDeal, setSelectedDeal] = useState<any>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -308,13 +306,10 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
                   <TableCell className="flex items-center justify-end gap-2 py-3">
                     <RefuelingDealActions 
                       deal={deal}
-                      onEdit={() => {
-                        setSelectedDeal(deal);
-                        setIsEditDialogOpen(true);
-                      }}
+                      onEdit={() => onEdit(deal)}
                       onDelete={() => {
-                        setDealToDelete(deal.id);
-                        setIsDeleteDialogOpen(true);
+                        setDealToDelete(deal);
+                        setDeleteDialogOpen(true);
                       }}
                     />
                   </TableCell>
