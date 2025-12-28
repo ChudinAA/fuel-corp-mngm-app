@@ -81,7 +81,7 @@ function AuditEntryItem({ entry, entityType }: { entry: AuditEntry; entityType: 
     if (entry.operation === 'DELETE' && entry.oldData) {
       const result: Record<string, { old: any; new: any }> = {};
       Object.keys(entry.oldData).forEach(field => {
-        // Skip metadata and relation fields
+        // Skip metadata and technical fields
         if (['id', 'createdAt', 'updatedAt', 'deletedAt', 'createdById', 'updatedById', 'deletedById', 'transactionId'].includes(field)) {
           return;
         }
@@ -93,22 +93,19 @@ function AuditEntryItem({ entry, entityType }: { entry: AuditEntry; entityType: 
     // For CREATE, don't show changes
     if (entry.operation === 'CREATE') return null;
     
-    // For UPDATE, show only changed fields
-    if (!entry.changedFields) return null;
+    // For UPDATE, use changedFields from backend (already normalized)
+    if (!entry.changedFields || entry.changedFields.length === 0) return null;
     
     const result: Record<string, { old: any; new: any }> = {};
     
     entry.changedFields.forEach(field => {
-      const oldValue = entry.oldData?.[field];
-      const newValue = entry.newData?.[field];
-      
-      // Compare as strings to handle numeric vs string inconsistencies
-      if (String(oldValue) !== String(newValue)) {
-        result[field] = { old: oldValue, new: newValue };
-      }
+      result[field] = {
+        old: entry.oldData?.[field],
+        new: entry.newData?.[field]
+      };
     });
     
-    return Object.keys(result).length > 0 ? result : null;
+    return result;
   }, [entry]);
 
   const hasChanges = changes && Object.keys(changes).length > 0;
@@ -171,7 +168,7 @@ function AuditEntryItem({ entry, entityType }: { entry: AuditEntry; entityType: 
                             {entry.operation === 'DELETE' ? 'Значение:' : 'Было:'}
                           </div>
                           <div className="font-mono text-xs bg-muted p-2 rounded break-words">
-                            {change.old !== null && change.old !== undefined
+                            {change.old !== null && change.old !== undefined && change.old !== ''
                               ? String(change.old)
                               : "—"}
                           </div>
@@ -182,7 +179,7 @@ function AuditEntryItem({ entry, entityType }: { entry: AuditEntry; entityType: 
                               Стало:
                             </div>
                             <div className="font-mono text-xs bg-muted p-2 rounded break-words">
-                              {change.new !== null && change.new !== undefined
+                              {change.new !== null && change.new !== undefined && change.new !== ''
                                 ? String(change.new)
                                 : "—"}
                             </div>

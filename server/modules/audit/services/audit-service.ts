@@ -2,6 +2,7 @@
 import { db } from "../../../db";
 import { auditLog, InsertAuditLog, AuditOperation, EntityType, AUDIT_OPERATIONS } from "../entities/audit";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { getChangedFields } from "../utils/audit-utils";
 
 export interface AuditContext {
   userId?: string;
@@ -30,7 +31,7 @@ export class AuditService {
     // Calculate changed fields for UPDATE operations
     let changedFields: string[] | undefined;
     if (operation === AUDIT_OPERATIONS.UPDATE && oldData && newData) {
-      changedFields = this.getChangedFields(oldData, newData);
+      changedFields = getChangedFields(oldData, newData);
     }
 
     const auditEntry: InsertAuditLog = {
@@ -104,28 +105,7 @@ export class AuditService {
     });
   }
 
-  /**
-   * Compare two objects and return changed field names
-   */
-  private static getChangedFields(oldData: any, newData: any): string[] {
-    const changed: string[] = [];
-    const allKeys = new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})]);
-
-    for (const key of allKeys) {
-      // Skip metadata fields
-      if (['updatedAt', 'updatedById', 'createdAt', 'createdById', 'deletedAt', 'deletedById'].includes(key)) continue;
-
-      const oldValue = oldData?.[key];
-      const newValue = newData?.[key];
-
-      // Compare values (handle null, undefined, and different types)
-      if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
-        changed.push(key);
-      }
-    }
-
-    return changed;
-  }
+  
 
   /**
    * Get audit statistics for an entity type

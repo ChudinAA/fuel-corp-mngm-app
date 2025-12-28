@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import { AuditService, AuditContext } from "../services/audit-service";
 import { EntityType, AuditOperation, AUDIT_OPERATIONS } from "../entities/audit";
 import { storage } from "../../../storage/index";
+import { normalizeAuditData } from "../utils/audit-utils";
 
 /**
  * Extract audit context from request
@@ -54,37 +55,6 @@ export interface AuditOptions {
  * Middleware factory for audit logging
  * Usage: router.post('/entity', auditLog({ entityType: 'opt', operation: 'CREATE' }), handler)
  */
-/**
- * Normalize data format by removing technical fields and converting to strings
- */
-function normalizeAuditData(data: any): any {
-  if (!data || typeof data !== 'object') return data;
-  
-  const normalized = { ...data };
-  
-  // Remove technical UI fields
-  delete normalized.selectedSalePriceId;
-  delete normalized.selectedPurchasePriceId;
-  delete normalized.createdBy;
-  delete normalized.updatedBy;
-  delete normalized.deletedBy;
-  delete normalized.supplier;
-  delete normalized.buyer;
-  delete normalized.carrier;
-  delete normalized.deliveryLocation;
-  delete normalized.warehouse;
-  delete normalized.base;
-  
-  // Convert numeric fields to strings for consistency
-  for (const key in normalized) {
-    if (typeof normalized[key] === 'number') {
-      normalized[key] = normalized[key].toString();
-    }
-  }
-  
-  return normalized;
-}
-
 export function auditLog(options: AuditOptions) {
   return async (req: Request, res: Response, next: NextFunction) => {
     const { entityType, operation, getEntityId, getOldData, getNewData } = options;
