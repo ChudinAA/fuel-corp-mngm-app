@@ -16,7 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Search, Building2, Pencil, Trash2, Warehouse, Droplets, Fuel } from "lucide-react";
-import { AuditHistoryButton } from "@/components/audit-history-button";
+import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import type { Supplier, Base } from "@shared/schema";
 import { BASE_TYPE } from "@shared/constants";
 import { AddSupplierDialog } from "./suppliers-dialog";
@@ -205,44 +205,38 @@ export function SuppliersTab() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <AuditHistoryButton
-                              entityType="suppliers"
-                              entityId={supplier.id}
-                              entityName={supplier.name}
-                              variant="ghost"
-                              size="icon"
-                            />
-                            {hasPermission("directories", "edit") && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                data-testid={`button-edit-${supplier.id}`}
-                                onClick={() => setEditingItem(supplier)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {hasPermission("directories", "delete") && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="text-destructive" 
-                                data-testid={`button-delete-${supplier.id}`}
-                                onClick={() => {
+                          <EntityActionsMenu
+                            actions={[
+                              {
+                                id: "edit",
+                                label: "Редактировать",
+                                icon: Pencil,
+                                onClick: () => setEditingItem(supplier),
+                                permission: { module: "directories", action: "edit" },
+                              },
+                              {
+                                id: "delete",
+                                label: "Удалить",
+                                icon: Trash2,
+                                onClick: () => {
                                   setItemToDelete({
                                     id: supplier.id,
                                     name: supplier.name,
                                     hasWarehouse: !!supplier.warehouseId
                                   });
                                   setDeleteDialogOpen(true);
-                                }}
-                                disabled={deleteMutation.isPending}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
+                                },
+                                variant: "destructive" as const,
+                                permission: { module: "directories", action: "delete" },
+                                separatorAfter: true,
+                              },
+                            ]}
+                            audit={{
+                              entityType: "suppliers",
+                              entityId: supplier.id,
+                              entityName: supplier.name,
+                            }}
+                          />
                         </TableCell>
                       </TableRow>
                     ))

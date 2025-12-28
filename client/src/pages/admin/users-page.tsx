@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Switch } from "@/components/ui/switch";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import { 
   Plus, 
   Pencil, 
@@ -459,40 +460,34 @@ export default function UsersPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {(hasPermission("users", "edit") || hasPermission("users", "delete")) && (
-                            <div className="flex items-center gap-1">
-                              {hasPermission("users", "edit") && (
-                                <>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <Key className="h-4 w-4" />
-                                  </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-8 w-8"
-                                    data-testid={`button-edit-user-${user.id}`}
-                                    onClick={() => setEditingUser(user)}
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              )}
-                              {hasPermission("users", "delete") && (
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-8 w-8 text-destructive"
-                                  onClick={() => {
-                                    setUserToDelete(user);
-                                    setDeleteDialogOpen(true);
-                                  }}
-                                  disabled={deleteMutation.isPending}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          )}
+                          <EntityActionsMenu
+                            actions={[
+                              {
+                                id: "edit",
+                                label: "Редактировать",
+                                icon: Pencil,
+                                onClick: () => setEditingUser(user),
+                                permission: { module: "users", action: "edit" },
+                              },
+                              {
+                                id: "delete",
+                                label: "Удалить",
+                                icon: Trash2,
+                                onClick: () => {
+                                  setUserToDelete(user);
+                                  setDeleteDialogOpen(true);
+                                },
+                                variant: "destructive" as const,
+                                permission: { module: "users", action: "delete" },
+                                separatorAfter: true,
+                              },
+                            ]}
+                            audit={{
+                              entityType: "users",
+                              entityId: user.id,
+                              entityName: `${user.firstName} ${user.lastName}`,
+                            }}
+                          />
                         </TableCell>
                       </TableRow>
                     ))

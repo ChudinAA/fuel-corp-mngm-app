@@ -1,4 +1,3 @@
-
 // Маппинг полей для различных типов сущностей
 export const FIELD_LABELS: Record<string, Record<string, string>> = {
   opt: {
@@ -103,6 +102,21 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
     email: "Email",
     description: "Описание",
     isActive: "Активен",
+  },
+  users: {
+    email: "Email",
+    firstName: "Имя",
+    lastName: "Фамилия",
+    roleId: "Роль",
+    isActive: "Статус",
+    lastLoginAt: "Последний вход",
+  },
+  roles: {
+    name: "Название",
+    description: "Описание",
+    permissions: "Права доступа",
+    isSystem: "Системная роль",
+    isDefault: "Роль по умолчанию",
   },
 };
 

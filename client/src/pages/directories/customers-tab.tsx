@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Users, Pencil, Trash2 } from "lucide-react";
-import { AuditHistoryButton } from "@/components/audit-history-button";
+import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import type { Customer } from "@shared/schema";
 import { AddCustomerDialog } from "./customers-dialog";
 import { CUSTOMER_MODULE } from "@shared/constants";
@@ -120,40 +120,34 @@ export function CustomersTab() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <AuditHistoryButton
-                              entityType="customers"
-                              entityId={item.id}
-                              entityName={item.name}
-                              variant="ghost"
-                              size="icon"
-                            />
-                            {hasPermission("directories", "edit") && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                data-testid={`button-edit-customer-${item.id}`}
-                                onClick={() => setEditingCustomer(item)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {hasPermission("directories", "delete") && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="text-destructive" 
-                                data-testid={`button-delete-customer-${item.id}`}
-                                onClick={() => {
+                          <EntityActionsMenu
+                            actions={[
+                              {
+                                id: "edit",
+                                label: "Редактировать",
+                                icon: Pencil,
+                                onClick: () => setEditingCustomer(item),
+                                permission: { module: "directories", action: "edit" },
+                              },
+                              {
+                                id: "delete",
+                                label: "Удалить",
+                                icon: Trash2,
+                                onClick: () => {
                                   setCustomerToDelete(item);
                                   setDeleteDialogOpen(true);
-                                }}
-                                disabled={deleteMutation.isPending}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
+                                },
+                                variant: "destructive" as const,
+                                permission: { module: "directories", action: "delete" },
+                                separatorAfter: true,
+                              },
+                            ]}
+                            audit={{
+                              entityType: "customers",
+                              entityId: item.id,
+                              entityName: item.name,
+                            }}
+                          />
                         </TableCell>
                       </TableRow>
                     ))

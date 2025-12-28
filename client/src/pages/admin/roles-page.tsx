@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import { 
   Plus, 
   Pencil, 
@@ -383,27 +384,37 @@ export default function RolesPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {(hasPermission("roles", "edit") || (hasPermission("roles", "delete") && !role.isSystem)) && (
-                            <div className="flex items-center gap-1">
-                              {hasPermission("roles", "edit") && (
-                                <RoleFormDialog editRole={role} />
-                              )}
-                              {hasPermission("roles", "delete") && !role.isSystem && (
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-8 w-8 text-destructive"
-                                  onClick={() => {
-                                    setRoleToDelete(role);
-                                    setDeleteDialogOpen(true);
-                                  }}
-                                  disabled={deleteMutation.isPending}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          )}
+                          <EntityActionsMenu
+                            actions={[
+                              {
+                                id: "edit",
+                                label: "Редактировать",
+                                icon: Pencil,
+                                onClick: () => setRoleToDelete(role), // Will be replaced by RoleFormDialog
+                                permission: { module: "roles", action: "edit" },
+                                condition: false, // Hide this action as we'll add custom edit below
+                              },
+                              {
+                                id: "delete",
+                                label: "Удалить",
+                                icon: Trash2,
+                                onClick: () => {
+                                  setRoleToDelete(role);
+                                  setDeleteDialogOpen(true);
+                                },
+                                variant: "destructive" as const,
+                                permission: { module: "roles", action: "delete" },
+                                condition: !role.isSystem,
+                                separatorAfter: true,
+                              },
+                            ]}
+                            audit={{
+                              entityType: "roles",
+                              entityId: role.id,
+                              entityName: role.name,
+                            }}
+                            triggerClassName="h-8 w-8"
+                          />
                         </TableCell>
                       </TableRow>
                     ))
