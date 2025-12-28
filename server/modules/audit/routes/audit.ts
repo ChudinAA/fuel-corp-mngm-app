@@ -2,8 +2,10 @@
 import { Router, type Express } from "express";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { AuditService } from "../services/audit-service";
+import { RollbackService } from "../services/rollback-service";
 import { ENTITY_TYPES } from "../entities/audit";
 import { z } from "zod";
+import { getAuditContext } from "../middleware/audit-middleware";
 
 const router = Router();
 
@@ -117,6 +119,50 @@ router.get(
     } catch (error: any) {
       console.error("Error fetching user audit history:", error);
       res.status(500).json({ message: error.message });
+    }
+  }
+);
+
+/**
+ * Rollback a specific audit entry
+ * POST /api/audit/rollback/:auditLogId
+ */
+router.post(
+  "/audit/rollback/:auditLogId",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { auditLogId } = req.params;
+
+      // Get audit context
+      const context = getAuditContext(req);
+      
+      // Enrich with user data
+      if (context.userId) {
+        const user = await (await import("../../../storage/index")).storage.users.getUser(context.userId);
+        if (user) {
+          context.userName = `${user.firstName} ${user.lastName}`;
+          context.userEmail = user.email;
+        }
+      }
+
+      // Perform rollback
+      const result = await RollbackService.rollback({
+        auditLogId,
+        context,
+      });
+
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      console.error("Error performing rollback:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
     }
   }
 );

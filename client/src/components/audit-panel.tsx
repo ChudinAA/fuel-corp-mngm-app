@@ -25,8 +25,21 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
+  Undo2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAudit, type AuditEntry } from "@/hooks/use-audit";
+import { useRollback } from "@/hooks/use-rollback";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { getFieldLabel } from "@/lib/field-labels";
 
@@ -70,10 +83,55 @@ const ACTION_CONFIG: Record<string, {
   },
 };
 
-function AuditEntryItem({ entry, entityType }: { entry: AuditEntry; entityType: string }) {
+function AuditEntryItem({ 
+  entry, 
+  entityType, 
+  onRollback 
+}: { 
+  entry: AuditEntry; 
+  entityType: string;
+  onRollback: (auditLogId: string) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
+  const [showRollbackDialog, setShowRollbackDialog] = useState(false);
+  const { hasPermission } = useAuth();
   const config = ACTION_CONFIG[entry.operation] || ACTION_CONFIG.UPDATE;
   const Icon = config.icon;
+
+  // Check if rollback is available for this operation
+  const canRollback = ['CREATE', 'UPDATE', 'DELETE'].includes(entry.operation);
+  
+  // Map entity type to permission module
+  const getPermissionModule = (entityType: string): string => {
+    const moduleMap: Record<string, string> = {
+      'opt': 'opt',
+      'aircraft_refueling': 'refueling',
+      'movement': 'movement',
+      'exchange': 'exchange',
+      'warehouses': 'warehouses',
+      'prices': 'prices',
+      'suppliers': 'directories',
+      'customers': 'directories',
+      'bases': 'directories',
+      'logistics_carriers': 'directories',
+      'logistics_delivery_locations': 'directories',
+      'logistics_vehicles': 'directories',
+      'logistics_trailers': 'directories',
+      'logistics_drivers': 'directories',
+      'delivery_cost': 'delivery_cost',
+      'users': 'users',
+      'roles': 'roles',
+    };
+    return moduleMap[entityType] || entityType;
+  };
+
+  const hasEditPermission = hasPermission(getPermissionModule(entityType), 'edit');
+  const showRollbackButton = canRollback && hasEditPermission;
+
+  const handleRollback = () => {
+    setShowRollbackDialog(false);
+    onRollback(entry.id);
+  };
 
   // Calculate actual changes from oldData and newData
   const changes = React.useMemo(() => {
@@ -117,22 +175,35 @@ function AuditEntryItem({ entry, entityType }: { entry: AuditEntry; entityType: 
           <Icon className="h-4 w-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className={config.color}>
-              {config.label}
-            </Badge>
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <User className="h-3.5 w-3.5" />
-              <span className="font-medium">{entry.userName}</span>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className={config.color}>
+                {config.label}
+              </Badge>
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <User className="h-3.5 w-3.5" />
+                <span className="font-medium">{entry.userName}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Clock className="h-3.5 w-3.5" />
+                <span>
+                  {format(new Date(entry.createdAt), "dd MMM yyyy, HH:mm", {
+                    locale: ru,
+                  })}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Clock className="h-3.5 w-3.5" />
-              <span>
-                {format(new Date(entry.createdAt), "dd MMM yyyy, HH:mm", {
-                  locale: ru,
-                })}
-              </span>
-            </div>
+            {showRollbackButton && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7"
+                onClick={() => setShowRollbackDialog(true)}
+              >
+                <Undo2 className="mr-1.5 h-3.5 w-3.5" />
+                Откатить
+              </Button>
+            )}
           </div>
 
           {hasChanges && (
@@ -194,6 +265,28 @@ function AuditEntryItem({ entry, entityType }: { entry: AuditEntry; entityType: 
           )}
         </div>
       </div>
+
+      <AlertDialog open={showRollbackDialog} onOpenChange={setShowRollbackDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Подтверждение отката</AlertDialogTitle>
+            <AlertDialogDescription>
+              {entry.operation === 'CREATE' && 
+                'Это действие удалит созданную запись. Вы уверены?'}
+              {entry.operation === 'UPDATE' && 
+                'Это действие восстановит предыдущие значения полей. Вы уверены?'}
+              {entry.operation === 'DELETE' && 
+                'Это действие восстановит удалённую запись. Вы уверены?'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRollback}>
+              Откатить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -210,6 +303,16 @@ export function AuditPanel({
     entityId,
     enabled: open,
   });
+  const { rollback, isRollingBack } = useRollback();
+
+  const handleRollback = (auditLogId: string) => {
+    rollback(auditLogId, {
+      onSuccess: () => {
+        // Refresh audit history after successful rollback
+        refetch();
+      },
+    });
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -248,7 +351,12 @@ export function AuditPanel({
           ) : (
             <div className="space-y-3">
               {auditHistory.map((entry) => (
-                <AuditEntryItem key={entry.id} entry={entry} entityType={entityType} />
+                <AuditEntryItem 
+                  key={entry.id} 
+                  entry={entry} 
+                  entityType={entityType}
+                  onRollback={handleRollback}
+                />
               ))}
             </div>
           )}
@@ -259,9 +367,9 @@ export function AuditPanel({
             variant="outline"
             className="w-full"
             onClick={() => refetch()}
-            disabled={isLoading}
+            disabled={isLoading || isRollingBack}
           >
-            Обновить историю
+            {isRollingBack ? "Выполняется откат..." : "Обновить историю"}
           </Button>
         </div>
       </SheetContent>
