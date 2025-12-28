@@ -6,13 +6,13 @@ export interface AuditEntry {
   id: string;
   entityType: string;
   entityId: string;
-  action: "CREATE" | "UPDATE" | "DELETE" | "RESTORE";
+  operation: "CREATE" | "UPDATE" | "DELETE" | "RESTORE";
   userId: string;
   userName: string;
   userEmail: string;
-  changes: Record<string, any> | null;
-  oldValues: Record<string, any> | null;
-  newValues: Record<string, any> | null;
+  changedFields: string[] | null;
+  oldData: Record<string, any> | null;
+  newData: Record<string, any> | null;
   createdAt: string;
 }
 
@@ -29,7 +29,7 @@ export function useAudit({ entityType, entityId, limit = 50, enabled = true }: U
     : `/api/audit/${entityType}?limit=${limit}`;
 
   const { data, isLoading, error, refetch } = useQuery<AuditEntry[]>({
-    queryKey: ["audit", entityType, entityId, limit],
+    queryKey: ["audit", entityType, entityId || "all", limit],
     queryFn: async () => {
       const res = await apiRequest("GET", endpoint);
       if (!res.ok) {

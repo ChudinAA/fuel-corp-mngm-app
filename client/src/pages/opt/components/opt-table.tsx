@@ -150,6 +150,7 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
   const [searchInput, setSearchInput] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const cursorPositionRef = useRef<number>(0);
+  const [deletedDealsAuditOpen, setDeletedDealsAuditOpen] = useState(false);
 
   // Debounce search input
   useEffect(() => {
@@ -217,6 +218,14 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
           title="Фильтры скоро будут доступны"
         >
           <Filter className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => setDeletedDealsAuditOpen(true)}
+          title="Аудит удаленных сделок"
+        >
+          <History className="h-4 w-4 mr-2" />
+          Удаленные
         </Button>
       </div>
 
@@ -377,6 +386,14 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
           </DialogHeader>
         </DialogContent>
       </Dialog>
+
+      <AuditPanel
+        open={deletedDealsAuditOpen}
+        onOpenChange={setDeletedDealsAuditOpen}
+        entityType="opt"
+        entityId=""
+        entityName="Все сделки ОПТ (включая удаленные)"
+      />
     </div>
   );
 }

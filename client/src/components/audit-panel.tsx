@@ -1,5 +1,6 @@
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import * as React from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -70,10 +71,28 @@ const ACTION_CONFIG: Record<string, {
 
 function AuditEntryItem({ entry }: { entry: AuditEntry }) {
   const [expanded, setExpanded] = useState(false);
-  const config = ACTION_CONFIG[entry.action] || ACTION_CONFIG.UPDATE;
+  const config = ACTION_CONFIG[entry.operation] || ACTION_CONFIG.UPDATE;
   const Icon = config.icon;
 
-  const hasChanges = entry.changes && Object.keys(entry.changes).length > 0;
+  // Calculate actual changes from oldData and newData
+  const changes = React.useMemo(() => {
+    if (!entry.changedFields || entry.operation === 'CREATE') return null;
+    
+    const result: Record<string, { old: any; new: any }> = {};
+    
+    entry.changedFields.forEach(field => {
+      const oldValue = entry.oldData?.[field];
+      const newValue = entry.newData?.[field];
+      
+      if (oldValue !== newValue) {
+        result[field] = { old: oldValue, new: newValue };
+      }
+    });
+    
+    return Object.keys(result).length > 0 ? result : null;
+  }, [entry]);
+
+  const hasChanges = changes && Object.keys(changes).length > 0;
 
   return (
     <div className={cn("p-4 rounded-lg border", config.bgColor)}>
@@ -117,9 +136,9 @@ function AuditEntryItem({ entry }: { entry: AuditEntry }) {
                 )}
               </Button>
 
-              {expanded && (
+              {expanded && changes && (
                 <div className="mt-3 p-3 bg-background rounded border space-y-2">
-                  {Object.entries(entry.changes).map(([field, change]: [string, any]) => (
+                  {Object.entries(changes).map(([field, change]: [string, any]) => (
                     <div key={field} className="text-sm">
                       <div className="font-medium text-foreground mb-1">
                         {field}
