@@ -12,7 +12,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Search, Pencil, Trash2, RefreshCw, Package, Plane, TruckIcon, ShoppingCart, FileText, StickyNote } from "lucide-react";
-import { AuditHistoryButton } from "@/components/audit-history-button";
 import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import type { Price, Supplier, Customer } from "@shared/schema";
 import type { PricesTableProps } from "../types";
@@ -217,58 +216,54 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      <AuditHistoryButton
-                        entityType="prices"
-                        entityId={price.id}
-                        entityName={`Цена для ${getContractorName(price.counterpartyId, price.counterpartyType, price.counterpartyRole)}`}
-                        variant="ghost"
-                        size="icon"
-                      />
-                      <EntityActionsMenu
-                        actions={[
-                          {
-                            id: "edit",
-                            label: "Редактировать",
-                            icon: Pencil,
-                            onClick: () => onEdit(price),
-                            permission: { module: "prices", action: "edit" },
+                    <EntityActionsMenu
+                      actions={[
+                        {
+                          id: "edit",
+                          label: "Редактировать",
+                          icon: Pencil,
+                          onClick: () => onEdit(price),
+                          permission: { module: "prices", action: "edit" },
+                        },
+                        {
+                          id: "notes",
+                          label: "Примечания",
+                          icon: StickyNote,
+                          onClick: () => {
+                            setSelectedPrice(price);
+                            setNotesDialogOpen(true);
                           },
-                          {
-                            id: "notes",
-                            label: "Примечания",
-                            icon: StickyNote,
-                            onClick: () => {
-                              setSelectedPrice(price);
-                              setNotesDialogOpen(true);
-                            },
-                            condition: !!price.notes,
+                          condition: !!price.notes,
+                        },
+                        {
+                          id: "contract",
+                          label: "Договор",
+                          icon: FileText,
+                          onClick: () => {
+                            setSelectedPrice(price);
+                            setContractDialogOpen(true);
                           },
-                          {
-                            id: "contract",
-                            label: "Договор",
-                            icon: FileText,
-                            onClick: () => {
-                              setSelectedPrice(price);
-                              setContractDialogOpen(true);
-                            },
-                            condition: !!price.contractNumber,
+                          condition: !!price.contractNumber,
+                        },
+                        {
+                          id: "delete",
+                          label: "Удалить",
+                          icon: Trash2,
+                          onClick: () => {
+                            setPriceToDelete(price);
+                            setDeleteDialogOpen(true);
                           },
-                          {
-                            id: "delete",
-                            label: "Удалить",
-                            icon: Trash2,
-                            onClick: () => {
-                              setPriceToDelete(price);
-                              setDeleteDialogOpen(true);
-                            },
-                            variant: "destructive" as const,
-                            permission: { module: "prices", action: "delete" },
-                            separatorAfter: true,
-                          },
-                        ]}
-                      />
-                    </div>
+                          variant: "destructive" as const,
+                          permission: { module: "prices", action: "delete" },
+                          separatorAfter: true,
+                        },
+                      ]}
+                      audit={{
+                        entityType: "prices",
+                        entityId: price.id,
+                        entityName: `Цена для ${getContractorName(price.counterpartyId, price.counterpartyType, price.counterpartyRole)}`,
+                      }}
+                    />
                   </TableCell>
                 </TableRow>
               );

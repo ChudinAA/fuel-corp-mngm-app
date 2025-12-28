@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Pencil, Trash2, TrendingUp, TrendingDown, Warehouse as WarehouseIcon, Droplets, Fuel } from "lucide-react";
-import { AuditHistoryButton } from "@/components/audit-history-button";
 import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -157,13 +156,6 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
             )}
           </div>
           <div className="flex items-center gap-1">
-            <AuditHistoryButton
-              entityType="warehouses"
-              entityId={warehouse.id}
-              entityName={warehouse.name}
-              variant="ghost"
-              size="icon"
-            />
             <div onClick={(e) => e.stopPropagation()}>
               <EntityActionsMenu
                 actions={[
@@ -190,8 +182,14 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
                     },
                     variant: "destructive" as const,
                     permission: { module: "warehouses", action: "delete" },
+                    separatorAfter: true,
                   },
                 ]}
+                audit={{
+                  entityType: "warehouses",
+                  entityId: warehouse.id,
+                  entityName: warehouse.name,
+                }}
               />
             </div>
           </div>

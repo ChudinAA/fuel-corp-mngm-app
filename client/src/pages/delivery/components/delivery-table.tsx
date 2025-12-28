@@ -10,7 +10,6 @@ import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Truck, Pencil, Trash2, Droplets, Fuel, Warehouse, MapPin } from "lucide-react";
-import { AuditHistoryButton } from "@/components/audit-history-button";
 import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import type { DeliveryCost } from "@shared/schema";
 import { formatNumber } from "../utils";
@@ -133,37 +132,34 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
                     <Badge variant="outline" className="text-green-600 border-green-600">Активен</Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      <AuditHistoryButton
-                        entityType="delivery"
-                        entityId={cost.id}
-                        entityName={`${cost.fromLocation} → ${cost.toLocation}`}
-                        variant="ghost"
-                        size="icon"
-                      />
-                      <EntityActionsMenu
-                        actions={[
-                          {
-                            id: "edit",
-                            label: "Редактировать",
-                            icon: Pencil,
-                            onClick: () => onEdit(cost),
-                            permission: { module: "delivery", action: "edit" },
+                    <EntityActionsMenu
+                      actions={[
+                        {
+                          id: "edit",
+                          label: "Редактировать",
+                          icon: Pencil,
+                          onClick: () => onEdit(cost),
+                          permission: { module: "delivery", action: "edit" },
+                        },
+                        {
+                          id: "delete",
+                          label: "Удалить",
+                          icon: Trash2,
+                          onClick: () => {
+                            setCostToDelete(cost);
+                            setDeleteDialogOpen(true);
                           },
-                          {
-                            id: "delete",
-                            label: "Удалить",
-                            icon: Trash2,
-                            onClick: () => {
-                              setCostToDelete(cost);
-                              setDeleteDialogOpen(true);
-                            },
-                            variant: "destructive" as const,
-                            permission: { module: "delivery", action: "delete" },
-                          },
-                        ]}
-                      />
-                    </div>
+                          variant: "destructive" as const,
+                          permission: { module: "delivery", action: "delete" },
+                          separatorAfter: true,
+                        },
+                      ]}
+                      audit={{
+                        entityType: "delivery",
+                        entityId: cost.id,
+                        entityName: `${cost.fromLocation} → ${cost.toLocation}`,
+                      }}
+                    />
                   </TableCell>
                 </TableRow>
               );

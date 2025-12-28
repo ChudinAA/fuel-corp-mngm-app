@@ -6,7 +6,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pencil, Trash2, FileText } from "lucide-react";
-import { AuditHistoryButton } from "@/components/audit-history-button";
 import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatNumber, formatDate } from "../utils";
@@ -151,47 +150,44 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
                 <TableCell className="text-right">{formatNumberWithK(storageCost)}</TableCell>
                 <TableCell className="text-right font-medium">{formatNumber(costPerKg)} ₽/кг</TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-1">
-                    <AuditHistoryButton
-                      entityType="movement"
-                      entityId={item.id}
-                      entityName={`Перемещение от ${formatDate(item.movementDate)}`}
-                      variant="ghost"
-                      size="icon"
-                    />
-                    <EntityActionsMenu
-                      actions={[
-                        {
-                          id: "edit",
-                          label: "Редактировать",
-                          icon: Pencil,
-                          onClick: () => onEdit(item),
-                          permission: { module: "movement", action: "edit" },
+                  <EntityActionsMenu
+                    actions={[
+                      {
+                        id: "edit",
+                        label: "Редактировать",
+                        icon: Pencil,
+                        onClick: () => onEdit(item),
+                        permission: { module: "movement", action: "edit" },
+                      },
+                      {
+                        id: "notes",
+                        label: "Примечание",
+                        icon: FileText,
+                        onClick: () => {
+                          setSelectedNotes(item.notes || "");
+                          setNotesDialogOpen(true);
                         },
-                        {
-                          id: "notes",
-                          label: "Примечание",
-                          icon: FileText,
-                          onClick: () => {
-                            setSelectedNotes(item.notes || "");
-                            setNotesDialogOpen(true);
-                          },
-                          condition: !!item.notes,
+                        condition: !!item.notes,
+                      },
+                      {
+                        id: "delete",
+                        label: "Удалить",
+                        icon: Trash2,
+                        onClick: () => {
+                          setItemToDelete(item);
+                          setDeleteDialogOpen(true);
                         },
-                        {
-                          id: "delete",
-                          label: "Удалить",
-                          icon: Trash2,
-                          onClick: () => {
-                            setItemToDelete(item);
-                            setDeleteDialogOpen(true);
-                          },
-                          variant: "destructive" as const,
-                          permission: { module: "movement", action: "delete" },
-                        },
-                      ]}
-                    />
-                  </div>
+                        variant: "destructive" as const,
+                        permission: { module: "movement", action: "delete" },
+                        separatorAfter: true,
+                      },
+                    ]}
+                    audit={{
+                      entityType: "movement",
+                      entityId: item.id,
+                      entityName: `Перемещение от ${formatDate(item.movementDate)}`,
+                    }}
+                  />
                 </TableCell>
               </TableRow>
             );

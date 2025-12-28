@@ -20,13 +20,6 @@ import {
   History
 } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -43,9 +36,9 @@ import { formatNumberForTable, formatCurrencyForTable } from "../utils";
 import { useOptTable } from "../hooks/use-opt-table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { AuditHistoryButton } from "@/components/audit-history-button";
 import { useNavigate } from "react-router-dom";
 import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
+import { AuditPanel } from "@/components/audit-panel";
 
 interface OptTableProps {
   onEdit: (opt: any) => void;
