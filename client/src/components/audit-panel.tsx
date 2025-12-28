@@ -28,36 +28,7 @@ import {
 } from "lucide-react";
 import { useAudit, type AuditEntry } from "@/hooks/use-audit";
 import { cn } from "@/lib/utils";
-
-// Field name translations
-const FIELD_LABELS: Record<string, string> = {
-  basis: "Базис",
-  buyerId: "Покупатель",
-  supplierId: "Поставщик",
-  carrierId: "Перевозчик",
-  deliveryLocationId: "Место доставки",
-  warehouseId: "Склад",
-  quantityKg: "Количество (КГ)",
-  quantityLiters: "Количество (Л)",
-  purchasePrice: "Цена покупки",
-  salePrice: "Цена продажи",
-  purchaseAmount: "Сумма покупки",
-  saleAmount: "Сумма продажи",
-  profit: "Прибыль",
-  deliveryCost: "Стоимость доставки",
-  deliveryTariff: "Тариф доставки",
-  notes: "Примечания",
-  isApproxVolume: "Примерный объем",
-  density: "Плотность",
-  dealDate: "Дата сделки",
-  refuelingDate: "Дата заправки",
-  aircraftNumber: "Номер ВС",
-  productType: "Тип продукта",
-  contractNumber: "Номер договора",
-  salePriceIndex: "Индекс цены продажи",
-  purchasePriceIndex: "Индекс цены покупки",
-  purchasePriceModified: "Цена покупки изменена",
-};
+import { getFieldLabel } from "@/lib/field-labels";
 
 interface AuditPanelProps {
   open: boolean;
@@ -99,7 +70,7 @@ const ACTION_CONFIG: Record<string, {
   },
 };
 
-function AuditEntryItem({ entry }: { entry: AuditEntry }) {
+function AuditEntryItem({ entry, entityType }: { entry: AuditEntry; entityType: string }) {
   const [expanded, setExpanded] = useState(false);
   const config = ACTION_CONFIG[entry.operation] || ACTION_CONFIG.UPDATE;
   const Icon = config.icon;
@@ -141,10 +112,6 @@ function AuditEntryItem({ entry }: { entry: AuditEntry }) {
   }, [entry]);
 
   const hasChanges = changes && Object.keys(changes).length > 0;
-  
-  const getFieldLabel = (field: string): string => {
-    return FIELD_LABELS[field] || field;
-  };
 
   return (
     <div className={cn("p-4 rounded-lg border", config.bgColor)}>
@@ -196,7 +163,7 @@ function AuditEntryItem({ entry }: { entry: AuditEntry }) {
                   {Object.entries(changes).map(([field, change]: [string, any]) => (
                     <div key={field} className="text-sm">
                       <div className="font-medium text-foreground mb-1">
-                        {getFieldLabel(field)}
+                        {getFieldLabel(entityType, field)}
                       </div>
                       <div className="flex items-start gap-2 text-muted-foreground">
                         <div className="flex-1">
@@ -284,7 +251,7 @@ export function AuditPanel({
           ) : (
             <div className="space-y-3">
               {auditHistory.map((entry) => (
-                <AuditEntryItem key={entry.id} entry={entry} />
+                <AuditEntryItem key={entry.id} entry={entry} entityType={entityType} />
               ))}
             </div>
           )}

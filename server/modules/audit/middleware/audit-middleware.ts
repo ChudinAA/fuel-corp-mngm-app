@@ -90,6 +90,16 @@ export function auditLog(options: AuditOptions) {
     const { entityType, operation, getEntityId, getOldData, getNewData } = options;
     const context = (req as any).auditContext as AuditContext;
 
+    // Capture old data BEFORE the operation
+    let capturedOldData: any = undefined;
+    if (getOldData) {
+      try {
+        capturedOldData = await getOldData(req, res);
+      } catch (error) {
+        console.error("Error capturing old data:", error);
+      }
+    }
+
     // Store original send function
     const originalSend = res.send.bind(res);
     
@@ -113,11 +123,10 @@ export function auditLog(options: AuditOptions) {
               return;
             }
 
-            const rawOldData = getOldData ? await getOldData(req, res) : undefined;
             const rawNewData = getNewData ? getNewData(req, res) : req.body;
             
             // Normalize data before saving
-            const oldData = normalizeAuditData(rawOldData);
+            const oldData = normalizeAuditData(capturedOldData);
             const newData = normalizeAuditData(rawNewData);
 
             await AuditService.log({
