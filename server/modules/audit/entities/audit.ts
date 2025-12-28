@@ -18,6 +18,8 @@ export const auditLog = pgTable("audit_log", {
   userEmail: text("user_email"),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
+  rolledBackAt: timestamp("rolled_back_at", { mode: "string" }),
+  rolledBackById: uuid("rolled_back_by_id").references(() => users.id),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
 }, (table) => ({
   entityIdx: index("audit_log_entity_idx").on(table.entityType, table.entityId),

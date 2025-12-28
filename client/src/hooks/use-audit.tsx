@@ -14,6 +14,8 @@ export interface AuditEntry {
   oldData: Record<string, any> | null;
   newData: Record<string, any> | null;
   createdAt: string;
+  rolledBackAt: string | null;
+  rolledBackById: string | null;
 }
 
 interface UseAuditOptions {

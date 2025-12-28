@@ -38,6 +38,14 @@ export class RollbackService {
         };
       }
 
+      // Check if already rolled back
+      if (auditEntry.rolledBackAt) {
+        return {
+          success: false,
+          message: "Эта запись уже была откачена",
+        };
+      }
+
       // Check if rollback is possible
       if (!this.canRollback(auditEntry.operation as any)) {
         return {
@@ -48,6 +56,16 @@ export class RollbackService {
 
       // Perform rollback based on operation type
       const result = await this.performRollback(auditEntry, context);
+
+      // If rollback was successful, mark the audit entry as rolled back
+      if (result.success) {
+        await db.update(auditLog)
+          .set({
+            rolledBackAt: new Date().toISOString(),
+            rolledBackById: context.userId,
+          })
+          .where(eq(auditLog.id, auditLogId));
+      }
 
       return result;
     } catch (error: any) {

@@ -87,18 +87,19 @@ function AuditEntryItem({
   entry, 
   entityType, 
   onRollback,
-  isRolledBack = false,
 }: { 
   entry: AuditEntry; 
   entityType: string;
   onRollback: (auditLogId: string) => void;
-  isRolledBack?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showRollbackDialog, setShowRollbackDialog] = useState(false);
   const { hasPermission } = useAuth();
   const config = ACTION_CONFIG[entry.operation] || ACTION_CONFIG.UPDATE;
   const Icon = config.icon;
+
+  // Check if this entry has been rolled back
+  const isRolledBack = !!entry.rolledBackAt;
 
   // Check if rollback is available for this operation
   const canRollback = ['CREATE', 'UPDATE', 'DELETE'].includes(entry.operation);
@@ -137,7 +138,7 @@ function AuditEntryItem({
 
   // Calculate actual changes from oldData and newData
   const changes = React.useMemo(() => {
-    // For DELETE, show all old data
+    // For DELETE (user action), show all old data
     if (entry.operation === 'DELETE' && entry.oldData) {
       const result: Record<string, { old: any; new: any }> = {};
       Object.keys(entry.oldData).forEach(field => {
@@ -149,9 +150,26 @@ function AuditEntryItem({
       });
       return Object.keys(result).length > 0 ? result : null;
     }
+
+    // For RESTORE (rollback of DELETE), show all restored data
+    if (entry.operation === 'RESTORE' && entry.newData) {
+      const result: Record<string, { old: any; new: any }> = {};
+      Object.keys(entry.newData).forEach(field => {
+        // Skip metadata and technical fields
+        if (['id', 'createdAt', 'updatedAt', 'deletedAt', 'createdById', 'updatedById', 'deletedById', 'transactionId'].includes(field)) {
+          return;
+        }
+        result[field] = { old: null, new: entry.newData[field] };
+      });
+      return Object.keys(result).length > 0 ? result : null;
+    }
     
-    // For CREATE, don't show changes
-    if (entry.operation === 'CREATE') return null;
+    // For CREATE, don't show changes by default, but if it's a rollback result (DELETE operation rollback), show what was deleted
+    if (entry.operation === 'CREATE') {
+      // Check if this is a rollback result by looking at userName
+      if (entry.userName?.includes('откат')) return null;
+      return null;
+    }
     
     // For UPDATE, use changedFields from backend (already normalized)
     if (!entry.changedFields || entry.changedFields.length === 0) return null;
@@ -219,8 +237,8 @@ function AuditEntryItem({
               >
                 <FileText className="mr-1.5 h-3.5 w-3.5" />
                 {expanded 
-                  ? (entry.operation === 'DELETE' ? "Скрыть данные" : "Скрыть изменения")
-                  : (entry.operation === 'DELETE' ? "Показать данные" : "Показать изменения")
+                  ? (entry.operation === 'DELETE' ? "Скрыть удалённые данные" : entry.operation === 'RESTORE' ? "Скрыть восстановленные данные" : "Скрыть изменения")
+                  : (entry.operation === 'DELETE' ? "Показать удалённые данные" : entry.operation === 'RESTORE' ? "Показать восстановленные данные" : "Показать изменения")
                 }
                 {expanded ? (
                   <ChevronUp className="ml-1.5 h-3.5 w-3.5" />
@@ -237,20 +255,10 @@ function AuditEntryItem({
                         {getFieldLabel(entityType, field)}
                       </div>
                       <div className="flex items-start gap-2 text-muted-foreground">
-                        <div className="flex-1">
-                          <div className="text-xs text-muted-foreground mb-0.5">
-                            {entry.operation === 'DELETE' ? 'Значение:' : 'Было:'}
-                          </div>
-                          <div className="font-mono text-xs bg-muted p-2 rounded break-words">
-                            {change.old !== null && change.old !== undefined && change.old !== ''
-                              ? String(change.old)
-                              : "—"}
-                          </div>
-                        </div>
-                        {entry.operation !== 'DELETE' && (
+                        {entry.operation === 'RESTORE' ? (
                           <div className="flex-1">
                             <div className="text-xs text-muted-foreground mb-0.5">
-                              Стало:
+                              Восстановленное значение:
                             </div>
                             <div className="font-mono text-xs bg-muted p-2 rounded break-words">
                               {change.new !== null && change.new !== undefined && change.new !== ''
@@ -258,6 +266,40 @@ function AuditEntryItem({
                                 : "—"}
                             </div>
                           </div>
+                        ) : entry.operation === 'DELETE' ? (
+                          <div className="flex-1">
+                            <div className="text-xs text-muted-foreground mb-0.5">
+                              Удалённое значение:
+                            </div>
+                            <div className="font-mono text-xs bg-muted p-2 rounded break-words">
+                              {change.old !== null && change.old !== undefined && change.old !== ''
+                                ? String(change.old)
+                                : "—"}
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex-1">
+                              <div className="text-xs text-muted-foreground mb-0.5">
+                                Было:
+                              </div>
+                              <div className="font-mono text-xs bg-muted p-2 rounded break-words">
+                                {change.old !== null && change.old !== undefined && change.old !== ''
+                                  ? String(change.old)
+                                  : "—"}
+                              </div>
+                            </div>
+                            <div className="flex-1">
+                              <div className="text-xs text-muted-foreground mb-0.5">
+                                Стало:
+                              </div>
+                              <div className="font-mono text-xs bg-muted p-2 rounded break-words">
+                                {change.new !== null && change.new !== undefined && change.new !== ''
+                                  ? String(change.new)
+                                  : "—"}
+                              </div>
+                            </div>
+                          </>
                         )}
                       </div>
                     </div>
@@ -301,8 +343,6 @@ export function AuditPanel({
   entityId,
   entityName,
 }: AuditPanelProps) {
-  const [rolledBackIds, setRolledBackIds] = useState<Set<string>>(new Set());
-  
   const { auditHistory, isLoading, refetch } = useAudit({
     entityType,
     entityId,
@@ -313,20 +353,11 @@ export function AuditPanel({
   const handleRollback = (auditLogId: string) => {
     rollback(auditLogId, {
       onSuccess: () => {
-        // Mark this entry as rolled back
-        setRolledBackIds(prev => new Set(prev).add(auditLogId));
         // Refresh audit history after successful rollback
         refetch();
       },
     });
   };
-
-  // Reset rolled back IDs when panel closes or entity changes
-  React.useEffect(() => {
-    if (!open) {
-      setRolledBackIds(new Set());
-    }
-  }, [open, entityId]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -370,7 +401,6 @@ export function AuditPanel({
                   entry={entry} 
                   entityType={entityType}
                   onRollback={handleRollback}
-                  isRolledBack={rolledBackIds.has(entry.id)}
                 />
               ))}
             </div>

@@ -1,4 +1,3 @@
-
 import { db } from "../../../db";
 import { auditLog, InsertAuditLog, AuditOperation, EntityType, AUDIT_OPERATIONS } from "../entities/audit";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -26,29 +25,72 @@ export class AuditService {
    * Log an audit entry
    */
   static async log(options: AuditOptions): Promise<void> {
-    const { entityType, entityId, operation, oldData, newData, context } = options;
-
-    // Calculate changed fields for UPDATE operations
-    let changedFields: string[] | undefined;
-    if (operation === AUDIT_OPERATIONS.UPDATE && oldData && newData) {
-      changedFields = getChangedFields(oldData, newData);
-    }
-
-    const auditEntry: InsertAuditLog = {
+    const {
       entityType,
       entityId,
       operation,
-      oldData: oldData ? JSON.parse(JSON.stringify(oldData)) : null,
-      newData: newData ? JSON.parse(JSON.stringify(newData)) : null,
-      changedFields: changedFields || null,
-      userId: context.userId || null,
-      userName: context.userName || null,
-      userEmail: context.userEmail || null,
-      ipAddress: context.ipAddress || null,
-      userAgent: context.userAgent || null,
-    };
+      oldData,
+      newData,
+      context,
+    } = options;
 
-    await db.insert(auditLog).values(auditEntry);
+    try {
+      // Normalize data to ensure consistent formatting
+      const normalizedOldData = oldData ? this.normalizeDataForAudit(oldData) : null;
+      const normalizedNewData = newData ? this.normalizeDataForAudit(newData) : null;
+
+      // Calculate changed fields for UPDATE operations
+      let changedFields: string[] | null = null;
+      if (operation === AUDIT_OPERATIONS.UPDATE && normalizedOldData && normalizedNewData) {
+        changedFields = this.calculateChangedFields(normalizedOldData, normalizedNewData);
+      }
+
+      // Insert audit log entry
+      await db.insert(auditLog).values({
+        entityType,
+        entityId,
+        operation,
+        oldData: normalizedOldData,
+        newData: normalizedNewData,
+        changedFields,
+        userId: context.userId,
+        userName: context.userName,
+        userEmail: context.userEmail,
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent,
+      });
+    } catch (error) {
+      console.error('Error logging audit entry:', error);
+      // Don't throw - audit logging should not break the main operation
+    }
+  }
+
+  /**
+   * Normalize data for consistent audit logging
+   * Converts numeric strings to consistent format
+   */
+  private static normalizeDataForAudit(data: any): any {
+    if (!data || typeof data !== 'object') {
+      return data;
+    }
+
+    const normalized: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      // Skip null/undefined
+      if (value === null || value === undefined) {
+        normalized[key] = value;
+        continue;
+      }
+
+      // Normalize numeric strings to remove trailing zeros
+      if (typeof value === 'string' && /^\d+\.?\d*$/.test(value)) {
+        const num = parseFloat(value);
+        normalized[key] = num.toString();
+      } else {
+        normalized[key] = value;
+      }
+    }
+    return normalized;
   }
 
   /**
@@ -105,7 +147,7 @@ export class AuditService {
     });
   }
 
-  
+
 
   /**
    * Get audit statistics for an entity type
