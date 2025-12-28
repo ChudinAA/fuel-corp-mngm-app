@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Pencil, Trash2, TrendingUp, TrendingDown, Warehouse as WarehouseIcon, Droplets, Fuel, MoreHorizontal } from "lucide-react";
+import { Pencil, Trash2, TrendingUp, TrendingDown, Warehouse as WarehouseIcon, Droplets, Fuel } from "lucide-react";
 import { AuditHistoryButton } from "@/components/audit-history-button";
+import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Warehouse, Base } from "@shared/schema";
@@ -164,41 +164,36 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
               variant="ghost"
               size="icon"
             />
-            {(hasPermission("warehouses", "edit") || hasPermission("warehouses", "delete")) && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {hasPermission("warehouses", "edit") && (
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(warehouse); }}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Редактировать
-                  </DropdownMenuItem>
-                )}
-                {hasPermission("warehouses", "delete") && (
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
+            <div onClick={(e) => e.stopPropagation()}>
+              <EntityActionsMenu
+                actions={[
+                  {
+                    id: "edit",
+                    label: "Редактировать",
+                    icon: Pencil,
+                    onClick: (e) => {
+                      onEdit(warehouse);
+                    },
+                    permission: { module: "warehouses", action: "edit" },
+                  },
+                  {
+                    id: "delete",
+                    label: "Удалить",
+                    icon: Trash2,
+                    onClick: () => {
                       if (warehouse.supplierId && warehouse.isActive) {
                         setConfirmMessage("Данный склад привязан к поставщику. После удаления у поставщика не будет склада. Продолжить?");
                       } else {
                         setConfirmMessage("Вы уверены, что хотите удалить этот склад? Это действие нельзя отменить.");
                       }
                       setDeleteDialogOpen(true);
-                    }}
-                    disabled={deleteMutation.isPending}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Удалить
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                    },
+                    variant: "destructive" as const,
+                    permission: { module: "warehouses", action: "delete" },
+                  },
+                ]}
+              />
+            </div>
           </div>
         </div>
       </CardHeader>

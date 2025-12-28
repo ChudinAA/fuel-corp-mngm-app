@@ -11,8 +11,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Search, MoreVertical, Pencil, Trash2, RefreshCw, Package, Plane, TruckIcon, ShoppingCart, FileText, StickyNote } from "lucide-react";
+import { Search, Pencil, Trash2, RefreshCw, Package, Plane, TruckIcon, ShoppingCart, FileText, StickyNote } from "lucide-react";
 import { AuditHistoryButton } from "@/components/audit-history-button";
+import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import type { Price, Supplier, Customer } from "@shared/schema";
 import type { PricesTableProps } from "../types";
 import { formatNumber, formatDate, getPriceDisplay, getProductTypeLabel } from "../utils";
@@ -224,58 +225,49 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
                         variant="ghost"
                         size="icon"
                       />
-                      {(hasPermission("prices", "edit") || hasPermission("prices", "delete") || price.notes || price.contractNumber) && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-menu-price-${price.id}`}>
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {hasPermission("prices", "edit") && (
-                            <DropdownMenuItem onClick={() => onEdit(price)} data-testid={`button-edit-price-${price.id}`}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Редактировать
-                            </DropdownMenuItem>
-                          )}
-                          {price.notes && (
-                            <DropdownMenuItem onClick={() => {
+                      <EntityActionsMenu
+                        actions={[
+                          {
+                            id: "edit",
+                            label: "Редактировать",
+                            icon: Pencil,
+                            onClick: () => onEdit(price),
+                            permission: { module: "prices", action: "edit" },
+                          },
+                          {
+                            id: "notes",
+                            label: "Примечания",
+                            icon: StickyNote,
+                            onClick: () => {
                               setSelectedPrice(price);
                               setNotesDialogOpen(true);
-                            }}>
-                              <StickyNote className="mr-2 h-4 w-4" />
-                              Примечания
-                            </DropdownMenuItem>
-                          )}
-                          {price.contractNumber && (
-                            <DropdownMenuItem onClick={() => {
+                            },
+                            condition: !!price.notes,
+                          },
+                          {
+                            id: "contract",
+                            label: "Договор",
+                            icon: FileText,
+                            onClick: () => {
                               setSelectedPrice(price);
                               setContractDialogOpen(true);
-                            }}>
-                              <FileText className="mr-2 h-4 w-4" />
-                              Договор
-                            </DropdownMenuItem>
-                          )}
-                          {(hasPermission("prices", "edit") || price.notes || price.contractNumber) && hasPermission("prices", "delete") && (
-                            <DropdownMenuSeparator />
-                          )}
-                          {hasPermission("prices", "delete") && (
-                            <DropdownMenuItem 
-                              onClick={() => {
-                                setPriceToDelete(price);
-                                setDeleteDialogOpen(true);
-                              }}
-                              disabled={deleteMutation.isPending}
-                              className="text-destructive"
-                              data-testid={`button-delete-price-${price.id}`}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Удалить
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                            },
+                            condition: !!price.contractNumber,
+                          },
+                          {
+                            id: "delete",
+                            label: "Удалить",
+                            icon: Trash2,
+                            onClick: () => {
+                              setPriceToDelete(price);
+                              setDeleteDialogOpen(true);
+                            },
+                            variant: "destructive" as const,
+                            permission: { module: "prices", action: "delete" },
+                            separatorAfter: true,
+                          },
+                        ]}
+                      />
                     </div>
                   </TableCell>
                 </TableRow>

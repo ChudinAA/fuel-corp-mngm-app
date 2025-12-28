@@ -5,9 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Pencil, Trash2, FileText } from "lucide-react";
+import { Pencil, Trash2, FileText } from "lucide-react";
 import { AuditHistoryButton } from "@/components/audit-history-button";
+import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatNumber, formatDate } from "../utils";
 import type { MovementTableProps } from "../types";
@@ -159,47 +159,38 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
                       variant="ghost"
                       size="icon"
                     />
-                    {(hasPermission("movement", "edit") || hasPermission("movement", "delete") || item.notes) && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {hasPermission("movement", "edit") && (
-                            <DropdownMenuItem onClick={() => onEdit(item)}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Редактировать
-                            </DropdownMenuItem>
-                          )}
-                          {item.notes && (
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedNotes(item.notes || "");
-                                setNotesDialogOpen(true);
-                              }}
-                            >
-                              <FileText className="mr-2 h-4 w-4" />
-                              Примечание
-                            </DropdownMenuItem>
-                          )}
-                          {hasPermission("movement", "delete") && (
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => {
-                                setItemToDelete(item);
-                                setDeleteDialogOpen(true);
-                              }}
-                              disabled={isDeleting}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Удалить
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                    <EntityActionsMenu
+                      actions={[
+                        {
+                          id: "edit",
+                          label: "Редактировать",
+                          icon: Pencil,
+                          onClick: () => onEdit(item),
+                          permission: { module: "movement", action: "edit" },
+                        },
+                        {
+                          id: "notes",
+                          label: "Примечание",
+                          icon: FileText,
+                          onClick: () => {
+                            setSelectedNotes(item.notes || "");
+                            setNotesDialogOpen(true);
+                          },
+                          condition: !!item.notes,
+                        },
+                        {
+                          id: "delete",
+                          label: "Удалить",
+                          icon: Trash2,
+                          onClick: () => {
+                            setItemToDelete(item);
+                            setDeleteDialogOpen(true);
+                          },
+                          variant: "destructive" as const,
+                          permission: { module: "movement", action: "delete" },
+                        },
+                      ]}
+                    />
                   </div>
                 </TableCell>
               </TableRow>

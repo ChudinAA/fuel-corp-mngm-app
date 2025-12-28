@@ -21,13 +21,7 @@ import {
   History
 } from "lucide-react";
 import { AuditHistoryButton } from "@/components/audit-history-button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import {
   Select,
   SelectContent,
@@ -62,49 +56,34 @@ interface RefuelingDealActionsProps {
 }
 
 function RefuelingDealActions({ deal, onEdit, onDelete }: RefuelingDealActionsProps) {
-  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
-  const { hasPermission } = useAuth();
+  const actions: EntityAction[] = [
+    {
+      id: "edit",
+      label: "Редактировать",
+      icon: Pencil,
+      onClick: onEdit,
+      permission: { module: "refueling", action: "edit" },
+    },
+    {
+      id: "delete",
+      label: "Удалить",
+      icon: Trash2,
+      onClick: onDelete,
+      variant: "destructive" as const,
+      permission: { module: "refueling", action: "delete" },
+      separatorAfter: true,
+    },
+  ];
 
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon">
-            <MoreVertical className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {hasPermission("refueling", "edit") && (
-            <DropdownMenuItem onClick={onEdit}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Редактировать
-            </DropdownMenuItem>
-          )}
-          {hasPermission("refueling", "delete") && (
-            <DropdownMenuItem
-              className="text-destructive"
-              onClick={onDelete}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Удалить
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => setAuditPanelOpen(true)}>
-            <History className="mr-2 h-4 w-4" />
-            История изменений
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <AuditPanel
-        open={auditPanelOpen}
-        onOpenChange={setAuditPanelOpen}
-        entityType="aircraft_refueling"
-        entityId={deal.id}
-        entityName={`Заправка от ${new Date(deal.refuelingDate).toLocaleDateString('ru-RU')}`}
-      />
-    </>
+    <EntityActionsMenu
+      actions={actions}
+      audit={{
+        entityType: "aircraft_refueling",
+        entityId: deal.id,
+        entityName: `Заправка от ${new Date(deal.refuelingDate).toLocaleDateString('ru-RU')}`,
+      }}
+    />
   );
 }
 

@@ -45,7 +45,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { AuditHistoryButton } from "@/components/audit-history-button";
 import { useNavigate } from "react-router-dom";
-import { AuditPanel } from "@/components/audit-panel";
+import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 
 interface OptTableProps {
   onEdit: (opt: any) => void;
@@ -56,72 +56,48 @@ interface OptDealActionsProps {
   deal: any;
   onEdit: () => void;
   onDelete: () => void;
+  onShowNotes?: () => void;
 }
 
-function OptDealActions({ deal, onEdit, onDelete }: OptDealActionsProps) {
-  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
-  const { hasPermission } = useAuth();
+function OptDealActions({ deal, onEdit, onDelete, onShowNotes }: OptDealActionsProps) {
+  const actions: EntityAction[] = [
+    ...(deal.notes && onShowNotes
+      ? [
+          {
+            id: "notes",
+            label: "Примечания",
+            icon: FileText,
+            onClick: onShowNotes,
+          },
+        ]
+      : []),
+    {
+      id: "edit",
+      label: "Редактировать",
+      icon: Pencil,
+      onClick: onEdit,
+      permission: { module: "opt", action: "edit" },
+    },
+    {
+      id: "delete",
+      label: "Удалить",
+      icon: Trash2,
+      onClick: onDelete,
+      variant: "destructive" as const,
+      permission: { module: "opt", action: "delete" },
+      separatorAfter: true,
+    },
+  ];
 
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-          >
-            <MoreVertical className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {deal.notes && (
-            <DropdownMenuItem
-              onClick={() => {
-                // setSelectedDealNotes(deal.notes || ""); // This state should be managed in the parent component or passed down
-                // setNotesDialogOpen(true); // This state should be managed in the parent component or passed down
-              }}
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Примечания
-            </DropdownMenuItem>
-          )}
-          {hasPermission("opt", "edit") && (
-            <DropdownMenuItem
-              onClick={onEdit}
-              data-testid={`button-edit-opt-${deal.id}`}
-            >
-              <Pencil className="h-4 w-4 mr-2" />
-              Редактировать
-            </DropdownMenuItem>
-          )}
-          {hasPermission("opt", "delete") && (
-            <DropdownMenuItem
-              onClick={onDelete}
-              disabled={false} // isDeletingId needs to be passed or managed here
-              className="text-destructive focus:text-destructive"
-              data-testid={`button-delete-opt-${deal.id}`}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Удалить
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => setAuditPanelOpen(true)}>
-            <History className="h-4 w-4 mr-2" />
-            История изменений
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <AuditPanel
-        open={auditPanelOpen}
-        onOpenChange={setAuditPanelOpen}
-        entityType="opt"
-        entityId={deal.id}
-        entityName={`Сделка от ${new Date(deal.dealDate).toLocaleDateString('ru-RU')}`}
-      />
-    </>
+    <EntityActionsMenu
+      actions={actions}
+      audit={{
+        entityType: "opt",
+        entityId: deal.id,
+        entityName: `Сделка от ${new Date(deal.dealDate).toLocaleDateString('ru-RU')}`,
+      }}
+    />
   );
 }
 
@@ -323,6 +299,14 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
                         setDealToDelete(deal);
                         setDeleteDialogOpen(true);
                       }}
+                      onShowNotes={
+                        deal.notes
+                          ? () => {
+                              setSelectedDealNotes(deal.notes || "");
+                              setNotesDialogOpen(true);
+                            }
+                          : undefined
+                      }
                     />
                   </TableCell>
                 </TableRow>
