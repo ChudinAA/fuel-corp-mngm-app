@@ -8,8 +8,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus,
   Search,
-  Warehouse
+  Warehouse,
+  History
 } from "lucide-react";
+import { AuditPanel } from "@/components/audit-panel";
 import type { Warehouse as WarehouseType } from "@shared/schema";
 import { WarehouseStatsCards } from "./warehouses/components/warehouse-stats-cards";
 import { WarehouseCard } from "./warehouses/components/warehouse-card";
@@ -23,6 +25,7 @@ export default function WarehousesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewingWarehouse, setViewingWarehouse] = useState<WarehouseType | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
   const { hasPermission } = useAuth();
 
@@ -103,6 +106,14 @@ export default function WarehousesPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Поиск складов..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-search-warehouses" />
         </div>
+        <Button
+          variant="outline"
+          onClick={() => setAuditPanelOpen(true)}
+          title="Аудит всех складов"
+        >
+          <History className="h-4 w-4 mr-2" />
+          История изменений
+        </Button>
       </div>
 
       {isLoading ? (
@@ -150,6 +161,14 @@ export default function WarehousesPage() {
           onOpenChange={setIsDetailsDialogOpen}
         />
       )}
+
+      <AuditPanel
+        open={auditPanelOpen}
+        onOpenChange={setAuditPanelOpen}
+        entityType="warehouses"
+        entityId=""
+        entityName="Все склады (включая удаленные)"
+      />
     </div>
   );
 }

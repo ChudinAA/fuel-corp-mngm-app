@@ -6,7 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Search, Filter, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Filter, Plus, History } from "lucide-react";
+import { AuditPanel } from "@/components/audit-panel";
 import type { Exchange, Warehouse } from "@shared/schema";
 import { ExchangeDialog } from "./exchange/components/exchange-dialog";
 import { ExchangeTable } from "./exchange/components/exchange-table";
@@ -17,6 +18,7 @@ export default function ExchangePage() {
   const [search, setSearch] = useState("");
   const [editingExchange, setEditingExchange] = useState<Exchange | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
   const { hasPermission } = useAuth();
   const pageSize = 10;
@@ -108,6 +110,14 @@ export default function ExchangePage() {
               <Button variant="outline" size="icon">
                 <Filter className="h-4 w-4" />
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => setAuditPanelOpen(true)}
+                title="Аудит всех биржевых сделок"
+              >
+                <History className="h-4 w-4 mr-2" />
+                История изменений
+              </Button>
             </div>
 
             <ExchangeTable
@@ -147,6 +157,14 @@ export default function ExchangePage() {
           </div>
         </CardContent>
       </Card>
+
+      <AuditPanel
+        open={auditPanelOpen}
+        onOpenChange={setAuditPanelOpen}
+        entityType="exchange"
+        entityId=""
+        entityName="Все биржевые сделки (включая удаленные)"
+      />
     </div>
   );
 }

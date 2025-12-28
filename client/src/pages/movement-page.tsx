@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Search, History } from "lucide-react";
+import { AuditPanel } from "@/components/audit-panel";
 import type { Movement, Warehouse } from "@shared/schema";
 import { MovementDialog } from "./movement/components/movement-dialog";
 import { MovementTable } from "./movement/components/movement-table";
@@ -20,6 +21,7 @@ export default function MovementPage() {
   const [productFilter, setProductFilter] = useState<string | null>(null);
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
   const { hasPermission } = useAuth();
   const pageSize = 10;
@@ -194,6 +196,14 @@ export default function MovementPage() {
                   <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                variant="outline"
+                onClick={() => setAuditPanelOpen(true)}
+                title="Аудит всех перемещений"
+              >
+                <History className="h-4 w-4 mr-2" />
+                История изменений
+              </Button>
             </div>
 
             <div className="border rounded-lg">
@@ -224,6 +234,14 @@ export default function MovementPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AuditPanel
+        open={auditPanelOpen}
+        onOpenChange={setAuditPanelOpen}
+        entityType="movement"
+        entityId=""
+        entityName="Все перемещения (включая удаленные)"
+      />
     </div>
   );
 }

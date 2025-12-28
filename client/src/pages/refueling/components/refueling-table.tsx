@@ -114,6 +114,7 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
   const [searchInput, setSearchInput] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const cursorPositionRef = useRef<number>(0);
+  const [deletedDealsAuditOpen, setDeletedDealsAuditOpen] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -183,6 +184,14 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
             <SelectItem value={PRODUCT_TYPE.SERVICE}>Услуга заправки</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          variant="outline"
+          onClick={() => setDeletedDealsAuditOpen(true)}
+          title="Аудит всех заправок"
+        >
+          <History className="h-4 w-4 mr-2" />
+          История изменений
+        </Button>
       </div>
 
       <div className="border rounded-lg">
@@ -353,6 +362,14 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
           </DialogHeader>
         </DialogContent>
       </Dialog>
+
+      <AuditPanel
+        open={deletedDealsAuditOpen}
+        onOpenChange={setDeletedDealsAuditOpen}
+        entityType="aircraft_refueling"
+        entityId=""
+        entityName="Все заправки ВС (включая удаленные)"
+      />
     </div>
   );
 }
