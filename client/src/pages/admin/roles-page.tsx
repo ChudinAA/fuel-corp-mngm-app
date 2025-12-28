@@ -392,7 +392,7 @@ export default function RolesPage() {
                                 icon: Pencil,
                                 onClick: () => setRoleToDelete(role), // Will be replaced by RoleFormDialog
                                 permission: { module: "roles", action: "edit" },
-                                condition: false, // Hide this action as we'll add custom edit below
+                                condition: !role.isSystem,
                               },
                               {
                                 id: "delete",
