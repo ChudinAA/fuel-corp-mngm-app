@@ -73,7 +73,7 @@ function RoleFormDialog({
   onSuccess?: () => void;
 }) {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(!!editRole);
 
   const form = useForm<RoleFormData>({
     resolver: zodResolver(roleFormSchema),
@@ -145,20 +145,23 @@ function RoleFormDialog({
     return checkedCount > 0 && checkedCount < modulePermissions.length;
   };
 
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen && onSuccess) {
+      onSuccess();
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {editRole ? (
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Pencil className="h-4 w-4" />
-          </Button>
-        ) : (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {!editRole && (
+        <DialogTrigger asChild>
           <Button data-testid="button-add-role">
             <Plus className="mr-2 h-4 w-4" />
             Создать роль
           </Button>
-        )}
-      </DialogTrigger>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editRole ? "Редактирование роли" : "Новая роль"}</DialogTitle>
@@ -261,6 +264,7 @@ export default function RolesPage() {
   const [search, setSearch] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
+  const [roleToEdit, setRoleToEdit] = useState<Role | null>(null);
   const { toast } = useToast();
   const { hasPermission } = useAuth();
 
@@ -390,7 +394,7 @@ export default function RolesPage() {
                                 id: "edit",
                                 label: "Редактировать",
                                 icon: Pencil,
-                                onClick: () => setRoleToDelete(role), // Will be replaced by RoleFormDialog
+                                onClick: () => setRoleToEdit(role),
                                 permission: { module: "roles", action: "edit" },
                                 condition: !role.isSystem,
                               },
@@ -425,6 +429,13 @@ export default function RolesPage() {
           </div>
         </CardContent>
       </Card>
+
+      {roleToEdit && (
+        <RoleFormDialog
+          editRole={roleToEdit}
+          onSuccess={() => setRoleToEdit(null)}
+        />
+      )}
 
       <DeleteConfirmDialog
         open={deleteDialogOpen}
