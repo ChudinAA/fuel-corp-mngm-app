@@ -79,7 +79,8 @@ export class AuditService {
           .where(
             and(
               eq(auditLog.entityType, entityType),
-              eq(auditLog.entityId, entityId)
+              eq(auditLog.entityId, entityId),
+              sql`${auditLog.operation} IN ('CREATE', 'UPDATE')`
             )
           );
       }
