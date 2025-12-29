@@ -114,6 +114,36 @@ export function registerBudgetRoutes(app: Express) {
     }
   );
 
+  // Auto-fill budget from sales data
+  app.post(
+    "/api/budget/:id/auto-fill",
+    requireAuth,
+    requirePermission("budget", "edit"),
+    async (req, res) => {
+      try {
+        const result = await storage.budget.autoFillFromSales(req.params.id);
+        res.json(result);
+      } catch (error: any) {
+        res.status(500).json({ message: error.message });
+      }
+    }
+  );
+
+  // Calculate budget metrics
+  app.get(
+    "/api/budget/:id/metrics",
+    requireAuth,
+    requirePermission("budget", "view"),
+    async (req, res) => {
+      try {
+        const metrics = await storage.budget.calculateBudgetMetrics(req.params.id);
+        res.json(metrics);
+      } catch (error: any) {
+        res.status(500).json({ message: error.message });
+      }
+    }
+  );
+
   // Update budget from sales data
   app.post(
     "/api/budget/update-from-sales",

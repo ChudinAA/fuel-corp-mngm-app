@@ -67,10 +67,15 @@ export class BudgetStorage implements IBudgetStorage {
       .set({
         ...data,
         updatedAt: sql`NOW()`,
+      })
+      .where(eq(budgetIncomeExpense.id, id))
+      .returning();
 
+    return updated;
+  }
 
   async autoFillFromSales(budgetId: string): Promise<any> {
-    const budget = await this.getBudget(budgetId);
+    const budget = await this.getBudgetEntry(budgetId);
     
     if (!budget) {
       throw new Error("Budget not found");
@@ -107,12 +112,11 @@ export class BudgetStorage implements IBudgetStorage {
     ).toString();
 
     // Обновляем бюджет
-    await this.updateBudget(budgetId, {
-      actualSalesVolume: totalRevenue,
-      actualMarginality: parseFloat(totalRevenue) > 0 
+    await this.updateBudgetEntry(budgetId, {
+      salesVolume: totalRevenue,
+      marginality: parseFloat(totalRevenue) > 0 
         ? ((parseFloat(totalProfit) / parseFloat(totalRevenue)) * 100).toFixed(2)
         : "0",
-      updatedAt: sql`NOW()`,
     });
 
     return {
@@ -127,7 +131,7 @@ export class BudgetStorage implements IBudgetStorage {
   }
 
   async calculateBudgetMetrics(budgetId: string): Promise<any> {
-    const budget = await this.getBudget(budgetId);
+    const budget = await this.getBudgetEntry(budgetId);
     
     if (!budget) {
       throw new Error("Budget not found");

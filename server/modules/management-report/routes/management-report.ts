@@ -47,10 +47,31 @@ export function registerManagementReportRoutes(app: Express) {
   );
 
   // Generate management report data
+  app.post(
+    "/api/management-report/generate",
+    requireAuth,
+    requirePermission("management_report", "view"),
+    async (req, res) => {
+      try {
+        const { periodStart, periodEnd } = req.body;
+        if (!periodStart || !periodEnd) {
+          return res.status(400).json({ message: "Не указаны даты периода" });
+        }
+        const reportData = await storage.managementReport.generateManagementReportData(periodStart, periodEnd);
+        res.json(reportData);
+      } catch (error) {
+        console.error("Error generating management report data:", error);
+        res.status(500).json({ message: "Ошибка генерации данных отчета" });
+      }
+    }
+  );
 
-
-  // Generate and save management report
-  app.post("/api/management-reports/generate", requireAuth, requirePermission("reports", "create"), logAudit, async (req, res) => {
+  // Regenerate report data
+  app.post(
+    "/api/management-report/:id/regenerate",
+    requireAuth,
+    requirePermission("management_report", "edit"),
+    async (req, res) => {
     try {
       const userId = req.user!.id;
       const { reportName, periodStart, periodEnd, description, visualizationConfig } = req.body;
@@ -121,25 +142,6 @@ export function registerManagementReportRoutes(app: Express) {
       res.status(500).json({ message: error.message });
     }
   });
-
-  app.post(
-    "/api/management-report/generate",
-    requireAuth,
-    requirePermission("management_report", "view"),
-    async (req, res) => {
-      try {
-        const { periodStart, periodEnd } = req.body;
-        if (!periodStart || !periodEnd) {
-          return res.status(400).json({ message: "Не указаны даты периода" });
-        }
-        const reportData = await storage.managementReport.generateManagementReportData(periodStart, periodEnd);
-        res.json(reportData);
-      } catch (error) {
-        console.error("Error generating management report data:", error);
-        res.status(500).json({ message: "Ошибка генерации данных отчета" });
-      }
-    }
-  );
 
   // Create management report
   app.post(

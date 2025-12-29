@@ -139,14 +139,48 @@ export function registerGovernmentContractRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        const contract = await storage.govContracts.updateContractFromSales(id);
-        if (!contract) {
-          return res.status(404).json({ message: "Контракт не найден" });
-        }
-        res.json(contract);
-      } catch (error) {
+        const result = await storage.govContracts.updateContractFromSales(id);
+        res.json(result);
+      } catch (error: any) {
         console.error("Error updating contract from sales:", error);
-        res.status(500).json({ message: "Ошибка обновления данных контракта" });
+        res.status(500).json({ message: error.message });
+      }
+    }
+  );
+
+  // Get contract completion status
+  app.get(
+    "/api/gov-contracts/:id/completion-status",
+    requireAuth,
+    requirePermission("gov_contracts", "view"),
+    async (req, res) => {
+      try {
+        const status = await storage.govContracts.getContractCompletionStatus(req.params.id);
+        res.json(status);
+      } catch (error: any) {
+        res.status(500).json({ message: error.message });
+      }
+    }
+  );
+
+  // Bulk update all active contracts
+  app.post(
+    "/api/gov-contracts/bulk-update-from-sales",
+    requireAuth,
+    requirePermission("gov_contracts", "edit"),
+    async (req, res) => {
+      try {
+        const activeContracts = await storage.govContracts.getGovernmentContracts({ status: 'active' });
+        
+        const results = await Promise.all(
+          activeContracts.map(contract => 
+            storage.govContracts.updateContractFromSales(contract.id)
+          )
+        );
+
+        res.json({ updated: results.length, results });
+      } catch (error: any) {
+        res.status(500).json({ message: error.message });
       }
     }
   );

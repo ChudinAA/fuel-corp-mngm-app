@@ -1,7 +1,7 @@
 
 import { eq, desc, sql, and, isNull, gte, lte, between } from "drizzle-orm";
 import { db } from "server/db";
-import { opt, aircraftRefueling, savedReports, suppliers, customers } from "@shared/schema";
+import { opt, aircraftRefueling, savedReports, suppliers, customers, warehouseTransactions } from "@shared/schema";
 import { IAnalyticsStorage, AnalyticsData, AnalyticsSummary } from "./types";
 import type { SavedReport } from "../../reports/storage/types";
 
@@ -147,7 +147,8 @@ export class AnalyticsStorage implements IAnalyticsStorage {
       topSuppliers: [],
       topBuyers: [],
       productTypeDistribution,
-
+    };
+  }
 
   async getComparativeAnalysis(
     periods: Array<{ startDate: string; endDate: string; label: string }>,

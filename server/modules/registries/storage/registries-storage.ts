@@ -67,7 +67,16 @@ export class RegistriesStorage implements IRegistriesStorage {
   }
 
   async deleteRegistryTemplate(id: string, userId?: string): Promise<boolean> {
+    await db
+      .update(registryTemplates)
+      .set({
+        deletedAt: sql`NOW()`,
+        deletedById: userId,
+      })
+      .where(eq(registryTemplates.id, id));
 
+    return true;
+  }
 
   async getRegistriesByTemplate(
     templateType: string,

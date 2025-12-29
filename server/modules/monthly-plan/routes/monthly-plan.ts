@@ -47,10 +47,12 @@ export function registerMonthlyPlanRoutes(app: Express) {
     }
   );
 
-
-
   // Get plan vs actual comparison
-  app.get("/api/monthly-plans/:id/vs-actual", requireAuth, requirePermission("reports", "view"), async (req, res) => {
+  app.get(
+    "/api/monthly-plan/:id/vs-actual",
+    requireAuth,
+    requirePermission("monthly_plan", "view"),
+    async (req, res) => {
     try {
       const comparison = await storage.monthlyPlan.getPlanVsActual(req.params.id);
       res.json(comparison);
@@ -60,10 +62,14 @@ export function registerMonthlyPlanRoutes(app: Express) {
   });
 
   // Copy plan to new month
-  app.post("/api/monthly-plans/:id/copy", requireAuth, requirePermission("reports", "create"), logAudit, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-      const { targetMonth } = req.body;
+  app.post(
+    "/api/monthly-plan/:id/copy",
+    requireAuth,
+    requirePermission("monthly_plan", "create"),
+    async (req, res) => {
+      try {
+        const userId = req.session.userId!;
+        const { targetMonth } = req.body;
       
       if (!targetMonth) {
         return res.status(400).json({ message: "Target month is required" });

@@ -1,7 +1,7 @@
 
-import { eq, desc, sql, and, isNull } from "drizzle-orm";
+import { eq, desc, sql, and, isNull, gte, lte } from "drizzle-orm";
 import { db } from "server/db";
-import { monthlyPlans, type MonthlyPlan, type InsertMonthlyPlan } from "@shared/schema";
+import { monthlyPlans, type MonthlyPlan, type InsertMonthlyPlan, opt, aircraftRefueling, warehouseTransactions } from "@shared/schema";
 import { IMonthlyPlanStorage } from "./types";
 
 export class MonthlyPlanStorage implements IMonthlyPlanStorage {
@@ -67,7 +67,17 @@ export class MonthlyPlanStorage implements IMonthlyPlanStorage {
     id: string,
     data: Partial<InsertMonthlyPlan>
   ): Promise<MonthlyPlan | undefined> {
+    const [updated] = await db
+      .update(monthlyPlans)
+      .set({
+        ...data,
+        updatedAt: sql`NOW()`,
+      })
+      .where(eq(monthlyPlans.id, id))
+      .returning();
 
+    return updated;
+  }
 
   async getPlanVsActual(planId: string): Promise<any> {
     const plan = await this.getMonthlyPlan(planId);
