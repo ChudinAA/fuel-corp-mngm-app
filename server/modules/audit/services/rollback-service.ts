@@ -294,60 +294,59 @@ export class RollbackService {
         continue;
       }
 
-      // Handle priceValues - should be JSON string array format
+      // Handle priceValues - PostgreSQL text[] array
+      // When read from DB, it's already a JavaScript array of JSON strings like ["{\"price\":73}"]
+      // We need to keep it as an array, NOT stringify the whole array
       if (key === 'priceValues') {
+        // If it's null/undefined, set to null (will be handled by Drizzle)
+        if (value === null || value === undefined) {
+          normalized[key] = null;
+          continue;
+        }
+
+        // If it's already an array (most common case from DB)
+        if (Array.isArray(value)) {
+          // Each item should be a JSON string like "{\"price\":73}"
+          // Just pass the array as-is, no additional JSON.stringify needed
+          normalized[key] = value;
+          continue;
+        }
+
+        // If it's a string, try to parse it as JSON
         if (typeof value === 'string') {
           try {
-            // Try to parse as JSON first
             const parsed = JSON.parse(value);
             
-            // If it's already an array of strings (like ["{\"price\":73}"])
+            // If parsed result is an array, use it
             if (Array.isArray(parsed)) {
-              // Check if array items are strings that need parsing
-              const processedArray = parsed.map(item => {
-                if (typeof item === 'string') {
-                  try {
-                    return JSON.parse(item);
-                  } catch {
-                    return item;
-                  }
-                }
-                return item;
-              });
-              normalized[key] = JSON.stringify(processedArray);
+              // Ensure each item is a JSON string
+              normalized[key] = parsed.map(item => 
+                typeof item === 'string' ? item : JSON.stringify(item)
+              );
+            } 
+            // If it's an object like {price: 73}, wrap it
+            else if (parsed && typeof parsed === 'object') {
+              normalized[key] = [JSON.stringify(parsed)];
             }
-            // If it's an object with a price property, wrap in array of strings
-            else if (parsed && typeof parsed === 'object' && 'price' in parsed) {
-              normalized[key] = JSON.stringify([JSON.stringify(parsed)]);
-            }
-            // Otherwise, try to wrap as array
+            // Otherwise treat original string as single item
             else {
-              normalized[key] = JSON.stringify([JSON.stringify(parsed)]);
+              normalized[key] = [value];
             }
           } catch {
-            // If parsing fails, assume it's already in correct format or wrap it
-            try {
-              // Try to wrap in array format
-              normalized[key] = JSON.stringify([value]);
-            } catch {
-              normalized[key] = value;
-            }
+            // Not valid JSON, treat as single item
+            normalized[key] = [value];
           }
-        } else if (Array.isArray(value)) {
-          // Convert array to proper format: array of JSON strings
-          const stringified = value.map(item => 
-            typeof item === 'string' ? item : JSON.stringify(item)
-          );
-          normalized[key] = JSON.stringify(stringified);
-        } else if (value && typeof value === 'object') {
-          // If it's an object, convert to array of JSON string
-          normalized[key] = JSON.stringify([JSON.stringify(value)]);
-        } else if (value === null || value === undefined) {
-          normalized[key] = JSON.stringify([]);
-        } else {
-          // For any other type, wrap in array
-          normalized[key] = JSON.stringify([String(value)]);
+          continue;
         }
+
+        // If it's an object, wrap it in array
+        if (typeof value === 'object') {
+          normalized[key] = [JSON.stringify(value)];
+          continue;
+        }
+
+        // For any other type, convert to string and wrap in array
+        normalized[key] = [String(value)];
         continue;
       }
 
