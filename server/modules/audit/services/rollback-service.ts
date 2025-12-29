@@ -375,6 +375,9 @@ export class RollbackService {
       logistics_trailers: () => storage.logistics.getLogisticsTrailer(entityId),
       logistics_drivers: () => storage.logistics.getLogisticsDriver(entityId),
       delivery_cost: () => storage.delivery.getDeliveryCost(entityId),
+      cashflow_transactions: () => storage.cashflow.getCashflowTransaction(entityId),
+      payment_calendar: () => storage.payments.getPaymentCalendarItem(entityId),
+      price_calculations: () => storage.priceCalculations.getPriceCalculation(entityId),
       users: () => storage.users.getUser(entityId),
       roles: () => storage.roles.getRole(entityId),
     };
@@ -412,6 +415,9 @@ export class RollbackService {
       logistics_trailers: (id, data, userId) => storage.logistics.updateLogisticsTrailer(id, { ...data, updatedById: userId }),
       logistics_drivers: (id, data, userId) => storage.logistics.updateLogisticsDriver(id, { ...data, updatedById: userId }),
       delivery_cost: (id, data, userId) => storage.delivery.updateDeliveryCost(id, { ...data }, userId),
+      cashflow_transactions: (id, data, userId) => storage.cashflow.updateCashflowTransaction(id, { ...data, updatedById: userId }),
+      payment_calendar: (id, data, userId) => storage.payments.updatePaymentCalendarItem(id, { ...data, updatedById: userId }),
+      price_calculations: (id, data, userId) => storage.priceCalculations.updatePriceCalculation(id, { ...data, updatedById: userId }),
       users: (id, data, userId) => storage.users.updateUser(id, data, userId),
       roles: (id, data, userId) => storage.roles.updateRole(id, data),
     };
@@ -449,6 +455,9 @@ export class RollbackService {
       logistics_trailers: (id, userId) => storage.logistics.deleteLogisticsTrailer(id, userId),
       logistics_drivers: (id, userId) => storage.logistics.deleteLogisticsDriver(id, userId),
       delivery_cost: (id, userId) => storage.delivery.deleteDeliveryCost(id, userId),
+      cashflow_transactions: (id, userId) => storage.cashflow.deleteCashflowTransaction(id, userId),
+      payment_calendar: (id, userId) => storage.payments.deletePaymentCalendarItem(id, userId),
+      price_calculations: (id, userId) => storage.priceCalculations.deletePriceCalculation(id, userId),
       users: (id, userId) => storage.users.deleteUser(id, userId),
       roles: (id, userId) => storage.roles.deleteRole(id, userId),
     };
@@ -488,6 +497,9 @@ export class RollbackService {
       logistics_trailers: (id, oldData, userId) => storage.logistics.restoreLogisticsTrailer(id, userId),
       logistics_drivers: (id, oldData, userId) => storage.logistics.restoreLogisticsDriver(id, userId),
       delivery_cost: (id, oldData, userId) => storage.delivery.restoreDeliveryCost(id, userId),
+      cashflow_transactions: (id, oldData, userId) => storage.cashflow.restoreCashflowTransaction(id, userId),
+      payment_calendar: (id, oldData, userId) => storage.payments.restorePaymentCalendarItem(id, userId),
+      price_calculations: (id, oldData, userId) => storage.priceCalculations.restorePriceCalculation(id, userId),
       users: (id, oldData, userId) => storage.users.restoreUser(id, userId),
       roles: (id, oldData, userId) => storage.roles.restoreRole(id, userId),
     };

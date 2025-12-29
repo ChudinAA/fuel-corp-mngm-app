@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +15,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { CashflowDialog } from "./cashflow-dialog";
+import { AuditHistoryButton } from "@/components/audit-history-button";
 
 interface CashflowTransaction {
   id: string;
@@ -111,7 +111,7 @@ export function CashflowTable() {
               <TableHead>Описание</TableHead>
               <TableHead className="text-right">Сумма</TableHead>
               <TableHead>Статус</TableHead>
-              {hasPermission("finance", "edit") && <TableHead className="w-[100px]">Действия</TableHead>}
+              <TableHead className="text-right">Действия</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -139,33 +139,40 @@ export function CashflowTable() {
                       <Badge variant="default">Фактический</Badge>
                     )}
                   </TableCell>
-                  {hasPermission("finance", "edit") && (
-                    <TableCell>
-                      <div className="flex gap-2">
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <AuditHistoryButton
+                        entityType="cashflow_transactions"
+                        entityId={transaction.id}
+                        entityName={transaction.description || "Транзакция"}
+                        variant="ghost"
+                        size="sm"
+                      />
+                      {hasPermission("finance", "edit") && (
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="sm"
                           onClick={() => setEditingTransaction(transaction)}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        {hasPermission("finance", "delete") && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteMutation.mutate(transaction.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  )}
+                      )}
+                      {hasPermission("finance", "delete") && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteMutation.mutate(transaction.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                   Нет данных
                 </TableCell>
               </TableRow>

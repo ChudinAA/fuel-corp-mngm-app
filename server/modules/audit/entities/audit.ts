@@ -75,6 +75,9 @@ export const ENTITY_TYPES = {
   LOGISTICS_TRAILER: 'logistics_trailers',
   LOGISTICS_DRIVER: 'logistics_drivers',
   DELIVERY_COST: 'delivery_cost',
+  CASHFLOW_TRANSACTION: 'cashflow_transactions',
+  PAYMENT_CALENDAR: 'payment_calendar',
+  PRICE_CALCULATION: 'price_calculations',
   USER: 'users',
   ROLE: 'roles',
 } as const;

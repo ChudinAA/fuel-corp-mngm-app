@@ -12,6 +12,9 @@ import { MovementStorage } from "../modules/movement/storage/movement-storage";
 import { OptStorage } from "../modules/opt/storage/opt-storage";
 import { AircraftRefuelingStorage } from "../modules/refueling/storage/aircraft-refueling-storage";
 import { DeliveryStorage } from "../modules/delivery/storage/delivery-storage";
+import { CashflowStorage } from "../modules/finance/storage/cashflow-storage-class";
+import { PaymentCalendarStorage } from "../modules/finance/storage/payment-calendar-storage-class";
+import { PriceCalculationStorage } from "../modules/finance/storage/price-calculation-storage-class";
 
 export * from "./types";
 
@@ -49,6 +52,9 @@ export class Storage {
     this.aircraftRefueling = new AircraftRefuelingStorage();
     this.dashboard = new DashboardStorage();
     this.delivery = new DeliveryStorage();
+    this.cashflow = new CashflowStorage();
+    this.payments = new PaymentCalendarStorage();
+    this.priceCalculations = new PriceCalculationStorage();
   }
 }
 

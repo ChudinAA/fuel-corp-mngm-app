@@ -2,14 +2,14 @@
 import type { Express } from "express";
 import { requireAuth, requirePermission } from "../../users/routes/auth";
 import { logAudit } from "../../audit/middleware/audit-middleware";
-import * as storage from "../storage/payment-calendar-storage";
+import { storage } from "../../../storage/index";
 
 export function registerPaymentCalendarRoutes(app: Express) {
   // Get all payment calendar items
   app.get("/api/payment-calendar", requireAuth, requirePermission("finance", "view"), async (req, res) => {
     try {
       const { startDate, endDate, status, category } = req.query;
-      const items = await storage.getPaymentCalendarItems({
+      const items = await storage.payments.getPaymentCalendarItems({
         startDate: startDate as string | undefined,
         endDate: endDate as string | undefined,
         status: status as string | undefined,
@@ -25,7 +25,7 @@ export function registerPaymentCalendarRoutes(app: Express) {
   app.get("/api/payment-calendar/upcoming", requireAuth, requirePermission("finance", "view"), async (req, res) => {
     try {
       const daysAhead = req.query.days ? parseInt(req.query.days as string) : 7;
-      const upcoming = await storage.getUpcomingPayments(daysAhead);
+      const upcoming = await storage.payments.getUpcomingPayments(daysAhead);
       res.json(upcoming);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -36,7 +36,7 @@ export function registerPaymentCalendarRoutes(app: Express) {
   app.post("/api/payment-calendar", requireAuth, requirePermission("finance", "create"), logAudit, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const item = await storage.createPaymentCalendarItem({
+      const item = await storage.payments.createPaymentCalendarItem({
         ...req.body,
         createdById: userId,
       });
@@ -50,7 +50,7 @@ export function registerPaymentCalendarRoutes(app: Express) {
   app.patch("/api/payment-calendar/:id", requireAuth, requirePermission("finance", "edit"), logAudit, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const updated = await storage.updatePaymentCalendarItem(req.params.id, {
+      const updated = await storage.payments.updatePaymentCalendarItem(req.params.id, {
         ...req.body,
         updatedById: userId,
       });
@@ -64,7 +64,7 @@ export function registerPaymentCalendarRoutes(app: Express) {
   app.delete("/api/payment-calendar/:id", requireAuth, requirePermission("finance", "delete"), logAudit, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const deleted = await storage.deletePaymentCalendarItem(req.params.id, userId);
+      const deleted = await storage.payments.deletePaymentCalendarItem(req.params.id, userId);
       res.json(deleted);
     } catch (error: any) {
       res.status(500).json({ message: error.message });

@@ -2,14 +2,14 @@
 import type { Express } from "express";
 import { requireAuth, requirePermission } from "../../users/routes/auth";
 import { logAudit } from "../../audit/middleware/audit-middleware";
-import * as storage from "../storage/price-calculation-storage";
+import { storage } from "../../../storage/index";
 
 export function registerPriceCalculationRoutes(app: Express) {
   // Get all price calculations
   app.get("/api/price-calculations", requireAuth, requirePermission("finance", "view"), async (req, res) => {
     try {
       const { productType, isTemplate } = req.query;
-      const calculations = await storage.getPriceCalculations({
+      const calculations = await storage.priceCalculations.getPriceCalculations({
         productType: productType as string | undefined,
         isTemplate: isTemplate === 'true' ? true : isTemplate === 'false' ? false : undefined,
       });
@@ -22,7 +22,7 @@ export function registerPriceCalculationRoutes(app: Express) {
   // Get price calculation by ID
   app.get("/api/price-calculations/:id", requireAuth, requirePermission("finance", "view"), async (req, res) => {
     try {
-      const calculation = await storage.getPriceCalculationById(req.params.id);
+      const calculation = await storage.priceCalculations.getPriceCalculation(req.params.id);
       if (!calculation) {
         return res.status(404).json({ message: "Расчет не найден" });
       }
@@ -36,7 +36,7 @@ export function registerPriceCalculationRoutes(app: Express) {
   app.post("/api/price-calculations", requireAuth, requirePermission("finance", "create"), logAudit, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const calculation = await storage.createPriceCalculation({
+      const calculation = await storage.priceCalculations.createPriceCalculation({
         ...req.body,
         createdById: userId,
       });
@@ -50,7 +50,7 @@ export function registerPriceCalculationRoutes(app: Express) {
   app.patch("/api/price-calculations/:id", requireAuth, requirePermission("finance", "edit"), logAudit, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const updated = await storage.updatePriceCalculation(req.params.id, {
+      const updated = await storage.priceCalculations.updatePriceCalculation(req.params.id, {
         ...req.body,
         updatedById: userId,
       });
@@ -64,7 +64,7 @@ export function registerPriceCalculationRoutes(app: Express) {
   app.delete("/api/price-calculations/:id", requireAuth, requirePermission("finance", "delete"), logAudit, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const deleted = await storage.deletePriceCalculation(req.params.id, userId);
+      const deleted = await storage.priceCalculations.deletePriceCalculation(req.params.id, userId);
       res.json(deleted);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
