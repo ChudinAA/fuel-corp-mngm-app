@@ -13,7 +13,7 @@ import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
 import { Pencil, Trash2, Search, MapPin, History, Droplets, Fuel } from "lucide-react";
-import { BaseFormDialog } from "./bases-dialog";
+import { AddBaseDialog } from "./bases-dialog";
 import type { Base } from "@shared/schema";
 import { BASE_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
@@ -86,7 +86,7 @@ export function BasesTab() {
                 <SelectItem value={BASE_TYPE.REFUELING}>Заправка</SelectItem>
               </SelectContent>
             </Select>
-            {hasPermission("directories", "create") && <BaseFormDialog editBase={editingItem} onEditComplete={() => setEditingItem(null)} />}
+            {hasPermission("directories", "create") && <AddBaseDialog editItem={editingItem} onEditComplete={() => setEditingItem(null)} />}
             <Button
               variant="outline"
               onClick={() => setAuditPanelOpen(true)}
