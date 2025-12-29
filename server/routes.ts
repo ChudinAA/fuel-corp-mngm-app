@@ -17,6 +17,9 @@ import { registerRefuelingOperationsRoutes } from "./modules/refueling/routes/re
 import { registerDashboardRoutes } from "./modules/dashboard/routes/dashboard";
 import { enrichAuditContext } from "./modules/audit/middleware/audit-middleware";
 import { registerAuditRoutes } from "./modules/audit/routes/audit";
+import { registerCashflowRoutes } from "./modules/finance/routes/cashflow";
+import { registerPaymentCalendarRoutes } from "./modules/finance/routes/payment-calendar";
+import { registerPriceCalculationRoutes } from "./modules/finance/routes/price-calculation";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -46,6 +49,9 @@ export async function registerRoutes(
   registerOptRoutes(app);
   registerRefuelingOperationsRoutes(app);
   registerDashboardRoutes(app);
+  registerCashflowRoutes(app);
+  registerPaymentCalendarRoutes(app);
+  registerPriceCalculationRoutes(app);
 
   return httpServer;
 }

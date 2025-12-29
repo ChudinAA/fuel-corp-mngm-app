@@ -37,6 +37,8 @@ import {
   LogOut,
   ChevronUp,
   TrendingUp,
+  Calendar,
+  Calculator,
 } from "lucide-react";
 
 const getMainMenuItems = () => [
@@ -101,6 +103,27 @@ const getDataMenuItems = (hasPermission: (module: string, action: string) => boo
   },
 ].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
 
+const getFinanceMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
+  {
+    title: "Кешфлоу",
+    url: "/finance/cashflow",
+    icon: TrendingUp,
+    permission: "finance.view",
+  },
+  {
+    title: "Платежный календарь",
+    url: "/finance/payment-calendar",
+    icon: Calendar,
+    permission: "finance.view",
+  },
+  {
+    title: "Расчет цены",
+    url: "/finance/price-calculation",
+    icon: Calculator,
+    permission: "finance.view",
+  },
+].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
+
 const getAdminMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
   {
     title: "Пользователи",
@@ -139,6 +162,7 @@ export function AppSidebar() {
   const mainMenuItems = getMainMenuItems();
   const operationsMenuItems = getOperationsMenuItems(hasPermission);
   const dataMenuItems = getDataMenuItems(hasPermission);
+  const financeMenuItems = getFinanceMenuItems(hasPermission);
   const adminMenuItems = getAdminMenuItems(hasPermission);
 
   return (
@@ -204,6 +228,30 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {dataMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton 
+                      asChild 
+                      isActive={isActive(item.url)}
+                      data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
+                    >
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {financeMenuItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Финансы</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {financeMenuItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton 
                       asChild 

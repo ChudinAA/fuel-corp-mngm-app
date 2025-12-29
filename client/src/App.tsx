@@ -24,6 +24,9 @@ import DirectoriesPage from "@/pages/directories-page";
 import UsersPage from "@/pages/admin/users-page";
 import RolesPage from "@/pages/admin/roles-page";
 import SettingsPage from "@/pages/admin/settings-page";
+import CashflowPage from "@/pages/finance/cashflow-page";
+import PaymentCalendarPage from "@/pages/finance/payment-calendar-page";
+import PriceCalculationPage from "@/pages/finance/price-calculation-page";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -150,6 +153,24 @@ function Router() {
       <Route path="/directories">
         <AppLayout>
           <ProtectedRoute component={DirectoriesPage} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/finance/cashflow">
+        <AppLayout>
+          <ProtectedRoute component={CashflowPage} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/finance/payment-calendar">
+        <AppLayout>
+          <ProtectedRoute component={PaymentCalendarPage} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/finance/price-calculation">
+        <AppLayout>
+          <ProtectedRoute component={PriceCalculationPage} />
         </AppLayout>
       </Route>
       
