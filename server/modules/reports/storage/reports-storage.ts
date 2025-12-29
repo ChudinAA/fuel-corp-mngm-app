@@ -5,16 +5,7 @@ import { opt } from "../../opt/entities/opt";
 import { aircraftRefueling } from "../../refueling/entities/refueling";
 import { movement } from "../../movement/entities/movement";
 import { exchange } from "../../exchange/entities/exchange";
-import type { Report, InsertReport } from "./types";
-
-export interface IReportsStorage {
-  getReport(id: string): Promise<Report | undefined>;
-  getReports(): Promise<Report[]>;
-  createReport(data: InsertReport): Promise<Report>;
-  updateReport(id: string, data: Partial<InsertReport>): Promise<Report | undefined>;
-  deleteReport(id: string, userId?: string): Promise<boolean>;
-  generateCustomPeriodReport(startDate: string, endDate: string, reportTypes: string[]): Promise<any>;
-}
+import type { SavedReport, InsertSavedReport, IReportsStorage } from "./types";
 
 export class ReportsStorage implements IReportsStorage {
   async getReport(id: string): Promise<Report | undefined> {
@@ -31,7 +22,7 @@ export class ReportsStorage implements IReportsStorage {
     return [];
   }
 
-  async createReport(data: InsertReport): Promise<Report> {
+  async createReport(data: InsertSavedReport): Promise<Report> {
     // The original code for createReport was not provided in the changes.
     // Assuming it exists and needs to be preserved.
     // This is a placeholder, replace with actual implementation if available.
@@ -39,7 +30,7 @@ export class ReportsStorage implements IReportsStorage {
     return created;
   }
 
-  async updateReport(id: string, data: Partial<InsertReport>): Promise<Report | undefined> {
+  async updateReport(id: string, data: Partial<InsertSavedReport>): Promise<Report | undefined> {
     // The original code for updateReport was not provided in the changes.
     // Assuming it exists and needs to be preserved.
     // This is a placeholder, replace with actual implementation if available.

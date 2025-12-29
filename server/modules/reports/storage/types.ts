@@ -6,9 +6,10 @@ export type SavedReport = InferSelectModel<typeof savedReports>;
 export type InsertSavedReport = InferInsertModel<typeof savedReports>;
 
 export interface IReportsStorage {
-  getSavedReport(id: string): Promise<SavedReport | undefined>;
-  getSavedReports(userId: string, reportType?: string): Promise<SavedReport[]>;
-  createSavedReport(data: InsertSavedReport): Promise<SavedReport>;
-  updateSavedReport(id: string, data: Partial<InsertSavedReport>): Promise<SavedReport | undefined>;
-  deleteSavedReport(id: string, userId?: string): Promise<boolean>;
+  getReport(id: string): Promise<Report | undefined>;
+  getReports(): Promise<Report[]>;
+  createReport(data: InsertSavedReport): Promise<Report>;
+  updateReport(id: string, data: Partial<InsertSavedReport>): Promise<Report | undefined>;
+  deleteReport(id: string, userId?: string): Promise<boolean>;
+  generateCustomPeriodReport(startDate: string, endDate: string, reportTypes: string[]): Promise<any>;
 }
