@@ -120,7 +120,7 @@ function AuditEntryItem({
       'logistics_vehicles': 'directories',
       'logistics_trailers': 'directories',
       'logistics_drivers': 'directories',
-      'delivery_cost': 'delivery_cost',
+      'delivery_cost': 'delivery',
       'users': 'users',
       'roles': 'roles',
     };
@@ -128,7 +128,6 @@ function AuditEntryItem({
   };
 
   const hasEditPermission = hasPermission(getPermissionModule(entityType), 'edit');
-  const showRollbackButton = canRollback && hasEditPermission && !isRolledBack;
 
   const handleRollback = () => {
     setShowRollbackDialog(false);
@@ -213,10 +212,10 @@ function AuditEntryItem({
                 {config.label}
               </Badge>
               {entry.userName?.includes('откат') ? (
-                <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300 font-bold">
-                  {entry.userName.includes('откат создания') ? '(откат создания)' :
-                   entry.userName.includes('откат изменения') ? '(откат изменения)' :
-                   entry.userName.includes('откат удаления') ? '(откат удаления)' : '(откат)'}
+                <Badge variant="outline" className="bg-orange-50/50 dark:bg-orange-950/20 text-orange-700 border-orange-300 dark:border-orange-800/30 font-bold">
+                  {entry.userName.includes('откат создания') ? 'Откат создания' :
+                   entry.userName.includes('откат изменения') ? 'Откат изменения' :
+                   entry.userName.includes('откат удаления') ? 'Откат удаления' : 'Откат'}
                 </Badge>
               ) : null}
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
