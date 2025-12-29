@@ -20,6 +20,7 @@ import { AnalyticsStorage } from "../modules/analytics/storage/analytics-storage
 import { RegistriesStorage } from "../modules/registries/storage/registries-storage";
 import { MonthlyPlanStorage } from "../modules/monthly-plan/storage/monthly-plan-storage";
 import { GovernmentContractStorage } from "../modules/gov-contracts/storage/gov-contracts-storage";
+import { BudgetStorage } from "../modules/budget/storage/budget-storage";
 
 export * from "./types";
 
@@ -46,6 +47,7 @@ export class Storage {
   public registries: RegistriesStorage;
   public monthlyPlan: MonthlyPlanStorage;
   public govContracts: GovernmentContractStorage;
+  public budget: BudgetStorage;
 
   constructor() {
     this.users = new UserStorage();
@@ -70,6 +72,7 @@ export class Storage {
     this.registries = new RegistriesStorage();
     this.monthlyPlan = new MonthlyPlanStorage();
     this.govContracts = new GovernmentContractStorage();
+    this.budget = new BudgetStorage();
   }
 }
 

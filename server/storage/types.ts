@@ -18,3 +18,4 @@ export * from "server/modules/analytics/storage/types";
 export * from "server/modules/registries/storage/types";
 export * from "server/modules/monthly-plan/storage/types";
 export * from "server/modules/gov-contracts/storage/types";
+export * from "server/modules/budget/storage/types";

@@ -2,7 +2,7 @@
 import { eq, desc, sql, and, isNull, gte, lte } from "drizzle-orm";
 import { db } from "server/db";
 import { governmentContracts, type GovernmentContract, type InsertGovernmentContract } from "@shared/schema";
-import { optDeals } from "../../opt/entities/opt";
+import { opt } from "../../opt/entities/opt";
 import { aircraftRefueling } from "../../refueling/entities/refueling";
 import { IGovernmentContractStorage } from "./types";
 
@@ -95,29 +95,29 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
     // Агрегация данных из ОПТа
     const optSales = await db
       .select({
-        totalVolume: sql<string>`COALESCE(SUM(CAST(${optDeals.totalVolume} AS NUMERIC)), 0)`,
-        totalAmount: sql<string>`COALESCE(SUM(CAST(${optDeals.totalCost} AS NUMERIC)), 0)`,
+        totalVolume: sql<string>`COALESCE(SUM(CAST(${opt.quantityKg} AS NUMERIC)), 0)`,
+        totalAmount: sql<string>`COALESCE(SUM(CAST(${opt.saleAmount} AS NUMERIC)), 0)`,
       })
-      .from(optDeals)
+      .from(opt)
       .where(
         and(
-          eq(optDeals.customerId, contract.customerId!),
-          gte(optDeals.dealDate, contract.startDate),
-          lte(optDeals.dealDate, contract.endDate),
-          isNull(optDeals.deletedAt)
+          eq(opt.buyerId, contract.customerId!),
+          gte(opt.dealDate, contract.startDate),
+          lte(opt.dealDate, contract.endDate),
+          isNull(opt.deletedAt)
         )
       );
 
     // Агрегация данных из ЗВС
     const refuelingSales = await db
       .select({
-        totalVolume: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.fuelQuantity} AS NUMERIC)), 0)`,
-        totalAmount: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.totalCost} AS NUMERIC)), 0)`,
+        totalVolume: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.quantityKg} AS NUMERIC)), 0)`,
+        totalAmount: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.saleAmount} AS NUMERIC)), 0)`,
       })
       .from(aircraftRefueling)
       .where(
         and(
-          eq(aircraftRefueling.customerId, contract.customerId!),
+          eq(aircraftRefueling.buyerId, contract.customerId!),
           gte(aircraftRefueling.refuelingDate, contract.startDate),
           lte(aircraftRefueling.refuelingDate, contract.endDate),
           isNull(aircraftRefueling.deletedAt)
