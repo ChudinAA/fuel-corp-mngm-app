@@ -27,6 +27,24 @@ export function registerAnalyticsRoutes(app: Express) {
         res.json(data);
       } catch (error) {
         console.error("Error fetching analytics data:", error);
+
+
+  // Comparative analysis
+  app.post("/api/analytics/comparative", requireAuth, requirePermission("reports", "view"), async (req, res) => {
+    try {
+      const { periods, metrics } = req.body;
+      
+      if (!periods || !Array.isArray(periods) || !metrics || !Array.isArray(metrics)) {
+        return res.status(400).json({ message: "Invalid parameters" });
+      }
+
+      const analysis = await storage.analytics.getComparativeAnalysis(periods, metrics);
+      res.json(analysis);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
         res.status(500).json({ message: "Ошибка получения аналитических данных" });
       }
     }

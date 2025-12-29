@@ -147,6 +147,74 @@ export class AnalyticsStorage implements IAnalyticsStorage {
       topSuppliers: [],
       topBuyers: [],
       productTypeDistribution,
+
+
+  async getComparativeAnalysis(
+    periods: Array<{ startDate: string; endDate: string; label: string }>,
+    metrics: string[]
+  ): Promise<any> {
+    const comparativeData: any = {};
+
+    for (const period of periods) {
+      const periodData: any = {};
+
+      if (metrics.includes('sales')) {
+        const [salesData] = await db
+          .select({
+            optVolume: sql<string>`COALESCE(SUM(CAST(${opt.quantityKg} AS NUMERIC)), 0)`,
+            optRevenue: sql<string>`COALESCE(SUM(CAST(${opt.saleAmount} AS NUMERIC)), 0)`,
+            refuelingVolume: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.quantityKg} AS NUMERIC)), 0)`,
+            refuelingRevenue: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.saleAmount} AS NUMERIC)), 0)`,
+          })
+          .from(opt)
+          .leftJoin(aircraftRefueling, sql`1=1`)
+          .where(
+            and(
+              gte(opt.dealDate, period.startDate),
+              lte(opt.dealDate, period.endDate),
+              isNull(opt.deletedAt)
+            )
+          );
+
+        periodData.sales = salesData;
+      }
+
+      if (metrics.includes('profit')) {
+        const [profitData] = await db
+          .select({
+            optProfit: sql<string>`COALESCE(SUM(CAST(${opt.profit} AS NUMERIC)), 0)`,
+            refuelingProfit: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.profit} AS NUMERIC)), 0)`,
+          })
+          .from(opt)
+          .leftJoin(aircraftRefueling, sql`1=1`)
+          .where(
+            and(
+              gte(opt.dealDate, period.startDate),
+              lte(opt.dealDate, period.endDate),
+              isNull(opt.deletedAt)
+            )
+          );
+
+        periodData.profit = profitData;
+      }
+
+      if (metrics.includes('warehouse')) {
+        const [warehouseData] = await db
+          .select({
+            totalBalance: sql<string>`COALESCE(SUM(CAST(${warehouseTransactions.balanceKg} AS NUMERIC)), 0)`,
+          })
+          .from(warehouseTransactions)
+          .where(isNull(warehouseTransactions.deletedAt));
+
+        periodData.warehouse = warehouseData;
+      }
+
+      comparativeData[period.label] = periodData;
+    }
+
+    return comparativeData;
+  }
+
     };
   }
 

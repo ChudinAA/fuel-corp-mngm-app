@@ -7,7 +7,7 @@ import { aircraftRefueling } from "../../refueling/entities/refueling";
 import { warehouseTransactions } from "../../warehouses/entities/warehouses";
 import { movement } from "../../movement/entities/movement";
 import { exchange } from "../../exchange/entities/exchange";
-import { cashflowEntries } from "../../finance/entities/finance";
+import { cashflowTransactions } from "../../finance/entities/finance";
 import { governmentContracts } from "../../gov-contracts/entities/gov-contracts";
 import { delivery } from "../../delivery/entities/delivery";
 import { IManagementReportStorage, ManagementReportData } from "./types";
@@ -191,15 +191,15 @@ export class ManagementReportStorage implements IManagementReportStorage {
     // Финансовые метрики
     const [cashflowMetrics] = await db
       .select({
-        totalIncome: sql<string>`COALESCE(SUM(CASE WHEN ${cashflowEntries.transactionType} = 'income' THEN CAST(${cashflowEntries.amount} AS NUMERIC) ELSE 0 END), 0)`,
-        totalExpense: sql<string>`COALESCE(SUM(CASE WHEN ${cashflowEntries.transactionType} = 'expense' THEN CAST(${cashflowEntries.amount} AS NUMERIC) ELSE 0 END), 0)`,
+        totalIncome: sql<string>`COALESCE(SUM(CASE WHEN ${cashflowTransactions.category} = 'income' THEN CAST(${cashflowTransactions.amount} AS NUMERIC) ELSE 0 END), 0)`,
+        totalExpense: sql<string>`COALESCE(SUM(CASE WHEN ${cashflowTransactions.category} = 'expense' THEN CAST(${cashflowTransactions.amount} AS NUMERIC) ELSE 0 END), 0)`,
       })
-      .from(cashflowEntries)
+      .from(cashflowTransactions)
       .where(
         and(
-          gte(cashflowEntries.transactionDate, periodStart),
-          lte(cashflowEntries.transactionDate, periodEnd),
-          isNull(cashflowEntries.deletedAt)
+          gte(cashflowTransactions.transactionDate, periodStart),
+          lte(cashflowTransactions.transactionDate, periodEnd),
+          isNull(cashflowTransactions.deletedAt)
         )
       );
 
@@ -212,12 +212,12 @@ export class ManagementReportStorage implements IManagementReportStorage {
       .select({
         count: sql<number>`CAST(COUNT(*) AS INTEGER)`,
       })
-      .from(cashflowEntries)
+      .from(cashflowTransactions)
       .where(
         and(
-          gte(cashflowEntries.transactionDate, periodStart),
-          lte(cashflowEntries.transactionDate, periodEnd),
-          isNull(cashflowEntries.deletedAt)
+          gte(cashflowTransactions.transactionDate, periodStart),
+          lte(cashflowTransactions.transactionDate, periodEnd),
+          isNull(cashflowTransactions.deletedAt)
         )
       );
 

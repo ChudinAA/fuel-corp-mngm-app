@@ -47,6 +47,81 @@ export function registerManagementReportRoutes(app: Express) {
   );
 
   // Generate management report data
+
+
+  // Generate and save management report
+  app.post("/api/management-reports/generate", requireAuth, requirePermission("reports", "create"), logAudit, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { reportName, periodStart, periodEnd, description, visualizationConfig } = req.body;
+
+      if (!reportName || !periodStart || !periodEnd) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Генерируем данные
+      const reportData = await storage.managementReport.generateManagementReportData(periodStart, periodEnd);
+
+      // Сохраняем отчет
+      const report = await storage.managementReport.createManagementReport({
+        reportName,
+        description,
+        periodStart,
+        periodEnd,
+        reportData,
+        visualizationConfig: visualizationConfig || null,
+        createdById: userId,
+      });
+
+      res.status(201).json(report);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Update visualization config
+  app.patch("/api/management-reports/:id/visualization", requireAuth, requirePermission("reports", "edit"), logAudit, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { visualizationConfig } = req.body;
+
+      const updated = await storage.managementReport.updateManagementReport(req.params.id, {
+        visualizationConfig,
+        updatedById: userId,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Regenerate report data
+  app.post("/api/management-reports/:id/regenerate", requireAuth, requirePermission("reports", "edit"), logAudit, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const report = await storage.managementReport.getManagementReport(req.params.id);
+
+      if (!report) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+
+      const reportData = await storage.managementReport.generateManagementReportData(
+        report.periodStart,
+        report.periodEnd
+      );
+
+      const updated = await storage.managementReport.updateManagementReport(req.params.id, {
+        reportData,
+        updatedById: userId,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.post(
     "/api/management-report/generate",
     requireAuth,

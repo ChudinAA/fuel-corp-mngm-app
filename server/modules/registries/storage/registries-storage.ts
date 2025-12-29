@@ -67,6 +67,83 @@ export class RegistriesStorage implements IRegistriesStorage {
   }
 
   async deleteRegistryTemplate(id: string, userId?: string): Promise<boolean> {
+
+
+  async getRegistriesByTemplate(
+    templateType: string,
+    filters?: {
+      startDate?: string;
+      endDate?: string;
+      baseId?: string;
+      customerId?: string;
+    }
+  ): Promise<any> {
+    const conditions = [
+      eq(registries.templateType, templateType),
+      isNull(registries.deletedAt)
+    ];
+
+    if (filters?.startDate) {
+      conditions.push(gte(registries.periodStart, filters.startDate));
+    }
+
+    if (filters?.endDate) {
+      conditions.push(lte(registries.periodEnd, filters.endDate));
+    }
+
+    if (filters?.baseId) {
+      conditions.push(eq(registries.baseId, filters.baseId));
+    }
+
+    if (filters?.customerId) {
+      conditions.push(eq(registries.customerId, filters.customerId));
+    }
+
+    return db.query.registries.findMany({
+      where: and(...conditions),
+      orderBy: [desc(registries.periodStart)],
+      with: {
+        base: true,
+        customer: true,
+        createdBy: {
+          columns: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+  }
+
+  async prepareRegistryForExport(id: string): Promise<any> {
+    const registry = await this.getRegistry(id);
+    
+    if (!registry) {
+      throw new Error("Registry not found");
+    }
+
+    // Формируем данные для экспорта в зависимости от шаблона
+    const exportData = {
+      metadata: {
+        registryName: registry.registryName,
+        templateType: registry.templateType,
+        period: {
+          start: registry.periodStart,
+          end: registry.periodEnd,
+        },
+        base: registry.base?.name,
+        customer: registry.customer?.name,
+        generatedAt: new Date().toISOString(),
+      },
+      data: registry.registryData,
+      totals: registry.totals,
+    };
+
+    return exportData;
+  }
+
     await db
       .update(registryTemplates)
       .set({

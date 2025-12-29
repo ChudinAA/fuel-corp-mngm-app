@@ -47,6 +47,35 @@ export function registerMonthlyPlanRoutes(app: Express) {
     }
   );
 
+
+
+  // Get plan vs actual comparison
+  app.get("/api/monthly-plans/:id/vs-actual", requireAuth, requirePermission("reports", "view"), async (req, res) => {
+    try {
+      const comparison = await storage.monthlyPlan.getPlanVsActual(req.params.id);
+      res.json(comparison);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Copy plan to new month
+  app.post("/api/monthly-plans/:id/copy", requireAuth, requirePermission("reports", "create"), logAudit, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { targetMonth } = req.body;
+      
+      if (!targetMonth) {
+        return res.status(400).json({ message: "Target month is required" });
+      }
+
+      const newPlan = await storage.monthlyPlan.copyPlan(req.params.id, targetMonth, userId);
+      res.status(201).json(newPlan);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Create monthly plan
   app.post(
     "/api/monthly-plan",

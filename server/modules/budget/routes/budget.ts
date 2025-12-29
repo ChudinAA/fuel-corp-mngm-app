@@ -57,6 +57,28 @@ export function registerBudgetRoutes(app: Express) {
           ...req.body,
           createdById: req.session.userId,
         });
+
+
+  // Auto-fill budget from sales data
+  app.post("/api/budgets/:id/auto-fill", requireAuth, requirePermission("reports", "edit"), logAudit, async (req, res) => {
+    try {
+      const result = await storage.budget.autoFillFromSales(req.params.id);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Calculate budget metrics
+  app.get("/api/budgets/:id/metrics", requireAuth, requirePermission("reports", "view"), async (req, res) => {
+    try {
+      const metrics = await storage.budget.calculateBudgetMetrics(req.params.id);
+      res.json(metrics);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
         const entry = await storage.budget.createBudgetEntry(data);
         res.status(201).json(entry);
       } catch (error) {

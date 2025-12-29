@@ -17,6 +17,24 @@ export function registerReportsRoutes(app: Express) {
         const reportType = req.query.reportType as string | undefined;
         const reports = await storage.reports.getSavedReports(userId, reportType);
         res.json(reports);
+
+
+  // Generate custom period report
+  app.post("/api/reports/custom-period", requireAuth, requirePermission("reports", "view"), async (req, res) => {
+    try {
+      const { startDate, endDate, reportTypes } = req.body;
+      
+      if (!startDate || !endDate || !reportTypes || !Array.isArray(reportTypes)) {
+        return res.status(400).json({ message: "Missing required parameters" });
+      }
+
+      const report = await storage.reports.generateCustomPeriodReport(startDate, endDate, reportTypes);
+      res.json(report);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
       } catch (error) {
         console.error("Error fetching saved reports:", error);
         res.status(500).json({ message: "Ошибка получения сохраненных отчетов" });

@@ -67,6 +67,97 @@ export class BudgetStorage implements IBudgetStorage {
       .set({
         ...data,
         updatedAt: sql`NOW()`,
+
+
+  async autoFillFromSales(budgetId: string): Promise<any> {
+    const budget = await this.getBudget(budgetId);
+    
+    if (!budget) {
+      throw new Error("Budget not found");
+    }
+
+    const periodStart = budget.month;
+    const periodEnd = new Date(new Date(budget.month).setMonth(new Date(budget.month).getMonth() + 1)).toISOString();
+
+    // Получаем продажи за период
+    const [salesData] = await db
+      .select({
+        optRevenue: sql<string>`COALESCE(SUM(CASE WHEN ${opt.dealDate} >= ${periodStart} AND ${opt.dealDate} < ${periodEnd} THEN CAST(${opt.saleAmount} AS NUMERIC) ELSE 0 END), 0)`,
+        optProfit: sql<string>`COALESCE(SUM(CASE WHEN ${opt.dealDate} >= ${periodStart} AND ${opt.dealDate} < ${periodEnd} THEN CAST(${opt.profit} AS NUMERIC) ELSE 0 END), 0)`,
+        refuelingRevenue: sql<string>`COALESCE(SUM(CASE WHEN ${aircraftRefueling.refuelingDate} >= ${periodStart} AND ${aircraftRefueling.refuelingDate} < ${periodEnd} THEN CAST(${aircraftRefueling.saleAmount} AS NUMERIC) ELSE 0 END), 0)`,
+        refuelingProfit: sql<string>`COALESCE(SUM(CASE WHEN ${aircraftRefueling.refuelingDate} >= ${periodStart} AND ${aircraftRefueling.refuelingDate} < ${periodEnd} THEN CAST(${aircraftRefueling.profit} AS NUMERIC) ELSE 0 END), 0)`,
+      })
+      .from(opt)
+      .leftJoin(aircraftRefueling, sql`1=1`)
+      .where(
+        and(
+          isNull(opt.deletedAt),
+          isNull(aircraftRefueling.deletedAt)
+        )
+      );
+
+    const totalRevenue = (
+      parseFloat(salesData?.optRevenue || "0") + 
+      parseFloat(salesData?.refuelingRevenue || "0")
+    ).toString();
+
+    const totalProfit = (
+      parseFloat(salesData?.optProfit || "0") + 
+      parseFloat(salesData?.refuelingProfit || "0")
+    ).toString();
+
+    // Обновляем бюджет
+    await this.updateBudget(budgetId, {
+      actualSalesVolume: totalRevenue,
+      actualMarginality: parseFloat(totalRevenue) > 0 
+        ? ((parseFloat(totalProfit) / parseFloat(totalRevenue)) * 100).toFixed(2)
+        : "0",
+      updatedAt: sql`NOW()`,
+    });
+
+    return {
+      budgetId,
+      period: budget.month,
+      revenue: totalRevenue,
+      profit: totalProfit,
+      marginality: parseFloat(totalRevenue) > 0 
+        ? ((parseFloat(totalProfit) / parseFloat(totalRevenue)) * 100).toFixed(2)
+        : "0",
+    };
+  }
+
+  async calculateBudgetMetrics(budgetId: string): Promise<any> {
+    const budget = await this.getBudget(budgetId);
+    
+    if (!budget) {
+      throw new Error("Budget not found");
+    }
+
+    const revenue = parseFloat(budget.actualSalesVolume || budget.plannedSalesVolume || "0");
+    const operatingExpenses = parseFloat(budget.operatingExpenses || "0");
+    const otherExpenses = parseFloat(budget.otherExpenses || "0");
+    const totalExpenses = operatingExpenses + otherExpenses;
+
+    const grossProfit = revenue - totalExpenses;
+    const marginality = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
+    const ebitda = grossProfit; // Упрощенный расчет
+
+    return {
+      budgetId,
+      period: budget.month,
+      metrics: {
+        revenue: revenue.toString(),
+        operatingExpenses: operatingExpenses.toString(),
+        otherExpenses: otherExpenses.toString(),
+        totalExpenses: totalExpenses.toString(),
+        grossProfit: grossProfit.toString(),
+        marginality: marginality.toFixed(2),
+        ebitda: ebitda.toString(),
+        roiPercent: revenue > 0 ? ((grossProfit / totalExpenses) * 100).toFixed(2) : "0",
+      },
+    };
+  }
+
       })
       .where(eq(budgetIncomeExpense.id, id))
       .returning();

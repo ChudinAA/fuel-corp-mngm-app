@@ -67,6 +67,128 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
     const [updated] = await db
       .update(governmentContracts)
       .set({
+
+
+  async updateContractFromSales(contractId: string): Promise<any> {
+    const contract = await this.getGovernmentContract(contractId);
+    
+    if (!contract) {
+      throw new Error("Contract not found");
+    }
+
+    // Получаем продажи ОПТ по контракту
+    const [optSales] = await db
+      .select({
+        totalVolume: sql<string>`COALESCE(SUM(CAST(${opt.quantityKg} AS NUMERIC)), 0)`,
+        totalRevenue: sql<string>`COALESCE(SUM(CAST(${opt.saleAmount} AS NUMERIC)), 0)`,
+      })
+      .from(opt)
+      .where(
+        and(
+          eq(opt.customerId, contract.customerId!),
+          gte(opt.dealDate, contract.startDate),
+          lte(opt.dealDate, contract.endDate || new Date().toISOString()),
+          isNull(opt.deletedAt)
+        )
+      );
+
+    // Получаем продажи ЗВС по контракту
+    const [refuelingSales] = await db
+      .select({
+        totalVolume: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.quantityKg} AS NUMERIC)), 0)`,
+        totalRevenue: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.saleAmount} AS NUMERIC)), 0)`,
+      })
+      .from(aircraftRefueling)
+      .where(
+        and(
+          gte(aircraftRefueling.refuelingDate, contract.startDate),
+          lte(aircraftRefueling.refuelingDate, contract.endDate || new Date().toISOString()),
+          isNull(aircraftRefueling.deletedAt)
+        )
+      );
+
+    const totalActualVolume = (
+      parseFloat(optSales?.totalVolume || "0") + 
+      parseFloat(refuelingSales?.totalVolume || "0")
+    ).toString();
+
+    const totalActualRevenue = (
+      parseFloat(optSales?.totalRevenue || "0") + 
+      parseFloat(refuelingSales?.totalRevenue || "0")
+    ).toString();
+
+    // Обновляем контракт
+    await this.updateGovernmentContract(contractId, {
+      actualVolume: totalActualVolume,
+      actualAmount: totalActualRevenue,
+      updatedAt: sql`NOW()`,
+    });
+
+    return {
+      contractId,
+      plannedVolume: contract.plannedVolume,
+      actualVolume: totalActualVolume,
+      plannedAmount: contract.totalAmount,
+      actualAmount: totalActualRevenue,
+      completion: contract.plannedVolume 
+        ? ((parseFloat(totalActualVolume) / parseFloat(contract.plannedVolume)) * 100).toFixed(2)
+        : "0",
+    };
+  }
+
+  async getContractCompletionStatus(contractId: string): Promise<any> {
+    const contract = await this.getGovernmentContract(contractId);
+    
+    if (!contract) {
+      throw new Error("Contract not found");
+    }
+
+    const plannedVolume = parseFloat(contract.plannedVolume || "0");
+    const actualVolume = parseFloat(contract.actualVolume || "0");
+    const plannedAmount = parseFloat(contract.totalAmount || "0");
+    const actualAmount = parseFloat(contract.actualAmount || "0");
+
+    const volumeCompletion = plannedVolume > 0 ? (actualVolume / plannedVolume) * 100 : 0;
+    const amountCompletion = plannedAmount > 0 ? (actualAmount / plannedAmount) * 100 : 0;
+
+    const remainingVolume = Math.max(0, plannedVolume - actualVolume);
+    const remainingAmount = Math.max(0, plannedAmount - actualAmount);
+
+    // Определяем статус
+    let status = contract.status;
+    if (volumeCompletion >= 100 || amountCompletion >= 100) {
+      status = 'completed';
+    } else if (contract.endDate && new Date(contract.endDate) < new Date()) {
+      status = 'expired';
+    }
+
+    return {
+      contractId,
+      contractNumber: contract.contractNumber,
+      customer: contract.customer,
+      planned: {
+        volume: plannedVolume.toString(),
+        amount: plannedAmount.toString(),
+      },
+      actual: {
+        volume: actualVolume.toString(),
+        amount: actualAmount.toString(),
+      },
+      remaining: {
+        volume: remainingVolume.toString(),
+        amount: remainingAmount.toString(),
+      },
+      completion: {
+        volumePercent: volumeCompletion.toFixed(2),
+        amountPercent: amountCompletion.toFixed(2),
+      },
+      status,
+      daysRemaining: contract.endDate 
+        ? Math.ceil((new Date(contract.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+        : null,
+    };
+  }
+
         ...data,
         updatedAt: sql`NOW()`,
       })

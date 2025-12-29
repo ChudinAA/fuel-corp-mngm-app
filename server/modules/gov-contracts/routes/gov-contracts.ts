@@ -57,6 +57,45 @@ export function registerGovernmentContractRoutes(app: Express) {
           ...req.body,
           createdById: req.session.userId,
         });
+
+
+  // Update contract from sales data
+  app.post("/api/gov-contracts/:id/update-from-sales", requireAuth, requirePermission("reports", "edit"), logAudit, async (req, res) => {
+    try {
+      const result = await storage.govContracts.updateContractFromSales(req.params.id);
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get contract completion status
+  app.get("/api/gov-contracts/:id/completion-status", requireAuth, requirePermission("reports", "view"), async (req, res) => {
+    try {
+      const status = await storage.govContracts.getContractCompletionStatus(req.params.id);
+      res.json(status);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Bulk update all active contracts
+  app.post("/api/gov-contracts/bulk-update-from-sales", requireAuth, requirePermission("reports", "edit"), logAudit, async (req, res) => {
+    try {
+      const activeContracts = await storage.govContracts.getGovernmentContracts({ status: 'active' });
+      
+      const results = await Promise.all(
+        activeContracts.map(contract => 
+          storage.govContracts.updateContractFromSales(contract.id)
+        )
+      );
+
+      res.json({ updated: results.length, results });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
         const contract = await storage.govContracts.createGovernmentContract(data);
         res.status(201).json(contract);
       } catch (error) {
