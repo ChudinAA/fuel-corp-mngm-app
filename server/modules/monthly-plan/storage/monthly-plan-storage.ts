@@ -172,18 +172,6 @@ export class MonthlyPlanStorage implements IMonthlyPlanStorage {
     return newPlan;
   }
 
-    const [updated] = await db
-      .update(monthlyPlans)
-      .set({
-        ...data,
-        updatedAt: sql`NOW()`,
-      })
-      .where(eq(monthlyPlans.id, id))
-      .returning();
-
-    return updated;
-  }
-
   async deleteMonthlyPlan(id: string, userId?: string): Promise<boolean> {
     await db
       .update(monthlyPlans)

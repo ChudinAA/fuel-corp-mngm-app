@@ -15,4 +15,6 @@ export interface IMonthlyPlanStorage {
   createMonthlyPlan(data: InsertMonthlyPlan): Promise<MonthlyPlan>;
   updateMonthlyPlan(id: string, data: Partial<InsertMonthlyPlan>): Promise<MonthlyPlan | undefined>;
   deleteMonthlyPlan(id: string, userId?: string): Promise<boolean>;
+  getPlanVsActual(planId: string): Promise<any>;
+  copyPlan(sourcePlanId: string, targetMonth: string, userId: string): Promise<any>;
 }
