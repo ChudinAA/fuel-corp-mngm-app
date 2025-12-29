@@ -3,19 +3,22 @@ import { useQuery } from "@tanstack/react-query";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, History } from "lucide-react";
 import type { DeliveryCost } from "@shared/schema";
 
 import { AddDeliveryCostDialog } from "./delivery/components/delivery-cost-dialog";
 import { DeliveryStatsCards } from "./delivery/components/delivery-stats-cards";
 import { DeliveryTable } from "./delivery/components/delivery-table";
 import { useDeliveryStats } from "./delivery/hooks/use-delivery-stats";
+import { AuditPanel } from "@/components/audit-panel";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function DeliveryPage() {
   const { hasPermission } = useAuth();
   const [search, setSearch] = useState("");
   const [editingDeliveryCost, setEditingDeliveryCost] = useState<DeliveryCost | null>(null);
+  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
 
   const { data: deliveryCosts, isLoading } = useQuery<DeliveryCost[]>({
     queryKey: ["/api/delivery-costs"],
@@ -67,15 +70,25 @@ export default function DeliveryPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-              placeholder="Поиск по маршруту или перевозчику..." 
-              value={search} 
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-              data-testid="input-search-delivery"
-            />
+            <div className="flex items-center gap-4">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Поиск по маршруту или перевозчику..." 
+                  value={search} 
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-search-delivery"
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => setAuditPanelOpen(true)}
+                title="Аудит всех тарифов доставки"
+              >
+                <History className="h-4 w-4 mr-2" />
+                История изменений
+              </Button>
             </div>
 
             <DeliveryTable 
@@ -88,6 +101,13 @@ export default function DeliveryPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AuditPanel 
+        open={auditPanelOpen} 
+        onOpenChange={setAuditPanelOpen} 
+        entityType="delivery_cost" 
+        entityId="" 
+      />
     </div>
   );
 }

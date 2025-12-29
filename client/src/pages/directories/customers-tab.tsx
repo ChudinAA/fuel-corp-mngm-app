@@ -168,9 +168,10 @@ export function CustomersTab() {
         </div>
 
         <AuditPanel 
-          isOpen={auditPanelOpen} 
-          onClose={() => setAuditPanelOpen(false)} 
+          open={auditPanelOpen} 
+          onOpenChange={setAuditPanelOpen} 
           entityType="customers" 
+          entityId="" 
         />
       </CardContent>
 

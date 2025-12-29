@@ -294,7 +294,7 @@ export class RollbackService {
         continue;
       }
 
-      // Handle priceValues - should be JSON string
+      // Handle priceValues - should be JSON string or array
       if (key === 'priceValues') {
         if (typeof value === 'string') {
           try {
@@ -305,6 +305,9 @@ export class RollbackService {
             // If it's not valid JSON, stringify it
             normalized[key] = JSON.stringify(value);
           }
+        } else if (Array.isArray(value)) {
+          // If it's an array, stringify it
+          normalized[key] = JSON.stringify(value);
         } else if (typeof value === 'object') {
           normalized[key] = JSON.stringify(value);
         } else {
