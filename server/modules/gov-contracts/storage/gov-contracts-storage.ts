@@ -1,4 +1,3 @@
-
 import { eq, desc, sql, and, isNull, gte, lte } from "drizzle-orm";
 import { db } from "server/db";
 import { governmentContracts, type GovernmentContract, type InsertGovernmentContract } from "@shared/schema";
@@ -29,11 +28,11 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
     customerId?: string;
   }): Promise<GovernmentContract[]> {
     const conditions = [isNull(governmentContracts.deletedAt)];
-    
+
     if (filters?.status) {
       conditions.push(eq(governmentContracts.status, filters.status));
     }
-    
+
     if (filters?.customerId) {
       conditions.push(eq(governmentContracts.customerId, filters.customerId));
     }
@@ -67,11 +66,30 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
     const [updated] = await db
       .update(governmentContracts)
       .set({
+        ...data,
+        updatedAt: sql`NOW()`,
+      })
+      .where(eq(governmentContracts.id, id))
+      .returning();
 
+    return updated;
+  }
+
+  async deleteGovernmentContract(id: string, userId?: string): Promise<boolean> {
+    await db
+      .update(governmentContracts)
+      .set({
+        deletedAt: sql`NOW()`,
+        deletedById: userId,
+      })
+      .where(eq(governmentContracts.id, id));
+
+    return true;
+  }
 
   async updateContractFromSales(contractId: string): Promise<any> {
     const contract = await this.getGovernmentContract(contractId);
-    
+
     if (!contract) {
       throw new Error("Contract not found");
     }
@@ -117,10 +135,16 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
       parseFloat(refuelingSales?.totalRevenue || "0")
     ).toString();
 
+    const remainingAmount = contract.totalAmount 
+      ? (parseFloat(contract.totalAmount) - parseFloat(totalActualRevenue)).toString()
+      : "0";
+
     // Обновляем контракт
     await this.updateGovernmentContract(contractId, {
       actualVolume: totalActualVolume,
       actualAmount: totalActualRevenue,
+      currentAmount: totalActualRevenue,
+      remainingAmount: remainingAmount,
       updatedAt: sql`NOW()`,
     });
 
@@ -138,7 +162,7 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
 
   async getContractCompletionStatus(contractId: string): Promise<any> {
     const contract = await this.getGovernmentContract(contractId);
-    
+
     if (!contract) {
       throw new Error("Contract not found");
     }
@@ -187,83 +211,5 @@ export class GovernmentContractStorage implements IGovernmentContractStorage {
         ? Math.ceil((new Date(contract.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
         : null,
     };
-  }
-
-        ...data,
-        updatedAt: sql`NOW()`,
-      })
-      .where(eq(governmentContracts.id, id))
-      .returning();
-
-    return updated;
-  }
-
-  async deleteGovernmentContract(id: string, userId?: string): Promise<boolean> {
-    await db
-      .update(governmentContracts)
-      .set({
-        deletedAt: sql`NOW()`,
-        deletedById: userId,
-      })
-      .where(eq(governmentContracts.id, id));
-
-    return true;
-  }
-
-  async updateContractFromSales(contractId: string): Promise<GovernmentContract | undefined> {
-    const contract = await this.getGovernmentContract(contractId);
-    if (!contract) return undefined;
-
-    // Агрегация данных из ОПТа
-    const optSales = await db
-      .select({
-        totalVolume: sql<string>`COALESCE(SUM(CAST(${opt.quantityKg} AS NUMERIC)), 0)`,
-        totalAmount: sql<string>`COALESCE(SUM(CAST(${opt.saleAmount} AS NUMERIC)), 0)`,
-      })
-      .from(opt)
-      .where(
-        and(
-          eq(opt.buyerId, contract.customerId!),
-          gte(opt.dealDate, contract.startDate),
-          lte(opt.dealDate, contract.endDate),
-          isNull(opt.deletedAt)
-        )
-      );
-
-    // Агрегация данных из ЗВС
-    const refuelingSales = await db
-      .select({
-        totalVolume: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.quantityKg} AS NUMERIC)), 0)`,
-        totalAmount: sql<string>`COALESCE(SUM(CAST(${aircraftRefueling.saleAmount} AS NUMERIC)), 0)`,
-      })
-      .from(aircraftRefueling)
-      .where(
-        and(
-          eq(aircraftRefueling.buyerId, contract.customerId!),
-          gte(aircraftRefueling.refuelingDate, contract.startDate),
-          lte(aircraftRefueling.refuelingDate, contract.endDate),
-          isNull(aircraftRefueling.deletedAt)
-        )
-      );
-
-    const totalVolume = (
-      parseFloat(optSales[0]?.totalVolume || "0") + 
-      parseFloat(refuelingSales[0]?.totalVolume || "0")
-    ).toString();
-
-    const totalAmount = (
-      parseFloat(optSales[0]?.totalAmount || "0") + 
-      parseFloat(refuelingSales[0]?.totalAmount || "0")
-    ).toString();
-
-    const remainingAmount = contract.totalAmount 
-      ? (parseFloat(contract.totalAmount) - parseFloat(totalAmount)).toString()
-      : "0";
-
-    return this.updateGovernmentContract(contractId, {
-      actualVolume: totalVolume,
-      currentAmount: totalAmount,
-      remainingAmount: remainingAmount,
-    });
   }
 }
