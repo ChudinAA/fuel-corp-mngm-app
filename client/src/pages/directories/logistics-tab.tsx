@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Truck, Pencil, Trash2, MapPin, Car, Container, User, Building2, TruckIcon, History } from "lucide-react";
 import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
-import { AuditPanel } from "@/components/audit-panel";
 import type { 
   LogisticsCarrier,
   LogisticsDeliveryLocation,
@@ -33,7 +32,6 @@ export function LogisticsTab() {
   const [editingItem, setEditingItem] = useState<{ type: string; data: any } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ type: string; id: string; name: string } | null>(null);
-  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: carriers, isLoading: carriersLoading } = useQuery<LogisticsCarrier[]>({
@@ -178,14 +176,6 @@ export function LogisticsTab() {
             {hasPermission("directories", "create") && (
               <AddLogisticsDialog carriers={carriers || []} editItem={editingItem} onEditComplete={() => setEditingItem(null)} />
             )}
-            <Button
-              variant="outline"
-              onClick={() => setAuditPanelOpen(true)}
-              title="Аудит всей логистики"
-            >
-              <History className="h-4 w-4 mr-2" />
-              История изменений
-            </Button>
           </div>
 
           {isLoading ? (
@@ -291,12 +281,7 @@ export function LogisticsTab() {
         itemName={itemToDelete?.name}
       />
 
-      <AuditPanel 
-        open={auditPanelOpen} 
-        onOpenChange={setAuditPanelOpen} 
-        entityType="logistics_carriers" 
-        entityId="" 
-      />
+      
     </Card>
   );
 }

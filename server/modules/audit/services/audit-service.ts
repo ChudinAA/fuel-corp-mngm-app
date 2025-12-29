@@ -45,20 +45,44 @@ export class AuditService {
         changedFields = getChangedFields(normalizedOldData, normalizedNewData);
       }
 
-      // Insert audit log entry
       await db.insert(auditLog).values({
         entityType,
         entityId,
         operation,
-        oldData: normalizedOldData,
-        newData: normalizedNewData,
-        changedFields,
-        userId: context.userId,
-        userName: context.userName,
-        userEmail: context.userEmail,
-        ipAddress: context.ipAddress,
-        userAgent: context.userAgent,
+        oldData: oldData || null,
+        newData: newData || null,
+        changedFields: changedFields.length > 0 ? changedFields : null,
+        userId: context.userId || null,
+        userName: context.userName || null,
+        userEmail: context.userEmail || null,
+        ipAddress: context.ipAddress || null,
+        userAgent: context.userAgent || null,
       });
+
+      // If this is a DELETE operation, mark all previous audit entries for this entity
+      if (operation === AUDIT_OPERATIONS.DELETE) {
+        await db.update(auditLog)
+          .set({ entityDeleted: new Date().toISOString() })
+          .where(
+            and(
+              eq(auditLog.entityType, entityType),
+              eq(auditLog.entityId, entityId),
+              sql`${auditLog.operation} IN ('CREATE', 'UPDATE')`
+            )
+          );
+      }
+
+      // If this is a RESTORE operation, clear entityDeleted from previous entries
+      if (operation === AUDIT_OPERATIONS.RESTORE) {
+        await db.update(auditLog)
+          .set({ entityDeleted: null })
+          .where(
+            and(
+              eq(auditLog.entityType, entityType),
+              eq(auditLog.entityId, entityId)
+            )
+          );
+      }
     } catch (error) {
       console.error('Error logging audit entry:', error);
       // Don't throw - audit logging should not break the main operation

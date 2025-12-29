@@ -59,26 +59,26 @@ const ACTION_CONFIG: Record<string, {
   CREATE: {
     icon: Plus,
     label: "Создание",
-    color: "text-green-600",
-    bgColor: "bg-green-50 dark:bg-green-950",
+    color: "text-green-600 dark:text-green-500",
+    bgColor: "bg-green-50 dark:bg-green-950/30",
   },
   UPDATE: {
     icon: Pencil,
     label: "Изменение",
-    color: "text-blue-600",
-    bgColor: "bg-blue-50 dark:bg-blue-950",
+    color: "text-blue-600 dark:text-blue-500",
+    bgColor: "bg-blue-50 dark:bg-blue-950/30",
   },
   DELETE: {
     icon: Trash2,
     label: "Удаление",
-    color: "text-red-600",
-    bgColor: "bg-red-50 dark:bg-red-950",
+    color: "text-red-600 dark:text-red-500",
+    bgColor: "bg-red-50 dark:bg-red-950/30",
   },
   RESTORE: {
     icon: History,
     label: "Восстановление",
-    color: "text-purple-600",
-    bgColor: "bg-purple-50 dark:bg-purple-950",
+    color: "text-purple-600 dark:text-purple-500",
+    bgColor: "bg-purple-50 dark:bg-purple-950/30",
   },
 };
 
@@ -100,8 +100,11 @@ function AuditEntryItem({
   // Check if this entry has been rolled back
   const isRolledBack = !!entry.rolledBackAt;
 
+  // Check if the entity was later deleted (for CREATE/UPDATE operations)
+  const isEntityDeleted = !!entry.entityDeleted;
+
   // Check if rollback is available for this operation
-  const canRollback = ['CREATE', 'UPDATE', 'DELETE'].includes(entry.operation);
+  const canRollback = ['CREATE', 'UPDATE', 'DELETE'].includes(entry.operation) && !isEntityDeleted;
 
   // Map entity type to permission module
   const getPermissionModule = (entityType: string): string => {
@@ -212,10 +215,15 @@ function AuditEntryItem({
                 {config.label}
               </Badge>
               {entry.userName?.includes('откат') ? (
-                <Badge variant="outline" className="bg-orange-50/50 dark:bg-orange-950/20 text-orange-700 border-orange-300 dark:border-orange-800/30 font-bold">
+                <Badge variant="outline" className="bg-orange-50/50 dark:bg-orange-950/20 text-orange-700 dark:text-orange-400 border-orange-300 dark:border-orange-800/30 font-bold">
                   {entry.userName.includes('откат создания') ? 'Откат создания' :
                    entry.userName.includes('откат изменения') ? 'Откат изменения' :
                    entry.userName.includes('откат удаления') ? 'Откат удаления' : 'Откат'}
+                </Badge>
+              ) : null}
+              {isEntityDeleted && entry.operation !== 'DELETE' ? (
+                <Badge variant="outline" className="bg-gray-50/50 dark:bg-gray-950/20 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-700/30">
+                  Запись была удалена
                 </Badge>
               ) : null}
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -231,16 +239,17 @@ function AuditEntryItem({
                 </span>
               </div>
             </div>
-            {(canRollback && hasEditPermission) && (
+            {((['CREATE', 'UPDATE', 'DELETE'].includes(entry.operation)) && hasEditPermission) && (
               <Button
                 variant="outline"
                 size="sm"
                 className="h-7"
                 onClick={() => setShowRollbackDialog(true)}
-                disabled={isRolledBack}
+                disabled={isRolledBack || isEntityDeleted}
+                title={isEntityDeleted ? 'Запись была удалена. Откатите операцию удаления.' : ''}
               >
                 <Undo2 className="mr-1.5 h-3.5 w-3.5" />
-                {isRolledBack ? 'Откачено' : 'Откатить'}
+                {isRolledBack ? 'Откачено' : isEntityDeleted ? 'Недоступно' : 'Откатить'}
               </Button>
             )}
           </div>
@@ -280,33 +289,33 @@ function AuditEntryItem({
                       </div>
                       <div className="flex items-start gap-2 text-muted-foreground">
                         {entry.operation === 'RESTORE' ? (
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <div className="text-xs text-muted-foreground mb-0.5">
                               Восстановленное значение:
                             </div>
-                            <div className="font-mono text-xs bg-muted p-2 rounded break-words">
+                            <div className="font-mono text-xs bg-muted p-2 rounded break-words whitespace-pre-wrap overflow-wrap-anywhere">
                               {change.new !== null && change.new !== undefined && change.new !== ''
                                 ? String(change.new)
                                 : "—"}
                             </div>
                           </div>
                         ) : entry.operation === 'DELETE' ? (
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <div className="text-xs text-muted-foreground mb-0.5">
                               Удалённое значение:
                             </div>
-                            <div className="font-mono text-xs bg-muted p-2 rounded break-words">
+                            <div className="font-mono text-xs bg-muted p-2 rounded break-words whitespace-pre-wrap overflow-wrap-anywhere">
                               {change.old !== null && change.old !== undefined && change.old !== ''
                                 ? String(change.old)
                                 : "—"}
                             </div>
                           </div>
                         ) : entry.operation === 'CREATE' ? (
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <div className="text-xs text-muted-foreground mb-0.5">
                               Созданное значение:
                             </div>
-                            <div className="font-mono text-xs bg-muted p-2 rounded break-words">
+                            <div className="font-mono text-xs bg-muted p-2 rounded break-words whitespace-pre-wrap overflow-wrap-anywhere">
                               {change.new !== null && change.new !== undefined && change.new !== ''
                                 ? String(change.new)
                                 : "—"}
@@ -314,21 +323,21 @@ function AuditEntryItem({
                           </div>
                         ) : (
                           <>
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                               <div className="text-xs text-muted-foreground mb-0.5">
                                 Было:
                               </div>
-                              <div className="font-mono text-xs bg-muted p-2 rounded break-words">
+                              <div className="font-mono text-xs bg-muted p-2 rounded break-words whitespace-pre-wrap overflow-wrap-anywhere">
                                 {change.old !== null && change.old !== undefined && change.old !== ''
                                   ? String(change.old)
                                   : "—"}
                               </div>
                             </div>
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                               <div className="text-xs text-muted-foreground mb-0.5">
                                 Стало:
                               </div>
-                              <div className="font-mono text-xs bg-muted p-2 rounded break-words">
+                              <div className="font-mono text-xs bg-muted p-2 rounded break-words whitespace-pre-wrap overflow-wrap-anywhere">
                                 {change.new !== null && change.new !== undefined && change.new !== ''
                                   ? String(change.new)
                                   : "—"}

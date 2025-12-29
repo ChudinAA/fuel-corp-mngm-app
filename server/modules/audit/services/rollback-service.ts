@@ -298,20 +298,24 @@ export class RollbackService {
       if (key === 'priceValues') {
         if (typeof value === 'string') {
           try {
-            // If it's already a JSON string, use it as is
-            JSON.parse(value);
-            normalized[key] = value;
+            // If it's already a JSON string, parse and re-stringify to ensure valid format
+            const parsed = JSON.parse(value);
+            normalized[key] = Array.isArray(parsed) ? JSON.stringify(parsed) : value;
           } catch {
-            // If it's not valid JSON, stringify it
-            normalized[key] = JSON.stringify(value);
+            // If it's not valid JSON, wrap in array and stringify
+            normalized[key] = JSON.stringify([value]);
           }
         } else if (Array.isArray(value)) {
           // If it's an array, stringify it
           normalized[key] = JSON.stringify(value);
-        } else if (typeof value === 'object') {
-          normalized[key] = JSON.stringify(value);
+        } else if (value && typeof value === 'object') {
+          // If it's an object, convert to array and stringify
+          normalized[key] = JSON.stringify([value]);
+        } else if (value === null || value === undefined) {
+          normalized[key] = JSON.stringify([]);
         } else {
-          normalized[key] = value;
+          // For any other type, wrap in array
+          normalized[key] = JSON.stringify([value]);
         }
         continue;
       }

@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -13,6 +12,7 @@ export interface AuditEntry {
   changedFields: string[] | null;
   oldData: Record<string, any> | null;
   newData: Record<string, any> | null;
+  entityDeleted: string | null;
   createdAt: string;
   rolledBackAt: string | null;
   rolledBackById: string | null;
@@ -26,7 +26,7 @@ interface UseAuditOptions {
 }
 
 export function useAudit({ entityType, entityId, limit = 50, enabled = true }: UseAuditOptions) {
-  const endpoint = entityId 
+  const endpoint = entityId
     ? `/api/audit/${entityType}/${entityId}?limit=${limit}`
     : `/api/audit/${entityType}?limit=${limit}`;
 
