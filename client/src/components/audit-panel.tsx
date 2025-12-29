@@ -163,10 +163,23 @@ function AuditEntryItem({
       return Object.keys(result).length > 0 ? result : null;
     }
 
-    // For CREATE, don't show changes by default, but if it's a rollback result (DELETE operation rollback), show what was deleted
+    // For CREATE, show all created data (unless it's a rollback result)
     if (entry.operation === 'CREATE') {
       // Check if this is a rollback result by looking at userName
       if (entry.userName?.includes('откат')) return null;
+      
+      // Show created data
+      if (entry.newData) {
+        const result: Record<string, { old: any; new: any }> = {};
+        Object.keys(entry.newData).forEach(field => {
+          // Skip metadata and technical fields
+          if (['id', 'createdAt', 'updatedAt', 'deletedAt', 'createdById', 'updatedById', 'deletedById', 'transactionId'].includes(field)) {
+            return;
+          }
+          result[field] = { old: null, new: entry.newData[field] };
+        });
+        return Object.keys(result).length > 0 ? result : null;
+      }
       return null;
     }
 
@@ -243,8 +256,14 @@ function AuditEntryItem({
               >
                 <FileText className="mr-1.5 h-3.5 w-3.5" />
                 {expanded
-                  ? (entry.operation === 'DELETE' ? "Скрыть удалённые данные" : entry.operation === 'RESTORE' ? "Скрыть восстановленные данные" : "Скрыть изменения")
-                  : (entry.operation === 'DELETE' ? "Показать удалённые данные" : entry.operation === 'RESTORE' ? "Показать восстановленные данные" : "Показать изменения")
+                  ? (entry.operation === 'DELETE' ? "Скрыть удалённые данные" : 
+                     entry.operation === 'RESTORE' ? "Скрыть восстановленные данные" : 
+                     entry.operation === 'CREATE' ? "Скрыть созданные данные" : 
+                     "Скрыть изменения")
+                  : (entry.operation === 'DELETE' ? "Показать удалённые данные" : 
+                     entry.operation === 'RESTORE' ? "Показать восстановленные данные" : 
+                     entry.operation === 'CREATE' ? "Показать созданные данные" : 
+                     "Показать изменения")
                 }
                 {expanded ? (
                   <ChevronUp className="ml-1.5 h-3.5 w-3.5" />
@@ -280,6 +299,17 @@ function AuditEntryItem({
                             <div className="font-mono text-xs bg-muted p-2 rounded break-words">
                               {change.old !== null && change.old !== undefined && change.old !== ''
                                 ? String(change.old)
+                                : "—"}
+                            </div>
+                          </div>
+                        ) : entry.operation === 'CREATE' ? (
+                          <div className="flex-1">
+                            <div className="text-xs text-muted-foreground mb-0.5">
+                              Созданное значение:
+                            </div>
+                            <div className="font-mono text-xs bg-muted p-2 rounded break-words">
+                              {change.new !== null && change.new !== undefined && change.new !== ''
+                                ? String(change.new)
                                 : "—"}
                             </div>
                           </div>

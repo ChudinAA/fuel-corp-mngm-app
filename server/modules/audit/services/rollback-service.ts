@@ -266,7 +266,7 @@ export class RollbackService {
   }
 
   /**
-   * Normalize data: convert empty strings to null
+   * Normalize data: convert empty strings to null and handle special fields
    */
   private static normalizeData(data: any): any {
     if (!data || typeof data !== 'object') {
@@ -276,7 +276,44 @@ export class RollbackService {
     const normalized: any = {};
     for (const [key, value] of Object.entries(data)) {
       // Convert empty strings to null
-      normalized[key] = value === '' ? null : value;
+      if (value === '') {
+        normalized[key] = null;
+        continue;
+      }
+
+      // Handle baseIds - convert string to array
+      if (key === 'baseIds') {
+        if (typeof value === 'string') {
+          // Single baseId as string
+          normalized[key] = [value];
+        } else if (Array.isArray(value)) {
+          normalized[key] = value;
+        } else {
+          normalized[key] = [];
+        }
+        continue;
+      }
+
+      // Handle priceValues - should be JSON string
+      if (key === 'priceValues') {
+        if (typeof value === 'string') {
+          try {
+            // If it's already a JSON string, use it as is
+            JSON.parse(value);
+            normalized[key] = value;
+          } catch {
+            // If it's not valid JSON, stringify it
+            normalized[key] = JSON.stringify(value);
+          }
+        } else if (typeof value === 'object') {
+          normalized[key] = JSON.stringify(value);
+        } else {
+          normalized[key] = value;
+        }
+        continue;
+      }
+
+      normalized[key] = value;
     }
     return normalized;
   }
