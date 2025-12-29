@@ -12,8 +12,9 @@ import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
 import { Pencil, Trash2, Search, Users, History } from "lucide-react";
-import { CustomerFormDialog } from "./customers-dialog";
+import { AddCustomerDialog } from "./customers-dialog";
 import type { Customer } from "@shared/schema";
+import { CUSTOMER_MODULE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 
 export function CustomersTab() {
