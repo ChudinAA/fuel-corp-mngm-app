@@ -14,3 +14,4 @@ export * from "server/modules/logistics/entities/logistics";
 export * from "server/modules/prices/entities/prices";
 export * from "server/modules/users/entities/roles";
 export * from "server/modules/audit/entities/audit";
+export * from "server/modules/finance/entities/finance";
