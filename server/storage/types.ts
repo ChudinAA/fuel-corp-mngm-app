@@ -12,3 +12,4 @@ export * from "server/modules/prices/storage/types";
 export * from "server/modules/delivery/storage/types";
 export * from "server/modules/dashboard/storage/types";
 export * from "server/modules/users/storage/types";
+export * from "server/modules/finance/storage/types"

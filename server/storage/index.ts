@@ -30,6 +30,9 @@ export class Storage {
   public aircraftRefueling: AircraftRefuelingStorage;
   public dashboard: DashboardStorage;
   public delivery: DeliveryStorage;
+  public cashflow: CashflowStorage;
+  public payments: PaymentCalendarStorage;
+  public priceCalculations: PriceCalculationStorage;
 
   constructor() {
     this.users = new UserStorage();
