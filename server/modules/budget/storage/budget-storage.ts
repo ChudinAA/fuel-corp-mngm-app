@@ -162,13 +162,6 @@ export class BudgetStorage implements IBudgetStorage {
     };
   }
 
-      })
-      .where(eq(budgetIncomeExpense.id, id))
-      .returning();
-
-    return updated;
-  }
-
   async deleteBudgetEntry(id: string, userId?: string): Promise<boolean> {
     await db
       .update(budgetIncomeExpense)

@@ -15,4 +15,6 @@ export interface IBudgetStorage {
   updateBudgetEntry(id: string, data: Partial<InsertBudgetIncomeExpense>): Promise<BudgetIncomeExpense | undefined>;
   deleteBudgetEntry(id: string, userId?: string): Promise<boolean>;
   updateBudgetFromSales(budgetMonth: string): Promise<BudgetIncomeExpense | undefined>;
+  autoFillFromSales(budgetId: string): Promise<any>;
+  calculateBudgetMetrics(budgetId: string): Promise<any>;
 }
