@@ -9,7 +9,7 @@ import { movement } from "../../movement/entities/movement";
 import { exchange } from "../../exchange/entities/exchange";
 import { cashflowTransactions } from "../../finance/entities/finance";
 import { governmentContracts } from "../../gov-contracts/entities/gov-contracts";
-import { delivery } from "../../delivery/entities/delivery";
+import { deliveryCost } from "../../delivery/entities/delivery";
 import { IManagementReportStorage, ManagementReportData } from "./types";
 
 export class ManagementReportStorage implements IManagementReportStorage {
@@ -241,21 +241,22 @@ export class ManagementReportStorage implements IManagementReportStorage {
       parseFloat(govContractsMetrics?.completedVolume || "0")
     ).toString();
 
-    // Метрики логистики
+    // Метрики логистики (на основе настроенных тарифов)
     const [logisticsMetrics] = await db
       .select({
         totalCount: sql<number>`CAST(COUNT(*) AS INTEGER)`,
-        totalCost: sql<string>`COALESCE(SUM(CAST(${delivery.cost} AS NUMERIC)), 0)`,
-        totalDistance: sql<string>`COALESCE(SUM(CAST(${delivery.distance} AS NUMERIC)), 0)`,
+        totalDistance: sql<string>`COALESCE(SUM(CAST(${deliveryCost.distance} AS NUMERIC)), 0)`,
       })
-      .from(delivery)
+      .from(deliveryCost)
       .where(
         and(
-          gte(delivery.deliveryDate, periodStart),
-          lte(delivery.deliveryDate, periodEnd),
-          isNull(delivery.deletedAt)
+          eq(deliveryCost.isActive, true),
+          isNull(deliveryCost.deletedAt)
         )
       );
+
+    // TODO: Рассчитать реальную стоимость доставок на основе операций
+    const totalCost = "0";
 
     return {
       salesMetrics: {
@@ -298,7 +299,7 @@ export class ManagementReportStorage implements IManagementReportStorage {
       },
       logisticsMetrics: {
         totalDeliveries: logisticsMetrics?.totalCount || 0,
-        totalDeliveryCost: logisticsMetrics?.totalCost || "0",
+        totalDeliveryCost: totalCost,
         totalDistance: logisticsMetrics?.totalDistance || "0",
       },
     };
