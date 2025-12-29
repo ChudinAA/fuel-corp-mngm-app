@@ -51,7 +51,7 @@ export class AuditService {
         operation,
         oldData: oldData || null,
         newData: newData || null,
-        changedFields: changedFields.length > 0 ? changedFields : null,
+        changedFields: changedFields && changedFields.length > 0 ? changedFields : null,
         userId: context.userId || null,
         userName: context.userName || null,
         userEmail: context.userEmail || null,

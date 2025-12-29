@@ -294,40 +294,59 @@ export class RollbackService {
         continue;
       }
 
-      // Handle priceValues - should be JSON string or array
+      // Handle priceValues - should be JSON string array format
       if (key === 'priceValues') {
         if (typeof value === 'string') {
           try {
-            // Parse the JSON string
+            // Try to parse as JSON first
             const parsed = JSON.parse(value);
             
-            // If it's already an array, re-stringify it
+            // If it's already an array of strings (like ["{\"price\":73}"])
             if (Array.isArray(parsed)) {
-              normalized[key] = JSON.stringify(parsed);
-            } 
-            // If it's an object with a price property, wrap in array
-            else if (parsed && typeof parsed === 'object' && 'price' in parsed) {
-              normalized[key] = JSON.stringify([parsed]);
+              // Check if array items are strings that need parsing
+              const processedArray = parsed.map(item => {
+                if (typeof item === 'string') {
+                  try {
+                    return JSON.parse(item);
+                  } catch {
+                    return item;
+                  }
+                }
+                return item;
+              });
+              normalized[key] = JSON.stringify(processedArray);
             }
-            // Otherwise, keep as is
+            // If it's an object with a price property, wrap in array of strings
+            else if (parsed && typeof parsed === 'object' && 'price' in parsed) {
+              normalized[key] = JSON.stringify([JSON.stringify(parsed)]);
+            }
+            // Otherwise, try to wrap as array
             else {
-              normalized[key] = value;
+              normalized[key] = JSON.stringify([JSON.stringify(parsed)]);
             }
           } catch {
-            // If it's not valid JSON, keep as is (might be legacy format)
-            normalized[key] = value;
+            // If parsing fails, assume it's already in correct format or wrap it
+            try {
+              // Try to wrap in array format
+              normalized[key] = JSON.stringify([value]);
+            } catch {
+              normalized[key] = value;
+            }
           }
         } else if (Array.isArray(value)) {
-          // If it's an array, stringify it
-          normalized[key] = JSON.stringify(value);
+          // Convert array to proper format: array of JSON strings
+          const stringified = value.map(item => 
+            typeof item === 'string' ? item : JSON.stringify(item)
+          );
+          normalized[key] = JSON.stringify(stringified);
         } else if (value && typeof value === 'object') {
-          // If it's an object, convert to array and stringify
-          normalized[key] = JSON.stringify([value]);
+          // If it's an object, convert to array of JSON string
+          normalized[key] = JSON.stringify([JSON.stringify(value)]);
         } else if (value === null || value === undefined) {
           normalized[key] = JSON.stringify([]);
         } else {
           // For any other type, wrap in array
-          normalized[key] = JSON.stringify([value]);
+          normalized[key] = JSON.stringify([String(value)]);
         }
         continue;
       }

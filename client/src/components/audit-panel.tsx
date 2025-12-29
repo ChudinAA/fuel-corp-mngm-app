@@ -304,7 +304,7 @@ function AuditEntryItem({
                             <div className="text-xs text-muted-foreground mb-0.5">
                               Удалённое значение:
                             </div>
-                            <div className="font-mono text-xs bg-muted p-2 rounded break-words whitespace-pre-wrap overflow-wrap-anywhere">
+                            <div className="font-mono text-xs bg-muted p-2 rounded break-all whitespace-normal overflow-wrap-anywhere">
                               {change.old !== null && change.old !== undefined && change.old !== ''
                                 ? String(change.old)
                                 : "—"}
@@ -315,7 +315,7 @@ function AuditEntryItem({
                             <div className="text-xs text-muted-foreground mb-0.5">
                               Созданное значение:
                             </div>
-                            <div className="font-mono text-xs bg-muted p-2 rounded break-words whitespace-pre-wrap overflow-wrap-anywhere">
+                            <div className="font-mono text-xs bg-muted p-2 rounded break-all whitespace-normal overflow-wrap-anywhere">
                               {change.new !== null && change.new !== undefined && change.new !== ''
                                 ? String(change.new)
                                 : "—"}
@@ -327,7 +327,7 @@ function AuditEntryItem({
                               <div className="text-xs text-muted-foreground mb-0.5">
                                 Было:
                               </div>
-                              <div className="font-mono text-xs bg-muted p-2 rounded break-words whitespace-pre-wrap overflow-wrap-anywhere">
+                              <div className="font-mono text-xs bg-muted p-2 rounded break-all whitespace-normal overflow-wrap-anywhere">
                                 {change.old !== null && change.old !== undefined && change.old !== ''
                                   ? String(change.old)
                                   : "—"}
@@ -337,7 +337,7 @@ function AuditEntryItem({
                               <div className="text-xs text-muted-foreground mb-0.5">
                                 Стало:
                               </div>
-                              <div className="font-mono text-xs bg-muted p-2 rounded break-words whitespace-pre-wrap overflow-wrap-anywhere">
+                              <div className="font-mono text-xs bg-muted p-2 rounded break-all whitespace-normal overflow-wrap-anywhere">
                                 {change.new !== null && change.new !== undefined && change.new !== ''
                                   ? String(change.new)
                                   : "—"}
