@@ -216,9 +216,6 @@ export class AnalyticsStorage implements IAnalyticsStorage {
     return comparativeData;
   }
 
-    };
-  }
-
   async getSavedAnalytics(userId: string): Promise<SavedReport[]> {
     return db.query.savedReports.findMany({
       where: and(
