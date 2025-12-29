@@ -2,7 +2,6 @@ import { eq, desc, sql, and, isNull, gte, lte } from "drizzle-orm";
 import { db } from "server/db";
 import { registryTemplates, type RegistryTemplate, type InsertRegistryTemplate } from "../entities/registries";
 import { IRegistriesStorage } from "./types";
-import { registries } from "../entities/registries"; // Assuming 'registries' entity is also needed
 
 export class RegistriesStorage implements IRegistriesStorage {
   async getRegistryTemplate(id: string): Promise<RegistryTemplate | undefined> {
@@ -86,84 +85,12 @@ export class RegistriesStorage implements IRegistriesStorage {
       customerId?: string;
     }
   ): Promise<any> {
-    const conditions = [
-      eq(registries.templateType, templateType),
-      isNull(registries.deletedAt)
-    ];
-
-    if (filters?.startDate) {
-      conditions.push(gte(registries.periodStart, filters.startDate));
-    }
-
-    if (filters?.endDate) {
-      conditions.push(lte(registries.periodEnd, filters.endDate));
-    }
-
-    if (filters?.baseId) {
-      conditions.push(eq(registries.baseId, filters.baseId));
-    }
-
-    if (filters?.customerId) {
-      conditions.push(eq(registries.customerId, filters.customerId));
-    }
-
-    return db.query.registries.findMany({
-      where: and(...conditions),
-      orderBy: [desc(registries.periodStart)],
-      with: {
-        base: true,
-        customer: true,
-        createdBy: {
-          columns: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
-    });
+    // TODO: Implement when registries table is created
+    return [];
   }
 
   async prepareRegistryForExport(id: string): Promise<any> {
-    const registry = await this.getRegistry(id); // Assuming getRegistry method exists or should be implemented
-
-    if (!registry) {
-      throw new Error("Registry not found");
-    }
-
-    // Формируем данные для экспорта в зависимости от шаблона
-    const exportData = {
-      metadata: {
-        registryName: registry.registryName,
-        templateType: registry.templateType,
-        period: {
-          start: registry.periodStart,
-          end: registry.periodEnd,
-        },
-        base: registry.base?.name,
-        customer: registry.customer?.name,
-        generatedAt: new Date().toISOString(),
-      },
-      data: registry.registryData,
-      totals: registry.totals,
-    };
-
-    return exportData;
-  }
-
-  // Assuming getRegistry method is needed for prepareRegistryForExport
-  private async getRegistry(id: string): Promise<any | undefined> {
-    // This is a placeholder. Implement actual logic to fetch registry data.
-    // For demonstration, returning a dummy object if needed.
-    // In a real scenario, this would query the database.
-    console.warn("getRegistry method is a placeholder and needs implementation.");
-    return db.query.registries.findFirst({
-      where: eq(registries.id, id),
-      with: {
-        base: true,
-        customer: true,
-      }
-    });
+    // TODO: Implement when registries table is created
+    throw new Error("Registry export not implemented yet");
   }
 }
