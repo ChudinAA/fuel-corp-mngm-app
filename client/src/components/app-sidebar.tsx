@@ -53,6 +53,7 @@ import {
   Database,
   Coins,
   UserCog,
+  BarChart3, // Import BarChart3 for the new section
 } from "lucide-react";
 
 const getMainMenuItems = () => [
@@ -138,6 +139,53 @@ const getFinanceMenuItems = (hasPermission: (module: string, action: string) => 
   },
 ].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
 
+// New function to get reports and planning menu items
+const getReportsMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
+  {
+    title: "Текущие отчеты",
+    url: "/reports/current",
+    icon: BarChart3, // Placeholder icon, can be changed
+    permission: "reports.view",
+  },
+  {
+    title: "Аналитические отчеты",
+    url: "/reports/analytics",
+    icon: BarChart3, // Placeholder icon
+    permission: "reports.view",
+  },
+  {
+    title: "Реестры",
+    url: "/reports/registries",
+    icon: BarChart3, // Placeholder icon
+    permission: "reports.view",
+  },
+  {
+    title: "Ежемесячный план",
+    url: "/reports/monthly-plan",
+    icon: BarChart3, // Placeholder icon
+    permission: "reports.create",
+  },
+  {
+    title: "Госконтракты",
+    url: "/reports/gov-contracts",
+    icon: BarChart3, // Placeholder icon
+    permission: "reports.view",
+  },
+  {
+    title: "БДР",
+    url: "/reports/budget",
+    icon: BarChart3, // Placeholder icon
+    permission: "reports.view",
+  },
+  {
+    title: "Управленческий отчет",
+    url: "/reports/management",
+    icon: BarChart3, // Placeholder icon
+    permission: "reports.view",
+  },
+].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
+
+
 const getAdminMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
   {
     title: "Пользователи",
@@ -177,6 +225,7 @@ export function AppSidebar() {
   const operationsMenuItems = getOperationsMenuItems(hasPermission);
   const dataMenuItems = getDataMenuItems(hasPermission);
   const financeMenuItems = getFinanceMenuItems(hasPermission);
+  const reportsMenuItems = getReportsMenuItems(hasPermission); // Get the new reports menu items
   const adminMenuItems = getAdminMenuItems(hasPermission);
 
   return (
@@ -306,6 +355,45 @@ export function AppSidebar() {
                         {financeMenuItems.map((item) => (
                           <SidebarMenuSubItem key={item.title}>
                             <SidebarMenuSubButton 
+                              asChild
+                              isActive={isActive(item.url)}
+                              data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
+                            >
+                              <Link href={item.url}>
+                                <item.icon className="h-4 w-4" />
+                                <span>{item.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* New Reports and Planning section */}
+        {reportsMenuItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <Collapsible asChild defaultOpen className="group/collapsible">
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton tooltip="Отчеты и планирование">
+                        <BarChart3 className="h-4 w-4" /> {/* Using BarChart3 as an example icon */}
+                        <span>Отчеты и планирование</span>
+                        <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {reportsMenuItems.map((item) => (
+                          <SidebarMenuSubItem key={item.title}>
+                            <SidebarMenuSubButton
                               asChild
                               isActive={isActive(item.url)}
                               data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}

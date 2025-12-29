@@ -27,6 +27,13 @@ import SettingsPage from "@/pages/admin/settings-page";
 import CashflowPage from "@/pages/finance/cashflow-page";
 import PaymentCalendarPage from "@/pages/finance/payment-calendar-page";
 import PriceCalculationPage from "@/pages/finance/price-calculation-page";
+import DailyReportsPage from "@/pages/reports/daily-reports-page";
+import AnalyticsPage from "@/pages/reports/analytics-page";
+import RegistriesPage from "@/pages/reports/registries-page";
+import MonthlyPlanPage from "@/pages/reports/monthly-plan-page";
+import GovContractsPage from "@/pages/reports/gov-contracts-page";
+import BudgetPage from "@/pages/reports/budget-page";
+import ManagementReportPage from "@/pages/reports/management-report-page";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -171,6 +178,48 @@ function Router() {
       <Route path="/finance/price-calculation">
         <AppLayout>
           <ProtectedRoute component={PriceCalculationPage} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/reports/daily">
+        <AppLayout>
+          <ProtectedRoute component={DailyReportsPage} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/reports/analytics">
+        <AppLayout>
+          <ProtectedRoute component={AnalyticsPage} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/reports/registries">
+        <AppLayout>
+          <ProtectedRoute component={RegistriesPage} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/reports/monthly-plan">
+        <AppLayout>
+          <ProtectedRoute component={MonthlyPlanPage} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/reports/gov-contracts">
+        <AppLayout>
+          <ProtectedRoute component={GovContractsPage} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/reports/budget">
+        <AppLayout>
+          <ProtectedRoute component={BudgetPage} />
+        </AppLayout>
+      </Route>
+      
+      <Route path="/reports/management">
+        <AppLayout>
+          <ProtectedRoute component={ManagementReportPage} />
         </AppLayout>
       </Route>
       
