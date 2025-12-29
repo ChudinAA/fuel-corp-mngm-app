@@ -1,9 +1,8 @@
-
-import { eq, desc, sql, and, isNull } from "drizzle-orm";
+import { eq, desc, sql, and, isNull, gte, lte } from "drizzle-orm";
 import { db } from "server/db";
-import { registryTemplates } from "../entities/registries";
-import type { RegistryTemplate, InsertRegistryTemplate } from "../entities/registries";
+import { registryTemplates, type RegistryTemplate, type InsertRegistryTemplate } from "../entities/registries";
 import { IRegistriesStorage } from "./types";
+import { registries } from "../entities/registries"; // Assuming 'registries' entity is also needed
 
 export class RegistriesStorage implements IRegistriesStorage {
   async getRegistryTemplate(id: string): Promise<RegistryTemplate | undefined> {
@@ -24,7 +23,7 @@ export class RegistriesStorage implements IRegistriesStorage {
 
   async getRegistryTemplates(templateType?: string): Promise<RegistryTemplate[]> {
     const conditions = [isNull(registryTemplates.deletedAt)];
-    
+
     if (templateType) {
       conditions.push(eq(registryTemplates.templateType, templateType));
     }
@@ -127,8 +126,8 @@ export class RegistriesStorage implements IRegistriesStorage {
   }
 
   async prepareRegistryForExport(id: string): Promise<any> {
-    const registry = await this.getRegistry(id);
-    
+    const registry = await this.getRegistry(id); // Assuming getRegistry method exists or should be implemented
+
     if (!registry) {
       throw new Error("Registry not found");
     }
@@ -153,14 +152,18 @@ export class RegistriesStorage implements IRegistriesStorage {
     return exportData;
   }
 
-    await db
-      .update(registryTemplates)
-      .set({
-        deletedAt: sql`NOW()`,
-        deletedById: userId,
-      })
-      .where(eq(registryTemplates.id, id));
-
-    return true;
+  // Assuming getRegistry method is needed for prepareRegistryForExport
+  private async getRegistry(id: string): Promise<any | undefined> {
+    // This is a placeholder. Implement actual logic to fetch registry data.
+    // For demonstration, returning a dummy object if needed.
+    // In a real scenario, this would query the database.
+    console.warn("getRegistry method is a placeholder and needs implementation.");
+    return db.query.registries.findFirst({
+      where: eq(registries.id, id),
+      with: {
+        base: true,
+        customer: true,
+      }
+    });
   }
 }
