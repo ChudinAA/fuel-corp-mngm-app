@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import * as React from "react";
 import { format } from "date-fns";
@@ -83,12 +82,12 @@ const ACTION_CONFIG: Record<string, {
   },
 };
 
-function AuditEntryItem({ 
-  entry, 
-  entityType, 
+function AuditEntryItem({
+  entry,
+  entityType,
   onRollback,
-}: { 
-  entry: AuditEntry; 
+}: {
+  entry: AuditEntry;
   entityType: string;
   onRollback: (auditLogId: string) => void;
 }) {
@@ -103,7 +102,7 @@ function AuditEntryItem({
 
   // Check if rollback is available for this operation
   const canRollback = ['CREATE', 'UPDATE', 'DELETE'].includes(entry.operation);
-  
+
   // Map entity type to permission module
   const getPermissionModule = (entityType: string): string => {
     const moduleMap: Record<string, string> = {
@@ -163,26 +162,26 @@ function AuditEntryItem({
       });
       return Object.keys(result).length > 0 ? result : null;
     }
-    
+
     // For CREATE, don't show changes by default, but if it's a rollback result (DELETE operation rollback), show what was deleted
     if (entry.operation === 'CREATE') {
       // Check if this is a rollback result by looking at userName
       if (entry.userName?.includes('откат')) return null;
       return null;
     }
-    
+
     // For UPDATE, use changedFields from backend (already normalized)
     if (!entry.changedFields || entry.changedFields.length === 0) return null;
-    
+
     const result: Record<string, { old: any; new: any }> = {};
-    
+
     entry.changedFields.forEach(field => {
       result[field] = {
         old: entry.oldData?.[field],
         new: entry.newData?.[field]
       };
     });
-    
+
     return result;
   }, [entry]);
 
@@ -200,9 +199,16 @@ function AuditEntryItem({
               <Badge variant="outline" className={config.color}>
                 {config.label}
               </Badge>
+              {entry.userName?.includes('откат') ? (
+                <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300 font-bold">
+                  {entry.userName.includes('откат создания') ? '(откат создания)' :
+                   entry.userName.includes('откат изменения') ? '(откат изменения)' :
+                   entry.userName.includes('откат удаления') ? '(откат удаления)' : '(откат)'}
+                </Badge>
+              ) : null}
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <User className="h-3.5 w-3.5" />
-                <span className="font-medium">{entry.userName}</span>
+                <span className="font-medium">{entry.userName?.replace(/\s*\(откат.*?\)\s*/g, '')}</span>
               </div>
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Clock className="h-3.5 w-3.5" />
@@ -236,7 +242,7 @@ function AuditEntryItem({
                 onClick={() => setExpanded(!expanded)}
               >
                 <FileText className="mr-1.5 h-3.5 w-3.5" />
-                {expanded 
+                {expanded
                   ? (entry.operation === 'DELETE' ? "Скрыть удалённые данные" : entry.operation === 'RESTORE' ? "Скрыть восстановленные данные" : "Скрыть изменения")
                   : (entry.operation === 'DELETE' ? "Показать удалённые данные" : entry.operation === 'RESTORE' ? "Показать восстановленные данные" : "Показать изменения")
                 }
@@ -316,11 +322,11 @@ function AuditEntryItem({
           <AlertDialogHeader>
             <AlertDialogTitle>Подтверждение отката</AlertDialogTitle>
             <AlertDialogDescription>
-              {entry.operation === 'CREATE' && 
+              {entry.operation === 'CREATE' &&
                 'Это действие удалит созданную запись. Вы уверены?'}
-              {entry.operation === 'UPDATE' && 
+              {entry.operation === 'UPDATE' &&
                 'Это действие восстановит предыдущие значения полей. Вы уверены?'}
-              {entry.operation === 'DELETE' && 
+              {entry.operation === 'DELETE' &&
                 'Это действие восстановит удалённую запись. Вы уверены?'}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -396,9 +402,9 @@ export function AuditPanel({
           ) : (
             <div className="space-y-3">
               {auditHistory.map((entry) => (
-                <AuditEntryItem 
-                  key={entry.id} 
-                  entry={entry} 
+                <AuditEntryItem
+                  key={entry.id}
+                  entry={entry}
                   entityType={entityType}
                   onRollback={handleRollback}
                 />

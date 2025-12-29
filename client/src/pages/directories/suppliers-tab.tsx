@@ -7,16 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Search, Building2, Pencil, Trash2, Warehouse, Droplets, Fuel } from "lucide-react";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
+import { AuditPanel } from "@/components/audit-panel";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Search, Building2, Pencil, Trash2, Warehouse, Droplets, Fuel, History } from "lucide-react";
 import type { Supplier, Base } from "@shared/schema";
 import { BASE_TYPE } from "@shared/constants";
 import { AddSupplierDialog } from "./suppliers-dialog";
@@ -28,6 +24,7 @@ export function SuppliersTab() {
   const [editingItem, setEditingItem] = useState<Supplier | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string; hasWarehouse?: boolean } | null>(null);
+  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: suppliers, isLoading: suppliersLoading } = useQuery<Supplier[]>({
@@ -53,7 +50,7 @@ export function SuppliersTab() {
     },
   });
 
-  const filteredSuppliers = suppliers?.filter(s => 
+  const filteredSuppliers = suppliers?.filter(s =>
     s.name.toLowerCase().includes(search.toLowerCase())
   ) || [];
 
@@ -79,24 +76,32 @@ export function SuppliersTab() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Поиск..." 
-                value={search} 
-                onChange={(e) => setSearch(e.target.value)} 
-                className="pl-9" 
-                data-testid="input-search-suppliers" 
+              <Input
+                placeholder="Поиск..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+                data-testid="input-search-suppliers"
               />
             </div>
             {hasPermission("directories", "create") && (
-              <AddSupplierDialog 
-                bases={bases} 
-                editItem={editingItem} 
-                onEditComplete={() => setEditingItem(null)} 
+              <AddSupplierDialog
+                bases={bases}
+                editItem={editingItem}
+                onEditComplete={() => setEditingItem(null)}
               />
             )}
+            <Button
+              variant="outline"
+              onClick={() => setAuditPanelOpen(true)}
+              title="Аудит всех поставщиков"
+            >
+              <History className="h-4 w-4 mr-2" />
+              История изменений
+            </Button>
           </div>
 
           {suppliersLoading ? (
@@ -265,6 +270,13 @@ export function SuppliersTab() {
             : "Вы уверены, что хотите удалить этого поставщика? Это действие нельзя отменить."
         }
         itemName={itemToDelete?.name}
+      />
+
+      <AuditPanel
+        open={auditPanelOpen}
+        onOpenChange={setAuditPanelOpen}
+        entityType="suppliers"
+        entityId=""
       />
     </Card>
   );

@@ -149,10 +149,16 @@ export class WarehouseStorage implements IWarehouseStorage {
   }
 
   async restoreWarehouse(id: string, userId?: string): Promise<boolean> {
-    await db.update(warehouses).set({
-      deletedAt: null,
-      deletedById: null,
-    }).where(eq(warehouses.id, id));
+    await db.transaction(async (tx) => {
+      // Restore the warehouse
+      await tx.update(warehouses).set({
+        deletedAt: null,
+        deletedById: null,
+      }).where(eq(warehouses.id, id));
+
+      // Note: warehouse-base relations are not deleted on soft delete,
+      // so no need to restore them
+    });
     return true;
   }
 

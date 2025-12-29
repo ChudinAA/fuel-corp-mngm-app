@@ -19,6 +19,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
+import { AuditPanel } from "@/components/audit-panel";
 import { 
   Plus, 
   Pencil, 
@@ -30,7 +31,8 @@ import {
   Eye,
   Edit3,
   Plus as PlusIcon,
-  Trash
+  Trash,
+  History
 } from "lucide-react";
 import type { Role } from "@shared/schema";
 
@@ -265,6 +267,7 @@ export default function RolesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
   const [roleToEdit, setRoleToEdit] = useState<Role | null>(null);
+  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
   const { hasPermission } = useAuth();
 
@@ -344,9 +347,19 @@ export default function RolesPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Поиск ролей..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-search-roles" />
+            <div className="flex items-center gap-4">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Поиск ролей..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-search-roles" />
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => setAuditPanelOpen(true)}
+                title="Аудит всех ролей"
+              >
+                <History className="h-4 w-4 mr-2" />
+                История изменений
+              </Button>
             </div>
 
             <div className="border rounded-lg">
@@ -450,6 +463,13 @@ export default function RolesPage() {
         title="Удалить роль?"
         description="Вы уверены, что хотите удалить эту роль? Это действие нельзя отменить."
         itemName={roleToDelete?.name}
+      />
+
+      <AuditPanel
+        open={auditPanelOpen}
+        onOpenChange={setAuditPanelOpen}
+        entityType="roles"
+        entityId=""
       />
     </div>
   );

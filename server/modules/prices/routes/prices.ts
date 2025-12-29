@@ -8,6 +8,79 @@ import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 
 export function registerPricesRoutes(app: Express) {
   app.get(
+    "/api/prices/calculate-selection",
+    requireAuth,
+    requirePermission("prices", "view"),
+    async (req, res) => {
+      try {
+        const {
+          counterpartyId,
+          counterpartyType,
+          basis,
+          dateFrom,
+          dateTo,
+          priceId,
+        } = req.query;
+
+        if (
+          !counterpartyId ||
+          !counterpartyType ||
+          !basis ||
+          !dateFrom ||
+          !dateTo
+        ) {
+          return res
+            .status(400)
+            .json({ message: "Не указаны обязательные параметры" });
+        }
+
+        const totalVolume = await storage.prices.calculatePriceSelection(
+          counterpartyId as string,
+          counterpartyType as string,
+          basis as string,
+          dateFrom as string,
+          dateTo as string,
+          priceId as string | undefined
+        );
+
+        res.json({ totalVolume: totalVolume.toFixed(2) });
+      } catch (error) {
+        console.error("Selection calculation error:", error);
+        res.status(500).json({ message: "Ошибка расчета выборки" });
+      }
+    }
+  );
+
+  app.get(
+    "/api/prices/check-date-overlaps",
+    requireAuth,
+    requirePermission("prices", "view"),
+    async (req, res) => {
+      const {
+        counterpartyId,
+        counterpartyType,
+        counterpartyRole,
+        basis,
+        productType,
+        dateFrom,
+        dateTo,
+        excludeId,
+      } = req.query;
+      const result = await storage.prices.checkPriceDateOverlaps(
+        String(counterpartyId),
+        String(counterpartyType),
+        String(counterpartyRole),
+        String(basis),
+        String(productType),
+        String(dateFrom),
+        String(dateTo),
+        excludeId ? String(excludeId) : undefined
+      );
+      res.json(result);
+    }
+  );
+
+  app.get(
     "/api/prices/:id",
     requireAuth,
     requirePermission("prices", "view"),
@@ -140,76 +213,4 @@ export function registerPricesRoutes(app: Express) {
     }
   );
 
-  app.get(
-    "/api/prices/calculate-selection",
-    requireAuth,
-    requirePermission("prices", "view"),
-    async (req, res) => {
-      try {
-        const {
-          counterpartyId,
-          counterpartyType,
-          basis,
-          dateFrom,
-          dateTo,
-          priceId,
-        } = req.query;
-
-        if (
-          !counterpartyId ||
-          !counterpartyType ||
-          !basis ||
-          !dateFrom ||
-          !dateTo
-        ) {
-          return res
-            .status(400)
-            .json({ message: "Не указаны обязательные параметры" });
-        }
-
-        const totalVolume = await storage.prices.calculatePriceSelection(
-          counterpartyId as string,
-          counterpartyType as string,
-          basis as string,
-          dateFrom as string,
-          dateTo as string,
-          priceId as string | undefined
-        );
-
-        res.json({ totalVolume: totalVolume.toFixed(2) });
-      } catch (error) {
-        console.error("Selection calculation error:", error);
-        res.status(500).json({ message: "Ошибка расчета выборки" });
-      }
-    }
-  );
-
-  app.get(
-    "/api/prices/check-date-overlaps",
-    requireAuth,
-    requirePermission("prices", "view"),
-    async (req, res) => {
-      const {
-        counterpartyId,
-        counterpartyType,
-        counterpartyRole,
-        basis,
-        productType,
-        dateFrom,
-        dateTo,
-        excludeId,
-      } = req.query;
-      const result = await storage.prices.checkPriceDateOverlaps(
-        String(counterpartyId),
-        String(counterpartyType),
-        String(counterpartyRole),
-        String(basis),
-        String(productType),
-        String(dateFrom),
-        String(dateTo),
-        excludeId ? String(excludeId) : undefined
-      );
-      res.json(result);
-    }
-  );
-}
+  }

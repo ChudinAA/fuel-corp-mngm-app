@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -8,22 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Users, Pencil, Trash2 } from "lucide-react";
-import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { EntityActionsMenu } from "@/components/entity-actions-menu";
+import { AuditPanel } from "@/components/audit-panel";
+import { Pencil, Trash2, Search, Users, History } from "lucide-react";
+import { CustomerFormDialog } from "./customers-dialog";
 import type { Customer } from "@shared/schema";
-import { AddCustomerDialog } from "./customers-dialog";
-import { CUSTOMER_MODULE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 
 export function CustomersTab() {
-  const { hasPermission } = useAuth();
   const [search, setSearch] = useState("");
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
 
   const { data: customers, isLoading } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
@@ -58,7 +58,7 @@ export function CustomersTab() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
@@ -72,6 +72,14 @@ export function CustomersTab() {
             {hasPermission("directories", "create") && (
               <AddCustomerDialog editCustomer={editingCustomer} onEditComplete={() => setEditingCustomer(null)} />
             )}
+            <Button
+              variant="outline"
+              onClick={() => setAuditPanelOpen(true)}
+              title="Аудит всех покупателей"
+            >
+              <History className="h-4 w-4 mr-2" />
+              История изменений
+            </Button>
           </div>
 
           {isLoading ? (
@@ -157,6 +165,12 @@ export function CustomersTab() {
             </div>
           )}
         </div>
+
+        <AuditPanel 
+          isOpen={auditPanelOpen} 
+          onClose={() => setAuditPanelOpen(false)} 
+          entityType="customers" 
+        />
       </CardContent>
 
       <DeleteConfirmDialog

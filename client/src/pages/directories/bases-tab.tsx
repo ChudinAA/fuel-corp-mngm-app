@@ -7,22 +7,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, MapPin, Pencil, Trash2, Droplets, Fuel } from "lucide-react";
-import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { EntityActionsMenu } from "@/components/entity-actions-menu";
+import { AuditPanel } from "@/components/audit-panel";
+import { Pencil, Trash2, Search, MapPin, History } from "lucide-react";
+import { BaseFormDialog } from "./bases-dialog";
 import type { Base } from "@shared/schema";
-import { AddBaseDialog } from "./bases-dialog";
 import { BASE_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 
 export function BasesTab() {
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "wholesale" | "refueling">("all");
-  const [editingItem, setEditingItem] = useState<Base | null>(null);
+  const [editingBase, setEditingBase] = useState<Base | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [baseToDelete, setBaseToDelete] = useState<Base | null>(null);
+  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
   const { hasPermission } = useAuth();
 
@@ -61,7 +61,7 @@ export function BasesTab() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
@@ -82,7 +82,15 @@ export function BasesTab() {
                 <SelectItem value={BASE_TYPE.REFUELING}>Заправка</SelectItem>
               </SelectContent>
             </Select>
-            {hasPermission("directories", "create") && <AddBaseDialog editItem={editingItem} onEditComplete={() => setEditingItem(null)} />}
+            {hasPermission("directories", "create") && <AddBaseDialog editItem={editingBase} onEditComplete={() => setEditingBase(null)} />}
+            <Button
+              variant="outline"
+              onClick={() => setAuditPanelOpen(true)}
+              title="Аудит всех базисов"
+            >
+              <History className="h-4 w-4 mr-2" />
+              История изменений
+            </Button>
           </div>
 
           {isLoading ? (
@@ -189,6 +197,13 @@ export function BasesTab() {
         title="Удалить базис?"
         description="Вы уверены, что хотите удалить этот базис? Это действие нельзя отменить."
         itemName={itemToDelete?.name}
+      />
+
+      <AuditPanel
+        open={auditPanelOpen}
+        onOpenChange={setAuditPanelOpen}
+        entityType="bases"
+        entityId=""
       />
     </Card>
   );

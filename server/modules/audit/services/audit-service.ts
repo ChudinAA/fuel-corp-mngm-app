@@ -67,22 +67,36 @@ export class AuditService {
 
   /**
    * Normalize data for consistent audit logging
-   * Converts numeric strings to consistent format
+   * Converts numeric strings to consistent format and handles objects/arrays
    */
   private static normalizeDataForAudit(data: any): any {
-    if (!data || typeof data !== 'object') {
+    if (data === null || data === undefined) {
+      return data;
+    }
+
+    // Handle arrays - skip them in audit (like baseIds, warehouseBases)
+    if (Array.isArray(data)) {
+      return undefined;
+    }
+
+    if (typeof data !== 'object') {
       return data;
     }
 
     const normalized: any = {};
     for (const [key, value] of Object.entries(data)) {
-      // Skip null/undefined
+      // Skip arrays and nested objects (relations)
+      if (Array.isArray(value) || (value && typeof value === 'object' && !value.toISOString)) {
+        continue;
+      }
+
+      // Keep null/undefined as is
       if (value === null || value === undefined) {
         normalized[key] = value;
         continue;
       }
 
-      // Normalize numeric strings to remove trailing zeros
+      // Normalize numeric strings to remove trailing zeros (but keep zeros)
       if (typeof value === 'string' && /^\d+\.?\d*$/.test(value)) {
         const num = parseFloat(value);
         normalized[key] = num.toString();

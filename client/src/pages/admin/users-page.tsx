@@ -21,6 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
+import { AuditPanel } from "@/components/audit-panel";
 import { 
   Plus, 
   Pencil, 
@@ -30,7 +31,8 @@ import {
   Users,
   Shield,
   Mail,
-  Key
+  Key,
+  History
 } from "lucide-react";
 import type { User, Role } from "@shared/schema";
 
@@ -285,6 +287,7 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
   const { hasPermission } = useAuth();
 
@@ -401,6 +404,14 @@ export default function UsersPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <Button
+                variant="outline"
+                onClick={() => setAuditPanelOpen(true)}
+                title="Аудит всех пользователей"
+              >
+                <History className="h-4 w-4 mr-2" />
+                История изменений
+              </Button>
             </div>
 
             <div className="border rounded-lg">
@@ -512,6 +523,13 @@ export default function UsersPage() {
         title="Удалить пользователя?"
         description="Вы уверены, что хотите удалить этого пользователя? Это действие нельзя отменить."
         itemName={userToDelete ? `${userToDelete.firstName} ${userToDelete.lastName}` : undefined}
+      />
+
+      <AuditPanel
+        open={auditPanelOpen}
+        onOpenChange={setAuditPanelOpen}
+        entityType="users"
+        entityId=""
       />
     </div>
   );
