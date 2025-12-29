@@ -16,3 +16,4 @@ export * from "server/modules/users/entities/roles";
 export * from "server/modules/audit/entities/audit";
 export * from "server/modules/finance/entities/finance";
 export * from "server/modules/reports/entities/reports";
+export * from "server/modules/registries/entities/registries";
