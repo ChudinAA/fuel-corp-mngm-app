@@ -27,28 +27,6 @@ export const savedReports = pgTable("saved_reports", {
   createdAtIdx: index("saved_reports_created_at_idx").on(table.createdAt),
 }));
 
-// Таблица для ежемесячных планов
-export const monthlyPlans = pgTable("monthly_plans", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  planMonth: timestamp("plan_month", { mode: "string" }).notNull(), // Месяц планирования
-  planType: text("plan_type").notNull(), // 'sales', 'warehouse_volume'
-  baseId: uuid("base_id"), // Связь с базой/аэропортом
-  productType: text("product_type"), // Тип продукта
-  plannedVolume: text("planned_volume"), // Плановый объем
-  plannedRevenue: text("planned_revenue"), // Плановая выручка
-  notes: text("notes"),
-  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: "string" }),
-  createdById: uuid("created_by_id").references(() => users.id).notNull(),
-  updatedById: uuid("updated_by_id").references(() => users.id),
-  deletedAt: timestamp("deleted_at", { mode: "string" }),
-  deletedById: uuid("deleted_by_id").references(() => users.id),
-}, (table) => ({
-  planMonthIdx: index("monthly_plans_plan_month_idx").on(table.planMonth),
-  planTypeIdx: index("monthly_plans_plan_type_idx").on(table.planType),
-  baseIdIdx: index("monthly_plans_base_id_idx").on(table.baseId),
-}));
-
 // Таблица для госконтрактов
 export const governmentContracts = pgTable("government_contracts", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -109,10 +87,6 @@ export const savedReportsRelations = relations(savedReports, ({ one }) => ({
   createdBy: one(users, { fields: [savedReports.createdById], references: [users.id] }),
 }));
 
-export const monthlyPlansRelations = relations(monthlyPlans, ({ one }) => ({
-  createdBy: one(users, { fields: [monthlyPlans.createdById], references: [users.id] }),
-}));
-
 export const governmentContractsRelations = relations(governmentContracts, ({ one }) => ({
   createdBy: one(users, { fields: [governmentContracts.createdById], references: [users.id] }),
 }));
@@ -124,7 +98,6 @@ export const budgetIncomeExpenseRelations = relations(budgetIncomeExpense, ({ on
 // ============ INSERT SCHEMAS ============
 
 export const insertSavedReportSchema = createInsertSchema(savedReports);
-export const insertMonthlyPlanSchema = createInsertSchema(monthlyPlans);
 export const insertGovernmentContractSchema = createInsertSchema(governmentContracts);
 export const insertBudgetIncomeExpenseSchema = createInsertSchema(budgetIncomeExpense);
 
@@ -132,9 +105,6 @@ export const insertBudgetIncomeExpenseSchema = createInsertSchema(budgetIncomeEx
 
 export type SavedReport = typeof savedReports.$inferSelect;
 export type InsertSavedReport = z.infer<typeof insertSavedReportSchema>;
-
-export type MonthlyPlan = typeof monthlyPlans.$inferSelect;
-export type InsertMonthlyPlan = z.infer<typeof insertMonthlyPlanSchema>;
 
 export type GovernmentContract = typeof governmentContracts.$inferSelect;
 export type InsertGovernmentContract = z.infer<typeof insertGovernmentContractSchema>;
