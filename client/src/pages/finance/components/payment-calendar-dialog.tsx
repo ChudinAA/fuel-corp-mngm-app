@@ -1,9 +1,9 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +46,7 @@ interface PaymentCalendarDialogProps {
 
 export function PaymentCalendarDialog({ open, onOpenChange, item }: PaymentCalendarDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isRecurring, setIsRecurring] = useState(item?.isRecurring || false);
 
   const { register, handleSubmit, watch, setValue } = useForm<PaymentItem>({
@@ -72,7 +73,7 @@ export function PaymentCalendarDialog({ open, onOpenChange, item }: PaymentCalen
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ...data, isRecurring }),
+        body: JSON.stringify({ ...data, isRecurring, userId: user?.id, action: "create" }),
       });
       if (!response.ok) throw new Error("Ошибка при создании платежа");
       return response.json();
@@ -94,7 +95,7 @@ export function PaymentCalendarDialog({ open, onOpenChange, item }: PaymentCalen
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ...data, isRecurring }),
+        body: JSON.stringify({ ...data, isRecurring, userId: user?.id, action: "update" }),
       });
       if (!response.ok) throw new Error("Ошибка при обновлении платежа");
       return response.json();

@@ -1,6 +1,6 @@
 
 import type { Express } from "express";
-import { requireAuth, requirePermission } from "../../users/routes/auth";
+import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { logAudit } from "../../audit/middleware/audit-middleware";
 import { storage } from "../../../storage/index";
 

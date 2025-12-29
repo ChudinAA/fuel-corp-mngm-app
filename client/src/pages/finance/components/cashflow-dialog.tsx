@@ -1,9 +1,9 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +47,7 @@ interface CashflowDialogProps {
 export function CashflowDialog({ open, onOpenChange, transaction }: CashflowDialogProps) {
   const { toast } = useToast();
   const [isPlanned, setIsPlanned] = useState(transaction?.isPlanned || false);
+  const { user } = useAuth(); // Assuming useAuth provides user information
 
   const { register, handleSubmit, watch, setValue } = useForm<CashflowTransaction>({
     defaultValues: transaction || {
@@ -71,7 +72,7 @@ export function CashflowDialog({ open, onOpenChange, transaction }: CashflowDial
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ...data, isPlanned }),
+        body: JSON.stringify({ ...data, isPlanned, createdBy: user?.id, createdAt: new Date().toISOString() }), // Added audit fields
       });
       if (!response.ok) throw new Error("Ошибка при создании транзакции");
       return response.json();
@@ -100,7 +101,7 @@ export function CashflowDialog({ open, onOpenChange, transaction }: CashflowDial
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ...data, isPlanned }),
+        body: JSON.stringify({ ...data, isPlanned, updatedBy: user?.id, updatedAt: new Date().toISOString() }), // Added audit fields
       });
       if (!response.ok) throw new Error("Ошибка при обновлении транзакции");
       return response.json();

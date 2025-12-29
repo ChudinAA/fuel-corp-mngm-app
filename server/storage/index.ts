@@ -12,9 +12,9 @@ import { MovementStorage } from "../modules/movement/storage/movement-storage";
 import { OptStorage } from "../modules/opt/storage/opt-storage";
 import { AircraftRefuelingStorage } from "../modules/refueling/storage/aircraft-refueling-storage";
 import { DeliveryStorage } from "../modules/delivery/storage/delivery-storage";
-import { CashflowStorage } from "../modules/finance/storage/cashflow-storage-class";
-import { PaymentCalendarStorage } from "../modules/finance/storage/payment-calendar-storage-class";
-import { PriceCalculationStorage } from "../modules/finance/storage/price-calculation-storage-class";
+import { CashflowStorage } from "../modules/finance/storage/cashflow-storage";
+import { PaymentCalendarStorage } from "../modules/finance/storage/payment-calendar-storage";
+import { PriceCalculationStorage } from "../modules/finance/storage/price-calculation-storage";
 
 export * from "./types";
 

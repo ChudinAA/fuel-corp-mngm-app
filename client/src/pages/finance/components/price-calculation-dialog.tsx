@@ -1,8 +1,8 @@
-
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +48,7 @@ interface PriceCalculationDialogProps {
 
 export function PriceCalculationDialog({ open, onOpenChange, calculation }: PriceCalculationDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth(); // Use auth hook for user info
   const [isTemplate, setIsTemplate] = useState(calculation?.isTemplate || false);
 
   const { register, handleSubmit, watch, setValue } = useForm<PriceCalculation>({
@@ -103,6 +104,9 @@ export function PriceCalculationDialog({ open, onOpenChange, calculation }: Pric
           sellingPrice: sellingPrice.toFixed(2),
           margin: margin.toFixed(2),
           marginPercentage: marginPercentage.toFixed(2),
+          // Add audit fields
+          createdBy: user?.id,
+          createdAt: new Date().toISOString(),
         }),
       });
       if (!response.ok) throw new Error("Ошибка при создании расчета");
@@ -150,6 +154,9 @@ export function PriceCalculationDialog({ open, onOpenChange, calculation }: Pric
           sellingPrice: sellingPrice.toFixed(2),
           margin: margin.toFixed(2),
           marginPercentage: marginPercentage.toFixed(2),
+          // Add audit fields
+          updatedBy: user?.id,
+          updatedAt: new Date().toISOString(),
         }),
       });
       if (!response.ok) throw new Error("Ошибка при обновлении расчета");

@@ -118,6 +118,47 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
     isSystem: "Системная роль",
     isDefault: "Роль по умолчанию",
   },
+  // Finance entities
+  cashflow_transactions: {
+    transactionDate: 'Дата транзакции',
+    category: 'Категория',
+    subcategory: 'Подкатегория',
+    amount: 'Сумма',
+    currency: 'Валюта',
+    description: 'Описание',
+    counterparty: 'Контрагент',
+    paymentMethod: 'Способ оплаты',
+    isPlanned: 'Планируемый',
+    notes: 'Примечания',
+  },
+  payment_calendar: {
+    dueDate: 'Срок оплаты',
+    title: 'Название',
+    description: 'Описание',
+    amount: 'Сумма',
+    currency: 'Валюта',
+    category: 'Категория',
+    counterparty: 'Контрагент',
+    status: 'Статус',
+    paidDate: 'Дата оплаты',
+    paidAmount: 'Оплаченная сумма',
+    isRecurring: 'Повторяющийся',
+    recurringPeriod: 'Период повторения',
+    notes: 'Примечания',
+  },
+  price_calculations: {
+    name: 'Название',
+    productType: 'Тип продукта',
+    baseCost: 'Базовая стоимость',
+    additionalCosts: 'Дополнительные расходы',
+    totalCost: 'Общая себестоимость',
+    sellingPrice: 'Цена продажи',
+    margin: 'Маржа',
+    marginPercentage: 'Маржа %',
+    isTemplate: 'Шаблон',
+    notes: 'Примечания',
+  },
+  // Add more entity types and their field labels as needed
 };
 
 /**
