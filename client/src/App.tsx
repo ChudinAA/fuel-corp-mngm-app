@@ -108,139 +108,139 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
-      
+
       <Route path="/">
         <AppLayout>
           <ProtectedRoute component={DashboardPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/opt">
         <AppLayout>
           <ProtectedRoute component={OptPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/refueling">
         <AppLayout>
           <ProtectedRoute component={RefuelingPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/exchange">
         <AppLayout>
           <ProtectedRoute component={ExchangePage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/movement">
         <AppLayout>
           <ProtectedRoute component={MovementPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/warehouses">
         <AppLayout>
           <ProtectedRoute component={WarehousesPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/prices">
         <AppLayout>
           <ProtectedRoute component={PricesPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/delivery">
         <AppLayout>
           <ProtectedRoute component={DeliveryPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/directories">
         <AppLayout>
           <ProtectedRoute component={DirectoriesPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/finance/cashflow">
         <AppLayout>
           <ProtectedRoute component={CashflowPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/finance/payment-calendar">
         <AppLayout>
           <ProtectedRoute component={PaymentCalendarPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/finance/price-calculation">
         <AppLayout>
           <ProtectedRoute component={PriceCalculationPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/reports/daily">
         <AppLayout>
           <ProtectedRoute component={DailyReportsPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/reports/analytics">
         <AppLayout>
           <ProtectedRoute component={AnalyticsPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/reports/registries">
         <AppLayout>
           <ProtectedRoute component={RegistriesPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/reports/monthly-plan">
         <AppLayout>
           <ProtectedRoute component={MonthlyPlanPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/reports/gov-contracts">
         <AppLayout>
           <ProtectedRoute component={GovContractsPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/reports/budget">
         <AppLayout>
           <ProtectedRoute component={BudgetPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/reports/management">
         <AppLayout>
           <ProtectedRoute component={ManagementReportPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/admin/users">
         <AppLayout>
           <ProtectedRoute component={UsersPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/admin/roles">
         <AppLayout>
           <ProtectedRoute component={RolesPage} />
         </AppLayout>
       </Route>
-      
+
       <Route path="/admin/settings">
         <AppLayout>
           <ProtectedRoute component={SettingsPage} />
         </AppLayout>
       </Route>
-      
+
       <Route component={NotFound} />
     </Switch>
   );
