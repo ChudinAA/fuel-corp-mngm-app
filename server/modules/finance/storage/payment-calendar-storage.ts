@@ -1,4 +1,3 @@
-
 import { db } from "../../../db";
 import { paymentCalendar } from "../entities/finance";
 import type { InsertPaymentCalendarItem } from "./types";
@@ -77,3 +76,7 @@ export async function getUpcomingPayments(daysAhead: number = 7) {
     )
     .orderBy(paymentCalendar.dueDate);
 }
+
+import { PaymentCalendarStorage } from "./payment-calendar-storage-class";
+
+export const paymentCalendarStorage = new PaymentCalendarStorage();

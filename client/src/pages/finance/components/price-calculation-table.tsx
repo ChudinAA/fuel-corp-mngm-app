@@ -16,6 +16,7 @@ import { Pencil, Trash2, Copy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { PriceCalculationDialog } from "./price-calculation-dialog";
+import { AuditHistoryButton } from "@/components/audit-history-button";
 
 interface PriceCalculation {
   id: string;
@@ -99,7 +100,7 @@ export function PriceCalculationTable({ templateFilter }: PriceCalculationTableP
               <TableHead className="text-right">Маржа</TableHead>
               <TableHead className="text-right">Маржа %</TableHead>
               <TableHead>Дата создания</TableHead>
-              {hasPermission("finance", "edit") && <TableHead className="w-[100px]">Действия</TableHead>}
+              <TableHead className="text-right">Действия</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -130,28 +131,35 @@ export function PriceCalculationTable({ templateFilter }: PriceCalculationTableP
                     {parseFloat(calculation.marginPercentage).toFixed(2)}%
                   </TableCell>
                   <TableCell>{formatDate(calculation.createdAt)}</TableCell>
-                  {hasPermission("finance", "edit") && (
-                    <TableCell>
-                      <div className="flex gap-2">
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-2">
+                      <AuditHistoryButton
+                        entityType="price_calculations"
+                        entityId={calculation.id}
+                        entityName={calculation.name}
+                        variant="ghost"
+                        size="sm"
+                      />
+                      {hasPermission("finance", "edit") && (
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="sm"
                           onClick={() => setEditingCalculation(calculation)}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        {hasPermission("finance", "delete") && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteMutation.mutate(calculation.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  )}
+                      )}
+                      {hasPermission("finance", "delete") && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteMutation.mutate(calculation.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))
             ) : (

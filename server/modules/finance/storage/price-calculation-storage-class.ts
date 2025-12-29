@@ -2,7 +2,7 @@
 import { db } from "../../../db";
 import { priceCalculations } from "../entities/finance";
 import type { InsertPriceCalculation, PriceCalculation } from "./types";
-import { eq, and, isNull, desc } from "drizzle-orm";
+import { eq, and, isNull, desc, sql } from "drizzle-orm";
 
 export interface IPriceCalculationStorage {
   getPriceCalculation(id: string): Promise<PriceCalculation | undefined>;

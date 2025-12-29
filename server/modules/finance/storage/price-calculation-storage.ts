@@ -1,8 +1,11 @@
-
 import { db } from "../../../db";
 import { priceCalculations } from "../entities/finance";
 import type { InsertPriceCalculation } from "./types";
 import { eq, and, isNull, desc } from "drizzle-orm";
+
+import { PriceCalculationStorage } from "./price-calculation-storage-class";
+
+export const priceCalculationStorage = new PriceCalculationStorage();
 
 export async function createPriceCalculation(data: InsertPriceCalculation) {
   const [calculation] = await db.insert(priceCalculations).values(data).returning();

@@ -16,6 +16,7 @@ import { Pencil, Trash2, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { PaymentCalendarDialog } from "./payment-calendar-dialog";
+import { AuditHistoryButton } from "@/components/audit-history-button";
 
 interface PaymentItem {
   id: string;
@@ -126,7 +127,7 @@ export function PaymentCalendarTable() {
               <TableHead>Категория</TableHead>
               <TableHead className="text-right">Сумма</TableHead>
               <TableHead>Статус</TableHead>
-              {hasPermission("finance", "edit") && <TableHead className="w-[120px]">Действия</TableHead>}
+              <TableHead className="text-right">Действия</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -149,43 +150,50 @@ export function PaymentCalendarTable() {
                       {statusLabels[item.status]}
                     </Badge>
                   </TableCell>
-                  {hasPermission("finance", "edit") && (
-                    <TableCell>
-                      <div className="flex gap-2">
-                        {item.status === 'pending' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => markAsPaidMutation.mutate(item.id)}
-                            title="Отметить как оплаченный"
-                          >
-                            <CheckCircle2 className="h-4 w-4 text-green-600" />
-                          </Button>
-                        )}
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-2">
+                      <AuditHistoryButton
+                        entityType="payment_calendar"
+                        entityId={item.id}
+                        entityName={item.title}
+                        variant="ghost"
+                        size="sm"
+                      />
+                      {item.status === 'pending' && hasPermission("finance", "edit") && (
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="sm"
+                          onClick={() => markAsPaidMutation.mutate(item.id)}
+                          title="Отметить как оплаченный"
+                        >
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        </Button>
+                      )}
+                      {hasPermission("finance", "edit") && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setEditingItem(item)}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        {hasPermission("finance", "delete") && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteMutation.mutate(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  )}
+                      )}
+                      {hasPermission("finance", "delete") && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteMutation.mutate(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   Нет данных
                 </TableCell>
               </TableRow>

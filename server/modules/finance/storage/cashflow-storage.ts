@@ -1,4 +1,3 @@
-
 import { db } from "../../../db";
 import { cashflowTransactions } from "../entities/finance";
 import type { InsertCashflowTransaction, CashflowTransaction } from "./types";
