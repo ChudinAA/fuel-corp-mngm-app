@@ -15,6 +15,8 @@ import { DeliveryStorage } from "../modules/delivery/storage/delivery-storage";
 import { CashflowStorage } from "../modules/finance/storage/cashflow-storage";
 import { PaymentCalendarStorage } from "../modules/finance/storage/payment-calendar-storage";
 import { PriceCalculationStorage } from "../modules/finance/storage/price-calculation-storage";
+import { ReportsStorage } from "../modules/reports/storage/reports-storage";
+import { AnalyticsStorage } from "../modules/analytics/storage/analytics-storage";
 
 export * from "./types";
 
@@ -36,6 +38,8 @@ export class Storage {
   public cashflow: CashflowStorage;
   public payments: PaymentCalendarStorage;
   public priceCalculations: PriceCalculationStorage;
+  public reports: ReportsStorage;
+  public analytics: AnalyticsStorage;
 
   constructor() {
     this.users = new UserStorage();
@@ -55,6 +59,8 @@ export class Storage {
     this.cashflow = new CashflowStorage();
     this.payments = new PaymentCalendarStorage();
     this.priceCalculations = new PriceCalculationStorage();
+    this.reports = new ReportsStorage();
+    this.analytics = new AnalyticsStorage();
   }
 }
 

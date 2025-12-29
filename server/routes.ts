@@ -20,6 +20,8 @@ import { registerAuditRoutes } from "./modules/audit/routes/audit";
 import { registerCashflowRoutes } from "./modules/finance/routes/cashflow";
 import { registerPaymentCalendarRoutes } from "./modules/finance/routes/payment-calendar";
 import { registerPriceCalculationRoutes } from "./modules/finance/routes/price-calculation";
+import { registerReportsRoutes } from "./modules/reports/routes/reports";
+import { registerAnalyticsRoutes } from "./modules/analytics/routes/analytics";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -52,6 +54,8 @@ export async function registerRoutes(
   registerCashflowRoutes(app);
   registerPaymentCalendarRoutes(app);
   registerPriceCalculationRoutes(app);
+  registerReportsRoutes(app);
+  registerAnalyticsRoutes(app);
 
   return httpServer;
 }

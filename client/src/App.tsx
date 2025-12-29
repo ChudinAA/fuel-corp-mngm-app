@@ -181,7 +181,7 @@ function Router() {
         </AppLayout>
       </Route>
 
-      <Route path="/reports/daily">
+      <Route path="/reports/current">
         <AppLayout>
           <ProtectedRoute component={DailyReportsPage} />
         </AppLayout>
