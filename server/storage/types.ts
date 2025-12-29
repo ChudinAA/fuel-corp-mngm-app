@@ -13,25 +13,6 @@ export * from "server/modules/delivery/storage/types";
 export * from "server/modules/dashboard/storage/types";
 export * from "server/modules/users/storage/types";
 export * from "server/modules/finance/storage/types";
-import type { IPriceCalculationStorage } from "../modules/finance/storage/types";
-import type { IReportsStorage } from "../modules/reports/storage/types";
-import type { IAnalyticsStorage } from "../modules/analytics/storage/types";
-
-export interface IStorage {
-  bases: any;
-  users: any;
-  movement: any;
-  refueling: any;
-  opt: any;
-  exchange: any;
-  warehouses: any;
-  suppliers: any;
-  customers: any;
-  logistics: any;
-  prices: any;
-  delivery: any;
-  dashboard: any;
-  finance: IPriceCalculationStorage;
-  reports: IReportsStorage;
-  analytics: IAnalyticsStorage;
-}
+export * from "server/modules/reports/storage/types";
+export * from "server/modules/analytics/storage/types";
+export * from "server/modules/registries/storage/types";
