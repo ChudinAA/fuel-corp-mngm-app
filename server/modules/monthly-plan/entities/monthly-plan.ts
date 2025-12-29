@@ -4,12 +4,13 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
+import { bases } from "../../bases/entities/bases";
 
 export const monthlyPlans = pgTable("monthly_plans", {
   id: uuid("id").defaultRandom().primaryKey(),
   planMonth: timestamp("plan_month", { mode: "string" }).notNull(),
   planType: text("plan_type").notNull(), // 'sales', 'warehouse_volume'
-  baseId: uuid("base_id"),
+  baseId: uuid("base_id").references(() => bases.id),
   productType: text("product_type"),
   plannedVolume: text("planned_volume"),
   plannedRevenue: text("planned_revenue"),
@@ -30,6 +31,7 @@ export const monthlyPlans = pgTable("monthly_plans", {
 
 export const monthlyPlansRelations = relations(monthlyPlans, ({ one }) => ({
   createdBy: one(users, { fields: [monthlyPlans.createdById], references: [users.id] }),
+  base: one(bases, { fields: [monthlyPlans.baseId], references: [bases.id] }),
 }));
 
 // ============ INSERT SCHEMAS ============

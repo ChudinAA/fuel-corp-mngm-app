@@ -14,11 +14,17 @@ import { Pencil, Trash2, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
+interface Base {
+  id: string;
+  name: string;
+}
+
 interface MonthlyPlan {
   id: string;
   planMonth: string;
   planType: string;
   baseId?: string;
+  base?: Base;
   productType?: string;
   plannedVolume?: string;
   plannedRevenue?: string;
@@ -43,6 +49,10 @@ export default function MonthlyPlanPage() {
 
   const { data: plans = [], isLoading } = useQuery<MonthlyPlan[]>({
     queryKey: ["/api/monthly-plan"],
+  });
+
+  const { data: bases = [] } = useQuery<Base[]>({
+    queryKey: ["/api/bases"],
   });
 
   const createMutation = useMutation({
@@ -195,6 +205,25 @@ export default function MonthlyPlanPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label>База/Склад</Label>
+                <Select
+                  value={formData.baseId}
+                  onValueChange={(value) => setFormData({ ...formData, baseId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите базу" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bases.map((base) => (
+                      <SelectItem key={base.id} value={base.id}>
+                        {base.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Тип продукта</Label>
@@ -274,6 +303,7 @@ export default function MonthlyPlanPage() {
                 <TableRow>
                   <TableHead>Месяц</TableHead>
                   <TableHead>Тип плана</TableHead>
+                  <TableHead>База</TableHead>
                   <TableHead>Продукт</TableHead>
                   <TableHead>Плановый объем</TableHead>
                   <TableHead>Плановая выручка</TableHead>
@@ -290,6 +320,7 @@ export default function MonthlyPlanPage() {
                     <TableCell>
                       {plan.planType === "sales" ? "Продажи" : "Объем склада"}
                     </TableCell>
+                    <TableCell>{plan.base?.name || "-"}</TableCell>
                     <TableCell>{plan.productType || "-"}</TableCell>
                     <TableCell>
                       {plan.plannedVolume ? `${parseFloat(plan.plannedVolume).toLocaleString()} кг` : "-"}

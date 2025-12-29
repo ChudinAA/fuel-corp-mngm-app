@@ -17,6 +17,7 @@ export class MonthlyPlanStorage implements IMonthlyPlanStorage {
             email: true,
           },
         },
+        base: true,
       },
     });
   }
@@ -52,6 +53,7 @@ export class MonthlyPlanStorage implements IMonthlyPlanStorage {
             email: true,
           },
         },
+        base: true,
       },
     });
   }
