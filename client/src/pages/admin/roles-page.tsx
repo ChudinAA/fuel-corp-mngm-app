@@ -409,7 +409,6 @@ export default function RolesPage() {
                                 icon: Pencil,
                                 onClick: () => setRoleToEdit(role),
                                 permission: { module: "roles", action: "edit" },
-                                condition: !role.isSystem,
                               },
                               {
                                 id: "delete",
