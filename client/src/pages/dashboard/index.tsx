@@ -1,5 +1,5 @@
 
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import GridLayout, { Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
@@ -8,7 +8,8 @@ import "./index.css";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Edit, Save, X, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Edit, Save, X, Plus, Loader2 } from "lucide-react";
 import { getWidgetComponent } from "./components/widget-registry";
 import { WidgetSelector } from "./components/widget-selector";
 import { DashboardConfiguration, WidgetDefinition, DashboardWidget } from "./types";
@@ -19,6 +20,7 @@ export default function CustomizableDashboard() {
   const [layout, setLayout] = useState<Layout[]>([]);
   const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
   const [showWidgetSelector, setShowWidgetSelector] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -34,7 +36,7 @@ export default function CustomizableDashboard() {
 
   // Мутация для сохранения конфигурации
   const saveMutation = useMutation({
-    mutationFn: async (data: { layout: Layout[]; widgets: any[] }) => {
+    mutationFn: async (data: { layout: Layout[]; widgets: DashboardWidget[] }) => {
       const response = await fetch("/api/dashboard/configuration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -47,9 +49,10 @@ export default function CustomizableDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/configuration"] });
       toast({
-        title: "Успешно сохранено",
-        description: "Конфигурация дашборда обновлена",
+        title: "Сохранено",
+        description: "Конфигурация дашборда успешно обновлена",
       });
+      setHasUnsavedChanges(false);
       setIsEditMode(false);
     },
     onError: () => {
@@ -66,12 +69,26 @@ export default function CustomizableDashboard() {
     if (config) {
       setLayout(config.layout || []);
       setWidgets(config.widgets || []);
+      setHasUnsavedChanges(false);
     }
   }, [config]);
 
-  const handleLayoutChange = (newLayout: Layout[]) => {
+  // Auto-save при изменении layout (с debounce)
+  useEffect(() => {
+    if (!isEditMode || !hasUnsavedChanges) return;
+
+    const timer = setTimeout(() => {
+      handleSave();
+    }, 3000); // Auto-save через 3 секунды после последнего изменения
+
+    return () => clearTimeout(timer);
+  }, [layout, widgets, isEditMode, hasUnsavedChanges]);
+
+  const handleLayoutChange = useCallback((newLayout: Layout[]) => {
+    if (!isEditMode) return;
     setLayout(newLayout);
-  };
+    setHasUnsavedChanges(true);
+  }, [isEditMode]);
 
   const handleSave = () => {
     const updatedWidgets = layout.map(item => {
@@ -96,6 +113,7 @@ export default function CustomizableDashboard() {
   const handleRemoveWidget = (widgetId: string) => {
     setLayout(prev => prev.filter(item => item.i !== widgetId));
     setWidgets(prev => prev.filter(w => w.id !== widgetId));
+    setHasUnsavedChanges(true);
   };
 
   const handleAddWidget = (widgetDef: WidgetDefinition) => {
@@ -126,6 +144,7 @@ export default function CustomizableDashboard() {
     setWidgets(prev => [...prev, newWidget]);
     setLayout(prev => [...prev, newLayoutItem]);
     setShowWidgetSelector(false);
+    setHasUnsavedChanges(true);
     
     toast({
       title: "Виджет добавлен",
@@ -138,7 +157,12 @@ export default function CustomizableDashboard() {
       setLayout(config.layout || []);
       setWidgets(config.widgets || []);
     }
+    setHasUnsavedChanges(false);
     setIsEditMode(false);
+  };
+
+  const handleEnterEditMode = () => {
+    setIsEditMode(true);
   };
 
   if (isLoadingConfig) {
@@ -163,21 +187,27 @@ export default function CustomizableDashboard() {
             Обзор ключевых показателей системы
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          {hasUnsavedChanges && isEditMode && (
+            <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              Автосохранение...
+            </Badge>
+          )}
           {isEditMode ? (
             <>
-              <Button variant="outline" onClick={handleCancel}>
+              <Button variant="outline" onClick={handleCancel} disabled={saveMutation.isPending}>
                 <X className="h-4 w-4 mr-2" />
                 Отмена
               </Button>
-              <Button onClick={handleSave} disabled={saveMutation.isPending}>
+              <Button onClick={handleSave} disabled={saveMutation.isPending || !hasUnsavedChanges}>
                 <Save className="h-4 w-4 mr-2" />
-                Сохранить
+                {saveMutation.isPending ? "Сохранение..." : "Сохранить"}
               </Button>
             </>
           ) : (
             <>
-              <Button variant="outline" onClick={() => setIsEditMode(true)}>
+              <Button variant="outline" onClick={handleEnterEditMode}>
                 <Edit className="h-4 w-4 mr-2" />
                 Редактировать
               </Button>
@@ -189,6 +219,16 @@ export default function CustomizableDashboard() {
           )}
         </div>
       </div>
+
+      {isEditMode && (
+        <Card className="p-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-900">
+          <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200">
+            <Edit className="h-4 w-4" />
+            <span className="font-medium">Режим редактирования активен</span>
+            <span className="text-muted-foreground">— перетаскивайте и изменяйте размер виджетов</span>
+          </div>
+        </Card>
+      )}
 
       {widgets.length > 0 ? (
         <GridLayout
@@ -202,14 +242,25 @@ export default function CustomizableDashboard() {
           isResizable={isEditMode}
           compactType="vertical"
           preventCollision={false}
+          margin={[16, 16]}
+          containerPadding={[0, 0]}
         >
           {widgets.map(widget => {
             const WidgetComponent = getWidgetComponent(widget.widgetKey);
             if (!WidgetComponent) return null;
 
             return (
-              <div key={widget.id} className="dashboard-grid-item">
-                <Suspense fallback={<Card className="h-full flex items-center justify-center"><Skeleton className="h-24 w-24" /></Card>}>
+              <div 
+                key={widget.id} 
+                className={`dashboard-grid-item ${isEditMode ? 'editing' : ''}`}
+              >
+                <Suspense 
+                  fallback={
+                    <Card className="h-full flex items-center justify-center">
+                      <Skeleton className="h-24 w-24" />
+                    </Card>
+                  }
+                >
                   <WidgetComponent
                     widgetKey={widget.widgetKey}
                     config={widget.config}

@@ -5,12 +5,21 @@
 
 .dashboard-grid-item {
   transition: all 200ms ease;
-  transition-property: left, top;
+  transition-property: left, top, width, height;
+}
+
+.dashboard-grid-item.editing {
+  cursor: move;
+}
+
+.dashboard-grid-item.editing:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
 }
 
 .react-grid-item.react-grid-placeholder {
   background: hsl(var(--primary) / 0.1);
-  opacity: 0.2;
+  opacity: 0.3;
   transition-duration: 100ms;
   z-index: 2;
   border-radius: 8px;
@@ -21,6 +30,10 @@
   position: absolute;
   width: 20px;
   height: 20px;
+  bottom: 0;
+  right: 0;
+  cursor: se-resize;
+  z-index: 20;
 }
 
 .react-grid-item > .react-resizable-handle::after {
@@ -28,20 +41,50 @@
   position: absolute;
   right: 3px;
   bottom: 3px;
-  width: 5px;
-  height: 5px;
-  border-right: 2px solid hsl(var(--muted-foreground));
-  border-bottom: 2px solid hsl(var(--muted-foreground));
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid hsl(var(--muted-foreground) / 0.5);
+  border-bottom: 2px solid hsl(var(--muted-foreground) / 0.5);
+  transition: border-color 200ms ease;
+}
+
+.react-grid-item:hover > .react-resizable-handle::after {
+  border-right-color: hsl(var(--primary));
+  border-bottom-color: hsl(var(--primary));
 }
 
 .react-grid-item.react-draggable-dragging {
   transition: none;
   z-index: 100;
-  opacity: 0.8;
+  opacity: 0.9;
 }
 
 .react-grid-item.resizing {
   transition: none;
   z-index: 100;
-  opacity: 0.8;
+  opacity: 0.9;
+}
+
+/* View mode - remove visual hints */
+.layout:not(.editing) .react-resizable-handle {
+  display: none;
+}
+
+/* Edit mode indicators */
+.editing .dashboard-grid-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px dashed transparent;
+  border-radius: 8px;
+  pointer-events: none;
+  transition: border-color 200ms ease;
+  z-index: 1;
+}
+
+.editing .dashboard-grid-item:hover::before {
+  border-color: hsl(var(--primary) / 0.3);
 }

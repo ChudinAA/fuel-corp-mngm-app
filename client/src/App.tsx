@@ -12,7 +12,7 @@ import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 
 import AuthPage from "@/pages/auth-page";
-import CustomizableDashboard from "@/pages/customizable-dashboard"; // Changed import
+import CustomizableDashboard from "@/pages/dashboard";
 import OptPage from "@/pages/opt-page";
 import RefuelingPage from "@/pages/refueling-page";
 import ExchangePage from "@/pages/exchange-page";
