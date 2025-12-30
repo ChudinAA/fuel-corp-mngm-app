@@ -53,7 +53,10 @@ import {
   Database,
   Coins,
   UserCog,
-  BarChart3, // Import BarChart3 for the new section
+  BarChart3,
+  FileText, // Import FileText for "Текущие отчеты"
+  FileCheck, // Import FileCheck for "Аналитические отчеты"
+  Briefcase, // Import Briefcase for "Госконтракты" and "Управленческий отчет"
 } from "lucide-react";
 
 const getMainMenuItems = () => [
@@ -144,43 +147,43 @@ const getReportsMenuItems = (hasPermission: (module: string, action: string) => 
   {
     title: "Текущие отчеты",
     url: "/reports/current",
-    icon: BarChart3, // Placeholder icon, can be changed
+    icon: FileText, // Changed to FileText for current reports
     permission: "reports.view",
   },
   {
     title: "Аналитические отчеты",
     url: "/reports/analytics",
-    icon: BarChart3, // Placeholder icon
+    icon: FileCheck, // Changed to FileCheck for analytical reports
     permission: "reports.view",
   },
   {
     title: "Реестры",
     url: "/reports/registries",
-    icon: BarChart3, // Placeholder icon
+    icon: BarChart3, // Kept BarChart3 for registries as it's a common visualization tool
     permission: "reports.view",
   },
   {
     title: "Ежемесячный план",
     url: "/reports/monthly-plan",
-    icon: BarChart3, // Placeholder icon
+    icon: Calendar, // Changed to Calendar for monthly plan
     permission: "reports.create",
   },
   {
     title: "Госконтракты",
     url: "/reports/gov-contracts",
-    icon: BarChart3, // Placeholder icon
+    icon: Briefcase, // Changed to Briefcase for government contracts
     permission: "reports.view",
   },
   {
     title: "БДР",
     url: "/reports/budget",
-    icon: BarChart3, // Placeholder icon
+    icon: BarChart3, // Kept BarChart3 for budget reports
     permission: "reports.view",
   },
   {
     title: "Управленческий отчет",
     url: "/reports/management",
-    icon: BarChart3, // Placeholder icon
+    icon: Briefcase, // Changed to Briefcase for management reports
     permission: "reports.view",
   },
 ].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
@@ -384,7 +387,7 @@ export function AppSidebar() {
                   <SidebarMenuItem>
                     <CollapsibleTrigger asChild>
                       <SidebarMenuButton tooltip="Отчеты и планирование">
-                        <BarChart3 className="h-4 w-4" /> {/* Using BarChart3 as an example icon */}
+                        <BarChart3 className="h-4 w-4" /> {/* Using BarChart3 as the main icon for the section */}
                         <span>Отчеты и планирование</span>
                         <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                       </SidebarMenuButton>
