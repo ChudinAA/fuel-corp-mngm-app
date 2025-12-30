@@ -1,7 +1,7 @@
-
 import type { Express } from "express";
 import { storage } from "../../../storage/index";
 import { requireAuth } from "../../../middleware/middleware";
+import { requirePermission } from "../../../middleware/permissions"; // Assume this middleware exists
 
 export function registerDashboardRoutes(app: Express) {
   // Старые endpoints (для совместимости)
@@ -28,39 +28,27 @@ export function registerDashboardRoutes(app: Express) {
   // ============ НОВЫЕ ENDPOINTS ДЛЯ ВИДЖЕТОВ ============
 
   // Получить доступные виджеты для пользователя
-  app.get("/api/dashboard/widgets/available", requireAuth, async (req, res) => {
-    try {
-      const user = req.user;
-      if (!user || !user.role) {
-        return res.status(401).json({ message: "Не авторизован" });
-      }
-
-      // Получаем права пользователя из роли
-      const userPermissions = user.role.permissions || {};
-      const permissionsArray: string[] = [];
-      
-      // Преобразуем объект прав в массив строк формата "module.action"
-      Object.entries(userPermissions).forEach(([module, actions]) => {
-        if (typeof actions === 'object' && actions !== null) {
-          Object.entries(actions).forEach(([action, hasPermission]) => {
-            if (hasPermission) {
-              permissionsArray.push(`${module}.${action}`);
-            }
-          });
+  app.get(
+    "/api/dashboard/widgets/available",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const user = await storage.users.getUser(req.session.userId!);
+        if (!user || !user.roleId) {
+          return res.status(403).json({ message: "No role assigned" });
         }
-      });
 
-      const widgets = await storage.dashboard.getAvailableWidgets(permissionsArray);
-      
-      // Логируем для отладки
-      console.log(`[Dashboard] User ${user.email} has access to ${widgets.length} widgets`);
-      
-      res.json(widgets);
-    } catch (error) {
-      console.error("Error fetching available widgets:", error);
-      res.status(500).json({ message: "Ошибка получения виджетов" });
+        const role = await storage.roles.getRole(user.roleId);
+        const userPermissions = role?.permissions || [];
+
+        const widgets = await storage.dashboard.getAvailableWidgets(userPermissions);
+        res.json(widgets);
+      } catch (error) {
+        console.error("Error fetching available widgets:", error);
+        res.status(500).json({ message: "Failed to fetch available widgets" });
+      }
     }
-  });
+  );
 
   // Получить конфигурацию дашборда пользователя
   app.get("/api/dashboard/configuration", requireAuth, async (req, res) => {
@@ -110,7 +98,7 @@ export function registerDashboardRoutes(app: Express) {
       const config = req.query.config ? JSON.parse(req.query.config as string) : undefined;
 
       const data = await storage.dashboard.getWidgetData(widgetKey, config);
-      
+
       if (data === null) {
         return res.status(404).json({ message: "Виджет не найден" });
       }
@@ -121,4 +109,151 @@ export function registerDashboardRoutes(app: Express) {
       res.status(500).json({ message: "Ошибка получения данных виджета" });
     }
   });
+
+  // Template routes
+  app.get(
+    "/api/dashboard/templates",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const category = req.query.category as string | undefined;
+        const templates = await storage.dashboard.getTemplates(category);
+        res.json(templates);
+      } catch (error) {
+        console.error("Error fetching templates:", error);
+        res.status(500).json({ message: "Failed to fetch templates" });
+      }
+    }
+  );
+
+  app.get(
+    "/api/dashboard/templates/:id",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const template = await storage.dashboard.getTemplate(req.params.id);
+        if (!template) {
+          return res.status(404).json({ message: "Template not found" });
+        }
+        res.json(template);
+      } catch (error) {
+        console.error("Error fetching template:", error);
+        res.status(500).json({ message: "Failed to fetch template" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/dashboard/templates",
+    requireAuth,
+    requirePermission("settings", "edit"),
+    async (req, res) => {
+      try {
+        const template = await storage.dashboard.createTemplate({
+          ...req.body,
+          createdBy: req.session.userId,
+        });
+        res.json(template);
+      } catch (error) {
+        console.error("Error creating template:", error);
+        res.status(500).json({ message: "Failed to create template" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/dashboard/templates/:id",
+    requireAuth,
+    requirePermission("settings", "edit"),
+    async (req, res) => {
+      try {
+        const template = await storage.dashboard.updateTemplate(req.params.id, req.body);
+        res.json(template);
+      } catch (error) {
+        console.error("Error updating template:", error);
+        res.status(500).json({ message: "Failed to update template" });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/dashboard/templates/:id",
+    requireAuth,
+    requirePermission("settings", "edit"),
+    async (req, res) => {
+      try {
+        await storage.dashboard.deleteTemplate(req.params.id);
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error deleting template:", error);
+        res.status(500).json({ message: "Failed to delete template" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/dashboard/templates/:id/apply",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const config = await storage.dashboard.applyTemplate(req.session.userId!, req.params.id);
+        res.json(config);
+      } catch (error) {
+        console.error("Error applying template:", error);
+        res.status(500).json({ message: "Failed to apply template" });
+      }
+    }
+  );
+
+  // Export/Import configuration
+  app.get(
+    "/api/dashboard/export",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const config = await storage.dashboard.getConfiguration(req.session.userId!);
+
+        const exportData = {
+          version: "1.0",
+          exportedAt: new Date().toISOString(),
+          configuration: {
+            layout: config.layout,
+            widgets: config.widgets,
+          },
+        };
+
+        res.setHeader("Content-Type", "application/json");
+        res.setHeader("Content-Disposition", `attachment; filename="dashboard-config-${Date.now()}.json"`);
+        res.json(exportData);
+      } catch (error) {
+        console.error("Error exporting configuration:", error);
+        res.status(500).json({ message: "Failed to export configuration" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/dashboard/import",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { configuration } = req.body;
+
+        if (!configuration || !configuration.layout || !configuration.widgets) {
+          return res.status(400).json({ message: "Invalid configuration format" });
+        }
+
+        const config = await storage.dashboard.saveConfiguration(
+          req.session.userId!,
+          configuration.layout,
+          configuration.widgets
+        );
+
+        res.json(config);
+      } catch (error) {
+        console.error("Error importing configuration:", error);
+        res.status(500).json({ message: "Failed to import configuration" });
+      }
+    }
+  );
 }

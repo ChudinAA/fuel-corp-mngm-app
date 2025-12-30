@@ -8,7 +8,7 @@ import {
   suppliers,
   customers,
 } from "@shared/schema";
-import { widgetDefinitions, dashboardConfigurations } from "../entities/dashboard";
+import { widgetDefinitions, dashboardConfigurations, dashboardTemplates } from "../entities/dashboard";
 import { IDashboardStorage, WidgetDefinition, DashboardConfiguration, DashboardLayout, DashboardWidget } from "./types";
 import { MOVEMENT_TYPE, SOURCE_TYPE } from "@shared/constants";
 
@@ -303,24 +303,78 @@ export class DashboardStorage implements IDashboardStorage {
   // ============ НОВЫЕ МЕТОДЫ ДЛЯ ВИДЖЕТОВ ============
 
   async getAvailableWidgets(userPermissions: string[]): Promise<WidgetDefinition[]> {
-    const allWidgets = await db
-      .select()
-      .from(widgetDefinitions)
-      .where(eq(widgetDefinitions.isActive, true));
+    const allWidgets = await this.db.select().from(widgetDefinitions).where(eq(widgetDefinitions.isActive, true));
 
-    // Фильтруем виджеты по правам доступа пользователя
+    // Фильтрация виджетов по правам пользователя
     return allWidgets.filter(widget => {
       if (!widget.requiredPermissions || widget.requiredPermissions.length === 0) {
         return true;
       }
-      return widget.requiredPermissions.every(perm => 
-        userPermissions.includes(perm)
-      );
+      return widget.requiredPermissions.some(perm => userPermissions.includes(perm));
     });
   }
 
+  // Template management
+  async getTemplates(category?: string) {
+    if (category) {
+      return await this.db.select().from(dashboardTemplates)
+        .where(and(
+          eq(dashboardTemplates.category, category),
+          eq(dashboardTemplates.isActive, true)
+        ));
+    }
+    return await this.db.select().from(dashboardTemplates)
+      .where(eq(dashboardTemplates.isActive, true));
+  }
+
+  async getTemplate(id: string) {
+    const [template] = await this.db.select().from(dashboardTemplates)
+      .where(eq(dashboardTemplates.id, id));
+    return template;
+  }
+
+  async createTemplate(data: any) {
+    const [template] = await this.db.insert(dashboardTemplates)
+      .values(data)
+      .returning();
+    return template;
+  }
+
+  async updateTemplate(id: string, data: any) {
+    const [template] = await this.db.update(dashboardTemplates)
+      .set({ ...data, updatedAt: new Date().toISOString() })
+      .where(eq(dashboardTemplates.id, id))
+      .returning();
+    return template;
+  }
+
+  async deleteTemplate(id: string) {
+    await this.db.delete(dashboardTemplates)
+      .where(eq(dashboardTemplates.id, id));
+  }
+
+  async applyTemplate(userId: string, templateId: string) {
+    const template = await this.getTemplate(templateId);
+    if (!template) {
+      throw new Error("Template not found");
+    }
+
+    // Применяем шаблон к конфигурации пользователя
+    const [config] = await this.db.update(dashboardConfigurations)
+      .set({
+        layout: template.layout,
+        widgets: template.widgets,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(dashboardConfigurations.userId, userId))
+      .returning();
+
+    return config;
+  }
+
+
   async getUserDashboard(userId: string): Promise<DashboardConfiguration | null> {
-    const [config] = await db
+    const [config] = await this.db
       .select()
       .from(dashboardConfigurations)
       .where(eq(dashboardConfigurations.userId, userId))
@@ -338,7 +392,7 @@ export class DashboardStorage implements IDashboardStorage {
 
     if (existing) {
       // Обновляем существующую конфигурацию
-      const [updated] = await db
+      const [updated] = await this.db
         .update(dashboardConfigurations)
         .set({
           layout,
@@ -351,7 +405,7 @@ export class DashboardStorage implements IDashboardStorage {
       return updated;
     } else {
       // Создаём новую конфигурацию
-      const [created] = await db
+      const [created] = await this.db
         .insert(dashboardConfigurations)
         .values({
           userId,
