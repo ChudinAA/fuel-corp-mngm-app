@@ -299,8 +299,6 @@ export class DashboardStorage implements IDashboardStorage {
       profitWeek,
     };
   }
-}
-
 
   // ============ НОВЫЕ МЕТОДЫ ДЛЯ ВИДЖЕТОВ ============
 
