@@ -54,9 +54,10 @@ import {
   Coins,
   UserCog,
   BarChart3,
-  FileText, // Import FileText for "Текущие отчеты"
-  FileCheck, // Import FileCheck for "Аналитические отчеты"
-  Briefcase, // Import Briefcase for "Госконтракты" and "Управленческий отчет"
+  FileText,
+  FileCheck,
+  Briefcase,
+  Table2,
 } from "lucide-react";
 
 const getMainMenuItems = () => [
@@ -159,7 +160,7 @@ const getReportsMenuItems = (hasPermission: (module: string, action: string) => 
   {
     title: "Реестры",
     url: "/reports/registries",
-    icon: BarChart3, // Kept BarChart3 for registries as it's a common visualization tool
+    icon: Table2, // Kept BarChart3 for registries as it's a common visualization tool
     permission: "reports.view",
   },
   {
