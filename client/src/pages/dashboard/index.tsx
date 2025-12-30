@@ -8,13 +8,24 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Loader2, X } from "lucide-react";
+import { Plus, Loader2, X, Save } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getWidgetComponent } from "./components/widget-registry";
 import { WidgetSelector } from "./components/widget-selector";
 import { TemplateManager } from "./components/template-manager";
 import { DashboardConfiguration, WidgetDefinition, DashboardWidget } from "./types";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function CustomizableDashboard() {
   const [layout, setLayout] = useState<Layout[]>([]);
@@ -22,6 +33,9 @@ export default function CustomizableDashboard() {
   const [showWidgetSelector, setShowWidgetSelector] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [hoveredWidgetId, setHoveredWidgetId] = useState<string | null>(null);
+  const [showCreateTemplateDialog, setShowCreateTemplateDialog] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [newTemplateDescription, setNewTemplateDescription] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -35,28 +49,66 @@ export default function CustomizableDashboard() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (data: { layout: Layout[]; widgets: DashboardWidget[] }) => {
+    mutationFn: async (data: { layout: Layout[]; widgets: DashboardWidget[]; silent?: boolean }) => {
       const response = await fetch("/api/dashboard/configuration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ layout: data.layout, widgets: data.widgets }),
         credentials: "include",
       });
       if (!response.ok) throw new Error("Failed to save configuration");
-      return response.json();
+      return { ...await response.json(), silent: data.silent };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/configuration"] });
-      toast({
-        title: "Сохранено",
-        description: "Конфигурация дашборда успешно обновлена",
-      });
+      if (!data.silent) {
+        toast({
+          title: "Сохранено",
+          description: "Конфигурация дашборда успешно обновлена",
+        });
+      }
       setHasUnsavedChanges(false);
     },
     onError: () => {
       toast({
         title: "Ошибка",
         description: "Не удалось сохранить конфигурацию",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createTemplateMutation = useMutation({
+    mutationFn: async (data: { name: string; description: string }) => {
+      const res = await fetch("/api/dashboard/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: data.name,
+          description: data.description,
+          category: "user",
+          layout,
+          widgets,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to create template");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/templates"] });
+      setShowCreateTemplateDialog(false);
+      setNewTemplateName("");
+      setNewTemplateDescription("");
+      toast({ 
+        title: "Шаблон создан", 
+        description: "Текущая конфигурация сохранена как шаблон" 
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось создать шаблон",
         variant: "destructive",
       });
     },
@@ -74,7 +126,7 @@ export default function CustomizableDashboard() {
     if (!hasUnsavedChanges) return;
 
     const timer = setTimeout(() => {
-      handleSave();
+      handleSave(true);
     }, 2000);
 
     return () => clearTimeout(timer);
@@ -85,7 +137,7 @@ export default function CustomizableDashboard() {
     setHasUnsavedChanges(true);
   }, []);
 
-  const handleSave = () => {
+  const handleSave = (silent: boolean = false) => {
     const updatedWidgets = layout.map(item => {
       const existingWidget = widgets.find(w => w.id === item.i);
       return {
@@ -102,6 +154,7 @@ export default function CustomizableDashboard() {
     saveMutation.mutate({
       layout,
       widgets: updatedWidgets,
+      silent,
     });
   };
 
@@ -113,21 +166,43 @@ export default function CustomizableDashboard() {
 
   const handleAddWidget = (widgetDef: WidgetDefinition) => {
     const newWidgetId = `${widgetDef.widgetKey}-${Date.now()}`;
-    const maxY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
+    
+    // Find a free spot in the grid instead of stacking at bottom
+    let targetX = 0;
+    let targetY = 0;
+    
+    // Simple algorithm: try to find empty space
+    const occupied = new Set(layout.map(item => `${item.x},${item.y}`));
+    let found = false;
+    
+    for (let y = 0; y < 20 && !found; y++) {
+      for (let x = 0; x <= 12 - widgetDef.defaultWidth && !found; x++) {
+        if (!occupied.has(`${x},${y}`)) {
+          targetX = x;
+          targetY = y;
+          found = true;
+        }
+      }
+    }
+    
+    // If no free spot found, add to bottom
+    if (!found) {
+      targetY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
+    }
 
     const newWidget: DashboardWidget = {
       id: newWidgetId,
       widgetKey: widgetDef.widgetKey,
-      x: 0,
-      y: maxY,
+      x: targetX,
+      y: targetY,
       w: widgetDef.defaultWidth,
       h: widgetDef.defaultHeight,
     };
 
     const newLayoutItem: Layout = {
       i: newWidgetId,
-      x: 0,
-      y: maxY,
+      x: targetX,
+      y: targetY,
       w: widgetDef.defaultWidth,
       h: widgetDef.defaultHeight,
       minW: widgetDef.minWidth,
@@ -142,6 +217,21 @@ export default function CustomizableDashboard() {
     toast({
       title: "Виджет добавлен",
       description: `${widgetDef.name} добавлен на дашборд`,
+    });
+  };
+
+  const handleCreateTemplate = () => {
+    if (!newTemplateName.trim()) {
+      toast({
+        title: "Ошибка",
+        description: "Введите название шаблона",
+        variant: "destructive",
+      });
+      return;
+    }
+    createTemplateMutation.mutate({
+      name: newTemplateName,
+      description: newTemplateDescription,
     });
   };
 
@@ -170,7 +260,11 @@ export default function CustomizableDashboard() {
         </TabsList>
 
         <TabsContent value="main" className="mt-6">
-          <div className="flex justify-end mb-4">
+          <div className="flex justify-end gap-2 mb-4">
+            <Button onClick={() => setShowCreateTemplateDialog(true)} variant="outline" size="sm">
+              <Save className="h-4 w-4 mr-2" />
+              Создать шаблон из текущего
+            </Button>
             <Button onClick={() => setShowWidgetSelector(true)} size="sm">
               <Plus className="h-4 w-4 mr-2" />
               Добавить виджет
@@ -187,8 +281,8 @@ export default function CustomizableDashboard() {
               width={1200}
               isDraggable={true}
               isResizable={true}
-              compactType="vertical"
-              preventCollision={false}
+              compactType={null}
+              preventCollision={true}
               margin={[16, 16]}
               containerPadding={[0, 0]}
             >
@@ -205,7 +299,10 @@ export default function CustomizableDashboard() {
                   >
                     {hoveredWidgetId === widget.id && (
                       <button
-                        onClick={() => handleRemoveWidget(widget.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveWidget(widget.id);
+                        }}
                         className="absolute top-2 right-2 z-50 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90 transition-colors"
                         title="Удалить виджет"
                       >
@@ -253,6 +350,48 @@ export default function CustomizableDashboard() {
           <TemplateManager />
         </TabsContent>
       </Tabs>
+
+      <Dialog open={showCreateTemplateDialog} onOpenChange={setShowCreateTemplateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Создать шаблон</DialogTitle>
+            <DialogDescription>
+              Сохраните текущую конфигурацию дашборда как шаблон
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="template-name">Название шаблона</Label>
+              <Input
+                id="template-name"
+                value={newTemplateName}
+                onChange={(e) => setNewTemplateName(e.target.value)}
+                placeholder="Мой дашборд"
+              />
+            </div>
+            <div>
+              <Label htmlFor="template-description">Описание (необязательно)</Label>
+              <Textarea
+                id="template-description"
+                value={newTemplateDescription}
+                onChange={(e) => setNewTemplateDescription(e.target.value)}
+                placeholder="Краткое описание шаблона..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateTemplateDialog(false)}>
+              Отмена
+            </Button>
+            <Button onClick={handleCreateTemplate} disabled={createTemplateMutation.isPending}>
+              {createTemplateMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Создать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

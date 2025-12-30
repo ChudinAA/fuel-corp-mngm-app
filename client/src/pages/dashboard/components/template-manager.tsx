@@ -1,24 +1,11 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Download, Upload, FileJson, CheckCircle2 } from "lucide-react";
+import { Trash2, Download, Upload, CheckCircle2, Loader2 } from "lucide-react";
 
 interface DashboardTemplate {
   id: string;
@@ -35,20 +22,14 @@ interface DashboardTemplate {
 }
 
 export function TemplateManager() {
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newTemplate, setNewTemplate] = useState({ name: "", description: "", category: "user" });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Загрузка шаблонов
+  // Загрузка всех шаблонов
   const { data: templates = [], isLoading } = useQuery<DashboardTemplate[]>({
-    queryKey: ["/api/dashboard/templates", selectedCategory !== "all" ? selectedCategory : undefined],
+    queryKey: ["/api/dashboard/templates"],
     queryFn: async () => {
-      const url = selectedCategory !== "all" 
-        ? `/api/dashboard/templates?category=${selectedCategory}`
-        : "/api/dashboard/templates";
-      const res = await fetch(url, { credentials: "include" });
+      const res = await fetch("/api/dashboard/templates", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load templates");
       return res.json();
     },
@@ -93,35 +74,6 @@ export function TemplateManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/templates"] });
       toast({ title: "Шаблон удалён" });
-    },
-  });
-
-  // Сохранить текущую конфигурацию как шаблон
-  const saveAsTemplateMutation = useMutation({
-    mutationFn: async (data: any) => {
-      // Получаем текущую конфигурацию
-      const configRes = await fetch("/api/dashboard/configuration", { credentials: "include" });
-      if (!configRes.ok) throw new Error("Failed to get current configuration");
-      const config = await configRes.json();
-
-      const res = await fetch("/api/dashboard/templates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          ...data,
-          layout: config.layout,
-          widgets: config.widgets,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to save template");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/templates"] });
-      setShowCreateDialog(false);
-      setNewTemplate({ name: "", description: "", category: "user" });
-      toast({ title: "Шаблон создан", description: "Текущая конфигурация сохранена как шаблон" });
     },
   });
 
@@ -176,8 +128,8 @@ export function TemplateManager() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Управление шаблонами</h2>
-          <p className="text-muted-foreground">Создавайте и применяйте шаблоны дашбордов</p>
+          <h2 className="text-2xl font-bold">Шаблоны дашбордов</h2>
+          <p className="text-muted-foreground">Применяйте готовые шаблоны для быстрой настройки</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleExport} title="Экспортировать текущую конфигурацию дашборда в JSON файл">
@@ -196,120 +148,66 @@ export function TemplateManager() {
         </div>
       </div>
 
-      <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-        <TabsList>
-          <TabsTrigger value="all">Все</TabsTrigger>
-          <TabsTrigger value="system">Системные</TabsTrigger>
-          <TabsTrigger value="user">Пользовательские</TabsTrigger>
-          <TabsTrigger value="role">По ролям</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value={selectedCategory} className="mt-6">
-          {isLoading ? (
-            <p>Загрузка...</p>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {templates.map((template) => (
-                <Card key={template.id}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle>{template.name}</CardTitle>
-                        <CardDescription>{template.description}</CardDescription>
-                      </div>
-                      {template.isSystem && (
-                        <Badge variant="secondary">Системный</Badge>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : templates.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {templates.map((template) => (
+            <Card key={template.id}>
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle>{template.name}</CardTitle>
+                    <CardDescription>{template.description}</CardDescription>
+                  </div>
+                  {template.isSystem && (
+                    <Badge variant="secondary">Системный</Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="text-sm text-muted-foreground">
+                    Виджетов: {template.widgets.length}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => applyTemplateMutation.mutate(template.id)}
+                      disabled={applyTemplateMutation.isPending}
+                    >
+                      {applyTemplateMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
                       )}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="text-sm text-muted-foreground">
-                        Виджетов: {template.widgets.length}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => applyTemplateMutation.mutate(template.id)}
-                          disabled={applyTemplateMutation.isPending}
-                        >
-                          {applyTemplateMutation.isPending ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                          )}
-                          Применить
-                        </Button>
-                        {!template.isSystem && (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => deleteTemplateMutation.mutate(template.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Сохранить как шаблон</DialogTitle>
-            <DialogDescription>
-              Сохраните текущую конфигурацию дашборда как шаблон
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="name">Название</Label>
-              <Input
-                id="name"
-                value={newTemplate.name}
-                onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })}
-                placeholder="Мой дашборд"
-              />
-            </div>
-            <div>
-              <Label htmlFor="description">Описание</Label>
-              <Textarea
-                id="description"
-                value={newTemplate.description}
-                onChange={(e) => setNewTemplate({ ...newTemplate, description: e.target.value })}
-                placeholder="Описание шаблона..."
-              />
-            </div>
-            <div>
-              <Label htmlFor="category">Категория</Label>
-              <Select value={newTemplate.category} onValueChange={(v) => setNewTemplate({ ...newTemplate, category: v })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="user">Пользовательский</SelectItem>
-                  <SelectItem value="role">По роли</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-              Отмена
-            </Button>
-            <Button onClick={() => saveAsTemplateMutation.mutate(newTemplate)}>
-              Сохранить
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                      Применить
+                    </Button>
+                    {!template.isSystem && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => deleteTemplateMutation.mutate(template.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card className="p-12 text-center">
+          <p className="text-muted-foreground">
+            Нет доступных шаблонов. Создайте свой первый шаблон на вкладке "Главная".
+          </p>
+        </Card>
+      )}
     </div>
   );
 }
