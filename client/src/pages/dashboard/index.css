@@ -1,5 +1,11 @@
+.dashboard-container {
+  width: 100%;
+  overflow-x: hidden;
+}
+
 .layout {
   position: relative;
+  width: 100% !important;
 }
 
 .dashboard-grid-item {
@@ -18,6 +24,11 @@
 }
 
 .react-grid-item {
+  transition: none !important;
+  transform: none !important;
+}
+
+.react-grid-item.react-draggable-dragging {
   transition: none !important;
 }
 
