@@ -23,9 +23,14 @@ export default function CustomizableDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Placeholder for user authentication status - replace with actual auth hook
+  const user = true; // Assume user is logged in for now
+
   // Загрузка конфигурации дашборда
-  const { data: config, isLoading: isLoadingConfig } = useQuery<DashboardConfiguration>({
+  const { data: config, isLoading: isLoadingConfig, error: configError } = useQuery<DashboardConfiguration>({
     queryKey: ["/api/dashboard/configuration"],
+    enabled: !!user,
+    retry: false,
   });
 
   // Загрузка доступных виджетов
@@ -164,17 +169,19 @@ export default function CustomizableDashboard() {
     setIsEditMode(true);
   };
 
-  if (isLoadingConfig) {
+  // Show loading state while configuration loads
+  if (isLoadingConfig || configError) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map(i => (
-            <Skeleton key={i} className="h-32" />
-          ))}
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-sm text-muted-foreground">Загрузка дашборда...</span>
       </div>
     );
+  }
+
+  // If user is not authenticated, don't render dashboard
+  if (!user) {
+    return null;
   }
 
   return (
@@ -249,11 +256,11 @@ export default function CustomizableDashboard() {
             if (!WidgetComponent) return null;
 
             return (
-              <div 
-                key={widget.id} 
+              <div
+                key={widget.id}
                 className={`dashboard-grid-item ${isEditMode ? 'editing' : ''}`}
               >
-                <Suspense 
+                <Suspense
                   fallback={
                     <Card className="h-full flex items-center justify-center">
                       <Skeleton className="h-24 w-24" />
