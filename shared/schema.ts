@@ -22,3 +22,4 @@ export * from "server/modules/gov-contracts/entities/gov-contracts";
 export * from "server/modules/budget/entities/budget";
 export * from "server/modules/management-report/entities/management-report";
 export * from "server/modules/export/entities/export-config";
+export * from "server/modules/dashboard/entities/dashboard";

@@ -1,4 +1,4 @@
-import { eq, sql, and, isNull } from "drizzle-orm";
+import { eq, sql, and, isNull, inArray } from "drizzle-orm";
 import { db } from "server/db";
 import {
   opt,
@@ -8,7 +8,8 @@ import {
   suppliers,
   customers,
 } from "@shared/schema";
-import { IDashboardStorage } from "../../../storage/types";
+import { widgetDefinitions, dashboardConfigurations } from "../entities/dashboard";
+import { IDashboardStorage, WidgetDefinition, DashboardConfiguration, DashboardLayout, DashboardWidget } from "./types";
 import { MOVEMENT_TYPE, SOURCE_TYPE } from "@shared/constants";
 
 export class DashboardStorage implements IDashboardStorage {
@@ -299,3 +300,167 @@ export class DashboardStorage implements IDashboardStorage {
     };
   }
 }
+
+
+  // ============ НОВЫЕ МЕТОДЫ ДЛЯ ВИДЖЕТОВ ============
+
+  async getAvailableWidgets(userPermissions: string[]): Promise<WidgetDefinition[]> {
+    const allWidgets = await db
+      .select()
+      .from(widgetDefinitions)
+      .where(eq(widgetDefinitions.isActive, true));
+
+    // Фильтруем виджеты по правам доступа пользователя
+    return allWidgets.filter(widget => {
+      if (!widget.requiredPermissions || widget.requiredPermissions.length === 0) {
+        return true;
+      }
+      return widget.requiredPermissions.every(perm => 
+        userPermissions.includes(perm)
+      );
+    });
+  }
+
+  async getUserDashboard(userId: string): Promise<DashboardConfiguration | null> {
+    const [config] = await db
+      .select()
+      .from(dashboardConfigurations)
+      .where(eq(dashboardConfigurations.userId, userId))
+      .limit(1);
+
+    return config || null;
+  }
+
+  async saveDashboardConfiguration(
+    userId: string, 
+    layout: DashboardLayout[], 
+    widgets: DashboardWidget[]
+  ): Promise<DashboardConfiguration> {
+    const existing = await this.getUserDashboard(userId);
+
+    if (existing) {
+      // Обновляем существующую конфигурацию
+      const [updated] = await db
+        .update(dashboardConfigurations)
+        .set({
+          layout,
+          widgets,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(dashboardConfigurations.id, existing.id))
+        .returning();
+
+      return updated;
+    } else {
+      // Создаём новую конфигурацию
+      const [created] = await db
+        .insert(dashboardConfigurations)
+        .values({
+          userId,
+          layout,
+          widgets,
+          isDefault: true,
+        })
+        .returning();
+
+      return created;
+    }
+  }
+
+  async getWidgetData(widgetKey: string, config?: any): Promise<any> {
+    switch (widgetKey) {
+      case 'opt_stats':
+        return this.getOptStatsWidget();
+      case 'refueling_stats':
+        return this.getRefuelingStatsWidget();
+      case 'profit_month':
+        return this.getProfitMonthWidget();
+      case 'warehouse_alerts':
+        return this.getWarehouseAlertsWidget();
+      case 'recent_operations':
+        return this.getRecentOperations();
+      case 'warehouse_balances':
+        return this.getWarehouseBalancesWidget();
+      case 'week_stats':
+        return this.getWeekStats();
+      default:
+        return null;
+    }
+  }
+
+  // Вспомогательные методы для виджетов
+  private async getOptStatsWidget() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split("T")[0];
+
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(opt)
+      .where(and(eq(opt.createdAt, todayStr), isNull(opt.deletedAt)));
+
+    return { value: Number(result?.count || 0) };
+  }
+
+  private async getRefuelingStatsWidget() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split("T")[0];
+
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(aircraftRefueling)
+      .where(and(eq(aircraftRefueling.refuelingDate, todayStr), isNull(aircraftRefueling.deletedAt)));
+
+    return { value: Number(result?.count || 0) };
+  }
+
+  private async getProfitMonthWidget() {
+    const today = new Date();
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthStartStr = monthStart.toISOString().split("T")[0];
+
+    const [optProfit] = await db
+      .select({ total: sql<number>`sum(CAST(${opt.profit} AS DECIMAL))` })
+      .from(opt)
+      .where(and(sql`${opt.createdAt} >= ${monthStartStr}`, isNull(opt.deletedAt)));
+
+    const [refuelingProfit] = await db
+      .select({ total: sql<number>`sum(CAST(${aircraftRefueling.profit} AS DECIMAL))` })
+      .from(aircraftRefueling)
+      .where(and(sql`${aircraftRefueling.refuelingDate} >= ${monthStartStr}`, isNull(aircraftRefueling.deletedAt)));
+
+    const total = Number(optProfit?.total || 0) + Number(refuelingProfit?.total || 0);
+
+    return { value: total };
+  }
+
+  private async getWarehouseAlertsWidget() {
+    const warehousesList = await db.select().from(warehouses).where(isNull(warehouses.deletedAt));
+    let alertCount = 0;
+
+    for (const wh of warehousesList) {
+      const currentBalance = parseFloat(wh.currentBalance || "0");
+      const maxCapacity = parseFloat(wh.storageCost || "100000");
+      if (maxCapacity > 0 && currentBalance / maxCapacity < 0.2) {
+        alertCount++;
+      }
+    }
+
+    return { value: alertCount };
+  }
+
+  private async getWarehouseBalancesWidget() {
+    const warehousesList = await db
+      .select()
+      .from(warehouses)
+      .where(isNull(warehouses.deletedAt))
+      .limit(5);
+
+    return warehousesList.map(wh => ({
+      name: wh.name,
+      current: parseFloat(wh.currentBalance || "0"),
+      max: parseFloat(wh.storageCost || "100000"),
+      percentage: (parseFloat(wh.currentBalance || "0") / parseFloat(wh.storageCost || "100000")) * 100,
+    }));
+  }
