@@ -59,6 +59,8 @@ import {
   Briefcase,
   Table2,
   ChevronDown,
+  Fullscreen,
+  ChartSpline,
 } from "lucide-react";
 
 const getMainMenuItems = () => [
@@ -185,7 +187,7 @@ const getReportsMenuItems = (hasPermission: (module: string, action: string) => 
   {
     title: "Управленческий отчет",
     url: "/reports/management",
-    icon: Briefcase, // Changed to Briefcase for management reports
+    icon: ChartSpline,
     permission: "reports.view",
   },
 ].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
@@ -207,7 +209,7 @@ const getAdminMenuItems = (hasPermission: (module: string, action: string) => bo
   {
     title: "Виджеты",
     url: "/admin/widgets",
-    icon: Settings,
+    icon: Fullscreen,
   },
   {
     title: "Настройки",
