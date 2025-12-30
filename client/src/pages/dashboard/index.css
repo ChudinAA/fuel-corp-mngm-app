@@ -1,4 +1,3 @@
-
 .layout {
   position: relative;
 }
@@ -6,14 +5,12 @@
 .dashboard-grid-item {
   transition: all 200ms ease;
   transition-property: left, top, width, height;
-}
-
-.dashboard-grid-item.editing {
+  position: relative;
   cursor: move;
 }
 
-.dashboard-grid-item.editing:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.dashboard-grid-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 10;
 }
 

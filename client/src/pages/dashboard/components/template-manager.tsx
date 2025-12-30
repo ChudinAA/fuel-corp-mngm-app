@@ -66,7 +66,17 @@ export function TemplateManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/configuration"] });
-      toast({ title: "Шаблон применён", description: "Конфигурация дашборда обновлена" });
+      toast({ 
+        title: "Шаблон применён", 
+        description: "Конфигурация дашборда обновлена. Перейдите на вкладку 'Главная' чтобы увидеть изменения." 
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось применить шаблон",
+        variant: "destructive",
+      });
     },
   });
 
@@ -170,11 +180,11 @@ export function TemplateManager() {
           <p className="text-muted-foreground">Создавайте и применяйте шаблоны дашбордов</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport}>
+          <Button variant="outline" onClick={handleExport} title="Экспортировать текущую конфигурацию дашборда в JSON файл">
             <Download className="mr-2 h-4 w-4" />
             Экспорт
           </Button>
-          <label>
+          <label title="Импортировать конфигурацию дашборда из JSON файла">
             <Button variant="outline" asChild>
               <span>
                 <Upload className="mr-2 h-4 w-4" />
@@ -183,10 +193,6 @@ export function TemplateManager() {
             </Button>
             <input type="file" accept=".json" onChange={handleImport} className="hidden" />
           </label>
-          <Button onClick={() => setShowCreateDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Сохранить текущую
-          </Button>
         </div>
       </div>
 
@@ -226,8 +232,13 @@ export function TemplateManager() {
                           size="sm"
                           className="flex-1"
                           onClick={() => applyTemplateMutation.mutate(template.id)}
+                          disabled={applyTemplateMutation.isPending}
                         >
-                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                          {applyTemplateMutation.isPending ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                          )}
                           Применить
                         </Button>
                         {!template.isSystem && (

@@ -1,6 +1,5 @@
 import { useState, Suspense, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import GridLayout, { Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -9,38 +8,32 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Save, X, Plus, Loader2, FileJson } from "lucide-react";
+import { Plus, Loader2, X } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getWidgetComponent } from "./components/widget-registry";
 import { WidgetSelector } from "./components/widget-selector";
+import { TemplateManager } from "./components/template-manager";
 import { DashboardConfiguration, WidgetDefinition, DashboardWidget } from "./types";
 import { useToast } from "@/hooks/use-toast";
 
 export default function CustomizableDashboard() {
-  const [isEditMode, setIsEditMode] = useState(false);
   const [layout, setLayout] = useState<Layout[]>([]);
   const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
   const [showWidgetSelector, setShowWidgetSelector] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [hoveredWidgetId, setHoveredWidgetId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
 
-  // Placeholder for user authentication status - replace with actual auth hook
-  const user = true; // Assume user is logged in for now
-
-  // Загрузка конфигурации дашборда
-  const { data: config, isLoading: isLoadingConfig, error: configError } = useQuery<DashboardConfiguration>({
+  const { data: config, isLoading: isLoadingConfig } = useQuery<DashboardConfiguration>({
     queryKey: ["/api/dashboard/configuration"],
-    enabled: !!user,
-    retry: false,
+    retry: 1,
   });
 
-  // Загрузка доступных виджетов
   const { data: availableWidgets } = useQuery<WidgetDefinition[]>({
     queryKey: ["/api/dashboard/widgets/available"],
   });
 
-  // Мутация для сохранения конфигурации
   const saveMutation = useMutation({
     mutationFn: async (data: { layout: Layout[]; widgets: DashboardWidget[] }) => {
       const response = await fetch("/api/dashboard/configuration", {
@@ -59,7 +52,6 @@ export default function CustomizableDashboard() {
         description: "Конфигурация дашборда успешно обновлена",
       });
       setHasUnsavedChanges(false);
-      setIsEditMode(false);
     },
     onError: () => {
       toast({
@@ -70,7 +62,6 @@ export default function CustomizableDashboard() {
     },
   });
 
-  // Синхронизация layout и widgets с конфигурацией
   useEffect(() => {
     if (config) {
       setLayout(config.layout || []);
@@ -79,22 +70,20 @@ export default function CustomizableDashboard() {
     }
   }, [config]);
 
-  // Auto-save при изменении layout (с debounce)
   useEffect(() => {
-    if (!isEditMode || !hasUnsavedChanges) return;
+    if (!hasUnsavedChanges) return;
 
     const timer = setTimeout(() => {
       handleSave();
-    }, 3000); // Auto-save через 3 секунды после последнего изменения
+    }, 2000);
 
     return () => clearTimeout(timer);
-  }, [layout, widgets, isEditMode, hasUnsavedChanges]);
+  }, [layout, widgets, hasUnsavedChanges]);
 
   const handleLayoutChange = useCallback((newLayout: Layout[]) => {
-    if (!isEditMode) return;
     setLayout(newLayout);
     setHasUnsavedChanges(true);
-  }, [isEditMode]);
+  }, []);
 
   const handleSave = () => {
     const updatedWidgets = layout.map(item => {
@@ -124,8 +113,6 @@ export default function CustomizableDashboard() {
 
   const handleAddWidget = (widgetDef: WidgetDefinition) => {
     const newWidgetId = `${widgetDef.widgetKey}-${Date.now()}`;
-
-    // Найти свободное место в сетке
     const maxY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
 
     const newWidget: DashboardWidget = {
@@ -158,32 +145,13 @@ export default function CustomizableDashboard() {
     });
   };
 
-  const handleCancelEdit = () => {
-    if (config) {
-      setLayout(config.layout || []);
-      setWidgets(config.widgets || []);
-    }
-    setHasUnsavedChanges(false);
-    setIsEditMode(false);
-  };
-
-  const handleEnterEditMode = () => {
-    setIsEditMode(true);
-  };
-
-  // Show loading state while configuration loads
-  if (isLoadingConfig || configError) {
+  if (isLoadingConfig) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <span className="ml-2 text-sm text-muted-foreground">Загрузка дашборда...</span>
       </div>
     );
-  }
-
-  // If user is not authenticated, don't render dashboard
-  if (!user) {
-    return null;
   }
 
   return (
@@ -193,111 +161,98 @@ export default function CustomizableDashboard() {
           <h1 className="text-3xl font-bold">Дашборд</h1>
           <p className="text-muted-foreground">Настройте дашборд под свои нужды</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setLocation("/dashboard/templates")}>
-            <FileJson className="mr-2 h-4 w-4" />
-            Шаблоны
-          </Button>
-          {isEditMode ? (
-            <>
-              <Button variant="outline" onClick={handleCancelEdit}>
-                <X className="mr-2 h-4 w-4" />
-                Отменить
-              </Button>
-              <Button onClick={handleSave} disabled={!hasUnsavedChanges || saveMutation.isPending}>
-                {saveMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
-                Сохранить
-              </Button>
-            </>
-          ) : (
-            <Button onClick={() => setIsEditMode(true)}>
-              <Edit className="mr-2 h-4 w-4" />
-              Редактировать
-            </Button>
-          )}
-        </div>
       </div>
 
-      {isEditMode && (
-        <Card className="p-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-900">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200">
-              <Edit className="h-4 w-4" />
-              <span className="font-medium">Режим редактирования активен</span>
-              <span className="text-muted-foreground">— перетаскивайте и изменяйте размер виджетов</span>
-            </div>
+      <Tabs defaultValue="main" className="w-full">
+        <TabsList>
+          <TabsTrigger value="main">Главная</TabsTrigger>
+          <TabsTrigger value="templates">Шаблоны</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="main" className="mt-6">
+          <div className="flex justify-end mb-4">
             <Button onClick={() => setShowWidgetSelector(true)} size="sm">
               <Plus className="h-4 w-4 mr-2" />
               Добавить виджет
             </Button>
           </div>
-        </Card>
-      )}
 
-      {widgets.length > 0 ? (
-        <GridLayout
-          className="layout"
-          layout={layout}
-          onLayoutChange={handleLayoutChange}
-          cols={12}
-          rowHeight={100}
-          width={1200}
-          isDraggable={isEditMode}
-          isResizable={isEditMode}
-          compactType="vertical"
-          preventCollision={false}
-          margin={[16, 16]}
-          containerPadding={[0, 0]}
-        >
-          {widgets.map(widget => {
-            const WidgetComponent = getWidgetComponent(widget.widgetKey);
-            if (!WidgetComponent) return null;
+          {widgets.length > 0 ? (
+            <GridLayout
+              className="layout"
+              layout={layout}
+              onLayoutChange={handleLayoutChange}
+              cols={12}
+              rowHeight={100}
+              width={1200}
+              isDraggable={true}
+              isResizable={true}
+              compactType="vertical"
+              preventCollision={false}
+              margin={[16, 16]}
+              containerPadding={[0, 0]}
+            >
+              {widgets.map(widget => {
+                const WidgetComponent = getWidgetComponent(widget.widgetKey);
+                if (!WidgetComponent) return null;
 
-            return (
-              <div
-                key={widget.id}
-                className={`dashboard-grid-item ${isEditMode ? 'editing' : ''}`}
-              >
-                <Suspense
-                  fallback={
-                    <Card className="h-full flex items-center justify-center">
-                      <Skeleton className="h-24 w-24" />
-                    </Card>
-                  }
-                >
-                  <WidgetComponent
-                    widgetKey={widget.widgetKey}
-                    config={widget.config}
-                    isEditMode={isEditMode}
-                    onRemove={() => handleRemoveWidget(widget.id)}
-                  />
-                </Suspense>
-              </div>
-            );
-          })}
-        </GridLayout>
-      ) : (
-        <Card className="p-12 text-center">
-          <p className="text-muted-foreground mb-4">
-            У вас пока нет виджетов на дашборде
-          </p>
-          <Button onClick={() => setShowWidgetSelector(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Добавить первый виджет
-          </Button>
-        </Card>
-      )}
+                return (
+                  <div
+                    key={widget.id}
+                    className="dashboard-grid-item"
+                    onMouseEnter={() => setHoveredWidgetId(widget.id)}
+                    onMouseLeave={() => setHoveredWidgetId(null)}
+                  >
+                    {hoveredWidgetId === widget.id && (
+                      <button
+                        onClick={() => handleRemoveWidget(widget.id)}
+                        className="absolute top-2 right-2 z-50 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90 transition-colors"
+                        title="Удалить виджет"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                    <Suspense
+                      fallback={
+                        <Card className="h-full flex items-center justify-center">
+                          <Skeleton className="h-24 w-24" />
+                        </Card>
+                      }
+                    >
+                      <WidgetComponent
+                        widgetKey={widget.widgetKey}
+                        config={widget.config}
+                        isEditMode={false}
+                      />
+                    </Suspense>
+                  </div>
+                );
+              })}
+            </GridLayout>
+          ) : (
+            <Card className="p-12 text-center">
+              <p className="text-muted-foreground mb-4">
+                У вас пока нет виджетов на дашборде
+              </p>
+              <Button onClick={() => setShowWidgetSelector(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Добавить первый виджет
+              </Button>
+            </Card>
+          )}
 
-      <WidgetSelector
-        open={showWidgetSelector}
-        onOpenChange={setShowWidgetSelector}
-        onAddWidget={handleAddWidget}
-        currentWidgets={widgets.map(w => w.widgetKey)}
-      />
+          <WidgetSelector
+            open={showWidgetSelector}
+            onOpenChange={setShowWidgetSelector}
+            onAddWidget={handleAddWidget}
+            currentWidgets={widgets.map(w => w.widgetKey)}
+          />
+        </TabsContent>
+
+        <TabsContent value="templates" className="mt-6">
+          <TemplateManager />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

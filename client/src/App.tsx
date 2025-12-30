@@ -128,12 +128,6 @@ function Router() {
         </AppLayout>
       </Route>
 
-      <Route path="/dashboard/templates">
-        <AppLayout>
-          <ProtectedRoute component={DashboardTemplatesPage} />
-        </AppLayout>
-      </Route>
-
       <Route path="/opt">
         <AppLayout>
           <ProtectedRoute component={OptPage} />
@@ -255,12 +249,6 @@ function Router() {
       </Route>
 
       <Route path="/admin/widgets">
-        <AppLayout>
-          <ProtectedRoute component={WidgetsAdminPage} requiredPermissions={["admin.view"]} />
-        </AppLayout>
-      </Route>
-
-      <Route path="/widgets">
         <AppLayout>
           <ProtectedRoute component={WidgetsAdminPage} requiredPermissions={["admin.view"]} />
         </AppLayout>

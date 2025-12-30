@@ -206,7 +206,7 @@ const getAdminMenuItems = (hasPermission: (module: string, action: string) => bo
   },
   {
     title: "Виджеты",
-    url: "/widgets",
+    url: "/admin/widgets",
     icon: Settings,
   },
   {
@@ -252,36 +252,14 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* Updated Dashboard Menu Item */}
-              <Collapsible defaultOpen className="group/collapsible">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton tooltip={{ children: "Дашборд", hidden: false }}>
-                      <LayoutDashboard className="h-4 w-4" />
-                      <span>Дашборд</span>
-                      <ChevronDown className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      <SidebarMenuSubItem>
-                        <SidebarMenuSubButton asChild>
-                          <Link href="/">
-                            <span>Главная</span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                      <SidebarMenuSubItem>
-                        <SidebarMenuSubButton asChild>
-                          <Link href="/dashboard/templates">
-                            <span>Шаблоны</span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={location === "/" || location === "/dashboard"}>
+                  <Link href="/">
+                    <LayoutDashboard className="h-4 w-4" />
+                    <span>Дашборд</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
