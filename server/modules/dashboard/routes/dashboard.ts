@@ -51,6 +51,10 @@ export function registerDashboardRoutes(app: Express) {
       });
 
       const widgets = await storage.dashboard.getAvailableWidgets(permissionsArray);
+      
+      // Логируем для отладки
+      console.log(`[Dashboard] User ${user.email} has access to ${widgets.length} widgets`);
+      
       res.json(widgets);
     } catch (error) {
       console.error("Error fetching available widgets:", error);
