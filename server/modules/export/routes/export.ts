@@ -117,7 +117,7 @@ export function registerExportRoutes(app: Express) {
         );
         res.setHeader(
           "Content-Disposition",
-          `attachment; filename=${downloadFileName}`
+          `attachment; filename*=UTF-8''${encodeURIComponent(downloadFileName)}`
         );
         res.send(buffer);
       } catch (error: any) {
