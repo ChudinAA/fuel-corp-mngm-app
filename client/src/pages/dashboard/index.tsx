@@ -201,21 +201,18 @@ export default function CustomizableDashboard() {
     let targetX = 0;
     let targetY = 0;
     
-    // Check if a position is occupied
+    // Check if a position is occupied or overlaps
     const isOccupied = (x: number, y: number, w: number, h: number) => {
       return layout.some(item => {
-        return !(
-          x + w <= item.x ||
-          x >= item.x + item.w ||
-          y + h <= item.y ||
-          y >= item.y + item.h
-        );
+        const horizontalOverlap = x < item.x + item.w && x + w > item.x;
+        const verticalOverlap = y < item.y + item.h && y + h > item.y;
+        return horizontalOverlap && verticalOverlap;
       });
     };
     
-    // Try to find empty space
+    // Try to find empty space row by row
     let found = false;
-    for (let y = 0; y < 20 && !found; y++) {
+    for (let y = 0; y < 50 && !found; y++) {
       for (let x = 0; x <= 12 - widgetDef.defaultWidth && !found; x++) {
         if (!isOccupied(x, y, widgetDef.defaultWidth, widgetDef.defaultHeight)) {
           targetX = x;
@@ -227,6 +224,7 @@ export default function CustomizableDashboard() {
     
     // If no free spot found, add to bottom
     if (!found) {
+      targetX = 0;
       targetY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
     }
 
@@ -323,11 +321,11 @@ export default function CustomizableDashboard() {
                 width={gridWidth}
                 isDraggable={true}
                 isResizable={true}
-                compactType="vertical"
-                preventCollision={false}
+                compactType={null}
+                preventCollision={true}
                 margin={[16, 16]}
                 containerPadding={[0, 0]}
-                useCSSTransforms={true}
+                useCSSTransforms={false}
               >
                 {widgets.map(widget => {
                   const WidgetComponent = getWidgetComponent(widget.widgetKey);

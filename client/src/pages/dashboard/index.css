@@ -24,12 +24,13 @@
 }
 
 .react-grid-item {
-  transition: none !important;
-  transform: none !important;
+  transition: all 200ms ease !important;
 }
 
 .react-grid-item.react-draggable-dragging {
   transition: none !important;
+  z-index: 100 !important;
+  opacity: 0.8;
 }
 
 .react-grid-item.react-grid-placeholder {
