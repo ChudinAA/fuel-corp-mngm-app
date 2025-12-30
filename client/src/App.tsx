@@ -237,27 +237,35 @@ function Router() {
       </Route>
 
       <Route path="/admin/users">
-        <AppLayout>
-          <ProtectedRoute component={UsersPage} requiredPermissions={["admin.view"]} />
-        </AppLayout>
+        {() => (
+          <AppLayout>
+            <ProtectedRoute component={UsersPage} requiredPermissions={["admin.view"]} />
+          </AppLayout>
+        )}
       </Route>
 
       <Route path="/admin/roles">
-        <AppLayout>
-          <ProtectedRoute component={RolesPage} requiredPermissions={["admin.view"]} />
-        </AppLayout>
+        {() => (
+          <AppLayout>
+            <ProtectedRoute component={RolesPage} requiredPermissions={["admin.view"]} />
+          </AppLayout>
+        )}
       </Route>
 
       <Route path="/admin/widgets">
-        <AppLayout>
-          <ProtectedRoute component={WidgetsPage} requiredPermissions={["admin.view"]} />
-        </AppLayout>
+        {() => (
+          <AppLayout>
+            <ProtectedRoute component={WidgetsPage} requiredPermissions={["admin.view"]} />
+          </AppLayout>
+        )}
       </Route>
 
       <Route path="/admin/settings">
-        <AppLayout>
-          <ProtectedRoute component={SettingsPage} requiredPermissions={["admin.view"]} />
-        </AppLayout>
+        {() => (
+          <AppLayout>
+            <ProtectedRoute component={SettingsPage} requiredPermissions={["admin.view"]} />
+          </AppLayout>
+        )}
       </Route>
 
       <Route>

@@ -1,3 +1,4 @@
+
 import { useState, Suspense, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import GridLayout, { Layout } from "react-grid-layout";
@@ -7,7 +8,6 @@ import "./index.css";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { Plus, Loader2, X, Save } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getWidgetComponent } from "./components/widget-registry";
@@ -37,7 +37,6 @@ export default function CustomizableDashboard() {
   const [newTemplateName, setNewTemplateName] = useState("");
   const [newTemplateDescription, setNewTemplateDescription] = useState("");
   const [activeTab, setActiveTab] = useState("main");
-  const [gridWidth, setGridWidth] = useState(1200);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -50,23 +49,8 @@ export default function CustomizableDashboard() {
     queryKey: ["/api/dashboard/widgets/available"],
   });
 
-  // Update grid width on mount and resize
-  useEffect(() => {
-    const updateWidth = () => {
-      const container = document.querySelector('.dashboard-container');
-      if (container) {
-        setGridWidth(container.clientWidth);
-      }
-    };
-
-    updateWidth();
-    window.addEventListener('resize', updateWidth);
-    return () => window.removeEventListener('resize', updateWidth);
-  }, []);
-
   const saveMutation = useMutation({
     mutationFn: async (data: { layout: Layout[]; widgets: DashboardWidget[]; silent?: boolean }) => {
-      // Clean layout data before sending
       const cleanLayout = data.layout.map(({ i, x, y, w, h, minW, minH }) => ({
         i, x, y, w, h, minW, minH
       }));
@@ -137,7 +121,6 @@ export default function CustomizableDashboard() {
 
   useEffect(() => {
     if (config) {
-      // Clean layout data when loading
       const cleanLayout = (config.layout || []).map(({ i, x, y, w, h, minW, minH }) => ({
         i, x, y, w, h, minW, minH
       }));
@@ -158,7 +141,6 @@ export default function CustomizableDashboard() {
   }, [layout, widgets, hasUnsavedChanges]);
 
   const handleLayoutChange = useCallback((newLayout: Layout[]) => {
-    // Only update if actually changed, and clean the data
     const cleanLayout = newLayout.map(({ i, x, y, w, h, minW, minH }) => ({
       i, x, y, w, h, minW, minH
     }));
@@ -196,11 +178,9 @@ export default function CustomizableDashboard() {
   const handleAddWidget = (widgetDef: WidgetDefinition) => {
     const newWidgetId = `${widgetDef.widgetKey}-${Date.now()}`;
 
-    // Find a free spot in the grid using improved collision detection
     let targetX = 0;
     let targetY = 0;
 
-    // Check if a position overlaps with any existing widget
     const isPositionFree = (x: number, y: number, w: number, h: number): boolean => {
       return !layout.some(item => {
         const horizontalOverlap = x < item.x + item.w && x + w > item.x;
@@ -209,7 +189,6 @@ export default function CustomizableDashboard() {
       });
     };
 
-    // Try to find empty space row by row
     let found = false;
     for (let y = 0; y < 50 && !found; y++) {
       for (let x = 0; x <= 12 - widgetDef.defaultWidth && !found; x++) {
@@ -221,7 +200,6 @@ export default function CustomizableDashboard() {
       }
     }
 
-    // If no free spot found, add to bottom
     if (!found) {
       targetX = 0;
       targetY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
@@ -283,7 +261,7 @@ export default function CustomizableDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Дашборд</h1>
           <p className="text-muted-foreground">Настройте дашборд под свои нужды</p>
@@ -317,14 +295,16 @@ export default function CustomizableDashboard() {
                 onLayoutChange={handleLayoutChange}
                 cols={12}
                 rowHeight={100}
-                width={gridWidth}
+                width={1200}
                 isDraggable={true}
                 isResizable={true}
                 compactType={null}
                 preventCollision={true}
                 margin={[16, 16]}
                 containerPadding={[0, 0]}
-                useCSSTransforms={false}
+                useCSSTransforms={true}
+                draggableHandle=".widget-drag-handle"
+                resizeHandles={['se', 's', 'e', 'ne', 'sw', 'nw', 'n', 'w']}
               >
                 {widgets.map(widget => {
                   const WidgetComponent = getWidgetComponent(widget.widgetKey);
@@ -337,6 +317,7 @@ export default function CustomizableDashboard() {
                       onMouseEnter={() => setHoveredWidgetId(widget.id)}
                       onMouseLeave={() => setHoveredWidgetId(null)}
                     >
+                      <div className="widget-drag-handle absolute top-0 left-0 right-0 h-10 cursor-move z-10" />
                       {hoveredWidgetId === widget.id && (
                         <button
                           onClick={(e) => {

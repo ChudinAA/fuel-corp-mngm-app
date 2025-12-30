@@ -1,3 +1,4 @@
+
 .dashboard-container {
   width: 100%;
   overflow-x: hidden;
@@ -10,36 +11,38 @@
 
 .dashboard-grid-item {
   position: relative;
-  cursor: grab;
-  touch-action: none;
-}
-
-.dashboard-grid-item:active {
-  cursor: grabbing;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: box-shadow 200ms ease;
 }
 
 .dashboard-grid-item:hover {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   z-index: 10;
-  transition: box-shadow 200ms ease;
 }
 
-.dashboard-grid-item:active:not(.react-draggable-dragging) {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+.widget-drag-handle {
+  background: transparent;
+  cursor: move;
+}
+
+.widget-drag-handle:hover {
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .react-grid-item {
   transition: all 200ms ease !important;
-  will-change: transform;
+  will-change: transform, width, height;
 }
 
 .react-grid-item.react-draggable-dragging {
   transition: none !important;
   z-index: 100 !important;
   opacity: 0.9;
-  cursor: grabbing !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  transform: scale(1.02) !important;
+  cursor: grabbing !important;
 }
 
 .react-grid-item.react-grid-resizing {
@@ -76,7 +79,6 @@
   border-radius: 2px;
 }
 
-/* Bottom-right corner resize handle */
 .react-grid-item > .react-resizable-handle-se {
   bottom: 0;
   right: 0;
@@ -88,7 +90,6 @@
   bottom: 3px;
 }
 
-/* Bottom edge resize handle */
 .react-grid-item > .react-resizable-handle-s {
   bottom: 0;
   left: 50%;
@@ -103,7 +104,6 @@
   transform: translateX(-50%);
 }
 
-/* Right edge resize handle */
 .react-grid-item > .react-resizable-handle-e {
   right: 0;
   top: 50%;
@@ -118,7 +118,6 @@
   transform: translateY(-50%);
 }
 
-/* Bottom-left corner resize handle */
 .react-grid-item > .react-resizable-handle-sw {
   bottom: 0;
   left: 0;
@@ -133,7 +132,6 @@
   border-right: none;
 }
 
-/* Top-right corner resize handle */
 .react-grid-item > .react-resizable-handle-ne {
   top: 0;
   right: 0;
@@ -148,7 +146,6 @@
   border-bottom: none;
 }
 
-/* Top-left corner resize handle */
 .react-grid-item > .react-resizable-handle-nw {
   top: 0;
   left: 0;
@@ -164,7 +161,6 @@
   border-bottom: none;
 }
 
-/* Top edge resize handle */
 .react-grid-item > .react-resizable-handle-n {
   top: 0;
   left: 50%;
@@ -179,7 +175,6 @@
   transform: translateX(-50%);
 }
 
-/* Left edge resize handle */
 .react-grid-item > .react-resizable-handle-w {
   left: 0;
   top: 50%;
