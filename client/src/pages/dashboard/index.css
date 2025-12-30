@@ -1,11 +1,5 @@
-.dashboard-container {
-  width: 100%;
-  overflow-x: hidden;
-}
-
 .layout {
   position: relative;
-  width: 100% !important;
 }
 
 .dashboard-grid-item {
@@ -24,13 +18,7 @@
 }
 
 .react-grid-item {
-  transition: all 200ms ease !important;
-}
-
-.react-grid-item.react-draggable-dragging {
   transition: none !important;
-  z-index: 100 !important;
-  opacity: 0.8;
 }
 
 .react-grid-item.react-grid-placeholder {

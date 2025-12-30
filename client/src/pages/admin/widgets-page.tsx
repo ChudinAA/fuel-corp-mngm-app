@@ -52,7 +52,7 @@ const WIDGET_CATEGORIES = [
   { value: "analytics", label: "Аналитика" },
 ];
 
-export default function WidgetsPage() {
+export default function WidgetsAdminPage() {
   const [showDialog, setShowDialog] = useState(false);
   const [editingWidget, setEditingWidget] = useState<WidgetDefinition | null>(null);
   const [formData, setFormData] = useState({

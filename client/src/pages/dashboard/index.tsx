@@ -1,4 +1,3 @@
-
 import { useState, Suspense, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import GridLayout, { Layout } from "react-grid-layout";
@@ -37,8 +36,6 @@ export default function CustomizableDashboard() {
   const [showCreateTemplateDialog, setShowCreateTemplateDialog] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [newTemplateDescription, setNewTemplateDescription] = useState("");
-  const [activeTab, setActiveTab] = useState("main");
-  const [gridWidth, setGridWidth] = useState(1200);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -51,31 +48,12 @@ export default function CustomizableDashboard() {
     queryKey: ["/api/dashboard/widgets/available"],
   });
 
-  // Update grid width on mount and resize
-  useEffect(() => {
-    const updateWidth = () => {
-      const container = document.querySelector('.dashboard-container');
-      if (container) {
-        setGridWidth(container.clientWidth);
-      }
-    };
-    
-    updateWidth();
-    window.addEventListener('resize', updateWidth);
-    return () => window.removeEventListener('resize', updateWidth);
-  }, []);
-
   const saveMutation = useMutation({
     mutationFn: async (data: { layout: Layout[]; widgets: DashboardWidget[]; silent?: boolean }) => {
-      // Clean layout data before sending
-      const cleanLayout = data.layout.map(({ i, x, y, w, h, minW, minH }) => ({
-        i, x, y, w, h, minW, minH
-      }));
-      
       const response = await fetch("/api/dashboard/configuration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ layout: cleanLayout, widgets: data.widgets }),
+        body: JSON.stringify({ layout: data.layout, widgets: data.widgets }),
         credentials: "include",
       });
       if (!response.ok) throw new Error("Failed to save configuration");
@@ -138,11 +116,7 @@ export default function CustomizableDashboard() {
 
   useEffect(() => {
     if (config) {
-      // Clean layout data when loading
-      const cleanLayout = (config.layout || []).map(({ i, x, y, w, h, minW, minH }) => ({
-        i, x, y, w, h, minW, minH
-      }));
-      setLayout(cleanLayout);
+      setLayout(config.layout || []);
       setWidgets(config.widgets || []);
       setHasUnsavedChanges(false);
     }
@@ -159,11 +133,7 @@ export default function CustomizableDashboard() {
   }, [layout, widgets, hasUnsavedChanges]);
 
   const handleLayoutChange = useCallback((newLayout: Layout[]) => {
-    // Only update if actually changed, and clean the data
-    const cleanLayout = newLayout.map(({ i, x, y, w, h, minW, minH }) => ({
-      i, x, y, w, h, minW, minH
-    }));
-    setLayout(cleanLayout);
+    setLayout(newLayout);
     setHasUnsavedChanges(true);
   }, []);
 
@@ -197,24 +167,17 @@ export default function CustomizableDashboard() {
   const handleAddWidget = (widgetDef: WidgetDefinition) => {
     const newWidgetId = `${widgetDef.widgetKey}-${Date.now()}`;
     
-    // Find a free spot in the grid
+    // Find a free spot in the grid instead of stacking at bottom
     let targetX = 0;
     let targetY = 0;
     
-    // Check if a position is occupied or overlaps
-    const isOccupied = (x: number, y: number, w: number, h: number) => {
-      return layout.some(item => {
-        const horizontalOverlap = x < item.x + item.w && x + w > item.x;
-        const verticalOverlap = y < item.y + item.h && y + h > item.y;
-        return horizontalOverlap && verticalOverlap;
-      });
-    };
-    
-    // Try to find empty space row by row
+    // Simple algorithm: try to find empty space
+    const occupied = new Set(layout.map(item => `${item.x},${item.y}`));
     let found = false;
-    for (let y = 0; y < 50 && !found; y++) {
+    
+    for (let y = 0; y < 20 && !found; y++) {
       for (let x = 0; x <= 12 - widgetDef.defaultWidth && !found; x++) {
-        if (!isOccupied(x, y, widgetDef.defaultWidth, widgetDef.defaultHeight)) {
+        if (!occupied.has(`${x},${y}`)) {
           targetX = x;
           targetY = y;
           found = true;
@@ -224,7 +187,6 @@ export default function CustomizableDashboard() {
     
     // If no free spot found, add to bottom
     if (!found) {
-      targetX = 0;
       targetY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
     }
 
@@ -289,8 +251,16 @@ export default function CustomizableDashboard() {
           <h1 className="text-3xl font-bold">Дашборд</h1>
           <p className="text-muted-foreground">Настройте дашборд под свои нужды</p>
         </div>
-        {activeTab === "main" && (
-          <div className="flex gap-2">
+      </div>
+
+      <Tabs defaultValue="main" className="w-full">
+        <TabsList>
+          <TabsTrigger value="main">Главная</TabsTrigger>
+          <TabsTrigger value="templates">Шаблоны</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="main" className="mt-6">
+          <div className="flex justify-end gap-2 mb-4">
             <Button onClick={() => setShowCreateTemplateDialog(true)} variant="outline" size="sm">
               <Save className="h-4 w-4 mr-2" />
               Создать шаблон из текущего
@@ -300,85 +270,73 @@ export default function CustomizableDashboard() {
               Добавить виджет
             </Button>
           </div>
-        )}
-      </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList>
-          <TabsTrigger value="main">Главная</TabsTrigger>
-          <TabsTrigger value="templates">Шаблоны</TabsTrigger>
-        </TabsList>
+          {widgets.length > 0 ? (
+            <GridLayout
+              className="layout"
+              layout={layout}
+              onLayoutChange={handleLayoutChange}
+              cols={12}
+              rowHeight={100}
+              width={1200}
+              isDraggable={true}
+              isResizable={true}
+              compactType={null}
+              preventCollision={true}
+              margin={[16, 16]}
+              containerPadding={[0, 0]}
+            >
+              {widgets.map(widget => {
+                const WidgetComponent = getWidgetComponent(widget.widgetKey);
+                if (!WidgetComponent) return null;
 
-        <TabsContent value="main" className="mt-6">
-          <div className="dashboard-container w-full">
-            {widgets.length > 0 ? (
-              <GridLayout
-                className="layout"
-                layout={layout}
-                onLayoutChange={handleLayoutChange}
-                cols={12}
-                rowHeight={100}
-                width={gridWidth}
-                isDraggable={true}
-                isResizable={true}
-                compactType={null}
-                preventCollision={true}
-                margin={[16, 16]}
-                containerPadding={[0, 0]}
-                useCSSTransforms={false}
-              >
-                {widgets.map(widget => {
-                  const WidgetComponent = getWidgetComponent(widget.widgetKey);
-                  if (!WidgetComponent) return null;
-
-                  return (
-                    <div
-                      key={widget.id}
-                      className="dashboard-grid-item"
-                      onMouseEnter={() => setHoveredWidgetId(widget.id)}
-                      onMouseLeave={() => setHoveredWidgetId(null)}
-                    >
-                      {hoveredWidgetId === widget.id && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveWidget(widget.id);
-                          }}
-                          className="absolute top-2 right-2 z-50 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90 transition-colors"
-                          title="Удалить виджет"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      )}
-                      <Suspense
-                        fallback={
-                          <Card className="h-full flex items-center justify-center">
-                            <Skeleton className="h-24 w-24" />
-                          </Card>
-                        }
+                return (
+                  <div
+                    key={widget.id}
+                    className="dashboard-grid-item"
+                    onMouseEnter={() => setHoveredWidgetId(widget.id)}
+                    onMouseLeave={() => setHoveredWidgetId(null)}
+                  >
+                    {hoveredWidgetId === widget.id && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveWidget(widget.id);
+                        }}
+                        className="absolute top-2 right-2 z-50 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90 transition-colors"
+                        title="Удалить виджет"
                       >
-                        <WidgetComponent
-                          widgetKey={widget.widgetKey}
-                          config={widget.config}
-                          isEditMode={false}
-                        />
-                      </Suspense>
-                    </div>
-                  );
-                })}
-              </GridLayout>
-            ) : (
-              <Card className="p-12 text-center">
-                <p className="text-muted-foreground mb-4">
-                  У вас пока нет виджетов на дашборде
-                </p>
-                <Button onClick={() => setShowWidgetSelector(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Добавить первый виджет
-                </Button>
-              </Card>
-            )}
-          </div>
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                    <Suspense
+                      fallback={
+                        <Card className="h-full flex items-center justify-center">
+                          <Skeleton className="h-24 w-24" />
+                        </Card>
+                      }
+                    >
+                      <WidgetComponent
+                        widgetKey={widget.widgetKey}
+                        config={widget.config}
+                        isEditMode={false}
+                      />
+                    </Suspense>
+                  </div>
+                );
+              })}
+            </GridLayout>
+          ) : (
+            <Card className="p-12 text-center">
+              <p className="text-muted-foreground mb-4">
+                У вас пока нет виджетов на дашборде
+              </p>
+              <Button onClick={() => setShowWidgetSelector(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Добавить первый виджет
+              </Button>
+            </Card>
+          )}
 
           <WidgetSelector
             open={showWidgetSelector}
