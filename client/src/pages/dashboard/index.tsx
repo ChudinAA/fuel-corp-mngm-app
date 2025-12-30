@@ -1,4 +1,3 @@
-
 import { useState, Suspense, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import GridLayout, { Layout } from "react-grid-layout";
@@ -59,7 +58,7 @@ export default function CustomizableDashboard() {
         setGridWidth(container.clientWidth);
       }
     };
-    
+
     updateWidth();
     window.addEventListener('resize', updateWidth);
     return () => window.removeEventListener('resize', updateWidth);
@@ -71,7 +70,7 @@ export default function CustomizableDashboard() {
       const cleanLayout = data.layout.map(({ i, x, y, w, h, minW, minH }) => ({
         i, x, y, w, h, minW, minH
       }));
-      
+
       const response = await fetch("/api/dashboard/configuration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -196,27 +195,35 @@ export default function CustomizableDashboard() {
 
   const handleAddWidget = (widgetDef: WidgetDefinition) => {
     const newWidgetId = `${widgetDef.widgetKey}-${Date.now()}`;
-    
-    // Find a free spot in the grid instead of stacking at bottom
+
+    // Find a free spot in the grid using improved collision detection
     let targetX = 0;
     let targetY = 0;
-    
-    // Simple algorithm: try to find empty space
-    const occupied = new Set(layout.map(item => `${item.x},${item.y}`));
+
+    // Check if a position overlaps with any existing widget
+    const isPositionFree = (x: number, y: number, w: number, h: number): boolean => {
+      return !layout.some(item => {
+        const horizontalOverlap = x < item.x + item.w && x + w > item.x;
+        const verticalOverlap = y < item.y + item.h && y + h > item.y;
+        return horizontalOverlap && verticalOverlap;
+      });
+    };
+
+    // Try to find empty space row by row
     let found = false;
-    
-    for (let y = 0; y < 20 && !found; y++) {
+    for (let y = 0; y < 50 && !found; y++) {
       for (let x = 0; x <= 12 - widgetDef.defaultWidth && !found; x++) {
-        if (!occupied.has(`${x},${y}`)) {
+        if (isPositionFree(x, y, widgetDef.defaultWidth, widgetDef.defaultHeight)) {
           targetX = x;
           targetY = y;
           found = true;
         }
       }
     }
-    
+
     // If no free spot found, add to bottom
     if (!found) {
+      targetX = 0;
       targetY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
     }
 

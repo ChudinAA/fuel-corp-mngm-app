@@ -26,7 +26,7 @@ import DirectoriesPage from "@/pages/directories-page";
 import UsersPage from "@/pages/admin/users-page";
 import RolesPage from "@/pages/admin/roles-page";
 import SettingsPage from "@/pages/admin/settings-page";
-import WidgetsAdminPage from "@/pages/admin/widgets-page";
+import WidgetsPage from "@/pages/admin/widgets-page";
 import CashflowPage from "@/pages/finance/cashflow-page";
 import PaymentCalendarPage from "@/pages/finance/payment-calendar-page";
 import PriceCalculationPage from "@/pages/finance/price-calculation-page";
@@ -250,7 +250,7 @@ function Router() {
 
       <Route path="/admin/widgets">
         <AppLayout>
-          <ProtectedRoute component={WidgetsAdminPage} requiredPermissions={["admin.view"]} />
+          <ProtectedRoute component={WidgetsPage} requiredPermissions={["admin.view"]} />
         </AppLayout>
       </Route>
 
