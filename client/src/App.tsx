@@ -260,7 +260,11 @@ function Router() {
         </AppLayout>
       </Route>
 
-      <Route component={NotFound} />
+      <Route>
+        <AppLayout>
+          <NotFound />
+        </AppLayout>
+      </Route>
     </Switch>
   );
 }
