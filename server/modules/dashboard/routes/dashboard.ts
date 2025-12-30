@@ -35,8 +35,22 @@ export function registerDashboardRoutes(app: Express) {
         return res.status(401).json({ message: "Не авторизован" });
       }
 
-      const userPermissions = user.role.permissions || [];
-      const widgets = await storage.dashboard.getAvailableWidgets(userPermissions);
+      // Получаем права пользователя из роли
+      const userPermissions = user.role.permissions || {};
+      const permissionsArray: string[] = [];
+      
+      // Преобразуем объект прав в массив строк формата "module.action"
+      Object.entries(userPermissions).forEach(([module, actions]) => {
+        if (typeof actions === 'object' && actions !== null) {
+          Object.entries(actions).forEach(([action, hasPermission]) => {
+            if (hasPermission) {
+              permissionsArray.push(`${module}.${action}`);
+            }
+          });
+        }
+      });
+
+      const widgets = await storage.dashboard.getAvailableWidgets(permissionsArray);
       res.json(widgets);
     } catch (error) {
       console.error("Error fetching available widgets:", error);
@@ -47,12 +61,12 @@ export function registerDashboardRoutes(app: Express) {
   // Получить конфигурацию дашборда пользователя
   app.get("/api/dashboard/configuration", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.id;
-      if (!userId) {
+      const user = req.user;
+      if (!user) {
         return res.status(401).json({ message: "Не авторизован" });
       }
 
-      const config = await storage.dashboard.getUserDashboard(userId);
+      const config = await storage.dashboard.getUserDashboard(user.id);
       res.json(config);
     } catch (error) {
       console.error("Error fetching dashboard configuration:", error);
@@ -63,8 +77,8 @@ export function registerDashboardRoutes(app: Express) {
   // Сохранить конфигурацию дашборда
   app.post("/api/dashboard/configuration", requireAuth, async (req, res) => {
     try {
-      const userId = req.user?.id;
-      if (!userId) {
+      const user = req.user;
+      if (!user) {
         return res.status(401).json({ message: "Не авторизован" });
       }
 
@@ -74,7 +88,7 @@ export function registerDashboardRoutes(app: Express) {
       }
 
       const config = await storage.dashboard.saveDashboardConfiguration(
-        userId,
+        user.id,
         layout,
         widgets
       );
@@ -92,6 +106,11 @@ export function registerDashboardRoutes(app: Express) {
       const config = req.query.config ? JSON.parse(req.query.config as string) : undefined;
 
       const data = await storage.dashboard.getWidgetData(widgetKey, config);
+      
+      if (data === null) {
+        return res.status(404).json({ message: "Виджет не найден" });
+      }
+
       res.json(data);
     } catch (error) {
       console.error("Error fetching widget data:", error);

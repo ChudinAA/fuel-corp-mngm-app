@@ -462,3 +462,4 @@ export class DashboardStorage implements IDashboardStorage {
       percentage: (parseFloat(wh.currentBalance || "0") / parseFloat(wh.storageCost || "100000")) * 100,
     }));
   }
+}
