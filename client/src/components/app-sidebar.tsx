@@ -207,7 +207,11 @@ const getAdminMenuItems = (hasPermission: (module: string, action: string) => bo
     title: "Настройки",
     url: "/admin/settings",
     icon: Settings,
-    permission: "settings.view",
+  },
+  {
+    title: "Виджеты",
+    url: "/admin/widgets",
+    icon: Settings,
   },
 ].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
 

@@ -25,6 +25,7 @@ import DirectoriesPage from "@/pages/directories-page";
 import UsersPage from "@/pages/admin/users-page";
 import RolesPage from "@/pages/admin/roles-page";
 import SettingsPage from "@/pages/admin/settings-page";
+import WidgetsPage from "@/pages/admin/widgets-page";
 import CashflowPage from "@/pages/finance/cashflow-page";
 import PaymentCalendarPage from "@/pages/finance/payment-calendar-page";
 import PriceCalculationPage from "@/pages/finance/price-calculation-page";
@@ -256,6 +257,12 @@ function Router() {
       <Route path="/admin/settings" element={
         <AppLayout>
           <ProtectedRoute component={SettingsPage} />
+        </AppLayout>
+      } />
+
+      <Route path="/admin/widgets" element={
+        <AppLayout>
+          <ProtectedRoute component={WidgetsPage} />
         </AppLayout>
       } />
 

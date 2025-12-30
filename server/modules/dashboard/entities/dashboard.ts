@@ -14,6 +14,7 @@ export const widgetDefinitions = pgTable("widget_definitions", {
   minWidth: integer("min_width").notNull().default(2),
   minHeight: integer("min_height").notNull().default(1),
   requiredPermissions: jsonb("required_permissions").$type<string[]>(),
+  configSchema: jsonb("config_schema"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),

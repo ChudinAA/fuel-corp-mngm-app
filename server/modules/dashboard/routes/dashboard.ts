@@ -252,4 +252,47 @@ export function registerDashboardRoutes(app: Express) {
       }
     }
   );
+
+  // Admin: Widget definitions management
+  app.get(
+    "/api/admin/widgets",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const widgets = await storage.dashboard.getAllWidgetDefinitions();
+        res.json(widgets);
+      } catch (error) {
+        console.error("Error fetching widget definitions:", error);
+        res.status(500).json({ message: "Failed to fetch widgets" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/admin/widgets",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const widget = await storage.dashboard.createWidgetDefinition(req.body);
+        res.json(widget);
+      } catch (error) {
+        console.error("Error creating widget:", error);
+        res.status(500).json({ message: "Failed to create widget" });
+      }
+    }
+  );
+
+  app.patch(
+    "/api/admin/widgets/:id",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const widget = await storage.dashboard.updateWidgetDefinition(req.params.id, req.body);
+        res.json(widget);
+      } catch (error) {
+        console.error("Error updating widget:", error);
+        res.status(500).json({ message: "Failed to update widget" });
+      }
+    }
+  );
 }

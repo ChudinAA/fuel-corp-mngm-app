@@ -314,6 +314,26 @@ export class DashboardStorage implements IDashboardStorage {
     });
   }
 
+  // Admin: Widget definitions management
+  async getAllWidgetDefinitions() {
+    return await db.select().from(widgetDefinitions);
+  }
+
+  async createWidgetDefinition(data: any) {
+    const [widget] = await db.insert(widgetDefinitions)
+      .values(data)
+      .returning();
+    return widget;
+  }
+
+  async updateWidgetDefinition(id: string, data: any) {
+    const [widget] = await db.update(widgetDefinitions)
+      .set({ ...data, updatedAt: new Date().toISOString() })
+      .where(eq(widgetDefinitions.id, id))
+      .returning();
+    return widget;
+  }
+
   // Template management
   async getTemplates(category?: string) {
     if (category) {
