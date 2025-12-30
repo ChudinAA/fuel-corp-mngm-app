@@ -303,7 +303,7 @@ export class DashboardStorage implements IDashboardStorage {
   // ============ НОВЫЕ МЕТОДЫ ДЛЯ ВИДЖЕТОВ ============
 
   async getAvailableWidgets(userPermissions: string[]): Promise<WidgetDefinition[]> {
-    const allWidgets = await this.db.select().from(widgetDefinitions).where(eq(widgetDefinitions.isActive, true));
+    const allWidgets = await db.select().from(widgetDefinitions).where(eq(widgetDefinitions.isActive, true));
 
     // Фильтрация виджетов по правам пользователя
     return allWidgets.filter(widget => {
@@ -317,31 +317,31 @@ export class DashboardStorage implements IDashboardStorage {
   // Template management
   async getTemplates(category?: string) {
     if (category) {
-      return await this.db.select().from(dashboardTemplates)
+      return await db.select().from(dashboardTemplates)
         .where(and(
           eq(dashboardTemplates.category, category),
           eq(dashboardTemplates.isActive, true)
         ));
     }
-    return await this.db.select().from(dashboardTemplates)
+    return await db.select().from(dashboardTemplates)
       .where(eq(dashboardTemplates.isActive, true));
   }
 
   async getTemplate(id: string) {
-    const [template] = await this.db.select().from(dashboardTemplates)
+    const [template] = await db.select().from(dashboardTemplates)
       .where(eq(dashboardTemplates.id, id));
     return template;
   }
 
   async createTemplate(data: any) {
-    const [template] = await this.db.insert(dashboardTemplates)
+    const [template] = await db.insert(dashboardTemplates)
       .values(data)
       .returning();
     return template;
   }
 
   async updateTemplate(id: string, data: any) {
-    const [template] = await this.db.update(dashboardTemplates)
+    const [template] = await db.update(dashboardTemplates)
       .set({ ...data, updatedAt: new Date().toISOString() })
       .where(eq(dashboardTemplates.id, id))
       .returning();
@@ -349,7 +349,7 @@ export class DashboardStorage implements IDashboardStorage {
   }
 
   async deleteTemplate(id: string) {
-    await this.db.delete(dashboardTemplates)
+    await db.delete(dashboardTemplates)
       .where(eq(dashboardTemplates.id, id));
   }
 
@@ -360,7 +360,7 @@ export class DashboardStorage implements IDashboardStorage {
     }
 
     // Применяем шаблон к конфигурации пользователя
-    const [config] = await this.db.update(dashboardConfigurations)
+    const [config] = await db.update(dashboardConfigurations)
       .set({
         layout: template.layout,
         widgets: template.widgets,
@@ -374,7 +374,7 @@ export class DashboardStorage implements IDashboardStorage {
 
 
   async getUserDashboard(userId: string): Promise<DashboardConfiguration | null> {
-    const [config] = await this.db
+    const [config] = await db
       .select()
       .from(dashboardConfigurations)
       .where(eq(dashboardConfigurations.userId, userId))
@@ -392,7 +392,7 @@ export class DashboardStorage implements IDashboardStorage {
 
     if (existing) {
       // Обновляем существующую конфигурацию
-      const [updated] = await this.db
+      const [updated] = await db
         .update(dashboardConfigurations)
         .set({
           layout,
@@ -405,7 +405,7 @@ export class DashboardStorage implements IDashboardStorage {
       return updated;
     } else {
       // Создаём новую конфигурацию
-      const [created] = await this.db
+      const [created] = await db
         .insert(dashboardConfigurations)
         .values({
           userId,
