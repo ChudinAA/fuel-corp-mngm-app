@@ -58,6 +58,7 @@ import {
   FileCheck,
   Briefcase,
   Table2,
+  Fullscreen,
   ChevronDown,
 } from "lucide-react";
 
@@ -207,7 +208,7 @@ const getAdminMenuItems = (hasPermission: (module: string, action: string) => bo
   {
     title: "Виджеты",
     url: "/admin/widgets",
-    icon: Settings,
+    icon: Fullscreen,
   },
   {
     title: "Настройки",
