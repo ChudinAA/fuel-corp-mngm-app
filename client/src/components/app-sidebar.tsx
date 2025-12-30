@@ -58,6 +58,7 @@ import {
   FileCheck,
   Briefcase,
   Table2,
+  ChevronDown,
 } from "lucide-react";
 
 const getMainMenuItems = () => [
@@ -204,13 +205,13 @@ const getAdminMenuItems = (hasPermission: (module: string, action: string) => bo
     permission: "roles.view",
   },
   {
-    title: "Настройки",
-    url: "/admin/settings",
+    title: "Виджеты",
+    url: "/widgets",
     icon: Settings,
   },
   {
-    title: "Виджеты",
-    url: "/admin/widgets",
+    title: "Настройки",
+    url: "/admin/settings",
     icon: Settings,
   },
 ].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
@@ -251,20 +252,36 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={isActive(item.url)}
-                    data-testid={`nav-${item.url.replace(/\//g, '-').slice(1) || 'dashboard'}`}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
+              {/* Updated Dashboard Menu Item */}
+              <Collapsible defaultOpen className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton tooltip={{ children: "Дашборд", hidden: false }}>
+                      <LayoutDashboard className="h-4 w-4" />
+                      <span>Дашборд</span>
+                      <ChevronDown className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton asChild>
+                          <Link href="/">
+                            <span>Главная</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton asChild>
+                          <Link href="/dashboard/templates">
+                            <span>Шаблоны</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
                 </SidebarMenuItem>
-              ))}
+              </Collapsible>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -286,7 +303,7 @@ export function AppSidebar() {
                       <SidebarMenuSub>
                         {operationsMenuItems.map((item) => (
                           <SidebarMenuSubItem key={item.title}>
-                            <SidebarMenuSubButton 
+                            <SidebarMenuSubButton
                               asChild
                               isActive={isActive(item.url)}
                               data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
@@ -324,7 +341,7 @@ export function AppSidebar() {
                       <SidebarMenuSub>
                         {dataMenuItems.map((item) => (
                           <SidebarMenuSubItem key={item.title}>
-                            <SidebarMenuSubButton 
+                            <SidebarMenuSubButton
                               asChild
                               isActive={isActive(item.url)}
                               data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
@@ -362,7 +379,7 @@ export function AppSidebar() {
                       <SidebarMenuSub>
                         {financeMenuItems.map((item) => (
                           <SidebarMenuSubItem key={item.title}>
-                            <SidebarMenuSubButton 
+                            <SidebarMenuSubButton
                               asChild
                               isActive={isActive(item.url)}
                               data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
@@ -439,7 +456,7 @@ export function AppSidebar() {
                       <SidebarMenuSub>
                         {adminMenuItems.map((item) => (
                           <SidebarMenuSubItem key={item.title}>
-                            <SidebarMenuSubButton 
+                            <SidebarMenuSubButton
                               asChild
                               isActive={isActive(item.url)}
                               data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
@@ -484,8 +501,8 @@ export function AppSidebar() {
                   <ChevronUp className="h-4 w-4 ml-auto" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent 
-                side="top" 
+              <DropdownMenuContent
+                side="top"
                 className="w-56"
                 align="end"
                 sideOffset={4}
@@ -506,7 +523,7 @@ export function AppSidebar() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => logoutMutation.mutate()}
                   className="text-destructive focus:text-destructive cursor-pointer"
                   data-testid="button-logout"

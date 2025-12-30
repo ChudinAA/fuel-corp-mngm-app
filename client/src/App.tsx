@@ -260,6 +260,12 @@ function Router() {
         </AppLayout>
       </Route>
 
+      <Route path="/widgets">
+        <AppLayout>
+          <ProtectedRoute component={WidgetsAdminPage} requiredPermissions={["admin.view"]} />
+        </AppLayout>
+      </Route>
+
       <Route path="/admin/settings">
         <AppLayout>
           <ProtectedRoute component={SettingsPage} requiredPermissions={["admin.view"]} />

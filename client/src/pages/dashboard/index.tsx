@@ -1,5 +1,6 @@
 import { useState, Suspense, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import GridLayout, { Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -22,6 +23,7 @@ export default function CustomizableDashboard() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   // Placeholder for user authentication status - replace with actual auth hook
   const user = true; // Assume user is logged in for now
@@ -192,7 +194,7 @@ export default function CustomizableDashboard() {
           <p className="text-muted-foreground">Настройте дашборд под свои нужды</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => window.location.href = "/dashboard/templates"}>
+          <Button variant="outline" onClick={() => setLocation("/dashboard/templates")}>
             <FileJson className="mr-2 h-4 w-4" />
             Шаблоны
           </Button>
