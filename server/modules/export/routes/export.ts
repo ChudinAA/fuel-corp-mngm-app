@@ -65,19 +65,31 @@ export function registerExportRoutes(app: Express) {
         let data: any[] = [];
         switch (moduleName) {
           case "opt":
-            data = await storage.opt.getAllOpts();
+            if (typeof storage.opt.getAllOpts === 'function') {
+              data = await storage.opt.getAllOpts();
+            } else {
+              const result = await storage.opt.getOptDeals(1, 10000);
+              data = result.data;
+            }
             break;
           case "refueling":
-            data = await storage.aircraftRefueling.getAllAircraftRefuelings();
+            if (typeof storage.aircraftRefueling.getAllAircraftRefuelings === 'function') {
+              data = await storage.aircraftRefueling.getAllAircraftRefuelings();
+            } else {
+              const result = await storage.aircraftRefueling.getAircraftRefuelings(1, 10000);
+              data = result.data;
+            }
             break;
           case "movement":
-            data = await storage.movement.getAllMovements();
+            const movementResult = await storage.movement.getMovements(1, 10000);
+            data = movementResult.data;
             break;
           case "exchange":
-            data = await storage.exchange.getAllExchanges();
+            const exchangeResult = await storage.exchange.getExchanges(1, 10000);
+            data = exchangeResult.data;
             break;
           case "warehouses":
-            data = await storage.warehouses.getAllWarehouses();
+            data = await storage.warehouses.getWarehouses();
             break;
           default:
             return res.status(400).json({ message: "Неизвестный модуль" });

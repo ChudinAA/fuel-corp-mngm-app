@@ -364,7 +364,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
 
   async restoreRefueling(id: string, oldData: any, userId?: string): Promise<boolean> {
     await db.transaction(async (tx) => {
-      // Restore the aircraft_refueling record
+      // Restore the aircraft refueling record
       await tx
         .update(aircraftRefueling)
         .set({
@@ -418,5 +418,28 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
     });
 
     return true;
+  }
+
+  async getAllAircraftRefuelings(): Promise<any[]> {
+    const data = await db.query.aircraftRefueling.findMany({
+      where: isNull(aircraftRefueling.deletedAt),
+      orderBy: (aircraftRefueling, { desc }) => [desc(aircraftRefueling.refuelingDate)],
+      with: {
+        base: {
+          columns: {
+            id: true,
+            name: true,
+          },
+        },
+        warehouse: {
+          columns: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    return data;
   }
 }

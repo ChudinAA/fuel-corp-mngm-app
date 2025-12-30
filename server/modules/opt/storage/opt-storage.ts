@@ -407,4 +407,55 @@ export class OptStorage implements IOptStorage {
 
     return true;
   }
+
+  async getAllOpts(): Promise<any[]> {
+    const data = await db.query.opt.findMany({
+      where: isNull(opt.deletedAt),
+      orderBy: (opt, { desc }) => [desc(opt.dealDate)],
+      with: {
+        supplier: {
+          columns: {
+            id: true,
+            name: true,
+            isWarehouse: true,
+          },
+        },
+        buyer: {
+          columns: {
+            id: true,
+            name: true,
+          },
+        },
+        carrier: {
+          columns: {
+            id: true,
+            name: true,
+          },
+        },
+        deliveryLocation: {
+          columns: {
+            id: true,
+            name: true,
+          },
+        },
+        warehouse: {
+          columns: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    return data.map((item) => ({
+      ...item,
+      supplier: item.supplier || {
+        id: item.supplierId,
+        name: "Не указан",
+        isWarehouse: false,
+      },
+      buyer: item.buyer || { id: item.buyerId, name: "Не указан" },
+      isApproxVolume: item.isApproxVolume || false,
+    }));
+  }
 }
