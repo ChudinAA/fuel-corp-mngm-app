@@ -215,10 +215,16 @@ export default function CustomizableDashboard() {
 
       {isEditMode && (
         <Card className="p-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-900">
-          <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200">
-            <Edit className="h-4 w-4" />
-            <span className="font-medium">Режим редактирования активен</span>
-            <span className="text-muted-foreground">— перетаскивайте и изменяйте размер виджетов</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200">
+              <Edit className="h-4 w-4" />
+              <span className="font-medium">Режим редактирования активен</span>
+              <span className="text-muted-foreground">— перетаскивайте и изменяйте размер виджетов</span>
+            </div>
+            <Button onClick={() => setShowWidgetSelector(true)} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Добавить виджет
+            </Button>
           </div>
         </Card>
       )}

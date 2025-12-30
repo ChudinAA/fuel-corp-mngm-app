@@ -25,7 +25,7 @@ import DirectoriesPage from "@/pages/directories-page";
 import UsersPage from "@/pages/admin/users-page";
 import RolesPage from "@/pages/admin/roles-page";
 import SettingsPage from "@/pages/admin/settings-page";
-import WidgetsPage from "@/pages/admin/widgets-page";
+import WidgetsAdminPage from "@/pages/admin/widgets-page"; // Renamed import to avoid conflict
 import CashflowPage from "@/pages/finance/cashflow-page";
 import PaymentCalendarPage from "@/pages/finance/payment-calendar-page";
 import PriceCalculationPage from "@/pages/finance/price-calculation-page";
@@ -242,29 +242,38 @@ function Router() {
         </AppLayout>
       } />
 
-      <Route path="/admin/users" element={
-        <AppLayout>
-          <ProtectedRoute component={UsersPage} />
-        </AppLayout>
-      } />
-
-      <Route path="/admin/roles" element={
-        <AppLayout>
-          <ProtectedRoute component={RolesPage} />
-        </AppLayout>
-      } />
-
-      <Route path="/admin/settings" element={
-        <AppLayout>
-          <ProtectedRoute component={SettingsPage} />
-        </AppLayout>
-      } />
-
-      <Route path="/admin/widgets" element={
-        <AppLayout>
-          <ProtectedRoute component={WidgetsPage} />
-        </AppLayout>
-      } />
+      <Route
+                path="/admin/users"
+                element={
+                  <ProtectedRoute requiredPermission="admin.view">
+                    <UsersPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/roles"
+                element={
+                  <ProtectedRoute requiredPermission="admin.view">
+                    <RolesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/widgets"
+                element={
+                  <ProtectedRoute requiredPermission="admin.view">
+                    <WidgetsAdminPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/settings"
+                element={
+                  <ProtectedRoute requiredPermission="admin.view">
+                    <SettingsPage />
+                  </ProtectedRoute>
+                }
+              />
 
       <Route component={NotFound} />
     </Switch>
