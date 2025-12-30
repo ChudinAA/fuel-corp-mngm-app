@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -12,6 +11,7 @@ import type { Exchange, Warehouse } from "@shared/schema";
 import { ExchangeDialog } from "./exchange/components/exchange-dialog";
 import { ExchangeTable } from "./exchange/components/exchange-table";
 import { useAuth } from "@/hooks/use-auth";
+import { ExportButton } from "@/components/export/export-button";
 
 export default function ExchangePage() {
   const [page, setPage] = useState(1);
@@ -82,8 +82,8 @@ export default function ExchangePage() {
         )}
       </div>
 
-      <ExchangeDialog 
-        warehouses={warehouses || []} 
+      <ExchangeDialog
+        warehouses={warehouses || []}
         editExchange={editingExchange}
         open={isDialogOpen}
         onOpenChange={(open) => !open && handleCloseDialog()}
@@ -99,12 +99,12 @@ export default function ExchangePage() {
             <div className="flex items-center gap-4">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Поиск..." 
-                  value={search} 
-                  onChange={(e) => setSearch(e.target.value)} 
-                  className="pl-9" 
-                  data-testid="input-search-exchange" 
+                <Input
+                  placeholder="Поиск..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-search-exchange"
                 />
               </div>
               <Button variant="outline" size="icon">
@@ -118,6 +118,7 @@ export default function ExchangePage() {
                 <History className="h-4 w-4 mr-2" />
                 История изменений
               </Button>
+              <ExportButton moduleName="exchange" />
             </div>
 
             <ExchangeTable
@@ -134,19 +135,19 @@ export default function ExchangePage() {
                   Показано {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, total)} из {total}
                 </p>
                 <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    disabled={page === 1} 
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    disabled={page === 1}
                     onClick={() => setPage(page - 1)}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <span className="text-sm">{page} / {totalPages}</span>
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    disabled={page === totalPages} 
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    disabled={page === totalPages}
                     onClick={() => setPage(page + 1)}
                   >
                     <ChevronRight className="h-4 w-4" />

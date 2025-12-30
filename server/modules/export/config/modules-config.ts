@@ -91,10 +91,30 @@ export const exchangeExportConfig: ModuleExportConfig = {
   relations: ["sourceWarehouse", "destinationWarehouse"],
 };
 
+// Конфигурация для складов
+export const warehousesExportConfig: ModuleExportConfig = {
+  moduleName: "warehouses",
+  tableName: "warehouses",
+  displayName: "Склады",
+  columns: [
+    { key: "name", label: "Название", type: "string", exportable: true },
+    { key: "currentBalance", label: "Остаток керосина (кг)", type: "number", exportable: true },
+    { key: "averageCost", label: "Себестоимость керосина", type: "number", exportable: true },
+    { key: "pvkjBalance", label: "Остаток ПВКЖ (кг)", type: "number", exportable: true },
+    { key: "pvkjAverageCost", label: "Себестоимость ПВКЖ", type: "number", exportable: true },
+    { key: "maxCapacity", label: "Максимальная вместимость", type: "number", exportable: true },
+    { key: "storageCost", label: "Стоимость хранения", type: "number", exportable: true },
+    { key: "isActive", label: "Активен", type: "boolean", exportable: true },
+  ],
+  defaultColumns: ["name", "currentBalance", "averageCost", "pvkjBalance", "isActive"],
+  relations: [],
+};
+
 // Реестр всех конфигураций
 export const exportConfigRegistry: Record<string, ModuleExportConfig> = {
   opt: optExportConfig,
   refueling: refuelingExportConfig,
   movement: movementExportConfig,
   exchange: exchangeExportConfig,
+  warehouses: warehousesExportConfig,
 };

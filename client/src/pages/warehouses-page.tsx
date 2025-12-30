@@ -11,6 +11,7 @@ import {
   Warehouse,
   History
 } from "lucide-react";
+import { ExportButton } from "@/components/export/export-button";
 import { AuditPanel } from "@/components/audit-panel";
 import type { Warehouse as WarehouseType } from "@shared/schema";
 import { WarehouseStatsCards } from "./warehouses/components/warehouse-stats-cards";
@@ -114,6 +115,7 @@ export default function WarehousesPage() {
           <History className="h-4 w-4 mr-2" />
           История изменений
         </Button>
+        <ExportButton moduleName="warehouses" />
       </div>
 
       {isLoading ? (

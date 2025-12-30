@@ -9,6 +9,7 @@ import { Pencil, Trash2, FileText } from "lucide-react";
 import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ExportButton } from "@/components/export/export-button";
 import { formatNumber, formatDate } from "../utils";
 import type { MovementTableProps } from "../types";
 import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";

@@ -13,6 +13,7 @@ import { MovementDialog } from "./movement/components/movement-dialog";
 import { MovementTable } from "./movement/components/movement-table";
 import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
+import { ExportButton } from "@/components/export/export-button";
 
 export default function MovementPage() {
   const [page, setPage] = useState(1);
@@ -204,6 +205,7 @@ export default function MovementPage() {
                 <History className="h-4 w-4 mr-2" />
                 История изменений
               </Button>
+              <ExportButton moduleName="movement" />
             </div>
 
             <div className="border rounded-lg">

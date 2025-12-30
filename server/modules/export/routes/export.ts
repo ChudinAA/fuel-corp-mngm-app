@@ -76,6 +76,9 @@ export function registerExportRoutes(app: Express) {
           case "exchange":
             data = await storage.exchange.getAllExchanges();
             break;
+          case "warehouses":
+            data = await storage.warehouses.getAllWarehouses();
+            break;
           default:
             return res.status(400).json({ message: "Неизвестный модуль" });
         }

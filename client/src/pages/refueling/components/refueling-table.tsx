@@ -48,6 +48,7 @@ import { PRODUCT_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router-dom";
 import { AuditPanel } from "@/components/audit-panel";
+import { ExportButton } from "@/components/export/export-button";
 
 interface RefuelingDealActionsProps {
   deal: any;
@@ -192,6 +193,7 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
           <History className="h-4 w-4 mr-2" />
           История изменений
         </Button>
+        <ExportButton module="refueling" />
       </div>
 
       <div className="border rounded-lg">
