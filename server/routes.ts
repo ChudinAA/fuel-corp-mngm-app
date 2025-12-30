@@ -27,6 +27,7 @@ import { registerMonthlyPlanRoutes } from "./modules/monthly-plan/routes/monthly
 import { registerGovernmentContractRoutes } from "./modules/gov-contracts/routes/gov-contracts";
 import { registerBudgetRoutes } from "./modules/budget/routes/budget";
 import { registerManagementReportRoutes } from "./modules/management-report/routes/management-report";
+import { registerExportRoutes } from "./modules/export/routes/export";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -66,6 +67,7 @@ export async function registerRoutes(
   registerGovernmentContractRoutes(app);
   registerBudgetRoutes(app);
   registerManagementReportRoutes(app);
+  registerExportRoutes(app);
 
   return httpServer;
 }

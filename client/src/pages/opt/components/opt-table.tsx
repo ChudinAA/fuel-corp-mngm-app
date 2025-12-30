@@ -28,9 +28,9 @@ import {
 } from "@/components/ui/dialog";
 import {
   Tooltip,
-  TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+  TooltipContent,
 } from "@/components/ui/tooltip";
 import { formatNumberForTable, formatCurrencyForTable } from "../utils";
 import { useOptTable } from "../hooks/use-opt-table";
@@ -39,10 +39,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router-dom";
 import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
+import { ExportButton } from "@/components/export/export-button";
 
 interface OptTableProps {
   onEdit: (opt: any) => void;
   onDelete?: () => void;
+  onAdd?: () => void; // Added onAdd prop for consistency with the change snippet
 }
 
 interface OptDealActionsProps {
@@ -95,7 +97,7 @@ function OptDealActions({ deal, onEdit, onDelete, onShowNotes }: OptDealActionsP
 }
 
 
-export function OptTable({ onEdit, onDelete }: OptTableProps) {
+export function OptTable({ onEdit, onDelete, onAdd }: OptTableProps) {
   const {
     page,
     setPage,
@@ -196,6 +198,7 @@ export function OptTable({ onEdit, onDelete }: OptTableProps) {
           <History className="h-4 w-4 mr-2" />
           История изменений
         </Button>
+        <ExportButton moduleName="opt" /> {/* Export button added here */}
       </div>
 
       <div className="border rounded-lg">

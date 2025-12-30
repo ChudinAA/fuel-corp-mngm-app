@@ -21,3 +21,4 @@ export * from "server/modules/monthly-plan/entities/monthly-plan";
 export * from "server/modules/gov-contracts/entities/gov-contracts";
 export * from "server/modules/budget/entities/budget";
 export * from "server/modules/management-report/entities/management-report";
+export * from "server/modules/export/entities/export-config";
