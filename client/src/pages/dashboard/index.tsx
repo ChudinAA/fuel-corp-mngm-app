@@ -1,4 +1,3 @@
-
 import { useState, Suspense, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import GridLayout, { Layout } from "react-grid-layout";
@@ -9,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Save, X, Plus, Loader2 } from "lucide-react";
+import { Edit, Save, X, Plus, Loader2, FileJson } from "lucide-react";
 import { getWidgetComponent } from "./components/widget-registry";
 import { WidgetSelector } from "./components/widget-selector";
 import { DashboardConfiguration, WidgetDefinition, DashboardWidget } from "./types";
@@ -118,10 +117,10 @@ export default function CustomizableDashboard() {
 
   const handleAddWidget = (widgetDef: WidgetDefinition) => {
     const newWidgetId = `${widgetDef.widgetKey}-${Date.now()}`;
-    
+
     // Найти свободное место в сетке
     const maxY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
-    
+
     const newWidget: DashboardWidget = {
       id: newWidgetId,
       widgetKey: widgetDef.widgetKey,
@@ -145,14 +144,14 @@ export default function CustomizableDashboard() {
     setLayout(prev => [...prev, newLayoutItem]);
     setShowWidgetSelector(false);
     setHasUnsavedChanges(true);
-    
+
     toast({
       title: "Виджет добавлен",
       description: `${widgetDef.name} добавлен на дашборд`,
     });
   };
 
-  const handleCancel = () => {
+  const handleCancelEdit = () => {
     if (config) {
       setLayout(config.layout || []);
       setWidgets(config.widgets || []);
@@ -180,42 +179,36 @@ export default function CustomizableDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold">Дашборд</h1>
-          <p className="text-muted-foreground">
-            Обзор ключевых показателей системы
-          </p>
+          <h1 className="text-3xl font-bold">Дашборд</h1>
+          <p className="text-muted-foreground">Настройте дашборд под свои нужды</p>
         </div>
-        <div className="flex gap-2 items-center">
-          {hasUnsavedChanges && isEditMode && (
-            <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-              Автосохранение...
-            </Badge>
-          )}
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => window.location.href = "/dashboard/templates"}>
+            <FileJson className="mr-2 h-4 w-4" />
+            Шаблоны
+          </Button>
           {isEditMode ? (
             <>
-              <Button variant="outline" onClick={handleCancel} disabled={saveMutation.isPending}>
-                <X className="h-4 w-4 mr-2" />
-                Отмена
+              <Button variant="outline" onClick={handleCancelEdit}>
+                <X className="mr-2 h-4 w-4" />
+                Отменить
               </Button>
-              <Button onClick={handleSave} disabled={saveMutation.isPending || !hasUnsavedChanges}>
-                <Save className="h-4 w-4 mr-2" />
-                {saveMutation.isPending ? "Сохранение..." : "Сохранить"}
+              <Button onClick={handleSave} disabled={!hasUnsavedChanges || saveMutation.isPending}>
+                {saveMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="mr-2 h-4 w-4" />
+                )}
+                Сохранить
               </Button>
             </>
           ) : (
-            <>
-              <Button variant="outline" onClick={handleEnterEditMode}>
-                <Edit className="h-4 w-4 mr-2" />
-                Редактировать
-              </Button>
-              <Button variant="outline" onClick={() => setShowWidgetSelector(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Добавить виджет
-              </Button>
-            </>
+            <Button onClick={() => setIsEditMode(true)}>
+              <Edit className="mr-2 h-4 w-4" />
+              Редактировать
+            </Button>
           )}
         </div>
       </div>

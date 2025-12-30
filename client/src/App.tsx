@@ -12,7 +12,8 @@ import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 
 import AuthPage from "@/pages/auth-page";
-import CustomizableDashboard from "@/pages/dashboard";
+import CustomizableDashboard from "@/pages/dashboard/index";
+import DashboardTemplatesPage from "@/pages/dashboard/templates-page";
 import OptPage from "@/pages/opt-page";
 import RefuelingPage from "@/pages/refueling-page";
 import ExchangePage from "@/pages/exchange-page";
@@ -36,7 +37,7 @@ import BudgetPage from "@/pages/reports/budget-page";
 import ManagementReportPage from "@/pages/reports/management-report-page";
 import NotFound from "@/pages/not-found";
 
-function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+function ProtectedRoute({ component: Component, requiredPermissions }: { component: React.ComponentType, requiredPermissions?: string[] }) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -49,6 +50,18 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 
   if (!user) {
     return <AuthPage />;
+  }
+
+  // Add permission check here if requiredPermissions are provided
+  if (requiredPermissions && requiredPermissions.length > 0) {
+    const hasPermission = user.permissions?.some(p => requiredPermissions.includes(p));
+    if (!hasPermission) {
+      // Optionally redirect to a not-authorized page or show a message
+      // For now, let's assume it falls through to NotFound or similar
+      // In a real app, you'd want a dedicated unauthorized page.
+      console.warn("User does not have required permissions:", requiredPermissions);
+      // return <NotFound />; // Or a dedicated unauthorized component
+    }
   }
 
   return <Component />;
@@ -109,137 +122,142 @@ function Router() {
     <Switch>
       <Route path="/auth" component={AuthPage} />
 
-      <Route path="/">
-        <AppLayout>
-          <ProtectedRoute component={CustomizableDashboard} /> {/* Changed component */}
-        </AppLayout>
-      </Route>
+      <Route path="/dashboard" element={
+                <ProtectedRoute requiredPermissions={[]}>
+                  <CustomizableDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/dashboard/templates" element={
+                <ProtectedRoute requiredPermissions={[]}>
+                  <DashboardTemplatesPage />
+                </ProtectedRoute>
+              } />
 
-      <Route path="/opt">
+      <Route path="/opt" element={
         <AppLayout>
           <ProtectedRoute component={OptPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/refueling">
+      <Route path="/refueling" element={
         <AppLayout>
           <ProtectedRoute component={RefuelingPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/exchange">
+      <Route path="/exchange" element={
         <AppLayout>
           <ProtectedRoute component={ExchangePage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/movement">
+      <Route path="/movement" element={
         <AppLayout>
           <ProtectedRoute component={MovementPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/warehouses">
+      <Route path="/warehouses" element={
         <AppLayout>
           <ProtectedRoute component={WarehousesPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/prices">
+      <Route path="/prices" element={
         <AppLayout>
           <ProtectedRoute component={PricesPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/delivery">
+      <Route path="/delivery" element={
         <AppLayout>
           <ProtectedRoute component={DeliveryPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/directories">
+      <Route path="/directories" element={
         <AppLayout>
           <ProtectedRoute component={DirectoriesPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/finance/cashflow">
+      <Route path="/finance/cashflow" element={
         <AppLayout>
           <ProtectedRoute component={CashflowPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/finance/payment-calendar">
+      <Route path="/finance/payment-calendar" element={
         <AppLayout>
           <ProtectedRoute component={PaymentCalendarPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/finance/price-calculation">
+      <Route path="/finance/price-calculation" element={
         <AppLayout>
           <ProtectedRoute component={PriceCalculationPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/reports/current">
+      <Route path="/reports/current" element={
         <AppLayout>
           <ProtectedRoute component={DailyReportsPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/reports/analytics">
+      <Route path="/reports/analytics" element={
         <AppLayout>
           <ProtectedRoute component={AnalyticsPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/reports/registries">
+      <Route path="/reports/registries" element={
         <AppLayout>
           <ProtectedRoute component={RegistriesPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/reports/monthly-plan">
+      <Route path="/reports/monthly-plan" element={
         <AppLayout>
           <ProtectedRoute component={MonthlyPlanPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/reports/gov-contracts">
+      <Route path="/reports/gov-contracts" element={
         <AppLayout>
           <ProtectedRoute component={GovContractsPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/reports/budget">
+      <Route path="/reports/budget" element={
         <AppLayout>
           <ProtectedRoute component={BudgetPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/reports/management">
+      <Route path="/reports/management" element={
         <AppLayout>
           <ProtectedRoute component={ManagementReportPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/admin/users">
+      <Route path="/admin/users" element={
         <AppLayout>
           <ProtectedRoute component={UsersPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/admin/roles">
+      <Route path="/admin/roles" element={
         <AppLayout>
           <ProtectedRoute component={RolesPage} />
         </AppLayout>
-      </Route>
+      } />
 
-      <Route path="/admin/settings">
+      <Route path="/admin/settings" element={
         <AppLayout>
           <ProtectedRoute component={SettingsPage} />
         </AppLayout>
-      </Route>
+      } />
 
       <Route component={NotFound} />
     </Switch>

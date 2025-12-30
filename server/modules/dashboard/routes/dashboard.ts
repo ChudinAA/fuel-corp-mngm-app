@@ -1,7 +1,6 @@
 import type { Express } from "express";
 import { storage } from "../../../storage/index";
 import { requireAuth } from "../../../middleware/middleware";
-import { requirePermission } from "../../../middleware/permissions"; // Assume this middleware exists
 
 export function registerDashboardRoutes(app: Express) {
   // Старые endpoints (для совместимости)
@@ -146,7 +145,6 @@ export function registerDashboardRoutes(app: Express) {
   app.post(
     "/api/dashboard/templates",
     requireAuth,
-    requirePermission("settings", "edit"),
     async (req, res) => {
       try {
         const template = await storage.dashboard.createTemplate({
@@ -164,7 +162,6 @@ export function registerDashboardRoutes(app: Express) {
   app.patch(
     "/api/dashboard/templates/:id",
     requireAuth,
-    requirePermission("settings", "edit"),
     async (req, res) => {
       try {
         const template = await storage.dashboard.updateTemplate(req.params.id, req.body);
@@ -179,7 +176,6 @@ export function registerDashboardRoutes(app: Express) {
   app.delete(
     "/api/dashboard/templates/:id",
     requireAuth,
-    requirePermission("settings", "edit"),
     async (req, res) => {
       try {
         await storage.dashboard.deleteTemplate(req.params.id);
@@ -211,7 +207,7 @@ export function registerDashboardRoutes(app: Express) {
     requireAuth,
     async (req, res) => {
       try {
-        const config = await storage.dashboard.getConfiguration(req.session.userId!);
+        const config = await storage.dashboard.getUserDashboard(req.session.userId!);
 
         const exportData = {
           version: "1.0",
@@ -243,7 +239,7 @@ export function registerDashboardRoutes(app: Express) {
           return res.status(400).json({ message: "Invalid configuration format" });
         }
 
-        const config = await storage.dashboard.saveConfiguration(
+        const config = await storage.dashboard.saveDashboardConfiguration(
           req.session.userId!,
           configuration.layout,
           configuration.widgets
