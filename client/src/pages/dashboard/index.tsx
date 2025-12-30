@@ -197,17 +197,27 @@ export default function CustomizableDashboard() {
   const handleAddWidget = (widgetDef: WidgetDefinition) => {
     const newWidgetId = `${widgetDef.widgetKey}-${Date.now()}`;
     
-    // Find a free spot in the grid instead of stacking at bottom
+    // Find a free spot in the grid
     let targetX = 0;
     let targetY = 0;
     
-    // Simple algorithm: try to find empty space
-    const occupied = new Set(layout.map(item => `${item.x},${item.y}`));
-    let found = false;
+    // Check if a position is occupied
+    const isOccupied = (x: number, y: number, w: number, h: number) => {
+      return layout.some(item => {
+        return !(
+          x + w <= item.x ||
+          x >= item.x + item.w ||
+          y + h <= item.y ||
+          y >= item.y + item.h
+        );
+      });
+    };
     
+    // Try to find empty space
+    let found = false;
     for (let y = 0; y < 20 && !found; y++) {
       for (let x = 0; x <= 12 - widgetDef.defaultWidth && !found; x++) {
-        if (!occupied.has(`${x},${y}`)) {
+        if (!isOccupied(x, y, widgetDef.defaultWidth, widgetDef.defaultHeight)) {
           targetX = x;
           targetY = y;
           found = true;
@@ -313,11 +323,11 @@ export default function CustomizableDashboard() {
                 width={gridWidth}
                 isDraggable={true}
                 isResizable={true}
-                compactType={null}
-                preventCollision={true}
+                compactType="vertical"
+                preventCollision={false}
                 margin={[16, 16]}
                 containerPadding={[0, 0]}
-                useCSSTransforms={false}
+                useCSSTransforms={true}
               >
                 {widgets.map(widget => {
                   const WidgetComponent = getWidgetComponent(widget.widgetKey);
