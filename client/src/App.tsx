@@ -1,3 +1,4 @@
+
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient, setGlobalRedirectHandler } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -25,7 +26,7 @@ import DirectoriesPage from "@/pages/directories-page";
 import UsersPage from "@/pages/admin/users-page";
 import RolesPage from "@/pages/admin/roles-page";
 import SettingsPage from "@/pages/admin/settings-page";
-import WidgetsAdminPage from "@/pages/admin/widgets-page"; // Renamed import to avoid conflict
+import WidgetsAdminPage from "@/pages/admin/widgets-page";
 import CashflowPage from "@/pages/finance/cashflow-page";
 import PaymentCalendarPage from "@/pages/finance/payment-calendar-page";
 import PriceCalculationPage from "@/pages/finance/price-calculation-page";
@@ -53,15 +54,10 @@ function ProtectedRoute({ component: Component, requiredPermissions }: { compone
     return <AuthPage />;
   }
 
-  // Add permission check here if requiredPermissions are provided
   if (requiredPermissions && requiredPermissions.length > 0) {
     const hasPermission = user.permissions?.some(p => requiredPermissions.includes(p));
     if (!hasPermission) {
-      // Optionally redirect to a not-authorized page or show a message
-      // For now, let's assume it falls through to NotFound or similar
-      // In a real app, you'd want a dedicated unauthorized page.
-      console.warn("User does not have required permissions:", requiredPermissions);
-      // return <NotFound />; // Or a dedicated unauthorized component
+      return <NotFound />;
     }
   }
 
@@ -109,12 +105,9 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 function Router() {
   const [, setLocation] = useLocation();
 
-  // Set up global 401 redirect handler
   useEffect(() => {
     setGlobalRedirectHandler(() => {
-      // Clear user data from cache
       queryClient.setQueryData(["/api/auth/user"], null);
-      // Redirect to auth page
       setLocation("/auth");
     });
   }, [setLocation]);
@@ -123,157 +116,155 @@ function Router() {
     <Switch>
       <Route path="/auth" component={AuthPage} />
 
-      <Route path="/dashboard" element={
-                <ProtectedRoute requiredPermissions={[]}>
-                  <CustomizableDashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/dashboard/templates" element={
-                <ProtectedRoute requiredPermissions={[]}>
-                  <DashboardTemplatesPage />
-                </ProtectedRoute>
-              } />
+      <Route path="/">
+        <AppLayout>
+          <ProtectedRoute component={CustomizableDashboard} />
+        </AppLayout>
+      </Route>
 
-      <Route path="/opt" element={
+      <Route path="/dashboard">
+        <AppLayout>
+          <ProtectedRoute component={CustomizableDashboard} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/dashboard/templates">
+        <AppLayout>
+          <ProtectedRoute component={DashboardTemplatesPage} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/opt">
         <AppLayout>
           <ProtectedRoute component={OptPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/refueling" element={
+      <Route path="/refueling">
         <AppLayout>
           <ProtectedRoute component={RefuelingPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/exchange" element={
+      <Route path="/exchange">
         <AppLayout>
           <ProtectedRoute component={ExchangePage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/movement" element={
+      <Route path="/movement">
         <AppLayout>
           <ProtectedRoute component={MovementPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/warehouses" element={
+      <Route path="/warehouses">
         <AppLayout>
           <ProtectedRoute component={WarehousesPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/prices" element={
+      <Route path="/prices">
         <AppLayout>
           <ProtectedRoute component={PricesPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/delivery" element={
+      <Route path="/delivery">
         <AppLayout>
           <ProtectedRoute component={DeliveryPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/directories" element={
+      <Route path="/directories">
         <AppLayout>
           <ProtectedRoute component={DirectoriesPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/finance/cashflow" element={
+      <Route path="/finance/cashflow">
         <AppLayout>
           <ProtectedRoute component={CashflowPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/finance/payment-calendar" element={
+      <Route path="/finance/payment-calendar">
         <AppLayout>
           <ProtectedRoute component={PaymentCalendarPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/finance/price-calculation" element={
+      <Route path="/finance/price-calculation">
         <AppLayout>
           <ProtectedRoute component={PriceCalculationPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/reports/current" element={
+      <Route path="/reports/current">
         <AppLayout>
           <ProtectedRoute component={DailyReportsPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/reports/analytics" element={
+      <Route path="/reports/analytics">
         <AppLayout>
           <ProtectedRoute component={AnalyticsPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/reports/registries" element={
+      <Route path="/reports/registries">
         <AppLayout>
           <ProtectedRoute component={RegistriesPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/reports/monthly-plan" element={
+      <Route path="/reports/monthly-plan">
         <AppLayout>
           <ProtectedRoute component={MonthlyPlanPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/reports/gov-contracts" element={
+      <Route path="/reports/gov-contracts">
         <AppLayout>
           <ProtectedRoute component={GovContractsPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/reports/budget" element={
+      <Route path="/reports/budget">
         <AppLayout>
           <ProtectedRoute component={BudgetPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route path="/reports/management" element={
+      <Route path="/reports/management">
         <AppLayout>
           <ProtectedRoute component={ManagementReportPage} />
         </AppLayout>
-      } />
+      </Route>
 
-      <Route
-                path="/admin/users"
-                element={
-                  <ProtectedRoute requiredPermission="admin.view">
-                    <UsersPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/roles"
-                element={
-                  <ProtectedRoute requiredPermission="admin.view">
-                    <RolesPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/widgets"
-                element={
-                  <ProtectedRoute requiredPermission="admin.view">
-                    <WidgetsAdminPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/settings"
-                element={
-                  <ProtectedRoute requiredPermission="admin.view">
-                    <SettingsPage />
-                  </ProtectedRoute>
-                }
-              />
+      <Route path="/admin/users">
+        <AppLayout>
+          <ProtectedRoute component={UsersPage} requiredPermissions={["admin.view"]} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/admin/roles">
+        <AppLayout>
+          <ProtectedRoute component={RolesPage} requiredPermissions={["admin.view"]} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/admin/widgets">
+        <AppLayout>
+          <ProtectedRoute component={WidgetsAdminPage} requiredPermissions={["admin.view"]} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/admin/settings">
+        <AppLayout>
+          <ProtectedRoute component={SettingsPage} requiredPermissions={["admin.view"]} />
+        </AppLayout>
+      </Route>
 
       <Route component={NotFound} />
     </Switch>
