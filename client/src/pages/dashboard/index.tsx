@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Loader2, X, Save } from "lucide-react";
+import { Plus, Loader2, X, Save, GripVertical } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getWidgetComponent } from "./components/widget-registry";
 import { WidgetSelector } from "./components/widget-selector";
@@ -172,7 +172,7 @@ export default function CustomizableDashboard() {
       if (index === -1) return prev;
       
       const newLayout = [...prev];
-      const item = newLayout[index];
+      const item = { ...newLayout[index] };
       
       if (direction === 'up' && item.y > 0) {
         item.y = Math.max(0, item.y - 1);
@@ -180,6 +180,7 @@ export default function CustomizableDashboard() {
         item.y += 1;
       }
       
+      newLayout[index] = item;
       return newLayout;
     });
     setHasUnsavedChanges(true);
@@ -337,13 +338,14 @@ export default function CustomizableDashboard() {
                 cols={12}
                 rowHeight={100}
                 width={gridWidth}
-                isDraggable={false}
+                isDraggable={true}
                 isResizable={true}
+                draggableHandle=".drag-handle"
                 compactType="vertical"
                 preventCollision={false}
                 margin={[16, 16]}
                 containerPadding={[0, 0]}
-                useCSSTransforms={false}
+                useCSSTransforms={true}
               >
                 {widgets.map(widget => {
                   const WidgetComponent = getWidgetComponent(widget.widgetKey);
@@ -357,6 +359,12 @@ export default function CustomizableDashboard() {
                       onMouseLeave={() => setHoveredWidgetId(null)}
                     >
                       <div className="absolute top-2 right-2 z-50 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div
+                          className="drag-handle p-1 bg-background border rounded-full hover:bg-accent cursor-move transition-colors"
+                          title="Перетащить"
+                        >
+                          <GripVertical className="h-4 w-4" />
+                        </div>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -365,8 +373,6 @@ export default function CustomizableDashboard() {
                           className="p-1 bg-background border rounded-full hover:bg-accent transition-colors"
                           title="Переместить вверх"
                         >
-                          <Plus className="h-4 w-4 rotate-45" style={{ transform: 'rotate(180deg)' }} />
-                          <span className="sr-only">Вверх</span>
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m18 15-6-6-6 6"/></svg>
                         </button>
                         <button
