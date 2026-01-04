@@ -46,6 +46,10 @@ export default function CustomizableDashboard() {
     retry: 1,
   });
 
+  const { data: availableWidgets } = useQuery<WidgetDefinition[]>({
+    queryKey: ["/api/dashboard/widgets/available"],
+  });
+
   // Update grid width on mount and resize
   useEffect(() => {
     const updateWidth = () => {
@@ -160,7 +164,6 @@ export default function CustomizableDashboard() {
   }, [layout, widgets, hasUnsavedChanges]);
 
   const handleLayoutChange = useCallback((newLayout: LayoutItem[]) => {
-    console.log('[Dashboard] handleLayoutChange called with:', newLayout.map(item => ({ i: item.i, x: item.x, y: item.y })));
     if (!newLayout || newLayout.length === 0) return;
     
     const cleanLayout = newLayout.map(item => ({
@@ -173,16 +176,36 @@ export default function CustomizableDashboard() {
       minH: item.minH || 2
     }));
     
+    // Only update and mark as unsaved if there's an actual change in coordinates or dimensions
     setLayout(prev => {
       const isDifferent = JSON.stringify(cleanLayout) !== JSON.stringify(prev);
       if (isDifferent) {
-        console.log('[Dashboard] Layout changed, updating state');
         setHasUnsavedChanges(true);
         return cleanLayout;
       }
       return prev;
     });
   }, []);
+
+  const handleMoveWidget = (widgetId: string, direction: 'up' | 'down') => {
+    setLayout(prev => {
+      const index = prev.findIndex(item => item.i === widgetId);
+      if (index === -1) return prev;
+      
+      const newLayout = [...prev];
+      const item = { ...newLayout[index] };
+      
+      if (direction === 'up' && item.y > 0) {
+        item.y = Math.max(0, item.y - 1);
+      } else if (direction === 'down') {
+        item.y += 1;
+      }
+      
+      newLayout[index] = item;
+      return newLayout;
+    });
+    setHasUnsavedChanges(true);
+  };
 
   const handleSave = (silent: boolean = false) => {
     const updatedWidgets = layout.map(item => {
@@ -333,14 +356,8 @@ export default function CustomizableDashboard() {
                   className="layout"
                   layout={layout}
                   onLayoutChange={handleLayoutChange}
-                  onDragStop={(l) => {
-                    console.log('[Dashboard] onDragStop', l);
-                    handleLayoutChange(l as LayoutItem[]);
-                  }}
-                  onResizeStop={(l) => {
-                    console.log('[Dashboard] onResizeStop', l);
-                    handleLayoutChange(l as LayoutItem[]);
-                  }}
+                  onDragStop={(l) => handleLayoutChange(l as LayoutItem[])}
+                  onResizeStop={(l) => handleLayoutChange(l as LayoutItem[])}
                   cols={12}
                   rowHeight={100}
                   width={gridWidth}
@@ -366,6 +383,34 @@ export default function CustomizableDashboard() {
                       onMouseLeave={() => setHoveredWidgetId(null)}
                     >
                       <div className="absolute top-2 right-2 z-[60] flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
+                        <div
+                          className="drag-handle p-1 bg-background border rounded-full hover:bg-accent cursor-move transition-colors"
+                          title="Перетащить"
+                        >
+                          <GripVertical className="h-4 w-4" />
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleMoveWidget(widget.id, 'up');
+                          }}
+                          className="p-1 bg-background border rounded-full hover:bg-accent transition-colors"
+                          title="Переместить вверх"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m18 15-6-6-6 6"/></svg>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleMoveWidget(widget.id, 'down');
+                          }}
+                          className="p-1 bg-background border rounded-full hover:bg-accent transition-colors"
+                          title="Переместить вниз"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m6 9 6 6 6-6"/></svg>
+                        </button>
                         <button
                           onClick={(e) => {
                             e.preventDefault();
@@ -375,7 +420,7 @@ export default function CustomizableDashboard() {
                           className="p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90 transition-colors"
                           title="Удалить виджет"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-4 w-4" />
                         </button>
                       </div>
                       <Suspense
