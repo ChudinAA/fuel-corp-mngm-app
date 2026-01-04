@@ -1,6 +1,4 @@
-import { useState, Suspense, useEffect, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import GridLayout, { Layout } from "react-grid-layout";
+import GridLayout, { Layout, LayoutItem } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import "./index.css";
@@ -28,7 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function CustomizableDashboard() {
-  const [layout, setLayout] = useState<Layout[]>([]);
+  const [layout, setLayout] = useState<LayoutItem[]>([]);
   const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
   const [showWidgetSelector, setShowWidgetSelector] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -65,7 +63,7 @@ export default function CustomizableDashboard() {
   }, []);
 
   const saveMutation = useMutation({
-    mutationFn: async (data: { layout: Layout[]; widgets: DashboardWidget[]; silent?: boolean }) => {
+    mutationFn: async (data: { layout: LayoutItem[]; widgets: DashboardWidget[]; silent?: boolean }) => {
       // Clean layout data before sending
       const cleanLayout = data.layout.map(({ i, x, y, w, h, minW, minH }) => ({
         i, x, y, w, h, minW, minH
@@ -139,9 +137,9 @@ export default function CustomizableDashboard() {
     if (config) {
       // Clean layout data when loading
       const cleanLayout = (config.layout || []).map(({ i, x, y, w, h, minW, minH }) => ({
-        i, x, y, w, h, minW, minH
+        i, x, y, w, h, minW: minW || 2, minH: minH || 2
       }));
-      setLayout(cleanLayout);
+      setLayout(cleanLayout as LayoutItem[]);
       setWidgets(config.widgets || []);
       setHasUnsavedChanges(false);
     }
@@ -157,14 +155,21 @@ export default function CustomizableDashboard() {
     return () => clearTimeout(timer);
   }, [layout, widgets, hasUnsavedChanges]);
 
-  const handleLayoutChange = useCallback((newLayout: Layout[]) => {
+  const handleLayoutChange = useCallback((newLayout: LayoutItem[]) => {
+    if (!newLayout || newLayout.length === 0) return;
+    
     // Only update if actually changed, and clean the data
     const cleanLayout = newLayout.map(({ i, x, y, w, h, minW, minH }) => ({
-      i, x, y, w, h, minW, minH
+      i, x, y, w, h, minW: minW || 2, minH: minH || 2
     }));
-    setLayout(cleanLayout);
-    setHasUnsavedChanges(true);
-  }, []);
+    
+    // Compare with current layout to avoid unnecessary updates
+    const isDifferent = JSON.stringify(cleanLayout) !== JSON.stringify(layout);
+    if (isDifferent) {
+      setLayout(cleanLayout as LayoutItem[]);
+      setHasUnsavedChanges(true);
+    }
+  }, [layout]);
 
   const handleMoveWidget = (widgetId: string, direction: 'up' | 'down') => {
     setLayout(prev => {
@@ -256,7 +261,7 @@ export default function CustomizableDashboard() {
       h: widgetDef.defaultHeight,
     };
 
-    const newLayoutItem: Layout = {
+    const newLayoutItem: LayoutItem = {
       i: newWidgetId,
       x: targetX,
       y: targetY,
@@ -329,24 +334,27 @@ export default function CustomizableDashboard() {
         </TabsList>
 
         <TabsContent value="main" className="mt-6">
-          <div className="dashboard-container w-full">
+          <div className="dashboard-container w-full min-h-[500px]">
             {widgets.length > 0 ? (
-              <GridLayout
-                className="layout"
-                layout={layout}
-                onLayoutChange={handleLayoutChange}
-                cols={12}
-                rowHeight={100}
-                width={gridWidth}
-                isDraggable={true}
-                isResizable={true}
-                draggableHandle=".drag-handle"
-                compactType="vertical"
-                preventCollision={false}
-                margin={[16, 16]}
-                containerPadding={[0, 0]}
-                useCSSTransforms={true}
-              >
+                <GridLayout
+                  className="layout"
+                  layout={layout}
+                  onLayoutChange={handleLayoutChange}
+                  onDragStop={handleLayoutChange}
+                  onResizeStop={handleLayoutChange}
+                  cols={12}
+                  rowHeight={100}
+                  width={gridWidth}
+                  isDraggable={true}
+                  isResizable={true}
+                  draggableHandle=".drag-handle"
+                  compactType="vertical"
+                  preventCollision={false}
+                  margin={[16, 16]}
+                  containerPadding={[0, 0]}
+                  useCSSTransforms={true}
+                  measureBeforeMount={false}
+                >
                 {widgets.map(widget => {
                   const WidgetComponent = getWidgetComponent(widget.widgetKey);
                   if (!WidgetComponent) return null;
@@ -354,11 +362,11 @@ export default function CustomizableDashboard() {
                   return (
                     <div
                       key={widget.id}
-                      className="dashboard-grid-item group"
+                      className="dashboard-grid-item group relative"
                       onMouseEnter={() => setHoveredWidgetId(widget.id)}
                       onMouseLeave={() => setHoveredWidgetId(null)}
                     >
-                      <div className="absolute top-2 right-2 z-50 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute top-2 right-2 z-[60] flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
                         <div
                           className="drag-handle p-1 bg-background border rounded-full hover:bg-accent cursor-move transition-colors"
                           title="Перетащить"
@@ -367,6 +375,7 @@ export default function CustomizableDashboard() {
                         </div>
                         <button
                           onClick={(e) => {
+                            e.preventDefault();
                             e.stopPropagation();
                             handleMoveWidget(widget.id, 'up');
                           }}
@@ -377,6 +386,7 @@ export default function CustomizableDashboard() {
                         </button>
                         <button
                           onClick={(e) => {
+                            e.preventDefault();
                             e.stopPropagation();
                             handleMoveWidget(widget.id, 'down');
                           }}
@@ -387,6 +397,7 @@ export default function CustomizableDashboard() {
                         </button>
                         <button
                           onClick={(e) => {
+                            e.preventDefault();
                             e.stopPropagation();
                             handleRemoveWidget(widget.id);
                           }}
