@@ -1,10 +1,14 @@
-import { useState, Suspense, useEffect, useCallback, useRef } from "react";
+import { useState, Suspense, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import GridLayout, { Layout } from "react-grid-layout";
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
 import "./index.css";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Loader2, X, Save, GripVertical, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Loader2, X, Save } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getWidgetComponent } from "./components/widget-registry";
 import { WidgetSelector } from "./components/widget-selector";
@@ -22,55 +26,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-
-interface WidgetLayout {
-  id: string;
-  widgetKey: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  config?: Record<string, unknown>;
-}
-
-const GRID_COLS = 12;
-const ROW_HEIGHT = 100;
-const MIN_H = 2;
-const MIN_W = 3;
-const GAP = 16;
-
-function checkCollision(
-  widget: { x: number; y: number; w: number; h: number },
-  other: { x: number; y: number; w: number; h: number }
-): boolean {
-  const horizontalOverlap = widget.x < other.x + other.w && widget.x + widget.w > other.x;
-  const verticalOverlap = widget.y < other.y + other.h && widget.y + widget.h > other.y;
-  return horizontalOverlap && verticalOverlap;
-}
-
-function hasCollisionWithOthers(
-  widgetId: string,
-  newPos: { x: number; y: number; w: number; h: number },
-  allWidgets: WidgetLayout[]
-): boolean {
-  return allWidgets.some(other => {
-    if (other.id === widgetId) return false;
-    return checkCollision(newPos, other);
-  });
-}
 
 export default function CustomizableDashboard() {
-  const [widgetLayouts, setWidgetLayouts] = useState<WidgetLayout[]>([]);
+  const [layout, setLayout] = useState<Layout[]>([]);
+  const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
   const [showWidgetSelector, setShowWidgetSelector] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [hoveredWidgetId, setHoveredWidgetId] = useState<string | null>(null);
   const [showCreateTemplateDialog, setShowCreateTemplateDialog] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [newTemplateDescription, setNewTemplateDescription] = useState("");
   const [activeTab, setActiveTab] = useState("main");
-  const [selectedWidget, setSelectedWidget] = useState<string | null>(null);
-  
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [gridWidth, setGridWidth] = useState(1200);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -83,32 +50,31 @@ export default function CustomizableDashboard() {
     queryKey: ["/api/dashboard/widgets/available"],
   });
 
-  const saveMutation = useMutation({
-    mutationFn: async (data: { widgets: WidgetLayout[]; silent?: boolean }) => {
-      const layout = data.widgets.map((w) => ({
-        i: w.id,
-        x: w.x,
-        y: w.y,
-        w: w.w,
-        h: w.h,
-        minW: MIN_W,
-        minH: MIN_H,
-      }));
+  // Update grid width on mount and resize
+  useEffect(() => {
+    const updateWidth = () => {
+      const container = document.querySelector('.dashboard-container');
+      if (container) {
+        setGridWidth(container.clientWidth);
+      }
+    };
 
-      const widgets = data.widgets.map((w) => ({
-        id: w.id,
-        widgetKey: w.widgetKey,
-        x: w.x,
-        y: w.y,
-        w: w.w,
-        h: w.h,
-        config: w.config,
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: { layout: Layout[]; widgets: DashboardWidget[]; silent?: boolean }) => {
+      // Clean layout data before sending
+      const cleanLayout = data.layout.map(({ i, x, y, w, h, minW, minH }) => ({
+        i, x, y, w, h, minW, minH
       }));
 
       const response = await fetch("/api/dashboard/configuration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ layout, widgets }),
+        body: JSON.stringify({ layout: cleanLayout, widgets: data.widgets }),
         credentials: "include",
       });
       if (!response.ok) throw new Error("Failed to save configuration");
@@ -135,26 +101,6 @@ export default function CustomizableDashboard() {
 
   const createTemplateMutation = useMutation({
     mutationFn: async (data: { name: string; description: string }) => {
-      const layout = widgetLayouts.map((w) => ({
-        i: w.id,
-        x: w.x,
-        y: w.y,
-        w: w.w,
-        h: w.h,
-        minW: MIN_W,
-        minH: MIN_H,
-      }));
-
-      const widgets = widgetLayouts.map((w) => ({
-        id: w.id,
-        widgetKey: w.widgetKey,
-        x: w.x,
-        y: w.y,
-        w: w.w,
-        h: w.h,
-        config: w.config,
-      }));
-
       const res = await fetch("/api/dashboard/templates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -191,17 +137,12 @@ export default function CustomizableDashboard() {
 
   useEffect(() => {
     if (config) {
-      const layouts: WidgetLayout[] = (config.widgets || []).map((w, idx) => ({
-        id: w.id,
-        widgetKey: w.widgetKey,
-        x: w.x ?? 0,
-        y: w.y ?? idx,
-        w: w.w ?? GRID_COLS,
-        h: w.h ?? 3,
-        config: w.config,
+      // Clean layout data when loading
+      const cleanLayout = (config.layout || []).map(({ i, x, y, w, h, minW, minH }) => ({
+        i, x, y, w, h, minW, minH
       }));
-      
-      setWidgetLayouts(layouts);
+      setLayout(cleanLayout);
+      setWidgets(config.widgets || []);
       setHasUnsavedChanges(false);
     }
   }, [config]);
@@ -214,44 +155,118 @@ export default function CustomizableDashboard() {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [widgetLayouts, hasUnsavedChanges]);
+  }, [layout, widgets, hasUnsavedChanges]);
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('[data-widget-id]') && !target.closest('.widget-controls')) {
-        setSelectedWidget(null);
-      }
-    };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+  const handleLayoutChange = useCallback((newLayout: Layout[]) => {
+    // Only update if actually changed, and clean the data
+    const cleanLayout = newLayout.map(({ i, x, y, w, h, minW, minH }) => ({
+      i, x, y, w, h, minW, minH
+    }));
+    setLayout(cleanLayout);
+    setHasUnsavedChanges(true);
   }, []);
 
+  const handleMoveWidget = (widgetId: string, direction: 'up' | 'down') => {
+    setLayout(prev => {
+      const index = prev.findIndex(item => item.i === widgetId);
+      if (index === -1) return prev;
+      
+      const newLayout = [...prev];
+      const item = newLayout[index];
+      
+      if (direction === 'up' && item.y > 0) {
+        item.y = Math.max(0, item.y - 1);
+      } else if (direction === 'down') {
+        item.y += 1;
+      }
+      
+      return newLayout;
+    });
+    setHasUnsavedChanges(true);
+  };
+
   const handleSave = (silent: boolean = false) => {
-    saveMutation.mutate({ widgets: widgetLayouts, silent });
+    const updatedWidgets = layout.map(item => {
+      const existingWidget = widgets.find(w => w.id === item.i);
+      return {
+        id: item.i,
+        widgetKey: existingWidget?.widgetKey || item.i,
+        x: item.x,
+        y: item.y,
+        w: item.w,
+        h: item.h,
+        config: existingWidget?.config,
+      };
+    });
+
+    saveMutation.mutate({
+      layout,
+      widgets: updatedWidgets,
+      silent,
+    });
   };
 
   const handleRemoveWidget = (widgetId: string) => {
-    setWidgetLayouts(prev => prev.filter(w => w.id !== widgetId));
-    setSelectedWidget(null);
+    setLayout(prev => prev.filter(item => item.i !== widgetId));
+    setWidgets(prev => prev.filter(w => w.id !== widgetId));
     setHasUnsavedChanges(true);
   };
 
   const handleAddWidget = (widgetDef: WidgetDefinition) => {
     const newWidgetId = `${widgetDef.widgetKey}-${Date.now()}`;
 
-    const maxY = widgetLayouts.reduce((max, w) => Math.max(max, w.y + w.h), 0);
+    // Find a free spot in the grid using improved collision detection
+    let targetX = 0;
+    let targetY = 0;
 
-    const newWidget: WidgetLayout = {
-      id: newWidgetId,
-      widgetKey: widgetDef.widgetKey,
-      x: 0,
-      y: maxY,
-      w: widgetDef.defaultWidth ?? GRID_COLS,
-      h: widgetDef.defaultHeight ?? 3,
+    // Check if a position overlaps with any existing widget
+    const isPositionFree = (x: number, y: number, w: number, h: number): boolean => {
+      return !layout.some(item => {
+        const horizontalOverlap = x < item.x + item.w && x + w > item.x;
+        const verticalOverlap = y < item.y + item.h && y + h > item.y;
+        return horizontalOverlap && verticalOverlap;
+      });
     };
 
-    setWidgetLayouts(prev => [...prev, newWidget]);
+    // Try to find empty space row by row
+    let found = false;
+    for (let y = 0; y < 50 && !found; y++) {
+      for (let x = 0; x <= 12 - widgetDef.defaultWidth && !found; x++) {
+        if (isPositionFree(x, y, widgetDef.defaultWidth, widgetDef.defaultHeight)) {
+          targetX = x;
+          targetY = y;
+          found = true;
+        }
+      }
+    }
+
+    // If no free spot found, add to bottom
+    if (!found) {
+      targetX = 0;
+      targetY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
+    }
+
+    const newWidget: DashboardWidget = {
+      id: newWidgetId,
+      widgetKey: widgetDef.widgetKey,
+      x: targetX,
+      y: targetY,
+      w: widgetDef.defaultWidth,
+      h: widgetDef.defaultHeight,
+    };
+
+    const newLayoutItem: Layout = {
+      i: newWidgetId,
+      x: targetX,
+      y: targetY,
+      w: widgetDef.defaultWidth,
+      h: widgetDef.defaultHeight,
+      minW: widgetDef.minWidth,
+      minH: widgetDef.minHeight,
+    };
+
+    setWidgets(prev => [...prev, newWidget]);
+    setLayout(prev => [...prev, newLayoutItem]);
     setShowWidgetSelector(false);
     setHasUnsavedChanges(true);
 
@@ -259,86 +274,6 @@ export default function CustomizableDashboard() {
       title: "Виджет добавлен",
       description: `${widgetDef.name} добавлен на дашборд`,
     });
-  };
-
-  const handleMoveWidget = (widgetId: string, direction: 'up' | 'down' | 'left' | 'right') => {
-    setWidgetLayouts(prev => {
-      const widget = prev.find(w => w.id === widgetId);
-      if (!widget) return prev;
-      
-      let newX = widget.x;
-      let newY = widget.y;
-      
-      switch (direction) {
-        case 'up':
-          newY = Math.max(0, widget.y - 1);
-          break;
-        case 'down':
-          newY = widget.y + 1;
-          break;
-        case 'left':
-          newX = Math.max(0, widget.x - 1);
-          break;
-        case 'right':
-          newX = Math.min(GRID_COLS - widget.w, widget.x + 1);
-          break;
-      }
-      
-      const newPos = { x: newX, y: newY, w: widget.w, h: widget.h };
-      
-      const collidingWidget = prev.find(other => 
-        other.id !== widgetId && checkCollision(newPos, other)
-      );
-      
-      if (collidingWidget) {
-        return prev.map(w => {
-          if (w.id === widgetId) {
-            return { ...w, x: newX, y: newY };
-          }
-          if (w.id === collidingWidget.id) {
-            return { ...w, x: widget.x, y: widget.y };
-          }
-          return w;
-        });
-      }
-      
-      return prev.map(w => w.id === widgetId ? { ...w, x: newX, y: newY } : w);
-    });
-    setHasUnsavedChanges(true);
-  };
-
-  const handleWidthChange = (widgetId: string, delta: number) => {
-    setWidgetLayouts(prev => {
-      const widget = prev.find(w => w.id === widgetId);
-      if (!widget) return prev;
-      
-      const newW = Math.max(MIN_W, Math.min(GRID_COLS - widget.x, widget.w + delta));
-      const newPos = { x: widget.x, y: widget.y, w: newW, h: widget.h };
-      
-      if (hasCollisionWithOthers(widgetId, newPos, prev)) {
-        return prev;
-      }
-      
-      return prev.map(w => w.id === widgetId ? { ...w, w: newW } : w);
-    });
-    setHasUnsavedChanges(true);
-  };
-
-  const handleHeightChange = (widgetId: string, delta: number) => {
-    setWidgetLayouts(prev => {
-      const widget = prev.find(w => w.id === widgetId);
-      if (!widget) return prev;
-      
-      const newH = Math.max(MIN_H, widget.h + delta);
-      const newPos = { x: widget.x, y: widget.y, w: widget.w, h: newH };
-      
-      if (hasCollisionWithOthers(widgetId, newPos, prev)) {
-        return prev;
-      }
-      
-      return prev.map(w => w.id === widgetId ? { ...w, h: newH } : w);
-    });
-    setHasUnsavedChanges(true);
   };
 
   const handleCreateTemplate = () => {
@@ -356,11 +291,6 @@ export default function CustomizableDashboard() {
     });
   };
 
-  const getMaxRow = () => {
-    if (widgetLayouts.length === 0) return 1;
-    return widgetLayouts.reduce((max, w) => Math.max(max, w.y + w.h), 0);
-  };
-
   if (isLoadingConfig) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -370,22 +300,20 @@ export default function CustomizableDashboard() {
     );
   }
 
-  const gridHeight = getMaxRow() * ROW_HEIGHT + (getMaxRow() - 1) * GAP + 100;
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">Дашборд</h1>
-          <p className="text-muted-foreground">Выберите виджет для настройки его размера и позиции</p>
+          <p className="text-muted-foreground">Настройте дашборд под свои нужды</p>
         </div>
         {activeTab === "main" && (
           <div className="flex gap-2">
             <Button onClick={() => setShowCreateTemplateDialog(true)} variant="outline" size="sm">
               <Save className="h-4 w-4 mr-2" />
-              Создать шаблон
+              Создать шаблон из текущего
             </Button>
-            <Button onClick={() => setShowWidgetSelector(true)} size="sm" data-testid="button-add-widget">
+            <Button onClick={() => setShowWidgetSelector(true)} size="sm">
               <Plus className="h-4 w-4 mr-2" />
               Добавить виджет
             </Button>
@@ -400,183 +328,91 @@ export default function CustomizableDashboard() {
         </TabsList>
 
         <TabsContent value="main" className="mt-6">
-          <div ref={containerRef} className="dashboard-container w-full">
-            {widgetLayouts.length > 0 ? (
-              <div 
-                className="dashboard-grid relative"
-                style={{ 
-                  minHeight: gridHeight,
-                }}
+          <div className="dashboard-container w-full">
+            {widgets.length > 0 ? (
+              <GridLayout
+                className="layout"
+                layout={layout}
+                onLayoutChange={handleLayoutChange}
+                cols={12}
+                rowHeight={100}
+                width={gridWidth}
+                isDraggable={false}
+                isResizable={true}
+                compactType="vertical"
+                preventCollision={false}
+                margin={[16, 16]}
+                containerPadding={[0, 0]}
+                useCSSTransforms={false}
               >
-                {widgetLayouts.map((widget) => {
+                {widgets.map(widget => {
                   const WidgetComponent = getWidgetComponent(widget.widgetKey);
                   if (!WidgetComponent) return null;
-
-                  const isSelected = selectedWidget === widget.id;
-                  const colWidth = `calc((100% - ${(GRID_COLS - 1) * GAP}px) / ${GRID_COLS})`;
-                  
-                  const left = `calc(${widget.x} * (${colWidth} + ${GAP}px))`;
-                  const top = widget.y * (ROW_HEIGHT + GAP);
-                  const width = `calc(${widget.w} * ${colWidth} + ${(widget.w - 1) * GAP}px)`;
-                  const height = widget.h * ROW_HEIGHT + (widget.h - 1) * GAP;
 
                   return (
                     <div
                       key={widget.id}
-                      data-widget-id={widget.id}
-                      data-testid={`widget-${widget.id}`}
-                      className={cn(
-                        "absolute transition-all duration-200",
-                        isSelected && "ring-2 ring-primary ring-offset-2 z-10"
-                      )}
-                      style={{
-                        left,
-                        top,
-                        width,
-                        height,
-                      }}
-                      onClick={() => setSelectedWidget(widget.id)}
+                      className="dashboard-grid-item group"
+                      onMouseEnter={() => setHoveredWidgetId(widget.id)}
+                      onMouseLeave={() => setHoveredWidgetId(null)}
                     >
-                      <Card className="h-full flex flex-col overflow-hidden">
-                        <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30 gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <span className="text-xs font-medium text-muted-foreground truncate">
-                              {availableWidgets?.find(w => w.widgetKey === widget.widgetKey)?.name || widget.widgetKey}
-                            </span>
-                          </div>
-                          
-                          {isSelected && (
-                            <div className="widget-controls flex items-center gap-1 flex-shrink-0">
-                              <div className="flex items-center border rounded-md">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 rounded-r-none"
-                                  onClick={(e) => { e.stopPropagation(); handleMoveWidget(widget.id, 'left'); }}
-                                  disabled={widget.x === 0}
-                                  title="Влево"
-                                >
-                                  <ChevronLeft className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 rounded-none border-x"
-                                  onClick={(e) => { e.stopPropagation(); handleMoveWidget(widget.id, 'up'); }}
-                                  disabled={widget.y === 0}
-                                  title="Вверх"
-                                >
-                                  <ChevronUp className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 rounded-none border-r"
-                                  onClick={(e) => { e.stopPropagation(); handleMoveWidget(widget.id, 'down'); }}
-                                  title="Вниз"
-                                >
-                                  <ChevronDown className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 rounded-l-none"
-                                  onClick={(e) => { e.stopPropagation(); handleMoveWidget(widget.id, 'right'); }}
-                                  disabled={widget.x + widget.w >= GRID_COLS}
-                                  title="Вправо"
-                                >
-                                  <ChevronRight className="h-3 w-3" />
-                                </Button>
-                              </div>
-
-                              <div className="flex items-center border rounded-md ml-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 rounded-r-none"
-                                  onClick={(e) => { e.stopPropagation(); handleWidthChange(widget.id, -1); }}
-                                  disabled={widget.w <= MIN_W}
-                                  title="Уже"
-                                >
-                                  <span className="text-[10px] font-bold">W-</span>
-                                </Button>
-                                <span className="text-[10px] px-1 border-x">{widget.w}/{GRID_COLS}</span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 rounded-l-none"
-                                  onClick={(e) => { e.stopPropagation(); handleWidthChange(widget.id, 1); }}
-                                  disabled={widget.x + widget.w >= GRID_COLS}
-                                  title="Шире"
-                                >
-                                  <span className="text-[10px] font-bold">W+</span>
-                                </Button>
-                              </div>
-
-                              <div className="flex items-center border rounded-md ml-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 rounded-r-none"
-                                  onClick={(e) => { e.stopPropagation(); handleHeightChange(widget.id, -1); }}
-                                  disabled={widget.h <= MIN_H}
-                                  title="Ниже"
-                                >
-                                  <Minimize2 className="h-3 w-3" />
-                                </Button>
-                                <span className="text-[10px] px-1 border-x">{widget.h}</span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 rounded-l-none"
-                                  onClick={(e) => { e.stopPropagation(); handleHeightChange(widget.id, 1); }}
-                                  title="Выше"
-                                >
-                                  <Maximize2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                              
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 ml-1 hover:bg-destructive hover:text-destructive-foreground"
-                                onClick={(e) => { e.stopPropagation(); handleRemoveWidget(widget.id); }}
-                                title="Удалить виджет"
-                                data-testid={`button-remove-${widget.id}`}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 overflow-auto">
-                          <Suspense
-                            fallback={
-                              <div className="h-full flex items-center justify-center">
-                                <Skeleton className="h-24 w-24" />
-                              </div>
-                            }
-                          >
-                            <WidgetComponent
-                              widgetKey={widget.widgetKey}
-                              config={widget.config}
-                              isEditMode={false}
-                            />
-                          </Suspense>
-                        </div>
-                      </Card>
+                      <div className="absolute top-2 right-2 z-50 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveWidget(widget.id, 'up');
+                          }}
+                          className="p-1 bg-background border rounded-full hover:bg-accent transition-colors"
+                          title="Переместить вверх"
+                        >
+                          <Plus className="h-4 w-4 rotate-45" style={{ transform: 'rotate(180deg)' }} />
+                          <span className="sr-only">Вверх</span>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m18 15-6-6-6 6"/></svg>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveWidget(widget.id, 'down');
+                          }}
+                          className="p-1 bg-background border rounded-full hover:bg-accent transition-colors"
+                          title="Переместить вниз"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m6 9 6 6 6-6"/></svg>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveWidget(widget.id);
+                          }}
+                          className="p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90 transition-colors"
+                          title="Удалить виджет"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <Suspense
+                        fallback={
+                          <Card className="h-full flex items-center justify-center">
+                            <Skeleton className="h-24 w-24" />
+                          </Card>
+                        }
+                      >
+                        <WidgetComponent
+                          widgetKey={widget.widgetKey}
+                          config={widget.config}
+                          isEditMode={false}
+                        />
+                      </Suspense>
                     </div>
                   );
                 })}
-              </div>
+              </GridLayout>
             ) : (
               <Card className="p-12 text-center">
                 <p className="text-muted-foreground mb-4">
                   У вас пока нет виджетов на дашборде
                 </p>
-                <Button onClick={() => setShowWidgetSelector(true)} data-testid="button-add-first-widget">
+                <Button onClick={() => setShowWidgetSelector(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Добавить первый виджет
                 </Button>
@@ -588,7 +424,7 @@ export default function CustomizableDashboard() {
             open={showWidgetSelector}
             onOpenChange={setShowWidgetSelector}
             onAddWidget={handleAddWidget}
-            currentWidgets={widgetLayouts.map(w => w.widgetKey)}
+            currentWidgets={widgets.map(w => w.widgetKey)}
           />
         </TabsContent>
 
@@ -613,7 +449,6 @@ export default function CustomizableDashboard() {
                 value={newTemplateName}
                 onChange={(e) => setNewTemplateName(e.target.value)}
                 placeholder="Мой дашборд"
-                data-testid="input-template-name"
               />
             </div>
             <div>
@@ -623,7 +458,6 @@ export default function CustomizableDashboard() {
                 value={newTemplateDescription}
                 onChange={(e) => setNewTemplateDescription(e.target.value)}
                 placeholder="Краткое описание шаблона..."
-                data-testid="input-template-description"
               />
             </div>
           </div>
@@ -631,7 +465,7 @@ export default function CustomizableDashboard() {
             <Button variant="outline" onClick={() => setShowCreateTemplateDialog(false)}>
               Отмена
             </Button>
-            <Button onClick={handleCreateTemplate} disabled={createTemplateMutation.isPending} data-testid="button-create-template">
+            <Button onClick={handleCreateTemplate} disabled={createTemplateMutation.isPending}>
               {createTemplateMutation.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
