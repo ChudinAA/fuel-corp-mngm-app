@@ -176,8 +176,15 @@ export default function CustomizableDashboard() {
       minH: item.minH || 2
     }));
     
-    setLayout(cleanLayout as LayoutItem[]);
-    setHasUnsavedChanges(true);
+    // Only update and mark as unsaved if there's an actual change in coordinates or dimensions
+    setLayout(prev => {
+      const isDifferent = JSON.stringify(cleanLayout) !== JSON.stringify(prev);
+      if (isDifferent) {
+        setHasUnsavedChanges(true);
+        return cleanLayout;
+      }
+      return prev;
+    });
   }, []);
 
   const handleMoveWidget = (widgetId: string, direction: 'up' | 'down') => {
