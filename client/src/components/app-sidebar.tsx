@@ -31,7 +31,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Fuel,
   ShoppingCart,
   Plane,
   ArrowLeftRight,
@@ -58,9 +57,12 @@ import {
   FileCheck,
   Briefcase,
   Table2,
-  ChevronDown,
   Fullscreen,
   ChartSpline,
+  Calendar1,
+  ChartCandlestick,
+  CalendarPlus,
+  Wallet,
 } from "lucide-react";
 
 const getMainMenuItems = () => [
@@ -87,7 +89,7 @@ const getOperationsMenuItems = (hasPermission: (module: string, action: string) 
   {
     title: "Биржа",
     url: "/exchange",
-    icon: TrendingUp,
+    icon: ChartCandlestick,
     permission: "exchange.view",
   },
   {
@@ -135,7 +137,7 @@ const getFinanceMenuItems = (hasPermission: (module: string, action: string) => 
   {
     title: "Платежный календарь",
     url: "/finance/payment-calendar",
-    icon: Calendar,
+    icon: CalendarPlus,
     permission: "finance.view",
   },
   {
@@ -169,7 +171,7 @@ const getReportsMenuItems = (hasPermission: (module: string, action: string) => 
   {
     title: "Ежемесячный план",
     url: "/reports/monthly-plan",
-    icon: Calendar, // Changed to Calendar for monthly plan
+    icon: Calendar1, // Changed to Calendar for monthly plan
     permission: "reports.create",
   },
   {
@@ -181,7 +183,7 @@ const getReportsMenuItems = (hasPermission: (module: string, action: string) => 
   {
     title: "БДР",
     url: "/reports/budget",
-    icon: BarChart3, // Kept BarChart3 for budget reports
+    icon: Wallet, // Kept BarChart3 for budget reports
     permission: "reports.view",
   },
   {
