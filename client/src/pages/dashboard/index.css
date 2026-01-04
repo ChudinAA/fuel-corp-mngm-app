@@ -20,6 +20,10 @@
   transition: box-shadow 200ms ease;
 }
 
+.react-grid-item {
+  will-change: transform;
+}
+
 .react-grid-item.react-draggable-dragging {
   transition: none !important;
   z-index: 100 !important;
