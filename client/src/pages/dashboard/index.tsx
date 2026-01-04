@@ -163,7 +163,7 @@ export default function CustomizableDashboard() {
     return () => clearTimeout(timer);
   }, [layout, widgets, hasUnsavedChanges]);
 
-  const handleLayoutChange = useCallback((newLayout: Layout[]) => {
+  const handleLayoutChange = useCallback((newLayout: LayoutItem[]) => {
     if (!newLayout || newLayout.length === 0) return;
     
     const cleanLayout = newLayout.map(item => ({
@@ -176,12 +176,9 @@ export default function CustomizableDashboard() {
       minH: item.minH || 2
     }));
     
-    const isDifferent = JSON.stringify(cleanLayout) !== JSON.stringify(layout);
-    if (isDifferent) {
-      setLayout(cleanLayout as LayoutItem[]);
-      setHasUnsavedChanges(true);
-    }
-  }, [layout]);
+    setLayout(cleanLayout as LayoutItem[]);
+    setHasUnsavedChanges(true);
+  }, []);
 
   const handleMoveWidget = (widgetId: string, direction: 'up' | 'down') => {
     setLayout(prev => {
@@ -365,7 +362,7 @@ export default function CustomizableDashboard() {
                   margin={[16, 16]}
                   containerPadding={[0, 0]}
                   useCSSTransforms={true}
-                  measureBeforeMount={true}
+                  measureBeforeMount={false}
                 >
                 {widgets.map(widget => {
                   const WidgetComponent = getWidgetComponent(widget.widgetKey);
