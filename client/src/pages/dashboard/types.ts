@@ -31,6 +31,8 @@ export interface DashboardLayout {
   y: number;
   w: number;
   h: number;
+  minW?: number;
+  minH?: number;
 }
 
 export interface DashboardConfiguration {

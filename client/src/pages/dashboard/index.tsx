@@ -163,15 +163,19 @@ export default function CustomizableDashboard() {
     return () => clearTimeout(timer);
   }, [layout, widgets, hasUnsavedChanges]);
 
-  const handleLayoutChange = useCallback((newLayout: LayoutItem[]) => {
+  const handleLayoutChange = useCallback((newLayout: Layout[]) => {
     if (!newLayout || newLayout.length === 0) return;
     
-    // Only update if actually changed, and clean the data
-    const cleanLayout = newLayout.map(({ i, x, y, w, h, minW, minH }) => ({
-      i, x, y, w, h, minW: minW || 2, minH: minH || 2
+    const cleanLayout = newLayout.map(item => ({
+      i: item.i,
+      x: item.x,
+      y: item.y,
+      w: item.w,
+      h: item.h,
+      minW: item.minW || 2,
+      minH: item.minH || 2
     }));
     
-    // Compare with current layout to avoid unnecessary updates
     const isDifferent = JSON.stringify(cleanLayout) !== JSON.stringify(layout);
     if (isDifferent) {
       setLayout(cleanLayout as LayoutItem[]);
@@ -347,9 +351,9 @@ export default function CustomizableDashboard() {
                 <GridLayout
                   className="layout"
                   layout={layout}
-                  onLayoutChange={(newLayout) => handleLayoutChange(newLayout as LayoutItem[])}
-                  onDragStop={(newLayout) => handleLayoutChange(newLayout as LayoutItem[])}
-                  onResizeStop={(newLayout) => handleLayoutChange(newLayout as LayoutItem[])}
+                  onLayoutChange={handleLayoutChange}
+                  onDragStop={handleLayoutChange}
+                  onResizeStop={handleLayoutChange}
                   cols={12}
                   rowHeight={100}
                   width={gridWidth}
@@ -360,8 +364,8 @@ export default function CustomizableDashboard() {
                   preventCollision={false}
                   margin={[16, 16]}
                   containerPadding={[0, 0]}
-                  useCSSTransforms={true}
-                  measureBeforeMount={false}
+                  useCSSTransforms={false}
+                  measureBeforeMount={true}
                 >
                 {widgets.map(widget => {
                   const WidgetComponent = getWidgetComponent(widget.widgetKey);
