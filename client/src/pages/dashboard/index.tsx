@@ -166,6 +166,25 @@ export default function CustomizableDashboard() {
     setHasUnsavedChanges(true);
   }, []);
 
+  const handleMoveWidget = (widgetId: string, direction: 'up' | 'down') => {
+    setLayout(prev => {
+      const index = prev.findIndex(item => item.i === widgetId);
+      if (index === -1) return prev;
+      
+      const newLayout = [...prev];
+      const item = newLayout[index];
+      
+      if (direction === 'up' && item.y > 0) {
+        item.y = Math.max(0, item.y - 1);
+      } else if (direction === 'down') {
+        item.y += 1;
+      }
+      
+      return newLayout;
+    });
+    setHasUnsavedChanges(true);
+  };
+
   const handleSave = (silent: boolean = false) => {
     const updatedWidgets = layout.map(item => {
       const existingWidget = widgets.find(w => w.id === item.i);
@@ -318,10 +337,10 @@ export default function CustomizableDashboard() {
                 cols={12}
                 rowHeight={100}
                 width={gridWidth}
-                isDraggable={true}
+                isDraggable={false}
                 isResizable={true}
-                compactType={null}
-                preventCollision={true}
+                compactType="vertical"
+                preventCollision={false}
                 margin={[16, 16]}
                 containerPadding={[0, 0]}
                 useCSSTransforms={false}
@@ -333,22 +352,44 @@ export default function CustomizableDashboard() {
                   return (
                     <div
                       key={widget.id}
-                      className="dashboard-grid-item"
+                      className="dashboard-grid-item group"
                       onMouseEnter={() => setHoveredWidgetId(widget.id)}
                       onMouseLeave={() => setHoveredWidgetId(null)}
                     >
-                      {hoveredWidgetId === widget.id && (
+                      <div className="absolute top-2 right-2 z-50 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveWidget(widget.id, 'up');
+                          }}
+                          className="p-1 bg-background border rounded-full hover:bg-accent transition-colors"
+                          title="Переместить вверх"
+                        >
+                          <Plus className="h-4 w-4 rotate-45" style={{ transform: 'rotate(180deg)' }} />
+                          <span className="sr-only">Вверх</span>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m18 15-6-6-6 6"/></svg>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveWidget(widget.id, 'down');
+                          }}
+                          className="p-1 bg-background border rounded-full hover:bg-accent transition-colors"
+                          title="Переместить вниз"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="m6 9 6 6 6-6"/></svg>
+                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleRemoveWidget(widget.id);
                           }}
-                          className="absolute top-2 right-2 z-50 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90 transition-colors"
+                          className="p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90 transition-colors"
                           title="Удалить виджет"
                         >
                           <X className="h-4 w-4" />
                         </button>
-                      )}
+                      </div>
                       <Suspense
                         fallback={
                           <Card className="h-full flex items-center justify-center">
