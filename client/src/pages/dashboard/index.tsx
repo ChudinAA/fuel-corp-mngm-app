@@ -349,8 +349,8 @@ export default function CustomizableDashboard() {
                   className="layout"
                   layout={layout}
                   onLayoutChange={handleLayoutChange}
-                  onDragStop={(l) => handleLayoutChange([...l])}
-                  onResizeStop={(l) => handleLayoutChange([...l])}
+                  onDragStop={(l) => handleLayoutChange(l as LayoutItem[])}
+                  onResizeStop={(l) => handleLayoutChange(l as LayoutItem[])}
                   cols={12}
                   rowHeight={100}
                   width={gridWidth}
