@@ -138,8 +138,14 @@ export default function CustomizableDashboard() {
   useEffect(() => {
     if (config) {
       // Clean layout data when loading
-      const cleanLayout = (config.layout || []).map(({ i, x, y, w, h, minW, minH }) => ({
-        i, x, y, w, h, minW: minW || 2, minH: minH || 2
+      const cleanLayout = (config.layout || []).map((item: any) => ({
+        i: item.i,
+        x: item.x,
+        y: item.y,
+        w: item.w,
+        h: item.h,
+        minW: item.minW || 2,
+        minH: item.minH || 2
       }));
       setLayout(cleanLayout as LayoutItem[]);
       setWidgets(config.widgets || []);
@@ -341,9 +347,9 @@ export default function CustomizableDashboard() {
                 <GridLayout
                   className="layout"
                   layout={layout}
-                  onLayoutChange={handleLayoutChange}
-                  onDragStop={handleLayoutChange}
-                  onResizeStop={handleLayoutChange}
+                  onLayoutChange={(newLayout) => handleLayoutChange(newLayout as LayoutItem[])}
+                  onDragStop={(newLayout) => handleLayoutChange(newLayout as LayoutItem[])}
+                  onResizeStop={(newLayout) => handleLayoutChange(newLayout as LayoutItem[])}
                   cols={12}
                   rowHeight={100}
                   width={gridWidth}
