@@ -364,7 +364,7 @@ export default function CustomizableDashboard() {
                   preventCollision={false}
                   margin={[16, 16]}
                   containerPadding={[0, 0]}
-                  useCSSTransforms={false}
+                  useCSSTransforms={true}
                   measureBeforeMount={true}
                 >
                 {widgets.map(widget => {
