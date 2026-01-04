@@ -104,7 +104,7 @@ function AuditEntryItem({
   const isEntityDeleted = !!entry.entityDeleted;
 
   // Check if rollback is available for this operation
-  const canRollback = ['CREATE', 'UPDATE', 'DELETE'].includes(entry.operation) && !isEntityDeleted;
+  const canRollback = ['CREATE', 'UPDATE', 'DELETE'].includes(entry.operation);
 
   // Map entity type to permission module
   const getPermissionModule = (entityType: string): string => {
@@ -239,7 +239,7 @@ function AuditEntryItem({
                 </span>
               </div>
             </div>
-            {((['CREATE', 'UPDATE', 'DELETE'].includes(entry.operation)) && hasEditPermission) && (
+            {(canRollback && hasEditPermission) && (
               <Button
                 variant="outline"
                 size="sm"
