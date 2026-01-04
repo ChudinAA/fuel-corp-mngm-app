@@ -11,6 +11,7 @@
 .dashboard-grid-item {
   position: relative;
   touch-action: none;
+  user-select: none;
 }
 
 .dashboard-grid-item:hover {
@@ -19,35 +20,20 @@
   transition: box-shadow 200ms ease;
 }
 
-.dashboard-grid-item:active:not(.react-draggable-dragging) {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.react-grid-item {
-  will-change: transform;
-}
-
 .react-grid-item.react-draggable-dragging {
+  transition: none !important;
   z-index: 100 !important;
   opacity: 0.9;
   cursor: grabbing !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
-.react-grid-item.react-grid-resizing {
-  transition: none !important;
-  z-index: 100;
-  opacity: 0.9;
-}
-
 .react-grid-item.react-grid-placeholder {
-  background: hsl(var(--primary) / 0.15);
-  opacity: 0.5;
-  transition: all 200ms ease;
-  z-index: 2;
-  border-radius: 8px;
-  border: 2px dashed hsl(var(--primary));
-  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.1);
+  background: hsl(var(--primary) / 0.15) !important;
+  opacity: 0.5 !important;
+  border-radius: 8px !important;
+  border: 2px dashed hsl(var(--primary)) !important;
+  transition: none !important;
 }
 
 .react-grid-item > .react-resizable-handle {
