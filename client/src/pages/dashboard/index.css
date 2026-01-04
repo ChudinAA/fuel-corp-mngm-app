@@ -28,17 +28,14 @@
 }
 
 .react-grid-item {
-  transition: all 200ms ease !important;
   will-change: transform;
 }
 
 .react-grid-item.react-draggable-dragging {
-  transition: none !important;
   z-index: 100 !important;
   opacity: 0.9;
   cursor: grabbing !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  transform: scale(1.02) !important;
 }
 
 .react-grid-item.react-grid-resizing {

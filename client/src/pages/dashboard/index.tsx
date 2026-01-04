@@ -349,8 +349,8 @@ export default function CustomizableDashboard() {
                   className="layout"
                   layout={layout}
                   onLayoutChange={handleLayoutChange}
-                  onDragStop={handleLayoutChange}
-                  onResizeStop={handleLayoutChange}
+                  onDragStop={(l) => handleLayoutChange([...l])}
+                  onResizeStop={(l) => handleLayoutChange([...l])}
                   cols={12}
                   rowHeight={100}
                   width={gridWidth}
@@ -361,7 +361,7 @@ export default function CustomizableDashboard() {
                   preventCollision={false}
                   margin={[16, 16]}
                   containerPadding={[0, 0]}
-                  useCSSTransforms={true}
+                  useCSSTransforms={false}
                   measureBeforeMount={false}
                 >
                 {widgets.map(widget => {
