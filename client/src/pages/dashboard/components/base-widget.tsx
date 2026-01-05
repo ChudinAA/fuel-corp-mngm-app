@@ -26,12 +26,11 @@ export function BaseWidget({
   return (
     <Card 
       className={cn(
-        "h-full flex flex-col transition-shadow",
-        isEditMode && "hover:shadow-lg",
+        "h-full flex flex-col",
         className
       )}
     >
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 drag-handle cursor-grab active:cursor-grabbing">
         <div className="flex items-center gap-2 flex-1">
           {Icon && <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
           <div className="flex-1 min-w-0">
