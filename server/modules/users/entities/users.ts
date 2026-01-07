@@ -19,9 +19,9 @@ import { roles } from "./roles";
 
 // Session table for express-session storage
 export const session = pgTable("session", {
-  sid: varchar("sid").primaryKey(),
+  sid: text("sid").primaryKey().notNull(),
   sess: jsonb("sess").notNull(),
-  expire: timestamp("expire", { precision: 6, mode: "string" }).notNull(),
+  expire: timestamp("expire", { precision: 6 }).notNull(),
 });
 
 export const users = pgTable("users", {

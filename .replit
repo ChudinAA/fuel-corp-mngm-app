@@ -40,3 +40,8 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_auth_all_persistance:1.0.0", "javascript_database:1.0.0"]
+
+[userenv]
+
+[userenv.shared]
+PORT = "5000"
