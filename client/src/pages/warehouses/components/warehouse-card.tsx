@@ -39,7 +39,7 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
 
   const { data: transactions } = useQuery<WarehouseTransaction[]>({
     queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
-    refetchInterval: 5000,
+    refetchInterval: 10000,
   });
 
   const getBaseNames = (baseIds: string[] | null | undefined) => {

@@ -97,6 +97,7 @@ export function AddWarehouseDialog({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
       toast({ 
         title: isEditing ? "Склад обновлен" : "Склад создан", 
         description: isEditing 
