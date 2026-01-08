@@ -19,9 +19,9 @@ import { roles } from "./roles";
 
 // Session table for express-session storage
 export const session = pgTable("session", {
-  sid: text("sid").primaryKey().notNull(),
+  sid: varchar("sid").primaryKey(),
   sess: jsonb("sess").notNull(),
-  expire: timestamp("expire", { precision: 6 }).notNull(),
+  expire: timestamp("expire", { precision: 6, mode: "string" }).notNull(),
 });
 
 export const users = pgTable("users", {
@@ -35,9 +35,9 @@ export const users = pgTable("users", {
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
-  updatedById: uuid("updated_by_id").references((): any => users.id),
+  updatedById: uuid("updated_by_id").references(() => users.id),
   deletedAt: timestamp("deleted_at", { mode: "string" }),
-  deletedById: uuid("deleted_by_id").references((): any => users.id),
+  deletedById: uuid("deleted_by_id").references(() => users.id),
 });
 
 // ============ RELATIONS ============
