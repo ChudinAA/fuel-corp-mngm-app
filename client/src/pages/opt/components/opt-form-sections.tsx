@@ -1,14 +1,18 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Plus } from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
 import type { LogisticsCarrier, LogisticsDeliveryLocation, Price } from "@shared/schema";
 import { CalculatedField } from "./calculated-field";
 import { formatCurrency, formatNumber } from "../utils";
 import type { OptFormData } from "../schemas";
+import { AddLogisticsDialog } from "@/pages/directories/logistics-dialog";
 
 interface VolumeInputSectionProps {
   form: UseFormReturn<OptFormData>;
@@ -121,6 +125,21 @@ export function LogisticsSection({
   carriers, 
   deliveryLocations, 
 }: LogisticsSectionProps) {
+  const [addDeliveryLocationOpen, setAddDeliveryLocationOpen] = useState(false);
+  const [addCarrierOpen, setAddCarrierOpen] = useState(false);
+
+  const handleDeliveryLocationCreated = (id: string, type: string) => {
+    if (type === "delivery_location") {
+      form.setValue("deliveryLocationId", id);
+    }
+  };
+
+  const handleCarrierCreated = (id: string, type: string) => {
+    if (type === "carrier") {
+      form.setValue("carrierId", id);
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="pb-4">
@@ -134,22 +153,33 @@ export function LogisticsSection({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="flex items-center gap-2">Точка поставки</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-delivery-location">
-                      <SelectValue placeholder="Выберите место" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {deliveryLocations?.map((location) => (
-                      <SelectItem key={location.id} value={location.id}>
-                        {location.name}
-                      </SelectItem>
-                    )) || (
-                      <SelectItem value="none" disabled>Нет данных</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-1">
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-delivery-location" className="flex-1">
+                        <SelectValue placeholder="Выберите место" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {deliveryLocations?.map((location) => (
+                        <SelectItem key={location.id} value={location.id}>
+                          {location.name}
+                        </SelectItem>
+                      )) || (
+                        <SelectItem value="none" disabled>Нет данных</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <Button 
+                    type="button" 
+                    size="icon" 
+                    variant="outline"
+                    onClick={() => setAddDeliveryLocationOpen(true)}
+                    data-testid="button-add-delivery-location-inline"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
                 <FormMessage />
               </FormItem>
             )}
@@ -161,22 +191,33 @@ export function LogisticsSection({
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="flex items-center gap-2">Перевозчик</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-carrier">
-                      <SelectValue placeholder="Выберите перевозчика" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {carriers?.map((carrier) => (
-                      <SelectItem key={carrier.id} value={carrier.id}>
-                        {carrier.name}
-                      </SelectItem>
-                    )) || (
-                      <SelectItem value="none" disabled>Нет данных</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-1">
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-carrier" className="flex-1">
+                        <SelectValue placeholder="Выберите перевозчика" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {carriers?.map((carrier) => (
+                        <SelectItem key={carrier.id} value={carrier.id}>
+                          {carrier.name}
+                        </SelectItem>
+                      )) || (
+                        <SelectItem value="none" disabled>Нет данных</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <Button 
+                    type="button" 
+                    size="icon" 
+                    variant="outline"
+                    onClick={() => setAddCarrierOpen(true)}
+                    data-testid="button-add-carrier-inline"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
                 <FormMessage />
               </FormItem>
             )}
@@ -189,6 +230,24 @@ export function LogisticsSection({
           />
         </div>
       </CardContent>
+      
+      <AddLogisticsDialog
+        carriers={carriers || []}
+        isInline
+        inlineOpen={addDeliveryLocationOpen}
+        onInlineOpenChange={setAddDeliveryLocationOpen}
+        onCreated={handleDeliveryLocationCreated}
+        defaultType="delivery_location"
+      />
+      
+      <AddLogisticsDialog
+        carriers={carriers || []}
+        isInline
+        inlineOpen={addCarrierOpen}
+        onInlineOpenChange={setAddCarrierOpen}
+        onCreated={handleCarrierCreated}
+        defaultType="carrier"
+      />
     </Card>
   );
 }

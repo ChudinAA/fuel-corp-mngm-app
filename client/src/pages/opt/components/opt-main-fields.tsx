@@ -1,16 +1,17 @@
-
+import { useState } from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { UseFormReturn } from "react-hook-form";
-import type { Supplier, Customer } from "@shared/schema";
+import type { Supplier, Customer, LogisticsCarrier } from "@shared/schema";
 import type { OptFormData } from "../schemas";
 import { CUSTOMER_MODULE } from "@shared/constants";
+import { AddCustomerDialog } from "@/pages/directories/customers-dialog";
 
 interface OptMainFieldsProps {
   form: UseFormReturn<OptFormData>;
@@ -31,6 +32,12 @@ export function OptMainFields({
   setSelectedBasis,
   wholesaleBases,
 }: OptMainFieldsProps) {
+  const [addCustomerOpen, setAddCustomerOpen] = useState(false);
+
+  const handleCustomerCreated = (id: string) => {
+    form.setValue("buyerId", id);
+  };
+
   return (
     <div className="grid gap-6 md:grid-cols-4">
       <FormField
@@ -137,25 +144,43 @@ export function OptMainFields({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Покупатель</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger data-testid="select-buyer">
-                  <SelectValue placeholder="Выберите покупателя" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {customers?.filter(c => c.module === CUSTOMER_MODULE.WHOLESALE || c.module === CUSTOMER_MODULE.BOTH).map((buyer) => (
-                  <SelectItem key={buyer.id} value={buyer.id}>
-                    {buyer.name}
-                  </SelectItem>
-                )) || (
-                  <SelectItem value="none" disabled>Нет данных</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-1">
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-buyer" className="flex-1">
+                    <SelectValue placeholder="Выберите покупателя" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {customers?.filter(c => c.module === CUSTOMER_MODULE.WHOLESALE || c.module === CUSTOMER_MODULE.BOTH).map((buyer) => (
+                    <SelectItem key={buyer.id} value={buyer.id}>
+                      {buyer.name}
+                    </SelectItem>
+                  )) || (
+                    <SelectItem value="none" disabled>Нет данных</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              <Button 
+                type="button" 
+                size="icon" 
+                variant="outline"
+                onClick={() => setAddCustomerOpen(true)}
+                data-testid="button-add-customer-inline"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
             <FormMessage />
           </FormItem>
         )}
+      />
+      
+      <AddCustomerDialog
+        isInline
+        inlineOpen={addCustomerOpen}
+        onInlineOpenChange={setAddCustomerOpen}
+        onCreated={handleCustomerCreated}
       />
     </div>
   );

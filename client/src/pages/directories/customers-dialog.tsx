@@ -30,9 +30,28 @@ const customerFormSchema = z.object({
 
 type CustomerFormData = z.infer<typeof customerFormSchema>;
 
-export function AddCustomerDialog({ editCustomer, onEditComplete }: { editCustomer?: Customer | null; onEditComplete?: () => void }) {
+interface AddCustomerDialogProps {
+  editCustomer?: Customer | null;
+  onEditComplete?: () => void;
+  isInline?: boolean;
+  inlineOpen?: boolean;
+  onInlineOpenChange?: (open: boolean) => void;
+  onCreated?: (id: string) => void;
+}
+
+export function AddCustomerDialog({ 
+  editCustomer, 
+  onEditComplete,
+  isInline = false,
+  inlineOpen = false,
+  onInlineOpenChange,
+  onCreated,
+}: AddCustomerDialogProps) {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  
+  const open = isInline ? inlineOpen : localOpen;
+  const setOpen = isInline ? (onInlineOpenChange || setLocalOpen) : setLocalOpen;
 
   const form = useForm<CustomerFormData>({
     resolver: zodResolver(customerFormSchema),
@@ -88,7 +107,7 @@ export function AddCustomerDialog({ editCustomer, onEditComplete }: { editCustom
         return res.json();
       }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       toast({ 
         title: editCustomer ? "Покупатель обновлен" : "Покупатель добавлен", 
@@ -106,6 +125,9 @@ export function AddCustomerDialog({ editCustomer, onEditComplete }: { editCustom
         isActive: true,
       });
       setOpen(false);
+      if (onCreated && data?.id) {
+        onCreated(data.id);
+      }
       if (onEditComplete) {
         onEditComplete();
       }
@@ -137,12 +159,14 @@ export function AddCustomerDialog({ editCustomer, onEditComplete }: { editCustom
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button size="sm" data-testid="button-add-customer">
-          <Plus className="mr-2 h-4 w-4" />
-          Добавить
-        </Button>
-      </DialogTrigger>
+      {!isInline && (
+        <DialogTrigger asChild>
+          <Button size="sm" data-testid="button-add-customer">
+            <Plus className="mr-2 h-4 w-4" />
+            Добавить
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{editCustomer ? "Редактирование покупателя" : "Новый покупатель"}</DialogTitle>

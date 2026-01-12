@@ -44,17 +44,32 @@ const logisticsFormSchema = z.object({
 
 type LogisticsFormData = z.infer<typeof logisticsFormSchema>;
 
-export function AddLogisticsDialog({ 
-  carriers,
-  editItem,
-  onEditComplete
-}: { 
+interface AddLogisticsDialogProps {
   carriers: LogisticsCarrier[];
   editItem?: { type: string; data: any } | null;
   onEditComplete?: () => void;
-}) {
+  isInline?: boolean;
+  inlineOpen?: boolean;
+  onInlineOpenChange?: (open: boolean) => void;
+  onCreated?: (id: string, type: string) => void;
+  defaultType?: "carrier" | "delivery_location" | "vehicle" | "trailer" | "driver";
+}
+
+export function AddLogisticsDialog({ 
+  carriers,
+  editItem,
+  onEditComplete,
+  isInline = false,
+  inlineOpen = false,
+  onInlineOpenChange,
+  onCreated,
+  defaultType,
+}: AddLogisticsDialogProps) {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  
+  const open = isInline ? inlineOpen : localOpen;
+  const setOpen = isInline ? (onInlineOpenChange || setLocalOpen) : setLocalOpen;
 
   const { data: bases = [] } = useQuery<Base[]>({
     queryKey: ["/api/bases"],
@@ -63,7 +78,7 @@ export function AddLogisticsDialog({
   const form = useForm<LogisticsFormData>({
     resolver: zodResolver(logisticsFormSchema),
     defaultValues: {
-      type: "carrier",
+      type: defaultType || "carrier",
       name: "",
       description: "",
       isActive: true,
@@ -83,6 +98,12 @@ export function AddLogisticsDialog({
       notes: "",
     },
   });
+
+  useEffect(() => {
+    if (defaultType && isInline) {
+      form.setValue("type", defaultType);
+    }
+  }, [defaultType, isInline, form]);
 
   const selectedType = form.watch("type");
 
@@ -158,7 +179,7 @@ export function AddLogisticsDialog({
       const res = await apiRequest(editItem ? "PATCH" : "POST", endpoint, payload);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/logistics/carriers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/logistics/delivery-locations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/logistics/vehicles"] });
@@ -168,8 +189,9 @@ export function AddLogisticsDialog({
         title: editItem ? "Запись обновлена" : "Запись добавлена", 
         description: editItem ? "Изменения сохранены" : "Новая запись сохранена в справочнике" 
       });
+      const currentType = form.getValues("type");
       form.reset({
-        type: "carrier",
+        type: defaultType || "carrier",
         name: "",
         description: "",
         isActive: true,
@@ -188,6 +210,9 @@ export function AddLogisticsDialog({
         notes: "",
       });
       setOpen(false);
+      if (onCreated && data?.id) {
+        onCreated(data.id, currentType);
+      }
       if (onEditComplete) {
         onEditComplete();
       }
@@ -244,7 +269,7 @@ export function AddLogisticsDialog({
     setOpen(isOpen);
     if (!isOpen) {
       form.reset({
-        type: "carrier",
+        type: defaultType || "carrier",
         name: "",
         description: "",
         isActive: true,
@@ -270,12 +295,14 @@ export function AddLogisticsDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button size="sm" data-testid="button-add-logistics">
-          <Plus className="mr-2 h-4 w-4" />
-          Добавить
-        </Button>
-      </DialogTrigger>
+      {!isInline && (
+        <DialogTrigger asChild>
+          <Button size="sm" data-testid="button-add-logistics">
+            <Plus className="mr-2 h-4 w-4" />
+            Добавить
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{editItem ? "Редактирование записи: Логистика" : "Новая запись: Логистика"}</DialogTitle>
