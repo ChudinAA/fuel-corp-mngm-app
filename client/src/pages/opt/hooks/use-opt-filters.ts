@@ -10,6 +10,7 @@ interface UseOptFiltersProps {
   dealDate: Date;
   selectedBasis: string;
   carrierId: string;
+  deliveryLocationId: string;
   allPrices: Price[] | undefined;
   suppliers: Supplier[] | undefined;
   allBases: Base[] | undefined;
@@ -25,6 +26,7 @@ export function useOptFilters({
   dealDate,
   selectedBasis,
   carrierId,
+  deliveryLocationId,
   allPrices,
   suppliers,
   allBases,
@@ -54,21 +56,39 @@ export function useOptFilters({
   }, [supplierId, selectedBasis, dealDate, suppliers, allPrices]);
 
   // Фильтрация цен продажи
+  // Используем baseId из выбранного места доставки, если оно есть
   const salePrices = useMemo(() => {
-    if (!buyerId || !selectedBasis || !dealDate) return [];
+    if (!buyerId || !dealDate) return [];
 
     const dateStr = format(dealDate, "yyyy-MM-dd");
+
+    // Определяем базис для фильтрации цен продажи
+    let saleBasisName = selectedBasis;
+    
+    // Если выбрано место доставки с привязанным базисом, используем его
+    if (deliveryLocationId && deliveryLocations && allBases) {
+      const selectedLocation = deliveryLocations.find(loc => loc.id === deliveryLocationId);
+      if (selectedLocation?.baseId) {
+        const locationBase = allBases.find(b => b.id === selectedLocation.baseId);
+        if (locationBase) {
+          saleBasisName = locationBase.name;
+        }
+      }
+    }
+
+    if (!saleBasisName) return [];
 
     return allPrices?.filter(p =>
       p.counterpartyId === buyerId &&
       p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
       p.counterpartyRole === COUNTERPARTY_ROLE.BUYER &&
       p.productType === PRODUCT_TYPE.KEROSENE &&
+      p.basis === saleBasisName &&
       p.dateFrom <= dateStr &&
       p.dateTo >= dateStr &&
       p.isActive
     ) || [];
-  }, [buyerId, selectedBasis, dealDate, allPrices]);
+  }, [buyerId, dealDate, allPrices, selectedBasis, deliveryLocationId, deliveryLocations, allBases]);
 
   // Фильтрация поставщиков с wholesale базисами
   const wholesaleSuppliers = useMemo(() => {

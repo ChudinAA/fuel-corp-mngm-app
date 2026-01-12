@@ -113,6 +113,7 @@ export function OptForm({
     dealDate: watchDealDate,
     selectedBasis,
     carrierId: watchCarrierId,
+    deliveryLocationId: watchDeliveryLocationId,
     allPrices,
     suppliers,
     allBases,
