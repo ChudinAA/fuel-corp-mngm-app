@@ -19,6 +19,7 @@ import { users } from "../../users/entities/users";
 import { opt } from "../../opt/entities/opt";
 import { movement } from "../../movement/entities/movement";
 import { deliveryCost } from "../../delivery/entities/delivery";
+import { bases } from "../../bases/entities/bases";
 
 // Перевозчики
 export const logisticsCarriers = pgTable("logistics_carriers", {
@@ -46,6 +47,7 @@ export const logisticsDeliveryLocations = pgTable(
     name: text("name").notNull(),
     address: text("address"),
     notes: text("notes"),
+    baseId: uuid("base_id").references(() => bases.id),
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -53,7 +55,10 @@ export const logisticsDeliveryLocations = pgTable(
     updatedById: uuid("updated_by_id").references(() => users.id),
     deletedAt: timestamp("deleted_at", { mode: "string" }),
     deletedById: uuid("deleted_by_id").references(() => users.id),
-  }
+  },
+  (table) => ({
+    baseIdIdx: index("logistics_delivery_locations_base_id_idx").on(table.baseId),
+  })
 );
 
 // Транспорт
@@ -129,7 +134,11 @@ export const logisticsCarriersRelations = relations(
 
 export const logisticsDeliveryLocationsRelations = relations(
   logisticsDeliveryLocations,
-  ({ many }) => ({
+  ({ one, many }) => ({
+    base: one(bases, {
+      fields: [logisticsDeliveryLocations.baseId],
+      references: [bases.id],
+    }),
     optDeals: many(opt),
   })
 );

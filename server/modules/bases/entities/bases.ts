@@ -18,6 +18,7 @@ import { z } from "zod";
 import { users } from "../../users/entities/users";
 import { supplierBases } from "@shared/schema";
 import { warehouseBases } from "../../warehouses/entities/warehouses";
+import { logisticsDeliveryLocations } from "../../logistics/entities/logistics";
 
 export const bases = pgTable("bases", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -42,6 +43,7 @@ export const bases = pgTable("bases", {
 export const basesRelations = relations(bases, ({ one, many }) => ({
   supplierBases: many(supplierBases),
   warehouseBases: many(warehouseBases),
+  deliveryLocations: many(logisticsDeliveryLocations),
   createdBy: one(users, {
     fields: [bases.createdById],
     references: [users.id],
