@@ -202,13 +202,19 @@ export function RefuelingPricingSection({
         </Alert>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <CalculatedField 
           label="Объем на складе" 
           value={warehouseStatus.message}
           status={warehouseStatus.status}
         />
 
+        <CalculatedField 
+          label="Объем по договору" 
+          value="тест"
+          status="ok"
+        />
+        
         <CalculatedField 
           label="Прибыль" 
           value={profit !== null ? formatCurrency(profit) : "—"}

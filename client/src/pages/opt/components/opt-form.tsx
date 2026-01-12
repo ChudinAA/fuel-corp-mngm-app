@@ -470,6 +470,12 @@ export function OptForm({
           calculatedKg={calculatedKg}
         />
 
+        <LogisticsSection
+          form={form}
+          carriers={availableCarriers}
+          deliveryLocations={availableLocations}
+        />
+        
         <OptPricingSection
           form={form}
           isWarehouseSupplier={isWarehouseSupplier}
@@ -489,12 +495,6 @@ export function OptForm({
           finalKg={finalKg}
           isEditing={isEditing}
           initialWarehouseBalance={initialWarehouseBalance}
-        />
-
-        <LogisticsSection
-          form={form}
-          carriers={availableCarriers}
-          deliveryLocations={availableLocations}
         />
 
         <div className="grid gap-4 md:grid-cols-2 items-end">

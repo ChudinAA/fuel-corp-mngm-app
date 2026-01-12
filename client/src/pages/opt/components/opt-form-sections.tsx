@@ -130,6 +130,33 @@ export function LogisticsSection({
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <FormField
             control={form.control}
+            name="deliveryLocationId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-2">Точка поставки</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-delivery-location">
+                      <SelectValue placeholder="Выберите место" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {deliveryLocations?.map((location) => (
+                      <SelectItem key={location.id} value={location.id}>
+                        {location.name}
+                      </SelectItem>
+                    )) || (
+                      <SelectItem value="none" disabled>Нет данных</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
             name="carrierId"
             render={({ field }) => (
               <FormItem>
@@ -155,31 +182,10 @@ export function LogisticsSection({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="deliveryLocationId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">Место доставки</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-delivery-location">
-                      <SelectValue placeholder="Выберите место" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {deliveryLocations?.map((location) => (
-                      <SelectItem key={location.id} value={location.id}>
-                        {location.name}
-                      </SelectItem>
-                    )) || (
-                      <SelectItem value="none" disabled>Нет данных</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
+          <CalculatedField 
+            label="Объем по договору" 
+            value="тест"
+            status="ok"
           />
         </div>
       </CardContent>

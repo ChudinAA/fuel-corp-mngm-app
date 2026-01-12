@@ -95,33 +95,6 @@ export function OptMainFields({
         )}
       />
 
-      <FormField
-        control={form.control}
-        name="buyerId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Покупатель</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger data-testid="select-buyer">
-                  <SelectValue placeholder="Выберите покупателя" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {customers?.filter(c => c.module === CUSTOMER_MODULE.WHOLESALE || c.module === CUSTOMER_MODULE.BOTH).map((buyer) => (
-                  <SelectItem key={buyer.id} value={buyer.id}>
-                    {buyer.name}
-                  </SelectItem>
-                )) || (
-                  <SelectItem value="none" disabled>Нет данных</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
       {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 1 ? (
         <FormItem>
           <FormLabel>Базис</FormLabel>
@@ -157,6 +130,33 @@ export function OptMainFields({
           </div>
         </div>
       )}
+      
+      <FormField
+        control={form.control}
+        name="buyerId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Покупатель</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger data-testid="select-buyer">
+                  <SelectValue placeholder="Выберите покупателя" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {customers?.filter(c => c.module === CUSTOMER_MODULE.WHOLESALE || c.module === CUSTOMER_MODULE.BOTH).map((buyer) => (
+                  <SelectItem key={buyer.id} value={buyer.id}>
+                    {buyer.name}
+                  </SelectItem>
+                )) || (
+                  <SelectItem value="none" disabled>Нет данных</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
     </div>
   );
 }
