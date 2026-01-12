@@ -85,7 +85,7 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
     return true;
   }).sort((a, b) => {
     // Сортировка по дате создания (новые сверху)
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    return new Date(b.dateTo).getTime() - new Date(a.dateTo).getTime();
   }) || [];
 
   const deleteMutation = useMutation({
