@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Loader2, Truck, MapPin, Car, Container, User, Warehouse } from "lucide-react";
-import type { LogisticsCarrier } from "@shared/schema";
+import type { LogisticsCarrier, Base } from "@shared/schema";
 
 export const LOGISTICS_TYPES = [
   { value: "carrier", label: "Перевозчик", icon: Truck },
@@ -30,6 +30,7 @@ const logisticsFormSchema = z.object({
   address: z.string().optional(),
   inn: z.string().optional(),
   carrierId: z.string().optional(),
+  baseId: z.string().optional(),
   plateNumber: z.string().optional(),
   vehicleType: z.string().optional(),
   capacityKg: z.string().optional(),
@@ -55,6 +56,10 @@ export function AddLogisticsDialog({
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
 
+  const { data: bases = [] } = useQuery<Base[]>({
+    queryKey: ["/api/bases"],
+  });
+
   const form = useForm<LogisticsFormData>({
     resolver: zodResolver(logisticsFormSchema),
     defaultValues: {
@@ -68,6 +73,7 @@ export function AddLogisticsDialog({
       address: "",
       coordinates: "",
       carrierId: undefined,
+      baseId: undefined,
       plateNumber: "",
       vehicleType: "",
       capacityKg: "",
@@ -87,6 +93,7 @@ export function AddLogisticsDialog({
     form.setValue("address", "");
     form.setValue("coordinates", "");
     form.setValue("carrierId", undefined);
+    form.setValue("baseId", undefined);
     form.setValue("plateNumber", "");
     form.setValue("vehicleType", "");
     form.setValue("capacityKg", "");
@@ -116,6 +123,7 @@ export function AddLogisticsDialog({
           name: data.name,
           address: data.address,
           notes: data.coordinates,
+          baseId: data.baseId || null,
           isActive: data.isActive,
         };
       } else if (data.type === "vehicle") {
@@ -171,6 +179,7 @@ export function AddLogisticsDialog({
         address: "",
         coordinates: "",
         carrierId: undefined,
+        baseId: undefined,
         plateNumber: "",
         vehicleType: "",
         capacityKg: "",
@@ -207,6 +216,7 @@ export function AddLogisticsDialog({
         formData.name = data.name;
         formData.address = data.address || "";
         formData.notes = data.notes || "";
+        formData.baseId = data.baseId || undefined;
       } else if (editItem.type === "vehicle") {
         formData.name = "";
         formData.plateNumber = data.regNumber;
@@ -244,6 +254,7 @@ export function AddLogisticsDialog({
         address: "",
         coordinates: "",
         carrierId: undefined,
+        baseId: undefined,
         plateNumber: "",
         vehicleType: "",
         capacityKg: "",
@@ -375,6 +386,31 @@ export function AddLogisticsDialog({
                       <FormControl>
                         <Input placeholder="Полный адрес" data-testid="input-logistics-address" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="baseId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Базис</FormLabel>
+                      <Select 
+                        onValueChange={(v) => field.onChange(v || undefined)} 
+                        value={field.value || ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-logistics-base">
+                            <SelectValue placeholder="Выберите базис" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {bases.map((b) => (
+                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
