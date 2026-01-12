@@ -13,6 +13,7 @@ import { CalculatedField } from "./calculated-field";
 import { formatCurrency, formatNumber } from "../utils";
 import type { OptFormData } from "../schemas";
 import { AddLogisticsDialog } from "@/pages/directories/logistics-dialog";
+import { AddDeliveryCostDialog } from "@/pages/delivery/components/delivery-cost-dialog";
 
 interface VolumeInputSectionProps {
   form: UseFormReturn<OptFormData>;
@@ -127,6 +128,7 @@ export function LogisticsSection({
 }: LogisticsSectionProps) {
   const [addDeliveryLocationOpen, setAddDeliveryLocationOpen] = useState(false);
   const [addCarrierOpen, setAddCarrierOpen] = useState(false);
+  const [addDeliveryCostOpen, setAddDeliveryCostOpen] = useState(false);
 
   const handleDeliveryLocationCreated = (id: string, type: string) => {
     if (type === "delivery_location") {
@@ -212,8 +214,8 @@ export function LogisticsSection({
                     type="button" 
                     size="icon" 
                     variant="outline"
-                    onClick={() => setAddCarrierOpen(true)}
-                    data-testid="button-add-carrier-inline"
+                    onClick={() => setAddDeliveryCostOpen(true)}
+                    data-testid="button-add-delivery-cost-inline"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -247,6 +249,13 @@ export function LogisticsSection({
         onInlineOpenChange={setAddCarrierOpen}
         onCreated={handleCarrierCreated}
         defaultType="carrier"
+      />
+
+      <AddDeliveryCostDialog
+        editDeliveryCost={null}
+        isInline
+        inlineOpen={addDeliveryCostOpen}
+        onInlineOpenChange={setAddDeliveryCostOpen}
       />
     </Card>
   );

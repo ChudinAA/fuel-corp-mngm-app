@@ -60,7 +60,7 @@ export function useRefuelingCalculations({
   const purchaseAmount = purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
   const saleAmount = salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
 
-  const agentFee = selectedSupplier?.agentFee ? parseFloat(selectedSupplier.agentFee) * finalKg : 0;
+  const agentFee = selectedSupplier?.agentFee ? parseFloat(selectedSupplier.agentFee) : 0;
 
   const profit = purchaseAmount !== null && saleAmount !== null 
     ? saleAmount - purchaseAmount - agentFee

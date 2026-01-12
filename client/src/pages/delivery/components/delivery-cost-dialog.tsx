@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import * as React from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -9,23 +8,61 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Plus, Loader2 } from "lucide-react";
 import type { DeliveryCost } from "@shared/schema";
-import { deliveryCostFormSchema, DELIVERY_ENTITY_TYPES, type DeliveryCostFormData } from "../types";
+import {
+  deliveryCostFormSchema,
+  DELIVERY_ENTITY_TYPES,
+  type DeliveryCostFormData,
+} from "../types";
 import { getEntitiesByType } from "../utils";
 
 interface AddDeliveryCostDialogProps {
   editDeliveryCost: DeliveryCost | null;
+  isInline?: boolean;
+  inlineOpen?: boolean;
+  onInlineOpenChange?: (open: boolean) => void;
+  onCreated?: (id: string) => void;
   onClose?: () => void;
 }
 
-export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDeliveryCostDialogProps) {
+export function AddDeliveryCostDialog({
+  editDeliveryCost,
+  isInline = false,
+  inlineOpen = false,
+  onInlineOpenChange,
+  onCreated,
+  onClose,
+}: AddDeliveryCostDialogProps) {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
-  
+  const [localOpen, setLocalOpen] = useState(false);
+
+  const open = isInline ? inlineOpen : localOpen;
+  const setOpen = isInline ? onInlineOpenChange || setLocalOpen : setLocalOpen;
+
   const handleClose = () => {
     setOpen(false);
     form.reset({
@@ -80,14 +117,14 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
     watchFromEntityType,
     allBases,
     warehouses,
-    deliveryLocations
+    deliveryLocations,
   );
-  
+
   const toEntities = getEntitiesByType(
     watchToEntityType,
     allBases,
     warehouses,
-    deliveryLocations
+    deliveryLocations,
   );
 
   const createMutation = useMutation({
@@ -95,28 +132,49 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
       const res = await apiRequest("POST", "/api/delivery-costs", data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/delivery-costs"] });
-      toast({ title: "Тариф добавлен", description: "Новый тариф доставки сохранен" });
+      toast({
+        title: "Тариф добавлен",
+        description: "Новый тариф доставки сохранен",
+      });
       handleClose();
+      if (onCreated && data?.id) {
+        onCreated(data.id);
+      }
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: async (data: DeliveryCostFormData) => {
-      const res = await apiRequest("PATCH", `/api/delivery-costs/${editDeliveryCost?.id}`, data);
+      const res = await apiRequest(
+        "PATCH",
+        `/api/delivery-costs/${editDeliveryCost?.id}`,
+        data,
+      );
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/delivery-costs"] });
-      toast({ title: "Тариф обновлен", description: "Изменения тарифа доставки сохранены" });
+      toast({
+        title: "Тариф обновлен",
+        description: "Изменения тарифа доставки сохранены",
+      });
       handleClose();
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -141,7 +199,7 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
   React.useEffect(() => {
     const fromEntityId = form.watch("fromEntityId");
     if (fromEntityId && watchFromEntityType) {
-      const entity = fromEntities.find(e => e.id === fromEntityId);
+      const entity = fromEntities.find((e) => e.id === fromEntityId);
       if (entity) {
         form.setValue("fromLocation", entity.name);
       }
@@ -151,7 +209,7 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
   React.useEffect(() => {
     const toEntityId = form.watch("toEntityId");
     if (toEntityId && watchToEntityType) {
-      const entity = toEntities.find(e => e.id === toEntityId);
+      const entity = toEntities.find((e) => e.id === toEntityId);
       if (entity) {
         form.setValue("toLocation", entity.name);
       }
@@ -159,26 +217,49 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
   }, [form.watch("toEntityId"), watchToEntityType]);
 
   return (
-    <Dialog open={editDeliveryCost !== null || open} onOpenChange={(isOpen) => {
-      if (!isOpen) {
-        handleClose();
-      }
-    }}>
-      <DialogTrigger asChild>
-        {editDeliveryCost ? null : (
-          <Button data-testid="button-add-delivery-cost" onClick={() => setOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Добавить тариф
-          </Button>
-        )}
-      </DialogTrigger>
+    <Dialog
+      open={editDeliveryCost !== null || open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          handleClose();
+        }
+      }}
+    >
+      {!isInline && (
+        <DialogTrigger asChild>
+          {editDeliveryCost ? null : (
+            <Button
+              data-testid="button-add-delivery-cost"
+              onClick={() => setOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Добавить тариф
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editDeliveryCost ? "Редактировать тариф доставки" : "Новый тариф доставки"}</DialogTitle>
-          <DialogDescription>{editDeliveryCost ? "Изменение тарифа перевозки" : "Добавление тарифа перевозки"}</DialogDescription>
+          <DialogTitle>
+            {editDeliveryCost
+              ? "Редактировать тариф доставки"
+              : "Новый тариф доставки"}
+          </DialogTitle>
+          <DialogDescription>
+            {editDeliveryCost
+              ? "Изменение тарифа перевозки"
+              : "Добавление тарифа перевозки"}
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(data => editDeliveryCost ? updateMutation.mutate(data) : createMutation.mutate(data))} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit((data) =>
+              editDeliveryCost
+                ? updateMutation.mutate(data)
+                : createMutation.mutate(data),
+            )}
+            className="space-y-4"
+          >
             <FormField
               control={form.control}
               name="carrierId"
@@ -193,8 +274,14 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
                     </FormControl>
                     <SelectContent>
                       {carriers?.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      )) || (
+                        <SelectItem value="none" disabled>
+                          Нет данных
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -210,11 +297,14 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Откуда (тип)</FormLabel>
-                      <Select onValueChange={(value) => {
-                        field.onChange(value);
-                        form.setValue("fromEntityId", "");
-                        form.setValue("fromLocation", "");
-                      }} value={field.value}>
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          form.setValue("fromEntityId", "");
+                          form.setValue("fromLocation", "");
+                        }}
+                        value={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger data-testid="select-delivery-from-type">
                             <SelectValue placeholder="Выберите тип" />
@@ -222,7 +312,9 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
                         </FormControl>
                         <SelectContent>
                           {DELIVERY_ENTITY_TYPES.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                            <SelectItem key={type.value} value={type.value}>
+                              {type.label}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -236,8 +328,8 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Пункт отправления</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={field.onChange}
                         value={field.value}
                         disabled={!watchFromEntityType}
                       >
@@ -248,9 +340,15 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
                         </FormControl>
                         <SelectContent>
                           {fromEntities.map((entity) => (
-                            <SelectItem key={entity.id} value={entity.id}>{entity.name}</SelectItem>
+                            <SelectItem key={entity.id} value={entity.id}>
+                              {entity.name}
+                            </SelectItem>
                           ))}
-                          {fromEntities.length === 0 && <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                          {fromEntities.length === 0 && (
+                            <SelectItem value="none" disabled>
+                              Нет данных
+                            </SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -265,11 +363,14 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Куда (тип)</FormLabel>
-                      <Select onValueChange={(value) => {
-                        field.onChange(value);
-                        form.setValue("toEntityId", "");
-                        form.setValue("toLocation", "");
-                      }} value={field.value}>
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          form.setValue("toEntityId", "");
+                          form.setValue("toLocation", "");
+                        }}
+                        value={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger data-testid="select-delivery-to-type">
                             <SelectValue placeholder="Выберите тип" />
@@ -277,7 +378,9 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
                         </FormControl>
                         <SelectContent>
                           {DELIVERY_ENTITY_TYPES.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                            <SelectItem key={type.value} value={type.value}>
+                              {type.label}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -291,8 +394,8 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Пункт назначения</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={field.onChange}
                         value={field.value}
                         disabled={!watchToEntityType}
                       >
@@ -303,9 +406,15 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
                         </FormControl>
                         <SelectContent>
                           {toEntities.map((entity) => (
-                            <SelectItem key={entity.id} value={entity.id}>{entity.name}</SelectItem>
+                            <SelectItem key={entity.id} value={entity.id}>
+                              {entity.name}
+                            </SelectItem>
                           ))}
-                          {toEntities.length === 0 && <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                          {toEntities.length === 0 && (
+                            <SelectItem value="none" disabled>
+                              Нет данных
+                            </SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -323,7 +432,13 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
                   <FormItem>
                     <FormLabel>Стоимость за кг (₽)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.0001" placeholder="0.0000" data-testid="input-cost-per-kg" {...field} />
+                      <Input
+                        type="number"
+                        step="0.0001"
+                        placeholder="0.0000"
+                        data-testid="input-cost-per-kg"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -336,7 +451,13 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
                   <FormItem>
                     <FormLabel>Расстояние (км)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="0.00" data-testid="input-distance" {...field} />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        data-testid="input-distance"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -345,9 +466,24 @@ export function AddDeliveryCostDialog({ editDeliveryCost, onClose }: AddDelivery
             </div>
 
             <div className="flex justify-end gap-4 pt-4">
-              <Button type="button" variant="outline" onClick={handleClose}>Отмена</Button>
-              <Button type="submit" disabled={isSubmitting} data-testid="button-save-delivery-cost">
-                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{editDeliveryCost ? "Сохранение..." : "Создание..."}</> : (editDeliveryCost ? "Сохранить" : "Создать")}
+              <Button type="button" variant="outline" onClick={handleClose}>
+                Отмена
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                data-testid="button-save-delivery-cost"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {editDeliveryCost ? "Сохранение..." : "Создание..."}
+                  </>
+                ) : editDeliveryCost ? (
+                  "Сохранить"
+                ) : (
+                  "Создать"
+                )}
               </Button>
             </div>
           </form>

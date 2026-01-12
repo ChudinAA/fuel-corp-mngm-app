@@ -12,6 +12,8 @@ import type { Control, FieldArrayWithId, UseFieldArrayRemove, UseFieldArrayAppen
 import type { PriceFormData } from "../types";
 import type { Base, Supplier, Customer } from "@shared/schema";
 import { PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
+import { AddBaseDialog } from "@/pages/directories/bases-dialog";
+import { useState } from "react";
 
 interface PriceFormFieldsProps {
   control: Control<PriceFormData>;
@@ -23,6 +25,8 @@ interface PriceFormFieldsProps {
 }
 
 export function PriceFormFields({ control, contractors, availableBases, fields, remove, append }: PriceFormFieldsProps) {
+  const [addBaseOpen, setAddBaseOpen] = useState(false);
+  
   return (
     <>
       <div className="grid grid-cols-2 gap-4">
@@ -156,6 +160,7 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
                     <SelectValue />
                   </SelectTrigger>
                 </FormControl>
+                {}
                 <SelectContent>
                   <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
                   <SelectItem value={PRODUCT_TYPE.SERVICE}>Услуга</SelectItem>
@@ -177,18 +182,29 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
           render={({ field }) => (
             <FormItem>
               <FormLabel>Базис (место поставки/заправки)</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger data-testid="select-basis">
-                    <SelectValue placeholder="Выберите базис" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {availableBases?.length > 0 ? availableBases.map((b) => (
-                    <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
-                  )) : <SelectItem value="none" disabled>Нет доступных базисов</SelectItem>}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-1">
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-basis" className="flex-1">
+                      <SelectValue placeholder="Выберите базис" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {availableBases?.length > 0 ? availableBases.map((b) => (
+                      <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                    )) : <SelectItem value="none" disabled>Нет доступных базисов</SelectItem>}
+                  </SelectContent>
+                </Select>
+                <Button 
+                  type="button" 
+                  size="icon" 
+                  variant="outline"
+                  onClick={() => setAddBaseOpen(true)}
+                  data-testid="button-add-customer-inline"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
               <FormMessage />
             </FormItem>
           )}
@@ -291,6 +307,12 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
             <FormMessage />
           </FormItem>
         )}
+      />
+
+      <AddBaseDialog
+        isInline
+        inlineOpen={addBaseOpen}
+        onInlineOpenChange={setAddBaseOpen}
       />
     </>
   );

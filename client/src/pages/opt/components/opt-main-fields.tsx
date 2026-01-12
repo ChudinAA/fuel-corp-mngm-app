@@ -8,10 +8,11 @@ import { CalendarIcon, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { UseFormReturn } from "react-hook-form";
-import type { Supplier, Customer, LogisticsCarrier } from "@shared/schema";
+import type { Supplier, Customer, LogisticsCarrier, Base } from "@shared/schema";
 import type { OptFormData } from "../schemas";
 import { CUSTOMER_MODULE } from "@shared/constants";
 import { AddCustomerDialog } from "@/pages/directories/customers-dialog";
+import { AddSupplierDialog } from "@/pages/directories/suppliers-dialog";
 
 interface OptMainFieldsProps {
   form: UseFormReturn<OptFormData>;
@@ -33,13 +34,18 @@ export function OptMainFields({
   wholesaleBases,
 }: OptMainFieldsProps) {
   const [addCustomerOpen, setAddCustomerOpen] = useState(false);
+  const [addSupplierOpen, setAddSupplierOpen] = useState(false);
 
   const handleCustomerCreated = (id: string) => {
     form.setValue("buyerId", id);
   };
 
+  const handleSupplierCreated = (id: string) => {
+    form.setValue("supplierId", id);
+  };
+  
   return (
-    <div className="grid gap-6 md:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-4">
       <FormField
         control={form.control}
         name="dealDate"
@@ -79,30 +85,41 @@ export function OptMainFields({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Поставщик</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger data-testid="select-supplier">
-                  <SelectValue placeholder="Выберите поставщика" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {wholesaleSuppliers.length > 0 ? (
-                  wholesaleSuppliers.map((supplier) => (
-                    <SelectItem key={supplier.id} value={supplier.id}>
-                      {supplier.name}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="none" disabled>Нет данных</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-1">
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-supplier" className="flex-1">
+                    <SelectValue placeholder="Выберите поставщика" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {wholesaleSuppliers.length > 0 ? (
+                    wholesaleSuppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" disabled>Нет данных</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              <Button 
+                type="button" 
+                size="icon" 
+                variant="outline"
+                onClick={() => setAddSupplierOpen(true)}
+                data-testid="button-add-supplier-inline"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
             <FormMessage />
           </FormItem>
         )}
       />
 
-      {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 1 ? (
+      {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 0 ? (
         <FormItem>
           <FormLabel>Базис</FormLabel>
           <Select 
@@ -174,6 +191,14 @@ export function OptMainFields({
             <FormMessage />
           </FormItem>
         )}
+      />
+
+      <AddSupplierDialog
+        bases={wholesaleBases}
+        isInline
+        inlineOpen={addSupplierOpen}
+        onInlineOpenChange={setAddSupplierOpen}
+        onCreated={handleSupplierCreated}
       />
       
       <AddCustomerDialog

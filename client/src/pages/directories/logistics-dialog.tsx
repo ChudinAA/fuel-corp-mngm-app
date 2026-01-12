@@ -442,19 +442,6 @@ export function AddLogisticsDialog({
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Координаты</FormLabel>
-                      <FormControl>
-                        <Input placeholder="55.7558, 37.6173" data-testid="input-logistics-coordinates" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </>
             )}
 

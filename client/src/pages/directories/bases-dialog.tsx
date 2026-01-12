@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -8,9 +7,29 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Loader2 } from "lucide-react";
 import type { Base } from "@shared/schema";
@@ -18,22 +37,37 @@ import { BASE_TYPE, BaseType } from "@shared/constants";
 
 const baseFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
-  baseType: z.enum([BASE_TYPE.WHOLESALE, BASE_TYPE.REFUELING], { required_error: "Выберите тип базиса" }),
+  baseType: z.enum([BASE_TYPE.WHOLESALE, BASE_TYPE.REFUELING], {
+    required_error: "Выберите тип базиса",
+  }),
   location: z.string().optional(),
   isActive: z.boolean().default(true),
 });
 
 type BaseFormData = z.infer<typeof baseFormSchema>;
 
-export function AddBaseDialog({ 
-  editItem,
-  onEditComplete
-}: { 
+interface AddBaseDialogProps {
   editItem?: Base | null;
   onEditComplete?: () => void;
-}) {
+  isInline?: boolean;
+  inlineOpen?: boolean;
+  onInlineOpenChange?: (open: boolean) => void;
+  onCreated?: (id: string) => void;
+}
+
+export function AddBaseDialog({
+  editItem,
+  onEditComplete,
+  isInline = false,
+  inlineOpen = false,
+  onInlineOpenChange,
+  onCreated,
+}: AddBaseDialogProps) {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+
+  const open = isInline ? inlineOpen : localOpen;
+  const setOpen = isInline ? onInlineOpenChange || setLocalOpen : setLocalOpen;
 
   const form = useForm<BaseFormData>({
     resolver: zodResolver(baseFormSchema),
@@ -51,11 +85,13 @@ export function AddBaseDialog({
       const res = await apiRequest(editItem ? "PATCH" : "POST", endpoint, data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/bases"] });
-      toast({ 
-        title: editItem ? "Базис обновлен" : "Базис добавлен", 
-        description: editItem ? "Изменения сохранены" : "Новый базис сохранен в справочнике" 
+      toast({
+        title: editItem ? "Базис обновлен" : "Базис добавлен",
+        description: editItem
+          ? "Изменения сохранены"
+          : "Новый базис сохранен в справочнике",
       });
       form.reset({
         name: "",
@@ -64,12 +100,19 @@ export function AddBaseDialog({
         isActive: true,
       });
       setOpen(false);
+      if (onCreated && data?.id) {
+        onCreated(data.id);
+      }
       if (onEditComplete) {
         onEditComplete();
       }
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -102,19 +145,30 @@ export function AddBaseDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button size="sm" data-testid="button-add-base">
-          <Plus className="mr-2 h-4 w-4" />
-          Добавить
-        </Button>
-      </DialogTrigger>
+      {!isInline && (
+        <DialogTrigger asChild>
+          <Button size="sm" data-testid="button-add-base">
+            <Plus className="mr-2 h-4 w-4" />
+            Добавить
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{editItem ? "Редактирование базиса" : "Новый базис"}</DialogTitle>
-          <DialogDescription>{editItem ? "Изменение записи в справочнике" : "Добавление нового базиса"}</DialogDescription>
+          <DialogTitle>
+            {editItem ? "Редактирование базиса" : "Новый базис"}
+          </DialogTitle>
+          <DialogDescription>
+            {editItem
+              ? "Изменение записи в справочнике"
+              : "Добавление нового базиса"}
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit((data) => createMutation.mutate(data))}
+            className="space-y-4"
+          >
             <FormField
               control={form.control}
               name="name"
@@ -122,7 +176,11 @@ export function AddBaseDialog({
                 <FormItem>
                   <FormLabel>Название</FormLabel>
                   <FormControl>
-                    <Input placeholder="Название" data-testid="input-base-name" {...field} />
+                    <Input
+                      placeholder="Название"
+                      data-testid="input-base-name"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -143,7 +201,9 @@ export function AddBaseDialog({
                     </FormControl>
                     <SelectContent>
                       <SelectItem value={BASE_TYPE.WHOLESALE}>ОПТ</SelectItem>
-                      <SelectItem value={BASE_TYPE.REFUELING}>Заправка</SelectItem>
+                      <SelectItem value={BASE_TYPE.REFUELING}>
+                        Заправка
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -158,7 +218,11 @@ export function AddBaseDialog({
                 <FormItem>
                   <FormLabel>Местоположение</FormLabel>
                   <FormControl>
-                    <Input placeholder="Местоположение" data-testid="input-base-location" {...field} />
+                    <Input
+                      placeholder="Местоположение"
+                      data-testid="input-base-location"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -171,17 +235,42 @@ export function AddBaseDialog({
               render={({ field }) => (
                 <FormItem className="flex items-center gap-2 space-y-0">
                   <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-base-active" />
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="switch-base-active"
+                    />
                   </FormControl>
-                  <FormLabel className="font-normal cursor-pointer">Активен</FormLabel>
+                  <FormLabel className="font-normal cursor-pointer">
+                    Активен
+                  </FormLabel>
                 </FormItem>
               )}
             />
 
             <div className="flex justify-end gap-4 pt-4">
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Отмена</Button>
-              <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-base">
-                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : editItem ? "Сохранить" : "Создать"}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+              >
+                Отмена
+              </Button>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending}
+                data-testid="button-save-base"
+              >
+                {createMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Сохранение...
+                  </>
+                ) : editItem ? (
+                  "Сохранить"
+                ) : (
+                  "Создать"
+                )}
               </Button>
             </div>
           </form>

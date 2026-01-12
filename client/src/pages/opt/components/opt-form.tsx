@@ -38,7 +38,7 @@ export function OptForm({
   const form = useForm<OptFormData>({
     resolver: zodResolver(optFormSchema),
     defaultValues: {
-      dealDate: editData ? new Date(editData.createdAt) : new Date(),
+      dealDate: editData ? new Date(editData.dealDate) : new Date(),
       supplierId: "",
       buyerId: "",
       warehouseId: "",

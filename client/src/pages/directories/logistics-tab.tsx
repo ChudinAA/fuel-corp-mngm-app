@@ -216,7 +216,7 @@ export function LogisticsTab() {
                           {item.type === "vehicle" ? (item as LogisticsVehicle & { type: string }).model || "—" :
                            item.type === "trailer" ? (item as LogisticsTrailer & { type: string }).capacityKg || "—" :
                            item.type === "driver" ? (item as LogisticsDriver & { type: string }).phone || "—" :
-                           item.type === "delivery_location" ? (item as LogisticsDeliveryLocation & { type: string }).address || "—" :
+                           item.type === "delivery_location" ? (item as LogisticsDeliveryLocation & { type: string }).baseId || "—" :
                            (item as LogisticsCarrier & { type: string }).inn || "—"}
                         </TableCell>
                         <TableCell>
