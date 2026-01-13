@@ -250,7 +250,7 @@ export function MovementDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               <MovementFormHeader form={form} />
               <MovementSourceSection
                 form={form}
@@ -283,6 +283,7 @@ export function MovementDialog({
               storageCost={storageCost}
               deliveryCost={deliveryCost}
               costPerKg={costPerKg}
+              watchMovementType={watchMovementType}
             />
 
             <FormField control={form.control} name="notes" render={({ field }) => (

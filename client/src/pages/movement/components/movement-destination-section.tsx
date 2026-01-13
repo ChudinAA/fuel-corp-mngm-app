@@ -1,10 +1,26 @@
-
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CalculatedField } from "./calculated-field";
 import { MOVEMENT_TYPE } from "@shared/constants";
 import type { UseFormReturn } from "react-hook-form";
 import type { MovementFormData } from "../schemas";
+import { useAuth } from "@/hooks/use-auth";
+import { useState } from "react";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AddDeliveryCostDialog } from "@/pages/delivery/components/delivery-cost-dialog";
 
 interface MovementDestinationSectionProps {
   form: UseFormReturn<MovementFormData>;
@@ -15,22 +31,27 @@ interface MovementDestinationSectionProps {
   warehouseBalance: { message: string; status: "ok" | "error" | "warning" };
 }
 
-export function MovementDestinationSection({ 
-  form, 
+export function MovementDestinationSection({
+  form,
   watchMovementType,
   watchFromWarehouseId,
-  warehouses, 
+  warehouses,
   availableCarriers,
-  warehouseBalance
+  warehouseBalance,
 }: MovementDestinationSectionProps) {
+  const { hasPermission } = useAuth();
+  const [addDeliveryCostOpen, setAddDeliveryCostOpen] = useState(false);
+
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-3">
       <FormField
         control={form.control}
         name="toWarehouseId"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="flex items-center gap-2">Куда (склад)</FormLabel>
+            <FormLabel className="flex items-center gap-2">
+              Куда (склад)
+            </FormLabel>
             <Select onValueChange={field.onChange} value={field.value}>
               <FormControl>
                 <SelectTrigger data-testid="select-movement-to">
@@ -39,8 +60,14 @@ export function MovementDestinationSection({
               </FormControl>
               <SelectContent>
                 {warehouses?.map((w) => (
-                  <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                  <SelectItem key={w.id} value={w.id}>
+                    {w.name}
+                  </SelectItem>
+                )) || (
+                  <SelectItem value="none" disabled>
+                    Нет данных
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
             <FormMessage />
@@ -48,65 +75,73 @@ export function MovementDestinationSection({
         )}
       />
 
-      {watchMovementType === MOVEMENT_TYPE.INTERNAL ? (
-        <div className="grid grid-cols-2 gap-4">
-          <FormField 
-            control={form.control} 
-            name="carrierId" 
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">Перевозчик</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value || ""}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-movement-carrier">
-                      <SelectValue placeholder="Выберите перевозчика" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {availableCarriers.length > 0 ? (
-                      availableCarriers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
-                    ) : (
-                      <SelectItem value="none" disabled>Нет перевозчиков для данного маршрута</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )} 
-          />
-
-          <CalculatedField 
-            label="Объем на складе" 
-            value={watchFromWarehouseId ? warehouseBalance.message : "—"}
-            status={watchFromWarehouseId ? warehouseBalance.status : "ok"}
-          />
-        </div>
-      ) : (
-        <FormField 
-          control={form.control} 
-          name="carrierId" 
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="flex items-center gap-2">Перевозчик</FormLabel>
+      <FormField
+        control={form.control}
+        name="carrierId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel className="flex items-center gap-2">
+              Перевозчик
+            </FormLabel>
+            <div className="flex gap-1">
               <Select onValueChange={field.onChange} value={field.value || ""}>
                 <FormControl>
-                  <SelectTrigger data-testid="select-movement-carrier">
+                  <SelectTrigger
+                    data-testid="select-movement-carrier"
+                    className="flex-1"
+                  >
                     <SelectValue placeholder="Выберите перевозчика" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
                   {availableCarriers.length > 0 ? (
-                    availableCarriers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
+                    availableCarriers.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))
                   ) : (
-                    <SelectItem value="none" disabled>Нет перевозчиков для данного маршрута</SelectItem>
+                    <SelectItem value="none" disabled>
+                      Нет перевозчиков для данного маршрута
+                    </SelectItem>
                   )}
                 </SelectContent>
               </Select>
-              <FormMessage />
-            </FormItem>
-          )} 
-        />
-      )}
+              {hasPermission("delivery", "create") && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setAddDeliveryCostOpen(true)}
+                  data-testid="button-add-delivery-cost-inline"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <CalculatedField
+        label="Объем на складе"
+        value={
+          watchMovementType === MOVEMENT_TYPE.SUPPLY
+            ? "Объем не со склада"
+            : watchFromWarehouseId
+              ? warehouseBalance.message
+              : "—"
+        }
+        status={watchFromWarehouseId ? warehouseBalance.status : "ok"}
+      />
+
+      <AddDeliveryCostDialog
+        editDeliveryCost={null}
+        isInline
+        inlineOpen={addDeliveryCostOpen}
+        onInlineOpenChange={setAddDeliveryCostOpen}
+      />
     </div>
   );
 }

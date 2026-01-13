@@ -23,7 +23,7 @@ export function CalculatedField({ label, value, suffix = "", status }: Calculate
   };
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1 flex-1">
       <Label className="text-xs text-muted-foreground flex items-center gap-1">
         <Calculator className="h-3 w-3" />
         {label}

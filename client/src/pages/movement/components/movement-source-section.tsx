@@ -49,33 +49,33 @@ export function MovementSourceSection({
         )}
       />
     );
+  } else {
+    return (
+      <FormField
+        control={form.control}
+        name="fromWarehouseId"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Откуда (склад)</FormLabel>
+            <Select 
+              onValueChange={field.onChange} 
+              value={field.value}
+            >
+              <FormControl>
+                <SelectTrigger data-testid="select-movement-from">
+                  <SelectValue placeholder="Выберите склад" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {warehouses?.map((w) => (
+                  <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    );
   }
-
-  return (
-    <FormField
-      control={form.control}
-      name="fromWarehouseId"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>Откуда (склад)</FormLabel>
-          <Select 
-            onValueChange={field.onChange} 
-            value={field.value}
-          >
-            <FormControl>
-              <SelectTrigger data-testid="select-movement-from">
-                <SelectValue placeholder="Выберите склад" />
-              </SelectTrigger>
-            </FormControl>
-            <SelectContent>
-              {warehouses?.map((w) => (
-                <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-              )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
-            </SelectContent>
-          </Select>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  );
 }
