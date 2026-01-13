@@ -253,11 +253,15 @@ export function AddDeliveryCostDialog({
         </DialogHeader>
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit((data) =>
-              editDeliveryCost
-                ? updateMutation.mutate(data)
-                : createMutation.mutate(data),
-            )}
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              form.handleSubmit((data) =>
+                editDeliveryCost
+                  ? updateMutation.mutate(data)
+                  : createMutation.mutate(data),
+              )(e);
+            }}
             className="space-y-4"
           >
             <FormField
@@ -473,6 +477,7 @@ export function AddDeliveryCostDialog({
                 type="submit"
                 disabled={isSubmitting}
                 data-testid="button-save-delivery-cost"
+                onClick={(e) => e.stopPropagation()}
               >
                 {isSubmitting ? (
                   <>

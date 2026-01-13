@@ -249,7 +249,11 @@ export function AddSupplierDialog({
         </DialogHeader>
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit((data) => createMutation.mutate(data))}
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              form.handleSubmit((data) => createMutation.mutate(data))(e);
+            }}
             className="space-y-4"
           >
             <FormField
@@ -483,6 +487,7 @@ export function AddSupplierDialog({
                 type="submit"
                 disabled={createMutation.isPending}
                 data-testid="button-save-supplier"
+                onClick={(e) => e.stopPropagation()}
               >
                 {createMutation.isPending ? (
                   <>

@@ -388,7 +388,11 @@ export function AddPriceDialog({
         </DialogHeader>
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit(handleSubmit)}
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              form.handleSubmit(handleSubmit)(e);
+            }}
             className="space-y-4"
           >
             <PriceFormFields
@@ -426,6 +430,7 @@ export function AddPriceDialog({
                 data-testid={
                   editPrice ? "button-save-edit-price" : "button-save-price"
                 }
+                onClick={(e) => e.stopPropagation()}
               >
                 {createMutation.isPending ? (
                   <>

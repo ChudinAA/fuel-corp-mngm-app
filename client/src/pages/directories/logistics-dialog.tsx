@@ -8,11 +8,40 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Loader2, Truck, MapPin, Car, Container, User, Warehouse } from "lucide-react";
+import {
+  Plus,
+  Loader2,
+  Truck,
+  MapPin,
+  Car,
+  Container,
+  User,
+  Warehouse,
+} from "lucide-react";
 import type { LogisticsCarrier, Base } from "@shared/schema";
 
 export const LOGISTICS_TYPES = [
@@ -24,7 +53,13 @@ export const LOGISTICS_TYPES = [
 ] as const;
 
 const logisticsFormSchema = z.object({
-  type: z.enum(["carrier", "delivery_location", "vehicle", "trailer", "driver"]),
+  type: z.enum([
+    "carrier",
+    "delivery_location",
+    "vehicle",
+    "trailer",
+    "driver",
+  ]),
   name: z.string().min(1, "Укажите название"),
   description: z.string().optional(),
   address: z.string().optional(),
@@ -52,10 +87,15 @@ interface AddLogisticsDialogProps {
   inlineOpen?: boolean;
   onInlineOpenChange?: (open: boolean) => void;
   onCreated?: (id: string, type: string) => void;
-  defaultType?: "carrier" | "delivery_location" | "vehicle" | "trailer" | "driver";
+  defaultType?:
+    | "carrier"
+    | "delivery_location"
+    | "vehicle"
+    | "trailer"
+    | "driver";
 }
 
-export function AddLogisticsDialog({ 
+export function AddLogisticsDialog({
   carriers,
   editItem,
   onEditComplete,
@@ -67,9 +107,9 @@ export function AddLogisticsDialog({
 }: AddLogisticsDialogProps) {
   const { toast } = useToast();
   const [localOpen, setLocalOpen] = useState(false);
-  
+
   const open = isInline ? inlineOpen : localOpen;
-  const setOpen = isInline ? (onInlineOpenChange || setLocalOpen) : setLocalOpen;
+  const setOpen = isInline ? onInlineOpenChange || setLocalOpen : setLocalOpen;
 
   const { data: bases = [] } = useQuery<Base[]>({
     queryKey: ["/api/bases"],
@@ -129,7 +169,9 @@ export function AddLogisticsDialog({
       let payload: Record<string, unknown> = {};
 
       if (data.type === "carrier") {
-        endpoint = editItem ? `/api/logistics/carriers/${editItem.data.id}` : "/api/logistics/carriers";
+        endpoint = editItem
+          ? `/api/logistics/carriers/${editItem.data.id}`
+          : "/api/logistics/carriers";
         payload = {
           name: data.name,
           description: data.description,
@@ -139,7 +181,9 @@ export function AddLogisticsDialog({
           isActive: data.isActive,
         };
       } else if (data.type === "delivery_location") {
-        endpoint = editItem ? `/api/logistics/delivery-locations/${editItem.data.id}` : "/api/logistics/delivery-locations";
+        endpoint = editItem
+          ? `/api/logistics/delivery-locations/${editItem.data.id}`
+          : "/api/logistics/delivery-locations";
         payload = {
           name: data.name,
           address: data.address,
@@ -148,7 +192,9 @@ export function AddLogisticsDialog({
           isActive: data.isActive,
         };
       } else if (data.type === "vehicle") {
-        endpoint = editItem ? `/api/logistics/vehicles/${editItem.data.id}` : "/api/logistics/vehicles";
+        endpoint = editItem
+          ? `/api/logistics/vehicles/${editItem.data.id}`
+          : "/api/logistics/vehicles";
         payload = {
           regNumber: data.plateNumber,
           carrierId: data.carrierId || null,
@@ -157,7 +203,9 @@ export function AddLogisticsDialog({
           isActive: data.isActive,
         };
       } else if (data.type === "trailer") {
-        endpoint = editItem ? `/api/logistics/trailers/${editItem.data.id}` : "/api/logistics/trailers";
+        endpoint = editItem
+          ? `/api/logistics/trailers/${editItem.data.id}`
+          : "/api/logistics/trailers";
         payload = {
           regNumber: data.plateNumber,
           carrierId: data.carrierId || null,
@@ -165,7 +213,9 @@ export function AddLogisticsDialog({
           isActive: data.isActive,
         };
       } else if (data.type === "driver") {
-        endpoint = editItem ? `/api/logistics/drivers/${editItem.data.id}` : "/api/logistics/drivers";
+        endpoint = editItem
+          ? `/api/logistics/drivers/${editItem.data.id}`
+          : "/api/logistics/drivers";
         payload = {
           fullName: data.name,
           carrierId: data.carrierId || null,
@@ -176,18 +226,26 @@ export function AddLogisticsDialog({
         };
       }
 
-      const res = await apiRequest(editItem ? "PATCH" : "POST", endpoint, payload);
+      const res = await apiRequest(
+        editItem ? "PATCH" : "POST",
+        endpoint,
+        payload,
+      );
       return res.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/logistics/carriers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/logistics/delivery-locations"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/logistics/delivery-locations"],
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/logistics/vehicles"] });
       queryClient.invalidateQueries({ queryKey: ["/api/logistics/trailers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/logistics/drivers"] });
-      toast({ 
-        title: editItem ? "Запись обновлена" : "Запись добавлена", 
-        description: editItem ? "Изменения сохранены" : "Новая запись сохранена в справочнике" 
+      toast({
+        title: editItem ? "Запись обновлена" : "Запись добавлена",
+        description: editItem
+          ? "Изменения сохранены"
+          : "Новая запись сохранена в справочнике",
       });
       const currentType = form.getValues("type");
       form.reset({
@@ -218,7 +276,11 @@ export function AddLogisticsDialog({
       }
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -305,11 +367,26 @@ export function AddLogisticsDialog({
       )}
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{editItem ? "Редактирование записи: Логистика" : "Новая запись: Логистика"}</DialogTitle>
-          <DialogDescription>{editItem ? "Изменение записи в справочнике" : "Добавление записи в справочник логистики"}</DialogDescription>
+          <DialogTitle>
+            {editItem
+              ? "Редактирование записи: Логистика"
+              : "Новая запись: Логистика"}
+          </DialogTitle>
+          <DialogDescription>
+            {editItem
+              ? "Изменение записи в справочнике"
+              : "Добавление записи в справочник логистики"}
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              form.handleSubmit((data) => createMutation.mutate(data))(e);
+            }}
+            className="space-y-4"
+          >
             <FormField
               control={form.control}
               name="type"
@@ -347,10 +424,14 @@ export function AddLogisticsDialog({
                     {selectedType === "driver" ? "ФИО водителя" : "Название"}
                   </FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder={selectedType === "driver" ? "Иванов Иван Иванович" : "Название"} 
-                      data-testid="input-logistics-name" 
-                      {...field} 
+                    <Input
+                      placeholder={
+                        selectedType === "driver"
+                          ? "Иванов Иван Иванович"
+                          : "Название"
+                      }
+                      data-testid="input-logistics-name"
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -367,7 +448,11 @@ export function AddLogisticsDialog({
                     <FormItem>
                       <FormLabel>ИНН</FormLabel>
                       <FormControl>
-                        <Input placeholder="ИНН" data-testid="input-logistics-inn" {...field} />
+                        <Input
+                          placeholder="ИНН"
+                          data-testid="input-logistics-inn"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -380,7 +465,11 @@ export function AddLogisticsDialog({
                     <FormItem>
                       <FormLabel>Контактное лицо</FormLabel>
                       <FormControl>
-                        <Input placeholder="ФИО контактного лица" data-testid="input-logistics-contact" {...field} />
+                        <Input
+                          placeholder="ФИО контактного лица"
+                          data-testid="input-logistics-contact"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -393,7 +482,11 @@ export function AddLogisticsDialog({
                     <FormItem>
                       <FormLabel>Телефон</FormLabel>
                       <FormControl>
-                        <Input placeholder="+7 (XXX) XXX-XX-XX" data-testid="input-logistics-phone" {...field} />
+                        <Input
+                          placeholder="+7 (XXX) XXX-XX-XX"
+                          data-testid="input-logistics-phone"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -411,7 +504,11 @@ export function AddLogisticsDialog({
                     <FormItem>
                       <FormLabel>Адрес</FormLabel>
                       <FormControl>
-                        <Input placeholder="Полный адрес" data-testid="input-logistics-address" {...field} />
+                        <Input
+                          placeholder="Полный адрес"
+                          data-testid="input-logistics-address"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -423,8 +520,8 @@ export function AddLogisticsDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Базис</FormLabel>
-                      <Select 
-                        onValueChange={(v) => field.onChange(v || undefined)} 
+                      <Select
+                        onValueChange={(v) => field.onChange(v || undefined)}
                         value={field.value || ""}
                       >
                         <FormControl>
@@ -434,7 +531,9 @@ export function AddLogisticsDialog({
                         </FormControl>
                         <SelectContent>
                           {bases.map((b) => (
-                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                            <SelectItem key={b.id} value={b.id}>
+                              {b.name}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -452,21 +551,23 @@ export function AddLogisticsDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Перевозчик</FormLabel>
-                    <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value || ""}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-logistics-carrier">
-                            <SelectValue placeholder="Выберите перевозчика" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {carriers.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || ""}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-logistics-carrier">
+                          <SelectValue placeholder="Выберите перевозчика" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {carriers.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -480,7 +581,11 @@ export function AddLogisticsDialog({
                   <FormItem>
                     <FormLabel>Гос. номер</FormLabel>
                     <FormControl>
-                      <Input placeholder="А123БВ777" data-testid="input-logistics-plate" {...field} />
+                      <Input
+                        placeholder="А123БВ777"
+                        data-testid="input-logistics-plate"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -495,7 +600,11 @@ export function AddLogisticsDialog({
                   <FormItem>
                     <FormLabel>Тип транспорта</FormLabel>
                     <FormControl>
-                      <Input placeholder="Бензовоз, Цистерна" data-testid="input-logistics-vehicle-type" {...field} />
+                      <Input
+                        placeholder="Бензовоз, Цистерна"
+                        data-testid="input-logistics-vehicle-type"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -510,7 +619,12 @@ export function AddLogisticsDialog({
                   <FormItem>
                     <FormLabel>Вместимость (кг)</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="Вместимость" data-testid="input-logistics-capacity" {...field} />
+                      <Input
+                        type="number"
+                        placeholder="Вместимость"
+                        data-testid="input-logistics-capacity"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -526,8 +640,8 @@ export function AddLogisticsDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Перевозчик</FormLabel>
-                      <Select 
-                        onValueChange={(v) => field.onChange(v || undefined)} 
+                      <Select
+                        onValueChange={(v) => field.onChange(v || undefined)}
                         value={field.value || ""}
                       >
                         <FormControl>
@@ -537,7 +651,9 @@ export function AddLogisticsDialog({
                         </FormControl>
                         <SelectContent>
                           {carriers.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -552,7 +668,11 @@ export function AddLogisticsDialog({
                     <FormItem>
                       <FormLabel>Телефон</FormLabel>
                       <FormControl>
-                        <Input placeholder="+7 (XXX) XXX-XX-XX" data-testid="input-logistics-driver-phone" {...field} />
+                        <Input
+                          placeholder="+7 (XXX) XXX-XX-XX"
+                          data-testid="input-logistics-driver-phone"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -565,7 +685,11 @@ export function AddLogisticsDialog({
                     <FormItem>
                       <FormLabel>Номер удостоверения</FormLabel>
                       <FormControl>
-                        <Input placeholder="77 АА 123456" data-testid="input-logistics-license" {...field} />
+                        <Input
+                          placeholder="77 АА 123456"
+                          data-testid="input-logistics-license"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -578,7 +702,11 @@ export function AddLogisticsDialog({
                     <FormItem>
                       <FormLabel>Срок действия удостоверения</FormLabel>
                       <FormControl>
-                        <Input type="date" data-testid="input-logistics-license-expiry" {...field} />
+                        <Input
+                          type="date"
+                          data-testid="input-logistics-license-expiry"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -595,7 +723,12 @@ export function AddLogisticsDialog({
                   <FormItem>
                     <FormLabel>Описание</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Дополнительная информация..." className="resize-none" data-testid="input-logistics-description" {...field} />
+                      <Textarea
+                        placeholder="Дополнительная информация..."
+                        className="resize-none"
+                        data-testid="input-logistics-description"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -609,17 +742,43 @@ export function AddLogisticsDialog({
               render={({ field }) => (
                 <FormItem className="flex items-center gap-2 space-y-0">
                   <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-logistics-active" />
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="switch-logistics-active"
+                    />
                   </FormControl>
-                  <FormLabel className="font-normal cursor-pointer">Активен</FormLabel>
+                  <FormLabel className="font-normal cursor-pointer">
+                    Активен
+                  </FormLabel>
                 </FormItem>
               )}
             />
 
             <div className="flex justify-end gap-4 pt-4">
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Отмена</Button>
-              <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-logistics">
-                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : editItem ? "Сохранить" : "Создать"}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+              >
+                Отмена
+              </Button>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending}
+                data-testid="button-save-logistics"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {createMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Сохранение...
+                  </>
+                ) : editItem ? (
+                  "Сохранить"
+                ) : (
+                  "Создать"
+                )}
               </Button>
             </div>
           </form>
