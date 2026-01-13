@@ -1,18 +1,36 @@
-
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import {
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { UseFormReturn } from "react-hook-form";
 import type { Supplier, Customer, Base } from "@shared/schema";
 import type { RefuelingFormData } from "../schemas";
 import { PRODUCT_TYPES } from "../constants";
-import { CUSTOMER_MODULE } from "@shared/constants";
+import { BASE_TYPE, CUSTOMER_MODULE } from "@shared/constants";
+import { useState } from "react";
+import { AddSupplierDialog } from "@/pages/directories/suppliers-dialog";
+import { AddCustomerDialog } from "@/pages/directories/customers-dialog";
 
 interface RefuelingMainFieldsProps {
   form: UseFormReturn<RefuelingFormData>;
@@ -22,6 +40,7 @@ interface RefuelingMainFieldsProps {
   selectedBasis: string;
   setSelectedBasis: (value: string) => void;
   availableBases: Base[];
+  allBases: Base[] | undefined;
 }
 
 export function RefuelingMainFields({
@@ -32,7 +51,21 @@ export function RefuelingMainFields({
   selectedBasis,
   setSelectedBasis,
   availableBases,
+  allBases,
 }: RefuelingMainFieldsProps) {
+  const [addCustomerOpen, setAddCustomerOpen] = useState(false);
+  const [addSupplierOpen, setAddSupplierOpen] = useState(false);
+
+  const handleCustomerCreated = (id: string) => {
+    form.setValue("buyerId", id);
+  };
+
+  const handleSupplierCreated = (id: string) => {
+    form.setValue("supplierId", id);
+  };
+
+  const refuelingBases = allBases?.filter((b) => b.baseType === BASE_TYPE.REFUELING) || []
+  
   return (
     <>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -51,7 +84,9 @@ export function RefuelingMainFields({
                       data-testid="input-refueling-date"
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {field.value ? format(field.value, "dd.MM.yyyy", { locale: ru }) : "Выберите дату"}
+                      {field.value
+                        ? format(field.value, "dd.MM.yyyy", { locale: ru })
+                        : "Выберите дату"}
                     </Button>
                   </FormControl>
                 </PopoverTrigger>
@@ -131,31 +166,47 @@ export function RefuelingMainFields({
         />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <FormField
           control={form.control}
           name="supplierId"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Поставщик</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger data-testid="select-supplier">
-                    <SelectValue placeholder="Выберите поставщика" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {refuelingSuppliers.length > 0 ? (
-                    refuelingSuppliers.map((supplier) => (
-                      <SelectItem key={supplier.id} value={supplier.id}>
-                        {supplier.name}
+              <div className="flex gap-1">
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger
+                      data-testid="select-supplier"
+                      className="flex-1"
+                    >
+                      <SelectValue placeholder="Выберите поставщика" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {refuelingSuppliers.length > 0 ? (
+                      refuelingSuppliers.map((supplier) => (
+                        <SelectItem key={supplier.id} value={supplier.id}>
+                          {supplier.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        Нет данных
                       </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" disabled>Нет данных</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+                    )}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setAddSupplierOpen(true)}
+                  data-testid="button-add-supplier-inline"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
               <FormMessage />
             </FormItem>
           )}
@@ -167,39 +218,63 @@ export function RefuelingMainFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Покупатель</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger data-testid="select-buyer">
-                    <SelectValue placeholder="Выберите покупателя" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {customers?.filter(c => c.module === CUSTOMER_MODULE.REFUELING || c.module === CUSTOMER_MODULE.BOTH).map((buyer) => (
-                    <SelectItem key={buyer.id} value={buyer.id}>
-                      {buyer.name}
-                    </SelectItem>
-                  )) || (
-                    <SelectItem value="none" disabled>Нет данных</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-1">
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger
+                      data-testid="select-buyer"
+                      className="flex-1"
+                    >
+                      <SelectValue placeholder="Выберите покупателя" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {customers
+                      ?.filter(
+                        (c) =>
+                          c.module === CUSTOMER_MODULE.REFUELING ||
+                          c.module === CUSTOMER_MODULE.BOTH,
+                      )
+                      .map((buyer) => (
+                        <SelectItem key={buyer.id} value={buyer.id}>
+                          {buyer.name}
+                        </SelectItem>
+                      )) || (
+                      <SelectItem value="none" disabled>
+                        Нет данных
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setAddCustomerOpen(true)}
+                  data-testid="button-add-customer-inline"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 1 ? (
+        {selectedSupplier &&
+        selectedSupplier.baseIds &&
+        selectedSupplier.baseIds.length > 0 ? (
           <FormField
             control={form.control}
             name="basis"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Базис</FormLabel>
-                <Select 
-                  onValueChange={(value) => { 
-                    field.onChange(value); 
-                    setSelectedBasis(value); 
-                  }} 
+                <Select
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    setSelectedBasis(value);
+                  }}
                   value={field.value || selectedBasis}
                   disabled={availableBases.length === 0}
                 >
@@ -215,7 +290,9 @@ export function RefuelingMainFields({
                       </SelectItem>
                     ))}
                     {availableBases.length === 0 && (
-                      <SelectItem value="none" disabled>Нет данных</SelectItem>
+                      <SelectItem value="none" disabled>
+                        Нет данных
+                      </SelectItem>
                     )}
                   </SelectContent>
                 </Select>
@@ -225,13 +302,30 @@ export function RefuelingMainFields({
           />
         ) : (
           <div className="space-y-2">
-            <label className="text-sm font-medium flex items-center">Базис</label>
+            <label className="text-sm font-medium flex items-center">
+              Базис
+            </label>
             <div className="flex items-center gap-2 h-10 px-3 bg-muted rounded-md">
               {selectedBasis || "—"}
             </div>
           </div>
         )}
       </div>
+
+      <AddSupplierDialog
+        bases={refuelingBases}
+        isInline
+        inlineOpen={addSupplierOpen}
+        onInlineOpenChange={setAddSupplierOpen}
+        onCreated={handleSupplierCreated}
+      />
+
+      <AddCustomerDialog
+        isInline
+        inlineOpen={addCustomerOpen}
+        onInlineOpenChange={setAddCustomerOpen}
+        onCreated={handleCustomerCreated}
+      />
     </>
   );
 }

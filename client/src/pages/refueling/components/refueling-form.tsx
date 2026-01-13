@@ -433,6 +433,7 @@ export function RefuelingForm({
           selectedBasis={selectedBasis}
           setSelectedBasis={setSelectedBasis}
           availableBases={availableBases}
+          allBases={allBases}
         />
 
         <VolumeInputSection

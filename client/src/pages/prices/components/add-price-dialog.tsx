@@ -6,20 +6,42 @@ import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
 import { Plus, Loader2 } from "lucide-react";
 import type { Base, Supplier, Customer } from "@shared/schema";
-import { COUNTERPARTY_ROLE, COUNTERPARTY_TYPE, PRODUCT_TYPE } from "@shared/constants";
+import {
+  COUNTERPARTY_ROLE,
+  COUNTERPARTY_TYPE,
+  PRODUCT_TYPE,
+} from "@shared/constants";
 import { priceFormSchema } from "../schemas";
 import type { PriceFormData, PriceDialogProps } from "../types";
 import { useDateCheck } from "../hooks/use-date-check";
 import { PriceFormFields } from "./price-form-fields";
 import { PriceChecksPanel } from "./price-checks-panel";
 
-export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) {
+export function AddPriceDialog({
+  editPrice,
+  onEditComplete,
+  isInline = false,
+  inlineOpen = false,
+  onInlineOpenChange,
+  onCreated,
+}: PriceDialogProps) {
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+
+  const open = isInline ? inlineOpen : localOpen;
+  const setOpen = isInline ? onInlineOpenChange || setLocalOpen : setLocalOpen;
+
   const [dateCheckPassed, setDateCheckPassed] = useState(false);
 
   const dateCheck = useDateCheck();
@@ -43,7 +65,7 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: "priceValues"
+    name: "priceValues",
   });
 
   useEffect(() => {
@@ -91,44 +113,70 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
   useEffect(() => {
     setDateCheckPassed(false);
     dateCheck.setResult(null);
-  }, [watchCounterpartyId, watchBasis, watchProductType, watchDateFrom, watchDateTo]);
+  }, [
+    watchCounterpartyId,
+    watchBasis,
+    watchProductType,
+    watchDateFrom,
+    watchDateTo,
+  ]);
 
   const { data: bases } = useQuery({ queryKey: ["/api/bases"] });
   const { data: suppliers } = useQuery({ queryKey: ["/api/suppliers"] });
-  const { data: customers } = useQuery<Customer[]>({ queryKey: ["/api/customers"] });
+  const { data: customers } = useQuery<Customer[]>({
+    queryKey: ["/api/customers"],
+  });
 
   const allBases = bases || [];
-  const contractors = watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER
-    ? suppliers || []
-    : customers || [];
+  const contractors =
+    watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER
+      ? suppliers || []
+      : customers || [];
 
   // Фильтруем базисы для поставщика
-  const availableBases = watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER && watchCounterpartyId
-    ? (() => {
-        const supplier = suppliers?.find(s => s.id === watchCounterpartyId);
-        if (supplier && supplier.baseIds && supplier.baseIds.length > 0) {
-          return allBases.filter(b => supplier.baseIds.includes(b.id));
-        }
-        return [];
-      })()
-    : allBases;
+  const availableBases =
+    watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER && watchCounterpartyId
+      ? (() => {
+          const supplier = suppliers?.find((s) => s.id === watchCounterpartyId);
+          if (supplier && supplier.baseIds && supplier.baseIds.length > 0) {
+            return allBases.filter((b) => supplier.baseIds.includes(b.id));
+          }
+          return [];
+        })()
+      : allBases;
 
   // Автоматически выбираем первый базис для поставщика
   useEffect(() => {
-    if (watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER && watchCounterpartyId && !editPrice) {
-      const supplier = suppliers?.find(s => s.id === watchCounterpartyId);
+    if (
+      watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER &&
+      watchCounterpartyId &&
+      !editPrice
+    ) {
+      const supplier = suppliers?.find((s) => s.id === watchCounterpartyId);
       if (supplier && supplier.baseIds && supplier.baseIds.length > 0) {
-        const firstBase = allBases.find(b => b.id === supplier.baseIds[0]);
+        const firstBase = allBases.find((b) => b.id === supplier.baseIds[0]);
         if (firstBase && !watchBasis) {
           form.setValue("basis", firstBase.name);
         }
       }
     }
-  }, [watchCounterpartyRole, watchCounterpartyId, suppliers, allBases, form, watchBasis, editPrice]);
+  }, [
+    watchCounterpartyRole,
+    watchCounterpartyId,
+    suppliers,
+    allBases,
+    form,
+    watchBasis,
+    editPrice,
+  ]);
 
   const handleCheckDates = () => {
     if (!watchCounterpartyId || !watchBasis || !watchDateFrom || !watchDateTo) {
-      toast({ title: "Ошибка", description: "Заполните все обязательные поля", variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: "Заполните все обязательные поля",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -149,7 +197,10 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
     if (dateCheck.result) {
       if (dateCheck.result.status === "ok") {
         setDateCheckPassed(true);
-        toast({ title: "Проверка пройдена", description: "Можно создать цену" });
+        toast({
+          title: "Проверка пройдена",
+          description: "Можно создать цену",
+        });
       } else {
         setDateCheckPassed(false);
       }
@@ -172,16 +223,25 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
         notes: data.notes || null,
       };
       if (editPrice) {
-        const res = await apiRequest("PATCH", `/api/prices/${editPrice.id}`, payload);
+        const res = await apiRequest(
+          "PATCH",
+          `/api/prices/${editPrice.id}`,
+          payload,
+        );
         return res.json();
       } else {
         const res = await apiRequest("POST", "/api/prices", payload);
         return res.json();
       }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/prices"] });
-      toast({ title: editPrice ? "Цена обновлена" : "Цена добавлена", description: editPrice ? "Цена успешно обновлена" : "Новая цена успешно сохранена" });
+      toast({
+        title: editPrice ? "Цена обновлена" : "Цена добавлена",
+        description: editPrice
+          ? "Цена успешно обновлена"
+          : "Новая цена успешно сохранена",
+      });
       form.reset({
         dateFrom: new Date(),
         dateTo: new Date(),
@@ -198,30 +258,46 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
       dateCheck.setResult(null);
       setDateCheckPassed(false);
       setOpen(false);
+      if (onCreated && data?.id) {
+        onCreated(data.id);
+      }
       if (onEditComplete) {
         onEditComplete();
       }
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
   const handleSubmit = async (data: PriceFormData) => {
     // Если проверка показала ошибку пересечения дат, блокируем создание
     if (dateCheck.result && dateCheck.result.status === "error") {
-      toast({ 
-        title: "Ошибка пересечения дат!", 
-        description: "Исправьте даты перед созданием цены", 
-        variant: "destructive"
+      toast({
+        title: "Ошибка пересечения дат!",
+        description: "Исправьте даты перед созданием цены",
+        variant: "destructive",
       });
       return;
     }
 
     // Если проверка еще не была пройдена, запускаем ее автоматически
     if (!dateCheckPassed) {
-      if (!watchCounterpartyId || !watchBasis || !watchDateFrom || !watchDateTo) {
-        toast({ title: "Ошибка", description: "Заполните все обязательные поля", variant: "destructive" });
+      if (
+        !watchCounterpartyId ||
+        !watchBasis ||
+        !watchDateFrom ||
+        !watchDateTo
+      ) {
+        toast({
+          title: "Ошибка",
+          description: "Заполните все обязательные поля",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -246,18 +322,18 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
         });
 
         if (result && result.status === "error") {
-          toast({ 
-            title: "Ошибка пересечения дат!", 
-            description: result.message, 
-            variant: "destructive"
+          toast({
+            title: "Ошибка пересечения дат!",
+            description: result.message,
+            variant: "destructive",
           });
           return;
         }
       } catch (error) {
-        toast({ 
-          title: "Ошибка!", 
-          description: "Не удалось проверить даты", 
-          variant: "destructive"
+        toast({
+          title: "Ошибка!",
+          description: "Не удалось проверить даты",
+          variant: "destructive",
         });
         return;
       }
@@ -267,30 +343,33 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
   };
 
   return (
-    <Dialog open={open || !!editPrice} onOpenChange={(isOpen) => {
-      setOpen(isOpen);
-      if (!isOpen) {
-        form.reset({
-          dateFrom: new Date(),
-          dateTo: new Date(),
-          counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
-          counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
-          counterpartyId: "",
-          productType: PRODUCT_TYPE.KEROSENE,
-          basis: "",
-          volume: "",
-          priceValues: [{ price: "" }],
-          contractNumber: "",
-          notes: "",
-        });
-        dateCheck.setResult(null);
-        setDateCheckPassed(false);
-        if (onEditComplete) {
-          onEditComplete();
+    <Dialog
+      open={open || !!editPrice}
+      onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        if (!isOpen) {
+          form.reset({
+            dateFrom: new Date(),
+            dateTo: new Date(),
+            counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
+            counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
+            counterpartyId: "",
+            productType: PRODUCT_TYPE.KEROSENE,
+            basis: "",
+            volume: "",
+            priceValues: [{ price: "" }],
+            contractNumber: "",
+            notes: "",
+          });
+          dateCheck.setResult(null);
+          setDateCheckPassed(false);
+          if (onEditComplete) {
+            onEditComplete();
+          }
         }
-      }
-    }}>
-      {!editPrice && (
+      }}
+    >
+      {!editPrice && !isInline && (
         <DialogTrigger asChild>
           <Button data-testid="button-add-price">
             <Plus className="mr-2 h-4 w-4" />
@@ -300,11 +379,18 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
       )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editPrice ? "Редактирование цены" : "Новая цена"}</DialogTitle>
-          <DialogDescription>Добавление или редактирование цены покупки или продажи</DialogDescription>
+          <DialogTitle>
+            {editPrice ? "Редактирование цены" : "Новая цена"}
+          </DialogTitle>
+          <DialogDescription>
+            Добавление или редактирование цены покупки или продажи
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="space-y-4"
+          >
             <PriceFormFields
               control={form.control}
               contractors={contractors}
@@ -322,18 +408,35 @@ export function AddPriceDialog({ editPrice, onEditComplete }: PriceDialogProps) 
             />
 
             <div className="flex justify-end gap-4 pt-4">
-              <Button type="button" variant="outline" onClick={() => {
-                setOpen(false);
-                if (onEditComplete) {
-                  onEditComplete();
-                }
-              }}>Отмена</Button>
-              <Button 
-                type="submit" 
-                disabled={createMutation.isPending}
-                data-testid={editPrice ? "button-save-edit-price" : "button-save-price"}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setOpen(false);
+                  if (onEditComplete) {
+                    onEditComplete();
+                  }
+                }}
               >
-                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{editPrice ? "Сохранение..." : "Создание..."}</> : (editPrice ? "Сохранить" : "Создать")}
+                Отмена
+              </Button>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending}
+                data-testid={
+                  editPrice ? "button-save-edit-price" : "button-save-price"
+                }
+              >
+                {createMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {editPrice ? "Сохранение..." : "Создание..."}
+                  </>
+                ) : editPrice ? (
+                  "Сохранить"
+                ) : (
+                  "Создать"
+                )}
               </Button>
             </div>
           </form>

@@ -1,4 +1,8 @@
-import { CounterpartyRole, CounterpartyType, ProductType } from "@shared/constants";
+import {
+  CounterpartyRole,
+  CounterpartyType,
+  ProductType,
+} from "@shared/constants";
 import type { Price } from "@shared/schema";
 
 export interface PriceFormData {
@@ -18,6 +22,10 @@ export interface PriceFormData {
 export interface PriceDialogProps {
   editPrice?: Price | null;
   onEditComplete?: () => void;
+  isInline?: boolean;
+  inlineOpen?: boolean;
+  onInlineOpenChange?: (open: boolean) => void;
+  onCreated?: (id: string) => void;
 }
 
 export interface PricesTableProps {

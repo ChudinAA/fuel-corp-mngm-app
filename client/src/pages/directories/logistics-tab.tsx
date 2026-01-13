@@ -18,7 +18,8 @@ import type {
   LogisticsVehicle,
   LogisticsTrailer,
   LogisticsDriver,
-  LogisticsWarehouse
+  LogisticsWarehouse,
+  Base
 } from "@shared/schema";
 import { AddLogisticsDialog, LOGISTICS_TYPES } from "./logistics-dialog";
 import { useAuth } from "@/hooks/use-auth";
@@ -85,6 +86,10 @@ export function LogisticsTab() {
     queryKey: ["/api/logistics/warehouses"],
   });
 
+  const { data: bases } = useQuery<Base[]>({
+    queryKey: ["/api/bases"],
+  })
+
   const isLoading = carriersLoading || locationsLoading || vehiclesLoading || trailersLoading || driversLoading || warehousesLoading;
 
   const allItems = [
@@ -116,11 +121,11 @@ export function LogisticsTab() {
     return matchesSearch && matchesType;
   });
 
-  const getCarrierName = (carrierId: string | null | undefined) => {
-    if (!carrierId) return null;
-    return carriers?.find(c => c.id === carrierId)?.name || null;
-  };
-
+  const getBaseName = (baseId: string | null | undefined) => {
+    if (!baseId) return null;
+    return bases?.find(b => b.id === baseId)?.name || null;
+  }
+  
   const getTypeIcon = (type: string) => {
     switch (type) {
       case "carrier":
@@ -216,7 +221,7 @@ export function LogisticsTab() {
                           {item.type === "vehicle" ? (item as LogisticsVehicle & { type: string }).model || "—" :
                            item.type === "trailer" ? (item as LogisticsTrailer & { type: string }).capacityKg || "—" :
                            item.type === "driver" ? (item as LogisticsDriver & { type: string }).phone || "—" :
-                           item.type === "delivery_location" ? (item as LogisticsDeliveryLocation & { type: string }).baseId || "—" :
+                           item.type === "delivery_location" ? getBaseName((item as LogisticsDeliveryLocation & { type: string }).baseId) || "—" :
                            (item as LogisticsCarrier & { type: string }).inn || "—"}
                         </TableCell>
                         <TableCell>
