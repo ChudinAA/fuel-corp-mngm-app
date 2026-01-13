@@ -31,6 +31,7 @@ import { BASE_TYPE, CUSTOMER_MODULE } from "@shared/constants";
 import { useState } from "react";
 import { AddSupplierDialog } from "@/pages/directories/suppliers-dialog";
 import { AddCustomerDialog } from "@/pages/directories/customers-dialog";
+import { useAuth } from "@/hooks/use-auth";
 
 interface RefuelingMainFieldsProps {
   form: UseFormReturn<RefuelingFormData>;
@@ -53,6 +54,8 @@ export function RefuelingMainFields({
   availableBases,
   allBases,
 }: RefuelingMainFieldsProps) {
+  const { hasPermission } = useAuth();
+
   const [addCustomerOpen, setAddCustomerOpen] = useState(false);
   const [addSupplierOpen, setAddSupplierOpen] = useState(false);
 
@@ -64,8 +67,9 @@ export function RefuelingMainFields({
     form.setValue("supplierId", id);
   };
 
-  const refuelingBases = allBases?.filter((b) => b.baseType === BASE_TYPE.REFUELING) || []
-  
+  const refuelingBases =
+    allBases?.filter((b) => b.baseType === BASE_TYPE.REFUELING) || [];
+
   return (
     <>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -197,15 +201,17 @@ export function RefuelingMainFields({
                     )}
                   </SelectContent>
                 </Select>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  onClick={() => setAddSupplierOpen(true)}
-                  data-testid="button-add-supplier-inline"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                {hasPermission("directories", "create") && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() => setAddSupplierOpen(true)}
+                    data-testid="button-add-supplier-inline"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
               <FormMessage />
             </FormItem>
@@ -246,15 +252,17 @@ export function RefuelingMainFields({
                     )}
                   </SelectContent>
                 </Select>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  onClick={() => setAddCustomerOpen(true)}
-                  data-testid="button-add-customer-inline"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                {hasPermission("directories", "create") && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() => setAddCustomerOpen(true)}
+                    data-testid="button-add-customer-inline"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
               <FormMessage />
             </FormItem>
