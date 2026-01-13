@@ -314,13 +314,8 @@ export function AddPriceDialog({
       };
 
       try {
-        await dateCheck.checkAsync(checkParams);
-        // Проверяем результат после выполнения
-        const result = await new Promise<any>((resolve) => {
-          // Небольшая задержка для получения результата
-          setTimeout(() => resolve(dateCheck.result), 100);
-        });
-
+        const result = await dateCheck.checkAsync(checkParams);
+        
         if (result && result.status === "error") {
           toast({
             title: "Ошибка пересечения дат!",
