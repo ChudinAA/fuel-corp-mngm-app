@@ -3,7 +3,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CUSTOMER_MODULE, CustomerModule } from "@shared/constants";
+import { CUSTOMER_MODULE } from "@shared/constants";
+import type { CustomerModule } from "@shared/constants";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -173,7 +174,14 @@ export function AddCustomerDialog({
           <DialogDescription>{editCustomer ? "Изменение данных покупателя" : "Добавление покупателя в справочник"}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              form.handleSubmit((data) => createMutation.mutate(data))(e);
+            }} 
+            className="space-y-4"
+          >
             <FormField
               control={form.control}
               name="module"
@@ -312,7 +320,12 @@ export function AddCustomerDialog({
 
             <div className="flex justify-end gap-4 pt-4">
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Отмена</Button>
-              <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-customer">
+              <Button 
+                type="submit" 
+                disabled={createMutation.isPending} 
+                data-testid="button-save-customer"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : editCustomer ? "Сохранить" : "Создать"}
               </Button>
             </div>
