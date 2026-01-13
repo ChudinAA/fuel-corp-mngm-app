@@ -247,13 +247,6 @@ export class PriceStorage implements IPriceStorage {
       .where(and(...conditions));
 
     if (overlappingPrices.length > 0) {
-      for (const price of overlappingPrices) {
-        await db
-          .update(prices)
-          .set({ dateCheckWarning: "error" })
-          .where(eq(prices.id, price.id));
-      }
-
       return {
         status: "error",
         message: `Обнаружено пересечение дат с ${overlappingPrices.length} ценами. При пересечении цены будут суммироваться!`,

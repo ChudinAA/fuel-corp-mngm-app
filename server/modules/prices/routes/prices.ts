@@ -125,6 +125,22 @@ export function registerPricesRoutes(app: Express) {
     async (req, res) => {
       try {
         const body = req.body;
+        
+        // Валидация пересечения дат перед созданием
+        const overlapResult = await storage.prices.checkPriceDateOverlaps(
+          String(body.counterpartyId),
+          String(body.counterpartyType),
+          String(body.counterpartyRole),
+          String(body.basis),
+          String(body.productType),
+          String(body.dateFrom),
+          String(body.dateTo)
+        );
+
+        if (overlapResult.status === "error") {
+          return res.status(400).json({ message: overlapResult.message });
+        }
+
         const processedData = {
           ...body,
           priceValues: body.priceValues?.map((pv: { price: string }) =>
@@ -166,6 +182,27 @@ export function registerPricesRoutes(app: Express) {
       try {
         const id = req.params.id;
         const body = req.body;
+
+        // Валидация пересечения дат перед обновлением
+        if (body.dateFrom && body.dateTo) {
+          const currentPrice = await storage.prices.getPrice(id);
+          if (currentPrice) {
+            const overlapResult = await storage.prices.checkPriceDateOverlaps(
+              String(body.counterpartyId || currentPrice.counterpartyId),
+              String(body.counterpartyType || currentPrice.counterpartyType),
+              String(body.counterpartyRole || currentPrice.counterpartyRole),
+              String(body.basis || currentPrice.basis),
+              String(body.productType || currentPrice.productType),
+              String(body.dateFrom),
+              String(body.dateTo),
+              id
+            );
+
+            if (overlapResult.status === "error") {
+              return res.status(400).json({ message: overlapResult.status === "error" ? overlapResult.message : undefined });
+            }
+          }
+        }
 
         // Process priceValues if they exist
         const processedData = {
