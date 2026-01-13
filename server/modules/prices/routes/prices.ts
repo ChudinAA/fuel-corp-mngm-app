@@ -195,7 +195,7 @@ export function registerPricesRoutes(app: Express) {
               String(body.productType || currentPrice.productType),
               String(body.dateFrom),
               String(body.dateTo),
-              id
+              String(id)
             );
 
             if (overlapResult.status === "error") {
