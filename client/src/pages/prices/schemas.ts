@@ -11,7 +11,7 @@ export const priceFormSchema = z.object({
   counterpartyId: z.string().min(1, "Выберите контрагента"),
   productType: z.enum([PRODUCT_TYPE.KEROSENE, PRODUCT_TYPE.SERVICE, PRODUCT_TYPE.PVKJ, PRODUCT_TYPE.AGENT, PRODUCT_TYPE.STORAGE]),
   basis: z.string().min(1, "Выберите базис"),
-  volume: z.string().optional(),
+  volume: z.string().min(1, "Укажите объем по договору"),
   priceValues: z.array(z.object({
     price: z.string().min(1, "Укажите цену")
   })).min(1, "Добавьте хотя бы одну цену"),

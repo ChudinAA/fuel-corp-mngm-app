@@ -126,6 +126,10 @@ export function registerPricesRoutes(app: Express) {
       try {
         const body = req.body;
         
+        if (!body.volume) {
+          return res.status(400).json({ message: "Укажите объем по договору" });
+        }
+
         // Валидация пересечения дат перед созданием
         const overlapResult = await storage.prices.checkPriceDateOverlaps(
           String(body.counterpartyId),
