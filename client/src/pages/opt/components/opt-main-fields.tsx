@@ -1,18 +1,40 @@
 import { useState } from "react";
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import {
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { UseFormReturn } from "react-hook-form";
-import type { Supplier, Customer, LogisticsCarrier, Base } from "@shared/schema";
+import type {
+  Supplier,
+  Customer,
+  LogisticsCarrier,
+  Base,
+} from "@shared/schema";
 import type { OptFormData } from "../schemas";
 import { CUSTOMER_MODULE } from "@shared/constants";
 import { AddCustomerDialog } from "@/pages/directories/customers-dialog";
 import { AddSupplierDialog } from "@/pages/directories/suppliers-dialog";
+import { useAuth } from "@/hooks/use-auth";
 
 interface OptMainFieldsProps {
   form: UseFormReturn<OptFormData>;
@@ -33,6 +55,7 @@ export function OptMainFields({
   setSelectedBasis,
   wholesaleBases,
 }: OptMainFieldsProps) {
+  const { hasPermission } = useAuth();
   const [addCustomerOpen, setAddCustomerOpen] = useState(false);
   const [addSupplierOpen, setAddSupplierOpen] = useState(false);
 
@@ -43,7 +66,7 @@ export function OptMainFields({
   const handleSupplierCreated = (id: string) => {
     form.setValue("supplierId", id);
   };
-  
+
   return (
     <div className="grid gap-4 md:grid-cols-4">
       <FormField
@@ -61,7 +84,9 @@ export function OptMainFields({
                     data-testid="input-deal-date"
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {field.value ? format(field.value, "dd.MM.yyyy", { locale: ru }) : "Выберите дату"}
+                    {field.value
+                      ? format(field.value, "dd.MM.yyyy", { locale: ru })
+                      : "Выберите дату"}
                   </Button>
                 </FormControl>
               </PopoverTrigger>
@@ -88,7 +113,10 @@ export function OptMainFields({
             <div className="flex gap-1">
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
-                  <SelectTrigger data-testid="select-supplier" className="flex-1">
+                  <SelectTrigger
+                    data-testid="select-supplier"
+                    className="flex-1"
+                  >
                     <SelectValue placeholder="Выберите поставщика" />
                   </SelectTrigger>
                 </FormControl>
@@ -100,32 +128,38 @@ export function OptMainFields({
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="none" disabled>Нет данных</SelectItem>
+                    <SelectItem value="none" disabled>
+                      Нет данных
+                    </SelectItem>
                   )}
                 </SelectContent>
               </Select>
-              <Button 
-                type="button" 
-                size="icon" 
-                variant="outline"
-                onClick={() => setAddSupplierOpen(true)}
-                data-testid="button-add-supplier-inline"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+              {hasPermission("directories", "create") && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setAddSupplierOpen(true)}
+                  data-testid="button-add-supplier-inline"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
             </div>
             <FormMessage />
           </FormItem>
         )}
       />
 
-      {selectedSupplier && selectedSupplier.baseIds && selectedSupplier.baseIds.length > 0 ? (
+      {selectedSupplier &&
+      selectedSupplier.baseIds &&
+      selectedSupplier.baseIds.length > 0 ? (
         <FormItem>
           <FormLabel>Базис</FormLabel>
-          <Select 
-            value={selectedBasis} 
+          <Select
+            value={selectedBasis}
             onValueChange={(value) => {
-              const base = wholesaleBases?.find(b => b.name === value);
+              const base = wholesaleBases?.find((b) => b.name === value);
               if (base) setSelectedBasis(base.name);
             }}
           >
@@ -136,7 +170,7 @@ export function OptMainFields({
             </FormControl>
             <SelectContent>
               {selectedSupplier.baseIds.map((baseId) => {
-                const base = wholesaleBases?.find(b => b.id === baseId);
+                const base = wholesaleBases?.find((b) => b.id === baseId);
                 return base ? (
                   <SelectItem key={base.id} value={base.name}>
                     {base.name}
@@ -154,7 +188,7 @@ export function OptMainFields({
           </div>
         </div>
       )}
-      
+
       <FormField
         control={form.control}
         name="buyerId"
@@ -169,24 +203,34 @@ export function OptMainFields({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {customers?.filter(c => c.module === CUSTOMER_MODULE.WHOLESALE || c.module === CUSTOMER_MODULE.BOTH).map((buyer) => (
-                    <SelectItem key={buyer.id} value={buyer.id}>
-                      {buyer.name}
+                  {customers
+                    ?.filter(
+                      (c) =>
+                        c.module === CUSTOMER_MODULE.WHOLESALE ||
+                        c.module === CUSTOMER_MODULE.BOTH,
+                    )
+                    .map((buyer) => (
+                      <SelectItem key={buyer.id} value={buyer.id}>
+                        {buyer.name}
+                      </SelectItem>
+                    )) || (
+                    <SelectItem value="none" disabled>
+                      Нет данных
                     </SelectItem>
-                  )) || (
-                    <SelectItem value="none" disabled>Нет данных</SelectItem>
                   )}
                 </SelectContent>
               </Select>
-              <Button 
-                type="button" 
-                size="icon" 
-                variant="outline"
-                onClick={() => setAddCustomerOpen(true)}
-                data-testid="button-add-customer-inline"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+              {hasPermission("directories", "create") && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setAddCustomerOpen(true)}
+                  data-testid="button-add-customer-inline"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
             </div>
             <FormMessage />
           </FormItem>
@@ -200,7 +244,7 @@ export function OptMainFields({
         onInlineOpenChange={setAddSupplierOpen}
         onCreated={handleSupplierCreated}
       />
-      
+
       <AddCustomerDialog
         isInline
         inlineOpen={addCustomerOpen}

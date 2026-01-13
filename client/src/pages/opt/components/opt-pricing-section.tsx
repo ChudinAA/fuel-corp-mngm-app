@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { UseFormReturn } from "react-hook-form";
-import type { Price, Supplier, Warehouse } from "@shared/schema";
+import type { Price, Warehouse } from "@shared/schema";
 import type { OptFormData } from "../schemas";
 import { CalculatedField } from "./calculated-field";
 import { formatNumber, formatCurrency } from "../utils";
@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
+import { useAuth } from "@/hooks/use-auth";
 
 interface OptPricingSectionProps {
   form: UseFormReturn<OptFormData>;
@@ -63,6 +64,8 @@ export function OptPricingSection({
   isEditing,
   initialWarehouseBalance,
 }: OptPricingSectionProps) {
+  const { hasPermission } = useAuth();
+
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
   const handlePurchasePriceCreated = (id: string) => {
     form.setValue("selectedPurchasePriceId", id);
@@ -168,15 +171,17 @@ export function OptPricingSection({
                         })}
                       </SelectContent>
                     </Select>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      onClick={() => setAddPurchasePriceOpen(true)}
-                      data-testid="button-add-purchase-price-inline"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                    {hasPermission("prices", "create") && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        onClick={() => setAddPurchasePriceOpen(true)}
+                        data-testid="button-add-purchase-price-inline"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                   <FormMessage />
                 </FormItem>
@@ -186,15 +191,17 @@ export function OptPricingSection({
         ) : !isWarehouseSupplier ? (
           <div className="flex items-end gap-1">
             <CalculatedField label="Покупка" value="Нет цены!" status="error" />
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              onClick={() => setAddPurchasePriceOpen(true)}
-              data-testid="button-add-purchase-price-inline"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+            {hasPermission("prices", "create") && (
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                onClick={() => setAddPurchasePriceOpen(true)}
+                data-testid="button-add-purchase-price-inline"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         ) : (
           <CalculatedField
@@ -275,15 +282,17 @@ export function OptPricingSection({
                         })}
                       </SelectContent>
                     </Select>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      onClick={() => setAddSalePriceOpen(true)}
-                      data-testid="button-add-sale-price-inline"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                    {hasPermission("prices", "create") && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        onClick={() => setAddSalePriceOpen(true)}
+                        data-testid="button-add-sale-price-inline"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                   <FormMessage />
                 </FormItem>
@@ -293,15 +302,17 @@ export function OptPricingSection({
         ) : (
           <div className="flex items-end gap-1">
             <CalculatedField label="Продажа" value="Нет цены!" status="error" />
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              onClick={() => setAddSalePriceOpen(true)}
-              data-testid="button-add-sale-price-inline"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+            {hasPermission("prices", "create") && (
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                onClick={() => setAddSalePriceOpen(true)}
+                data-testid="button-add-sale-price-inline"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         )}
 

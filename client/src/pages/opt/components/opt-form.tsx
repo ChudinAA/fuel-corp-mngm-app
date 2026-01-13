@@ -217,7 +217,7 @@ export function OptForm({
       }
 
       form.reset({
-        dealDate: new Date(editData.createdAt),
+        dealDate: new Date(editData.dealDate),
         supplierId: supplier?.id || "",
         buyerId: buyer?.id || "",
         warehouseId: editData.warehouseId || "",

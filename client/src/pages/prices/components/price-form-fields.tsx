@@ -1,19 +1,45 @@
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import {
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CalendarIcon, X, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import type { Control, FieldArrayWithId, UseFieldArrayRemove, UseFieldArrayAppend } from "react-hook-form";
+import type {
+  Control,
+  FieldArrayWithId,
+  UseFieldArrayRemove,
+  UseFieldArrayAppend,
+} from "react-hook-form";
 import type { PriceFormData } from "../types";
 import type { Base, Supplier, Customer } from "@shared/schema";
-import { PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
+import {
+  PRODUCT_TYPE,
+  COUNTERPARTY_TYPE,
+  COUNTERPARTY_ROLE,
+} from "@shared/constants";
 import { AddBaseDialog } from "@/pages/directories/bases-dialog";
 import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 interface PriceFormFieldsProps {
   control: Control<PriceFormData>;
@@ -24,9 +50,17 @@ interface PriceFormFieldsProps {
   append: UseFieldArrayAppend<PriceFormData, "priceValues">;
 }
 
-export function PriceFormFields({ control, contractors, availableBases, fields, remove, append }: PriceFormFieldsProps) {
+export function PriceFormFields({
+  control,
+  contractors,
+  availableBases,
+  fields,
+  remove,
+  append,
+}: PriceFormFieldsProps) {
+  const { hasPermission } = useAuth();
   const [addBaseOpen, setAddBaseOpen] = useState(false);
-  
+
   return (
     <>
       <div className="grid grid-cols-2 gap-4">
@@ -39,14 +73,25 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>
-                    <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="input-date-from">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                      data-testid="input-date-from"
+                    >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {field.value ? format(field.value, "dd.MM.yyyy", { locale: ru }) : "Выберите"}
+                      {field.value
+                        ? format(field.value, "dd.MM.yyyy", { locale: ru })
+                        : "Выберите"}
                     </Button>
                   </FormControl>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={field.value} onSelect={field.onChange} locale={ru} />
+                  <Calendar
+                    mode="single"
+                    selected={field.value}
+                    onSelect={field.onChange}
+                    locale={ru}
+                  />
                 </PopoverContent>
               </Popover>
               <FormMessage />
@@ -62,14 +107,25 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>
-                    <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="input-date-to">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                      data-testid="input-date-to"
+                    >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {field.value ? format(field.value, "dd.MM.yyyy", { locale: ru }) : "Выберите"}
+                      {field.value
+                        ? format(field.value, "dd.MM.yyyy", { locale: ru })
+                        : "Выберите"}
                     </Button>
                   </FormControl>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={field.value} onSelect={field.onChange} locale={ru} />
+                  <Calendar
+                    mode="single"
+                    selected={field.value}
+                    onSelect={field.onChange}
+                    locale={ru}
+                  />
                 </PopoverContent>
               </Popover>
               <FormMessage />
@@ -92,8 +148,12 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value={COUNTERPARTY_TYPE.WHOLESALE}>ОПТ</SelectItem>
-                  <SelectItem value={COUNTERPARTY_TYPE.REFUELING}>Заправка ВС</SelectItem>
+                  <SelectItem value={COUNTERPARTY_TYPE.WHOLESALE}>
+                    ОПТ
+                  </SelectItem>
+                  <SelectItem value={COUNTERPARTY_TYPE.REFUELING}>
+                    Заправка ВС
+                  </SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -114,8 +174,12 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value={COUNTERPARTY_ROLE.SUPPLIER}>Поставщик</SelectItem>
-                  <SelectItem value={COUNTERPARTY_ROLE.BUYER}>Покупатель</SelectItem>
+                  <SelectItem value={COUNTERPARTY_ROLE.SUPPLIER}>
+                    Поставщик
+                  </SelectItem>
+                  <SelectItem value={COUNTERPARTY_ROLE.BUYER}>
+                    Покупатель
+                  </SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -139,8 +203,14 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
                 </FormControl>
                 <SelectContent>
                   {contractors?.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  )) || <SelectItem value="none" disabled>Нет данных</SelectItem>}
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  )) || (
+                    <SelectItem value="none" disabled>
+                      Нет данных
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -185,25 +255,38 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
               <div className="flex gap-1">
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger data-testid="select-basis" className="flex-1">
+                    <SelectTrigger
+                      data-testid="select-basis"
+                      className="flex-1"
+                    >
                       <SelectValue placeholder="Выберите базис" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {availableBases?.length > 0 ? availableBases.map((b) => (
-                      <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
-                    )) : <SelectItem value="none" disabled>Нет доступных базисов</SelectItem>}
+                    {availableBases?.length > 0 ? (
+                      availableBases.map((b) => (
+                        <SelectItem key={b.id} value={b.name}>
+                          {b.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        Нет доступных базисов
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
-                <Button 
-                  type="button" 
-                  size="icon" 
-                  variant="outline"
-                  onClick={() => setAddBaseOpen(true)}
-                  data-testid="button-add-customer-inline"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                {hasPermission("directories", "create") && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() => setAddBaseOpen(true)}
+                    data-testid="button-add-customer-inline"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
               <FormMessage />
             </FormItem>
@@ -217,13 +300,13 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
             <FormItem>
               <FormLabel>Объем по договору (кг)</FormLabel>
               <FormControl>
-                <Input 
-                  type="number" 
-                  step="0.01" 
+                <Input
+                  type="number"
+                  step="0.01"
                   min="0"
-                  placeholder="Объем поставки" 
-                  data-testid="input-volume" 
-                  {...field} 
+                  placeholder="Объем поставки"
+                  data-testid="input-volume"
+                  {...field}
                 />
               </FormControl>
               <FormMessage />
@@ -242,13 +325,13 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
               render={({ field }) => (
                 <FormItem className="flex-1">
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      step="0.0001" 
+                    <Input
+                      type="number"
+                      step="0.0001"
                       min="0"
-                      placeholder="Цена за кг (₽)" 
-                      data-testid={`input-price-${index}`} 
-                      {...field} 
+                      placeholder="Цена за кг (₽)"
+                      data-testid={`input-price-${index}`}
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -288,7 +371,11 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
           <FormItem>
             <FormLabel>Номер договора (опционально)</FormLabel>
             <FormControl>
-              <Input placeholder="№ договора" data-testid="input-contract-number" {...field} />
+              <Input
+                placeholder="№ договора"
+                data-testid="input-contract-number"
+                {...field}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -302,7 +389,11 @@ export function PriceFormFields({ control, contractors, availableBases, fields, 
           <FormItem>
             <FormLabel>Примечание (опционально)</FormLabel>
             <FormControl>
-              <Textarea placeholder="Дополнительная информация" data-testid="input-notes" {...field} />
+              <Textarea
+                placeholder="Дополнительная информация"
+                data-testid="input-notes"
+                {...field}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>

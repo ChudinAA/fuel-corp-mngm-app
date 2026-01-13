@@ -2,29 +2,31 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, BASE_TYPE, CUSTOMER_MODULE } from "@shared/constants";
+import { PRODUCT_TYPE, BASE_TYPE } from "@shared/constants";
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { CalendarIcon, Plus, Loader2, AlertCircle } from "lucide-react";
-import type { Supplier, Base, Customer, Warehouse, Price } from "@shared/schema";
-import { CalculatedField } from "../calculated-field";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Plus, Loader2 } from "lucide-react";
+import type {
+  Supplier,
+  Base,
+  Customer,
+  Warehouse,
+  Price,
+} from "@shared/schema";
 import { refuelingFormSchema, type RefuelingFormData } from "../schemas";
-import { formatNumber, formatCurrency } from "../utils";
 import type { RefuelingFormProps } from "../types";
-import { PRODUCT_TYPES } from "../constants";
 import { RefuelingMainFields } from "./refueling-main-fields";
 import { RefuelingPricingSection } from "./refueling-pricing-section";
 import { VolumeInputSection } from "./refueling-form-sections";
@@ -33,17 +35,15 @@ import { useRefuelingFilters } from "../hooks/use-refueling-filters";
 import { useAutoPriceSelection } from "../../shared/hooks/use-auto-price-selection";
 import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 
-
-export function RefuelingForm({ 
-  onSuccess, 
-  editData 
-}: RefuelingFormProps) {
+export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
   const [selectedBasis, setSelectedBasis] = useState<string>("");
-  const [selectedPurchasePriceId, setSelectedPurchasePriceId] = useState<string>("");
+  const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
+    useState<string>("");
   const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
-  const [initialWarehouseBalance, setInitialWarehouseBalance] = useState<number>(0); // State for initial balance
+  const [initialWarehouseBalance, setInitialWarehouseBalance] =
+    useState<number>(0); // State for initial balance
   const isEditing = !!editData;
 
   const form = useForm<RefuelingFormData>({
@@ -96,28 +96,24 @@ export function RefuelingForm({
   const watchKg = form.watch("quantityKg");
   const watchProductType = form.watch("productType");
 
-  const selectedSupplier = suppliers?.find(s => s.id === watchSupplierId);
+  const selectedSupplier = suppliers?.find((s) => s.id === watchSupplierId);
   const isWarehouseSupplier = selectedSupplier?.isWarehouse || false;
-  const supplierWarehouse = warehouses?.find(w => 
-    w.supplierId === watchSupplierId
+  const supplierWarehouse = warehouses?.find(
+    (w) => w.supplierId === watchSupplierId,
   );
 
   // Use filtering hook
-  const {
-    refuelingSuppliers,
-    availableBases,
-    purchasePrices,
-    salePrices,
-  } = useRefuelingFilters({
-    supplierId: watchSupplierId,
-    buyerId: watchBuyerId,
-    refuelingDate: watchRefuelingDate,
-    selectedBasis,
-    productType: watchProductType,
-    allPrices,
-    suppliers,
-    allBases,
-  });
+  const { refuelingSuppliers, availableBases, purchasePrices, salePrices } =
+    useRefuelingFilters({
+      supplierId: watchSupplierId,
+      buyerId: watchBuyerId,
+      refuelingDate: watchRefuelingDate,
+      selectedBasis,
+      productType: watchProductType,
+      allPrices,
+      suppliers,
+      allBases,
+    });
 
   // Use calculations hook
   const {
@@ -150,12 +146,10 @@ export function RefuelingForm({
 
   useEffect(() => {
     if (watchSupplierId && suppliers && allBases) {
-      const supplier = suppliers.find(s => s.id === watchSupplierId);
+      const supplier = suppliers.find((s) => s.id === watchSupplierId);
 
       if (supplier?.isWarehouse) {
-        const warehouse = warehouses?.find(w => 
-          w.supplierId === supplier.id
-        );
+        const warehouse = warehouses?.find((w) => w.supplierId === supplier.id);
         if (warehouse) {
           form.setValue("warehouseId", warehouse.id);
         }
@@ -165,8 +159,10 @@ export function RefuelingForm({
 
       // Автоматически выбираем первый базис при выборе поставщика
       if (supplier?.baseIds && supplier.baseIds.length >= 1 && !editData) {
-        const refuelingBases = allBases.filter(b => 
-          supplier.baseIds?.includes(b.id) && b.baseType === BASE_TYPE.REFUELING
+        const refuelingBases = allBases.filter(
+          (b) =>
+            supplier.baseIds?.includes(b.id) &&
+            b.baseType === BASE_TYPE.REFUELING,
         );
         if (refuelingBases.length > 0) {
           const firstBase = refuelingBases[0];
@@ -191,27 +187,35 @@ export function RefuelingForm({
   });
 
   useEffect(() => {
-    if (editData && suppliers && customers && allBases && warehouses) { // Added warehouses dependency
-      const supplier = suppliers.find(s => s.name === editData.supplierId || s.id === editData.supplierId);
-      const buyer = customers.find(c => c.name === editData.buyerId || c.id === editData.buyerId);
+    if (editData && suppliers && customers && allBases && warehouses) {
+      // Added warehouses dependency
+      const supplier = suppliers.find(
+        (s) => s.name === editData.supplierId || s.id === editData.supplierId,
+      );
+      const buyer = customers.find(
+        (c) => c.name === editData.buyerId || c.id === editData.buyerId,
+      );
 
       // Construct composite price IDs with indices
-      const purchasePriceCompositeId = editData.purchasePriceId && editData.purchasePriceIndex !== undefined
-        ? `${editData.purchasePriceId}-${editData.purchasePriceIndex}`
-        : editData.purchasePriceId || "";
-      
-      const salePriceCompositeId = editData.salePriceId && editData.salePriceIndex !== undefined
-        ? `${editData.salePriceId}-${editData.salePriceIndex}`
-        : editData.salePriceId || "";
+      const purchasePriceCompositeId =
+        editData.purchasePriceId && editData.purchasePriceIndex !== undefined
+          ? `${editData.purchasePriceId}-${editData.purchasePriceIndex}`
+          : editData.purchasePriceId || "";
+
+      const salePriceCompositeId =
+        editData.salePriceId && editData.salePriceIndex !== undefined
+          ? `${editData.salePriceId}-${editData.salePriceIndex}`
+          : editData.salePriceId || "";
 
       // Сохраняем изначальный остаток на складе (с учетом текущей сделки)
       if (editData.warehouseId) {
-        const warehouse = warehouses.find(w => w.id === editData.warehouseId);
+        const warehouse = warehouses.find((w) => w.id === editData.warehouseId);
         if (warehouse) {
           // Determine the correct balance based on product type
-          const currentBalance = watchProductType === PRODUCT_TYPE.PVKJ 
-            ? parseFloat(warehouse.pvkjBalance || "0")
-            : parseFloat(warehouse.currentBalance || "0");
+          const currentBalance =
+            watchProductType === PRODUCT_TYPE.PVKJ
+              ? parseFloat(warehouse.pvkjBalance || "0")
+              : parseFloat(warehouse.currentBalance || "0");
           const dealQuantity = parseFloat(editData.quantityKg || "0"); // Assuming quantityKg is the relevant quantity for balance adjustment
           setInitialWarehouseBalance(currentBalance + dealQuantity);
         }
@@ -238,7 +242,7 @@ export function RefuelingForm({
 
       setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);
-      
+
       // Set basis from editData
       if (editData.basis) {
         setSelectedBasis(editData.basis);
@@ -248,8 +252,15 @@ export function RefuelingForm({
         setInputMode("liters");
       }
     }
-  }, [editData, suppliers, customers, allBases, warehouses, form, watchProductType]); // Added watchProductType dependency
-
+  }, [
+    editData,
+    suppliers,
+    customers,
+    allBases,
+    warehouses,
+    form,
+    watchProductType,
+  ]); // Added watchProductType dependency
 
   const createMutation = useMutation({
     mutationFn: async (data: RefuelingFormData) => {
@@ -263,18 +274,23 @@ export function RefuelingForm({
         selectedSalePriceId,
         purchasePrices,
         salePrices,
-        isWarehouseSupplier
+        isWarehouseSupplier,
       );
 
       const payload = {
         ...data,
         supplierId: data.supplierId,
         buyerId: data.buyerId,
-        warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
+        warehouseId:
+          isWarehouseSupplier && supplierWarehouse
+            ? supplierWarehouse.id
+            : null,
         basis: String(selectedBasis || ""), // Use selectedBasis
         refuelingDate: format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss"),
         quantityKg: String(parseFloat(calculatedKg)),
-        quantityLiters: data.quantityLiters ? String(parseFloat(data.quantityLiters)) : null,
+        quantityLiters: data.quantityLiters
+          ? String(parseFloat(data.quantityLiters))
+          : null,
         density: data.density ? String(parseFloat(data.density)) : null,
         purchasePrice: purchasePrice !== null ? String(purchasePrice) : null,
         purchasePriceId: purchasePriceId,
@@ -290,13 +306,19 @@ export function RefuelingForm({
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
-          return key?.startsWith('/api/refueling') || key?.startsWith('/api/warehouses');
-        }
+          return (
+            key?.startsWith("/api/refueling") ||
+            key?.startsWith("/api/warehouses")
+          );
+        },
       });
-      toast({ title: "Заправка создана", description: "Заправка ВС успешно сохранена" });
+      toast({
+        title: "Заправка создана",
+        description: "Заправка ВС успешно сохранена",
+      });
       form.reset();
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
@@ -304,10 +326,10 @@ export function RefuelingForm({
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast({ 
-        title: "Ошибка", 
-        description: error.message, 
-        variant: "destructive" 
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
@@ -324,18 +346,23 @@ export function RefuelingForm({
         selectedSalePriceId,
         purchasePrices,
         salePrices,
-        isWarehouseSupplier
+        isWarehouseSupplier,
       );
 
       const payload = {
         ...data,
         supplierId: data.supplierId,
         buyerId: data.buyerId,
-        warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
+        warehouseId:
+          isWarehouseSupplier && supplierWarehouse
+            ? supplierWarehouse.id
+            : null,
         basis: String(selectedBasis || ""), // Use selectedBasis
         refuelingDate: format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss"),
         quantityKg: String(parseFloat(calculatedKg)),
-        quantityLiters: data.quantityLiters ? String(parseFloat(data.quantityLiters)) : null,
+        quantityLiters: data.quantityLiters
+          ? String(parseFloat(data.quantityLiters))
+          : null,
         density: data.density ? String(parseFloat(data.density)) : null,
         purchasePrice: purchasePrice !== null ? String(purchasePrice) : null,
         purchasePriceId: purchasePriceId,
@@ -347,17 +374,27 @@ export function RefuelingForm({
         saleAmount: saleAmount !== null ? String(saleAmount) : null,
         profit: profit !== null ? String(profit) : null,
       };
-      const res = await apiRequest("PATCH", `/api/refueling/${data.id}`, payload);
+      const res = await apiRequest(
+        "PATCH",
+        `/api/refueling/${data.id}`,
+        payload,
+      );
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
-          return key?.startsWith('/api/refueling') || key?.startsWith('/api/warehouses');
-        }
+          return (
+            key?.startsWith("/api/refueling") ||
+            key?.startsWith("/api/warehouses")
+          );
+        },
       });
-      toast({ title: "Заправка обновлена", description: "Заправка ВС успешно обновлена" });
+      toast({
+        title: "Заправка обновлена",
+        description: "Заправка ВС успешно обновлена",
+      });
       form.reset();
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
@@ -365,33 +402,38 @@ export function RefuelingForm({
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast({ 
-        title: "Ошибка", 
-        description: error.message, 
-        variant: "destructive" 
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
 
   const onSubmit = (data: RefuelingFormData) => {
     const productType = watchProductType;
-    
+
     // Проверяем наличие количества
     if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
       toast({
         title: "Ошибка валидации",
         description: "Укажите корректное количество топлива.",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
     // Проверяем наличие ошибок в ценах
-    if (!isWarehouseSupplier && productType !== PRODUCT_TYPE.SERVICE && purchasePrice === null) {
+    if (
+      !isWarehouseSupplier &&
+      productType !== PRODUCT_TYPE.SERVICE &&
+      purchasePrice === null
+    ) {
       toast({
         title: "Ошибка валидации",
-        description: "Не указана цена покупки. Выберите цену или проверьте настройки поставщика.",
-        variant: "destructive"
+        description:
+          "Не указана цена покупки. Выберите цену или проверьте настройки поставщика.",
+        variant: "destructive",
       });
       return;
     }
@@ -399,8 +441,9 @@ export function RefuelingForm({
     if (salePrice === null) {
       toast({
         title: "Ошибка валидации",
-        description: "Не указана цена продажи. Выберите цену или проверьте настройки покупателя.",
-        variant: "destructive"
+        description:
+          "Не указана цена продажи. Выберите цену или проверьте настройки покупателя.",
+        variant: "destructive",
       });
       return;
     }
@@ -410,7 +453,7 @@ export function RefuelingForm({
       toast({
         title: "Ошибка валидации",
         description: warehouseStatus.message,
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -470,10 +513,10 @@ export function RefuelingForm({
               <FormItem>
                 <FormLabel>Примечания</FormLabel>
                 <FormControl>
-                  <Input 
+                  <Input
                     placeholder="Дополнительная информация..."
                     data-testid="input-notes"
-                    {...field} 
+                    {...field}
                   />
                 </FormControl>
                 <FormMessage />
@@ -502,8 +545,8 @@ export function RefuelingForm({
         </div>
 
         <div className="flex justify-end gap-4 pt-4 border-t">
-          <Button 
-            type="button" 
+          <Button
+            type="button"
             variant="outline"
             onClick={() => {
               form.reset();
@@ -515,8 +558,8 @@ export function RefuelingForm({
           >
             {editData ? "Отмена" : "Очистить"}
           </Button>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={createMutation.isPending || updateMutation.isPending}
             data-testid="button-submit-refueling"
           >

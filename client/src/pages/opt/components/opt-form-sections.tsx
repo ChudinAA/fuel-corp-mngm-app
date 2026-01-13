@@ -4,16 +4,33 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Plus } from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
-import type { LogisticsCarrier, LogisticsDeliveryLocation, Price } from "@shared/schema";
+import type {
+  LogisticsCarrier,
+  LogisticsDeliveryLocation,
+  Price,
+} from "@shared/schema";
 import { CalculatedField } from "./calculated-field";
 import { formatCurrency, formatNumber } from "../utils";
 import type { OptFormData } from "../schemas";
 import { AddLogisticsDialog } from "@/pages/directories/logistics-dialog";
 import { AddDeliveryCostDialog } from "@/pages/delivery/components/delivery-cost-dialog";
+import { useAuth } from "@/hooks/use-auth";
 
 interface VolumeInputSectionProps {
   form: UseFormReturn<OptFormData>;
@@ -22,7 +39,12 @@ interface VolumeInputSectionProps {
   calculatedKg: string;
 }
 
-export function VolumeInputSection({ form, inputMode, setInputMode, calculatedKg }: VolumeInputSectionProps) {
+export function VolumeInputSection({
+  form,
+  inputMode,
+  setInputMode,
+  calculatedKg,
+}: VolumeInputSectionProps) {
   const watchLiters = form.watch("quantityLiters");
   const watchDensity = form.watch("density");
 
@@ -32,10 +54,14 @@ export function VolumeInputSection({ form, inputMode, setInputMode, calculatedKg
         <div className="flex items-center justify-between gap-4">
           <CardTitle className="text-lg">Объем топлива</CardTitle>
           <div className="flex items-center gap-2">
-            <Label className="text-sm text-muted-foreground">Литры/Плотность</Label>
+            <Label className="text-sm text-muted-foreground">
+              Литры/Плотность
+            </Label>
             <Switch
               checked={inputMode === "kg"}
-              onCheckedChange={(checked) => setInputMode(checked ? "kg" : "liters")}
+              onCheckedChange={(checked) =>
+                setInputMode(checked ? "kg" : "liters")
+              }
               data-testid="switch-input-mode"
             />
             <Label className="text-sm text-muted-foreground">КГ</Label>
@@ -51,12 +77,12 @@ export function VolumeInputSection({ form, inputMode, setInputMode, calculatedKg
               <FormItem>
                 <FormLabel className="flex items-center gap-2">Литры</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="number" 
+                  <Input
+                    type="number"
                     placeholder="0.00"
                     data-testid="input-liters"
                     disabled={inputMode === "kg"}
-                    {...field} 
+                    {...field}
                   />
                 </FormControl>
                 <FormMessage />
@@ -68,15 +94,17 @@ export function VolumeInputSection({ form, inputMode, setInputMode, calculatedKg
             name="density"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center gap-2">Плотность</FormLabel>
+                <FormLabel className="flex items-center gap-2">
+                  Плотность
+                </FormLabel>
                 <FormControl>
-                  <Input 
-                    type="number" 
+                  <Input
+                    type="number"
                     step="0.0001"
                     placeholder="0.8000"
                     data-testid="input-density"
                     disabled={inputMode === "kg"}
-                    {...field} 
+                    {...field}
                   />
                 </FormControl>
                 <FormMessage />
@@ -84,9 +112,11 @@ export function VolumeInputSection({ form, inputMode, setInputMode, calculatedKg
             )}
           />
           {inputMode === "liters" ? (
-            <CalculatedField 
-              label="КГ (расчет)" 
-              value={watchLiters && watchDensity ? formatNumber(calculatedKg) : "—"}
+            <CalculatedField
+              label="КГ (расчет)"
+              value={
+                watchLiters && watchDensity ? formatNumber(calculatedKg) : "—"
+              }
               suffix={watchLiters && watchDensity ? " кг" : ""}
             />
           ) : (
@@ -95,13 +125,15 @@ export function VolumeInputSection({ form, inputMode, setInputMode, calculatedKg
               name="quantityKg"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">Количество (КГ)</FormLabel>
+                  <FormLabel className="flex items-center gap-2">
+                    Количество (КГ)
+                  </FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
+                    <Input
+                      type="number"
                       placeholder="0.00"
                       data-testid="input-kg"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -121,11 +153,13 @@ interface LogisticsSectionProps {
   deliveryLocations?: LogisticsDeliveryLocation[];
 }
 
-export function LogisticsSection({ 
-  form, 
-  carriers, 
-  deliveryLocations, 
+export function LogisticsSection({
+  form,
+  carriers,
+  deliveryLocations,
 }: LogisticsSectionProps) {
+  const { hasPermission } = useAuth();
+
   const [addDeliveryLocationOpen, setAddDeliveryLocationOpen] = useState(false);
   const [addCarrierOpen, setAddCarrierOpen] = useState(false);
   const [addDeliveryCostOpen, setAddDeliveryCostOpen] = useState(false);
@@ -154,11 +188,16 @@ export function LogisticsSection({
             name="deliveryLocationId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center gap-2">Точка поставки</FormLabel>
+                <FormLabel className="flex items-center gap-2">
+                  Точка поставки
+                </FormLabel>
                 <div className="flex gap-1">
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger data-testid="select-delivery-location" className="flex-1">
+                      <SelectTrigger
+                        data-testid="select-delivery-location"
+                        className="flex-1"
+                      >
                         <SelectValue placeholder="Выберите место" />
                       </SelectTrigger>
                     </FormControl>
@@ -168,35 +207,44 @@ export function LogisticsSection({
                           {location.name}
                         </SelectItem>
                       )) || (
-                        <SelectItem value="none" disabled>Нет данных</SelectItem>
+                        <SelectItem value="none" disabled>
+                          Нет данных
+                        </SelectItem>
                       )}
                     </SelectContent>
                   </Select>
-                  <Button 
-                    type="button" 
-                    size="icon" 
-                    variant="outline"
-                    onClick={() => setAddDeliveryLocationOpen(true)}
-                    data-testid="button-add-delivery-location-inline"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  {hasPermission("directories", "create") && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddDeliveryLocationOpen(true)}
+                      data-testid="button-add-delivery-location-inline"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
                 <FormMessage />
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="carrierId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center gap-2">Перевозчик</FormLabel>
+                <FormLabel className="flex items-center gap-2">
+                  Перевозчик
+                </FormLabel>
                 <div className="flex gap-1">
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger data-testid="select-carrier" className="flex-1">
+                      <SelectTrigger
+                        data-testid="select-carrier"
+                        className="flex-1"
+                      >
                         <SelectValue placeholder="Выберите перевозчика" />
                       </SelectTrigger>
                     </FormControl>
@@ -206,33 +254,33 @@ export function LogisticsSection({
                           {carrier.name}
                         </SelectItem>
                       )) || (
-                        <SelectItem value="none" disabled>Нет данных</SelectItem>
+                        <SelectItem value="none" disabled>
+                          Нет данных
+                        </SelectItem>
                       )}
                     </SelectContent>
                   </Select>
-                  <Button 
-                    type="button" 
-                    size="icon" 
-                    variant="outline"
-                    onClick={() => setAddDeliveryCostOpen(true)}
-                    data-testid="button-add-delivery-cost-inline"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  {hasPermission("delivery", "create") && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddDeliveryCostOpen(true)}
+                      data-testid="button-add-delivery-cost-inline"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          <CalculatedField 
-            label="Объем по договору" 
-            value="тест"
-            status="ok"
-          />
+          <CalculatedField label="Объем по договору" value="тест" status="ok" />
         </div>
       </CardContent>
-      
+
       <AddLogisticsDialog
         carriers={carriers || []}
         isInline
@@ -241,7 +289,7 @@ export function LogisticsSection({
         onCreated={handleDeliveryLocationCreated}
         defaultType="delivery_location"
       />
-      
+
       <AddLogisticsDialog
         carriers={carriers || []}
         isInline
@@ -261,12 +309,12 @@ export function LogisticsSection({
   );
 }
 
-export function PricingSection({ 
-  purchasePrice, 
-  salePrice, 
-  purchaseAmount, 
-  saleAmount, 
-  deliveryTariff, 
+export function PricingSection({
+  purchasePrice,
+  salePrice,
+  purchaseAmount,
+  saleAmount,
+  deliveryTariff,
   deliveryCost,
   profit,
   matchingPurchasePrices,
@@ -274,8 +322,8 @@ export function PricingSection({
   selectedPurchasePriceId,
   selectedSalePriceId,
   onPurchasePriceSelect,
-  onSalePriceSelect
-}: { 
+  onSalePriceSelect,
+}: {
   purchasePrice: number | null;
   salePrice: number | null;
   purchaseAmount: number;
@@ -306,12 +354,17 @@ export function PricingSection({
           {matchingPurchasePrices.length > 1 ? (
             <div className="space-y-2">
               <Label>Цена закупки</Label>
-              <Select value={selectedPurchasePriceId || matchingPurchasePrices[0]?.id || ""} onValueChange={onPurchasePriceSelect}>
+              <Select
+                value={
+                  selectedPurchasePriceId || matchingPurchasePrices[0]?.id || ""
+                }
+                onValueChange={onPurchasePriceSelect}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите цену" />
                 </SelectTrigger>
                 <SelectContent>
-                  {matchingPurchasePrices.map(p => (
+                  {matchingPurchasePrices.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {getPriceLabel(p)}
                     </SelectItem>
@@ -320,21 +373,28 @@ export function PricingSection({
               </Select>
             </div>
           ) : (
-            <CalculatedField 
-              label="Цена закупки" 
-              value={purchasePrice !== null ? formatNumber(purchasePrice) : "нет цены!"} 
-              suffix={purchasePrice !== null ? " ₽/кг" : ""} 
+            <CalculatedField
+              label="Цена закупки"
+              value={
+                purchasePrice !== null
+                  ? formatNumber(purchasePrice)
+                  : "нет цены!"
+              }
+              suffix={purchasePrice !== null ? " ₽/кг" : ""}
             />
           )}
           {matchingSalePrices.length > 1 ? (
             <div className="space-y-2">
               <Label>Цена продажи</Label>
-              <Select value={selectedSalePriceId || matchingSalePrices[0]?.id || ""} onValueChange={onSalePriceSelect}>
+              <Select
+                value={selectedSalePriceId || matchingSalePrices[0]?.id || ""}
+                onValueChange={onSalePriceSelect}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Выберите цену" />
                 </SelectTrigger>
                 <SelectContent>
-                  {matchingSalePrices.map(p => (
+                  {matchingSalePrices.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {getPriceLabel(p)}
                     </SelectItem>
@@ -343,35 +403,35 @@ export function PricingSection({
               </Select>
             </div>
           ) : (
-            <CalculatedField 
-              label="Цена продажи" 
-              value={salePrice !== null ? formatNumber(salePrice) : "нет цены!"} 
-              suffix={salePrice !== null ? " ₽/кг" : ""} 
+            <CalculatedField
+              label="Цена продажи"
+              value={salePrice !== null ? formatNumber(salePrice) : "нет цены!"}
+              suffix={salePrice !== null ? " ₽/кг" : ""}
             />
           )}
-          <CalculatedField 
-            label="Количество закупки" 
-            value={formatNumber(purchaseAmount)} 
+          <CalculatedField
+            label="Количество закупки"
+            value={formatNumber(purchaseAmount)}
             suffix=" кг"
           />
-          <CalculatedField 
-            label="Количество продажи" 
-            value={formatNumber(saleAmount)} 
+          <CalculatedField
+            label="Количество продажи"
+            value={formatNumber(saleAmount)}
             suffix=" кг"
           />
-          <CalculatedField 
-            label="Тариф доставки" 
-            value={formatCurrency(deliveryTariff)} 
+          <CalculatedField
+            label="Тариф доставки"
+            value={formatCurrency(deliveryTariff)}
             suffix=" ₽"
           />
-          <CalculatedField 
-            label="Стоимость доставки" 
-            value={formatCurrency(deliveryCost)} 
+          <CalculatedField
+            label="Стоимость доставки"
+            value={formatCurrency(deliveryCost)}
             suffix=" ₽"
           />
-          <CalculatedField 
-            label="Прибыль" 
-            value={formatCurrency(profit)} 
+          <CalculatedField
+            label="Прибыль"
+            value={formatCurrency(profit)}
             suffix=" ₽"
           />
         </div>
