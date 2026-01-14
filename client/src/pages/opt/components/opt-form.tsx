@@ -292,7 +292,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         ...data,
         supplierId: data.supplierId || null,
         buyerId: data.buyerId || null,
-        isDraft: isDraft || false,
+        isDraft: data.isDraft || false,
         warehouseId:
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id
@@ -300,7 +300,9 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         basis: selectedBasis || null,
         carrierId: data.carrierId || null,
         deliveryLocationId: data.deliveryLocationId || null,
-        dealDate: data.dealDate ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
+        dealDate: data.dealDate
+          ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss")
+          : null,
         quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
         quantityLiters: data.quantityLiters
           ? parseFloat(data.quantityLiters)
@@ -308,7 +310,8 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         density: data.density ? parseFloat(data.density) : null,
         purchasePrice: purchasePrice !== null ? purchasePrice : null,
         purchasePriceId: purchasePriceId || null,
-        purchasePriceIndex: purchasePriceIndex !== undefined ? purchasePriceIndex : null,
+        purchasePriceIndex:
+          purchasePriceIndex !== undefined ? purchasePriceIndex : null,
         salePrice: salePrice !== null ? salePrice : null,
         salePriceId: salePriceId || null,
         salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
@@ -382,7 +385,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         ...data,
         supplierId: data.supplierId || null,
         buyerId: data.buyerId || null,
-        isDraft: isDraft || false,
+        isDraft: data.isDraft || false,
         warehouseId:
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id
@@ -390,7 +393,9 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         basis: selectedBasis || null,
         carrierId: data.carrierId || null,
         deliveryLocationId: data.deliveryLocationId || null,
-        dealDate: data.dealDate ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
+        dealDate: data.dealDate
+          ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss")
+          : null,
         quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
         quantityLiters: data.quantityLiters
           ? parseFloat(data.quantityLiters)
@@ -398,7 +403,8 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         density: data.density ? parseFloat(data.density) : null,
         purchasePrice: purchasePrice !== null ? purchasePrice : null,
         purchasePriceId: purchasePriceId || null,
-        purchasePriceIndex: purchasePriceIndex !== undefined ? purchasePriceIndex : null,
+        purchasePriceIndex:
+          purchasePriceIndex !== undefined ? purchasePriceIndex : null,
         salePrice: salePrice !== null ? salePrice : null,
         salePriceId: salePriceId || null,
         salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
@@ -489,13 +495,39 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         });
         return;
       }
+
+      // Проверяем достаточность объема на складе для складских поставщиков
+      if (isWarehouseSupplier && supplierWarehouse) {
+        const availableBalance = isEditing
+          ? initialWarehouseBalance
+          : parseFloat(supplierWarehouse.currentBalance || "0");
+        const remaining = availableBalance - finalKg;
+        if (remaining < 0) {
+          toast({
+            title: "Ошибка: недостаточно объема на складе",
+            description: `На складе "${supplierWarehouse.name}" недостаточно топлива. Доступно: ${availableBalance.toFixed(2)} кг, требуется: ${finalKg.toFixed(2)} кг`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      if (contractVolumeStatus.status === "error") {
+        toast({
+          title: "Ошибка валидации",
+          description: contractVolumeStatus.message,
+          variant: "destructive",
+        });
+        return;
+      }
     } else {
       // Для черновика проверяем только поставщика и покупателя (уже проверено Zod)
       // Но дополнительно убедимся, что ID не пустые строки
       if (!data.supplierId || !data.buyerId) {
         toast({
           title: "Ошибка валидации",
-          description: "Для сохранения черновика необходимо выбрать поставщика и покупателя.",
+          description:
+            "Для сохранения черновика необходимо выбрать поставщика и покупателя.",
           variant: "destructive",
         });
         return;
@@ -576,45 +608,24 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
             )}
           />
 
-          <div className="flex flex-col gap-4">
-            <FormField
-              control={form.control}
-              name="isApproxVolume"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="checkbox-approx-volume"
-                    />
-                  </FormControl>
-                  <FormLabel className="text-sm font-normal cursor-pointer">
-                    Примерный объем (требует уточнения)
-                  </FormLabel>
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="isDraft"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="checkbox-is-draft"
-                    />
-                  </FormControl>
-                  <FormLabel className="text-sm font-normal cursor-pointer">
-                    Сохранить как черновик
-                  </FormLabel>
-                </FormItem>
-              )}
-            />
-          </div>
+          <FormField
+            control={form.control}
+            name="isApproxVolume"
+            render={({ field }) => (
+              <FormItem className="flex items-center gap-2 space-y-0 pb-2">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    data-testid="checkbox-approx-volume"
+                  />
+                </FormControl>
+                <FormLabel className="text-sm font-normal cursor-pointer">
+                  Примерный объем (требует уточнения)
+                </FormLabel>
+              </FormItem>
+            )}
+          />
         </div>
 
         <div className="flex justify-end gap-4 pt-4 border-t">
@@ -630,7 +641,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
           >
             {editData ? "Отмена" : "Очистить"}
           </Button>
-          
+
           <Button
             type="button"
             variant="secondary"
@@ -658,9 +669,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
                 {editData ? "Сохранение..." : "Создание..."}
               </>
             ) : (
-              <>
-                {editData ? "Сохранить изменения" : "Создать сделку"}
-              </>
+              <>{editData ? "Сохранить изменения" : "Создать сделку"}</>
             )}
           </Button>
         </div>

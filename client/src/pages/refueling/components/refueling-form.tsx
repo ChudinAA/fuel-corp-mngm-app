@@ -283,27 +283,30 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         ...data,
         supplierId: data.supplierId || null,
         buyerId: data.buyerId || null,
-        isDraft: isDraft || false,
+        isDraft: data.isDraft || false,
         warehouseId:
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id
             : null,
-        basis: String(selectedBasis || ""), // Use selectedBasis
-        refuelingDate: data.refuelingDate ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
-        quantityKg: calculatedKg ? String(parseFloat(calculatedKg)) : null,
-        quantityLiters: data.quantityLiters
-          ? String(parseFloat(data.quantityLiters))
+        basis: selectedBasis || null, // Use selectedBasis
+        refuelingDate: data.refuelingDate
+          ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss")
           : null,
-        density: data.density ? String(parseFloat(data.density)) : null,
-        purchasePrice: purchasePrice !== null ? String(purchasePrice) : null,
+        quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
+        quantityLiters: data.quantityLiters
+          ? parseFloat(data.quantityLiters)
+          : null,
+        density: data.density ? parseFloat(data.density) : null,
+        purchasePrice: purchasePrice !== null ? purchasePrice : null,
         purchasePriceId: purchasePriceId || null,
-        purchasePriceIndex: purchasePriceIndex !== undefined ? purchasePriceIndex : null,
-        salePrice: salePrice !== null ? String(salePrice) : null,
+        purchasePriceIndex:
+          purchasePriceIndex !== undefined ? purchasePriceIndex : null,
+        salePrice: salePrice !== null ? salePrice : null,
         salePriceId: salePriceId || null,
         salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
-        purchaseAmount: purchaseAmount !== null ? String(purchaseAmount) : null,
-        saleAmount: saleAmount !== null ? String(saleAmount) : null,
-        profit: profit !== null ? String(profit) : null,
+        purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
+        saleAmount: saleAmount !== null ? saleAmount : null,
+        profit: profit !== null ? profit : null,
       };
       const res = await apiRequest("POST", "/api/refueling", payload);
       return res.json();
@@ -356,27 +359,30 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         ...data,
         supplierId: data.supplierId || null,
         buyerId: data.buyerId || null,
-        isDraft: isDraft || false,
+        isDraft: data.isDraft || false,
         warehouseId:
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id
             : null,
-        basis: String(selectedBasis || ""), // Use selectedBasis
-        refuelingDate: data.refuelingDate ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
-        quantityKg: calculatedKg ? String(parseFloat(calculatedKg)) : null,
-        quantityLiters: data.quantityLiters
-          ? String(parseFloat(data.quantityLiters))
+        basis: selectedBasis || null, // Use selectedBasis
+        refuelingDate: data.refuelingDate
+          ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss")
           : null,
-        density: data.density ? String(parseFloat(data.density)) : null,
-        purchasePrice: purchasePrice !== null ? String(purchasePrice) : null,
+        quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
+        quantityLiters: data.quantityLiters
+          ? parseFloat(data.quantityLiters)
+          : null,
+        density: data.density ? parseFloat(data.density) : null,
+        purchasePrice: purchasePrice !== null ? purchasePrice : null,
         purchasePriceId: purchasePriceId || null,
-        purchasePriceIndex: purchasePriceIndex !== undefined ? purchasePriceIndex : null,
-        salePrice: salePrice !== null ? String(salePrice) : null,
+        purchasePriceIndex:
+          purchasePriceIndex !== undefined ? purchasePriceIndex : null,
+        salePrice: salePrice !== null ? salePrice : null,
         salePriceId: salePriceId || null,
         salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
-        purchaseAmount: purchaseAmount !== null ? String(purchaseAmount) : null,
-        saleAmount: saleAmount !== null ? String(saleAmount) : null,
-        profit: profit !== null ? String(profit) : null,
+        purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
+        saleAmount: saleAmount !== null ? saleAmount : null,
+        profit: profit !== null ? profit : null,
       };
       const res = await apiRequest(
         "PATCH",
@@ -454,12 +460,32 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         });
         return;
       }
-    } else {
-      // Для черновика проверяем обязательные поля
-      if (!data.supplierId || !data.buyerId || !data.productType || !data.basis) {
+
+      // Проверяем достаточность объема на складе
+      if (warehouseStatus.status === "error") {
         toast({
           title: "Ошибка валидации",
-          description: "Для сохранения черновика необходимо выбрать поставщика, покупателя, тип продукта и базис.",
+          description: warehouseStatus.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (contractVolumeStatus.status === "error") {
+        toast({
+          title: "Ошибка валидации",
+          description: contractVolumeStatus.message,
+          variant: "destructive",
+        });
+        return;
+      }
+    } else {
+      // Для черновика проверяем обязательные поля
+      if (!data.supplierId || !data.buyerId) {
+        toast({
+          title: "Ошибка валидации",
+          description:
+            "Для сохранения черновика необходимо выбрать поставщика и покупателя.",
           variant: "destructive",
         });
         return;
@@ -533,45 +559,24 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
             )}
           />
 
-          <div className="flex flex-col gap-4">
-            <FormField
-              control={form.control}
-              name="isApproxVolume"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="checkbox-approx-volume"
-                    />
-                  </FormControl>
-                  <FormLabel className="text-sm font-normal cursor-pointer">
-                    Примерный объем (требует уточнения)
-                  </FormLabel>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="isDraft"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="checkbox-is-draft"
-                    />
-                  </FormControl>
-                  <FormLabel className="text-sm font-normal cursor-pointer">
-                    Сохранить как черновик
-                  </FormLabel>
-                </FormItem>
-              )}
-            />
-          </div>
+          <FormField
+            control={form.control}
+            name="isApproxVolume"
+            render={({ field }) => (
+              <FormItem className="flex items-center gap-2 space-y-0 pb-2">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    data-testid="checkbox-approx-volume"
+                  />
+                </FormControl>
+                <FormLabel className="text-sm font-normal cursor-pointer">
+                  Примерный объем (требует уточнения)
+                </FormLabel>
+              </FormItem>
+            )}
+          />
         </div>
 
         <div className="flex justify-end gap-4 pt-4 border-t">
@@ -616,9 +621,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
                 {editData ? "Сохранение..." : "Создание..."}
               </>
             ) : (
-              <>
-                {editData ? "Сохранить изменения" : "Создать запись"}
-              </>
+              <>{editData ? "Сохранить изменения" : "Создать запись"}</>
             )}
           </Button>
         </div>
