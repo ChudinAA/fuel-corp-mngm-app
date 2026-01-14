@@ -32,6 +32,7 @@ import { AddLogisticsDialog } from "@/pages/directories/logistics-dialog";
 import { AddDeliveryCostDialog } from "@/pages/delivery/components/delivery-cost-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
+import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 
 interface VolumeInputSectionProps {
   form: UseFormReturn<OptFormData>;
@@ -184,13 +185,8 @@ export function LogisticsSection({
   };
 
   // Логика проверки объема по договору
-  const salePricePriceId = selectedSalePriceId?.split("-")[0] || null;
-  const salePriceIndex = selectedSalePriceId
-    ? parseInt(selectedSalePriceId.split("-")[1])
-    : null;
-
   const contractVolumeStatus = useContractVolume({
-    priceId: selectedSalePriceId,
+    priceId: parsePriceCompositeId(selectedSalePriceId).priceId,
     currentQuantityKg: finalKg,
     isEditing,
     mode: "opt",

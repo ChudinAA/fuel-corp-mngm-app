@@ -25,6 +25,7 @@ import { useState } from "react";
 import { useContractVolume } from "../../shared/hooks/use-contract-volume";
 import { Button } from "@/components/ui/button";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
+import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 
 interface RefuelingPricingSectionProps {
   form: UseFormReturn<RefuelingFormData>;
@@ -66,13 +67,8 @@ export function RefuelingPricingSection({
   const { hasPermission } = useAuth();
 
   // Логика проверки объема по договору
-  const salePricePriceId = selectedSalePriceId?.split("-")[0] || null;
-  const salePriceIndex = selectedSalePriceId
-    ? parseInt(selectedSalePriceId.split("-")[1])
-    : null;
-
   const contractVolumeStatus = useContractVolume({
-    priceId: selectedSalePriceId,
+    priceId: parsePriceCompositeId(selectedSalePriceId).priceId,
     currentQuantityKg: parseFloat(form.watch("quantityKg") || "0"),
     isEditing: !!form.getValues("id" as any),
     mode: "refueling",
