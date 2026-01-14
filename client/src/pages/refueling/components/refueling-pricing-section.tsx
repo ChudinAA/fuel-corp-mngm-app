@@ -22,6 +22,7 @@ import { formatNumber, formatCurrency } from "../utils";
 import { PRODUCT_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
+import { useContractVolume } from "../../shared/hooks/use-contract-volume";
 import { Button } from "@/components/ui/button";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 
@@ -63,6 +64,18 @@ export function RefuelingPricingSection({
   productType,
 }: RefuelingPricingSectionProps) {
   const { hasPermission } = useAuth();
+
+  // Логика проверки объема по договору
+  const salePricePriceId = selectedSalePriceId?.split("-")[0] || null;
+  const salePriceIndex = selectedSalePriceId ? parseInt(selectedSalePriceId.split("-")[1]) : null;
+
+  const contractVolumeStatus = useContractVolume({
+    priceId: salePricePriceId,
+    priceIndex: salePriceIndex,
+    currentQuantityKg: parseFloat(form.watch("quantityKg") || "0"),
+    isEditing: !!form.getValues("id" as any),
+    dealId: form.getValues("id" as any),
+  });
 
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
   const handlePurchasePriceCreated = (id: string) => {
@@ -304,7 +317,11 @@ export function RefuelingPricingSection({
           status={warehouseStatus.status}
         />
 
-        <CalculatedField label="Объем по договору" value="тест" status="ok" />
+        <CalculatedField
+          label="Объем по договору"
+          value={contractVolumeStatus.message}
+          status={contractVolumeStatus.status}
+        />
 
         <CalculatedField
           label="Прибыль"

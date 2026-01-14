@@ -22,6 +22,7 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { useContractVolume } from "../../shared/hooks/use-contract-volume";
 
 interface OptPricingSectionProps {
   form: UseFormReturn<OptFormData>;
@@ -105,6 +106,18 @@ export function OptPricingSection({
   };
 
   const warehouseStatus = getWarehouseStatus();
+
+  // Логика проверки объема по договору
+  const salePricePriceId = selectedSalePriceId?.split("-")[0] || null;
+  const salePriceIndex = selectedSalePriceId ? parseInt(selectedSalePriceId.split("-")[1]) : null;
+
+  const contractVolumeStatus = useContractVolume({
+    priceId: salePricePriceId,
+    priceIndex: salePriceIndex,
+    currentQuantityKg: finalKg,
+    isEditing,
+    dealId: form.getValues("id" as any),
+  });
 
   return (
     <>
@@ -325,9 +338,9 @@ export function OptPricingSection({
 
       <div className="grid gap-4 md:grid-cols-3">
         <CalculatedField
-          label="Объем на складе"
-          value={warehouseStatus.message}
-          status={warehouseStatus.status}
+          label="Объем по договору"
+          value={contractVolumeStatus.message}
+          status={contractVolumeStatus.status}
         />
 
         <CalculatedField
