@@ -1,5 +1,6 @@
+
 import { useQuery } from "@tanstack/react-query";
-import type { Price } from "@shared/schema";
+import type { Price, Opt, AircraftRefueling } from "@shared/schema";
 
 interface UseContractVolumeProps {
   priceId: string | null;
@@ -7,7 +8,6 @@ interface UseContractVolumeProps {
   currentQuantityKg: number;
   isEditing: boolean;
   dealId?: string;
-  mode: "opt" | "refueling";
 }
 
 export function useContractVolume({
@@ -16,47 +16,64 @@ export function useContractVolume({
   currentQuantityKg,
   isEditing,
   dealId,
-  mode,
 }: UseContractVolumeProps) {
-  const { data: price, isLoading: isLoadingPrice } = useQuery<Price>({
-    queryKey: ["/api/prices", priceId],
-    enabled: !!priceId,
+  const { data: allPrices } = useQuery<Price[]>({
+    queryKey: ["/api/prices"],
   });
 
-  const { data: usedData, isLoading: isLoadingUsed } = useQuery<{ usedVolume: number }>({
-    queryKey: [`/api/${mode}/contract-used`, priceId],
-    enabled: !!priceId,
+  const { data: optDeals } = useQuery<Opt[]>({
+    queryKey: ["/api/opt"],
+    select: (data: any) => data.data || data,
   });
 
-  if (!priceId || priceIndex === null) {
+  const { data: refuelingDeals } = useQuery<AircraftRefueling[]>({
+    queryKey: ["/api/refueling"],
+    select: (data: any) => data.data || data,
+  });
+
+  if (!priceId || priceIndex === null || !allPrices) {
     return { remaining: 0, status: "ok" as const, message: "—" };
   }
 
-  if (isLoadingPrice || isLoadingUsed) {
-    return { remaining: 0, status: "ok" as const, message: "Загрузка..." };
-  }
-
+  const price = allPrices.find((p) => p.id === priceId);
   if (!price || !price.priceValues) {
     return { remaining: 0, status: "error" as const, message: "Цена не найдена" };
   }
 
   try {
-    const totalVolume = parseFloat(price.volume || "0");
+    const priceValueStr = price.priceValues[priceIndex];
+    if (!priceValueStr) throw new Error("Price value not found");
+    
+    const parsed = JSON.parse(priceValueStr);
+    const totalVolume = parseFloat(parsed.volume || "0");
 
     if (totalVolume <= 0) {
       return { remaining: 0, status: "ok" as const, message: "Безлимит" };
     }
 
-    const usedVolume = usedData?.usedVolume || 0;
-    
-    // Remaining = Total - UsedVolume - (if NEW then currentQuantityKg)
-    // When editing, usedVolume already contains the current deal volume in the DB.
-    // So if isEditing, we just compare totalVolume vs usedVolume (which reflects saved state).
-    // If the user is MANIPULATING the quantity field while editing, they expect real-time feedback.
-    // We'd need the ORIGINAL quantity of this deal to properly show "Total - (UsedByOthers) - CurrentInput".
-    
-    const remaining = totalVolume - usedVolume - (isEditing ? 0 : currentQuantityKg);
-    
+    // Sum quantities from OPT deals
+    const optSum = (optDeals || [])
+      .filter((d) => 
+        d.salePriceId === priceId && 
+        d.salePriceIndex === priceIndex && 
+        (!isEditing || d.id !== dealId) &&
+        !d.deletedAt
+      )
+      .reduce((sum, d) => sum + parseFloat(d.quantityKg || "0"), 0);
+
+    // Sum quantities from Refueling deals
+    const refuelingSum = (refuelingDeals || [])
+      .filter((d) => 
+        d.salePriceId === priceId && 
+        d.salePriceIndex === priceIndex && 
+        (!isEditing || d.id !== dealId) &&
+        !d.deletedAt
+      )
+      .reduce((sum, d) => sum + parseFloat(d.quantityKg || "0"), 0);
+
+    const usedVolume = optSum + refuelingSum;
+    const remaining = totalVolume - usedVolume - currentQuantityKg;
+
     if (remaining >= 0) {
       return {
         remaining,
@@ -67,7 +84,7 @@ export function useContractVolume({
       return {
         remaining,
         status: "error" as const,
-        message: `Превышен! Остаток: ${(totalVolume - usedVolume + (isEditing ? currentQuantityKg : 0)).toFixed(2)} кг`,
+        message: `Превышен! Остаток: ${(totalVolume - usedVolume).toFixed(2)} кг`,
       };
     }
   } catch (e) {
