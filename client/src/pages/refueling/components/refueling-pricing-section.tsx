@@ -72,8 +72,7 @@ export function RefuelingPricingSection({
     : null;
 
   const contractVolumeStatus = useContractVolume({
-    priceId: salePricePriceId,
-    priceIndex: salePriceIndex,
+    priceId: selectedSalePriceId,
     currentQuantityKg: parseFloat(form.watch("quantityKg") || "0"),
     isEditing: !!form.getValues("id" as any),
     mode: "refueling",

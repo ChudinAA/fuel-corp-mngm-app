@@ -190,8 +190,7 @@ export function LogisticsSection({
     : null;
 
   const contractVolumeStatus = useContractVolume({
-    priceId: salePricePriceId,
-    priceIndex: salePriceIndex,
+    priceId: selectedSalePriceId,
     currentQuantityKg: finalKg,
     isEditing,
     mode: "opt",

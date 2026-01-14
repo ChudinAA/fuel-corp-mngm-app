@@ -3,7 +3,6 @@ import type { Price } from "@shared/schema";
 
 interface UseContractVolumeProps {
   priceId: string | null;
-  priceIndex: number | null;
   currentQuantityKg: number;
   isEditing: boolean;
   mode: "opt" | "refueling";
@@ -11,7 +10,6 @@ interface UseContractVolumeProps {
 
 export function useContractVolume({
   priceId,
-  priceIndex,
   currentQuantityKg,
   isEditing,
   mode,
@@ -21,12 +19,14 @@ export function useContractVolume({
     enabled: !!priceId,
   });
 
-  const { data: usedData, isLoading: isLoadingUsed } = useQuery<{ usedVolume: number }>({
+  const { data: usedData, isLoading: isLoadingUsed } = useQuery<{
+    usedVolume: number;
+  }>({
     queryKey: [`/api/${mode}/contract-used`, priceId],
     enabled: !!priceId,
   });
 
-  if (!priceId || priceIndex === null) {
+  if (!priceId) {
     return { remaining: 0, status: "ok" as const, message: "—" };
   }
 
@@ -35,7 +35,11 @@ export function useContractVolume({
   }
 
   if (!price || !price.priceValues) {
-    return { remaining: 0, status: "error" as const, message: "Цена не найдена" };
+    return {
+      remaining: 0,
+      status: "error" as const,
+      message: "Цена не найдена",
+    };
   }
 
   try {
@@ -46,15 +50,16 @@ export function useContractVolume({
     }
 
     const usedVolume = usedData?.usedVolume || 0;
-    
+
     // Remaining = Total - UsedVolume - (if NEW then currentQuantityKg)
     // When editing, usedVolume already contains the current deal volume in the DB.
     // So if isEditing, we just compare totalVolume vs usedVolume (which reflects saved state).
     // If the user is MANIPULATING the quantity field while editing, they expect real-time feedback.
     // We'd need the ORIGINAL quantity of this deal to properly show "Total - (UsedByOthers) - CurrentInput".
-    
-    const remaining = totalVolume - usedVolume - (isEditing ? 0 : currentQuantityKg);
-    
+
+    const remaining =
+      totalVolume - usedVolume - (isEditing ? 0 : currentQuantityKg);
+
     if (remaining >= 0) {
       return {
         remaining,
