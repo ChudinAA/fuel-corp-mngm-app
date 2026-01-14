@@ -648,8 +648,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
             disabled={createMutation.isPending || updateMutation.isPending}
             onClick={() => {
               form.clearErrors();
-              const values = form.getValues();
-              onSubmit(values, true);
+              form.handleSubmit((data) => onSubmit(data, true))();
             }}
           >
             {createMutation.isPending || updateMutation.isPending ? (
