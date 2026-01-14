@@ -55,41 +55,6 @@ export function useOptFilters({
     ) || [];
   }, [supplierId, selectedBasis, dealDate, suppliers, allPrices]);
 
-  // Фильтрация цен продажи
-  // Используем baseId из выбранного места доставки, если оно есть
-  const salePrices = useMemo(() => {
-    if (!buyerId || !dealDate) return [];
-
-    const dateStr = format(dealDate, "yyyy-MM-dd");
-
-    // Определяем базис для фильтрации цен продажи
-    let saleBasisName = selectedBasis;
-    
-    // Если выбрано место доставки с привязанным базисом, используем его
-    if (deliveryLocationId && deliveryLocations && allBases) {
-      const selectedLocation = deliveryLocations.find(loc => loc.id === deliveryLocationId);
-      if (selectedLocation?.baseId) {
-        const locationBase = allBases.find(b => b.id === selectedLocation.baseId);
-        if (locationBase) {
-          saleBasisName = locationBase.name;
-        }
-      }
-    }
-
-    if (!saleBasisName) return [];
-
-    return allPrices?.filter(p =>
-      p.counterpartyId === buyerId &&
-      p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
-      p.counterpartyRole === COUNTERPARTY_ROLE.BUYER &&
-      p.productType === PRODUCT_TYPE.KEROSENE &&
-      p.basis === saleBasisName &&
-      p.dateFrom <= dateStr &&
-      p.dateTo >= dateStr &&
-      p.isActive
-    ) || [];
-  }, [buyerId, dealDate, allPrices, selectedBasis, deliveryLocationId, deliveryLocations, allBases]);
-
   // Фильтрация поставщиков с wholesale базисами
   const wholesaleSuppliers = useMemo(() => {
     return suppliers?.filter(supplier => {
@@ -105,6 +70,40 @@ export function useOptFilters({
     return allBases?.filter(b => b.baseType === BASE_TYPE.WHOLESALE) || [];
   }, [allBases]);
 
+  // Фильтрация доступных мест доставки
+  const availableLocations = useMemo(() => {
+    return deliveryLocations?.filter(location => {
+      // Фильтр 1: По привязке к базисам из цен продажи покупателя
+      // Ищем цены продажи для этого покупателя на эту дату
+      if (!buyerId || !dealDate || !allPrices) return true;
+      const dateStr = format(dealDate, "yyyy-MM-dd");
+
+      const buyerSalePrices = allPrices.filter(p =>
+        p.counterpartyId === buyerId &&
+        p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
+        p.counterpartyRole === COUNTERPARTY_ROLE.BUYER &&
+        p.productType === PRODUCT_TYPE.KEROSENE &&
+        p.dateFrom <= dateStr &&
+        p.dateTo >= dateStr &&
+        p.isActive
+      );
+
+      if (buyerSalePrices.length > 0) {
+        const activeSaleBasises = new Set(buyerSalePrices.map(p => p.basis));
+        if (location.baseId) {
+          const locBase = allBases?.find(b => b.id === location.baseId);
+          if (locBase && !activeSaleBasises.has(locBase.name)) {
+            return false;
+          }
+        }
+      }
+
+      // Фильтр 2: По наличию тарифов у перевозчика (убрано ограничение точек поставки по перевозчику для приоритета выбора юзером)
+      // if (!carrierId || !deliveryCosts) return true;
+      return true;
+    }) || [];
+  }, [deliveryLocations, carrierId, deliveryCosts, selectedBasis, wholesaleBases, supplierWarehouse, buyerId, dealDate, allPrices, allBases]);
+  
   // Фильтрация доступных перевозчиков
   const availableCarriers = useMemo(() => {
     return carriers?.filter(carrier => {
@@ -142,52 +141,41 @@ export function useOptFilters({
     }) || [];
   }, [carriers, selectedBasis, deliveryCosts, wholesaleBases, supplierWarehouse, deliveryLocationId]);
 
-  // Фильтрация доступных мест доставки
-  const availableLocations = useMemo(() => {
-    return deliveryLocations?.filter(location => {
-      // Фильтр 1: По привязке к базисам из цен продажи покупателя
-      // Ищем цены продажи для этого покупателя на эту дату
-      if (!buyerId || !dealDate || !allPrices) return true;
-      const dateStr = format(dealDate, "yyyy-MM-dd");
-      
-      const buyerSalePrices = allPrices.filter(p =>
-        p.counterpartyId === buyerId &&
-        p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
-        p.counterpartyRole === COUNTERPARTY_ROLE.BUYER &&
-        p.productType === PRODUCT_TYPE.KEROSENE &&
-        p.dateFrom <= dateStr &&
-        p.dateTo >= dateStr &&
-        p.isActive
-      );
+  // Фильтрация цен продажи
+  // Используем baseId из выбранного места доставки, если оно есть
+  const salePrices = useMemo(() => {
+    if (!buyerId || !dealDate) return [];
 
-      if (buyerSalePrices.length > 0) {
-        const activeSaleBasises = new Set(buyerSalePrices.map(p => p.basis));
-        if (location.baseId) {
-          const locBase = allBases?.find(b => b.id === location.baseId);
-          if (locBase && !activeSaleBasises.has(locBase.name)) {
-            return false;
-          }
+    const dateStr = format(dealDate, "yyyy-MM-dd");
+
+    // Определяем базис для фильтрации цен продажи
+    let saleBasisName = selectedBasis;
+
+    // Если выбрано место доставки с привязанным базисом, используем его
+    if (deliveryLocationId && deliveryLocations && allBases) {
+      const selectedLocation = deliveryLocations.find(loc => loc.id === deliveryLocationId);
+      if (selectedLocation?.baseId) {
+        const locationBase = allBases.find(b => b.id === selectedLocation.baseId);
+        if (locationBase) {
+          saleBasisName = locationBase.name;
         }
       }
+    }
 
-      // Фильтр 2: По наличию тарифов у перевозчика (если выбран)
-      if (!carrierId || !deliveryCosts) return true;
+    if (!saleBasisName) return [];
 
-      const base = wholesaleBases?.find(b => b.name === selectedBasis);
-      const warehouse = supplierWarehouse;
-
-      return deliveryCosts.some(dc => 
-        dc.carrierId === carrierId &&
-        dc.toEntityType === DELIVERY_ENTITY_TYPE.DELIVERY_LOCATION &&
-        dc.toEntityId === location.id &&
-        (
-          (base && dc.fromEntityType === DELIVERY_ENTITY_TYPE.BASE && dc.fromEntityId === base.id) ||
-          (warehouse && dc.fromEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE && dc.fromEntityId === warehouse.id)
-        )
-      );
-    }) || [];
-  }, [deliveryLocations, carrierId, deliveryCosts, selectedBasis, wholesaleBases, supplierWarehouse, buyerId, dealDate, allPrices, allBases]);
-
+    return allPrices?.filter(p =>
+      p.counterpartyId === buyerId &&
+      p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
+      p.counterpartyRole === COUNTERPARTY_ROLE.BUYER &&
+      p.productType === PRODUCT_TYPE.KEROSENE &&
+      p.basis === saleBasisName &&
+      p.dateFrom <= dateStr &&
+      p.dateTo >= dateStr &&
+      p.isActive
+    ) || [];
+  }, [buyerId, dealDate, allPrices, selectedBasis, deliveryLocationId, deliveryLocations, allBases]);
+  
   return {
     purchasePrices,
     salePrices,

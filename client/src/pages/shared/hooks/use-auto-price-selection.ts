@@ -34,12 +34,16 @@ export function useAutoPriceSelection({
     }
   }, [supplierId, purchasePrices, editData, isWarehouseSupplier, setSelectedPurchasePriceId, formSetValue]);
 
-  // Автоматический выбор первой цены продажи при выборе покупателя
+  // Автоматический выбор первой цены продажи при выборе покупателя или изменении цен (например, при смене точки поставки)
   useEffect(() => {
     if (buyerId && salePrices.length > 0 && !editData) {
       const firstSalePriceId = `${salePrices[0].id}-0`;
       setSelectedSalePriceId(firstSalePriceId);
       formSetValue("selectedSalePriceId", firstSalePriceId);
+    } else if (buyerId && salePrices.length === 0 && !editData) {
+      // Очищаем выбор, если цен для нового базиса нет
+      setSelectedSalePriceId("");
+      formSetValue("selectedSalePriceId", "");
     }
   }, [buyerId, salePrices, editData, setSelectedSalePriceId, formSetValue]);
 }
