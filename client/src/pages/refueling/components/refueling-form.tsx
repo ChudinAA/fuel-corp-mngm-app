@@ -414,11 +414,12 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     },
   });
 
-  const onSubmit = (data: RefuelingFormData) => {
+  const onSubmit = (data: RefuelingFormData, isDraftSubmit?: boolean) => {
     const productType = watchProductType;
+    const isDraft = isDraftSubmit ?? data.isDraft;
 
     // Если не черновик, выполняем полную валидацию
-    if (!data.isDraft) {
+    if (!isDraft) {
       // Проверяем наличие количества
       if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
         toast({
@@ -475,9 +476,9 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     }
 
     if (editData) {
-      updateMutation.mutate({ ...data, id: editData.id });
+      updateMutation.mutate({ ...data, isDraft, id: editData.id });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate({ ...data, isDraft });
     }
   };
 
@@ -602,8 +603,9 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
             variant="secondary"
             disabled={createMutation.isPending || updateMutation.isPending}
             onClick={() => {
-              form.setValue("isDraft", true);
-              form.handleSubmit(onSubmit)();
+              form.clearErrors();
+              const values = form.getValues();
+              onSubmit(values, true);
             }}
           >
             {createMutation.isPending || updateMutation.isPending ? (
@@ -616,7 +618,6 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
             type="submit"
             disabled={createMutation.isPending || updateMutation.isPending}
             data-testid="button-submit-refueling"
-            onClick={() => form.setValue("isDraft", false)}
           >
             {createMutation.isPending || updateMutation.isPending ? (
               <>

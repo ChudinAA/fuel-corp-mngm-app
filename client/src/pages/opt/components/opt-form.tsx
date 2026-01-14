@@ -453,9 +453,11 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     },
   });
 
-  const onSubmit = (data: OptFormData) => {
+  const onSubmit = (data: OptFormData, isDraftSubmit?: boolean) => {
+    const isDraft = isDraftSubmit ?? data.isDraft;
+
     // Если это не черновик, выполняем полную валидацию
-    if (!data.isDraft) {
+    if (!isDraft) {
       // Проверяем наличие количества
       if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
         toast({
@@ -516,9 +518,9 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     }
 
     if (editData) {
-      updateMutation.mutate({ ...data, id: editData.id });
+      updateMutation.mutate({ ...data, isDraft, id: editData.id });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate({ ...data, isDraft });
     }
   };
 
@@ -649,8 +651,9 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
             variant="secondary"
             disabled={createMutation.isPending || updateMutation.isPending}
             onClick={() => {
-              form.setValue("isDraft", true);
-              form.handleSubmit(onSubmit)();
+              form.clearErrors();
+              const values = form.getValues();
+              onSubmit(values, true);
             }}
           >
             {createMutation.isPending || updateMutation.isPending ? (
@@ -663,7 +666,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
             type="submit"
             disabled={createMutation.isPending || updateMutation.isPending}
             data-testid="button-submit-opt"
-            onClick={() => form.setValue("isDraft", false)}
           >
             {createMutation.isPending || updateMutation.isPending ? (
               <>
