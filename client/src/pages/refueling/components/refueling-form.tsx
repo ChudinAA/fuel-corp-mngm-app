@@ -281,25 +281,25 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
 
       const payload = {
         ...data,
-        supplierId: data.supplierId,
-        buyerId: data.buyerId,
-        isDraft: data.isDraft || false,
+        supplierId: data.supplierId && data.supplierId !== "" ? data.supplierId : null,
+        buyerId: data.buyerId && data.buyerId !== "" ? data.buyerId : null,
+        isDraft: isDraft,
         warehouseId:
-          isWarehouseSupplier && supplierWarehouse
+          isWarehouseSupplier && supplierWarehouse && data.warehouseId !== ""
             ? supplierWarehouse.id
             : null,
-        basis: String(selectedBasis || ""), // Use selectedBasis
-        refuelingDate: format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss"),
-        quantityKg: String(parseFloat(calculatedKg)),
-        quantityLiters: data.quantityLiters
+        basis: selectedBasis && selectedBasis !== "" ? String(selectedBasis) : null,
+        refuelingDate: data.refuelingDate ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
+        quantityKg: calculatedKg ? String(parseFloat(calculatedKg)) : null,
+        quantityLiters: data.quantityLiters && data.quantityLiters !== ""
           ? String(parseFloat(data.quantityLiters))
           : null,
-        density: data.density ? String(parseFloat(data.density)) : null,
+        density: data.density && data.density !== "" ? String(parseFloat(data.density)) : null,
         purchasePrice: purchasePrice !== null ? String(purchasePrice) : null,
-        purchasePriceId: purchasePriceId,
+        purchasePriceId: purchasePriceId && purchasePriceId !== "" ? purchasePriceId : null,
         purchasePriceIndex: purchasePriceIndex,
         salePrice: salePrice !== null ? String(salePrice) : null,
-        salePriceId: salePriceId,
+        salePriceId: salePriceId && salePriceId !== "" ? salePriceId : null,
         salePriceIndex: salePriceIndex,
         purchaseAmount: purchaseAmount !== null ? String(purchaseAmount) : null,
         saleAmount: saleAmount !== null ? String(saleAmount) : null,
@@ -354,25 +354,25 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
 
       const payload = {
         ...data,
-        supplierId: data.supplierId,
-        buyerId: data.buyerId,
-        isDraft: data.isDraft || false,
+        supplierId: data.supplierId && data.supplierId !== "" ? data.supplierId : null,
+        buyerId: data.buyerId && data.buyerId !== "" ? data.buyerId : null,
+        isDraft: isDraft,
         warehouseId:
-          isWarehouseSupplier && supplierWarehouse
+          isWarehouseSupplier && supplierWarehouse && data.warehouseId !== ""
             ? supplierWarehouse.id
             : null,
-        basis: String(selectedBasis || ""), // Use selectedBasis
-        refuelingDate: format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss"),
-        quantityKg: String(parseFloat(calculatedKg)),
-        quantityLiters: data.quantityLiters
+        basis: selectedBasis && selectedBasis !== "" ? String(selectedBasis) : null,
+        refuelingDate: data.refuelingDate ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
+        quantityKg: calculatedKg ? String(parseFloat(calculatedKg)) : null,
+        quantityLiters: data.quantityLiters && data.quantityLiters !== ""
           ? String(parseFloat(data.quantityLiters))
           : null,
-        density: data.density ? String(parseFloat(data.density)) : null,
+        density: data.density && data.density !== "" ? String(parseFloat(data.density)) : null,
         purchasePrice: purchasePrice !== null ? String(purchasePrice) : null,
-        purchasePriceId: purchasePriceId,
+        purchasePriceId: purchasePriceId && purchasePriceId !== "" ? purchasePriceId : null,
         purchasePriceIndex: purchasePriceIndex,
         salePrice: salePrice !== null ? String(salePrice) : null,
-        salePriceId: salePriceId,
+        salePriceId: salePriceId && salePriceId !== "" ? salePriceId : null,
         salePriceIndex: salePriceIndex,
         purchaseAmount: purchaseAmount !== null ? String(purchaseAmount) : null,
         saleAmount: saleAmount !== null ? String(saleAmount) : null,

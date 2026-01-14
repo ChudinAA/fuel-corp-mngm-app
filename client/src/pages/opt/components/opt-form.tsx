@@ -290,27 +290,27 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
       const payload = {
         ...data,
-        supplierId: data.supplierId,
-        buyerId: data.buyerId,
-        isDraft: data.isDraft || false,
+        supplierId: data.supplierId && data.supplierId !== "" ? data.supplierId : null,
+        buyerId: data.buyerId && data.buyerId !== "" ? data.buyerId : null,
+        isDraft: isDraft,
         warehouseId:
-          isWarehouseSupplier && supplierWarehouse
+          isWarehouseSupplier && supplierWarehouse && data.warehouseId !== ""
             ? supplierWarehouse.id
             : null,
-        basis: selectedBasis,
-        carrierId: data.carrierId || null,
-        deliveryLocationId: data.deliveryLocationId || null,
+        basis: selectedBasis && selectedBasis !== "" ? selectedBasis : null,
+        carrierId: data.carrierId && data.carrierId !== "" ? data.carrierId : null,
+        deliveryLocationId: data.deliveryLocationId && data.deliveryLocationId !== "" ? data.deliveryLocationId : null,
         dealDate: data.dealDate ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
-        quantityKg: data.quantityKg ? parseFloat(calculatedKg) : null,
-        quantityLiters: data.quantityLiters
+        quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
+        quantityLiters: data.quantityLiters && data.quantityLiters !== ""
           ? parseFloat(data.quantityLiters)
           : null,
-        density: data.density ? parseFloat(data.density) : null,
+        density: data.density && data.density !== "" ? parseFloat(data.density) : null,
         purchasePrice: purchasePrice,
-        purchasePriceId: purchasePriceId,
+        purchasePriceId: purchasePriceId && purchasePriceId !== "" ? purchasePriceId : null,
         purchasePriceIndex: purchasePriceIndex,
         salePrice: salePrice,
-        salePriceId: salePriceId,
+        salePriceId: salePriceId && salePriceId !== "" ? salePriceId : null,
         salePriceIndex: salePriceIndex,
         purchaseAmount: purchaseAmount,
         saleAmount: saleAmount,
@@ -380,27 +380,27 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
       const payload = {
         ...data,
-        supplierId: data.supplierId,
-        buyerId: data.buyerId,
-        isDraft: data.isDraft || false,
+        supplierId: data.supplierId && data.supplierId !== "" ? data.supplierId : null,
+        buyerId: data.buyerId && data.buyerId !== "" ? data.buyerId : null,
+        isDraft: isDraft,
         warehouseId:
-          isWarehouseSupplier && supplierWarehouse
+          isWarehouseSupplier && supplierWarehouse && data.warehouseId !== ""
             ? supplierWarehouse.id
             : null,
-        basis: selectedBasis,
-        carrierId: data.carrierId || null,
-        deliveryLocationId: data.deliveryLocationId || null,
+        basis: selectedBasis && selectedBasis !== "" ? selectedBasis : null,
+        carrierId: data.carrierId && data.carrierId !== "" ? data.carrierId : null,
+        deliveryLocationId: data.deliveryLocationId && data.deliveryLocationId !== "" ? data.deliveryLocationId : null,
         dealDate: data.dealDate ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
-        quantityKg: data.quantityKg ? parseFloat(calculatedKg) : null,
-        quantityLiters: data.quantityLiters
+        quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
+        quantityLiters: data.quantityLiters && data.quantityLiters !== ""
           ? parseFloat(data.quantityLiters)
           : null,
-        density: data.density ? parseFloat(data.density) : null,
+        density: data.density && data.density !== "" ? parseFloat(data.density) : null,
         purchasePrice: purchasePrice,
-        purchasePriceId: purchasePriceId,
+        purchasePriceId: purchasePriceId && purchasePriceId !== "" ? purchasePriceId : null,
         purchasePriceIndex: purchasePriceIndex,
         salePrice: salePrice,
-        salePriceId: salePriceId,
+        salePriceId: salePriceId && salePriceId !== "" ? salePriceId : null,
         salePriceIndex: salePriceIndex,
         purchaseAmount: purchaseAmount,
         saleAmount: saleAmount,

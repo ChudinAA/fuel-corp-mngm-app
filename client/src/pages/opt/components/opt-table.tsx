@@ -217,7 +217,7 @@ export function OptTable({ onEdit, onDelete, onAdd }: OptTableProps) {
               <TableHead className="text-sm font-semibold">Перевозчик</TableHead>
               <TableHead className="text-right text-sm font-semibold">Доставка</TableHead>
               <TableHead className="text-right text-sm font-semibold">Прибыль</TableHead>
-              <TableHead className="text-sm font-semibold">Статус</TableHead>
+              <TableHead className="text-sm font-semibold">Стат</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -291,11 +291,11 @@ export function OptTable({ onEdit, onDelete, onAdd }: OptTableProps) {
                   <TableCell className="text-sm">
                     {deal.isDraft ? (
                       <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
-                        Черновик
+                        Черн
                       </span>
                     ) : (
                       <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
-                        Оформлена
+                        Оф
                       </span>
                     )}
                   </TableCell>

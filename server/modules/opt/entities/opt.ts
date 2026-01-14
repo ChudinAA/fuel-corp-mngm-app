@@ -31,20 +31,18 @@ import { prices } from "../../prices/entities/prices";
 export const opt = pgTable("opt", {
   id: uuid("id").defaultRandom().primaryKey(),
   supplierId: uuid("supplier_id")
-    .notNull()
     .references(() => suppliers.id),
   buyerId: uuid("buyer_id")
-    .notNull()
     .references(() => customers.id),
   warehouseId: uuid("warehouse_id").references(() => warehouses.id),
   transactionId: uuid("transaction_id").references(
     () => warehouseTransactions.id
   ),
-  dealDate: timestamp("deal_date", { mode: "string" }).notNull(),
+  dealDate: timestamp("deal_date", { mode: "string" }),
   basis: text("basis"),
   quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
   density: decimal("density", { precision: 6, scale: 4 }),
-  quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
+  quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }),
   purchasePrice: decimal("purchase_price", { precision: 12, scale: 4 }),
   purchasePriceId: uuid("purchase_price_id").references(() => prices.id),
   purchasePriceIndex: integer("purchase_price_index").default(0),
