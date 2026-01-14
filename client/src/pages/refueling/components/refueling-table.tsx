@@ -6,9 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { 
-  Pencil, 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Pencil,
   Trash2,
   ChevronLeft,
   ChevronRight,
@@ -18,10 +25,13 @@ import {
   MoreVertical,
   FileText,
   AlertCircle,
-  History
+  History,
 } from "lucide-react";
 import { AuditHistoryButton } from "@/components/audit-history-button";
-import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
+import {
+  EntityActionsMenu,
+  EntityAction,
+} from "@/components/entity-actions-menu";
 import {
   Select,
   SelectContent,
@@ -42,7 +52,12 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { formatNumber, formatNumberForTable, formatCurrencyForTable, getProductLabel } from "../utils";
+import {
+  formatNumber,
+  formatNumberForTable,
+  formatCurrencyForTable,
+  getProductLabel,
+} from "../utils";
 import { useRefuelingTable } from "../hooks/use-refueling-table";
 import { PRODUCT_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
@@ -56,7 +71,11 @@ interface RefuelingDealActionsProps {
   onDelete: () => void;
 }
 
-function RefuelingDealActions({ deal, onEdit, onDelete }: RefuelingDealActionsProps) {
+function RefuelingDealActions({
+  deal,
+  onEdit,
+  onDelete,
+}: RefuelingDealActionsProps) {
   const actions: EntityAction[] = [
     {
       id: "edit",
@@ -82,7 +101,7 @@ function RefuelingDealActions({ deal, onEdit, onDelete }: RefuelingDealActionsPr
       audit={{
         entityType: "aircraft_refueling",
         entityId: deal.id,
-        entityName: `Заправка от ${new Date(deal.refuelingDate).toLocaleDateString('ru-RU')}`,
+        entityName: `Заправка от ${new Date(deal.refuelingDate).toLocaleDateString("ru-RU")}`,
       }}
     />
   );
@@ -130,7 +149,10 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
     if (searchInputRef.current && searchInput) {
       const input = searchInputRef.current;
       input.focus();
-      input.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current);
+      input.setSelectionRange(
+        cursorPositionRef.current,
+        cursorPositionRef.current,
+      );
     }
   }, [refuelingDeals]);
 
@@ -149,9 +171,10 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
   }
 
   const allDeals = refuelingDeals?.data || [];
-  const filteredDeals = productTypeFilter === "all" 
-    ? allDeals 
-    : allDeals.filter(deal => deal.productType === productTypeFilter);
+  const filteredDeals =
+    productTypeFilter === "all"
+      ? allDeals
+      : allDeals.filter((deal) => deal.productType === productTypeFilter);
 
   const deals = filteredDeals;
   const total = filteredDeals.length;
@@ -182,7 +205,9 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
             <SelectItem value="all">Все продукты</SelectItem>
             <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
             <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
-            <SelectItem value={PRODUCT_TYPE.SERVICE}>Услуга заправки</SelectItem>
+            <SelectItem value={PRODUCT_TYPE.SERVICE}>
+              Услуга заправки
+            </SelectItem>
           </SelectContent>
         </Select>
         <Button
@@ -204,44 +229,82 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
               <TableHead className="text-sm font-semibold">Продукт</TableHead>
               <TableHead className="text-sm font-semibold">Борт</TableHead>
               <TableHead className="text-sm font-semibold">Поставщик</TableHead>
-              <TableHead className="text-sm font-semibold">Покупатель</TableHead>
-              <TableHead className="text-right text-sm font-semibold">КГ</TableHead>
-              <TableHead className="text-right text-sm font-semibold">Цена пок.</TableHead>
-              <TableHead className="text-right text-sm font-semibold">Покупка</TableHead>
-              <TableHead className="text-right text-sm font-semibold">Цена прод.</TableHead>
-              <TableHead className="text-right text-sm font-semibold">Продажа</TableHead>
-              <TableHead className="text-right text-sm font-semibold">Прибыль</TableHead>
-              <TableHead className="w-[100px] text-right text-sm font-semibold">Действия</TableHead>
+              <TableHead className="text-sm font-semibold">
+                Покупатель
+              </TableHead>
+              <TableHead className="text-right text-sm font-semibold">
+                КГ
+              </TableHead>
+              <TableHead className="text-right text-sm font-semibold">
+                Цена пок.
+              </TableHead>
+              <TableHead className="text-right text-sm font-semibold">
+                Покупка
+              </TableHead>
+              <TableHead className="text-right text-sm font-semibold">
+                Цена прод.
+              </TableHead>
+              <TableHead className="text-right text-sm font-semibold">
+                Продажа
+              </TableHead>
+              <TableHead className="text-right text-sm font-semibold">
+                Прибыль
+              </TableHead>
+              <TableHead className="w-[100px] text-right text-sm font-semibold">
+                Действия
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {deals.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground text-sm">
+                <TableCell
+                  colSpan={12}
+                  className="text-center py-8 text-muted-foreground text-sm"
+                >
                   Нет данных для отображения
                 </TableCell>
               </TableRow>
             ) : (
               deals.map((deal) => (
-                <TableRow key={deal.id}>
-                  <TableCell className="text-xs">{formatDate(deal.refuelingDate)}</TableCell>
+                <TableRow 
+                  key={deal.id}
+                  className={deal.isDraft ? "bg-muted/70 opacity-60" : ""}
+                >
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      <span>{formatDate(deal.refuelingDate)}</span>
+                      {deal.isDraft && (
+                        <Badge
+                          variant="outline"
+                          className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                        >
+                          Черновик
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-sm">
-                    <Badge 
+                    <Badge
                       variant="outline"
                       className={
-                        deal.productType === PRODUCT_TYPE.KEROSENE ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30" :
-                        deal.productType === PRODUCT_TYPE.PVKJ ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" :
-                        ""
+                        deal.productType === PRODUCT_TYPE.KEROSENE
+                          ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"
+                          : deal.productType === PRODUCT_TYPE.PVKJ
+                            ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30"
+                            : ""
                       }
                     >
                       {getProductLabel(deal.productType)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm">{deal.aircraftNumber || '—'}</TableCell>
+                  <TableCell className="text-sm">
+                    {deal.aircraftNumber || "—"}
+                  </TableCell>
                   <TableCell className="text-sm">
                     <TooltipProvider>
                       <div className="flex items-center gap-1.5">
-                        <span>{deal.supplier?.name || 'Не указан'}</span>
+                        <span>{deal.supplier?.name || "Не указан"}</span>
                         {deal.supplier?.isWarehouse && (
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -255,7 +318,9 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
                       </div>
                     </TooltipProvider>
                   </TableCell>
-                  <TableCell className="text-sm">{deal.buyer?.name || 'Не указан'}</TableCell>
+                  <TableCell className="text-sm">
+                    {deal.buyer?.name || "Не указан"}
+                  </TableCell>
                   <TableCell className="text-right font-medium text-sm">
                     <TooltipProvider>
                       <div className="flex items-center justify-end gap-1.5">
@@ -279,22 +344,43 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
                         ? Number(deal.purchasePrice).toFixed(4)
                         : "-"}
                       {deal.purchasePriceModified && (
-                        <span className="text-orange-500" title="Цена закупки была автоматически пересчитана">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                            <line x1="12" y1="9" x2="12" y2="13"/>
-                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        <span
+                          className="text-orange-500"
+                          title="Цена закупки была автоматически пересчитана"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                            <line x1="12" y1="9" x2="12" y2="13" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
                           </svg>
                         </span>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right text-sm">{formatCurrencyForTable(deal.purchaseAmount)}</TableCell>
-                  <TableCell className="text-right text-sm">{formatNumber(deal.salePrice)} ₽/кг</TableCell>
-                  <TableCell className="text-right text-sm">{formatCurrencyForTable(deal.saleAmount)}</TableCell>
-                  <TableCell className="text-right text-green-600 font-medium text-sm">{formatCurrencyForTable(deal.profit)}</TableCell>
+                  <TableCell className="text-right text-sm">
+                    {formatCurrencyForTable(deal.purchaseAmount)}
+                  </TableCell>
+                  <TableCell className="text-right text-sm">
+                    {formatNumber(deal.salePrice)} ₽/кг
+                  </TableCell>
+                  <TableCell className="text-right text-sm">
+                    {formatCurrencyForTable(deal.saleAmount)}
+                  </TableCell>
+                  <TableCell className="text-right text-green-600 font-medium text-sm">
+                    {formatCurrencyForTable(deal.profit)}
+                  </TableCell>
                   <TableCell className="flex items-center justify-end gap-2 py-3">
-                    <RefuelingDealActions 
+                    <RefuelingDealActions
                       deal={deal}
                       onEdit={() => onEdit(deal)}
                       onDelete={() => {
@@ -313,7 +399,8 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Показано {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, total)} из {total}
+            Показано {(page - 1) * pageSize + 1} -{" "}
+            {Math.min(page * pageSize, total)} из {total}
           </p>
           <div className="flex items-center gap-2">
             <Button

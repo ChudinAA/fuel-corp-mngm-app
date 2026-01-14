@@ -5,7 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Pencil,
   Trash2,
@@ -17,7 +24,7 @@ import {
   MoreVertical,
   FileText,
   AlertCircle,
-  History
+  History,
 } from "lucide-react";
 import {
   Dialog,
@@ -37,9 +44,13 @@ import { useOptTable } from "../hooks/use-opt-table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router-dom";
-import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
+import {
+  EntityActionsMenu,
+  EntityAction,
+} from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
 import { ExportButton } from "@/components/export/export-button";
+import { Badge } from "@/components/ui/badge";
 
 interface OptTableProps {
   onEdit: (opt: any) => void;
@@ -54,7 +65,12 @@ interface OptDealActionsProps {
   onShowNotes?: () => void;
 }
 
-function OptDealActions({ deal, onEdit, onDelete, onShowNotes }: OptDealActionsProps) {
+function OptDealActions({
+  deal,
+  onEdit,
+  onDelete,
+  onShowNotes,
+}: OptDealActionsProps) {
   const actions: EntityAction[] = [
     ...(deal.notes && onShowNotes
       ? [
@@ -90,12 +106,11 @@ function OptDealActions({ deal, onEdit, onDelete, onShowNotes }: OptDealActionsP
       audit={{
         entityType: "opt",
         entityId: deal.id,
-        entityName: `Сделка от ${new Date(deal.dealDate).toLocaleDateString('ru-RU')}`,
+        entityName: `Сделка от ${new Date(deal.dealDate).toLocaleDateString("ru-RU")}`,
       }}
     />
   );
 }
-
 
 export function OptTable({ onEdit, onDelete, onAdd }: OptTableProps) {
   const {
@@ -108,7 +123,7 @@ export function OptTable({ onEdit, onDelete, onAdd }: OptTableProps) {
     isLoading,
     deleteMutation,
     handleDelete,
-    isDeletingId // Assuming isDeletingId is available from useOptTable for disabling delete buttons
+    isDeletingId, // Assuming isDeletingId is available from useOptTable for disabling delete buttons
   } = useOptTable();
 
   const { toast } = useToast();
@@ -138,7 +153,10 @@ export function OptTable({ onEdit, onDelete, onAdd }: OptTableProps) {
     if (searchInputRef.current && searchInput) {
       const input = searchInputRef.current;
       input.focus();
-      input.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current);
+      input.setSelectionRange(
+        cursorPositionRef.current,
+        cursorPositionRef.current,
+      );
     }
   }, [optDeals]);
 
@@ -149,7 +167,6 @@ export function OptTable({ onEdit, onDelete, onAdd }: OptTableProps) {
   const formatDateForAudit = (dateStr: string) => {
     return format(new Date(dateStr), "dd.MM.yyyy HH:mm:ss", { locale: ru });
   };
-
 
   if (isLoading) {
     return (
@@ -207,35 +224,72 @@ export function OptTable({ onEdit, onDelete, onAdd }: OptTableProps) {
             <TableRow>
               <TableHead className="text-sm font-semibold">Дата</TableHead>
               <TableHead className="text-sm font-semibold">Поставщик</TableHead>
-              <TableHead className="text-sm font-semibold">Покупатель</TableHead>
-              <TableHead className="text-right text-sm font-semibold">КГ</TableHead>
-              <TableHead className="text-right text-sm font-semibold">Цена пок.</TableHead>
-              <TableHead className="text-right text-sm font-semibold">Покупка</TableHead>
-              <TableHead className="text-right text-sm font-semibold">Цена прод.</TableHead>
-              <TableHead className="text-right text-sm font-semibold">Продажа</TableHead>
-              <TableHead className="text-sm font-semibold">Место доставки</TableHead>
-              <TableHead className="text-sm font-semibold">Перевозчик</TableHead>
-              <TableHead className="text-right text-sm font-semibold">Доставка</TableHead>
-              <TableHead className="text-right text-sm font-semibold">Прибыль</TableHead>
-              <TableHead className="text-sm font-semibold">Статус</TableHead>
+              <TableHead className="text-sm font-semibold">
+                Покупатель
+              </TableHead>
+              <TableHead className="text-right text-sm font-semibold">
+                КГ
+              </TableHead>
+              <TableHead className="text-right text-sm font-semibold">
+                Цена пок.
+              </TableHead>
+              <TableHead className="text-right text-sm font-semibold">
+                Покупка
+              </TableHead>
+              <TableHead className="text-right text-sm font-semibold">
+                Цена прод.
+              </TableHead>
+              <TableHead className="text-right text-sm font-semibold">
+                Продажа
+              </TableHead>
+              <TableHead className="text-sm font-semibold">
+                Место доставки
+              </TableHead>
+              <TableHead className="text-sm font-semibold">
+                Перевозчик
+              </TableHead>
+              <TableHead className="text-right text-sm font-semibold">
+                Доставка
+              </TableHead>
+              <TableHead className="text-right text-sm font-semibold">
+                Прибыль
+              </TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {deals.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={14} className="text-center py-8 text-muted-foreground text-sm">
+                <TableCell
+                  colSpan={14}
+                  className="text-center py-8 text-muted-foreground text-sm"
+                >
                   Нет данных для отображения
                 </TableCell>
               </TableRow>
             ) : (
               deals.map((deal) => (
-                <TableRow key={deal.id} className={deal.isDraft ? "bg-muted/50 opacity-80" : ""}>
-                  <TableCell className="text-xs">{formatDate(deal.dealDate)}</TableCell>
+                <TableRow
+                  key={deal.id}
+                  className={deal.isDraft ? "bg-muted/70 opacity-60" : ""}
+                >
+                  <TableCell className="text-xs">
+                    <div className="flex flex-col gap-1">
+                      <span>{formatDate(deal.dealDate)}</span>
+                      {deal.isDraft && (
+                        <Badge
+                          variant="outline"
+                          className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                        >
+                          Черновик
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-sm">
                     <TooltipProvider>
                       <div className="flex items-center gap-1.5">
-                        <span>{deal.supplier?.name || 'Не указан'}</span>
+                        <span>{deal.supplier?.name || "Не указан"}</span>
                         {deal.supplier?.isWarehouse && (
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -249,7 +303,9 @@ export function OptTable({ onEdit, onDelete, onAdd }: OptTableProps) {
                       </div>
                     </TooltipProvider>
                   </TableCell>
-                  <TableCell className="text-sm">{deal.buyer?.name || 'Не указан'}</TableCell>
+                  <TableCell className="text-sm">
+                    {deal.buyer?.name || "Не указан"}
+                  </TableCell>
                   <TableCell className="text-right font-medium text-sm">
                     <TooltipProvider>
                       <div className="flex items-center justify-end gap-1.5">
@@ -269,35 +325,55 @@ export function OptTable({ onEdit, onDelete, onAdd }: OptTableProps) {
                   </TableCell>
                   <TableCell className="text-right text-sm">
                     <div className="flex items-center justify-end gap-1">
-                      {deal.purchasePrice ? Number(deal.purchasePrice).toFixed(4) : "-"}
+                      {deal.purchasePrice
+                        ? Number(deal.purchasePrice).toFixed(4)
+                        : "-"}
                       {deal.purchasePriceModified && (
-                        <span className="text-orange-500" title="Цена закупки была автоматически пересчитана">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                            <line x1="12" y1="9" x2="12" y2="13"/>
-                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        <span
+                          className="text-orange-500"
+                          title="Цена закупки была автоматически пересчитана"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                            <line x1="12" y1="9" x2="12" y2="13" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
                           </svg>
                         </span>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right text-sm">{formatCurrencyForTable(deal.purchaseAmount)}</TableCell>
-                  <TableCell className="text-right text-sm">{formatNumberForTable(deal.salePrice)} ₽/кг</TableCell>
-                  <TableCell className="text-right text-sm">{formatCurrencyForTable(deal.saleAmount)}</TableCell>
-                  <TableCell className="text-sm">{deal.deliveryLocation?.name || '—'}</TableCell>
-                  <TableCell className="text-sm">{deal.carrier?.name || '—'}</TableCell>
-                  <TableCell className="text-right text-sm">{deal.deliveryCost ? formatCurrencyForTable(deal.deliveryCost) : '—'}</TableCell>
-                  <TableCell className="text-right text-green-600 font-medium text-sm">{formatCurrencyForTable(deal.profit)}</TableCell>
+                  <TableCell className="text-right text-sm">
+                    {formatCurrencyForTable(deal.purchaseAmount)}
+                  </TableCell>
+                  <TableCell className="text-right text-sm">
+                    {formatNumberForTable(deal.salePrice)} ₽/кг
+                  </TableCell>
+                  <TableCell className="text-right text-sm">
+                    {formatCurrencyForTable(deal.saleAmount)}
+                  </TableCell>
                   <TableCell className="text-sm">
-                    {deal.isDraft ? (
-                      <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
-                        Черновик
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
-                        Оформлена
-                      </span>
-                    )}
+                    {deal.deliveryLocation?.name || "—"}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {deal.carrier?.name || "—"}
+                  </TableCell>
+                  <TableCell className="text-right text-sm">
+                    {deal.deliveryCost
+                      ? formatCurrencyForTable(deal.deliveryCost)
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-right text-green-600 font-medium text-sm">
+                    {formatCurrencyForTable(deal.profit)}
                   </TableCell>
                   <TableCell className="flex items-center gap-1">
                     <OptDealActions
@@ -327,7 +403,8 @@ export function OptTable({ onEdit, onDelete, onAdd }: OptTableProps) {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Показано {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, total)} из {total}
+            Показано {(page - 1) * pageSize + 1} -{" "}
+            {Math.min(page * pageSize, total)} из {total}
           </p>
           <div className="flex items-center gap-2">
             <Button

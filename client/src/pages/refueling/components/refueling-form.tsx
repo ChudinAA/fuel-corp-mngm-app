@@ -600,7 +600,8 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
             disabled={createMutation.isPending || updateMutation.isPending}
             onClick={() => {
               form.clearErrors();
-              form.handleSubmit((data) => onSubmit(data, true))();
+              const values = form.getValues();
+              onSubmit(values, true);
             }}
           >
             {createMutation.isPending || updateMutation.isPending ? (
