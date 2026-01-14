@@ -24,54 +24,72 @@ import {
 } from "../../warehouses/entities/warehouses";
 import { prices } from "../../prices/entities/prices";
 
-export const aircraftRefueling = pgTable("aircraft_refueling", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  refuelingDate: timestamp("refueling_date", { mode: "string" }).notNull(),
-  productType: text("product_type").notNull(),
-  aircraftNumber: text("aircraft_number"),
-  orderNumber: text("order_number"),
-  supplierId: uuid("supplier_id")
-    .notNull()
-    .references(() => suppliers.id),
-  basis: text("basis"),
-  buyerId: uuid("buyer_id")
-    .notNull()
-    .references(() => customers.id),
-  warehouseId: uuid("warehouse_id").references(() => warehouses.id),
-  transactionId: uuid("transaction_id").references(
-    () => warehouseTransactions.id
-  ),
-  quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
-  density: decimal("density", { precision: 6, scale: 4 }),
-  quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
-  purchasePrice: decimal("purchase_price", { precision: 12, scale: 4 }),
-  purchasePriceId: uuid("purchase_price_id").references(() => prices.id),
-  purchasePriceIndex: integer("purchase_price_index").default(0),
-  salePrice: decimal("sale_price", { precision: 12, scale: 4 }),
-  salePriceId: uuid("sale_price_id").references(() => prices.id),
-  salePriceIndex: integer("sale_price_index").default(0),
-  purchaseAmount: decimal("purchase_amount", { precision: 15, scale: 2 }),
-  saleAmount: decimal("sale_amount", { precision: 15, scale: 2 }),
-  profit: decimal("profit", { precision: 15, scale: 2 }),
-  contractNumber: text("contract_number"),
-  notes: text("notes"),
-  isApproxVolume: boolean("is_approx_volume").default(false),
-  purchasePriceModified: boolean("purchase_price_modified").default(false),
-  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: "string" }),
-  createdById: uuid("created_by_id").references(() => users.id),
-  updatedById: uuid("updated_by_id").references(() => users.id),
-  deletedAt: timestamp("deleted_at", { mode: "string" }),
-  deletedById: uuid("deleted_by_id").references(() => users.id),
-  isDraft: boolean("is_draft").default(false).notNull()
-}, (table) => ({
-  refuelingDateIdx: index("aircraft_refueling_date_idx").on(table.refuelingDate),
-  createdAtIdx: index("aircraft_refueling_created_at_idx").on(table.createdAt),
-  supplierBasisIdx: index("aircraft_refueling_supplier_basis_idx").on(table.supplierId, table.basis),
-  buyerBasisIdx: index("aircraft_refueling_buyer_basis_idx").on(table.buyerId, table.basis),
-  productTypeIdx: index("aircraft_refueling_product_type_idx").on(table.productType),
-  warehouseIdx: index("aircraft_refueling_warehouse_idx").on(table.warehouseId),
-}));
+export const aircraftRefueling = pgTable(
+  "aircraft_refueling",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    refuelingDate: timestamp("refueling_date", { mode: "string" }).notNull(),
+    productType: text("product_type").notNull(),
+    aircraftNumber: text("aircraft_number"),
+    orderNumber: text("order_number"),
+    supplierId: uuid("supplier_id")
+      .notNull()
+      .references(() => suppliers.id),
+    basis: text("basis"),
+    buyerId: uuid("buyer_id")
+      .notNull()
+      .references(() => customers.id),
+    warehouseId: uuid("warehouse_id").references(() => warehouses.id),
+    transactionId: uuid("transaction_id").references(
+      () => warehouseTransactions.id,
+    ),
+    quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
+    density: decimal("density", { precision: 6, scale: 4 }),
+    quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
+    purchasePrice: decimal("purchase_price", { precision: 12, scale: 4 }),
+    purchasePriceId: uuid("purchase_price_id").references(() => prices.id),
+    purchasePriceIndex: integer("purchase_price_index").default(0),
+    salePrice: decimal("sale_price", { precision: 12, scale: 4 }),
+    salePriceId: uuid("sale_price_id").references(() => prices.id),
+    salePriceIndex: integer("sale_price_index").default(0),
+    purchaseAmount: decimal("purchase_amount", { precision: 15, scale: 2 }),
+    saleAmount: decimal("sale_amount", { precision: 15, scale: 2 }),
+    profit: decimal("profit", { precision: 15, scale: 2 }),
+    contractNumber: text("contract_number"),
+    notes: text("notes"),
+    isApproxVolume: boolean("is_approx_volume").default(false),
+    purchasePriceModified: boolean("purchase_price_modified").default(false),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" }),
+    createdById: uuid("created_by_id").references(() => users.id),
+    updatedById: uuid("updated_by_id").references(() => users.id),
+    deletedAt: timestamp("deleted_at", { mode: "string" }),
+    deletedById: uuid("deleted_by_id").references(() => users.id),
+    isDraft: boolean("is_draft").default(false).notNull(),
+  },
+  (table) => ({
+    refuelingDateIdx: index("aircraft_refueling_date_idx").on(
+      table.refuelingDate,
+    ),
+    createdAtIdx: index("aircraft_refueling_created_at_idx").on(
+      table.createdAt,
+    ),
+    supplierBasisIdx: index("aircraft_refueling_supplier_basis_idx").on(
+      table.supplierId,
+      table.basis,
+    ),
+    buyerBasisIdx: index("aircraft_refueling_buyer_basis_idx").on(
+      table.buyerId,
+      table.basis,
+    ),
+    productTypeIdx: index("aircraft_refueling_product_type_idx").on(
+      table.productType,
+    ),
+    warehouseIdx: index("aircraft_refueling_warehouse_idx").on(
+      table.warehouseId,
+    ),
+  }),
+);
 
 // ============ RELATIONS ============
 
@@ -110,13 +128,13 @@ export const aircraftRefuelingRelations = relations(
       fields: [aircraftRefueling.updatedById],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 // ============ INSERT SCHEMAS ============
 
 export const insertAircraftRefuelingSchema = createInsertSchema(
-  aircraftRefueling
+  aircraftRefueling,
 )
   .omit({ id: true, createdAt: true })
   .extend({
@@ -124,24 +142,59 @@ export const insertAircraftRefuelingSchema = createInsertSchema(
     productType: z.string().nullable().optional(),
     supplierId: z.string().nullable().optional(),
     buyerId: z.string().nullable().optional(),
+    quantityLiters: z.number().nullable().optional(),
+    density: z.number().nullable().optional(),
     quantityKg: z.number().nullable().optional(),
+    purchasePrice: z.number().nullable().optional(),
+    purchasePriceId: z.string().nullable().optional(),
+    purchasePriceIndex: z.number().nullable().optional(),
+    salePrice: z.number().nullable().optional(),
+    salePriceId: z.string().nullable().optional(),
+    salePriceIndex: z.number().nullable().optional(),
+    purchaseAmount: z.number().nullable().optional(),
+    saleAmount: z.number().nullable().optional(),
+    profit: z.number().nullable().optional(),
+    contractNumber: z.string().nullable().optional(),
+    notes: z.string().nullable().optional(),
+    isApproxVolume: z.boolean().optional(),
     isDraft: z.boolean().default(false),
-  }).superRefine((data, ctx) => {
+  })
+  .superRefine((data, ctx) => {
     if (!data.isDraft) {
       if (!data.refuelingDate) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Дата заправки обязательна", path: ["refuelingDate"] });
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Дата заправки обязательна",
+          path: ["refuelingDate"],
+        });
       }
       if (!data.productType) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Тип продукта обязателен", path: ["productType"] });
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Тип продукта обязателен",
+          path: ["productType"],
+        });
       }
       if (!data.supplierId) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Поставщик обязателен", path: ["supplierId"] });
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Поставщик обязателен",
+          path: ["supplierId"],
+        });
       }
       if (!data.buyerId) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Покупатель обязателен", path: ["buyerId"] });
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Покупатель обязателен",
+          path: ["buyerId"],
+        });
       }
       if (data.quantityKg === undefined || data.quantityKg === null) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Количество (кг) обязательно", path: ["quantityKg"] });
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Количество (кг) обязательно",
+          path: ["quantityKg"],
+        });
       }
     }
   });
