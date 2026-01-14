@@ -118,14 +118,14 @@ export const optRelations = relations(opt, ({ one }) => ({
 // ============ INSERT SCHEMAS ============
 
 export const insertOptSchema = z.object({
-  supplierId: z.string(),
-  buyerId: z.string(),
+  supplierId: z.string().nullable().optional(),
+  buyerId: z.string().nullable().optional(),
   warehouseId: z.string().nullable().optional(),
   basis: z.string().nullable().optional(),
-  dealDate: z.string(),
+  dealDate: z.string().nullable().optional(),
   quantityLiters: z.number().nullable().optional(),
   density: z.number().nullable().optional(),
-  quantityKg: z.number(),
+  quantityKg: z.number().nullable().optional(),
   purchasePrice: z.number().nullable().optional(),
   purchasePriceId: z.string().nullable().optional(),
   purchasePriceIndex: z.number().nullable().optional(),
@@ -142,8 +142,24 @@ export const insertOptSchema = z.object({
   contractNumber: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   isApproxVolume: z.boolean().optional(),
+  isDraft: z.boolean().default(false),
   createdById: z.string().nullable().optional(),
   updatedById: z.string().nullable().optional(),
+}).superRefine((data, ctx) => {
+  if (!data.isDraft) {
+    if (!data.supplierId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Поставщик обязателен", path: ["supplierId"] });
+    }
+    if (!data.buyerId) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Покупатель обязателен", path: ["buyerId"] });
+    }
+    if (!data.dealDate) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Дата сделки обязательна", path: ["dealDate"] });
+    }
+    if (data.quantityKg === undefined || data.quantityKg === null) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Количество (кг) обязательно", path: ["quantityKg"] });
+    }
+  }
 });
 
 // ============ TYPES ============

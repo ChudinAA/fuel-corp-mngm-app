@@ -120,7 +120,30 @@ export const insertAircraftRefuelingSchema = createInsertSchema(
 )
   .omit({ id: true, createdAt: true })
   .extend({
-    refuelingDate: z.string(), // timestamp as string
+    refuelingDate: z.string().nullable().optional(),
+    productType: z.string().nullable().optional(),
+    supplierId: z.string().nullable().optional(),
+    buyerId: z.string().nullable().optional(),
+    quantityKg: z.number().nullable().optional(),
+    isDraft: z.boolean().default(false),
+  }).superRefine((data, ctx) => {
+    if (!data.isDraft) {
+      if (!data.refuelingDate) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Дата заправки обязательна", path: ["refuelingDate"] });
+      }
+      if (!data.productType) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Тип продукта обязателен", path: ["productType"] });
+      }
+      if (!data.supplierId) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Поставщик обязателен", path: ["supplierId"] });
+      }
+      if (!data.buyerId) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Покупатель обязателен", path: ["buyerId"] });
+      }
+      if (data.quantityKg === undefined || data.quantityKg === null) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Количество (кг) обязательно", path: ["quantityKg"] });
+      }
+    }
   });
 
 // ============ TYPES ============
