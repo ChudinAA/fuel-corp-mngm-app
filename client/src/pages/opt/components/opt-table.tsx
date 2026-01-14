@@ -217,19 +217,20 @@ export function OptTable({ onEdit, onDelete, onAdd }: OptTableProps) {
               <TableHead className="text-sm font-semibold">Перевозчик</TableHead>
               <TableHead className="text-right text-sm font-semibold">Доставка</TableHead>
               <TableHead className="text-right text-sm font-semibold">Прибыль</TableHead>
+              <TableHead className="text-sm font-semibold">Статус</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {deals.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground text-sm">
+                <TableCell colSpan={14} className="text-center py-8 text-muted-foreground text-sm">
                   Нет данных для отображения
                 </TableCell>
               </TableRow>
             ) : (
               deals.map((deal) => (
-                <TableRow key={deal.id}>
+                <TableRow key={deal.id} className={deal.isDraft ? "bg-muted/50 opacity-80" : ""}>
                   <TableCell className="text-xs">{formatDate(deal.dealDate)}</TableCell>
                   <TableCell className="text-sm">
                     <TooltipProvider>
@@ -287,6 +288,17 @@ export function OptTable({ onEdit, onDelete, onAdd }: OptTableProps) {
                   <TableCell className="text-sm">{deal.carrier?.name || '—'}</TableCell>
                   <TableCell className="text-right text-sm">{deal.deliveryCost ? formatCurrencyForTable(deal.deliveryCost) : '—'}</TableCell>
                   <TableCell className="text-right text-green-600 font-medium text-sm">{formatCurrencyForTable(deal.profit)}</TableCell>
+                  <TableCell className="text-sm">
+                    {deal.isDraft ? (
+                      <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                        Черновик
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
+                        Оформлена
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell className="flex items-center gap-1">
                     <OptDealActions
                       deal={deal}

@@ -62,6 +62,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       quantityKg: "",
       notes: "",
       isApproxVolume: false,
+      isDraft: editData?.isDraft || false,
       selectedPurchasePriceId: "",
       selectedSalePriceId: "",
       basis: "",
@@ -282,6 +283,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         ...data,
         supplierId: data.supplierId,
         buyerId: data.buyerId,
+        isDraft: data.isDraft || false,
         warehouseId:
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id
@@ -354,6 +356,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         ...data,
         supplierId: data.supplierId,
         buyerId: data.buyerId,
+        isDraft: data.isDraft || false,
         warehouseId:
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id
@@ -414,58 +417,61 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   const onSubmit = (data: RefuelingFormData) => {
     const productType = watchProductType;
 
-    // Проверяем наличие количества
-    if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
-      toast({
-        title: "Ошибка валидации",
-        description: "Укажите корректное количество топлива.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Если не черновик, выполняем полную валидацию
+    if (!data.isDraft) {
+      // Проверяем наличие количества
+      if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
+        toast({
+          title: "Ошибка валидации",
+          description: "Укажите корректное количество топлива.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    // Проверяем наличие ошибок в ценах
-    if (
-      !isWarehouseSupplier &&
-      productType !== PRODUCT_TYPE.SERVICE &&
-      purchasePrice === null
-    ) {
-      toast({
-        title: "Ошибка валидации",
-        description:
-          "Не указана цена покупки. Выберите цену или проверьте настройки поставщика.",
-        variant: "destructive",
-      });
-      return;
-    }
+      // Проверяем наличие ошибок в ценах
+      if (
+        !isWarehouseSupplier &&
+        productType !== PRODUCT_TYPE.SERVICE &&
+        purchasePrice === null
+      ) {
+        toast({
+          title: "Ошибка валидации",
+          description:
+            "Не указана цена покупки. Выберите цену или проверьте настройки поставщика.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (salePrice === null) {
-      toast({
-        title: "Ошибка валидации",
-        description:
-          "Не указана цена продажи. Выберите цену или проверьте настройки покупателя.",
-        variant: "destructive",
-      });
-      return;
-    }
+      if (salePrice === null) {
+        toast({
+          title: "Ошибка валидации",
+          description:
+            "Не указана цена продажи. Выберите цену или проверьте настройки покупателя.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    // Проверяем достаточность объема на складе
-    if (warehouseStatus.status === "error") {
-      toast({
-        title: "Ошибка валидации",
-        description: warehouseStatus.message,
-        variant: "destructive",
-      });
-      return;
-    }
+      // Проверяем достаточность объема на складе
+      if (warehouseStatus.status === "error") {
+        toast({
+          title: "Ошибка валидации",
+          description: warehouseStatus.message,
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (contractVolumeStatus.status === "error") {
-      toast({
-        title: "Ошибка валидации",
-        description: contractVolumeStatus.message,
-        variant: "destructive",
-      });
-      return;
+      if (contractVolumeStatus.status === "error") {
+        toast({
+          title: "Ошибка валидации",
+          description: contractVolumeStatus.message,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     if (editData) {
@@ -535,24 +541,45 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="isApproxVolume"
-            render={({ field }) => (
-              <FormItem className="flex items-center gap-2 space-y-0 pb-2">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    data-testid="checkbox-approx-volume"
-                  />
-                </FormControl>
-                <FormLabel className="text-sm font-normal cursor-pointer">
-                  Примерный объем (требует уточнения)
-                </FormLabel>
-              </FormItem>
-            )}
-          />
+          <div className="flex flex-col gap-4">
+            <FormField
+              control={form.control}
+              name="isApproxVolume"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="checkbox-approx-volume"
+                    />
+                  </FormControl>
+                  <FormLabel className="text-sm font-normal cursor-pointer">
+                    Примерный объем (требует уточнения)
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="isDraft"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="checkbox-is-draft"
+                    />
+                  </FormControl>
+                  <FormLabel className="text-sm font-normal cursor-pointer">
+                    Сохранить как черновик
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
 
         <div className="flex justify-end gap-4 pt-4 border-t">
@@ -569,10 +596,27 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
           >
             {editData ? "Отмена" : "Очистить"}
           </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={createMutation.isPending || updateMutation.isPending}
+            onClick={() => {
+              form.setValue("isDraft", true);
+              form.handleSubmit(onSubmit)();
+            }}
+          >
+            {createMutation.isPending || updateMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : null}
+            Сохранить черновик
+          </Button>
+
           <Button
             type="submit"
             disabled={createMutation.isPending || updateMutation.isPending}
             data-testid="button-submit-refueling"
+            onClick={() => form.setValue("isDraft", false)}
           >
             {createMutation.isPending || updateMutation.isPending ? (
               <>
@@ -581,7 +625,6 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
               </>
             ) : (
               <>
-                <Plus className="mr-2 h-4 w-4" />
                 {editData ? "Сохранить изменения" : "Создать запись"}
               </>
             )}
