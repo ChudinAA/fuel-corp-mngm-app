@@ -31,8 +31,6 @@ import type { OptFormData } from "../schemas";
 import { AddLogisticsDialog } from "@/pages/directories/logistics-dialog";
 import { AddDeliveryCostDialog } from "@/pages/delivery/components/delivery-cost-dialog";
 import { useAuth } from "@/hooks/use-auth";
-import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
-import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 
 interface VolumeInputSectionProps {
   form: UseFormReturn<OptFormData>;
@@ -153,18 +151,14 @@ interface LogisticsSectionProps {
   form: UseFormReturn<OptFormData>;
   carriers?: LogisticsCarrier[];
   deliveryLocations?: LogisticsDeliveryLocation[];
-  selectedSalePriceId: string;
-  finalKg: number;
-  isEditing: boolean;
+  contractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
 }
 
 export function LogisticsSection({
   form,
   carriers,
   deliveryLocations,
-  selectedSalePriceId,
-  finalKg,
-  isEditing,
+  contractVolumeStatus,
 }: LogisticsSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -183,14 +177,6 @@ export function LogisticsSection({
       form.setValue("carrierId", id);
     }
   };
-
-  // Логика проверки объема по договору
-  const contractVolumeStatus = useContractVolume({
-    priceId: parsePriceCompositeId(selectedSalePriceId).priceId,
-    currentQuantityKg: finalKg,
-    isEditing,
-    mode: "opt",
-  });
 
   return (
     <Card>

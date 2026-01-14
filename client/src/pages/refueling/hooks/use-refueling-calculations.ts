@@ -4,6 +4,8 @@ import type { Supplier, Warehouse, Price } from "@shared/schema";
 import { PRODUCT_TYPE } from "@shared/constants";
 import { useQuantityCalculation } from "../../shared/hooks/use-quantity-calculation";
 import { usePriceExtraction } from "../../shared/hooks/use-price-extraction";
+import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
+import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
 
 interface UseRefuelingCalculationsProps {
   inputMode: "liters" | "kg";
@@ -105,6 +107,14 @@ export function useRefuelingCalculations({
 
   const warehouseStatus = getWarehouseStatus();
 
+  // Логика проверки объема по договору
+  const contractVolumeStatus = useContractVolume({
+    priceId: parsePriceCompositeId(selectedSalePriceId).priceId,
+    currentQuantityKg: finalKg,
+    isEditing: isEditing,
+    mode: "refueling",
+  });
+  
   return {
     calculatedKg,
     finalKg,
@@ -115,5 +125,6 @@ export function useRefuelingCalculations({
     agentFee,
     profit,
     warehouseStatus,
+    contractVolumeStatus,
   };
 }

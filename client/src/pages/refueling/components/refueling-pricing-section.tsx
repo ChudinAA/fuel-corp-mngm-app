@@ -22,10 +22,8 @@ import { formatNumber, formatCurrency } from "../utils";
 import { PRODUCT_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
-import { useContractVolume } from "../../shared/hooks/use-contract-volume";
 import { Button } from "@/components/ui/button";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
-import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 
 interface RefuelingPricingSectionProps {
   form: UseFormReturn<RefuelingFormData>;
@@ -43,6 +41,7 @@ interface RefuelingPricingSectionProps {
   profit: number | null;
   agentFee: number;
   warehouseStatus: { status: "ok" | "warning" | "error"; message: string };
+  contractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
   productType: string;
 }
 
@@ -62,17 +61,10 @@ export function RefuelingPricingSection({
   profit,
   agentFee,
   warehouseStatus,
+  contractVolumeStatus,
   productType,
 }: RefuelingPricingSectionProps) {
   const { hasPermission } = useAuth();
-
-  // Логика проверки объема по договору
-  const contractVolumeStatus = useContractVolume({
-    priceId: parsePriceCompositeId(selectedSalePriceId).priceId,
-    currentQuantityKg: parseFloat(form.watch("quantityKg") || "0"),
-    isEditing: !!form.getValues("id" as any),
-    mode: "refueling",
-  });
 
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
   const handlePurchasePriceCreated = (id: string) => {

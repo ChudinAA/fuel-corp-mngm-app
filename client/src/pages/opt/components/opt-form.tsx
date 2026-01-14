@@ -8,9 +8,25 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Plus, Loader2 } from "lucide-react";
-import type { Supplier, Base, Customer, Warehouse, Price, DeliveryCost, LogisticsCarrier, LogisticsDeliveryLocation } from "@shared/schema";
+import type {
+  Supplier,
+  Base,
+  Customer,
+  Warehouse,
+  Price,
+  DeliveryCost,
+  LogisticsCarrier,
+  LogisticsDeliveryLocation,
+} from "@shared/schema";
 import { OptMainFields } from "./opt-main-fields";
 import { OptPricingSection } from "./opt-pricing-section";
 import { VolumeInputSection } from "./opt-form-sections";
@@ -23,16 +39,15 @@ import { BASE_TYPE } from "@shared/constants";
 import { useAutoPriceSelection } from "../../shared/hooks/use-auto-price-selection";
 import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 
-export function OptForm({ 
-  onSuccess, 
-  editData 
-}: OptFormProps) {
+export function OptForm({ onSuccess, editData }: OptFormProps) {
   const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
   const [selectedBasis, setSelectedBasis] = useState<string>("");
-  const [selectedPurchasePriceId, setSelectedPurchasePriceId] = useState<string>("");
+  const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
+    useState<string>("");
   const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
-  const [initialWarehouseBalance, setInitialWarehouseBalance] = useState<number>(0);
+  const [initialWarehouseBalance, setInitialWarehouseBalance] =
+    useState<number>(0);
   const isEditing = !!editData;
 
   const form = useForm<OptFormData>({
@@ -95,9 +110,11 @@ export function OptForm({
   const watchCarrierId = form.watch("carrierId");
   const watchDeliveryLocationId = form.watch("deliveryLocationId");
 
-  const selectedSupplier = suppliers?.find(s => s.id === watchSupplierId);
+  const selectedSupplier = suppliers?.find((s) => s.id === watchSupplierId);
   const isWarehouseSupplier = selectedSupplier?.isWarehouse || false;
-  const supplierWarehouse = warehouses?.find(w => w.supplierId === watchSupplierId);
+  const supplierWarehouse = warehouses?.find(
+    (w) => w.supplierId === watchSupplierId,
+  );
 
   // Use filtering hook
   const {
@@ -134,6 +151,7 @@ export function OptForm({
     saleAmount,
     profit,
     deliveryTariff,
+    contractVolumeStatus,
   } = useOptCalculations({
     inputMode,
     quantityLiters: watchLiters,
@@ -150,22 +168,25 @@ export function OptForm({
     carrierId: watchCarrierId,
     deliveryLocationId: watchDeliveryLocationId,
     bases: wholesaleBases,
+    isEditing: isEditing,
   });
 
   // Автоматический выбор базиса при выборе поставщика
   useEffect(() => {
     if (watchSupplierId && suppliers && allBases) {
-      const supplier = suppliers.find(s => s.id === watchSupplierId);
+      const supplier = suppliers.find((s) => s.id === watchSupplierId);
       if (supplier?.baseIds && supplier.baseIds.length > 0) {
         const baseId = supplier.baseIds[0];
-        const base = allBases.find(b => b.id === baseId && b.baseType === BASE_TYPE.WHOLESALE);
+        const base = allBases.find(
+          (b) => b.id === baseId && b.baseType === BASE_TYPE.WHOLESALE,
+        );
         if (base) {
           setSelectedBasis(base.name);
         }
       }
 
       if (supplier?.isWarehouse) {
-        const warehouse = warehouses?.find(w => w.supplierId === supplier.id);
+        const warehouse = warehouses?.find((w) => w.supplierId === supplier.id);
         if (warehouse) {
           form.setValue("warehouseId", warehouse.id);
         }
@@ -187,28 +208,38 @@ export function OptForm({
     setSelectedSalePriceId,
     formSetValue: form.setValue,
   });
-  
+
   // Update form when editData changes
   useEffect(() => {
     if (editData && suppliers && customers && allBases && warehouses) {
-      const supplier = suppliers.find(s => s.name === editData.supplierId || s.id === editData.supplierId);
-      const buyer = customers.find(c => c.name === editData.buyerId || c.id === editData.buyerId);
+      const supplier = suppliers.find(
+        (s) => s.name === editData.supplierId || s.id === editData.supplierId,
+      );
+      const buyer = customers.find(
+        (c) => c.name === editData.buyerId || c.id === editData.buyerId,
+      );
 
       if (editData.basis) {
         setSelectedBasis(editData.basis);
       }
 
-      const purchasePriceCompositeId = editData.purchasePriceId && editData.purchasePriceIndex !== undefined && editData.purchasePriceIndex !== null
-        ? `${editData.purchasePriceId}-${editData.purchasePriceIndex}`
-        : editData.purchasePriceId || "";
+      const purchasePriceCompositeId =
+        editData.purchasePriceId &&
+        editData.purchasePriceIndex !== undefined &&
+        editData.purchasePriceIndex !== null
+          ? `${editData.purchasePriceId}-${editData.purchasePriceIndex}`
+          : editData.purchasePriceId || "";
 
-      const salePriceCompositeId = editData.salePriceId && editData.salePriceIndex !== undefined && editData.salePriceIndex !== null
-        ? `${editData.salePriceId}-${editData.salePriceIndex}`
-        : editData.salePriceId || "";
+      const salePriceCompositeId =
+        editData.salePriceId &&
+        editData.salePriceIndex !== undefined &&
+        editData.salePriceIndex !== null
+          ? `${editData.salePriceId}-${editData.salePriceIndex}`
+          : editData.salePriceId || "";
 
       // Сохраняем изначальный остаток на складе (с учетом текущей сделки)
       if (editData.warehouseId) {
-        const warehouse = warehouses.find(w => w.id === editData.warehouseId);
+        const warehouse = warehouses.find((w) => w.id === editData.warehouseId);
         if (warehouse) {
           const currentBalance = parseFloat(warehouse.currentBalance || "0");
           const dealQuantity = parseFloat(editData.quantityKg || "0");
@@ -253,20 +284,25 @@ export function OptForm({
         selectedSalePriceId,
         purchasePrices,
         salePrices,
-        isWarehouseSupplier
+        isWarehouseSupplier,
       );
 
       const payload = {
         ...data,
         supplierId: data.supplierId,
         buyerId: data.buyerId,
-        warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
+        warehouseId:
+          isWarehouseSupplier && supplierWarehouse
+            ? supplierWarehouse.id
+            : null,
         basis: selectedBasis,
         carrierId: data.carrierId || null,
         deliveryLocationId: data.deliveryLocationId || null,
         dealDate: format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss"),
         quantityKg: parseFloat(calculatedKg),
-        quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
+        quantityLiters: data.quantityLiters
+          ? parseFloat(data.quantityLiters)
+          : null,
         density: data.density ? parseFloat(data.density) : null,
         purchasePrice: purchasePrice,
         purchasePriceId: purchasePriceId,
@@ -284,13 +320,18 @@ export function OptForm({
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
-          return key?.startsWith('/api/opt') || key?.startsWith('/api/warehouses');
-        }
+          return (
+            key?.startsWith("/api/opt") || key?.startsWith("/api/warehouses")
+          );
+        },
       });
-      toast({ title: "Сделка создана", description: "Оптовая сделка успешно сохранена" });
+      toast({
+        title: "Сделка создана",
+        description: "Оптовая сделка успешно сохранена",
+      });
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
       setSelectedBasis("");
@@ -312,10 +353,10 @@ export function OptForm({
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast({ 
-        title: "Ошибка", 
-        description: error.message, 
-        variant: "destructive" 
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
@@ -332,20 +373,25 @@ export function OptForm({
         selectedSalePriceId,
         purchasePrices,
         salePrices,
-        isWarehouseSupplier
+        isWarehouseSupplier,
       );
 
       const payload = {
         ...data,
         supplierId: data.supplierId,
         buyerId: data.buyerId,
-        warehouseId: isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
+        warehouseId:
+          isWarehouseSupplier && supplierWarehouse
+            ? supplierWarehouse.id
+            : null,
         basis: selectedBasis,
         carrierId: data.carrierId || null,
         deliveryLocationId: data.deliveryLocationId || null,
         dealDate: format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss"),
         quantityKg: parseFloat(calculatedKg),
-        quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
+        quantityLiters: data.quantityLiters
+          ? parseFloat(data.quantityLiters)
+          : null,
         density: data.density ? parseFloat(data.density) : null,
         purchasePrice: purchasePrice,
         purchasePriceId: purchasePriceId,
@@ -363,13 +409,18 @@ export function OptForm({
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
-          return key?.startsWith('/api/opt') || key?.startsWith('/api/warehouses');
-        }
+          return (
+            key?.startsWith("/api/opt") || key?.startsWith("/api/warehouses")
+          );
+        },
       });
-      toast({ title: "Сделка обновлена", description: "Оптовая сделка успешно обновлена" });
+      toast({
+        title: "Сделка обновлена",
+        description: "Оптовая сделка успешно обновлена",
+      });
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
       setSelectedBasis("");
@@ -391,10 +442,10 @@ export function OptForm({
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast({ 
-        title: "Ошибка", 
-        description: error.message, 
-        variant: "destructive" 
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
@@ -404,8 +455,9 @@ export function OptForm({
     if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
       toast({
         title: "Ошибка: отсутствует объем",
-        description: "Укажите корректное количество топлива в килограммах или литрах.",
-        variant: "destructive"
+        description:
+          "Укажите корректное количество топлива в килограммах или литрах.",
+        variant: "destructive",
       });
       return;
     }
@@ -414,8 +466,9 @@ export function OptForm({
     if (!isWarehouseSupplier && purchasePrice === null) {
       toast({
         title: "Ошибка: отсутствует цена покупки",
-        description: "Не указана цена покупки. Выберите цену из списка или проверьте настройки поставщика и базиса.",
-        variant: "destructive"
+        description:
+          "Не указана цена покупки. Выберите цену из списка или проверьте настройки поставщика и базиса.",
+        variant: "destructive",
       });
       return;
     }
@@ -423,25 +476,37 @@ export function OptForm({
     if (salePrice === null) {
       toast({
         title: "Ошибка: отсутствует цена продажи",
-        description: "Не указана цена продажи. Выберите цену из списка или проверьте настройки покупателя.",
-        variant: "destructive"
+        description:
+          "Не указана цена продажи. Выберите цену из списка или проверьте настройки покупателя.",
+        variant: "destructive",
       });
       return;
     }
 
     // Проверяем достаточность объема на складе для складских поставщиков
     if (isWarehouseSupplier && supplierWarehouse) {
-      const availableBalance = isEditing ? initialWarehouseBalance : parseFloat(supplierWarehouse.currentBalance || "0");
+      const availableBalance = isEditing
+        ? initialWarehouseBalance
+        : parseFloat(supplierWarehouse.currentBalance || "0");
       const remaining = availableBalance - finalKg;
-      
+
       if (remaining < 0) {
         toast({
           title: "Ошибка: недостаточно объема на складе",
           description: `На складе "${supplierWarehouse.name}" недостаточно топлива. Доступно: ${availableBalance.toFixed(2)} кг, требуется: ${finalKg.toFixed(2)} кг`,
-          variant: "destructive"
+          variant: "destructive",
         });
         return;
       }
+    }
+
+    if (contractVolumeStatus.status === "error") {
+      toast({
+        title: "Ошибка валидации",
+        description: contractVolumeStatus.message,
+        variant: "destructive",
+      });
+      return;
     }
 
     if (editData) {
@@ -475,11 +540,9 @@ export function OptForm({
           form={form}
           carriers={availableCarriers}
           deliveryLocations={availableLocations}
-          selectedSalePriceId={selectedSalePriceId}
-          finalKg={finalKg}
-          isEditing={isEditing}
+          contractVolumeStatus={contractVolumeStatus}
         />
-        
+
         <OptPricingSection
           form={form}
           isWarehouseSupplier={isWarehouseSupplier}
@@ -509,10 +572,10 @@ export function OptForm({
               <FormItem>
                 <FormLabel>Примечания</FormLabel>
                 <FormControl>
-                  <Input 
+                  <Input
                     placeholder="Дополнительная информация..."
                     data-testid="input-notes"
-                    {...field} 
+                    {...field}
                   />
                 </FormControl>
                 <FormMessage />
@@ -541,8 +604,8 @@ export function OptForm({
         </div>
 
         <div className="flex justify-end gap-4 pt-4 border-t">
-          <Button 
-            type="button" 
+          <Button
+            type="button"
             variant="outline"
             onClick={() => {
               form.reset();
@@ -553,8 +616,8 @@ export function OptForm({
           >
             {editData ? "Отмена" : "Очистить"}
           </Button>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={createMutation.isPending || updateMutation.isPending}
             data-testid="button-submit-opt"
           >

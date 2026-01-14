@@ -126,6 +126,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     agentFee,
     profit,
     warehouseStatus,
+    contractVolumeStatus,
   } = useRefuelingCalculations({
     inputMode,
     quantityLiters: watchLiters,
@@ -458,6 +459,15 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       return;
     }
 
+    if (contractVolumeStatus.status === "error") {
+      toast({
+        title: "Ошибка валидации",
+        description: contractVolumeStatus.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (editData) {
       updateMutation.mutate({ ...data, id: editData.id });
     } else {
@@ -502,6 +512,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
           profit={profit}
           agentFee={agentFee}
           warehouseStatus={warehouseStatus}
+          contractVolumeStatus={contractVolumeStatus}
           productType={watchProductType}
         />
 
