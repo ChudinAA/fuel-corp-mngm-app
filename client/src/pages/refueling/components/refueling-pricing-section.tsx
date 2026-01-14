@@ -198,7 +198,6 @@ export function RefuelingPricingSection({
         <CalculatedField
           label="Сумма закупки"
           value={purchaseAmount !== null ? formatCurrency(purchaseAmount) : "—"}
-          variant="neutral"
         />
         {salePrices.length > 0 ? (
           <FormField
@@ -297,7 +296,6 @@ export function RefuelingPricingSection({
         <CalculatedField
           label="Сумма продажи"
           value={saleAmount !== null ? formatCurrency(saleAmount) : "—"}
-          variant="neutral"
         />
       </div>
 
@@ -326,7 +324,6 @@ export function RefuelingPricingSection({
         <CalculatedField
           label="Прибыль"
           value={profit !== null ? formatCurrency(profit) : "—"}
-          variant={profit && profit > 0 ? "positive" : "neutral"}
         />
       </div>
 

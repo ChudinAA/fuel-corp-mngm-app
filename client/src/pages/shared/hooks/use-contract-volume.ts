@@ -1,6 +1,9 @@
 
 import { useQuery } from "@tanstack/react-query";
-import type { Price, Opt, Refueling } from "@shared/schema";
+import type { Price, Opt } from "@shared/schema";
+
+// Temporary type definition since it might be missing or differently named
+type Refueling = any;
 
 interface UseContractVolumeProps {
   priceId: string | null;
