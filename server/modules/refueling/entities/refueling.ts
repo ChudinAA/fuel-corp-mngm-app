@@ -26,14 +26,16 @@ import { prices } from "../../prices/entities/prices";
 
 export const aircraftRefueling = pgTable("aircraft_refueling", {
   id: uuid("id").defaultRandom().primaryKey(),
-  refuelingDate: timestamp("refueling_date", { mode: "string" }),
-  productType: text("product_type"),
+  refuelingDate: timestamp("refueling_date", { mode: "string" }).notNull(),
+  productType: text("product_type").notNull(),
   aircraftNumber: text("aircraft_number"),
   orderNumber: text("order_number"),
   supplierId: uuid("supplier_id")
+    .notNull()
     .references(() => suppliers.id),
   basis: text("basis"),
   buyerId: uuid("buyer_id")
+    .notNull()
     .references(() => customers.id),
   warehouseId: uuid("warehouse_id").references(() => warehouses.id),
   transactionId: uuid("transaction_id").references(
@@ -41,7 +43,7 @@ export const aircraftRefueling = pgTable("aircraft_refueling", {
   ),
   quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
   density: decimal("density", { precision: 6, scale: 4 }),
-  quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }),
+  quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
   purchasePrice: decimal("purchase_price", { precision: 12, scale: 4 }),
   purchasePriceId: uuid("purchase_price_id").references(() => prices.id),
   purchasePriceIndex: integer("purchase_price_index").default(0),
