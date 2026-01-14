@@ -105,18 +105,18 @@ export function RefuelingTable({
             {isLoading ? (
               [1, 2, 3, 4, 5].map((i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={9}><Skeleton className="h-12 w-full" /></TableCell>
+                  <TableCell colSpan={10}><Skeleton className="h-12 w-full" /></TableCell>
                 </TableRow>
               ))
             ) : data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   Нет данных для отображения
                 </TableCell>
               </TableRow>
             ) : (
-              data.map((item) => (
-                <TableRow key={item.id}>
+              data.map((item: any) => (
+                <TableRow key={item.id} className={item.isDraft ? "bg-muted/50 opacity-80" : ""}>
                   <TableCell>{formatDate(item.refuelingDate)}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{getProductLabel(item.productType)}</Badge>
@@ -127,17 +127,25 @@ export function RefuelingTable({
                   <TableCell className="text-right font-medium">{formatNumber(item.quantityKg)}</TableCell>
                   <TableCell className="text-right text-green-600">{formatCurrency(item.profit)}</TableCell>
                   <TableCell>
-                    {item.warehouseStatus === "OK" ? (
-                      <Badge variant="outline" className="text-green-600 border-green-600">
-                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                        ОК
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        Внимание
-                      </Badge>
-                    )}
+                    <div className="flex flex-col gap-1">
+                      {item.isDraft ? (
+                        <Badge variant="outline" className="text-amber-600 border-amber-600 bg-amber-50">
+                          Черновик
+                        </Badge>
+                      ) : (
+                        item.warehouseStatus === "OK" ? (
+                          <Badge variant="outline" className="text-green-600 border-green-600">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            ОК
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            Внимание
+                          </Badge>
+                        )
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
