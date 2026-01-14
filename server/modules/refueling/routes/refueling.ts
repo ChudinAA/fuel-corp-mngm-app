@@ -25,6 +25,22 @@ export function registerRefuelingOperationsRoutes(app: Express) {
   );
 
   app.get(
+    "/api/refueling/contract-used/:priceId",
+    requireAuth,
+    requirePermission("refueling", "view"),
+    async (req, res) => {
+      try {
+        const { priceId } = req.params;
+        const usedVolume = await storage.aircraftRefueling.getUsedVolumeByPrice(priceId);
+        res.json({ usedVolume });
+      } catch (error) {
+        console.error("Error getting used volume:", error);
+        res.status(500).json({ message: "Ошибка получения использованного объема" });
+      }
+    }
+  );
+
+  app.get(
     "/api/refueling/:id",
     requireAuth,
     requirePermission("refueling", "view"),

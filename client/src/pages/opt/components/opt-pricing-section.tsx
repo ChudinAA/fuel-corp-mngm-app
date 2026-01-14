@@ -107,16 +107,13 @@ export function OptPricingSection({
 
   const warehouseStatus = getWarehouseStatus();
 
-  // Логика проверки объема по договору
-  const salePricePriceId = selectedSalePriceId?.split("-")[0] || null;
-  const salePriceIndex = selectedSalePriceId ? parseInt(selectedSalePriceId.split("-")[1]) : null;
-
   const contractVolumeStatus = useContractVolume({
     priceId: salePricePriceId,
     priceIndex: salePriceIndex,
     currentQuantityKg: finalKg,
     isEditing,
     dealId: form.getValues("id" as any),
+    mode: "opt",
   });
 
   return (
@@ -338,9 +335,9 @@ export function OptPricingSection({
 
       <div className="grid gap-4 md:grid-cols-3">
         <CalculatedField
-          label="Объем по договору"
-          value={contractVolumeStatus.message}
-          status={contractVolumeStatus.status}
+          label="Объем на складе"
+          value={warehouseStatus.message}
+          status={warehouseStatus.status}
         />
 
         <CalculatedField

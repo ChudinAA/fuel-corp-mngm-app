@@ -360,6 +360,16 @@ export class OptStorage implements IOptStorage {
     return true;
   }
 
+  async getUsedVolumeByPrice(priceId: string): Promise<number> {
+    const [result] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`,
+      })
+      .from(opt)
+      .where(and(eq(opt.salePriceId, priceId), isNull(opt.deletedAt)));
+    return parseFloat(result?.total || "0");
+  }
+
   async restoreOpt(id: string, oldData: any, userId?: string): Promise<boolean> {
     await db.transaction(async (tx) => {
       // Restore the opt record

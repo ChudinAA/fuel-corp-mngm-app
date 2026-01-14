@@ -475,6 +475,9 @@ export function OptForm({
           form={form}
           carriers={availableCarriers}
           deliveryLocations={availableLocations}
+          selectedSalePriceId={selectedSalePriceId}
+          finalKg={finalKg}
+          isEditing={isEditing}
         />
         
         <OptPricingSection

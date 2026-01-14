@@ -31,6 +31,7 @@ import type { OptFormData } from "../schemas";
 import { AddLogisticsDialog } from "@/pages/directories/logistics-dialog";
 import { AddDeliveryCostDialog } from "@/pages/delivery/components/delivery-cost-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
 
 interface VolumeInputSectionProps {
   form: UseFormReturn<OptFormData>;
@@ -151,12 +152,18 @@ interface LogisticsSectionProps {
   form: UseFormReturn<OptFormData>;
   carriers?: LogisticsCarrier[];
   deliveryLocations?: LogisticsDeliveryLocation[];
+  selectedSalePriceId: string;
+  finalKg: number;
+  isEditing: boolean;
 }
 
 export function LogisticsSection({
   form,
   carriers,
   deliveryLocations,
+  selectedSalePriceId,
+  finalKg,
+  isEditing
 }: LogisticsSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -176,6 +183,18 @@ export function LogisticsSection({
     }
   };
 
+  // Логика проверки объема по договору
+  const salePricePriceId = selectedSalePriceId?.split("-")[0] || null;
+  const salePriceIndex = selectedSalePriceId ? parseInt(selectedSalePriceId.split("-")[1]) : null;
+
+  const contractVolumeStatus = useContractVolume({
+    priceId: salePricePriceId,
+    priceIndex: salePriceIndex,
+    currentQuantityKg: finalKg,
+    isEditing,
+    dealId: form.getValues("id" as any),
+  });
+  
   return (
     <Card>
       <CardHeader className="pb-4">
@@ -277,7 +296,11 @@ export function LogisticsSection({
             )}
           />
 
-          <CalculatedField label="Объем по договору" value="тест" status="ok" />
+          <CalculatedField
+            label="Объем по договору"
+            value={contractVolumeStatus.message}
+            status={contractVolumeStatus.status}
+          />
         </div>
       </CardContent>
 

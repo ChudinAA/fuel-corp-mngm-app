@@ -362,6 +362,16 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
     return true;
   }
 
+  async getUsedVolumeByPrice(priceId: string): Promise<number> {
+    const [result] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`,
+      })
+      .from(aircraftRefueling)
+      .where(and(eq(aircraftRefueling.salePriceId, priceId), isNull(aircraftRefueling.deletedAt)));
+    return parseFloat(result?.total || "0");
+  }
+
   async restoreRefueling(id: string, oldData: any, userId?: string): Promise<boolean> {
     await db.transaction(async (tx) => {
       // Restore the aircraft refueling record

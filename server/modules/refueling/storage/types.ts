@@ -11,4 +11,5 @@ export interface IAircraftRefuelingStorage {
     data: Partial<InsertAircraftRefueling>
   ): Promise<AircraftRefueling | undefined>;
   deleteRefueling(id: string): Promise<boolean>;
+  getUsedVolumeByPrice(priceId: string): Promise<number>;
 }

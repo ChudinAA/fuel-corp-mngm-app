@@ -21,6 +21,22 @@ export function registerOptRoutes(app: Express) {
   );
 
   app.get(
+    "/api/opt/contract-used/:priceId",
+    requireAuth,
+    requirePermission("opt", "view"),
+    async (req, res) => {
+      try {
+        const { priceId } = req.params;
+        const usedVolume = await storage.opt.getUsedVolumeByPrice(priceId);
+        res.json({ usedVolume });
+      } catch (error) {
+        console.error("Error getting used volume:", error);
+        res.status(500).json({ message: "Ошибка получения использованного объема" });
+      }
+    }
+  );
+
+  app.get(
     "/api/opt/:id",
     requireAuth,
     requirePermission("opt", "view"),

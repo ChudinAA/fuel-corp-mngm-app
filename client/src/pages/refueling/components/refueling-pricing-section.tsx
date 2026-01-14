@@ -67,7 +67,9 @@ export function RefuelingPricingSection({
 
   // Логика проверки объема по договору
   const salePricePriceId = selectedSalePriceId?.split("-")[0] || null;
-  const salePriceIndex = selectedSalePriceId ? parseInt(selectedSalePriceId.split("-")[1]) : null;
+  const salePriceIndex = selectedSalePriceId
+    ? parseInt(selectedSalePriceId.split("-")[1])
+    : null;
 
   const contractVolumeStatus = useContractVolume({
     priceId: salePricePriceId,
@@ -75,6 +77,7 @@ export function RefuelingPricingSection({
     currentQuantityKg: parseFloat(form.watch("quantityKg") || "0"),
     isEditing: !!form.getValues("id" as any),
     dealId: form.getValues("id" as any),
+    mode: "refueling",
   });
 
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
@@ -198,6 +201,7 @@ export function RefuelingPricingSection({
         <CalculatedField
           label="Сумма закупки"
           value={purchaseAmount !== null ? formatCurrency(purchaseAmount) : "—"}
+          status={purchaseAmount !== null ? "ok" : "error"}
         />
         {salePrices.length > 0 ? (
           <FormField
@@ -296,6 +300,7 @@ export function RefuelingPricingSection({
         <CalculatedField
           label="Сумма продажи"
           value={saleAmount !== null ? formatCurrency(saleAmount) : "—"}
+          status={saleAmount !== null ? "ok" : "error"}
         />
       </div>
 
@@ -324,6 +329,13 @@ export function RefuelingPricingSection({
         <CalculatedField
           label="Прибыль"
           value={profit !== null ? formatCurrency(profit) : "—"}
+          status={
+            profit !== null && profit >= 0
+              ? "ok"
+              : profit !== null
+                ? "warning"
+                : undefined
+          }
         />
       </div>
 

@@ -9,4 +9,5 @@ export interface IOptStorage {
   createOpt(data: InsertOpt): Promise<Opt>;
   updateOpt(id: string, data: Partial<InsertOpt>): Promise<Opt | undefined>;
   deleteOpt(id: string): Promise<boolean>;
+  getUsedVolumeByPrice(priceId: string): Promise<number>;
 }
