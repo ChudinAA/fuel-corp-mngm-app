@@ -281,26 +281,26 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
 
       const payload = {
         ...data,
-        supplierId: data.supplierId,
-        buyerId: data.buyerId,
-        isDraft: data.isDraft || false,
+        supplierId: data.supplierId || null,
+        buyerId: data.buyerId || null,
+        isDraft: isDraft || false,
         warehouseId:
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id
             : null,
         basis: String(selectedBasis || ""), // Use selectedBasis
-        refuelingDate: format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss"),
-        quantityKg: String(parseFloat(calculatedKg)),
+        refuelingDate: data.refuelingDate ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
+        quantityKg: calculatedKg ? String(parseFloat(calculatedKg)) : null,
         quantityLiters: data.quantityLiters
           ? String(parseFloat(data.quantityLiters))
           : null,
         density: data.density ? String(parseFloat(data.density)) : null,
         purchasePrice: purchasePrice !== null ? String(purchasePrice) : null,
-        purchasePriceId: purchasePriceId,
-        purchasePriceIndex: purchasePriceIndex,
+        purchasePriceId: purchasePriceId || null,
+        purchasePriceIndex: purchasePriceIndex !== undefined ? purchasePriceIndex : null,
         salePrice: salePrice !== null ? String(salePrice) : null,
-        salePriceId: salePriceId,
-        salePriceIndex: salePriceIndex,
+        salePriceId: salePriceId || null,
+        salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
         purchaseAmount: purchaseAmount !== null ? String(purchaseAmount) : null,
         saleAmount: saleAmount !== null ? String(saleAmount) : null,
         profit: profit !== null ? String(profit) : null,
@@ -354,26 +354,26 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
 
       const payload = {
         ...data,
-        supplierId: data.supplierId,
-        buyerId: data.buyerId,
-        isDraft: data.isDraft || false,
+        supplierId: data.supplierId || null,
+        buyerId: data.buyerId || null,
+        isDraft: isDraft || false,
         warehouseId:
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id
             : null,
         basis: String(selectedBasis || ""), // Use selectedBasis
-        refuelingDate: format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss"),
-        quantityKg: String(parseFloat(calculatedKg)),
+        refuelingDate: data.refuelingDate ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
+        quantityKg: calculatedKg ? String(parseFloat(calculatedKg)) : null,
         quantityLiters: data.quantityLiters
           ? String(parseFloat(data.quantityLiters))
           : null,
         density: data.density ? String(parseFloat(data.density)) : null,
         purchasePrice: purchasePrice !== null ? String(purchasePrice) : null,
-        purchasePriceId: purchasePriceId,
-        purchasePriceIndex: purchasePriceIndex,
+        purchasePriceId: purchasePriceId || null,
+        purchasePriceIndex: purchasePriceIndex !== undefined ? purchasePriceIndex : null,
         salePrice: salePrice !== null ? String(salePrice) : null,
-        salePriceId: salePriceId,
-        salePriceIndex: salePriceIndex,
+        salePriceId: salePriceId || null,
+        salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
         purchaseAmount: purchaseAmount !== null ? String(purchaseAmount) : null,
         saleAmount: saleAmount !== null ? String(saleAmount) : null,
         profit: profit !== null ? String(profit) : null,
@@ -454,21 +454,12 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         });
         return;
       }
-
-      // Проверяем достаточность объема на складе
-      if (warehouseStatus.status === "error") {
+    } else {
+      // Для черновика проверяем обязательные поля
+      if (!data.supplierId || !data.buyerId || !data.productType || !data.basis) {
         toast({
           title: "Ошибка валидации",
-          description: warehouseStatus.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (contractVolumeStatus.status === "error") {
-        toast({
-          title: "Ошибка валидации",
-          description: contractVolumeStatus.message,
+          description: "Для сохранения черновика необходимо выбрать поставщика, покупателя, тип продукта и базис.",
           variant: "destructive",
         });
         return;

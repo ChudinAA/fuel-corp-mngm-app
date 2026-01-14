@@ -290,33 +290,33 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
       const payload = {
         ...data,
-        supplierId: data.supplierId,
-        buyerId: data.buyerId,
-        isDraft: data.isDraft || false,
+        supplierId: data.supplierId || null,
+        buyerId: data.buyerId || null,
+        isDraft: isDraft || false,
         warehouseId:
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id
             : null,
-        basis: selectedBasis,
+        basis: selectedBasis || null,
         carrierId: data.carrierId || null,
         deliveryLocationId: data.deliveryLocationId || null,
         dealDate: data.dealDate ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
-        quantityKg: data.quantityKg ? parseFloat(calculatedKg) : null,
+        quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
         quantityLiters: data.quantityLiters
           ? parseFloat(data.quantityLiters)
           : null,
         density: data.density ? parseFloat(data.density) : null,
-        purchasePrice: purchasePrice,
-        purchasePriceId: purchasePriceId,
-        purchasePriceIndex: purchasePriceIndex,
-        salePrice: salePrice,
-        salePriceId: salePriceId,
-        salePriceIndex: salePriceIndex,
-        purchaseAmount: purchaseAmount,
-        saleAmount: saleAmount,
-        deliveryCost: deliveryCost,
-        deliveryTariff: deliveryTariff,
-        profit: profit,
+        purchasePrice: purchasePrice !== null ? purchasePrice : null,
+        purchasePriceId: purchasePriceId || null,
+        purchasePriceIndex: purchasePriceIndex !== undefined ? purchasePriceIndex : null,
+        salePrice: salePrice !== null ? salePrice : null,
+        salePriceId: salePriceId || null,
+        salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
+        purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
+        saleAmount: saleAmount !== null ? saleAmount : null,
+        deliveryCost: deliveryCost !== null ? deliveryCost : null,
+        deliveryTariff: deliveryTariff !== null ? deliveryTariff : null,
+        profit: profit !== null ? profit : null,
       };
       const res = await apiRequest("POST", "/api/opt", payload);
       return res.json();
@@ -380,33 +380,33 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
       const payload = {
         ...data,
-        supplierId: data.supplierId,
-        buyerId: data.buyerId,
-        isDraft: data.isDraft || false,
+        supplierId: data.supplierId || null,
+        buyerId: data.buyerId || null,
+        isDraft: isDraft || false,
         warehouseId:
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id
             : null,
-        basis: selectedBasis,
+        basis: selectedBasis || null,
         carrierId: data.carrierId || null,
         deliveryLocationId: data.deliveryLocationId || null,
         dealDate: data.dealDate ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
-        quantityKg: data.quantityKg ? parseFloat(calculatedKg) : null,
+        quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
         quantityLiters: data.quantityLiters
           ? parseFloat(data.quantityLiters)
           : null,
         density: data.density ? parseFloat(data.density) : null,
-        purchasePrice: purchasePrice,
-        purchasePriceId: purchasePriceId,
-        purchasePriceIndex: purchasePriceIndex,
-        salePrice: salePrice,
-        salePriceId: salePriceId,
-        salePriceIndex: salePriceIndex,
-        purchaseAmount: purchaseAmount,
-        saleAmount: saleAmount,
-        deliveryCost: deliveryCost,
-        deliveryTariff: deliveryTariff,
-        profit: profit,
+        purchasePrice: purchasePrice !== null ? purchasePrice : null,
+        purchasePriceId: purchasePriceId || null,
+        purchasePriceIndex: purchasePriceIndex !== undefined ? purchasePriceIndex : null,
+        salePrice: salePrice !== null ? salePrice : null,
+        salePriceId: salePriceId || null,
+        salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
+        purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
+        saleAmount: saleAmount !== null ? saleAmount : null,
+        deliveryCost: deliveryCost !== null ? deliveryCost : null,
+        deliveryTariff: deliveryTariff !== null ? deliveryTariff : null,
+        profit: profit !== null ? profit : null,
       };
       const res = await apiRequest("PATCH", `/api/opt/${data.id}`, payload);
       return res.json();
@@ -489,28 +489,13 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         });
         return;
       }
-
-      // Проверяем достаточность объема на складе для складских поставщиков
-      if (isWarehouseSupplier && supplierWarehouse) {
-        const availableBalance = isEditing
-          ? initialWarehouseBalance
-          : parseFloat(supplierWarehouse.currentBalance || "0");
-        const remaining = availableBalance - finalKg;
-
-        if (remaining < 0) {
-          toast({
-            title: "Ошибка: недостаточно объема на складе",
-            description: `На складе "${supplierWarehouse.name}" недостаточно топлива. Доступно: ${availableBalance.toFixed(2)} кг, требуется: ${finalKg.toFixed(2)} кг`,
-            variant: "destructive",
-          });
-          return;
-        }
-      }
-
-      if (contractVolumeStatus.status === "error") {
+    } else {
+      // Для черновика проверяем только поставщика и покупателя (уже проверено Zod)
+      // Но дополнительно убедимся, что ID не пустые строки
+      if (!data.supplierId || !data.buyerId) {
         toast({
           title: "Ошибка валидации",
-          description: contractVolumeStatus.message,
+          description: "Для сохранения черновика необходимо выбрать поставщика и покупателя.",
           variant: "destructive",
         });
         return;
