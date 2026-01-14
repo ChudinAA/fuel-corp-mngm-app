@@ -108,26 +108,69 @@ export function useOptFilters({
   // Фильтрация доступных перевозчиков
   const availableCarriers = useMemo(() => {
     return carriers?.filter(carrier => {
-      if (!selectedBasis || !deliveryCosts) return true;
+      if (!deliveryCosts) return true;
 
       const base = wholesaleBases?.find(b => b.name === selectedBasis);
-      if (!base) return true;
-
       const warehouse = supplierWarehouse;
 
-      return deliveryCosts.some(dc => 
+      // Фильтр 1: По Базису поставщика / Складу
+      const hasTariffFromSource = deliveryCosts.some(dc => 
         dc.carrierId === carrier.id &&
         (
-          (dc.fromEntityType === DELIVERY_ENTITY_TYPE.BASE && dc.fromEntityId === base.id) ||
+          (base && dc.fromEntityType === DELIVERY_ENTITY_TYPE.BASE && dc.fromEntityId === base.id) ||
           (warehouse && dc.fromEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE && dc.fromEntityId === warehouse.id)
         )
       );
+
+      if (!hasTariffFromSource && (base || warehouse)) return false;
+
+      // Фильтр 2: По Точке поставки (если выбрана)
+      if (deliveryLocationId) {
+        const hasTariffToDestination = deliveryCosts.some(dc =>
+          dc.carrierId === carrier.id &&
+          dc.toEntityType === DELIVERY_ENTITY_TYPE.DELIVERY_LOCATION &&
+          dc.toEntityId === deliveryLocationId &&
+          (
+            (base && dc.fromEntityType === DELIVERY_ENTITY_TYPE.BASE && dc.fromEntityId === base.id) ||
+            (warehouse && dc.fromEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE && dc.fromEntityId === warehouse.id)
+          )
+        );
+        if (!hasTariffToDestination) return false;
+      }
+
+      return true;
     }) || [];
-  }, [carriers, selectedBasis, deliveryCosts, wholesaleBases, supplierWarehouse]);
+  }, [carriers, selectedBasis, deliveryCosts, wholesaleBases, supplierWarehouse, deliveryLocationId]);
 
   // Фильтрация доступных мест доставки
   const availableLocations = useMemo(() => {
     return deliveryLocations?.filter(location => {
+      // Фильтр 1: По привязке к базисам из цен продажи покупателя
+      // Ищем цены продажи для этого покупателя на эту дату
+      if (!buyerId || !dealDate || !allPrices) return true;
+      const dateStr = format(dealDate, "yyyy-MM-dd");
+      
+      const buyerSalePrices = allPrices.filter(p =>
+        p.counterpartyId === buyerId &&
+        p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
+        p.counterpartyRole === COUNTERPARTY_ROLE.BUYER &&
+        p.productType === PRODUCT_TYPE.KEROSENE &&
+        p.dateFrom <= dateStr &&
+        p.dateTo >= dateStr &&
+        p.isActive
+      );
+
+      if (buyerSalePrices.length > 0) {
+        const activeSaleBasises = new Set(buyerSalePrices.map(p => p.basis));
+        if (location.baseId) {
+          const locBase = allBases?.find(b => b.id === location.baseId);
+          if (locBase && !activeSaleBasises.has(locBase.name)) {
+            return false;
+          }
+        }
+      }
+
+      // Фильтр 2: По наличию тарифов у перевозчика (если выбран)
       if (!carrierId || !deliveryCosts) return true;
 
       const base = wholesaleBases?.find(b => b.name === selectedBasis);
@@ -143,7 +186,7 @@ export function useOptFilters({
         )
       );
     }) || [];
-  }, [deliveryLocations, carrierId, deliveryCosts, selectedBasis, wholesaleBases, supplierWarehouse]);
+  }, [deliveryLocations, carrierId, deliveryCosts, selectedBasis, wholesaleBases, supplierWarehouse, buyerId, dealDate, allPrices, allBases]);
 
   return {
     purchasePrices,
