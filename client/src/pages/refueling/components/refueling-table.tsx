@@ -269,7 +269,7 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
               deals.map((deal) => (
                 <TableRow 
                   key={deal.id}
-                  className={deal.isDraft ? "bg-muted/70 opacity-60 border-2 border-orange-400" : ""}
+                  className={deal.isDraft ? "bg-muted/70 opacity-60 border-2 border-orange-200" : ""}
                 >
                   <TableCell>
                     <div className="flex flex-col gap-1">
