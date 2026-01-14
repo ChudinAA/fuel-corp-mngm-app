@@ -6,7 +6,6 @@ interface UseContractVolumeProps {
   priceIndex: number | null;
   currentQuantityKg: number;
   isEditing: boolean;
-  dealId?: string;
   mode: "opt" | "refueling";
 }
 
@@ -15,7 +14,6 @@ export function useContractVolume({
   priceIndex,
   currentQuantityKg,
   isEditing,
-  dealId,
   mode,
 }: UseContractVolumeProps) {
   const { data: price, isLoading: isLoadingPrice } = useQuery<Price>({

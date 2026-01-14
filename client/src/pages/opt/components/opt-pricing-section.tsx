@@ -22,7 +22,6 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 import { useAuth } from "@/hooks/use-auth";
-import { useContractVolume } from "../../shared/hooks/use-contract-volume";
 
 interface OptPricingSectionProps {
   form: UseFormReturn<OptFormData>;
@@ -106,15 +105,6 @@ export function OptPricingSection({
   };
 
   const warehouseStatus = getWarehouseStatus();
-
-  const contractVolumeStatus = useContractVolume({
-    priceId: salePricePriceId,
-    priceIndex: salePriceIndex,
-    currentQuantityKg: finalKg,
-    isEditing,
-    dealId: form.getValues("id" as any),
-    mode: "opt",
-  });
 
   return (
     <>

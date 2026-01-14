@@ -76,7 +76,6 @@ export function RefuelingPricingSection({
     priceIndex: salePriceIndex,
     currentQuantityKg: parseFloat(form.watch("quantityKg") || "0"),
     isEditing: !!form.getValues("id" as any),
-    dealId: form.getValues("id" as any),
     mode: "refueling",
   });
 

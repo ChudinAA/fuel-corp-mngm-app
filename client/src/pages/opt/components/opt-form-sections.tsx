@@ -163,7 +163,7 @@ export function LogisticsSection({
   deliveryLocations,
   selectedSalePriceId,
   finalKg,
-  isEditing
+  isEditing,
 }: LogisticsSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -185,16 +185,18 @@ export function LogisticsSection({
 
   // Логика проверки объема по договору
   const salePricePriceId = selectedSalePriceId?.split("-")[0] || null;
-  const salePriceIndex = selectedSalePriceId ? parseInt(selectedSalePriceId.split("-")[1]) : null;
+  const salePriceIndex = selectedSalePriceId
+    ? parseInt(selectedSalePriceId.split("-")[1])
+    : null;
 
   const contractVolumeStatus = useContractVolume({
     priceId: salePricePriceId,
     priceIndex: salePriceIndex,
     currentQuantityKg: finalKg,
     isEditing,
-    dealId: form.getValues("id" as any),
+    mode: "opt",
   });
-  
+
   return (
     <Card>
       <CardHeader className="pb-4">
