@@ -70,6 +70,7 @@ export const opt = pgTable("opt", {
   updatedById: uuid("updated_by_id").references(() => users.id),
   deletedAt: timestamp("deleted_at", { mode: "string" }),
   deletedById: uuid("deleted_by_id").references(() => users.id),
+  isDraft: boolean("is_draft").default(false).notNull(),
 }, (table) => ({
   dealDateIdx: index("opt_deal_date_idx").on(table.dealDate),
   createdAtIdx: index("opt_created_at_idx").on(table.createdAt),
