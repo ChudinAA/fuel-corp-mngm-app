@@ -180,8 +180,8 @@ export class OptStorage implements IOptStorage {
     return await db.transaction(async (tx) => {
       const [created] = await tx.insert(opt).values(data).returning();
 
-      // Обновляем остаток на складе только если это склад-поставщик
-      if (created.warehouseId && created.quantityKg) {
+      // Обновляем остаток на складе только если это склад-поставщик и НЕ черновик
+      if (!created.isDraft && created.warehouseId && created.quantityKg) {
         const warehouse = await tx.query.warehouses.findFirst({
           where: eq(warehouses.id, created.warehouseId),
           with: {
@@ -250,8 +250,53 @@ export class OptStorage implements IOptStorage {
 
       if (!currentOpt) return undefined;
 
-      // Проверяем изменилось ли количество КГ и есть ли привязанная транзакция
-      if (
+      // Логика перехода из черновика в готовую сделку
+      const transitioningFromDraft = currentOpt.isDraft && data.isDraft === false;
+
+      // Если сделка становится не черновиком, создаем транзакцию
+      if (transitioningFromDraft && data.warehouseId && data.quantityKg) {
+        const warehouse = await tx.query.warehouses.findFirst({
+          where: eq(warehouses.id, data.warehouseId),
+          with: { supplier: true },
+        });
+
+        if (warehouse && warehouse.supplierId) {
+          const quantityKg = parseFloat(data.quantityKg.toString());
+          const currentBalance = parseFloat(warehouse.currentBalance || "0");
+          const newBalance = Math.max(0, currentBalance - quantityKg);
+
+          await tx
+            .update(warehouses)
+            .set({
+              currentBalance: newBalance.toFixed(2),
+              updatedAt: sql`NOW()`,
+              updatedById: data.updatedById,
+            })
+            .where(eq(warehouses.id, data.warehouseId));
+
+          const [transaction] = await tx
+            .insert(warehouseTransactions)
+            .values({
+              warehouseId: data.warehouseId,
+              transactionType: TRANSACTION_TYPE.SALE,
+              productType: PRODUCT_TYPE.KEROSENE,
+              sourceType: SOURCE_TYPE.OPT,
+              sourceId: currentOpt.id,
+              quantity: (-quantityKg).toString(),
+              balanceBefore: currentBalance.toString(),
+              balanceAfter: newBalance.toString(),
+              averageCostBefore: warehouse.averageCost || "0",
+              averageCostAfter: warehouse.averageCost || "0",
+              createdById: data.updatedById,
+            })
+            .returning();
+
+          data.transactionId = transaction.id;
+        }
+      }
+      // Проверяем изменилось ли количество КГ и есть ли привязанная транзакция (для НЕ черновиков)
+      else if (
+        !currentOpt.isDraft &&
         data.quantityKg &&
         currentOpt.transactionId &&
         currentOpt.warehouseId

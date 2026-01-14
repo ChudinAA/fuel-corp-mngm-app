@@ -147,8 +147,8 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         .values(data)
         .returning();
 
-      // Для услуги заправки не создаем транзакции на складе
-      if (data.warehouseId && data.productType !== PRODUCT_TYPE.SERVICE) {
+      // Для услуги заправки или черновика не создаем транзакции на складе
+      if (!created.isDraft && data.warehouseId && data.productType !== PRODUCT_TYPE.SERVICE) {
         const warehouse = await tx.query.warehouses.findFirst({
           where: eq(warehouses.id, data.warehouseId),
         });
@@ -228,8 +228,67 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
 
       if (!currentRefueling) return undefined;
 
-      // Для услуг заправки пропускаем обновление склада
-      if (
+      // Логика перехода из черновика в готовую заправку
+      const transitioningFromDraft = currentRefueling.isDraft && data.isDraft === false;
+
+      if (transitioningFromDraft && data.warehouseId && data.quantityKg && data.productType !== PRODUCT_TYPE.SERVICE) {
+        const warehouse = await tx.query.warehouses.findFirst({
+          where: eq(warehouses.id, data.warehouseId),
+        });
+
+        if (warehouse) {
+          const quantity = parseFloat(data.quantityKg.toString());
+          const isPvkj = data.productType === PRODUCT_TYPE.PVKJ;
+
+          const currentBalance = parseFloat(
+            isPvkj
+              ? warehouse.pvkjBalance || "0"
+              : warehouse.currentBalance || "0",
+          );
+          const averageCost = isPvkj
+            ? warehouse.pvkjAverageCost || "0"
+            : warehouse.averageCost || "0";
+          const newBalance = Math.max(0, currentBalance - quantity);
+
+          const updateData: any = {
+            updatedAt: sql`NOW()`,
+            updatedById: data.updatedById,
+          };
+
+          if (isPvkj) {
+            updateData.pvkjBalance = newBalance.toFixed(2);
+          } else {
+            updateData.currentBalance = newBalance.toFixed(2);
+          }
+
+          await tx
+            .update(warehouses)
+            .set(updateData)
+            .where(eq(warehouses.id, data.warehouseId));
+
+          const [transaction] = await tx
+            .insert(warehouseTransactions)
+            .values({
+              warehouseId: data.warehouseId,
+              transactionType: TRANSACTION_TYPE.SALE,
+              productType: data.productType || PRODUCT_TYPE.KEROSENE,
+              sourceType: SOURCE_TYPE.REFUELING,
+              sourceId: currentRefueling.id,
+              quantity: (-quantity).toString(),
+              balanceBefore: currentBalance.toString(),
+              balanceAfter: newBalance.toString(),
+              averageCostBefore: averageCost,
+              averageCostAfter: averageCost,
+              createdById: data.updatedById,
+            })
+            .returning();
+
+          data.transactionId = transaction.id;
+        }
+      }
+      // Проверяем изменилось ли количество КГ и есть ли привязанная транзакция (для НЕ черновиков)
+      else if (
+        !currentRefueling.isDraft &&
         data.quantityKg &&
         currentRefueling.transactionId &&
         currentRefueling.warehouseId &&
