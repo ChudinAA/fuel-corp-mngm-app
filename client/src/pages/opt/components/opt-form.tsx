@@ -543,7 +543,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit((data) => onSubmit(data))} className="space-y-6">
         <OptMainFields
           form={form}
           wholesaleSuppliers={wholesaleSuppliers}
