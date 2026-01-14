@@ -99,7 +99,7 @@ export function useOptFilters({
       }
 
       // Фильтр 2: По наличию тарифов у перевозчика (убрано ограничение точек поставки по перевозчику для приоритета выбора юзером)
-      // if (!carrierId || !deliveryCosts) return true;
+      // Мы НЕ фильтруем точки поставки по выбранному перевозчику, чтобы пользователь мог всегда сменить точку.
       return true;
     }) || [];
   }, [deliveryLocations, carrierId, deliveryCosts, selectedBasis, wholesaleBases, supplierWarehouse, buyerId, dealDate, allPrices, allBases]);
