@@ -288,15 +288,14 @@ export function WarehouseDetailsDialog({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[120px]">Дата</TableHead>
-                  <TableHead className="w-[100px]">Продукт</TableHead>
-                  <TableHead className="text-right w-[120px]">Поступление, кг</TableHead>
-                  <TableHead className="text-right w-[140px]">Сумма прихода</TableHead>
-                  <TableHead className="text-right w-[120px]">Расход, кг</TableHead>
-                  <TableHead className="text-right w-[140px]">Сумма расхода</TableHead>
-                  <TableHead className="text-right w-[120px]">Вход. цена</TableHead>
-                  <TableHead className="text-right w-[120px]">Себест.</TableHead>
-                  <TableHead className="w-[40px]"></TableHead>
+                  <TableHead className="text-center w-[120px]">Дата</TableHead>
+                  <TableHead className="w-[90px]">Продукт</TableHead>
+                  <TableHead className="text-center w-[100px]">Поступление, кг</TableHead>
+                  <TableHead className="text-center w-[140px]">Сумма прихода</TableHead>
+                  <TableHead className="text-center w-[120px]">Расход, кг</TableHead>
+                  <TableHead className="text-center w-[140px]">Сумма расхода</TableHead>
+                  <TableHead className="text-center w-[120px]">Вход. цена</TableHead>
+                  <TableHead className="text-center w-[120px]">Себест.</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -366,29 +365,28 @@ function DailyRowGroup({
                     {p.productType === PRODUCT_TYPE.PVKJ ? "ПВКЖ" : "Керосин"}
                   </Badge>
                 </div>
-                <div className="w-[120px] shrink-0 text-right px-4 font-medium text-green-600 truncate">
+                <div className="w-[190px] shrink-0 text-right px-4 font-medium text-green-600 truncate">
                   {p.receiptKg > 0 ? `+${formatNumber(p.receiptKg)}` : "0"} кг
                 </div>
-                <div className="w-[140px] shrink-0 text-right px-4 truncate">
+                <div className="w-[200px] shrink-0 text-right px-4 truncate">
                   {p.receiptSum > 0 ? formatCurrency(p.receiptSum) : "0"}
                 </div>
-                <div className="w-[120px] shrink-0 text-right px-4 font-medium text-red-600 truncate">
+                <div className="w-[190px] shrink-0 text-right px-4 font-medium text-red-600 truncate">
                   {p.expenseKg > 0 ? `-${formatNumber(p.expenseKg)}` : "0"} кг
                 </div>
-                <div className="w-[140px] shrink-0 text-right px-4 truncate">
+                <div className="w-[220px] shrink-0 text-right px-4 truncate">
                   {p.expenseSum > 0 ? formatCurrency(p.expenseSum) : "0"}
                 </div>
-                <div className="w-[120px] shrink-0 text-right px-4 truncate">
+                <div className="w-[180px] shrink-0 text-right px-4 truncate">
                   {p.avgPrice > 0 ? formatCurrency(p.avgPrice) : "0"}
                 </div>
-                <div className="w-[120px] shrink-0 text-right px-4 font-semibold truncate">
+                <div className="w-[180px] shrink-0 text-right px-4 font-semibold truncate">
                   {formatCurrency(p.avgCost)}
                 </div>
               </div>
             ))}
           </div>
         </TableCell>
-        <TableCell className="align-top pt-4 w-[40px]"></TableCell>
       </TableRow>
       {isOpen && (
         <TableRow className="bg-muted/30">
