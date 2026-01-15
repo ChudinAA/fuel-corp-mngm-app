@@ -1,6 +1,11 @@
-
 import { eq, and, gt, sql } from "drizzle-orm";
-import { warehouses, warehouseTransactions, opt, aircraftRefueling, movement } from "@shared/schema";
+import {
+  warehouses,
+  warehouseTransactions,
+  opt,
+  aircraftRefueling,
+  movement,
+} from "@shared/schema";
 import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 
 interface WarehouseUpdate {
@@ -36,20 +41,10 @@ export class WarehouseTransactionService {
     quantity: number,
     totalCost: number,
     createdById?: string,
-    transactionDateInput?: string
+    dealDate?: string,
   ) {
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
-    
-    // Determine transaction date
-    let transactionDate: string | null = null;
-    if (transactionDateInput) {
-      const inputDate = new Date(transactionDateInput).toISOString().split('T')[0];
-      const today = new Date().toISOString().split('T')[0];
-      if (inputDate !== today) {
-        transactionDate = inputDate;
-      }
-    }
-    
+
     const warehouse = await tx.query.warehouses.findFirst({
       where: eq(warehouses.id, warehouseId),
     });
@@ -62,6 +57,8 @@ export class WarehouseTransactionService {
     let currentCost: number;
     let newBalance: number;
     let newAverageCost: number;
+    let sum: number;
+    let price: number;
 
     if (isPvkj) {
       currentBalance = parseFloat(warehouse.pvkjBalance || "0");
@@ -72,11 +69,15 @@ export class WarehouseTransactionService {
     }
 
     // Расчет нового баланса и себестоимости
-    if (transactionType === TRANSACTION_TYPE.RECEIPT || transactionType === TRANSACTION_TYPE.TRANSFER_IN) {
+    if (
+      transactionType === TRANSACTION_TYPE.RECEIPT ||
+      transactionType === TRANSACTION_TYPE.TRANSFER_IN
+    ) {
       // Приход
       newBalance = currentBalance + quantity;
       const totalCurrentCost = currentBalance * currentCost;
-      newAverageCost = newBalance > 0 ? (totalCurrentCost + totalCost) / newBalance : 0;
+      newAverageCost =
+        newBalance > 0 ? (totalCurrentCost + totalCost) / newBalance : 0;
     } else {
       // Расход
       newBalance = Math.max(0, currentBalance - quantity);
@@ -85,7 +86,8 @@ export class WarehouseTransactionService {
 
     // Обновляем склад
     if (isPvkj) {
-      await tx.update(warehouses)
+      await tx
+        .update(warehouses)
         .set({
           pvkjBalance: newBalance.toFixed(2),
           pvkjAverageCost: newAverageCost.toFixed(4),
@@ -94,7 +96,8 @@ export class WarehouseTransactionService {
         })
         .where(eq(warehouses.id, warehouseId));
     } else {
-      await tx.update(warehouses)
+      await tx
+        .update(warehouses)
         .set({
           currentBalance: newBalance.toFixed(2),
           averageCost: newAverageCost.toFixed(4),
@@ -104,25 +107,39 @@ export class WarehouseTransactionService {
         .where(eq(warehouses.id, warehouseId));
     }
 
+    // При расходе totalCost = 0
+    if (totalCost === 0) {
+      sum = quantity * currentCost;
+      price = currentCost;
+    } else {
+      sum = totalCost;
+      price = quantity > 0 ? totalCost / quantity : 0;
+    }
+
     // Создаем транзакцию
-    const [transaction] = await tx.insert(warehouseTransactions).values({
-      warehouseId,
-      transactionType,
-      productType,
-      sourceType,
-      sourceId,
-      quantity: transactionType.includes('sale') || transactionType === TRANSACTION_TYPE.TRANSFER_OUT 
-        ? (-quantity).toString() 
-        : quantity.toString(),
-      sum: totalCost.toString(),
-      price: quantity > 0 ? (totalCost / quantity).toString() : "0",
-      transactionDate,
-      balanceBefore: currentBalance.toString(),
-      balanceAfter: newBalance.toString(),
-      averageCostBefore: currentCost.toString(),
-      averageCostAfter: newAverageCost.toString(),
-      createdById,
-    }).returning();
+    const [transaction] = await tx
+      .insert(warehouseTransactions)
+      .values({
+        warehouseId,
+        transactionType,
+        productType,
+        sourceType,
+        sourceId,
+        quantity:
+          transactionType.includes("sale") ||
+          transactionType === TRANSACTION_TYPE.TRANSFER_OUT
+            ? (-quantity).toString()
+            : quantity.toString(),
+        sum: sum.toString(),
+        price: price.toString(),
+        balanceBefore: currentBalance.toString(),
+        balanceAfter: newBalance.toString(),
+        averageCostBefore: currentCost.toString(),
+        averageCostAfter: newAverageCost.toString(),
+        createdById,
+        transactionDate: dealDate,
+      })
+      .returning();
 
     return { transaction, newAverageCost, newBalance };
   }
@@ -139,42 +156,50 @@ export class WarehouseTransactionService {
     newQuantity: number,
     newTotalCost: number,
     productType: string,
-    updatedById?: string
+    updatedById?: string,
+    dealDate?: string,
   ) {
-    console.log('  [WarehouseTransactionService] updateTransactionAndRecalculateWarehouse');
-    console.log('    Transaction ID:', transactionId);
-    console.log('    Warehouse ID:', warehouseId);
-    console.log('    Old:', { quantity: oldQuantity, totalCost: oldTotalCost });
-    console.log('    New:', { quantity: newQuantity, totalCost: newTotalCost });
-    console.log('    Product Type:', productType);
-    
+    console.log(
+      "  [WarehouseTransactionService] updateTransactionAndRecalculateWarehouse",
+    );
+    console.log("    Transaction ID:", transactionId);
+    console.log("    Warehouse ID:", warehouseId);
+    console.log("    Old:", { quantity: oldQuantity, totalCost: oldTotalCost });
+    console.log("    New:", { quantity: newQuantity, totalCost: newTotalCost });
+    console.log("    Product Type:", productType);
+
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
-    
+
     // Получаем информацию о транзакции для определения типа операции
     const transaction = await tx.query.warehouseTransactions.findFirst({
       where: eq(warehouseTransactions.id, transactionId),
     });
 
     if (!transaction) {
-      console.log('    ❌ Транзакция не найдена');
+      console.log("    ❌ Транзакция не найдена");
       throw new Error(`Transaction ${transactionId} not found`);
     }
 
-    const isReceipt = transaction.transactionType === TRANSACTION_TYPE.RECEIPT || 
-                     transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
-    
-    console.log('    Тип транзакции:', transaction.transactionType, isReceipt ? '(приход)' : '(расход)');
-    
+    const isReceipt =
+      transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
+      transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
+
+    console.log(
+      "    Тип транзакции:",
+      transaction.transactionType,
+      isReceipt ? "(приход)" : "(расход)",
+    );
+
     const warehouse = await tx.query.warehouses.findFirst({
       where: eq(warehouses.id, warehouseId),
     });
 
     if (!warehouse) {
-      console.log('    ❌ Склад не найден');
+      console.log("    ❌ Склад не найден");
       throw new Error(`Warehouse ${warehouseId} not found`);
     }
 
-    console.log('    ✓ Склад найден:', warehouse.name);
+    console.log("    ✓ Склад найден:", warehouse.name);
 
     let currentBalance: number;
     let currentCost: number;
@@ -187,7 +212,7 @@ export class WarehouseTransactionService {
       currentCost = parseFloat(warehouse.averageCost || "0");
     }
 
-    console.log('    Текущее состояние склада:', {
+    console.log("    Текущее состояние склада:", {
       balance: currentBalance,
       averageCost: currentCost,
     });
@@ -197,44 +222,57 @@ export class WarehouseTransactionService {
     let newBalance: number;
     let newTotalCostInWarehouse: number;
     let newAverageCost: number;
+    let sum: number;
+    let price: number;
 
     if (isReceipt) {
       // Для прихода: откатываем добавление, затем применяем новое
       balanceBeforeOldOperation = currentBalance - oldQuantity;
-      totalCostBeforeOldOperation = (currentBalance * currentCost) - oldTotalCost;
-      
-      console.log('    После отката старой операции (приход):', {
+      totalCostBeforeOldOperation = currentBalance * currentCost - oldTotalCost;
+
+      console.log("    После отката старой операции (приход):", {
         balance: balanceBeforeOldOperation,
         totalCost: totalCostBeforeOldOperation,
       });
-      
+
       newBalance = balanceBeforeOldOperation + newQuantity;
       newTotalCostInWarehouse = totalCostBeforeOldOperation + newTotalCost;
-      newAverageCost = newBalance > 0 ? newTotalCostInWarehouse / newBalance : 0;
+      newAverageCost =
+        newBalance > 0 ? newTotalCostInWarehouse / newBalance : 0;
     } else {
       // Для расхода: откатываем вычитание (добавляем обратно), затем применяем новое вычитание
       balanceBeforeOldOperation = currentBalance + oldQuantity;
       totalCostBeforeOldOperation = balanceBeforeOldOperation * currentCost;
-      
-      console.log('    После отката старой операции (расход):', {
+
+      console.log("    После отката старой операции (расход):", {
         balance: balanceBeforeOldOperation,
         totalCost: totalCostBeforeOldOperation,
       });
-      
+
       newBalance = Math.max(0, balanceBeforeOldOperation - newQuantity);
       newTotalCostInWarehouse = totalCostBeforeOldOperation; // При расходе себестоимость не меняется
       newAverageCost = currentCost; // Сохраняем текущую себестоимость
     }
 
-    console.log('    После применения новой операции:', {
+    console.log("    После применения новой операции:", {
       newBalance,
       newTotalCostInWarehouse,
       newAverageCost,
     });
 
+    // При расходе totalCost = 0
+    if (newTotalCost === 0) {
+      sum = newQuantity * currentCost;
+      price = currentCost;
+    } else {
+      sum = newTotalCost;
+      price = newQuantity > 0 ? newTotalCost / newQuantity : 0;
+    }
+
     // Обновляем склад
     if (isPvkj) {
-      await tx.update(warehouses)
+      await tx
+        .update(warehouses)
         .set({
           pvkjBalance: newBalance.toFixed(2),
           pvkjAverageCost: newAverageCost.toFixed(4),
@@ -243,7 +281,8 @@ export class WarehouseTransactionService {
         })
         .where(eq(warehouses.id, warehouseId));
     } else {
-      await tx.update(warehouses)
+      await tx
+        .update(warehouses)
         .set({
           currentBalance: newBalance.toFixed(2),
           averageCost: newAverageCost.toFixed(4),
@@ -253,20 +292,26 @@ export class WarehouseTransactionService {
         .where(eq(warehouses.id, warehouseId));
     }
 
-    console.log('    ✓ Склад обновлен');
+    console.log("    ✓ Склад обновлен");
 
     // Обновляем транзакцию
-    await tx.update(warehouseTransactions)
+    await tx
+      .update(warehouseTransactions)
       .set({
-        quantity: isReceipt ? newQuantity.toString() : (-newQuantity).toString(),
+        quantity: isReceipt
+          ? newQuantity.toString()
+          : (-newQuantity).toString(),
+        sum: sum.toString(),
+        price: price.toString(),
         balanceAfter: newBalance.toString(),
         averageCostAfter: newAverageCost.toFixed(4),
         updatedAt: sql`NOW()`,
         updatedById,
+        transactionDate: dealDate,
       })
       .where(eq(warehouseTransactions.id, transactionId));
 
-    console.log('    ✓ Транзакция обновлена');
+    console.log("    ✓ Транзакция обновлена");
 
     return { newAverageCost, newBalance };
   }
@@ -281,10 +326,10 @@ export class WarehouseTransactionService {
     quantity: number,
     totalCost: number,
     productType: string,
-    updatedById?: string
+    updatedById?: string,
   ) {
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
-    
+
     const warehouse = await tx.query.warehouses.findFirst({
       where: eq(warehouses.id, warehouseId),
     });
@@ -305,7 +350,7 @@ export class WarehouseTransactionService {
     }
 
     const newBalance = Math.max(0, currentBalance - quantity);
-    
+
     // Пересчитываем среднюю себестоимость
     const totalCostBeforeRemoval = currentBalance * currentCost;
     const newTotalCost = Math.max(0, totalCostBeforeRemoval - totalCost);
@@ -313,7 +358,8 @@ export class WarehouseTransactionService {
 
     // Обновляем склад
     if (isPvkj) {
-      await tx.update(warehouses)
+      await tx
+        .update(warehouses)
         .set({
           pvkjBalance: newBalance.toFixed(2),
           pvkjAverageCost: newAverageCost.toFixed(4),
@@ -322,7 +368,8 @@ export class WarehouseTransactionService {
         })
         .where(eq(warehouses.id, warehouseId));
     } else {
-      await tx.update(warehouses)
+      await tx
+        .update(warehouses)
         .set({
           currentBalance: newBalance.toFixed(2),
           averageCost: newAverageCost.toFixed(4),
@@ -333,10 +380,13 @@ export class WarehouseTransactionService {
     }
 
     // Soft delete транзакции
-    await tx.update(warehouseTransactions).set({
+    await tx
+      .update(warehouseTransactions)
+      .set({
         deletedAt: sql`NOW()`,
         deletedById: updatedById,
-      }).where(eq(warehouseTransactions.id, transactionId));
+      })
+      .where(eq(warehouseTransactions.id, transactionId));
 
     return { newAverageCost, newBalance };
   }

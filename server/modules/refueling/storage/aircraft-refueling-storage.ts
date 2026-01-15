@@ -148,7 +148,11 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         .returning();
 
       // Для услуги заправки или черновика не создаем транзакции на складе
-      if (!created.isDraft && data.warehouseId && data.productType !== PRODUCT_TYPE.SERVICE) {
+      if (
+        !created.isDraft &&
+        data.warehouseId &&
+        data.productType !== PRODUCT_TYPE.SERVICE
+      ) {
         const warehouse = await tx.query.warehouses.findFirst({
           where: eq(warehouses.id, data.warehouseId),
         });
@@ -195,11 +199,14 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
             sourceType: SOURCE_TYPE.REFUELING,
             sourceId: created.id,
             quantity: (-quantity).toString(),
+            sum: data.purchaseAmount,
+            price: data.purchasePrice,
             balanceBefore: currentBalance.toString(),
             balanceAfter: newBalance.toString(),
             averageCostBefore: averageCost,
             averageCostAfter: averageCost,
             createdById: data.createdById,
+            transactionDate: data.refuelingDate,
           })
           .returning();
 
@@ -226,12 +233,20 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         },
       });
 
-      if (!currentRefueling) return undefined;
+      if (!currentRefueling) {
+        throw new Error("Deal not found");
+      }
 
       // Логика перехода из черновика в готовую заправку
-      const transitioningFromDraft = currentRefueling.isDraft && data.isDraft === false;
+      const transitioningFromDraft =
+        currentRefueling.isDraft && data.isDraft === false;
 
-      if (transitioningFromDraft && data.warehouseId && data.quantityKg && data.productType !== PRODUCT_TYPE.SERVICE) {
+      if (
+        transitioningFromDraft &&
+        data.warehouseId &&
+        data.quantityKg &&
+        data.productType !== PRODUCT_TYPE.SERVICE
+      ) {
         const warehouse = await tx.query.warehouses.findFirst({
           where: eq(warehouses.id, data.warehouseId),
         });
@@ -275,11 +290,14 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
               sourceType: SOURCE_TYPE.REFUELING,
               sourceId: currentRefueling.id,
               quantity: (-quantity).toString(),
+              sum: data.purchaseAmount,
+              price: data.purchasePrice,
               balanceBefore: currentBalance.toString(),
               balanceAfter: newBalance.toString(),
               averageCostBefore: averageCost,
               averageCostAfter: averageCost,
               createdById: data.updatedById,
+              transactionDate: data.refuelingDate,
             })
             .returning();
 
@@ -294,6 +312,12 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         currentRefueling.warehouseId &&
         currentRefueling.productType !== PRODUCT_TYPE.SERVICE
       ) {
+        if (data.productType === PRODUCT_TYPE.SERVICE) {
+          throw new Error(
+            "You can`t change productType from PVKJ/KEROSENE to SERVICE for active deal",
+          );
+        }
+
         const oldQuantityKg = parseFloat(currentRefueling.quantityKg);
         const newQuantityKg = parseFloat(data.quantityKg.toString());
 
@@ -329,9 +353,12 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
               .update(warehouseTransactions)
               .set({
                 quantity: (-newQuantityKg).toString(),
+                sum: data.purchaseAmount?.toString(),
+                price: data.purchasePrice?.toString(),
                 balanceAfter: newBalance.toString(),
                 updatedAt: sql`NOW()`,
                 updatedById: data.updatedById,
+                transactionDate: data.refuelingDate,
               })
               .where(
                 eq(warehouseTransactions.id, currentRefueling.transactionId),
@@ -427,11 +454,20 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`,
       })
       .from(aircraftRefueling)
-      .where(and(eq(aircraftRefueling.salePriceId, priceId), isNull(aircraftRefueling.deletedAt)));
+      .where(
+        and(
+          eq(aircraftRefueling.salePriceId, priceId),
+          isNull(aircraftRefueling.deletedAt),
+        ),
+      );
     return parseFloat(result?.total || "0");
   }
 
-  async restoreRefueling(id: string, oldData: any, userId?: string): Promise<boolean> {
+  async restoreRefueling(
+    id: string,
+    oldData: any,
+    userId?: string,
+  ): Promise<boolean> {
     await db.transaction(async (tx) => {
       // Restore the aircraft refueling record
       await tx
@@ -443,7 +479,10 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         .where(eq(aircraftRefueling.id, id));
 
       // Restore associated transaction if exists and not a service
-      if (oldData.transactionId && oldData.productType !== PRODUCT_TYPE.SERVICE) {
+      if (
+        oldData.transactionId &&
+        oldData.productType !== PRODUCT_TYPE.SERVICE
+      ) {
         await tx
           .update(warehouseTransactions)
           .set({
@@ -462,7 +501,9 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
             const quantityKg = parseFloat(oldData.quantityKg);
             const isPvkj = oldData.productType === PRODUCT_TYPE.PVKJ;
             const currentBalance = parseFloat(
-              isPvkj ? warehouse.pvkjBalance || "0" : warehouse.currentBalance || "0"
+              isPvkj
+                ? warehouse.pvkjBalance || "0"
+                : warehouse.currentBalance || "0",
             );
             const newBalance = Math.max(0, currentBalance - quantityKg);
 
@@ -492,7 +533,9 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
   async getAllAircraftRefuelings(): Promise<any[]> {
     const data = await db.query.aircraftRefueling.findMany({
       where: isNull(aircraftRefueling.deletedAt),
-      orderBy: (aircraftRefueling, { desc }) => [desc(aircraftRefueling.refuelingDate)],
+      orderBy: (aircraftRefueling, { desc }) => [
+        desc(aircraftRefueling.refuelingDate),
+      ],
       with: {
         base: {
           columns: {

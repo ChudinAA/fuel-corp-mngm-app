@@ -1,4 +1,3 @@
-
 import { eq, desc, sql, asc, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
 import {
@@ -22,20 +21,20 @@ export class WarehouseStorage implements IWarehouseStorage {
           columns: {
             id: true,
             name: true,
-          }
+          },
         },
         warehouseBases: {
           with: {
             base: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
     // Map to include baseIds for backward compatibility
-    return warehousesList.map(w => ({
+    return warehousesList.map((w) => ({
       ...w,
-      baseIds: w.warehouseBases?.map(wb => wb.baseId) || [],
+      baseIds: w.warehouseBases?.map((wb) => wb.baseId) || [],
     }));
   }
 
@@ -47,14 +46,14 @@ export class WarehouseStorage implements IWarehouseStorage {
           columns: {
             id: true,
             name: true,
-          }
+          },
         },
         warehouseBases: {
           with: {
             base: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
     if (!warehouse) return undefined;
@@ -62,27 +61,32 @@ export class WarehouseStorage implements IWarehouseStorage {
     // Map to include baseIds for backward compatibility
     return {
       ...warehouse,
-      baseIds: warehouse.warehouseBases?.map(wb => wb.baseId) || [],
+      baseIds: warehouse.warehouseBases?.map((wb) => wb.baseId) || [],
     };
   }
 
-  async createWarehouse(data: InsertWarehouse & { baseIds?: string[] }): Promise<Warehouse> {
+  async createWarehouse(
+    data: InsertWarehouse & { baseIds?: string[] },
+  ): Promise<Warehouse> {
     const { baseIds, ...warehouseData } = data;
-    
+
     return await db.transaction(async (tx) => {
       // Create warehouse
-      const [created] = await tx.insert(warehouses).values(warehouseData).returning();
-      
+      const [created] = await tx
+        .insert(warehouses)
+        .values(warehouseData)
+        .returning();
+
       // Create warehouse-base relations
       if (baseIds && baseIds.length > 0) {
         await tx.insert(warehouseBases).values(
-          baseIds.map(baseId => ({
+          baseIds.map((baseId) => ({
             warehouseId: created.id,
             baseId,
-          }))
+          })),
         );
       }
-      
+
       return {
         ...created,
         baseIds: baseIds || [],
@@ -90,30 +94,39 @@ export class WarehouseStorage implements IWarehouseStorage {
     });
   }
 
-  async updateWarehouse(id: string, data: Partial<InsertWarehouse> & { baseIds?: string[] }): Promise<Warehouse | undefined> {
+  async updateWarehouse(
+    id: string,
+    data: Partial<InsertWarehouse> & { baseIds?: string[] },
+  ): Promise<Warehouse | undefined> {
     const { baseIds, ...warehouseData } = data;
-    
+
     return await db.transaction(async (tx) => {
       // Update warehouse
-      const [updated] = await tx.update(warehouses).set({
-        ...warehouseData,
-        updatedAt: sql`NOW()`
-      }).where(eq(warehouses.id, id)).returning();
+      const [updated] = await tx
+        .update(warehouses)
+        .set({
+          ...warehouseData,
+          updatedAt: sql`NOW()`,
+        })
+        .where(eq(warehouses.id, id))
+        .returning();
 
       if (!updated) return undefined;
 
       // Update warehouse-base relations if baseIds provided
       if (baseIds !== undefined) {
         // Delete existing relations
-        await tx.delete(warehouseBases).where(eq(warehouseBases.warehouseId, id));
-        
+        await tx
+          .delete(warehouseBases)
+          .where(eq(warehouseBases.warehouseId, id));
+
         // Create new relations
         if (baseIds.length > 0) {
           await tx.insert(warehouseBases).values(
-            baseIds.map(baseId => ({
+            baseIds.map((baseId) => ({
               warehouseId: id,
               baseId,
-            }))
+            })),
           );
         }
       }
@@ -125,36 +138,43 @@ export class WarehouseStorage implements IWarehouseStorage {
           warehouseBases: {
             with: {
               base: true,
-            }
-          }
-        }
+            },
+          },
+        },
       });
 
       if (!warehouseWithBases) return undefined;
 
       return {
         ...warehouseWithBases,
-        baseIds: warehouseWithBases.warehouseBases?.map(wb => wb.baseId) || [],
+        baseIds:
+          warehouseWithBases.warehouseBases?.map((wb) => wb.baseId) || [],
       };
     });
   }
 
   async deleteWarehouse(id: string, userId?: string): Promise<boolean> {
     // Soft delete
-    await db.update(warehouses).set({
-      deletedAt: sql`NOW()`,
-      deletedById: userId,
-    }).where(eq(warehouses.id, id));
+    await db
+      .update(warehouses)
+      .set({
+        deletedAt: sql`NOW()`,
+        deletedById: userId,
+      })
+      .where(eq(warehouses.id, id));
     return true;
   }
 
   async restoreWarehouse(id: string, userId?: string): Promise<boolean> {
     await db.transaction(async (tx) => {
       // Restore the warehouse
-      await tx.update(warehouses).set({
-        deletedAt: null,
-        deletedById: null,
-      }).where(eq(warehouses.id, id));
+      await tx
+        .update(warehouses)
+        .set({
+          deletedAt: null,
+          deletedById: null,
+        })
+        .where(eq(warehouses.id, id));
 
       // Note: warehouse-base relations are not deleted on soft delete,
       // so no need to restore them
@@ -162,28 +182,35 @@ export class WarehouseStorage implements IWarehouseStorage {
     return true;
   }
 
-  async getWarehouseTransactions(warehouseId: string): Promise<WarehouseTransaction[]> {
+  async getWarehouseTransactions(
+    warehouseId: string,
+  ): Promise<WarehouseTransaction[]> {
     const transactions = await db.query.warehouseTransactions.findMany({
-      where: and(eq(warehouseTransactions.warehouseId, warehouseId), isNull(warehouseTransactions.deletedAt)),
-      orderBy: (warehouseTransactions, { desc }) => [desc(warehouseTransactions.createdAt)],
+      where: and(
+        eq(warehouseTransactions.warehouseId, warehouseId),
+        isNull(warehouseTransactions.deletedAt),
+      ),
+      orderBy: (warehouseTransactions, { desc }) => [
+        desc(warehouseTransactions.transactionDate),
+      ],
       with: {
         warehouse: {
           columns: {
             id: true,
             name: true,
-          }
+          },
         },
         createdBy: {
           columns: {
             id: true,
             firstName: true,
             lastName: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
-    return transactions.map(tx => ({
+    return transactions.map((tx) => ({
       id: tx.id,
       warehouseId: tx.warehouseId,
       transactionType: tx.transactionType,
@@ -207,10 +234,11 @@ export class WarehouseStorage implements IWarehouseStorage {
       where: and(eq(warehouses.isActive, true), isNull(warehouses.deletedAt)),
     });
 
-    const stats = warehousesList.map(wh => {
+    const stats = warehousesList.map((wh) => {
       const currentBalance = parseFloat(wh.currentBalance || "0");
       const maxCapacity = parseFloat(wh.storageCost || "100000");
-      const percentage = maxCapacity > 0 ? (currentBalance / maxCapacity) * 100 : 0;
+      const percentage =
+        maxCapacity > 0 ? (currentBalance / maxCapacity) * 100 : 0;
 
       return {
         name: wh.name,

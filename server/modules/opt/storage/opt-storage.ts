@@ -214,11 +214,14 @@ export class OptStorage implements IOptStorage {
               sourceType: SOURCE_TYPE.OPT,
               sourceId: created.id,
               quantity: (-quantityKg).toString(),
+              sum: created.purchaseAmount,
+              price: created.purchasePrice,
               balanceBefore: currentBalance.toString(),
               balanceAfter: newBalance.toString(),
               averageCostBefore: warehouse.averageCost || "0",
               averageCostAfter: warehouse.averageCost || "0",
               createdById: data.createdById,
+              transactionDate: created.dealDate,
             })
             .returning();
 
@@ -251,7 +254,8 @@ export class OptStorage implements IOptStorage {
       if (!currentOpt) return undefined;
 
       // Логика перехода из черновика в готовую сделку
-      const transitioningFromDraft = currentOpt.isDraft && data.isDraft === false;
+      const transitioningFromDraft =
+        currentOpt.isDraft && data.isDraft === false;
 
       // Если сделка становится не черновиком, создаем транзакцию
       if (transitioningFromDraft && data.warehouseId && data.quantityKg) {
@@ -283,11 +287,14 @@ export class OptStorage implements IOptStorage {
               sourceType: SOURCE_TYPE.OPT,
               sourceId: currentOpt.id,
               quantity: (-quantityKg).toString(),
+              sum: data.purchaseAmount,
+              price: data.purchasePrice,
               balanceBefore: currentBalance.toString(),
               balanceAfter: newBalance.toString(),
               averageCostBefore: warehouse.averageCost || "0",
               averageCostAfter: warehouse.averageCost || "0",
               createdById: data.updatedById,
+              transactionDate: data.dealDate,
             })
             .returning();
 
@@ -328,9 +335,12 @@ export class OptStorage implements IOptStorage {
               .update(warehouseTransactions)
               .set({
                 quantity: (-newQuantityKg).toString(),
+                sum: data.purchaseAmount?.toString(),
+                price: data.purchasePrice?.toString(),
                 balanceAfter: newBalance.toString(),
                 updatedAt: sql`NOW()`,
                 updatedById: data.updatedById,
+                transactionDate: data.dealDate,
               })
               .where(eq(warehouseTransactions.id, currentOpt.transactionId));
           }
@@ -415,7 +425,11 @@ export class OptStorage implements IOptStorage {
     return parseFloat(result?.total || "0");
   }
 
-  async restoreOpt(id: string, oldData: any, userId?: string): Promise<boolean> {
+  async restoreOpt(
+    id: string,
+    oldData: any,
+    userId?: string,
+  ): Promise<boolean> {
     await db.transaction(async (tx) => {
       // Restore the opt record
       await tx

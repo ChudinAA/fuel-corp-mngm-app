@@ -8,7 +8,8 @@ ADD COLUMN IF NOT EXISTS transaction_date TIMESTAMP;
 UPDATE warehouse_transactions wt
 SET 
   sum = o.purchase_amount::numeric,
-  price = o.purchase_price::numeric
+  price = o.purchase_price::numeric,
+  transaction_date = COALESCE(wt.transaction_date, o.deal_date::timestamp)
 FROM opt o
 WHERE wt.source_type = 'opt' AND wt.source_id = o.id;
 
@@ -16,7 +17,8 @@ WHERE wt.source_type = 'opt' AND wt.source_id = o.id;
 UPDATE warehouse_transactions wt
 SET 
   sum = a.purchase_amount::numeric,
-  price = a.purchase_price::numeric
+  price = a.purchase_price::numeric,
+  transaction_date = COALESCE(wt.transaction_date, a.refueling_date::timestamp)
 FROM aircraft_refueling a
 WHERE wt.source_type = 'refueling' AND wt.source_id = a.id;
 
@@ -24,6 +26,12 @@ WHERE wt.source_type = 'refueling' AND wt.source_id = a.id;
 UPDATE warehouse_transactions wt
 SET 
   sum = m.total_cost::numeric,
-  price = m.cost_per_kg::numeric
+  price = m.cost_per_kg::numeric,
+  transaction_date = COALESCE(wt.transaction_date, m.movement_date::timestamp)
 FROM movement m
 WHERE wt.source_type = 'movement' AND wt.source_id = m.id;
+
+-- Step 5: Fallback for existing transactionDate if it was NULL (using createdAt)
+UPDATE warehouse_transactions 
+SET transaction_date = created_at::timestamp 
+WHERE transaction_date IS NULL;
