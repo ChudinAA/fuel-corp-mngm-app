@@ -83,6 +83,7 @@ export function WarehouseDetailsDialog({
         expenseSum: number;
         avgPrice: number;
         avgCost: number;
+        balance: number;
         transactions: WarehouseTransaction[];
       }>;
     }> = {};
@@ -291,16 +292,15 @@ export function WarehouseDetailsDialog({
               <Table className="relative min-w-[1100px] border-separate border-spacing-0">
                 <TableHeader className="sticky top-0 z-[100] bg-background">
                   <TableRow className="hover:bg-transparent shadow-[0_1px_0_0_rgba(0,0,0,0.1)]">
-                    <TableHead className="w-[10%] min-w-[100px] bg-background sticky top-0 border-b">Дата</TableHead>
+                    <TableHead className="text-center w-[10%] min-w-[100px] bg-background sticky top-0 border-b">Дата</TableHead>
                     <TableHead className="w-[8%] min-w-[80px] bg-background sticky top-0 border-b">Продукт</TableHead>
-                    <TableHead className="text-right w-[11%] min-w-[100px] bg-background sticky top-0 border-b">Поступление, кг</TableHead>
-                    <TableHead className="text-right w-[12%] min-w-[110px] bg-background sticky top-0 border-b">Сумма прихода</TableHead>
-                    <TableHead className="text-right w-[11%] min-w-[100px] bg-background sticky top-0 border-b">Расход, кг</TableHead>
-                    <TableHead className="text-right w-[12%] min-w-[110px] bg-background sticky top-0 border-b">Сумма расхода</TableHead>
-                    <TableHead className="text-right w-[11%] min-w-[100px] bg-background sticky top-0 border-b font-bold text-sky-600">Остаток</TableHead>
-                    <TableHead className="text-right w-[11%] min-w-[100px] bg-background sticky top-0 border-b">Вход. цена</TableHead>
-                    <TableHead className="text-right w-[11%] min-w-[100px] bg-background sticky top-0 border-b text-primary">Себест.</TableHead>
-                    <TableHead className="w-[30px] bg-background sticky top-0 border-b"></TableHead>
+                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">Поступление, кг</TableHead>
+                    <TableHead className="text-center w-[12%] min-w-[110px] bg-background sticky top-0 border-b">Сумма прихода</TableHead>
+                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">Расход, кг</TableHead>
+                    <TableHead className="text-center w-[12%] min-w-[110px] bg-background sticky top-0 border-b">Сумма расхода</TableHead>
+                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">Остаток</TableHead>
+                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">Вход. цена</TableHead>
+                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">Себест.</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -371,10 +371,10 @@ function DailyRowGroup({
                     {p.productType === PRODUCT_TYPE.PVKJ ? "ПВКЖ" : "Керосин"}
                   </Badge>
                 </div>
-                <div className="w-[12%] min-w-[100px] shrink-0 text-right px-4 font-medium text-green-600 truncate">
+                <div className="w-[12%] min-w-[100px] shrink-0 text-center px-4 font-medium text-green-600 truncate">
                   {p.receiptKg > 0 ? `+${formatNumber(p.receiptKg)}` : "0"} кг
                 </div>
-                <div className="w-[13.5%] min-w-[110px] shrink-0 text-right px-4 truncate">
+                <div className="w-[13.5%] min-w-[110px] shrink-0 text-center px-4 truncate">
                   {p.receiptSum > 0 ? formatCurrency(p.receiptSum) : "0"}
                 </div>
                 <div className="w-[12%] min-w-[100px] shrink-0 text-right px-4 font-medium text-red-600 truncate">
@@ -383,7 +383,7 @@ function DailyRowGroup({
                 <div className="w-[13.5%] min-w-[110px] shrink-0 text-right px-4 truncate">
                   {p.expenseSum > 0 ? formatCurrency(p.expenseSum) : "0"}
                 </div>
-                <div className="w-[12.5%] min-w-[100px] shrink-0 text-right px-4 font-bold text-sky-600 truncate">
+                <div className="w-[12.5%] min-w-[100px] shrink-0 text-right px-4 font-bold truncate">
                   {formatNumber(p.balance)} кг
                 </div>
                 <div className="w-[12.5%] min-w-[100px] shrink-0 text-right px-4 truncate">
@@ -396,7 +396,6 @@ function DailyRowGroup({
             ))}
           </div>
         </TableCell>
-        <TableCell className="align-top pt-4 w-[30px]"></TableCell>
       </TableRow>
       {isOpen && (
         <TableRow className="bg-muted/30">
