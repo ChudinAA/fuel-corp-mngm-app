@@ -290,12 +290,12 @@ export function WarehouseDetailsDialog({
                 <TableRow>
                   <TableHead className="w-[120px]">Дата</TableHead>
                   <TableHead className="w-[100px]">Продукт</TableHead>
-                  <TableHead className="text-right">Поступление, кг</TableHead>
-                  <TableHead className="text-right">Сумма прихода</TableHead>
-                  <TableHead className="text-right">Расход, кг</TableHead>
-                  <TableHead className="text-right">Сумма расхода</TableHead>
-                  <TableHead className="text-right">Вход. цена</TableHead>
-                  <TableHead className="text-right">Себест.</TableHead>
+                  <TableHead className="text-right w-[120px]">Поступление, кг</TableHead>
+                  <TableHead className="text-right w-[140px]">Сумма прихода</TableHead>
+                  <TableHead className="text-right w-[120px]">Расход, кг</TableHead>
+                  <TableHead className="text-right w-[140px]">Сумма расхода</TableHead>
+                  <TableHead className="text-right w-[120px]">Вход. цена</TableHead>
+                  <TableHead className="text-right w-[120px]">Себест.</TableHead>
                   <TableHead className="w-[40px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -345,49 +345,50 @@ function DailyRowGroup({
         className="cursor-pointer hover:bg-muted/50 group" 
         onClick={() => setIsOpen(!isOpen)}
       >
-        <TableCell className="font-medium align-top pt-4">
+        <TableCell className="font-medium align-top pt-4 w-[120px]">
           <div className="flex items-center gap-2">
             {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             {format(new Date(group.date), "dd.MM.yyyy", { locale: ru })}
           </div>
         </TableCell>
         <TableCell colSpan={7} className="p-0">
-          <Table className="border-0">
-            <TableBody>
-              {products.map((p, idx) => (
-                <TableRow key={p.productType} className="hover:bg-transparent border-0">
-                  <TableCell className="w-[100px] border-0 py-2">
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] ${p.productType === PRODUCT_TYPE.PVKJ ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"}`}
-                    >
-                      {p.productType === PRODUCT_TYPE.PVKJ ? "ПВКЖ" : "Керосин"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right border-0 py-2 font-medium text-green-600">
-                    {p.receiptKg > 0 ? `+${formatNumber(p.receiptKg)}` : "0"} кг
-                  </TableCell>
-                  <TableCell className="text-right border-0 py-2">
-                    {p.receiptSum > 0 ? formatCurrency(p.receiptSum) : "0"}
-                  </TableCell>
-                  <TableCell className="text-right border-0 py-2 font-medium text-red-600">
-                    {p.expenseKg > 0 ? `-${formatNumber(p.expenseKg)}` : "0"} кг
-                  </TableCell>
-                  <TableCell className="text-right border-0 py-2">
-                    {p.expenseSum > 0 ? formatCurrency(p.expenseSum) : "0"}
-                  </TableCell>
-                  <TableCell className="text-right border-0 py-2">
-                    {p.avgPrice > 0 ? formatCurrency(p.avgPrice) : "0"}
-                  </TableCell>
-                  <TableCell className="text-right border-0 py-2 font-semibold">
-                    {formatCurrency(p.avgCost)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="flex flex-col">
+            {products.map((p, idx) => (
+              <div 
+                key={p.productType} 
+                className={`flex items-center py-2 border-b last:border-0 ${idx === 0 ? "pt-2" : ""}`}
+              >
+                <div className="w-[100px] shrink-0 px-4">
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] ${p.productType === PRODUCT_TYPE.PVKJ ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"}`}
+                  >
+                    {p.productType === PRODUCT_TYPE.PVKJ ? "ПВКЖ" : "Керосин"}
+                  </Badge>
+                </div>
+                <div className="w-[120px] shrink-0 text-right px-4 font-medium text-green-600 truncate">
+                  {p.receiptKg > 0 ? `+${formatNumber(p.receiptKg)}` : "0"} кг
+                </div>
+                <div className="w-[140px] shrink-0 text-right px-4 truncate">
+                  {p.receiptSum > 0 ? formatCurrency(p.receiptSum) : "0"}
+                </div>
+                <div className="w-[120px] shrink-0 text-right px-4 font-medium text-red-600 truncate">
+                  {p.expenseKg > 0 ? `-${formatNumber(p.expenseKg)}` : "0"} кг
+                </div>
+                <div className="w-[140px] shrink-0 text-right px-4 truncate">
+                  {p.expenseSum > 0 ? formatCurrency(p.expenseSum) : "0"}
+                </div>
+                <div className="w-[120px] shrink-0 text-right px-4 truncate">
+                  {p.avgPrice > 0 ? formatCurrency(p.avgPrice) : "0"}
+                </div>
+                <div className="w-[120px] shrink-0 text-right px-4 font-semibold truncate">
+                  {formatCurrency(p.avgCost)}
+                </div>
+              </div>
+            ))}
+          </div>
         </TableCell>
-        <TableCell className="align-top pt-4"></TableCell>
+        <TableCell className="align-top pt-4 w-[40px]"></TableCell>
       </TableRow>
       {isOpen && (
         <TableRow className="bg-muted/30">
