@@ -185,17 +185,17 @@ export function WarehouseDetailsDialog({
                   <TableHead>Тип операции</TableHead>
                   <TableHead>Продукт</TableHead>
                   <TableHead className="text-right">Количество</TableHead>
+                  <TableHead className="text-right">Цена за кг</TableHead>
+                  <TableHead className="text-right">Сумма</TableHead>
                   <TableHead className="text-right">Остаток до</TableHead>
                   <TableHead className="text-right">Остаток после</TableHead>
-                  <TableHead className="text-right">Себест. до</TableHead>
-                  <TableHead className="text-right">Себест. после</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {transactions.map((tx) => (
                   <TableRow key={tx.id}>
                     <TableCell className="whitespace-nowrap">
-                      {format(new Date(tx.createdAt), "dd.MM.yyyy", { locale: ru })}
+                      {format(new Date(tx.transactionDate || tx.createdAt), "dd.MM.yyyy", { locale: ru })}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -220,16 +220,16 @@ export function WarehouseDetailsDialog({
                       {formatNumber(tx.quantityKg)} кг
                     </TableCell>
                     <TableCell className="text-right">
+                      {tx.price ? formatCurrency(tx.price) : '—'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {tx.sum ? formatCurrency(tx.sum) : '—'}
+                    </TableCell>
+                    <TableCell className="text-right">
                       {formatNumber(tx.balanceBefore)} кг
                     </TableCell>
                     <TableCell className="text-right">
                       {formatNumber(tx.balanceAfter)} кг
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(tx.averageCostBefore)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(tx.averageCostAfter)}
                     </TableCell>
                   </TableRow>
                 ))}
