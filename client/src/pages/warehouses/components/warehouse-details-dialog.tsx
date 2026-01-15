@@ -285,34 +285,36 @@ export function WarehouseDetailsDialog({
               ))}
             </div>
           ) : dailyGroups.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-center w-[120px]">Дата</TableHead>
-                  <TableHead className="w-[90px]">Продукт</TableHead>
-                  <TableHead className="text-center w-[100px]">Поступление, кг</TableHead>
-                  <TableHead className="text-center w-[140px]">Сумма прихода</TableHead>
-                  <TableHead className="text-center w-[120px]">Расход, кг</TableHead>
-                  <TableHead className="text-center w-[140px]">Сумма расхода</TableHead>
-                  <TableHead className="text-center w-[120px]">Вход. цена</TableHead>
-                  <TableHead className="text-center w-[120px]">Себест.</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {dailyGroups.map((group) => {
-                  const sortedProducts = Object.values(group.products).sort((a) => a.productType === PRODUCT_TYPE.KEROSENE ? -1 : 1);
-                  return (
-                    <DailyRowGroup 
-                      key={group.date} 
-                      group={group} 
-                      products={sortedProducts}
-                      getTransactionIcon={getTransactionIcon}
-                      getTransactionTypeLabel={getTransactionTypeLabel}
-                    />
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="min-w-fit overflow-x-auto">
+              <Table className="relative min-w-[1000px] border-collapse">
+                <TableHeader className="sticky top-0 z-[100] bg-background">
+                  <TableRow className="hover:bg-transparent border-b shadow-[0_1px_0_0_rgba(0,0,0,0.1)]">
+                    <TableHead className="w-[12%] min-w-[100px] bg-background">Дата</TableHead>
+                    <TableHead className="w-[10%] min-w-[90px] bg-background">Продукт</TableHead>
+                    <TableHead className="text-right w-[13%] min-w-[110px] bg-background">Поступление, кг</TableHead>
+                    <TableHead className="text-right w-[14%] min-w-[120px] bg-background">Сумма прихода</TableHead>
+                    <TableHead className="text-right w-[13%] min-w-[110px] bg-background">Расход, кг</TableHead>
+                    <TableHead className="text-right w-[14%] min-w-[120px] bg-background">Сумма расхода</TableHead>
+                    <TableHead className="text-right w-[12%] min-w-[110px] bg-background">Вход. цена</TableHead>
+                    <TableHead className="text-right w-[12%] min-w-[110px] bg-background text-primary">Себест.</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dailyGroups.map((group) => {
+                    const sortedProducts = Object.values(group.products).sort((a) => a.productType === PRODUCT_TYPE.KEROSENE ? -1 : 1);
+                    return (
+                      <DailyRowGroup 
+                        key={group.date} 
+                        group={group} 
+                        products={sortedProducts}
+                        getTransactionIcon={getTransactionIcon}
+                        getTransactionTypeLabel={getTransactionTypeLabel}
+                      />
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-4 opacity-20" />
@@ -344,7 +346,7 @@ function DailyRowGroup({
         className="cursor-pointer hover:bg-muted/50 group" 
         onClick={() => setIsOpen(!isOpen)}
       >
-        <TableCell className="font-medium align-top pt-4 w-[120px]">
+        <TableCell className="font-medium align-top pt-4 w-[12%] min-w-[100px]">
           <div className="flex items-center gap-2">
             {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             {format(new Date(group.date), "dd.MM.yyyy", { locale: ru })}
@@ -357,7 +359,7 @@ function DailyRowGroup({
                 key={p.productType} 
                 className={`flex items-center py-2 border-b last:border-0 ${idx === 0 ? "pt-2" : ""}`}
               >
-                <div className="w-[100px] shrink-0 px-4">
+                <div className="w-[11.5%] min-w-[90px] shrink-0 px-4">
                   <Badge
                     variant="outline"
                     className={`text-[10px] ${p.productType === PRODUCT_TYPE.PVKJ ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"}`}
@@ -365,22 +367,22 @@ function DailyRowGroup({
                     {p.productType === PRODUCT_TYPE.PVKJ ? "ПВКЖ" : "Керосин"}
                   </Badge>
                 </div>
-                <div className="w-[190px] shrink-0 text-right px-4 font-medium text-green-600 truncate">
+                <div className="w-[15%] min-w-[110px] shrink-0 text-right px-4 font-medium text-green-600 truncate">
                   {p.receiptKg > 0 ? `+${formatNumber(p.receiptKg)}` : "0"} кг
                 </div>
-                <div className="w-[200px] shrink-0 text-right px-4 truncate">
+                <div className="w-[16%] min-w-[120px] shrink-0 text-right px-4 truncate">
                   {p.receiptSum > 0 ? formatCurrency(p.receiptSum) : "0"}
                 </div>
-                <div className="w-[190px] shrink-0 text-right px-4 font-medium text-red-600 truncate">
+                <div className="w-[15%] min-w-[110px] shrink-0 text-right px-4 font-medium text-red-600 truncate">
                   {p.expenseKg > 0 ? `-${formatNumber(p.expenseKg)}` : "0"} кг
                 </div>
-                <div className="w-[220px] shrink-0 text-right px-4 truncate">
+                <div className="w-[16%] min-w-[120px] shrink-0 text-right px-4 truncate">
                   {p.expenseSum > 0 ? formatCurrency(p.expenseSum) : "0"}
                 </div>
-                <div className="w-[180px] shrink-0 text-right px-4 truncate">
+                <div className="w-[14%] min-w-[110px] shrink-0 text-right px-4 truncate">
                   {p.avgPrice > 0 ? formatCurrency(p.avgPrice) : "0"}
                 </div>
-                <div className="w-[180px] shrink-0 text-right px-4 font-semibold truncate">
+                <div className="w-[13.5%] min-w-[110px] shrink-0 text-right px-4 font-semibold truncate">
                   {formatCurrency(p.avgCost)}
                 </div>
               </div>
