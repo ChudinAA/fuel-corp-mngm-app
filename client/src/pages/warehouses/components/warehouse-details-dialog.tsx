@@ -365,19 +365,19 @@ function DailyRowGroup({
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right border-0 py-2 font-medium text-green-600">
-                    {p.receiptKg > 0 ? `+${formatNumber(p.receiptKg)}` : "—"}
+                    {p.receiptKg > 0 ? `+${formatNumber(p.receiptKg)}` : "0"} кг
                   </TableCell>
                   <TableCell className="text-right border-0 py-2">
-                    {p.receiptSum > 0 ? formatCurrency(p.receiptSum) : "—"}
+                    {p.receiptSum > 0 ? formatCurrency(p.receiptSum) : "0"}
                   </TableCell>
                   <TableCell className="text-right border-0 py-2 font-medium text-red-600">
-                    {p.expenseKg > 0 ? `-${formatNumber(p.expenseKg)}` : "—"}
+                    {p.expenseKg > 0 ? `-${formatNumber(p.expenseKg)}` : "0"} кг
                   </TableCell>
                   <TableCell className="text-right border-0 py-2">
-                    {p.expenseSum > 0 ? formatCurrency(p.expenseSum) : "—"}
+                    {p.expenseSum > 0 ? formatCurrency(p.expenseSum) : "0"}
                   </TableCell>
                   <TableCell className="text-right border-0 py-2">
-                    {p.avgPrice > 0 ? formatCurrency(p.avgPrice) : "—"}
+                    {p.avgPrice > 0 ? formatCurrency(p.avgPrice) : "0"}
                   </TableCell>
                   <TableCell className="text-right border-0 py-2 font-semibold">
                     {formatCurrency(p.avgCost)}
@@ -400,8 +400,10 @@ function DailyRowGroup({
                     <TableHead className="h-8 text-[11px] uppercase tracking-wider">Продукт</TableHead>
                     <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Кол-во</TableHead>
                     <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Сумма</TableHead>
-                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Цена</TableHead>
+                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Цена за кг</TableHead>
+                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Остаток до</TableHead>
                     <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Остаток после</TableHead>
+                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Себест. до</TableHead>
                     <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Себест. после</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -417,12 +419,12 @@ function DailyRowGroup({
                         </div>
                       </TableCell>
                       <TableCell className="py-1">
-                        <Badge variant="outline" className="text-[10px] scale-90 origin-left">
+                        <Badge variant="outline" className={`text-[10px] scale-90 origin-left ${tx.productType === PRODUCT_TYPE.PVKJ ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"}`}>
                           {tx.productType === PRODUCT_TYPE.PVKJ ? "ПВКЖ" : "Керосин"}
                         </Badge>
                       </TableCell>
                       <TableCell className={`text-right py-1 font-medium text-xs ${parseFloat(tx.quantityKg) > 0 ? "text-green-600" : "text-red-600"}`}>
-                        {parseFloat(tx.quantityKg) > 0 ? "+" : ""}{formatNumber(tx.quantityKg)}
+                        {parseFloat(tx.quantityKg) > 0 ? "+" : ""}{formatNumber(tx.quantityKg)} кг
                       </TableCell>
                       <TableCell className="text-right py-1 text-xs">
                         {tx.sum ? formatCurrency(tx.sum) : "—"}
@@ -431,7 +433,13 @@ function DailyRowGroup({
                         {tx.price ? formatCurrency(tx.price) : "—"}
                       </TableCell>
                       <TableCell className="text-right py-1 text-xs">
-                        {formatNumber(tx.balanceAfter)}
+                        {formatNumber(tx.balanceBefore)} кг
+                      </TableCell>
+                      <TableCell className="text-right py-1 text-xs">
+                        {formatNumber(tx.balanceAfter)} кг
+                      </TableCell>
+                      <TableCell className="text-right py-1 text-xs">
+                        {formatCurrency(tx.averageCostBefore)}
                       </TableCell>
                       <TableCell className="text-right py-1 text-xs">
                         {formatCurrency(tx.averageCostAfter)}
