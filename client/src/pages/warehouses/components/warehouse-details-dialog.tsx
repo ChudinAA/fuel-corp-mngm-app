@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import React, { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -34,7 +35,10 @@ import {
   Warehouse as WarehouseIcon,
   Droplets,
   Fuel,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { Warehouse, Base } from "@shared/schema";
 import type { WarehouseTransaction } from "../types";
 import { formatNumber, formatCurrency } from "../utils";
@@ -65,6 +69,68 @@ export function WarehouseDetailsDialog({
     queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
     enabled: open,
   });
+
+  const dailyGroups = useMemo(() => {
+    if (!transactions) return [];
+
+    const groups: Record<string, {
+      date: string;
+      products: Record<string, {
+        productType: string;
+        receiptKg: number;
+        receiptSum: number;
+        expenseKg: number;
+        expenseSum: number;
+        avgPrice: number;
+        avgCost: number;
+        transactions: WarehouseTransaction[];
+      }>;
+    }> = {};
+
+    transactions.forEach(tx => {
+      const date = format(new Date(tx.transactionDate || tx.createdAt), "yyyy-MM-dd");
+      if (!groups[date]) {
+        groups[date] = { date, products: {} };
+      }
+
+      const product = tx.productType;
+      if (!groups[date].products[product]) {
+        groups[date].products[product] = {
+          productType: product,
+          receiptKg: 0,
+          receiptSum: 0,
+          expenseKg: 0,
+          expenseSum: 0,
+          avgPrice: 0,
+          avgCost: 0,
+          transactions: [],
+        };
+      }
+
+      const pData = groups[date].products[product];
+      pData.transactions.push(tx);
+
+      const qty = parseFloat(tx.quantityKg);
+      const sum = parseFloat(tx.sum || "0");
+      const price = parseFloat(tx.price || "0");
+      const cost = parseFloat(tx.averageCostAfter || "0");
+
+      if (tx.transactionType === TRANSACTION_TYPE.RECEIPT || tx.transactionType === TRANSACTION_TYPE.TRANSFER_IN) {
+        pData.receiptKg += qty;
+        pData.receiptSum += sum;
+        // Входящая цена (средняя за день для поступлений)
+        if (price > 0) {
+          pData.avgPrice = price; // Упрощенно берем последнюю или можно считать средневзвешенную
+        }
+      } else {
+        pData.expenseKg += Math.abs(qty);
+        pData.expenseSum += sum;
+      }
+      pData.avgCost = cost; // Себестоимость на конец дня
+    });
+
+    return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date));
+  }, [transactions]);
 
   const getTransactionIcon = (type: string) => {
     if (
@@ -106,14 +172,14 @@ export function WarehouseDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[90vw] max-h-[90vh]">
+      <DialogContent className="max-w-[95vw] max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <WarehouseIcon className="h-5 w-5 text-sky-400" />
             {warehouse.name} - История операций
           </DialogTitle>
           <DialogDescription>
-            Детализация поступлений и списаний по складу
+            Сводная информация по дням и детализация транзакций
           </DialogDescription>
         </DialogHeader>
 
@@ -211,90 +277,41 @@ export function WarehouseDetailsDialog({
 
         <Separator />
 
-        <ScrollArea className="h-[400px] pr-4">
+        <ScrollArea className="h-[500px] pr-4">
           {isLoading ? (
             <div className="space-y-2">
               {[1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : transactions && transactions.length > 0 ? (
+          ) : dailyGroups.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Дата</TableHead>
-                  <TableHead>Тип операции</TableHead>
-                  <TableHead>Продукт</TableHead>
-                  <TableHead className="text-right">Количество</TableHead>
-                  <TableHead className="text-right">Сумма</TableHead>
-                  <TableHead className="text-right">Цена за кг</TableHead>
-                  <TableHead className="text-right">Остаток до</TableHead>
-                  <TableHead className="text-right">Остаток после</TableHead>
-                  <TableHead className="text-right">Себест. до</TableHead>
-                  <TableHead className="text-right">Себест. после</TableHead>
+                  <TableHead className="w-[120px]">Дата</TableHead>
+                  <TableHead className="w-[100px]">Продукт</TableHead>
+                  <TableHead className="text-right">Поступление, кг</TableHead>
+                  <TableHead className="text-right">Сумма прихода</TableHead>
+                  <TableHead className="text-right">Расход, кг</TableHead>
+                  <TableHead className="text-right">Сумма расхода</TableHead>
+                  <TableHead className="text-right">Вход. цена</TableHead>
+                  <TableHead className="text-right">Себест.</TableHead>
+                  <TableHead className="w-[40px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {transactions.map((tx) => (
-                  <TableRow key={tx.id}>
-                    <TableCell className="whitespace-nowrap">
-                      {format(
-                        new Date(tx.transactionDate || tx.createdAt),
-                        "dd.MM.yyyy",
-                        { locale: ru },
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getTransactionIcon(tx.transactionType)}
-                        <span className="text-sm">
-                          {getTransactionTypeLabel(
-                            tx.transactionType,
-                            tx.sourceType,
-                          )}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`text-xs ${tx.productType === PRODUCT_TYPE.PVKJ ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"}`}
-                      >
-                        {tx.productType === PRODUCT_TYPE.PVKJ
-                          ? "ПВКЖ"
-                          : "Керосин"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell
-                      className={`text-right font-medium ${
-                        parseFloat(tx.quantityKg) > 0
-                          ? "text-green-600"
-                          : "text-red-600"
-                      }`}
-                    >
-                      {parseFloat(tx.quantityKg) > 0 ? "+" : ""}
-                      {formatNumber(tx.quantityKg)} кг
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {tx.sum ? formatCurrency(tx.sum) : "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {tx.price ? formatCurrency(tx.price) : "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(tx.balanceBefore)} кг
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatNumber(tx.balanceAfter)} кг
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(tx.averageCostBefore)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency(tx.averageCostAfter)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {dailyGroups.map((group) => {
+                  const sortedProducts = Object.values(group.products).sort((a) => a.productType === PRODUCT_TYPE.KEROSENE ? -1 : 1);
+                  return (
+                    <DailyRowGroup 
+                      key={group.date} 
+                      group={group} 
+                      products={sortedProducts}
+                      getTransactionIcon={getTransactionIcon}
+                      getTransactionTypeLabel={getTransactionTypeLabel}
+                    />
+                  );
+                })}
               </TableBody>
             </Table>
           ) : (
@@ -308,3 +325,126 @@ export function WarehouseDetailsDialog({
     </Dialog>
   );
 }
+
+function DailyRowGroup({ 
+  group, 
+  products,
+  getTransactionIcon,
+  getTransactionTypeLabel
+}: { 
+  group: any, 
+  products: any[],
+  getTransactionIcon: (type: string) => React.ReactNode,
+  getTransactionTypeLabel: (type: string, source?: string) => string
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <>
+      <TableRow 
+        className="cursor-pointer hover:bg-muted/50 group" 
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <TableCell className="font-medium align-top pt-4">
+          <div className="flex items-center gap-2">
+            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            {format(new Date(group.date), "dd.MM.yyyy", { locale: ru })}
+          </div>
+        </TableCell>
+        <TableCell colSpan={7} className="p-0">
+          <Table className="border-0">
+            <TableBody>
+              {products.map((p, idx) => (
+                <TableRow key={p.productType} className="hover:bg-transparent border-0">
+                  <TableCell className="w-[100px] border-0 py-2">
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] ${p.productType === PRODUCT_TYPE.PVKJ ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"}`}
+                    >
+                      {p.productType === PRODUCT_TYPE.PVKJ ? "ПВКЖ" : "Керосин"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right border-0 py-2 font-medium text-green-600">
+                    {p.receiptKg > 0 ? `+${formatNumber(p.receiptKg)}` : "—"}
+                  </TableCell>
+                  <TableCell className="text-right border-0 py-2">
+                    {p.receiptSum > 0 ? formatCurrency(p.receiptSum) : "—"}
+                  </TableCell>
+                  <TableCell className="text-right border-0 py-2 font-medium text-red-600">
+                    {p.expenseKg > 0 ? `-${formatNumber(p.expenseKg)}` : "—"}
+                  </TableCell>
+                  <TableCell className="text-right border-0 py-2">
+                    {p.expenseSum > 0 ? formatCurrency(p.expenseSum) : "—"}
+                  </TableCell>
+                  <TableCell className="text-right border-0 py-2">
+                    {p.avgPrice > 0 ? formatCurrency(p.avgPrice) : "—"}
+                  </TableCell>
+                  <TableCell className="text-right border-0 py-2 font-semibold">
+                    {formatCurrency(p.avgCost)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableCell>
+        <TableCell className="align-top pt-4"></TableCell>
+      </TableRow>
+      {isOpen && (
+        <TableRow className="bg-muted/30">
+          <TableCell colSpan={9} className="p-4">
+            <div className="rounded-md border bg-card">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="h-8 text-[11px] uppercase tracking-wider">Тип операции</TableHead>
+                    <TableHead className="h-8 text-[11px] uppercase tracking-wider">Продукт</TableHead>
+                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Кол-во</TableHead>
+                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Сумма</TableHead>
+                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Цена</TableHead>
+                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Остаток после</TableHead>
+                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Себест. после</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {products.flatMap(p => p.transactions).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(tx => (
+                    <TableRow key={tx.id} className="h-10">
+                      <TableCell className="py-1">
+                        <div className="flex items-center gap-2">
+                          {getTransactionIcon(tx.transactionType)}
+                          <span className="text-xs">
+                            {getTransactionTypeLabel(tx.transactionType, tx.sourceType)}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-1">
+                        <Badge variant="outline" className="text-[10px] scale-90 origin-left">
+                          {tx.productType === PRODUCT_TYPE.PVKJ ? "ПВКЖ" : "Керосин"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className={`text-right py-1 font-medium text-xs ${parseFloat(tx.quantityKg) > 0 ? "text-green-600" : "text-red-600"}`}>
+                        {parseFloat(tx.quantityKg) > 0 ? "+" : ""}{formatNumber(tx.quantityKg)}
+                      </TableCell>
+                      <TableCell className="text-right py-1 text-xs">
+                        {tx.sum ? formatCurrency(tx.sum) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right py-1 text-xs">
+                        {tx.price ? formatCurrency(tx.price) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right py-1 text-xs">
+                        {formatNumber(tx.balanceAfter)}
+                      </TableCell>
+                      <TableCell className="text-right py-1 text-xs">
+                        {formatCurrency(tx.averageCostAfter)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </TableCell>
+        </TableRow>
+      )}
+    </>
+  );
+}
+
