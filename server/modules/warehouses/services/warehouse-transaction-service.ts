@@ -35,9 +35,20 @@ export class WarehouseTransactionService {
     sourceId: string,
     quantity: number,
     totalCost: number,
-    createdById?: string
+    createdById?: string,
+    transactionDateInput?: string
   ) {
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
+    
+    // Determine transaction date
+    let transactionDate: string | null = null;
+    if (transactionDateInput) {
+      const inputDate = new Date(transactionDateInput).toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      if (inputDate !== today) {
+        transactionDate = inputDate;
+      }
+    }
     
     const warehouse = await tx.query.warehouses.findFirst({
       where: eq(warehouses.id, warehouseId),
@@ -105,6 +116,7 @@ export class WarehouseTransactionService {
         : quantity.toString(),
       sum: totalCost.toString(),
       price: quantity > 0 ? (totalCost / quantity).toString() : "0",
+      transactionDate,
       balanceBefore: currentBalance.toString(),
       balanceAfter: newBalance.toString(),
       averageCostBefore: currentCost.toString(),
