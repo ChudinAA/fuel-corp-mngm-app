@@ -93,7 +93,7 @@ export function WarehouseDetailsDialog({
         groups[date] = { date, products: {} };
       }
 
-      const product = tx.productType;
+      const product = tx.productType || PRODUCT_TYPE.KEROSENE;
       if (!groups[date].products[product]) {
         groups[date].products[product] = {
           productType: product,

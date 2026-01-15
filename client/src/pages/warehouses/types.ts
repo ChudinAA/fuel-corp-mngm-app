@@ -9,6 +9,9 @@ export interface WarehouseTransaction {
   balanceAfter: string;
   averageCostBefore: string;
   averageCostAfter: string;
+  sum?: string;
+  price?: string;
+  transactionDate?: string;
   createdAt: string;
 }
 
