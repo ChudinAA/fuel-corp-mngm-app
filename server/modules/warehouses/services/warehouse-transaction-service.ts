@@ -105,7 +105,6 @@ export class WarehouseTransactionService {
         : quantity.toString(),
       sum: totalCost.toString(),
       price: quantity > 0 ? (totalCost / quantity).toString() : "0",
-      transactionDate: sql`CURRENT_DATE`, // Default to today, can be overridden if service method is updated
       balanceBefore: currentBalance.toString(),
       balanceAfter: newBalance.toString(),
       averageCostBefore: currentCost.toString(),

@@ -1,20 +1,49 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Package, ArrowUpCircle, ArrowDownCircle, Warehouse as WarehouseIcon, Droplets, Fuel } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Package,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Warehouse as WarehouseIcon,
+  Droplets,
+  Fuel,
+} from "lucide-react";
 import type { Warehouse, Base } from "@shared/schema";
 import type { WarehouseTransaction } from "../types";
 import { formatNumber, formatCurrency } from "../utils";
-import { BASE_TYPE, PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
+import {
+  BASE_TYPE,
+  PRODUCT_TYPE,
+  SOURCE_TYPE,
+  TRANSACTION_TYPE,
+} from "@shared/constants";
 
 interface WarehouseDetailsDialogProps {
   warehouse: Warehouse;
@@ -22,10 +51,10 @@ interface WarehouseDetailsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function WarehouseDetailsDialog({ 
-  warehouse, 
-  open, 
-  onOpenChange 
+export function WarehouseDetailsDialog({
+  warehouse,
+  open,
+  onOpenChange,
 }: WarehouseDetailsDialogProps) {
   const { data: bases } = useQuery<Base[]>({
     queryKey: ["/api/bases"],
@@ -38,24 +67,31 @@ export function WarehouseDetailsDialog({
   });
 
   const getTransactionIcon = (type: string) => {
-    if (type === TRANSACTION_TYPE.RECEIPT || type === TRANSACTION_TYPE.TRANSFER_IN) {
+    if (
+      type === TRANSACTION_TYPE.RECEIPT ||
+      type === TRANSACTION_TYPE.TRANSFER_IN
+    ) {
       return <ArrowUpCircle className="h-5 w-5 text-green-600" />;
     }
     return <ArrowDownCircle className="h-5 w-5 text-red-600" />;
   };
 
-  const getTransactionTypeLabel = (transactionType: string, sourceType?: string) => {
+  const getTransactionTypeLabel = (
+    transactionType: string,
+    sourceType?: string,
+  ) => {
     switch (transactionType) {
       case TRANSACTION_TYPE.RECEIPT:
-        return 'Поступление';
+        return "Поступление";
       case TRANSACTION_TYPE.TRANSFER_IN:
-        return 'Перемещение (приход)';
+        return "Перемещение (приход)";
       case TRANSACTION_TYPE.TRANSFER_OUT:
-        return 'Перемещение (расход)';
+        return "Перемещение (расход)";
       case TRANSACTION_TYPE.SALE:
-        if (sourceType === SOURCE_TYPE.REFUELING) return 'Продажа (Заправка ВС)';
-        if (sourceType === SOURCE_TYPE.OPT) return 'Продажа (ОПТ)';
-        return 'Продажа';
+        if (sourceType === SOURCE_TYPE.REFUELING)
+          return "Продажа (Заправка ВС)";
+        if (sourceType === SOURCE_TYPE.OPT) return "Продажа (ОПТ)";
+        return "Продажа";
       default:
         return transactionType;
     }
@@ -148,8 +184,13 @@ export function WarehouseDetailsDialog({
                       <TooltipProvider key={baseId}>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Badge variant="outline" className="flex items-center gap-1">
-                              <BaseIcon className={`h-3 w-3 ${baseIcon.color}`} />
+                            <Badge
+                              variant="outline"
+                              className="flex items-center gap-1"
+                            >
+                              <BaseIcon
+                                className={`h-3 w-3 ${baseIcon.color}`}
+                              />
                               {base.name}
                             </Badge>
                           </TooltipTrigger>
@@ -185,51 +226,72 @@ export function WarehouseDetailsDialog({
                   <TableHead>Тип операции</TableHead>
                   <TableHead>Продукт</TableHead>
                   <TableHead className="text-right">Количество</TableHead>
-                  <TableHead className="text-right">Цена за кг</TableHead>
                   <TableHead className="text-right">Сумма</TableHead>
+                  <TableHead className="text-right">Цена за кг</TableHead>
                   <TableHead className="text-right">Остаток до</TableHead>
                   <TableHead className="text-right">Остаток после</TableHead>
+                  <TableHead className="text-right">Себест. до</TableHead>
+                  <TableHead className="text-right">Себест. после</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {transactions.map((tx) => (
                   <TableRow key={tx.id}>
                     <TableCell className="whitespace-nowrap">
-                      {format(new Date(tx.transactionDate || tx.createdAt), "dd.MM.yyyy", { locale: ru })}
+                      {format(
+                        new Date(tx.transactionDate || tx.createdAt),
+                        "dd.MM.yyyy",
+                        { locale: ru },
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {getTransactionIcon(tx.transactionType)}
                         <span className="text-sm">
-                          {getTransactionTypeLabel(tx.transactionType, tx.sourceType)}
+                          {getTransactionTypeLabel(
+                            tx.transactionType,
+                            tx.sourceType,
+                          )}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge 
-                        variant="outline" 
-                        className={`text-xs ${tx.productType === PRODUCT_TYPE.PVKJ ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30' : 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30'}`}
+                      <Badge
+                        variant="outline"
+                        className={`text-xs ${tx.productType === PRODUCT_TYPE.PVKJ ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"}`}
                       >
-                        {tx.productType === PRODUCT_TYPE.PVKJ ? 'ПВКЖ' : 'Керосин'}
+                        {tx.productType === PRODUCT_TYPE.PVKJ
+                          ? "ПВКЖ"
+                          : "Керосин"}
                       </Badge>
                     </TableCell>
-                    <TableCell className={`text-right font-medium ${
-                      parseFloat(tx.quantityKg) > 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {parseFloat(tx.quantityKg) > 0 ? '+' : ''}
+                    <TableCell
+                      className={`text-right font-medium ${
+                        parseFloat(tx.quantityKg) > 0
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {parseFloat(tx.quantityKg) > 0 ? "+" : ""}
                       {formatNumber(tx.quantityKg)} кг
                     </TableCell>
                     <TableCell className="text-right">
-                      {tx.price ? formatCurrency(tx.price) : '—'}
+                      {tx.sum ? formatCurrency(tx.sum) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
-                      {tx.sum ? formatCurrency(tx.sum) : '—'}
+                      {tx.price ? formatCurrency(tx.price) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       {formatNumber(tx.balanceBefore)} кг
                     </TableCell>
                     <TableCell className="text-right">
                       {formatNumber(tx.balanceAfter)} кг
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(tx.averageCostBefore)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(tx.averageCostAfter)}
                     </TableCell>
                   </TableRow>
                 ))}

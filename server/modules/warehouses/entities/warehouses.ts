@@ -105,7 +105,7 @@ export const warehouseTransactions = pgTable(
     }),
     sum: decimal("sum", { precision: 15, scale: 2 }),
     price: decimal("price", { precision: 12, scale: 4 }),
-    transactionDate: date("transaction_date", { mode: "string" }),
+    transactionDate: timestamp("transaction_date", { mode: "string" }),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
     createdById: uuid("created_by_id").references(() => users.id),
