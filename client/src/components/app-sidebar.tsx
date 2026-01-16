@@ -76,7 +76,7 @@ const getMainMenuItems = () => [
   },
 ];
 
-const getOperationsMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
+const getOperationsMenuItems = (hasPermission: (p: string) => boolean) => [
   {
     title: "ОПТ",
     url: "/opt",
@@ -116,9 +116,9 @@ const getOperationsMenuItems = (hasPermission: (module: string, action: string) 
     url: "/transportation",
     icon: TruckIcon,
   },
-].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
+].filter(item => !item.permission || hasPermission(item.permission));
 
-const getDataMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
+const getDataMenuItems = (hasPermission: (p: string) => boolean) => [
   {
     title: "Склады",
     url: "/warehouses",
@@ -143,9 +143,9 @@ const getDataMenuItems = (hasPermission: (module: string, action: string) => boo
     icon: BookOpen,
     permission: "directories.view",
   },
-].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
+].filter(item => !item.permission || hasPermission(item.permission));
 
-const getFinanceMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
+const getFinanceMenuItems = (hasPermission: (p: string) => boolean) => [
   {
     title: "Кешфлоу",
     url: "/finance/cashflow",
@@ -164,10 +164,10 @@ const getFinanceMenuItems = (hasPermission: (module: string, action: string) => 
     icon: Calculator,
     permission: "finance.view",
   },
-].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
+].filter(item => !item.permission || hasPermission(item.permission));
 
 // New function to get reports menu items
-const getReportsMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
+const getReportsMenuItems = (hasPermission: (p: string) => boolean) => [
   {
     title: "Текущие отчеты",
     url: "/reports/current",
@@ -198,10 +198,10 @@ const getReportsMenuItems = (hasPermission: (module: string, action: string) => 
     icon: ChartSpline,
     permission: "reports.view",
   },
-].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
+].filter(item => !item.permission || hasPermission(item.permission));
 
 // New function to get planning menu items
-const getPlanningMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
+const getPlanningMenuItems = (hasPermission: (p: string) => boolean) => [
   {
     title: "Ежемесячный план",
     url: "/reports/monthly-plan",
@@ -214,10 +214,10 @@ const getPlanningMenuItems = (hasPermission: (module: string, action: string) =>
     icon: Wallet,
     permission: "reports.view",
   },
-].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
+].filter(item => !item.permission || hasPermission(item.permission));
 
 
-const getAdminMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
+const getAdminMenuItems = (hasPermission: (p: string) => boolean) => [
   {
     title: "Пользователи",
     url: "/admin/users",
@@ -240,7 +240,7 @@ const getAdminMenuItems = (hasPermission: (module: string, action: string) => bo
     url: "/admin/settings",
     icon: Settings,
   },
-].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
+].filter(item => !item.permission || hasPermission(item.permission));
 
 
 export function AppSidebar() {
@@ -257,12 +257,18 @@ export function AppSidebar() {
   };
 
   const mainMenuItems = getMainMenuItems();
-  const operationsMenuItems = getOperationsMenuItems(hasPermission);
-  const dataMenuItems = getDataMenuItems(hasPermission);
-  const financeMenuItems = getFinanceMenuItems(hasPermission);
-  const reportsMenuItems = getReportsMenuItems(hasPermission);
-  const planningMenuItems = getPlanningMenuItems(hasPermission);
-  const adminMenuItems = getAdminMenuItems(hasPermission);
+  const hasPerm = (p: string) => {
+    const parts = p.split('.');
+    if (parts.length !== 2) return false;
+    return hasPermission(parts[0], parts[1]);
+  };
+
+  const operationsMenuItems = getOperationsMenuItems(hasPerm as any);
+  const dataMenuItems = getDataMenuItems(hasPerm as any);
+  const financeMenuItems = getFinanceMenuItems(hasPerm as any);
+  const reportsMenuItems = getReportsMenuItems(hasPerm as any);
+  const planningMenuItems = getPlanningMenuItems(hasPerm as any);
+  const adminMenuItems = getAdminMenuItems(hasPerm as any);
 
   return (
     <Sidebar>

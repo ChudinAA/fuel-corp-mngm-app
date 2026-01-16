@@ -64,7 +64,8 @@ function ProtectedRoute({ component: Component, requiredPermissions }: { compone
   }
 
   if (requiredPermissions && requiredPermissions.length > 0) {
-    const hasPermission = user.permissions?.some(p => requiredPermissions.includes(p));
+    const userPermissions = (user as any).permissions || [];
+    const hasPermission = userPermissions.some((p: string) => requiredPermissions.includes(p));
     if (!hasPermission) {
       return <NotFound />;
     }
