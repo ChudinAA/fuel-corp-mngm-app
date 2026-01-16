@@ -1,8 +1,10 @@
 
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { MOVEMENT_TYPE, PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, DELIVERY_ENTITY_TYPE } from "@shared/constants";
 import { format } from "date-fns";
-import { calculateKgFromLiters } from "../utils";
+import { calculateKgFromLiters, parsePriceCompositeId } from "../utils";
+import { useContractVolume } from "../../shared/hooks/use-contract-volume";
 import type { AllSupplier } from "../types";
 
 interface UseMovementCalculationsProps {
@@ -22,6 +24,8 @@ interface UseMovementCalculationsProps {
   prices: any[];
   deliveryCosts: any[];
   allBases?: any[];
+  isEditing: boolean;
+  selectedPurchasePriceId: string | null;
 }
 
 export function useMovementCalculations({
@@ -41,6 +45,8 @@ export function useMovementCalculations({
   prices,
   deliveryCosts,
   allBases,
+  isEditing,
+  selectedPurchasePriceId,
 }: UseMovementCalculationsProps) {
   
   // Calculate quantity in kg
@@ -52,6 +58,16 @@ export function useMovementCalculations({
   }, [inputMode, watchLiters, watchDensity, watchKg]);
 
   const kgNum = calculatedKg || 0;
+  const finalKg = kgNum;
+
+  // Логика проверки объема по договору поставщика
+  const supplierContractVolumeStatus = useContractVolume({
+    priceId: parsePriceCompositeId(selectedPurchasePriceId).priceId,
+    currentQuantityKg: finalKg,
+    isEditing: isEditing,
+    mode: "movement",
+    type: "purchase",
+  });
 
   // Get purchase price
   const purchasePrice = useMemo((): number | null => {
@@ -203,5 +219,6 @@ export function useMovementCalculations({
     deliveryCost,
     totalCost,
     costPerKg,
+    supplierContractVolumeStatus,
   };
 }
