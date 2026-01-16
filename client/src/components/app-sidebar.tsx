@@ -63,6 +63,9 @@ import {
   ChartCandlestick,
   CalendarPlus,
   Wallet,
+  Globe,
+  Key,
+  TruckIcon,
 } from "lucide-react";
 
 const getMainMenuItems = () => [
@@ -97,6 +100,21 @@ const getOperationsMenuItems = (hasPermission: (module: string, action: string) 
     url: "/movement",
     icon: ArrowLeftRight,
     permission: "movement.view",
+  },
+  {
+    title: "Зарубеж",
+    url: "/abroad",
+    icon: Globe,
+  },
+  {
+    title: "Аренда ТЗА",
+    url: "/rent",
+    icon: Key,
+  },
+  {
+    title: "Перевозка",
+    url: "/transportation",
+    icon: TruckIcon,
   },
 ].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
 
@@ -148,48 +166,52 @@ const getFinanceMenuItems = (hasPermission: (module: string, action: string) => 
   },
 ].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
 
-// New function to get reports and planning menu items
+// New function to get reports menu items
 const getReportsMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
   {
     title: "Текущие отчеты",
     url: "/reports/current",
-    icon: FileText, // Changed to FileText for current reports
+    icon: FileText,
     permission: "reports.view",
   },
   {
     title: "Аналитические отчеты",
     url: "/reports/analytics",
-    icon: FileCheck, // Changed to FileCheck for analytical reports
+    icon: FileCheck,
     permission: "reports.view",
   },
   {
     title: "Реестры",
     url: "/reports/registries",
-    icon: Table2, // Kept BarChart3 for registries as it's a common visualization tool
+    icon: Table2,
     permission: "reports.view",
-  },
-  {
-    title: "Ежемесячный план",
-    url: "/reports/monthly-plan",
-    icon: Calendar1, // Changed to Calendar for monthly plan
-    permission: "reports.create",
   },
   {
     title: "Госконтракты",
     url: "/reports/gov-contracts",
-    icon: Briefcase, // Changed to Briefcase for government contracts
-    permission: "reports.view",
-  },
-  {
-    title: "БДР",
-    url: "/reports/budget",
-    icon: Wallet, // Kept BarChart3 for budget reports
+    icon: Briefcase,
     permission: "reports.view",
   },
   {
     title: "Управленческий отчет",
     url: "/reports/management",
     icon: ChartSpline,
+    permission: "reports.view",
+  },
+].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
+
+// New function to get planning menu items
+const getPlanningMenuItems = (hasPermission: (module: string, action: string) => boolean) => [
+  {
+    title: "Ежемесячный план",
+    url: "/reports/monthly-plan",
+    icon: Calendar1,
+    permission: "reports.create",
+  },
+  {
+    title: "БДР",
+    url: "/reports/budget",
+    icon: Wallet,
     permission: "reports.view",
   },
 ].filter(item => !item.permission || hasPermission(...item.permission.split('.')));
@@ -238,7 +260,8 @@ export function AppSidebar() {
   const operationsMenuItems = getOperationsMenuItems(hasPermission);
   const dataMenuItems = getDataMenuItems(hasPermission);
   const financeMenuItems = getFinanceMenuItems(hasPermission);
-  const reportsMenuItems = getReportsMenuItems(hasPermission); // Get the new reports menu items
+  const reportsMenuItems = getReportsMenuItems(hasPermission);
+  const planningMenuItems = getPlanningMenuItems(hasPermission);
   const adminMenuItems = getAdminMenuItems(hasPermission);
 
   return (
@@ -382,7 +405,7 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* New Reports and Planning section */}
+        {/* Reports section */}
         {reportsMenuItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupContent>
@@ -390,15 +413,54 @@ export function AppSidebar() {
                 <Collapsible asChild defaultOpen className="group/collapsible">
                   <SidebarMenuItem>
                     <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip="Отчеты и планирование">
-                        <BarChart3 className="h-4 w-4" /> {/* Using BarChart3 as the main icon for the section */}
-                        <span>Отчеты и планирование</span>
+                      <SidebarMenuButton tooltip="Отчеты">
+                        <BarChart3 className="h-4 w-4" />
+                        <span>Отчеты</span>
                         <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
                       <SidebarMenuSub>
                         {reportsMenuItems.map((item) => (
+                          <SidebarMenuSubItem key={item.title}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={isActive(item.url)}
+                              data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
+                            >
+                              <Link href={item.url}>
+                                <item.icon className="h-4 w-4" />
+                                <span>{item.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Planning section */}
+        {planningMenuItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <Collapsible asChild defaultOpen className="group/collapsible">
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton tooltip="Планирование">
+                        <Calendar className="h-4 w-4" />
+                        <span>Планирование</span>
+                        <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {planningMenuItems.map((item) => (
                           <SidebarMenuSubItem key={item.title}>
                             <SidebarMenuSubButton
                               asChild

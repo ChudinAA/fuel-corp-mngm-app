@@ -9,7 +9,14 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { Loader2 } from "lucide-react";
+import { Loader2, MessageSquare, Bell } from "lucide-react";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
 
 import AuthPage from "@/pages/auth-page";
@@ -38,6 +45,8 @@ import GovContractsPage from "@/pages/reports/gov-contracts-page";
 import BudgetPage from "@/pages/reports/budget-page";
 import ManagementReportPage from "@/pages/reports/management-report-page";
 import NotFound from "@/pages/not-found";
+
+import InDevelopmentPage from "@/pages/shared/in-development";
 
 function ProtectedRoute({ component: Component, requiredPermissions }: { component: React.ComponentType, requiredPermissions?: string[] }) {
   const { user, isLoading } = useAuth();
@@ -90,8 +99,38 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <SidebarInset className="flex flex-col flex-1">
           <header className="flex h-14 items-center justify-between gap-4 border-b px-4 lg:px-6">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <ThemeToggle />
+            <div className="flex items-center gap-4">
+              <SidebarTrigger data-testid="button-sidebar-toggle" />
+            </div>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <MessageSquare className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem className="text-muted-foreground italic">
+                    В разработке
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <Bell className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem className="text-muted-foreground italic">
+                    В разработке
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <ThemeToggle />
+            </div>
           </header>
           <main className="flex-1 overflow-auto p-4 lg:p-6">
             {children}
@@ -257,6 +296,24 @@ function Router() {
       <Route path="/admin/settings">
         <AppLayout>
           <ProtectedRoute component={SettingsPage} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/abroad">
+        <AppLayout>
+          <ProtectedRoute component={InDevelopmentPage} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/rent">
+        <AppLayout>
+          <ProtectedRoute component={InDevelopmentPage} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/transportation">
+        <AppLayout>
+          <ProtectedRoute component={InDevelopmentPage} />
         </AppLayout>
       </Route>
 
