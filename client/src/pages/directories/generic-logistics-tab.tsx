@@ -36,6 +36,8 @@ import {
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { AddLogisticsDialog } from "./logistics-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { BaseTypeBadge } from "@/components/base-type-badge";
+import type { Base } from "@shared/schema";
 
 interface GenericLogisticsTabProps {
   type: "carrier" | "delivery_location" | "vehicle" | "trailer" | "driver";
@@ -77,6 +79,10 @@ export function GenericLogisticsTab({
 
   const { data: carriers = [] } = useQuery<any[]>({
     queryKey: ["/api/logistics/carriers"],
+  });
+
+  const { data: bases = [] } = useQuery<Base[]>({
+    queryKey: ["/api/bases"],
   });
 
   const deleteMutation = useMutation({
@@ -143,6 +149,7 @@ export function GenericLogisticsTab({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Название</TableHead>
+                    {type === "delivery_location" && <TableHead>Базис</TableHead>}
                     <TableHead>Статус</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
@@ -153,6 +160,21 @@ export function GenericLogisticsTab({
                       <TableCell className="font-medium">
                         {getItemDisplayName(item)}
                       </TableCell>
+                      {type === "delivery_location" && (
+                        <TableCell>
+                          {(() => {
+                            const base = bases.find((b) => b.id === item.baseId);
+                            return base ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm">{base.name}</span>
+                                <BaseTypeBadge type={base.baseType} />
+                              </div>
+                            ) : (
+                              "—"
+                            );
+                          })()}
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Badge
                           variant="outline"

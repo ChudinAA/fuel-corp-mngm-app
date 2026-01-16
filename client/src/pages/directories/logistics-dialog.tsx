@@ -75,6 +75,14 @@ const logisticsFormSchema = z.object({
   licenseExpiry: z.string().optional(),
   notes: z.string().optional(),
   isActive: z.boolean().default(true),
+}).refine((data) => {
+  if (data.type === "delivery_location" && !data.baseId) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Выберите базис",
+  path: ["baseId"],
 });
 
 type LogisticsFormData = z.infer<typeof logisticsFormSchema>;
@@ -148,13 +156,22 @@ export function AddLogisticsDialog({
   const selectedType = form.watch("type");
 
   useEffect(() => {
+    // Custom reset logic to preserve baseId if needed
+    const currentBaseId = form.getValues("baseId");
+    
     form.setValue("inn", "");
     form.setValue("contactPerson", "");
     form.setValue("phone", "");
     form.setValue("address", "");
     form.setValue("coordinates", "");
     form.setValue("carrierId", undefined);
-    form.setValue("baseId", undefined);
+    
+    if (selectedType !== "delivery_location") {
+      form.setValue("baseId", undefined);
+    } else {
+      form.setValue("baseId", currentBaseId);
+    }
+    
     form.setValue("plateNumber", "");
     form.setValue("vehicleType", "");
     form.setValue("capacityKg", "");
