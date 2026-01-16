@@ -196,7 +196,20 @@ export function LogisticsSection({
   return (
     <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="text-lg">Логистика</CardTitle>
+        <div className="flex items-center justify-between gap-4">
+          <CardTitle className="text-lg">Логистика</CardTitle>
+          {selectedLocationBase && (
+            <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-right-1 duration-200">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                Базис: {selectedLocationBase.name}
+              </span>
+              <BaseTypeBadge
+                type={selectedLocationBase.baseType}
+                short={true}
+              />
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -205,20 +218,7 @@ export function LogisticsSection({
             name="deliveryLocationId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center justify-between gap-2">
-                  <span>Точка поставки</span>
-                  {selectedLocationBase && (
-                    <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                        ({selectedLocationBase.name})
-                      </span>
-                      <BaseTypeBadge
-                        type={selectedLocationBase.baseType}
-                        short={true}
-                      />
-                    </div>
-                  )}
-                </FormLabel>
+                <FormLabel>Точка поставки</FormLabel>
                 <div className="flex gap-1">
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
@@ -226,7 +226,9 @@ export function LogisticsSection({
                         data-testid="select-delivery-location"
                         className="flex-1"
                       >
-                        <SelectValue placeholder="Выберите место" />
+                        <SelectValue placeholder="Выберите место">
+                          {selectedLocation?.name}
+                        </SelectValue>
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
