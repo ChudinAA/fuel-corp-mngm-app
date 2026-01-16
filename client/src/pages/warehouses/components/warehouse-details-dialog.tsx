@@ -112,11 +112,12 @@ export function WarehouseDetailsDialog({
       const pData = groups[date].products[product];
       pData.transactions.push(tx);
 
+      // Сортируем транзакции внутри группы по времени создания для корректного определения баланса
+      pData.transactions.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
       const qty = parseFloat(tx.quantityKg);
       const sum = parseFloat(tx.sum || "0");
       const price = parseFloat(tx.price || "0");
-      const cost = parseFloat(tx.averageCostAfter || "0");
-      const balance = parseFloat(tx.balanceAfter || "0");
 
       if (tx.transactionType === TRANSACTION_TYPE.RECEIPT || tx.transactionType === TRANSACTION_TYPE.TRANSFER_IN) {
         pData.receiptKg += qty;
@@ -128,8 +129,11 @@ export function WarehouseDetailsDialog({
         pData.expenseKg += Math.abs(qty);
         pData.expenseSum += sum;
       }
-      pData.avgCost = cost;
-      pData.balance = balance; // Остаток на конец дня (последняя транзакция за день)
+      
+      // Всегда берем balanceAfter и averageCostAfter из транзакции, которая является последней по времени создания
+      const lastTx = pData.transactions[pData.transactions.length - 1];
+      pData.avgCost = parseFloat(lastTx.averageCostAfter || "0");
+      pData.balance = parseFloat(lastTx.balanceAfter || "0");
     });
 
     return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date));
@@ -289,7 +293,7 @@ export function WarehouseDetailsDialog({
             </div>
           ) : dailyGroups.length > 0 ? (
             <div className="min-w-fit overflow-x-auto relative">
-              <Table className="relative min-w-[1100px] border-separate border-spacing-0">
+              <Table className="relative min-w-[1100px] border-collapse">
                 <TableHeader className="sticky top-0 z-[100] bg-background">
                   <TableRow className="hover:bg-transparent shadow-[0_1px_0_0_rgba(0,0,0,0.1)]">
                     <TableHead className="text-center w-[10%] min-w-[100px] bg-background sticky top-0 border-b">Дата</TableHead>
@@ -347,7 +351,7 @@ function DailyRowGroup({
   return (
     <>
       <TableRow 
-        className="cursor-pointer hover:bg-muted/50 group" 
+        className={`cursor-pointer hover:bg-muted/50 group transition-all ${isOpen ? "ring-2 ring-primary ring-inset bg-muted/30" : ""}`} 
         onClick={() => setIsOpen(!isOpen)}
       >
         <TableCell className="font-medium align-top pt-4 w-[10%] min-w-[100px]">
