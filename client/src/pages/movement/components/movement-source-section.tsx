@@ -23,6 +23,7 @@ interface MovementSourceSectionProps {
   watchProductType: string;
   suppliers: AllSupplier[];
   warehouses: any[];
+  allBases?: any[];
 }
 
 export function MovementSourceSection({
@@ -31,9 +32,14 @@ export function MovementSourceSection({
   watchProductType,
   suppliers,
   warehouses,
+  allBases,
 }: MovementSourceSectionProps) {
   const watchSupplierId = form.watch("supplierId");
   const selectedSupplier = suppliers?.find((w) => w.id === watchSupplierId);
+
+  const selectedSupplierBases = selectedSupplier?.baseIds?.map(id => 
+    allBases?.find(b => b.id === id)
+  ).filter(Boolean) || [];
 
   const watchFromWarehouseId = form.watch("fromWarehouseId");
   const selectedWarehouse = warehouses?.find(
@@ -42,36 +48,70 @@ export function MovementSourceSection({
 
   if (watchMovementType === MOVEMENT_TYPE.SUPPLY) {
     return (
-      <FormField
-        control={form.control}
-        name="supplierId"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Поставщик</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger data-testid="select-movement-supplier">
-                  <SelectValue placeholder="Выберите поставщика">
-                    {selectedSupplier?.name}
-                  </SelectValue>
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {suppliers?.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                )) || (
-                  <SelectItem value="none" disabled>
-                    Нет данных
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
+      <>
+        <FormField
+          control={form.control}
+          name="supplierId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Поставщик</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-movement-supplier">
+                    <SelectValue placeholder="Выберите поставщика">
+                      {selectedSupplier?.name}
+                    </SelectValue>
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {suppliers?.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  )) || (
+                    <SelectItem value="none" disabled>
+                      Нет данных
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {watchSupplierId && (
+          <FormField
+            control={form.control}
+            name="basis"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Базис Поставщика</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-movement-basis">
+                      <SelectValue placeholder="Выберите базис" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {selectedSupplierBases.map((b: any) => (
+                      <SelectItem key={b.id} value={b.name}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                    {selectedSupplierBases.length === 0 && (
+                      <SelectItem value="none" disabled>
+                        Базисы не привязаны
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         )}
-      />
+      </>
     );
   } else {
     return (

@@ -54,6 +54,7 @@ export function MovementDialog({
       movementType: MOVEMENT_TYPE.SUPPLY,
       productType: PRODUCT_TYPE.KEROSENE,
       supplierId: "",
+      basis: "",
       fromWarehouseId: "",
       toWarehouseId: "",
       inputMode: "kg",
@@ -90,6 +91,7 @@ export function MovementDialog({
         movementType: editMovement.movementType,
         productType: editMovement.productType,
         supplierId: editMovement.supplierId || "",
+        basis: editMovement.basis || "",
         fromWarehouseId: editMovement.fromWarehouseId || "",
         toWarehouseId: editMovement.toWarehouseId,
         inputMode: "kg",
@@ -106,6 +108,7 @@ export function MovementDialog({
         movementType: MOVEMENT_TYPE.SUPPLY,
         productType: PRODUCT_TYPE.KEROSENE,
         supplierId: "",
+        basis: "",
         fromWarehouseId: "",
         toWarehouseId: "",
         inputMode: "kg",
@@ -122,6 +125,7 @@ export function MovementDialog({
   const watchMovementType = form.watch("movementType");
   const watchProductType = form.watch("productType");
   const watchSupplierId = form.watch("supplierId");
+  const watchBasis = form.watch("basis");
   const watchFromWarehouseId = form.watch("fromWarehouseId");
   const watchToWarehouseId = form.watch("toWarehouseId");
   const watchCarrierId = form.watch("carrierId");
@@ -144,6 +148,7 @@ export function MovementDialog({
     watchMovementType,
     watchProductType,
     watchSupplierId,
+    watchBasis,
     watchFromWarehouseId,
     watchToWarehouseId,
     watchCarrierId,
@@ -202,6 +207,7 @@ export function MovementDialog({
         movementType: data.movementType,
         productType: data.productType,
         supplierId: data.supplierId || null,
+        basis: data.basis || null,
         fromWarehouseId: data.fromWarehouseId || null,
         toWarehouseId: data.toWarehouseId,
         carrierId: data.carrierId || null,
@@ -258,6 +264,7 @@ export function MovementDialog({
                 watchProductType={watchProductType}
                 suppliers={suppliers}
                 warehouses={warehouses}
+                allBases={allBases}
               />
             </div>
 

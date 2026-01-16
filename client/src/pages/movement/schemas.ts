@@ -4,6 +4,7 @@ export const movementFormSchema = z.object({
   movementDate: z.date({ required_error: "Укажите дату" }),
   movementType: z.string().min(1, "Выберите тип перемещения"),
   productType: z.string().min(1, "Выберите тип продукта"),
+  supplierId: z.string().optional(),
   basis: z.string().optional(),
   supplierBaseId: z.string().optional(),
   fromWarehouseId: z.string().optional(),
