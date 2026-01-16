@@ -334,7 +334,7 @@ export function LogisticsSection({
           />
 
           <CalculatedField
-            label="Объем по договору"
+            label="Объем по договору Покупателя"
             value={contractVolumeStatus.message}
             status={contractVolumeStatus.status}
           />

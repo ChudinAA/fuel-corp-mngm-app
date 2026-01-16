@@ -14,9 +14,20 @@ interface VolumeInputSectionProps {
   inputMode: "liters" | "kg";
   setInputMode: (mode: "liters" | "kg") => void;
   calculatedKg: string;
+  contractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
+  supplierContractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
+  isWarehouseSupplier: boolean;
 }
 
-export function VolumeInputSection({ form, inputMode, setInputMode, calculatedKg }: VolumeInputSectionProps) {
+export function VolumeInputSection({ 
+  form, 
+  inputMode, 
+  setInputMode, 
+  calculatedKg,
+  contractVolumeStatus,
+  supplierContractVolumeStatus,
+  isWarehouseSupplier
+}: VolumeInputSectionProps) {
   const watchLiters = form.watch("quantityLiters");
   const watchDensity = form.watch("density");
 
@@ -108,6 +119,18 @@ export function VolumeInputSection({ form, inputMode, setInputMode, calculatedKg
               )}
             />
           )}
+
+          <CalculatedField
+            label="Объем по договору Поставщика"
+            value={isWarehouseSupplier ? "ОК" : supplierContractVolumeStatus.message}
+            status={isWarehouseSupplier ? "ok" : supplierContractVolumeStatus.status}
+          />
+
+          <CalculatedField
+            label="Объем по договору"
+            value={contractVolumeStatus.message}
+            status={contractVolumeStatus.status}
+          />
         </div>
       </CardContent>
     </Card>

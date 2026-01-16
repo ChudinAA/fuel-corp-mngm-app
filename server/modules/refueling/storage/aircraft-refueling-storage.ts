@@ -456,7 +456,10 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
       .from(aircraftRefueling)
       .where(
         and(
-          eq(aircraftRefueling.salePriceId, priceId),
+          or(
+            eq(aircraftRefueling.salePriceId, priceId),
+            eq(aircraftRefueling.purchasePriceId, priceId),
+          ),
           isNull(aircraftRefueling.deletedAt),
         ),
       );

@@ -421,7 +421,12 @@ export class OptStorage implements IOptStorage {
         total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`,
       })
       .from(opt)
-      .where(and(eq(opt.salePriceId, priceId), isNull(opt.deletedAt)));
+      .where(
+        and(
+          or(eq(opt.salePriceId, priceId), eq(opt.purchasePriceId, priceId)),
+          isNull(opt.deletedAt),
+        ),
+      );
     return parseFloat(result?.total || "0");
   }
 

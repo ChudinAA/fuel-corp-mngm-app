@@ -153,6 +153,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     profit,
     deliveryTariff,
     contractVolumeStatus,
+    supplierContractVolumeStatus,
   } = useOptCalculations({
     inputMode,
     quantityLiters: watchLiters,
@@ -514,12 +515,22 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
       if (contractVolumeStatus.status === "error") {
         toast({
-          title: "Ошибка валидации",
+          title: "Ошибк: недостаточно объема по договору Покупателя",
           description: contractVolumeStatus.message,
           variant: "destructive",
         });
         return;
       }
+
+      if (!isWarehouseSupplier && supplierContractVolumeStatus.status === "error") {
+        toast({
+          title: "Ошибк: недостаточно объема по договору Поставщика",
+          description: supplierContractVolumeStatus.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      
     } else {
       // Для черновика проверяем только поставщика и покупателя (уже проверено Zod)
       // Но дополнительно убедимся, что ID не пустые строки

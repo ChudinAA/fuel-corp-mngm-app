@@ -128,6 +128,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     profit,
     warehouseStatus,
     contractVolumeStatus,
+    supplierContractVolumeStatus,
   } = useRefuelingCalculations({
     inputMode,
     quantityLiters: watchLiters,
@@ -521,6 +522,9 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
           inputMode={inputMode}
           setInputMode={setInputMode}
           calculatedKg={calculatedKg}
+          contractVolumeStatus={contractVolumeStatus}
+          supplierContractVolumeStatus={supplierContractVolumeStatus}
+          isWarehouseSupplier={isWarehouseSupplier}
         />
 
         <RefuelingPricingSection

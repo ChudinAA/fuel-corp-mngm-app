@@ -114,7 +114,15 @@ export function useRefuelingCalculations({
     isEditing: isEditing,
     mode: "refueling",
   });
-  
+
+  // Логика проверки объема по договору поставщика
+  const supplierContractVolumeStatus = useContractVolume({
+    priceId: parsePriceCompositeId(selectedPurchasePriceId).priceId,
+    currentQuantityKg: finalKg,
+    isEditing: isEditing,
+    mode: "refueling",
+  });
+
   return {
     calculatedKg,
     finalKg,
@@ -126,5 +134,6 @@ export function useRefuelingCalculations({
     profit,
     warehouseStatus,
     contractVolumeStatus,
+    supplierContractVolumeStatus,
   };
 }
