@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Users } from "lucide-react";
-import { SuppliersTab } from "../directories/suppliers-tab";
-import { CustomersTab } from "../directories/customers-tab";
+import { SuppliersTab } from "./suppliers-tab";
+import { CustomersTab } from "./customers-tab";
 
 export default function CounterpartiesPage() {
   const [activeTab, setActiveTab] = useState<"suppliers" | "customers">("suppliers");

@@ -32,8 +32,8 @@ import type {
 } from "@shared/schema";
 import type { OptFormData } from "../schemas";
 import { CUSTOMER_MODULE } from "@shared/constants";
-import { AddCustomerDialog } from "@/pages/directories/customers-dialog";
-import { AddSupplierDialog } from "@/pages/directories/suppliers-dialog";
+import { AddCustomerDialog } from "@/pages/counterparties/customers-dialog";
+import { AddSupplierDialog } from "@/pages/counterparties/suppliers-dialog";
 import { useAuth } from "@/hooks/use-auth";
 
 interface OptMainFieldsProps {

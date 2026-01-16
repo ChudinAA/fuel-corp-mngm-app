@@ -29,8 +29,8 @@ import type { RefuelingFormData } from "../schemas";
 import { PRODUCT_TYPES } from "../constants";
 import { BASE_TYPE, CUSTOMER_MODULE } from "@shared/constants";
 import { useState } from "react";
-import { AddSupplierDialog } from "@/pages/directories/suppliers-dialog";
-import { AddCustomerDialog } from "@/pages/directories/customers-dialog";
+import { AddSupplierDialog } from "@/pages/counterparties/suppliers-dialog";
+import { AddCustomerDialog } from "@/pages/counterparties/customers-dialog";
 import { useAuth } from "@/hooks/use-auth";
 
 interface RefuelingMainFieldsProps {

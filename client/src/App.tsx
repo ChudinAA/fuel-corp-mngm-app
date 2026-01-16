@@ -32,7 +32,7 @@ import MovementPage from "@/pages/movement-page";
 import WarehousesPage from "@/pages/warehouses-page";
 import PricesPage from "@/pages/prices-page";
 import DeliveryPage from "@/pages/delivery-page";
-import CounterpartiesPage from "@/pages/counterparties-page";
+import CounterpartiesPage from "@/pages/counterparties/index";
 import DirectoriesPage from "@/pages/directories-page";
 import UsersPage from "@/pages/admin/users-page";
 import RolesPage from "@/pages/admin/roles-page";
