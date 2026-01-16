@@ -187,6 +187,12 @@ export function LogisticsSection({
     return base;
   };
 
+  const watchDeliveryLocationId = form.watch("deliveryLocationId");
+  const selectedLocation = deliveryLocations?.find((l) => l.id === watchDeliveryLocationId);
+  const selectedLocationBase = selectedLocation
+    ? getBase(selectedLocation.baseId || "")
+    : null;
+
   return (
     <Card>
       <CardHeader className="pb-4">
@@ -199,8 +205,19 @@ export function LogisticsSection({
             name="deliveryLocationId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  Точка поставки
+                <FormLabel className="flex items-center justify-between gap-2">
+                  <span>Точка поставки</span>
+                  {selectedLocationBase && (
+                    <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                        ({selectedLocationBase.name})
+                      </span>
+                      <BaseTypeBadge
+                        type={selectedLocationBase.baseType}
+                        short={true}
+                      />
+                    </div>
+                  )}
                 </FormLabel>
                 <div className="flex gap-1">
                   <Select onValueChange={field.onChange} value={field.value}>
@@ -217,12 +234,12 @@ export function LogisticsSection({
                         const base = getBase(location.baseId || "");
                         return (
                           <SelectItem key={location.id} value={location.id}>
-                            <div className="flex items-center justify-between w-full gap-1">
+                            <div className="flex items-center justify-between w-full gap-4">
                               <span>{location.name}</span>
                               {base && (
-                                <div className="flex items-center gap-1.5 opacity-80 scale-90 origin-right">
-                                  <span className="text-[12px] text-muted-foreground whitespace-nowrap">
-                                    {base.name}
+                                <div className="flex items-center gap-1.5 opacity-60 scale-90 origin-right">
+                                  <span className="text-[10px] whitespace-nowrap">
+                                    ({base.name})
                                   </span>
                                   <BaseTypeBadge
                                     type={base.baseType}
