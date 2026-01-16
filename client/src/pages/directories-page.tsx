@@ -16,28 +16,28 @@ export default function DirectoriesPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex flex-wrap h-auto gap-1 bg-transparent p-0">
-          <TabsTrigger value="bases" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+        <TabsList>
+          <TabsTrigger value="bases" className="flex items-center gap-2">
             <MapPin className="h-4 w-4" />
             Базисы
           </TabsTrigger>
-          <TabsTrigger value="delivery_locations" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="delivery_locations" className="flex items-center gap-2">
             <MapPin className="h-4 w-4" />
             Места доставки
           </TabsTrigger>
-          <TabsTrigger value="carriers" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="carriers" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             Перевозчики
           </TabsTrigger>
-          <TabsTrigger value="drivers" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="drivers" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             Водители
           </TabsTrigger>
-          <TabsTrigger value="vehicles" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="vehicles" className="flex items-center gap-2">
             <Car className="h-4 w-4" />
             Транспорт
           </TabsTrigger>
-          <TabsTrigger value="trailers" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="trailers" className="flex items-center gap-2">
             <Container className="h-4 w-4" />
             Прицепы
           </TabsTrigger>

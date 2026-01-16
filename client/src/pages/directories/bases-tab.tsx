@@ -2,17 +2,44 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
-import { Pencil, Trash2, Search, MapPin, History, Droplets, Fuel } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  Search,
+  MapPin,
+  History,
+  Droplets,
+  Fuel,
+} from "lucide-react";
 import { AddBaseDialog } from "./bases-dialog";
 import type { Base } from "@shared/schema";
 import { BASE_TYPE } from "@shared/constants";
@@ -24,7 +51,10 @@ export function BasesTab() {
   const [editingBase, setEditingBase] = useState<Base | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [baseToDelete, setBaseToDelete] = useState<Base | null>(null);
-  const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [editingItem, setEditingItem] = useState<Base | null>(null);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
@@ -41,18 +71,26 @@ export function BasesTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bases"] });
-      toast({ title: "Базис удален", description: "Базис успешно удален из справочника" });
+      toast({
+        title: "Базис удален",
+        description: "Базис успешно удален из справочника",
+      });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
-  const filteredBases = bases?.filter(b => {
-    const matchesSearch = b.name.toLowerCase().includes(search.toLowerCase());
-    const matchesType = typeFilter === "all" || b.baseType === typeFilter;
-    return matchesSearch && matchesType;
-  }) || [];
+  const filteredBases =
+    bases?.filter((b) => {
+      const matchesSearch = b.name.toLowerCase().includes(search.toLowerCase());
+      const matchesType = typeFilter === "all" || b.baseType === typeFilter;
+      return matchesSearch && matchesType;
+    }) || [];
 
   return (
     <Card>
@@ -61,23 +99,31 @@ export function BasesTab() {
           <MapPin className="h-5 w-5" />
           Базисы
         </CardTitle>
-        <CardDescription>Управление базисами поставки и заправки</CardDescription>
+        <CardDescription>
+          Управление базисами поставки и заправки
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Поиск..." 
-                value={search} 
-                onChange={(e) => setSearch(e.target.value)} 
-                className="pl-9" 
-                data-testid="input-search-bases" 
+              <Input
+                placeholder="Поиск..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+                data-testid="input-search-bases"
               />
             </div>
-            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
-              <SelectTrigger className="w-[180px]" data-testid="select-base-type-filter">
+            <Select
+              value={typeFilter}
+              onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}
+            >
+              <SelectTrigger
+                className="w-[180px]"
+                data-testid="select-base-type-filter"
+              >
                 <SelectValue placeholder="Все типы" />
               </SelectTrigger>
               <SelectContent>
@@ -86,7 +132,12 @@ export function BasesTab() {
                 <SelectItem value={BASE_TYPE.REFUELING}>Заправка</SelectItem>
               </SelectContent>
             </Select>
-            {hasPermission("directories", "create") && <AddBaseDialog editItem={editingItem} onEditComplete={() => setEditingItem(null)} />}
+            {hasPermission("directories", "create") && (
+              <AddBaseDialog
+                editItem={editingItem}
+                onEditComplete={() => setEditingItem(null)}
+              />
+            )}
             <Button
               variant="outline"
               onClick={() => setAuditPanelOpen(true)}
@@ -99,7 +150,9 @@ export function BasesTab() {
 
           {isLoading ? (
             <div className="space-y-2">
-              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
             </div>
           ) : (
             <div className="border rounded-lg">
@@ -116,17 +169,28 @@ export function BasesTab() {
                 <TableBody>
                   {filteredBases.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell
+                        colSpan={5}
+                        className="text-center py-8 text-muted-foreground"
+                      >
                         <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
                         Нет данных
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredBases.map((base) => (
-                      <TableRow key={base.id} data-testid={`row-base-${base.id}`}>
-                        <TableCell className="font-medium">{base.name}</TableCell>
+                      <TableRow
+                        key={base.id}
+                        data-testid={`row-base-${base.id}`}
+                      >
+                        <TableCell className="font-medium">
+                          {base.name}
+                        </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="flex items-center gap-1.5 w-fit">
+                          <Badge
+                            variant="outline"
+                            className="flex items-center gap-1.5 w-fit"
+                          >
                             {base.baseType === BASE_TYPE.WHOLESALE ? (
                               <>
                                 <Droplets className="h-3.5 w-3.5 text-orange-400" />
@@ -140,12 +204,24 @@ export function BasesTab() {
                             )}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">{base.location || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {base.location || "—"}
+                        </TableCell>
                         <TableCell>
                           {base.isActive ? (
-                            <Badge variant="outline" className="text-green-600 border-green-600">Активен</Badge>
+                            <Badge
+                              variant="outline"
+                              className="text-green-600 border-green-600"
+                            >
+                              Активен
+                            </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-muted-foreground">Неактивен</Badge>
+                            <Badge
+                              variant="outline"
+                              className="text-muted-foreground"
+                            >
+                              Неактивен
+                            </Badge>
                           )}
                         </TableCell>
                         <TableCell>
@@ -156,18 +232,27 @@ export function BasesTab() {
                                 label: "Редактировать",
                                 icon: Pencil,
                                 onClick: () => setEditingItem(base),
-                                permission: { module: "directories", action: "edit" },
+                                permission: {
+                                  module: "directories",
+                                  action: "edit",
+                                },
                               },
                               {
                                 id: "delete",
                                 label: "Удалить",
                                 icon: Trash2,
                                 onClick: () => {
-                                  setItemToDelete({ id: base.id, name: base.name });
+                                  setItemToDelete({
+                                    id: base.id,
+                                    name: base.name,
+                                  });
                                   setDeleteDialogOpen(true);
                                 },
                                 variant: "destructive" as const,
-                                permission: { module: "directories", action: "delete" },
+                                permission: {
+                                  module: "directories",
+                                  action: "delete",
+                                },
                                 separatorAfter: true,
                               },
                             ]}
