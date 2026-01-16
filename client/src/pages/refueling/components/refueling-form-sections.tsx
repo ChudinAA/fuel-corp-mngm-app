@@ -1,9 +1,14 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import type { UseFormReturn } from "react-hook-form";
 import { CalculatedField } from "../calculated-field";
 import { formatNumber } from "../utils";
@@ -14,19 +19,13 @@ interface VolumeInputSectionProps {
   inputMode: "liters" | "kg";
   setInputMode: (mode: "liters" | "kg") => void;
   calculatedKg: string;
-  contractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
-  supplierContractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
-  isWarehouseSupplier: boolean;
 }
 
-export function VolumeInputSection({ 
-  form, 
-  inputMode, 
-  setInputMode, 
+export function VolumeInputSection({
+  form,
+  inputMode,
+  setInputMode,
   calculatedKg,
-  contractVolumeStatus,
-  supplierContractVolumeStatus,
-  isWarehouseSupplier
 }: VolumeInputSectionProps) {
   const watchLiters = form.watch("quantityLiters");
   const watchDensity = form.watch("density");
@@ -37,10 +36,14 @@ export function VolumeInputSection({
         <div className="flex items-center justify-between gap-4">
           <CardTitle className="text-lg">Объем топлива</CardTitle>
           <div className="flex items-center gap-2">
-            <Label className="text-sm text-muted-foreground">Литры/Плотность</Label>
+            <Label className="text-sm text-muted-foreground">
+              Литры/Плотность
+            </Label>
             <Switch
               checked={inputMode === "kg"}
-              onCheckedChange={(checked) => setInputMode(checked ? "kg" : "liters")}
+              onCheckedChange={(checked) =>
+                setInputMode(checked ? "kg" : "liters")
+              }
               data-testid="switch-input-mode"
             />
             <Label className="text-sm text-muted-foreground">КГ</Label>
@@ -56,8 +59,8 @@ export function VolumeInputSection({
               <FormItem>
                 <FormLabel className="flex items-center gap-2">Литры</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="number" 
+                  <Input
+                    type="number"
                     min="0"
                     step="0.01"
                     placeholder="0.00"
@@ -75,16 +78,18 @@ export function VolumeInputSection({
             name="density"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center gap-2">Плотность</FormLabel>
+                <FormLabel className="flex items-center gap-2">
+                  Плотность
+                </FormLabel>
                 <FormControl>
-                  <Input 
-                    type="number" 
+                  <Input
+                    type="number"
                     min="0"
                     step="0.0001"
                     placeholder="0.8000"
                     data-testid="input-density"
                     disabled={inputMode === "kg"}
-                    {...field} 
+                    {...field}
                   />
                 </FormControl>
                 <FormMessage />
@@ -92,9 +97,11 @@ export function VolumeInputSection({
             )}
           />
           {inputMode === "liters" ? (
-            <CalculatedField 
-              label="КГ (расчет)" 
-              value={watchLiters && watchDensity ? formatNumber(calculatedKg) : "—"}
+            <CalculatedField
+              label="КГ (расчет)"
+              value={
+                watchLiters && watchDensity ? formatNumber(calculatedKg) : "—"
+              }
               suffix={watchLiters && watchDensity ? " кг" : ""}
             />
           ) : (
@@ -103,15 +110,17 @@ export function VolumeInputSection({
               name="quantityKg"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2">Количество (КГ)</FormLabel>
+                  <FormLabel className="flex items-center gap-2">
+                    Количество (КГ)
+                  </FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
+                    <Input
+                      type="number"
                       min="0"
                       step="0.01"
                       placeholder="0.00"
                       data-testid="input-kg"
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -119,18 +128,6 @@ export function VolumeInputSection({
               )}
             />
           )}
-
-          <CalculatedField
-            label="Объем по договору Поставщика"
-            value={isWarehouseSupplier ? "ОК" : supplierContractVolumeStatus.message}
-            status={isWarehouseSupplier ? "ok" : supplierContractVolumeStatus.status}
-          />
-
-          <CalculatedField
-            label="Объем по договору"
-            value={contractVolumeStatus.message}
-            status={contractVolumeStatus.status}
-          />
         </div>
       </CardContent>
     </Card>

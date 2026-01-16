@@ -154,9 +154,7 @@ interface LogisticsSectionProps {
   carriers?: LogisticsCarrier[];
   deliveryLocations?: LogisticsDeliveryLocation[];
   bases?: Base[];
-  contractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
-  supplierContractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
-  isWarehouseSupplier?: boolean;
+  deliveryCost: number | null;
 }
 
 export function LogisticsSection({
@@ -164,9 +162,7 @@ export function LogisticsSection({
   carriers,
   deliveryLocations,
   bases,
-  contractVolumeStatus,
-  supplierContractVolumeStatus,
-  isWarehouseSupplier,
+  deliveryCost,
 }: LogisticsSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -192,7 +188,9 @@ export function LogisticsSection({
   };
 
   const watchDeliveryLocationId = form.watch("deliveryLocationId");
-  const selectedLocation = deliveryLocations?.find((l) => l.id === watchDeliveryLocationId);
+  const selectedLocation = deliveryLocations?.find(
+    (l) => l.id === watchDeliveryLocationId,
+  );
   const selectedLocationBase = selectedLocation
     ? getBase(selectedLocation.baseId || "")
     : null;
@@ -222,7 +220,9 @@ export function LogisticsSection({
             name="deliveryLocationId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center gap-2">Точка поставки</FormLabel>
+                <FormLabel className="flex items-center gap-2">
+                  Точка поставки
+                </FormLabel>
                 <div className="flex gap-1">
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
@@ -328,15 +328,8 @@ export function LogisticsSection({
           />
 
           <CalculatedField
-            label="Объем по договору Поставщика"
-            value={isWarehouseSupplier ? "ОК" : supplierContractVolumeStatus.message}
-            status={isWarehouseSupplier ? "ok" : supplierContractVolumeStatus.status}
-          />
-
-          <CalculatedField
-            label="Объем по договору Покупателя"
-            value={contractVolumeStatus.message}
-            status={contractVolumeStatus.status}
+            label="Доставка"
+            value={deliveryCost !== null ? formatCurrency(deliveryCost) : "—"}
           />
         </div>
       </CardContent>

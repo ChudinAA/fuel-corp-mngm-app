@@ -1,4 +1,3 @@
-
 import { useMemo } from "react";
 import type { Supplier, Warehouse, Price } from "@shared/schema";
 import { PRODUCT_TYPE } from "@shared/constants";
@@ -59,16 +58,24 @@ export function useRefuelingCalculations({
     productType,
   });
 
-  const purchaseAmount = purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
-  const saleAmount = salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
+  const purchaseAmount =
+    purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
+  const saleAmount =
+    salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
 
-  const agentFee = selectedSupplier?.agentFee ? parseFloat(selectedSupplier.agentFee) : 0;
+  const agentFee = selectedSupplier?.agentFee
+    ? parseFloat(selectedSupplier.agentFee)
+    : 0;
 
-  const profit = purchaseAmount !== null && saleAmount !== null 
-    ? saleAmount - purchaseAmount - agentFee
-    : null;
+  const profit =
+    purchaseAmount !== null && saleAmount !== null
+      ? saleAmount - purchaseAmount - agentFee
+      : null;
 
-  const getWarehouseStatus = (): { status: "ok" | "warning" | "error"; message: string } => {
+  const getWarehouseStatus = (): {
+    status: "ok" | "warning" | "error";
+    message: string;
+  } => {
     // Для услуги заправки склад не проверяем
     if (productType === PRODUCT_TYPE.SERVICE) {
       return { status: "ok", message: "—" };
@@ -84,24 +91,34 @@ export function useRefuelingCalculations({
 
     // Для ПВКЖ проверяем баланс ПВКЖ
     if (productType === PRODUCT_TYPE.PVKJ) {
-      const availableBalance = isEditing ? initialWarehouseBalance : parseFloat(supplierWarehouse.pvkjBalance || "0");
+      const availableBalance = isEditing
+        ? initialWarehouseBalance
+        : parseFloat(supplierWarehouse.pvkjBalance || "0");
       const remaining = availableBalance - finalKg;
 
       if (remaining >= 0) {
         return { status: "ok", message: `ОК: ${remaining.toFixed(2)} кг` };
       } else {
-        return { status: "error", message: `Недостаточно! Доступно: ${availableBalance.toFixed(2)} кг` };
+        return {
+          status: "error",
+          message: `Недостаточно! Доступно: ${availableBalance.toFixed(2)} кг`,
+        };
       }
     }
 
     // Для керосина проверяем обычный баланс
-    const availableBalance = isEditing ? initialWarehouseBalance : parseFloat(supplierWarehouse.currentBalance || "0");
+    const availableBalance = isEditing
+      ? initialWarehouseBalance
+      : parseFloat(supplierWarehouse.currentBalance || "0");
     const remaining = availableBalance - finalKg;
 
     if (remaining >= 0) {
       return { status: "ok", message: `ОК: ${remaining.toFixed(2)} кг` };
     } else {
-      return { status: "error", message: `Недостаточно! Доступно: ${availableBalance.toFixed(2)} кг` };
+      return {
+        status: "error",
+        message: `Недостаточно! Доступно: ${availableBalance.toFixed(2)} кг`,
+      };
     }
   };
 
@@ -121,7 +138,6 @@ export function useRefuelingCalculations({
     currentQuantityKg: finalKg,
     isEditing: isEditing,
     mode: "refueling",
-    type: "purchase",
   });
 
   return {

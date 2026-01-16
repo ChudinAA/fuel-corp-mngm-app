@@ -522,7 +522,10 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         return;
       }
 
-      if (!isWarehouseSupplier && supplierContractVolumeStatus.status === "error") {
+      if (
+        !isWarehouseSupplier &&
+        supplierContractVolumeStatus.status === "error"
+      ) {
         toast({
           title: "Ошибк: недостаточно объема по договору Поставщика",
           description: supplierContractVolumeStatus.message,
@@ -530,7 +533,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         });
         return;
       }
-      
     } else {
       // Для черновика проверяем только поставщика и покупателя (уже проверено Zod)
       // Но дополнительно убедимся, что ID не пустые строки
@@ -554,7 +556,10 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit((data) => onSubmit(data))} className="space-y-6">
+      <form
+        onSubmit={form.handleSubmit((data) => onSubmit(data))}
+        className="space-y-6"
+      >
         <OptMainFields
           form={form}
           wholesaleSuppliers={wholesaleSuppliers}
@@ -577,9 +582,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
           carriers={availableCarriers}
           deliveryLocations={availableLocations}
           bases={allBases}
-          contractVolumeStatus={contractVolumeStatus}
-          supplierContractVolumeStatus={supplierContractVolumeStatus}
-          isWarehouseSupplier={isWarehouseSupplier}
+          deliveryCost={deliveryCost}
         />
 
         <OptPricingSection
@@ -595,12 +598,13 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
           salePrice={salePrice}
           purchaseAmount={purchaseAmount}
           saleAmount={saleAmount}
-          deliveryCost={deliveryCost}
           profit={profit}
           supplierWarehouse={supplierWarehouse}
           finalKg={finalKg}
           isEditing={isEditing}
           initialWarehouseBalance={initialWarehouseBalance}
+          contractVolumeStatus={contractVolumeStatus}
+          supplierContractVolumeStatus={supplierContractVolumeStatus}
         />
 
         <div className="grid gap-4 md:grid-cols-2 items-end">

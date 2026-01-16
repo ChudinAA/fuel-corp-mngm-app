@@ -36,12 +36,16 @@ interface OptPricingSectionProps {
   salePrice: number | null;
   purchaseAmount: number | null;
   saleAmount: number | null;
-  deliveryCost: number | null;
   profit: number | null;
   supplierWarehouse: Warehouse | undefined;
   finalKg: number;
   isEditing: boolean;
   initialWarehouseBalance: number;
+  contractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
+  supplierContractVolumeStatus: {
+    status: "ok" | "warning" | "error";
+    message: string;
+  };
 }
 
 export function OptPricingSection({
@@ -57,12 +61,13 @@ export function OptPricingSection({
   salePrice,
   purchaseAmount,
   saleAmount,
-  deliveryCost,
   profit,
   supplierWarehouse,
   finalKg,
   isEditing,
   initialWarehouseBalance,
+  contractVolumeStatus,
+  supplierContractVolumeStatus,
 }: OptPricingSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -323,7 +328,7 @@ export function OptPricingSection({
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-2 md:grid-cols-4">
         <CalculatedField
           label="Объем на складе"
           value={warehouseStatus.message}
@@ -331,8 +336,19 @@ export function OptPricingSection({
         />
 
         <CalculatedField
-          label="Доставка"
-          value={deliveryCost !== null ? formatCurrency(deliveryCost) : "—"}
+          label="Доступн. об-м Поставщика"
+          value={
+            isWarehouseSupplier ? "ОК" : supplierContractVolumeStatus.message
+          }
+          status={
+            isWarehouseSupplier ? "ok" : supplierContractVolumeStatus.status
+          }
+        />
+
+        <CalculatedField
+          label="Доступн. об-м Покупателя"
+          value={contractVolumeStatus.message}
+          status={contractVolumeStatus.status}
         />
 
         <CalculatedField

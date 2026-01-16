@@ -42,6 +42,7 @@ interface RefuelingPricingSectionProps {
   agentFee: number;
   warehouseStatus: { status: "ok" | "warning" | "error"; message: string };
   contractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
+  supplierContractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
   productType: string;
 }
 
@@ -62,6 +63,7 @@ export function RefuelingPricingSection({
   agentFee,
   warehouseStatus,
   contractVolumeStatus,
+  supplierContractVolumeStatus,
   productType,
 }: RefuelingPricingSectionProps) {
   const { hasPermission } = useAuth();
@@ -299,7 +301,7 @@ export function RefuelingPricingSection({
         </Alert>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-2 md:grid-cols-4">
         <CalculatedField
           label="Объем на складе"
           value={warehouseStatus.message}
@@ -307,7 +309,13 @@ export function RefuelingPricingSection({
         />
 
         <CalculatedField
-          label="Объем по договору"
+          label="Доступн. об-м Поставщика"
+          value={isWarehouseSupplier ? "ОК" : supplierContractVolumeStatus.message}
+          status={isWarehouseSupplier ? "ok" : supplierContractVolumeStatus.status}
+        />
+        
+        <CalculatedField
+          label="Доступн. об-м Покупателя"
           value={contractVolumeStatus.message}
           status={contractVolumeStatus.status}
         />

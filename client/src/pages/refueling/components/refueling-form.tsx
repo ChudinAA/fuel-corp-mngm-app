@@ -474,8 +474,20 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
 
       if (contractVolumeStatus.status === "error") {
         toast({
-          title: "Ошибка валидации",
+          title: "Ошибка: недостаточно объема по договору Поставщика",
           description: contractVolumeStatus.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (
+        !isWarehouseSupplier &&
+        supplierContractVolumeStatus.status === "error"
+      ) {
+        toast({
+          title: "Ошибка: недостаточно объема по договору Поставщика",
+          description: supplierContractVolumeStatus.message,
           variant: "destructive",
         });
         return;
@@ -522,9 +534,6 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
           inputMode={inputMode}
           setInputMode={setInputMode}
           calculatedKg={calculatedKg}
-          contractVolumeStatus={contractVolumeStatus}
-          supplierContractVolumeStatus={supplierContractVolumeStatus}
-          isWarehouseSupplier={isWarehouseSupplier}
         />
 
         <RefuelingPricingSection
@@ -544,6 +553,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
           agentFee={agentFee}
           warehouseStatus={warehouseStatus}
           contractVolumeStatus={contractVolumeStatus}
+          supplierContractVolumeStatus={supplierContractVolumeStatus}
           productType={watchProductType}
         />
 
