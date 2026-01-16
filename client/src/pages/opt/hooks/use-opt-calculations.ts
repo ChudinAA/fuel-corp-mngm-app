@@ -145,6 +145,14 @@ export function useOptCalculations({
     mode: "opt",
   });
 
+  // Логика проверки объема по договору поставщика
+  const supplierContractVolumeStatus = useContractVolume({
+    priceId: parsePriceCompositeId(selectedPurchasePriceId).priceId,
+    currentQuantityKg: finalKg,
+    isEditing: isEditing,
+    mode: "opt",
+  });
+
   return {
     calculatedKg,
     finalKg,
@@ -156,5 +164,6 @@ export function useOptCalculations({
     profit,
     deliveryTariff,
     contractVolumeStatus,
+    supplierContractVolumeStatus,
   };
 }
