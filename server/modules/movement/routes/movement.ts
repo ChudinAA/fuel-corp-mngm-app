@@ -20,28 +20,6 @@ export function registerMovementRoutes(app: Express) {
   );
 
   app.get(
-    "/api/movement/contract-used-purchase/:priceId",
-    requireAuth,
-    requirePermission("movement", "view"),
-    async (req, res) => {
-      try {
-        const { priceId } = req.params;
-        // Используем существующий метод из optStorage или refuelingStorage для подсчета объема по цене
-        // так как логика одинаковая для всех типов сделок, привязанных к этой цене
-        const usedVolumeOpt = await storage.opt.getUsedVolumeByPrice(priceId);
-        const usedVolumeRefueling = await storage.aircraftRefueling.getUsedVolumeByPrice(priceId);
-        
-        // В будущем можно добавить и объемы из Movements, если они тоже должны вычитаться из контракта
-        // Но пока следуем логике "точно с такой же логикой и переиспользуя код"
-        res.json({ usedVolume: usedVolumeOpt + usedVolumeRefueling });
-      } catch (error) {
-        console.error("Error getting movement purchase used volume:", error);
-        res.status(500).json({ message: "Ошибка получения использованного объема" });
-      }
-    }
-  );
-
-  app.get(
     "/api/movement/:id",
     requireAuth,
     requirePermission("movement", "view"),
