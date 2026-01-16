@@ -643,20 +643,22 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
             {editData ? "Отмена" : "Очистить"}
           </Button>
 
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={createMutation.isPending || updateMutation.isPending}
-            onClick={() => {
-              form.clearErrors();
-              form.handleSubmit((data) => onSubmit(data, true))();
-            }}
-          >
-            {createMutation.isPending || updateMutation.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
-            Сохранить черновик
-          </Button>
+          {!isEditing || (editData && editData.isDraft) ? (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={createMutation.isPending || updateMutation.isPending}
+              onClick={() => {
+                form.clearErrors();
+                form.handleSubmit((data) => onSubmit(data, true))();
+              }}
+            >
+              {createMutation.isPending || updateMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Сохранить черновик
+            </Button>
+          ) : null}
 
           <Button
             type="submit"

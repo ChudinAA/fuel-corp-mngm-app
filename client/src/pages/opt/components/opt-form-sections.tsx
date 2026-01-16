@@ -196,12 +196,12 @@ export function LogisticsSection({
   return (
     <Card>
       <CardHeader className="pb-4">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-6">
           <CardTitle className="text-lg">Логистика</CardTitle>
           {selectedLocationBase && (
             <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-right-1 duration-200">
               <span className="text-xs text-muted-foreground whitespace-nowrap">
-                Базис: {selectedLocationBase.name}
+                {selectedLocationBase.name}
               </span>
               <BaseTypeBadge
                 type={selectedLocationBase.baseType}
@@ -218,7 +218,7 @@ export function LogisticsSection({
             name="deliveryLocationId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Точка поставки</FormLabel>
+                <FormLabel className="flex items-center gap-2">Точка поставки</FormLabel>
                 <div className="flex gap-1">
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
@@ -236,12 +236,12 @@ export function LogisticsSection({
                         const base = getBase(location.baseId || "");
                         return (
                           <SelectItem key={location.id} value={location.id}>
-                            <div className="flex items-center justify-between w-full gap-4">
+                            <div className="flex items-center justify-between w-full gap-2">
                               <span>{location.name}</span>
                               {base && (
-                                <div className="flex items-center gap-1.5 opacity-60 scale-90 origin-right">
-                                  <span className="text-[10px] whitespace-nowrap">
-                                    ({base.name})
+                                <div className="flex items-center gap-1 opacity-60 scale-90 origin-right">
+                                  <span className="text-[13px] whitespace-nowrap">
+                                    {base.name}
                                   </span>
                                   <BaseTypeBadge
                                     type={base.baseType}
