@@ -6,6 +6,7 @@ export const movementFormSchema = z.object({
   movementType: z.string().min(1, "Выберите тип перемещения"),
   productType: z.string().min(1, "Выберите тип продукта"),
   supplierId: z.string().optional(),
+  supplierBaseId: z.string().optional(),
   fromWarehouseId: z.string().optional(),
   toWarehouseId: z.string().min(1, "Выберите склад назначения"),
   inputMode: z.enum(["liters", "kg"]),
