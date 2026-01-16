@@ -105,16 +105,19 @@ const getOperationsMenuItems = (hasPermission: (p: string) => boolean) => [
     title: "Зарубеж",
     url: "/abroad",
     icon: Globe,
+    permission: "movement.view",
   },
   {
     title: "Аренда ТЗА",
     url: "/rent",
     icon: Key,
+    permission: "movement.view",
   },
   {
     title: "Перевозка",
     url: "/transportation",
     icon: TruckIcon,
+    permission: "movement.view",
   },
 ].filter(item => !item.permission || hasPermission(item.permission));
 
@@ -206,7 +209,7 @@ const getPlanningMenuItems = (hasPermission: (p: string) => boolean) => [
     title: "Ежемесячный план",
     url: "/reports/monthly-plan",
     icon: Calendar1,
-    permission: "reports.create",
+    permission: "reports.view",
   },
   {
     title: "БДР",
@@ -256,7 +259,6 @@ export function AppSidebar() {
     return location.startsWith(url);
   };
 
-  const mainMenuItems = getMainMenuItems();
   const hasPerm = (p: string) => {
     const parts = p.split('.');
     if (parts.length !== 2) return false;
