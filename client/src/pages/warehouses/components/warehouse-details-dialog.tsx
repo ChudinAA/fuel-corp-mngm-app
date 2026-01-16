@@ -38,7 +38,11 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import type { Warehouse, Base } from "@shared/schema";
 import type { WarehouseTransaction } from "../types";
 import { formatNumber, formatCurrency } from "../utils";
@@ -73,23 +77,32 @@ export function WarehouseDetailsDialog({
   const dailyGroups = useMemo(() => {
     if (!transactions) return [];
 
-    const groups: Record<string, {
-      date: string;
-      products: Record<string, {
-        productType: string;
-        receiptKg: number;
-        receiptSum: number;
-        expenseKg: number;
-        expenseSum: number;
-        avgPrice: number;
-        avgCost: number;
-        balance: number;
-        transactions: WarehouseTransaction[];
-      }>;
-    }> = {};
+    const groups: Record<
+      string,
+      {
+        date: string;
+        products: Record<
+          string,
+          {
+            productType: string;
+            receiptKg: number;
+            receiptSum: number;
+            expenseKg: number;
+            expenseSum: number;
+            avgPrice: number;
+            avgCost: number;
+            balance: number;
+            transactions: WarehouseTransaction[];
+          }
+        >;
+      }
+    > = {};
 
-    transactions.forEach(tx => {
-      const date = format(new Date(tx.transactionDate || tx.createdAt), "yyyy-MM-dd");
+    transactions.forEach((tx) => {
+      const date = format(
+        new Date(tx.transactionDate || tx.createdAt),
+        "yyyy-MM-dd",
+      );
       if (!groups[date]) {
         groups[date] = { date, products: {} };
       }
@@ -113,13 +126,20 @@ export function WarehouseDetailsDialog({
       pData.transactions.push(tx);
 
       // Сортируем транзакции внутри группы по времени создания для корректного определения баланса
-      pData.transactions.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      pData.transactions.sort(
+        (a, b) =>
+          new Date(a.transactionDate || a.createdAt).getTime() -
+          new Date(b.transactionDate || b.createdAt).getTime(),
+      );
 
       const qty = parseFloat(tx.quantityKg);
       const sum = parseFloat(tx.sum || "0");
       const price = parseFloat(tx.price || "0");
 
-      if (tx.transactionType === TRANSACTION_TYPE.RECEIPT || tx.transactionType === TRANSACTION_TYPE.TRANSFER_IN) {
+      if (
+        tx.transactionType === TRANSACTION_TYPE.RECEIPT ||
+        tx.transactionType === TRANSACTION_TYPE.TRANSFER_IN
+      ) {
         pData.receiptKg += qty;
         pData.receiptSum += sum;
         if (price > 0) {
@@ -129,7 +149,7 @@ export function WarehouseDetailsDialog({
         pData.expenseKg += Math.abs(qty);
         pData.expenseSum += sum;
       }
-      
+
       // Всегда берем balanceAfter и averageCostAfter из транзакции, которая является последней по времени создания
       const lastTx = pData.transactions[pData.transactions.length - 1];
       pData.avgCost = parseFloat(lastTx.averageCostAfter || "0");
@@ -296,24 +316,44 @@ export function WarehouseDetailsDialog({
               <Table className="relative min-w-[1100px] border-collapse">
                 <TableHeader className="sticky top-0 z-[100] bg-background">
                   <TableRow className="hover:bg-transparent shadow-[0_1px_0_0_rgba(0,0,0,0.1)]">
-                    <TableHead className="text-center w-[10%] min-w-[100px] bg-background sticky top-0 border-b">Дата</TableHead>
-                    <TableHead className="w-[8%] min-w-[80px] bg-background sticky top-0 border-b">Продукт</TableHead>
-                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">Поступление, кг</TableHead>
-                    <TableHead className="text-center w-[12%] min-w-[110px] bg-background sticky top-0 border-b">Сумма прихода</TableHead>
-                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">Расход, кг</TableHead>
-                    <TableHead className="text-center w-[12%] min-w-[110px] bg-background sticky top-0 border-b">Сумма расхода</TableHead>
-                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">Остаток</TableHead>
-                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">Вход. цена</TableHead>
-                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">Себест.</TableHead>
+                    <TableHead className="text-center w-[10%] min-w-[100px] bg-background sticky top-0 border-b">
+                      Дата
+                    </TableHead>
+                    <TableHead className="w-[8%] min-w-[80px] bg-background sticky top-0 border-b">
+                      Продукт
+                    </TableHead>
+                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
+                      Поступление, кг
+                    </TableHead>
+                    <TableHead className="text-center w-[12%] min-w-[110px] bg-background sticky top-0 border-b">
+                      Сумма прихода
+                    </TableHead>
+                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
+                      Расход, кг
+                    </TableHead>
+                    <TableHead className="text-center w-[12%] min-w-[110px] bg-background sticky top-0 border-b">
+                      Сумма расхода
+                    </TableHead>
+                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
+                      Остаток
+                    </TableHead>
+                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
+                      Вход. цена
+                    </TableHead>
+                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
+                      Себест.
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {dailyGroups.map((group) => {
-                    const sortedProducts = Object.values(group.products).sort((a) => a.productType === PRODUCT_TYPE.KEROSENE ? -1 : 1);
+                    const sortedProducts = Object.values(group.products).sort(
+                      (a) => (a.productType === PRODUCT_TYPE.KEROSENE ? -1 : 1),
+                    );
                     return (
-                      <DailyRowGroup 
-                        key={group.date} 
-                        group={group} 
+                      <DailyRowGroup
+                        key={group.date}
+                        group={group}
                         products={sortedProducts}
                         getTransactionIcon={getTransactionIcon}
                         getTransactionTypeLabel={getTransactionTypeLabel}
@@ -335,36 +375,40 @@ export function WarehouseDetailsDialog({
   );
 }
 
-function DailyRowGroup({ 
-  group, 
+function DailyRowGroup({
+  group,
   products,
   getTransactionIcon,
-  getTransactionTypeLabel
-}: { 
-  group: any, 
-  products: any[],
-  getTransactionIcon: (type: string) => React.ReactNode,
-  getTransactionTypeLabel: (type: string, source?: string) => string
+  getTransactionTypeLabel,
+}: {
+  group: any;
+  products: any[];
+  getTransactionIcon: (type: string) => React.ReactNode;
+  getTransactionTypeLabel: (type: string, source?: string) => string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
-      <TableRow 
-        className={`cursor-pointer hover:bg-muted/50 group transition-all ${isOpen ? "ring-2 ring-primary ring-inset bg-muted/30" : ""}`} 
+      <TableRow
+        className={`cursor-pointer hover:bg-muted/50 group transition-all ${isOpen ? "ring-2 ring-primary ring-inset bg-muted/30" : ""}`}
         onClick={() => setIsOpen(!isOpen)}
       >
         <TableCell className="font-medium align-top pt-4 w-[10%] min-w-[100px]">
           <div className="flex items-center gap-2">
-            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            {isOpen ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
             {format(new Date(group.date), "dd.MM.yyyy", { locale: ru })}
           </div>
         </TableCell>
         <TableCell colSpan={8} className="p-0">
           <div className="flex flex-col">
             {products.map((p, idx) => (
-              <div 
-                key={p.productType} 
+              <div
+                key={p.productType}
                 className={`flex items-center py-2 border-b last:border-0 ${idx === 0 ? "pt-2" : ""}`}
               >
                 <div className="w-[9%] min-w-[80px] shrink-0 px-4">
@@ -408,56 +452,92 @@ function DailyRowGroup({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="h-8 text-[11px] uppercase tracking-wider">Тип операции</TableHead>
-                    <TableHead className="h-8 text-[11px] uppercase tracking-wider">Продукт</TableHead>
-                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Кол-во</TableHead>
-                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Сумма</TableHead>
-                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Цена за кг</TableHead>
-                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Остаток до</TableHead>
-                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Остаток после</TableHead>
-                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Себест. до</TableHead>
-                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">Себест. после</TableHead>
+                    <TableHead className="h-8 text-[11px] uppercase tracking-wider">
+                      Тип операции
+                    </TableHead>
+                    <TableHead className="h-8 text-[11px] uppercase tracking-wider">
+                      Продукт
+                    </TableHead>
+                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">
+                      Кол-во
+                    </TableHead>
+                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">
+                      Сумма
+                    </TableHead>
+                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">
+                      Цена за кг
+                    </TableHead>
+                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">
+                      Остаток до
+                    </TableHead>
+                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">
+                      Остаток после
+                    </TableHead>
+                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">
+                      Себест. до
+                    </TableHead>
+                    <TableHead className="h-8 text-right text-[11px] uppercase tracking-wider">
+                      Себест. после
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {products.flatMap(p => p.transactions).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(tx => (
-                    <TableRow key={tx.id} className="h-10">
-                      <TableCell className="py-1">
-                        <div className="flex items-center gap-2">
-                          {getTransactionIcon(tx.transactionType)}
-                          <span className="text-xs">
-                            {getTransactionTypeLabel(tx.transactionType, tx.sourceType)}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-1">
-                        <Badge variant="outline" className={`text-[10px] scale-90 origin-left ${tx.productType === PRODUCT_TYPE.PVKJ ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"}`}>
-                          {tx.productType === PRODUCT_TYPE.PVKJ ? "ПВКЖ" : "Керосин"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className={`text-right py-1 font-medium text-xs ${parseFloat(tx.quantityKg) > 0 ? "text-green-600" : "text-red-600"}`}>
-                        {parseFloat(tx.quantityKg) > 0 ? "+" : ""}{formatNumber(tx.quantityKg)} кг
-                      </TableCell>
-                      <TableCell className="text-right py-1 text-xs">
-                        {tx.sum ? formatCurrency(tx.sum) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right py-1 text-xs">
-                        {tx.price ? formatCurrency(tx.price) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right py-1 text-xs">
-                        {formatNumber(tx.balanceBefore)} кг
-                      </TableCell>
-                      <TableCell className="text-right py-1 text-xs">
-                        {formatNumber(tx.balanceAfter)} кг
-                      </TableCell>
-                      <TableCell className="text-right py-1 text-xs">
-                        {formatCurrency(tx.averageCostBefore)}
-                      </TableCell>
-                      <TableCell className="text-right py-1 text-xs">
-                        {formatCurrency(tx.averageCostAfter)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {products
+                    .flatMap((p) => p.transactions)
+                    .sort(
+                      (a, b) =>
+                        new Date(b.createdAt).getTime() -
+                        new Date(a.createdAt).getTime(),
+                    )
+                    .map((tx) => (
+                      <TableRow key={tx.id} className="h-10">
+                        <TableCell className="py-1">
+                          <div className="flex items-center gap-2">
+                            {getTransactionIcon(tx.transactionType)}
+                            <span className="text-xs">
+                              {getTransactionTypeLabel(
+                                tx.transactionType,
+                                tx.sourceType,
+                              )}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-1">
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] scale-90 origin-left ${tx.productType === PRODUCT_TYPE.PVKJ ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"}`}
+                          >
+                            {tx.productType === PRODUCT_TYPE.PVKJ
+                              ? "ПВКЖ"
+                              : "Керосин"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell
+                          className={`text-right py-1 font-medium text-xs ${parseFloat(tx.quantityKg) > 0 ? "text-green-600" : "text-red-600"}`}
+                        >
+                          {parseFloat(tx.quantityKg) > 0 ? "+" : ""}
+                          {formatNumber(tx.quantityKg)} кг
+                        </TableCell>
+                        <TableCell className="text-right py-1 text-xs">
+                          {tx.sum ? formatCurrency(tx.sum) : "—"}
+                        </TableCell>
+                        <TableCell className="text-right py-1 text-xs">
+                          {tx.price ? formatCurrency(tx.price) : "—"}
+                        </TableCell>
+                        <TableCell className="text-right py-1 text-xs">
+                          {formatNumber(tx.balanceBefore)} кг
+                        </TableCell>
+                        <TableCell className="text-right py-1 text-xs">
+                          {formatNumber(tx.balanceAfter)} кг
+                        </TableCell>
+                        <TableCell className="text-right py-1 text-xs">
+                          {formatCurrency(tx.averageCostBefore)}
+                        </TableCell>
+                        <TableCell className="text-right py-1 text-xs">
+                          {formatCurrency(tx.averageCostAfter)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
                 </TableBody>
               </Table>
             </div>
@@ -467,4 +547,3 @@ function DailyRowGroup({
     </>
   );
 }
-
