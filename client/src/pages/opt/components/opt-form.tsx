@@ -567,6 +567,8 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
           deliveryLocations={availableLocations}
           bases={allBases}
           contractVolumeStatus={contractVolumeStatus}
+          supplierContractVolumeStatus={supplierContractVolumeStatus}
+          isWarehouseSupplier={isWarehouseSupplier}
         />
 
         <OptPricingSection

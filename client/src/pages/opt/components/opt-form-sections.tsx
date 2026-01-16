@@ -155,6 +155,8 @@ interface LogisticsSectionProps {
   deliveryLocations?: LogisticsDeliveryLocation[];
   bases?: Base[];
   contractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
+  supplierContractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
+  isWarehouseSupplier?: boolean;
 }
 
 export function LogisticsSection({
@@ -163,6 +165,8 @@ export function LogisticsSection({
   deliveryLocations,
   bases,
   contractVolumeStatus,
+  supplierContractVolumeStatus,
+  isWarehouseSupplier,
 }: LogisticsSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -321,6 +325,12 @@ export function LogisticsSection({
                 <FormMessage />
               </FormItem>
             )}
+          />
+
+          <CalculatedField
+            label="Объем по договору Поставщика"
+            value={isWarehouseSupplier ? "ОК" : supplierContractVolumeStatus.message}
+            status={isWarehouseSupplier ? "ok" : supplierContractVolumeStatus.status}
           />
 
           <CalculatedField
