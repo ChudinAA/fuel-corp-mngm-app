@@ -135,6 +135,12 @@ const getDataMenuItems = (hasPermission: (p: string) => boolean) => [
     permission: "prices.view",
   },
   {
+    title: "Контрагенты",
+    url: "/counterparties",
+    icon: Users,
+    permission: "directories.view",
+  },
+  {
     title: "Доставка",
     url: "/delivery",
     icon: Truck,
