@@ -565,6 +565,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
           form={form}
           carriers={availableCarriers}
           deliveryLocations={availableLocations}
+          bases={allBases}
           contractVolumeStatus={contractVolumeStatus}
         />
 

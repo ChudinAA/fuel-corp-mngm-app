@@ -17,6 +17,7 @@ import type { Warehouse, WholesaleBase, RefuelingBase } from "@shared/schema";
 import { newWarehouseFormSchema } from "../schemas";
 import type { NewWarehouseFormValues } from "../types";
 import { BASE_TYPE } from "@shared/constants";
+import { BaseTypeBadge } from "@/components/base-type-badge";
 
 interface AddWarehouseDialogProps {
   warehouseToEdit: Warehouse | null;
@@ -178,9 +179,7 @@ export function AddWarehouseDialog({
                           <SelectItem key={base.id} value={base.id}>
                             <div className="flex items-center gap-2">
                               {base.name}
-                              <Badge variant="outline" className="text-xs">
-                                {base.baseType === BASE_TYPE.WHOLESALE ? 'ОПТ' : 'Заправка'}
-                              </Badge>
+                              <BaseTypeBadge type={base.baseType} />
                             </div>
                           </SelectItem>
                         ))}

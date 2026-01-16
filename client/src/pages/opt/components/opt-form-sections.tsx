@@ -21,6 +21,7 @@ import {
 import { Plus } from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
 import type {
+  Base,
   LogisticsCarrier,
   LogisticsDeliveryLocation,
   Price,
@@ -151,6 +152,7 @@ interface LogisticsSectionProps {
   form: UseFormReturn<OptFormData>;
   carriers?: LogisticsCarrier[];
   deliveryLocations?: LogisticsDeliveryLocation[];
+  bases?: Base[];
   contractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
 }
 
@@ -158,6 +160,7 @@ export function LogisticsSection({
   form,
   carriers,
   deliveryLocations,
+  bases,
   contractVolumeStatus,
 }: LogisticsSectionProps) {
   const { hasPermission } = useAuth();
@@ -176,6 +179,11 @@ export function LogisticsSection({
     if (type === "carrier") {
       form.setValue("carrierId", id);
     }
+  };
+
+  const getBase = (baseId: string) => {
+    const base = bases?.find((b) => b.id === baseId);
+    return base;
   };
 
   return (

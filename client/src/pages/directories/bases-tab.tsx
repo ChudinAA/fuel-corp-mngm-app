@@ -44,6 +44,7 @@ import { AddBaseDialog } from "./bases-dialog";
 import type { Base } from "@shared/schema";
 import { BASE_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
+import { BaseTypeBadge } from "@/components/base-type-badge";
 
 export function BasesTab() {
   const [search, setSearch] = useState("");
@@ -187,22 +188,7 @@ export function BasesTab() {
                           {base.name}
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant="outline"
-                            className="flex items-center gap-1.5 w-fit"
-                          >
-                            {base.baseType === BASE_TYPE.WHOLESALE ? (
-                              <>
-                                <Droplets className="h-3.5 w-3.5 text-orange-400" />
-                                <span>ОПТ</span>
-                              </>
-                            ) : (
-                              <>
-                                <Fuel className="h-3.5 w-3.5 text-green-400" />
-                                <span>Заправка</span>
-                              </>
-                            )}
-                          </Badge>
+                          <BaseTypeBadge type={base.baseType} />
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {base.location || "—"}

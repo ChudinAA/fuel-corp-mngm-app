@@ -36,6 +36,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Loader2, Building2, X } from "lucide-react";
 import type { Supplier, Base } from "@shared/schema";
+import { BaseTypeBadge } from "@/components/base-type-badge";
 
 const supplierFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
@@ -221,11 +222,6 @@ export function AddSupplierDialog({
     }
   };
 
-  const getBaseTypeLabel = (baseId: string) => {
-    const base = bases.find((b) => b.id === baseId);
-    return base?.baseType === BASE_TYPE.WHOLESALE ? "ОПТ" : "Заправка";
-  };
-
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {!isInline && (
@@ -303,11 +299,7 @@ export function AddSupplierDialog({
                           <SelectItem key={b.id} value={b.id}>
                             <div className="flex items-center gap-2">
                               {b.name}
-                              <Badge variant="outline" className="text-xs">
-                                {b.baseType === BASE_TYPE.WHOLESALE
-                                  ? "ОПТ"
-                                  : "Заправка"}
-                              </Badge>
+                              <BaseTypeBadge type={b.baseType} />
                             </div>
                           </SelectItem>
                         ))}
