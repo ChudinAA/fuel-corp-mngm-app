@@ -217,12 +217,17 @@ export function LogisticsSection({
                         const base = getBase(location.baseId || "");
                         return (
                           <SelectItem key={location.id} value={location.id}>
-                            <div className="flex items-center justify-between w-full gap-2">
+                            <div className="flex items-center justify-between w-full gap-1">
                               <span>{location.name}</span>
                               {base && (
                                 <div className="flex items-center gap-1.5 opacity-80 scale-90 origin-right">
-                                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">({base.name})</span>
-                                  <BaseTypeBadge type={base.baseType} short={true} />
+                                  <span className="text-[12px] text-muted-foreground whitespace-nowrap">
+                                    {base.name}
+                                  </span>
+                                  <BaseTypeBadge
+                                    type={base.baseType}
+                                    short={true}
+                                  />
                                 </div>
                               )}
                             </div>
