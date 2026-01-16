@@ -121,6 +121,7 @@ export function useRefuelingCalculations({
     currentQuantityKg: finalKg,
     isEditing: isEditing,
     mode: "refueling",
+    type: "purchase",
   });
 
   return {

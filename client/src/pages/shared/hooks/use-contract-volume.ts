@@ -6,6 +6,7 @@ interface UseContractVolumeProps {
   currentQuantityKg: number;
   isEditing: boolean;
   mode: "opt" | "refueling";
+  type?: "sale" | "purchase";
 }
 
 export function useContractVolume({
@@ -13,16 +14,19 @@ export function useContractVolume({
   currentQuantityKg,
   isEditing,
   mode,
+  type = "sale",
 }: UseContractVolumeProps) {
   const { data: price, isLoading: isLoadingPrice } = useQuery<Price>({
     queryKey: ["/api/prices", priceId],
     enabled: !!priceId,
   });
 
+  const endpoint = type === "purchase" ? "contract-used-purchase" : "contract-used";
+
   const { data: usedData, isLoading: isLoadingUsed } = useQuery<{
     usedVolume: number;
   }>({
-    queryKey: [`/api/${mode}/contract-used`, priceId],
+    queryKey: [`/api/${mode}/${endpoint}`, priceId],
     enabled: !!priceId,
   });
 

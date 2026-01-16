@@ -151,6 +151,7 @@ export function useOptCalculations({
     currentQuantityKg: finalKg,
     isEditing: isEditing,
     mode: "opt",
+    type: "purchase",
   });
 
   return {
