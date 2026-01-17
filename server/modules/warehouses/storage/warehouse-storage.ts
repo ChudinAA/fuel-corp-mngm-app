@@ -246,15 +246,20 @@ export class WarehouseStorage implements IWarehouseStorage {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const lastTransaction = await db.query.warehouseTransactions.findFirst({
-      where: and(
-        eq(warehouseTransactions.warehouseId, warehouseId),
-        eq(warehouseTransactions.productType, productType),
-        sql`${warehouseTransactions.transactionDate} <= ${endOfDay.toISOString()}`,
-        isNull(warehouseTransactions.deletedAt),
-      ),
-      orderBy: [desc(warehouseTransactions.transactionDate), desc(warehouseTransactions.id)],
-    });
+    // SQL query optimized for performance by looking only at the most recent record
+    const [lastTransaction] = await db
+      .select({ balanceAfter: warehouseTransactions.balanceAfter })
+      .from(warehouseTransactions)
+      .where(
+        and(
+          eq(warehouseTransactions.warehouseId, warehouseId),
+          eq(warehouseTransactions.productType, productType),
+          sql`${warehouseTransactions.transactionDate} <= ${endOfDay.toISOString()}`,
+          isNull(warehouseTransactions.deletedAt),
+        )
+      )
+      .orderBy(desc(warehouseTransactions.transactionDate), desc(warehouseTransactions.id))
+      .limit(1);
 
     return lastTransaction?.balanceAfter || "0";
   }
