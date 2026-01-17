@@ -61,6 +61,9 @@ export function MovementDialog({
       quantityLiters: undefined,
       density: undefined,
       quantityKg: undefined,
+      purchasePrice: "",
+      purchasePriceId: "",
+      purchasePriceIndex: 0,
       carrierId: "",
       notes: "",
     },
@@ -98,6 +101,9 @@ export function MovementDialog({
         quantityLiters: editMovement.quantityLiters ? String(editMovement.quantityLiters) : undefined,
         density: editMovement.density ? String(editMovement.density) : undefined,
         quantityKg: editMovement.quantityKg ? String(editMovement.quantityKg) : undefined,
+        purchasePrice: editMovement.purchasePrice ? String(editMovement.purchasePrice) : "",
+        purchasePriceId: editMovement.purchasePriceId || "",
+        purchasePriceIndex: editMovement.purchasePriceIndex || 0,
         carrierId: editMovement.carrierId || "",
         notes: editMovement.notes || "",
       });
@@ -138,6 +144,7 @@ export function MovementDialog({
   const {
     calculatedKg,
     kgNum,
+    availablePrices,
     purchasePrice,
     purchaseAmount,
     storageCost,
@@ -146,6 +153,7 @@ export function MovementDialog({
     costPerKg,
     supplierContractVolumeStatus,
   } = useMovementCalculations({
+    form,
     watchMovementType,
     watchProductType,
     watchSupplierId,
@@ -218,6 +226,8 @@ export function MovementDialog({
         density: data.density ? parseFloat(data.density) : null,
         quantityKg: calculatedKg,
         purchasePrice: purchasePrice,
+        purchasePriceId: data.purchasePriceId || null,
+        purchasePriceIndex: data.purchasePriceIndex || 0,
         deliveryPrice: deliveryCost > 0 && kgNum > 0 ? deliveryCost / kgNum : null,
         deliveryCost: deliveryCost,
         totalCost: totalCost,
@@ -264,8 +274,10 @@ export function MovementDialog({
               <MovementSourceSection
                 form={form}
                 watchMovementType={watchMovementType}
+                watchProductType={watchProductType}
                 suppliers={suppliers}
                 warehouses={warehouses}
+                allBases={allBases}
               />
             </div>
 
@@ -289,6 +301,8 @@ export function MovementDialog({
             />
 
             <MovementCostSummary
+              form={form}
+              availablePrices={availablePrices}
               purchasePrice={purchasePrice}
               purchaseAmount={purchaseAmount}
               storageCost={storageCost}

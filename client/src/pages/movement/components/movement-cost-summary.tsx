@@ -6,8 +6,25 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { MOVEMENT_TYPE } from "@shared/constants";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from "@/components/ui/form";
+import type { UseFormReturn } from "react-hook-form";
+import type { MovementFormData } from "../schemas";
 
 interface MovementCostSummaryProps {
+  form: UseFormReturn<MovementFormData>;
+  availablePrices: any[];
   purchasePrice: number | null;
   purchaseAmount: number;
   storageCost: number;
@@ -17,6 +34,8 @@ interface MovementCostSummaryProps {
 }
 
 export function MovementCostSummary({
+  form,
+  availablePrices,
   purchasePrice,
   purchaseAmount,
   storageCost,
@@ -27,16 +46,56 @@ export function MovementCostSummary({
   const { hasPermission } = useAuth();
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
 
+  const watchPurchasePriceId = form.watch("purchasePriceId");
+  const watchPurchasePriceIndex = form.watch("purchasePriceIndex");
+
   return (
     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
       <div className="flex items-end gap-1">
-        <CalculatedField
-          label="Цена закупки"
-          value={
-            purchasePrice !== null ? formatNumber(purchasePrice) : "нет цены!"
-          }
-          suffix={purchasePrice !== null ? " ₽/кг" : ""}
-        />
+        {watchMovementType === MOVEMENT_TYPE.SUPPLY && availablePrices.length > 0 ? (
+          <FormField
+            control={form.control}
+            name="purchasePriceIndex"
+            render={({ field }) => (
+              <FormItem className="flex-1">
+                <FormLabel>Цена закупки</FormLabel>
+                <Select
+                  onValueChange={(value) => {
+                    const index = parseInt(value);
+                    field.onChange(index);
+                    if (availablePrices[index]) {
+                      form.setValue("purchasePrice", String(availablePrices[index].price));
+                    }
+                  }}
+                  value={String(field.value ?? 0)}
+                >
+                  <FormControl>
+                    <SelectTrigger data-testid="select-purchase-price">
+                      <SelectValue placeholder="Выберите цену">
+                        {purchasePrice !== null ? `${formatNumber(purchasePrice)} ₽/кг` : "Выберите цену"}
+                      </SelectValue>
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {availablePrices.map((p, idx) => (
+                      <SelectItem key={`${p.price}-${idx}`} value={String(idx)}>
+                        {formatNumber(p.price)} ₽/кг {p.note ? `(${p.note})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormItem>
+            )}
+          />
+        ) : (
+          <CalculatedField
+            label="Цена закупки"
+            value={
+              purchasePrice !== null ? formatNumber(purchasePrice) : "нет цены!"
+            }
+            suffix={purchasePrice !== null ? " ₽/кг" : ""}
+          />
+        )}
         {hasPermission("prices", "create") &&
           watchMovementType === MOVEMENT_TYPE.SUPPLY && (
             <Button
@@ -45,6 +104,7 @@ export function MovementCostSummary({
               variant="outline"
               onClick={() => setAddPurchasePriceOpen(true)}
               data-testid="button-add-purchase-price-inline"
+              className={availablePrices.length > 0 ? "mb-0" : ""}
             >
               <Plus className="h-4 w-4" />
             </Button>

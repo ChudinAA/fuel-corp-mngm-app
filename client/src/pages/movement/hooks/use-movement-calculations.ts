@@ -11,8 +11,11 @@ import { format } from "date-fns";
 import { calculateKgFromLiters } from "../utils";
 import type { AllSupplier } from "../types";
 import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
+import type { UseFormReturn } from "react-hook-form";
+import type { MovementFormData } from "../schemas";
 
 interface UseMovementCalculationsProps {
+  form?: UseFormReturn<MovementFormData>;
   watchMovementType: string;
   watchProductType: string;
   watchSupplierId: string;
@@ -34,6 +37,7 @@ interface UseMovementCalculationsProps {
 }
 
 export function useMovementCalculations({
+  form,
   watchMovementType,
   watchProductType,
   watchSupplierId,
@@ -67,10 +71,14 @@ export function useMovementCalculations({
   const kgNum = calculatedKg || 0;
 
   // Get purchase price and price ID
-  const { purchasePrice, priceId } = useMemo((): {
+  const { purchasePrice, priceId, availablePrices } = useMemo((): {
     purchasePrice: number | null;
     priceId: string | null;
+    availablePrices: any[];
   } => {
+    const watchPurchasePriceId = (watchMovementType === MOVEMENT_TYPE.SUPPLY) ? (form?.watch ? form.watch("purchasePriceId") : null) : null;
+    const watchPurchasePriceIndex = (watchMovementType === MOVEMENT_TYPE.SUPPLY) ? (form?.watch ? form.watch("purchasePriceIndex") : 0) : 0;
+
     // For internal movement, use average cost from source warehouse
     if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
       const fromWarehouse = warehouses.find(
@@ -82,18 +90,18 @@ export function useMovementCalculations({
           ? fromWarehouse.pvkjAverageCost
           : fromWarehouse.averageCost;
         if (averageCost) {
-          return { purchasePrice: parseFloat(averageCost), priceId: null };
+          return { purchasePrice: parseFloat(averageCost), priceId: null, availablePrices: [] };
         }
       }
-      return { purchasePrice: null, priceId: null };
+      return { purchasePrice: null, priceId: null, availablePrices: [] };
     }
 
     if (!watchSupplierId || !watchMovementDate)
-      return { purchasePrice: null, priceId: null };
+      return { purchasePrice: null, priceId: null, availablePrices: [] };
 
     const dateStr = format(watchMovementDate, "yyyy-MM-dd'T'HH:mm:ss");
     const supplier = suppliers.find((s) => s.id === watchSupplierId);
-    if (!supplier) return { purchasePrice: null, priceId: null };
+    if (!supplier) return { purchasePrice: null, priceId: null, availablePrices: [] };
 
     // Determine product type for price lookup
     let priceProductType: ProductType = PRODUCT_TYPE.KEROSENE;
@@ -110,7 +118,7 @@ export function useMovementCalculations({
       }
     }
 
-    if (!baseName) return { purchasePrice: null, priceId: null };
+    if (!baseName) return { purchasePrice: null, priceId: null, availablePrices: [] };
 
     // Find price in price table
     const matchingPrice = prices.find(
@@ -131,17 +139,30 @@ export function useMovementCalculations({
       matchingPrice.priceValues.length > 0
     ) {
       try {
-        const priceObj = JSON.parse(matchingPrice.priceValues[0]);
+        const priceValues = matchingPrice.priceValues.map((v: string) => JSON.parse(v));
+        
+        // If we have a selected priceId and index, use it
+        if (watchPurchasePriceId === matchingPrice.id) {
+          const selectedPrice = priceValues[watchPurchasePriceIndex || 0];
+          return {
+            purchasePrice: parseFloat(selectedPrice.price || "0"),
+            priceId: matchingPrice.id,
+            availablePrices: priceValues
+          };
+        }
+
+        const priceObj = priceValues[0];
         return {
           purchasePrice: parseFloat(priceObj.price || "0"),
           priceId: matchingPrice.id,
+          availablePrices: priceValues
         };
       } catch {
-        return { purchasePrice: null, priceId: null };
+        return { purchasePrice: null, priceId: null, availablePrices: [] };
       }
     }
 
-    return { purchasePrice: null, priceId: null };
+    return { purchasePrice: null, priceId: null, availablePrices: [] };
   }, [
     watchMovementType,
     watchProductType,
@@ -153,6 +174,7 @@ export function useMovementCalculations({
     suppliers,
     prices,
     allBases,
+    form
   ]);
 
   const purchaseAmount = useMemo(() => {
@@ -261,6 +283,7 @@ export function useMovementCalculations({
   return {
     calculatedKg,
     kgNum,
+    availablePrices,
     purchasePrice,
     priceId,
     purchaseAmount,
