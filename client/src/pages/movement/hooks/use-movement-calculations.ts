@@ -76,7 +76,8 @@ export function useMovementCalculations({
     priceId: string | null;
     availablePrices: any[];
   } => {
-    const watchSelectedPurchasePriceId = (watchMovementType === MOVEMENT_TYPE.SUPPLY) ? (form?.watch ? form.watch("selectedPurchasePriceId") : null) : null;
+    const watchPurchasePriceId = (watchMovementType === MOVEMENT_TYPE.SUPPLY) ? (form?.watch ? form.watch("purchasePriceId") : null) : null;
+    const watchPurchasePriceIndex = (watchMovementType === MOVEMENT_TYPE.SUPPLY) ? (form?.watch ? form.watch("purchasePriceIndex") : 0) : 0;
 
     // For internal movement, use average cost from source warehouse
     if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
@@ -138,19 +139,11 @@ export function useMovementCalculations({
       matchingPrice.priceValues.length > 0
     ) {
       try {
-        const priceValues = matchingPrice.priceValues.map((v: string, idx: number) => {
-          const parsed = JSON.parse(v);
-          return {
-            ...parsed,
-            priceId: matchingPrice.id,
-            index: idx,
-            compositeId: `${matchingPrice.id}-${idx}`
-          };
-        });
+        const priceValues = matchingPrice.priceValues.map((v: string) => JSON.parse(v));
         
-        // If we have a selected compositeId, use it
-        if (watchSelectedPurchasePriceId) {
-          const selectedPrice = priceValues.find(p => p.compositeId === watchSelectedPurchasePriceId) || priceValues[0];
+        // If we have a selected priceId and index, use it
+        if (watchPurchasePriceId === matchingPrice.id) {
+          const selectedPrice = priceValues[watchPurchasePriceIndex || 0];
           return {
             purchasePrice: parseFloat(selectedPrice.price || "0"),
             priceId: matchingPrice.id,

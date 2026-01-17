@@ -62,7 +62,7 @@ export function MovementDialog({
       density: undefined,
       quantityKg: undefined,
       purchasePrice: "",
-      selectedPurchasePriceId: "",
+      purchasePriceId: "",
       purchasePriceIndex: 0,
       carrierId: "",
       notes: "",
@@ -102,9 +102,7 @@ export function MovementDialog({
         density: editMovement.density ? String(editMovement.density) : undefined,
         quantityKg: editMovement.quantityKg ? String(editMovement.quantityKg) : undefined,
         purchasePrice: editMovement.purchasePrice ? String(editMovement.purchasePrice) : "",
-        selectedPurchasePriceId: editMovement.purchasePriceId && editMovement.purchasePriceIndex !== null 
-          ? `${editMovement.purchasePriceId}-${editMovement.purchasePriceIndex}` 
-          : editMovement.purchasePriceId || "",
+        purchasePriceId: editMovement.purchasePriceId || "",
         purchasePriceIndex: editMovement.purchasePriceIndex || 0,
         carrierId: editMovement.carrierId || "",
         notes: editMovement.notes || "",
@@ -197,7 +195,7 @@ export function MovementDialog({
     initialWarehouseBalance,
   });
 
-  const { validateForm, validateFormWithDetails } = useMovementValidation({
+  const { validateForm } = useMovementValidation({
     watchMovementType,
     watchProductType,
     watchFromWarehouseId,
@@ -209,35 +207,11 @@ export function MovementDialog({
     toast,
   });
 
-  // Используем общий хук для автоматического выбора цен (по аналогии с ОПТ)
-  useEffect(() => {
-    if (watchMovementType === MOVEMENT_TYPE.SUPPLY && availablePrices.length > 0) {
-      if (!form.getValues("selectedPurchasePriceId")) {
-        const firstPrice = availablePrices[0];
-        const compositeId = `${firstPrice.priceId}-0`;
-        form.setValue("selectedPurchasePriceId", compositeId);
-        form.setValue("purchasePriceIndex", 0);
-        form.setValue("purchasePrice", String(firstPrice.price));
-      }
-    }
-  }, [watchMovementType, availablePrices, form]);
-
   const createMutation = useMutation({
     mutationFn: async (data: MovementFormData) => {
-      const validation = validateFormWithDetails();
-      if (!validation.isValid) {
-        throw new Error(validation.error || "Ошибка валидации данных");
+      if (!validateForm()) {
+        throw new Error("Ошибка валидации данных");
       }
-
-      const {
-        purchasePriceId,
-        purchasePriceIndex,
-      } = (() => {
-        const val = data.selectedPurchasePriceId;
-        if (!val) return { purchasePriceId: null, purchasePriceIndex: 0 };
-        const [id, idx] = val.split("-");
-        return { purchasePriceId: id, purchasePriceIndex: parseInt(idx) };
-      })();
 
       const payload = {
         movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),
@@ -252,8 +226,8 @@ export function MovementDialog({
         density: data.density ? parseFloat(data.density) : null,
         quantityKg: calculatedKg,
         purchasePrice: purchasePrice,
-        purchasePriceId: purchasePriceId,
-        purchasePriceIndex: purchasePriceIndex,
+        purchasePriceId: data.purchasePriceId || null,
+        purchasePriceIndex: data.purchasePriceIndex || 0,
         deliveryPrice: deliveryCost > 0 && kgNum > 0 ? deliveryCost / kgNum : null,
         deliveryCost: deliveryCost,
         totalCost: totalCost,
