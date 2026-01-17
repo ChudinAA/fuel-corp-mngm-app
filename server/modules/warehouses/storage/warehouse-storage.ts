@@ -1,4 +1,4 @@
-import { eq, desc, sql, asc, isNull, and } from "drizzle-orm";
+import { eq, desc, sql, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
 import {
   warehouses,
@@ -201,6 +201,7 @@ export class WarehouseStorage implements IWarehouseStorage {
       ),
       orderBy: (warehouseTransactions, { desc }) => [
         desc(warehouseTransactions.transactionDate),
+        desc(warehouseTransactions.id),
       ],
       with: {
         warehouse: {
@@ -246,7 +247,7 @@ export class WarehouseStorage implements IWarehouseStorage {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
-    // SQL query optimized for performance by looking only at the most recent record
+    // Optimized: Select only the balance field and use the index
     const [lastTransaction] = await db
       .select({ balanceAfter: warehouseTransactions.balanceAfter })
       .from(warehouseTransactions)
