@@ -18,7 +18,7 @@ import { MovementFormHeader } from "./movement-form-header";
 import { MovementSourceSection } from "./movement-source-section";
 import { MovementDestinationSection } from "./movement-destination-section";
 import { MovementCostSummary } from "./movement-cost-summary";
-import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
+import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
 import { 
   useMovementCalculations, 
   useAvailableCarriers, 
@@ -224,7 +224,13 @@ export function MovementDialog({
     mutationFn: async (data: MovementFormData) => {
       validateForm();
 
-      const { priceId: extractedPriceId, index: extractedPriceIndex } = parsePriceCompositeId(selectedPurchasePriceId);
+      const { purchasePriceId: extractedPriceId, purchasePriceIndex: extractedPriceIndex } = extractPriceIdsForSubmit(
+        selectedPurchasePriceId,
+        "",
+        prices.filter(p => p.id === (parsePriceCompositeId(selectedPurchasePriceId).priceId)),
+        [],
+        false
+      );
 
       const payload = {
         movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),

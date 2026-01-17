@@ -11,12 +11,18 @@ export function parsePriceCompositeId(compositeId: string): ParsedPriceId {
     return { priceId: null, priceIndex: 0 };
   }
 
+  // UUID has 4 dashes, so we split and take everything except the last part as the ID
   const parts = compositeId.split('-');
-  if (parts.length >= 5) {
-    return {
-      priceId: parts.slice(0, -1).join('-'),
-      priceIndex: parseInt(parts[parts.length - 1]),
-    };
+  if (parts.length >= 2) {
+    const lastPart = parts[parts.length - 1];
+    const index = parseInt(lastPart);
+    
+    if (!isNaN(index)) {
+      return {
+        priceId: parts.slice(0, -1).join('-'),
+        priceIndex: index,
+      };
+    }
   }
 
   return {

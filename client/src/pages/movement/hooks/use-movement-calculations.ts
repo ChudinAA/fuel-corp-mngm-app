@@ -126,9 +126,12 @@ export function useMovementCalculations({
   useEffect(() => {
     if (form && watchMovementType === MOVEMENT_TYPE.SUPPLY && !selectedPurchasePriceId && availablePurchasePrices.length > 0) {
       const firstPrice = availablePurchasePrices[0];
-      const compositeId = `${firstPrice.id}-0`;
-      setSelectedPurchasePriceId(compositeId);
-      form.setValue("selectedPurchasePriceId", compositeId);
+      const priceValues = firstPrice.priceValues || [];
+      if (priceValues.length > 0) {
+        const compositeId = `${firstPrice.id}-0`;
+        setSelectedPurchasePriceId(compositeId);
+        form.setValue("selectedPurchasePriceId", compositeId);
+      }
     }
   }, [watchMovementType, watchSupplierId, watchBasis, watchProductType, watchMovementDate, availablePurchasePrices.length]);
 
