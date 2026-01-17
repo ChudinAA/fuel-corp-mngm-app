@@ -164,6 +164,7 @@ export function MovementDialog({
     totalCost,
     costPerKg,
     supplierContractVolumeStatus,
+    warehouseBalanceAtDate,
   } = useMovementCalculations({
     form,
     watchMovementType,
@@ -207,6 +208,7 @@ export function MovementDialog({
     warehouses,
     isEditing,
     initialWarehouseBalance,
+    historicalBalanceAtDate: warehouseBalanceAtDate,
   });
 
   const { validateForm } = useMovementValidation({

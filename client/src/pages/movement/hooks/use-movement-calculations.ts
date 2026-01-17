@@ -222,6 +222,10 @@ export function useMovementCalculations({
   const totalCost = useMemo(() => purchaseAmount + storageCost + deliveryCost, [purchaseAmount, storageCost, deliveryCost]);
   const costPerKg = useMemo(() => (kgNum > 0 ? totalCost / kgNum : 0), [totalCost, kgNum]);
 
+  const warehouseBalanceAtDate = useMemo(() => {
+    return historicalBalance !== undefined ? parseFloat(historicalBalance) : null;
+  }, [historicalBalance]);
+
   const availablePrices = useMemo(() => {
     return availablePurchasePrices.flatMap(p => {
       try {

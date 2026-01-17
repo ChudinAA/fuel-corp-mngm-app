@@ -10,6 +10,7 @@ interface UseWarehouseBalanceProps {
   warehouses: any[];
   isEditing?: boolean;
   initialWarehouseBalance?: number;
+  historicalBalanceAtDate?: number | null;
 }
 
 interface WarehouseBalanceResult {
@@ -27,6 +28,7 @@ export function useWarehouseBalance({
   warehouses,
   isEditing = false,
   initialWarehouseBalance = 0,
+  historicalBalanceAtDate = null,
 }: UseWarehouseBalanceProps): WarehouseBalanceResult {
   
   return useMemo(() => {
@@ -40,10 +42,20 @@ export function useWarehouseBalance({
     }
 
     const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
-    // При редактировании используем начальный баланс (до вычета текущей сделки)
-    const balance = isEditing && initialWarehouseBalance > 0 
-      ? initialWarehouseBalance 
-      : parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
+    
+    // Приоритет отдаем историческому балансу, если он загружен
+    let balance: number;
+    if (historicalBalanceAtDate !== null) {
+      balance = isEditing && initialWarehouseBalance > 0
+        ? historicalBalanceAtDate + (initialWarehouseBalance - parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0"))
+        : historicalBalanceAtDate;
+    } else {
+      // Фолбек на текущий баланс
+      balance = isEditing && initialWarehouseBalance > 0 
+        ? initialWarehouseBalance 
+        : parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
+    }
+
     const cost = parseFloat(isPvkj ? fromWarehouse.pvkjAverageCost || "0" : fromWarehouse.averageCost || "0");
 
     if (balance <= 0) {
