@@ -1,6 +1,6 @@
-
 import { useMemo } from "react";
 import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
+import { useWarehouseBalance as useBaseWarehouseBalance } from "@/hooks/use-warehouse-balance";
 
 interface UseWarehouseBalanceProps {
   watchMovementType: string;
@@ -20,20 +20,48 @@ interface WarehouseBalanceResult {
   message: string;
 }
 
-export function useWarehouseBalance({
-  watchMovementType,
-  watchProductType,
-  watchFromWarehouseId,
-  kgNum,
-  warehouses,
-  isEditing = false,
-  initialWarehouseBalance = 0,
-  watchMovementDate,
-}: UseWarehouseBalanceProps): WarehouseBalanceResult {
-  
+export function useWarehouseBalanceMov(props: UseWarehouseBalanceProps): WarehouseBalanceResult {
+  const {
+    watchMovementType,
+    watchProductType,
+    watchFromWarehouseId,
+    kgNum,
+    warehouses,
+    isEditing = false,
+    initialWarehouseBalance = 0,
+    watchMovementDate,
+  } = props;
+
+  const isBackdated = useMemo(() => {
+    if (!watchMovementDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDate = new Date(watchMovementDate);
+    selectedDate.setHours(0, 0, 0, 0);
+    return selectedDate.getTime() < today.getTime();
+  }, [watchMovementDate]);
+
+  const { data: historicalBalanceStr, isLoading: isHistoricalLoading } = useBaseWarehouseBalance(
+    (watchMovementType === MOVEMENT_TYPE.INTERNAL && isBackdated) ? watchFromWarehouseId : undefined,
+    watchMovementDate,
+    watchProductType
+  );
+
+  const { data: currentBalanceStr, isLoading: isCurrentLoading } = useBaseWarehouseBalance(
+    (watchMovementType === MOVEMENT_TYPE.INTERNAL) ? watchFromWarehouseId : undefined,
+    new Date(),
+    watchProductType
+  );
+
+  const isLoading = isHistoricalLoading || isCurrentLoading;
+
   return useMemo(() => {
     if (watchMovementType !== MOVEMENT_TYPE.INTERNAL || !watchFromWarehouseId) {
       return { balance: 0, cost: 0, status: "ok", message: "—" };
+    }
+
+    if (isLoading) {
+      return { balance: 0, cost: 0, status: "ok", message: "Загрузка..." };
     }
 
     const fromWarehouse = warehouses.find(w => w.id === watchFromWarehouseId);
@@ -43,26 +71,11 @@ export function useWarehouseBalance({
 
     const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
     
-    const { data: historicalBalanceStr } = useWarehouseBalance(
-      watchFromWarehouseId || undefined,
-      watchMovementDate,
-      watchProductType
-    );
-
-    const historicalBalanceAtDate = historicalBalanceStr ? parseFloat(historicalBalanceStr) : null;
-
-    // Приоритет отдаем историческому балансу, если он загружен
-    let balance: number;
-    if (historicalBalanceAtDate !== null) {
-      balance = isEditing && initialWarehouseBalance > 0
-        ? historicalBalanceAtDate + (initialWarehouseBalance - parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0"))
-        : historicalBalanceAtDate;
-    } else {
-      // Фолбек на текущий баланс
-      balance = isEditing && initialWarehouseBalance > 0 
-        ? initialWarehouseBalance 
-        : parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
-    }
+    const hist = historicalBalanceStr ? parseFloat(historicalBalanceStr) : parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
+    const curr = currentBalanceStr ? parseFloat(currentBalanceStr) : parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
+    
+    let baseBalance = Math.min(hist, curr);
+    let balance = isEditing ? baseBalance + initialWarehouseBalance : baseBalance;
 
     const cost = parseFloat(isPvkj ? fromWarehouse.pvkjAverageCost || "0" : fromWarehouse.averageCost || "0");
 
@@ -83,5 +96,7 @@ export function useWarehouseBalance({
     }
 
     return { balance, cost, status: "ok", message: `${balance.toLocaleString()} кг` };
-  }, [watchMovementType, watchProductType, watchFromWarehouseId, kgNum, warehouses, isEditing, initialWarehouseBalance]);
+  }, [watchMovementType, watchProductType, watchFromWarehouseId, kgNum, warehouses, isEditing, initialWarehouseBalance, historicalBalanceStr, currentBalanceStr, isLoading]);
 }
+
+export const useWarehouseBalance = useWarehouseBalanceMov;

@@ -64,7 +64,8 @@ export function useMovementCalculations({
   selectedPurchasePriceId,
   setSelectedPurchasePriceId,
 }: UseMovementCalculationsProps) {
-  const watchSelectedPurchasePriceId = selectedPurchasePriceId || form?.watch("selectedPurchasePriceId") || "";
+  const watchSelectedPurchasePriceId =
+    selectedPurchasePriceId || form?.watch("selectedPurchasePriceId") || "";
 
   // Calculate quantity in kg
   const calculatedKg = useMemo(() => {
@@ -79,14 +80,14 @@ export function useMovementCalculations({
 
   const kgNum = calculatedKg || 0;
 
-  const { data: historicalBalance } = useWarehouseBalance(
-    watchFromWarehouseId || undefined,
-    watchMovementDate
-  );
-
   // Find matching prices for supplier
   const availablePurchasePrices = useMemo(() => {
-    if (watchMovementType !== MOVEMENT_TYPE.SUPPLY || !watchSupplierId || !watchMovementDate) return [];
+    if (
+      watchMovementType !== MOVEMENT_TYPE.SUPPLY ||
+      !watchSupplierId ||
+      !watchMovementDate
+    )
+      return [];
 
     const dateStr = format(watchMovementDate, "yyyy-MM-dd'T'HH:mm:ss");
     const supplier = suppliers.find((s) => s.id === watchSupplierId);
@@ -116,21 +117,36 @@ export function useMovementCalculations({
         p.dateTo >= dateStr &&
         p.isActive,
     );
-  }, [watchMovementType, watchSupplierId, watchMovementDate, suppliers, watchProductType, watchBasis, prices, allBases]);
+  }, [
+    watchMovementType,
+    watchSupplierId,
+    watchMovementDate,
+    suppliers,
+    watchProductType,
+    watchBasis,
+    prices,
+    allBases,
+  ]);
 
   // Extract actual price value using shared hook
-  const { purchasePrice, purchasePriceId, purchasePriceIndex } = usePriceExtraction({
-    purchasePrices: availablePurchasePrices,
-    salePrices: [],
-    selectedPurchasePriceId: watchSelectedPurchasePriceId,
-    selectedSalePriceId: "",
-    isWarehouseSupplier: false,
-    supplierWarehouse: undefined,
-  });
+  const { purchasePrice, purchasePriceId, purchasePriceIndex } =
+    usePriceExtraction({
+      purchasePrices: availablePurchasePrices,
+      salePrices: [],
+      selectedPurchasePriceId: watchSelectedPurchasePriceId,
+      selectedSalePriceId: "",
+      isWarehouseSupplier: false,
+      supplierWarehouse: undefined,
+    });
 
   // Автоматическая установка выбранной цены, если она не установлена
   useEffect(() => {
-    if (form && watchMovementType === MOVEMENT_TYPE.SUPPLY && !selectedPurchasePriceId && availablePurchasePrices.length > 0) {
+    if (
+      form &&
+      watchMovementType === MOVEMENT_TYPE.SUPPLY &&
+      !selectedPurchasePriceId &&
+      availablePurchasePrices.length > 0
+    ) {
       const firstPrice = availablePurchasePrices[0];
       const priceValues = firstPrice.priceValues || [];
       if (priceValues.length > 0) {
@@ -139,20 +155,37 @@ export function useMovementCalculations({
         form.setValue("selectedPurchasePriceId", compositeId);
       }
     }
-  }, [watchMovementType, watchSupplierId, watchBasis, watchProductType, watchMovementDate, availablePurchasePrices.length]);
+  }, [
+    watchMovementType,
+    watchSupplierId,
+    watchBasis,
+    watchProductType,
+    watchMovementDate,
+    availablePurchasePrices.length,
+  ]);
 
   // Handle internal movement price (average cost)
   const finalPurchasePrice = useMemo(() => {
     if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
-      const fromWarehouse = warehouses.find((w) => w.id === watchFromWarehouseId);
+      const fromWarehouse = warehouses.find(
+        (w) => w.id === watchFromWarehouseId,
+      );
       if (fromWarehouse) {
         const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
-        const averageCost = isPvkj ? fromWarehouse.pvkjAverageCost : fromWarehouse.averageCost;
+        const averageCost = isPvkj
+          ? fromWarehouse.pvkjAverageCost
+          : fromWarehouse.averageCost;
         return averageCost ? parseFloat(averageCost) : null;
       }
     }
     return purchasePrice;
-  }, [watchMovementType, watchFromWarehouseId, warehouses, watchProductType, purchasePrice]);
+  }, [
+    watchMovementType,
+    watchFromWarehouseId,
+    warehouses,
+    watchProductType,
+    purchasePrice,
+  ]);
 
   const purchaseAmount = useMemo(() => {
     return finalPurchasePrice && kgNum > 0 ? finalPurchasePrice * kgNum : 0;
@@ -185,13 +218,19 @@ export function useMovementCalculations({
 
       if (supplier.isWarehouse) {
         fromEntityType = DELIVERY_ENTITY_TYPE.WAREHOUSE;
-        const supplierWarehouse = warehouses.find((w) => w.supplierId === supplier.id);
+        const supplierWarehouse = warehouses.find(
+          (w) => w.supplierId === supplier.id,
+        );
         if (supplierWarehouse) fromEntityId = supplierWarehouse.id;
       } else {
         fromEntityType = DELIVERY_ENTITY_TYPE.BASE;
-        if (supplier.baseIds && supplier.baseIds.length > 0) fromEntityId = supplier.baseIds[0];
+        if (supplier.baseIds && supplier.baseIds.length > 0)
+          fromEntityId = supplier.baseIds[0];
       }
-    } else if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
+    } else if (
+      watchMovementType === MOVEMENT_TYPE.INTERNAL &&
+      watchFromWarehouseId
+    ) {
       fromEntityType = DELIVERY_ENTITY_TYPE.WAREHOUSE;
       fromEntityId = watchFromWarehouseId;
     }
@@ -207,8 +246,20 @@ export function useMovementCalculations({
         dc.toEntityId === toWarehouse.id,
     );
 
-    return deliveryCostRecord && deliveryCostRecord.costPerKg ? parseFloat(deliveryCostRecord.costPerKg) * kgNum : 0;
-  }, [watchToWarehouseId, watchCarrierId, kgNum, watchMovementType, watchSupplierId, watchFromWarehouseId, warehouses, suppliers, deliveryCosts]);
+    return deliveryCostRecord && deliveryCostRecord.costPerKg
+      ? parseFloat(deliveryCostRecord.costPerKg) * kgNum
+      : 0;
+  }, [
+    watchToWarehouseId,
+    watchCarrierId,
+    kgNum,
+    watchMovementType,
+    watchSupplierId,
+    watchFromWarehouseId,
+    warehouses,
+    suppliers,
+    deliveryCosts,
+  ]);
 
   const { priceId } = parsePriceCompositeId(watchSelectedPurchasePriceId);
 
@@ -219,14 +270,24 @@ export function useMovementCalculations({
     mode: "opt",
   });
 
-  const totalCost = useMemo(() => purchaseAmount + storageCost + deliveryCost, [purchaseAmount, storageCost, deliveryCost]);
-  const costPerKg = useMemo(() => (kgNum > 0 ? totalCost / kgNum : 0), [totalCost, kgNum]);
+  const totalCost = useMemo(
+    () => purchaseAmount + storageCost + deliveryCost,
+    [purchaseAmount, storageCost, deliveryCost],
+  );
+  const costPerKg = useMemo(
+    () => (kgNum > 0 ? totalCost / kgNum : 0),
+    [totalCost, kgNum],
+  );
 
   const availablePrices = useMemo(() => {
-    return availablePurchasePrices.flatMap(p => {
+    return availablePurchasePrices.flatMap((p) => {
       try {
         const values = p.priceValues?.map((v: string) => JSON.parse(v)) || [];
-        return values.map((v: any, idx: number) => ({ ...v, priceId: p.id, index: idx }));
+        return values.map((v: any, idx: number) => ({
+          ...v,
+          priceId: p.id,
+          index: idx,
+        }));
       } catch {
         return [];
       }
@@ -246,6 +307,5 @@ export function useMovementCalculations({
     totalCost,
     costPerKg,
     supplierContractVolumeStatus,
-    warehouseBalanceAtDate,
   };
 }

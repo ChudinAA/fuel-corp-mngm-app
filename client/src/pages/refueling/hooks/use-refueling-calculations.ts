@@ -50,11 +50,19 @@ export function useRefuelingCalculations({
     quantityKg,
   });
 
-  const { data: historicalBalance } = useWarehouseBalance(
+  const { data: historicalBalanceStr, isLoading: isHistoricalLoading } = useWarehouseBalance(
     isWarehouseSupplier ? supplierWarehouse?.id : undefined,
     refuelingDate,
     productType
   );
+
+  const { data: currentBalanceStr, isLoading: isCurrentLoading } = useWarehouseBalance(
+    isWarehouseSupplier ? supplierWarehouse?.id : undefined,
+    new Date(),
+    productType
+  );
+
+  const isBalanceLoading = isHistoricalLoading || isCurrentLoading;
 
   const { purchasePrice, salePrice } = usePriceExtraction({
     purchasePrices,
@@ -98,28 +106,16 @@ export function useRefuelingCalculations({
       return { status: "ok", message: "—" };
     }
 
-    // Для ПВКЖ проверяем баланс ПВКЖ
-    if (productType === PRODUCT_TYPE.PVKJ) {
-      const availableBalance = isEditing
-        ? initialWarehouseBalance
-        : parseFloat(supplierWarehouse.pvkjBalance || "0");
-      const remaining = availableBalance - finalKg;
-
-      if (remaining >= 0) {
-        return { status: "ok", message: `ОК: ${remaining.toFixed(2)} кг` };
-      } else {
-        return {
-          status: "error",
-          message: `Недостаточно! Доступно: ${availableBalance.toFixed(2)} кг`,
-        };
-      }
+    if (isBalanceLoading) {
+      return { status: "ok", message: "Загрузка..." };
     }
 
-    // Для керосина проверяем обычный баланс
-    const availableBalanceAtDate = historicalBalance ? parseFloat(historicalBalance) : null;
-    const availableBalance = availableBalanceAtDate !== null
-      ? (isEditing ? availableBalanceAtDate + (initialWarehouseBalance - parseFloat(supplierWarehouse.currentBalance || "0")) : availableBalanceAtDate)
-      : (isEditing ? initialWarehouseBalance : parseFloat(supplierWarehouse.currentBalance || "0"));
+    const isPvkj = productType === PRODUCT_TYPE.PVKJ;
+    const hist = historicalBalanceStr ? parseFloat(historicalBalanceStr) : parseFloat(isPvkj ? supplierWarehouse.pvkjBalance || "0" : supplierWarehouse.currentBalance || "0");
+    const curr = currentBalanceStr ? parseFloat(currentBalanceStr) : parseFloat(isPvkj ? supplierWarehouse.pvkjBalance || "0" : supplierWarehouse.currentBalance || "0");
+    
+    const baseBalance = Math.min(hist, curr);
+    const availableBalance = isEditing ? baseBalance + initialWarehouseBalance : baseBalance;
     
     const remaining = availableBalance - finalKg;
 

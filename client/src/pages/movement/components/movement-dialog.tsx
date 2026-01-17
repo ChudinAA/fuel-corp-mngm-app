@@ -26,6 +26,7 @@ import {
   useWarehouseBalance,
   useMovementValidation 
 } from "../hooks";
+import { useWarehouseBalanceMov } from "../hooks/use-warehouse-balance";
 
 
 export function MovementDialog({
@@ -199,7 +200,7 @@ export function MovementDialog({
     deliveryCosts,
   });
 
-  const warehouseBalance = useWarehouseBalance({
+  const warehouseBalance = useWarehouseBalanceMov({
     watchMovementType,
     watchProductType,
     watchFromWarehouseId,
