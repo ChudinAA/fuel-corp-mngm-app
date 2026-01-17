@@ -241,27 +241,19 @@ export class WarehouseStorage implements IWarehouseStorage {
   async getWarehouseBalanceAtDate(
     warehouseId: string,
     date: Date,
+    productType: string,
   ): Promise<string> {
-    const result = await db
-      .select({
-        balance: sql<string>`COALESCE(SUM(
-          CASE 
-            WHEN ${warehouseTransactions.transactionType} = 'IN' THEN ${warehouseTransactions.quantity}
-            WHEN ${warehouseTransactions.transactionType} = 'OUT' THEN -${warehouseTransactions.quantity}
-            ELSE 0
-          END
-        ), 0)`,
-      })
-      .from(warehouseTransactions)
-      .where(
-        and(
-          eq(warehouseTransactions.warehouseId, warehouseId),
-          sql`${warehouseTransactions.transactionDate} <= ${date.toISOString()}`,
-          isNull(warehouseTransactions.deletedAt),
-        ),
-      );
+    const lastTransaction = await db.query.warehouseTransactions.findFirst({
+      where: and(
+        eq(warehouseTransactions.warehouseId, warehouseId),
+        eq(warehouseTransactions.productType, productType),
+        sql`${warehouseTransactions.transactionDate} <= ${date.toISOString()}`,
+        isNull(warehouseTransactions.deletedAt),
+      ),
+      orderBy: [desc(warehouseTransactions.transactionDate), desc(warehouseTransactions.createdAt)],
+    });
 
-    return result[0]?.balance || "0";
+    return lastTransaction?.balanceAfter || "0";
   }
 
   async getWarehouseStatsForDashboard(): Promise<any[]> {

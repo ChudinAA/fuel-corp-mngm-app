@@ -250,5 +250,6 @@ export function useMovementCalculations({
     totalCost,
     costPerKg,
     supplierContractVolumeStatus,
+    warehouseBalanceAtDate,
   };
 }

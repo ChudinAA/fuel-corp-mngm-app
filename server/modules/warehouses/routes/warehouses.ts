@@ -226,13 +226,15 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       try {
         const id = req.params.id;
         const dateStr = req.query.date as string;
+        const productType = (req.query.productType as string) || PRODUCT_TYPE.KEROSENE;
         if (!dateStr) {
           return res.status(400).json({ message: "Дата не указана" });
         }
         const date = new Date(dateStr);
         const balance = await storage.warehouses.getWarehouseBalanceAtDate(
           id,
-          date
+          date,
+          productType
         );
         res.json({ balance });
       } catch (error) {

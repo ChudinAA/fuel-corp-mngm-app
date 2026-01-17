@@ -10,6 +10,6 @@ export interface IWarehouseStorage {
   ): Promise<Warehouse | undefined>;
   deleteWarehouse(id: string): Promise<boolean>;
   getWarehouseTransactions(warehouseId: string): Promise<any[]>;
-  getWarehouseBalanceAtDate(warehouseId: string, date: Date): Promise<string>;
+  getWarehouseBalanceAtDate(warehouseId: string, date: Date, productType: string): Promise<string>;
   getWarehouseStatsForDashboard(): Promise<any[]>;
 }
