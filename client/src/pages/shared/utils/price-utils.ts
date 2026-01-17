@@ -1,4 +1,3 @@
-
 import type { Price } from "@shared/schema";
 
 export interface ParsedPriceId {
@@ -12,17 +11,12 @@ export function parsePriceCompositeId(compositeId: string): ParsedPriceId {
   }
 
   // UUID has 4 dashes, so we split and take everything except the last part as the ID
-  const parts = compositeId.split('-');
-  if (parts.length >= 2) {
-    const lastPart = parts[parts.length - 1];
-    const index = parseInt(lastPart);
-    
-    if (!isNaN(index)) {
-      return {
-        priceId: parts.slice(0, -1).join('-'),
-        priceIndex: index,
-      };
-    }
+  const parts = compositeId.split("-");
+  if (parts.length >= 5) {
+    return {
+      priceId: parts.slice(0, -1).join("-"),
+      priceIndex: parseInt(parts[parts.length - 1]),
+    };
   }
 
   return {
@@ -36,7 +30,7 @@ export function extractPriceIdsForSubmit(
   selectedSalePriceId: string,
   purchasePrices: Price[],
   salePrices: Price[],
-  isWarehouseSupplier: boolean
+  isWarehouseSupplier: boolean,
 ): {
   purchasePriceId: string | null;
   purchasePriceIndex: number;
