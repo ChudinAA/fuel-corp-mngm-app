@@ -217,4 +217,27 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       }
     }
   );
+
+  app.get(
+    "/api/warehouses/:id/balance",
+    requireAuth,
+    requirePermission("warehouses", "view"),
+    async (req, res) => {
+      try {
+        const id = req.params.id;
+        const dateStr = req.query.date as string;
+        if (!dateStr) {
+          return res.status(400).json({ message: "Дата не указана" });
+        }
+        const date = new Date(dateStr);
+        const balance = await storage.warehouses.getWarehouseBalanceAtDate(
+          id,
+          date
+        );
+        res.json({ balance });
+      } catch (error) {
+        res.status(500).json({ message: "Ошибка получения остатка склада" });
+      }
+    }
+  );
 }

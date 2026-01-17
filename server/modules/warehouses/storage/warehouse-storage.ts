@@ -238,6 +238,32 @@ export class WarehouseStorage implements IWarehouseStorage {
     }));
   }
 
+  async getWarehouseBalanceAtDate(
+    warehouseId: string,
+    date: Date,
+  ): Promise<string> {
+    const result = await db
+      .select({
+        balance: sql<string>`COALESCE(SUM(
+          CASE 
+            WHEN ${warehouseTransactions.transactionType} = 'IN' THEN ${warehouseTransactions.quantity}
+            WHEN ${warehouseTransactions.transactionType} = 'OUT' THEN -${warehouseTransactions.quantity}
+            ELSE 0
+          END
+        ), 0)`,
+      })
+      .from(warehouseTransactions)
+      .where(
+        and(
+          eq(warehouseTransactions.warehouseId, warehouseId),
+          sql`${warehouseTransactions.transactionDate} <= ${date.toISOString()}`,
+          isNull(warehouseTransactions.deletedAt),
+        ),
+      );
+
+    return result[0]?.balance || "0";
+  }
+
   async getWarehouseStatsForDashboard(): Promise<any[]> {
     const warehousesList = await db.query.warehouses.findMany({
       where: and(eq(warehouses.isActive, true), isNull(warehouses.deletedAt)),
