@@ -139,11 +139,19 @@ export function useMovementCalculations({
       matchingPrice.priceValues.length > 0
     ) {
       try {
-        const priceValues = matchingPrice.priceValues.map((v: string) => JSON.parse(v));
+        const priceValues = matchingPrice.priceValues.map((v: string, idx: number) => {
+          const parsed = JSON.parse(v);
+          return {
+            ...parsed,
+            priceId: matchingPrice.id,
+            index: idx
+          };
+        });
         
-        // If we have a selected priceId and index, use it
-        if (watchPurchasePriceId === matchingPrice.id) {
-          const selectedPrice = priceValues[watchPurchasePriceIndex || 0];
+        // If we have a selected index, use it
+        if (watchPurchasePriceId === matchingPrice.id || true) {
+          const selectedIndex = watchPurchasePriceIndex ?? 0;
+          const selectedPrice = priceValues[selectedIndex] || priceValues[0];
           return {
             purchasePrice: parseFloat(selectedPrice.price || "0"),
             priceId: matchingPrice.id,

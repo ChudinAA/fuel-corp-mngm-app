@@ -195,7 +195,7 @@ export function MovementDialog({
     initialWarehouseBalance,
   });
 
-  const { validateForm } = useMovementValidation({
+  const { validateForm, validateFormWithDetails } = useMovementValidation({
     watchMovementType,
     watchProductType,
     watchFromWarehouseId,
@@ -209,8 +209,9 @@ export function MovementDialog({
 
   const createMutation = useMutation({
     mutationFn: async (data: MovementFormData) => {
-      if (!validateForm()) {
-        throw new Error("Ошибка валидации данных");
+      const validation = validateFormWithDetails();
+      if (!validation.isValid) {
+        throw new Error(validation.error || "Ошибка валидации данных");
       }
 
       const payload = {

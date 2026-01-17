@@ -62,6 +62,7 @@ export function MovementCostSummary({
                     field.onChange(index);
                     if (availablePrices[index]) {
                       form.setValue("purchasePrice", String(availablePrices[index].price));
+                      form.setValue("purchasePriceId", availablePrices[index].priceId || "");
                     }
                   }}
                   value={String(field.value ?? 0)}
