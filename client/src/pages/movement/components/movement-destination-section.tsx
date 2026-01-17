@@ -21,14 +21,21 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddDeliveryCostDialog } from "@/pages/delivery/components/delivery-cost-dialog";
+import { AllSupplier } from "../types";
 
 interface MovementDestinationSectionProps {
   form: UseFormReturn<MovementFormData>;
   watchMovementType: string;
   watchFromWarehouseId: string;
   warehouses: any[];
+  suppliers: AllSupplier[];
+  allBases?: any[];
   availableCarriers: any[];
   warehouseBalance: { message: string; status: "ok" | "error" | "warning" };
+  supplierContractVolumeStatus: {
+    message: string;
+    status: "ok" | "error" | "warning";
+  };
 }
 
 export function MovementDestinationSection({
@@ -36,14 +43,25 @@ export function MovementDestinationSection({
   watchMovementType,
   watchFromWarehouseId,
   warehouses,
+  suppliers,
+  allBases,
   availableCarriers,
   warehouseBalance,
+  supplierContractVolumeStatus,
 }: MovementDestinationSectionProps) {
   const { hasPermission } = useAuth();
   const [addDeliveryCostOpen, setAddDeliveryCostOpen] = useState(false);
 
+  const watchSupplierId = form.watch("supplierId");
+  const selectedSupplier = suppliers?.find((w) => w.id === watchSupplierId);
+
+  const selectedSupplierBases =
+    selectedSupplier?.baseIds
+      ?.map((id) => allBases?.find((b) => b.id === id))
+      .filter(Boolean) || [];
+
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-2 md:grid-cols-4">
       <FormField
         control={form.control}
         name="toWarehouseId"
@@ -124,16 +142,48 @@ export function MovementDestinationSection({
         )}
       />
 
-      <CalculatedField
-        label="Объем на складе"
-        value={
-          watchMovementType === MOVEMENT_TYPE.SUPPLY
-            ? "Объем не со склада"
-            : watchFromWarehouseId
-              ? warehouseBalance.message
-              : "—"
-        }
-        status={watchFromWarehouseId ? warehouseBalance.status : "ok"}
+      {watchMovementType === MOVEMENT_TYPE.SUPPLY ? (
+        <CalculatedField
+          label="Доступн. об-м Поставщика"
+          value={supplierContractVolumeStatus.message}
+          status={supplierContractVolumeStatus.status}
+        />
+      ) : (
+        <CalculatedField
+          label="Объем на складе"
+          value={watchFromWarehouseId ? warehouseBalance.message : "—"}
+          status={watchFromWarehouseId ? warehouseBalance.status : "ok"}
+        />
+      )}
+
+      <FormField
+        control={form.control}
+        name="basis"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel className="flex items-center gap-2">Базис Поставщика</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl>
+                <SelectTrigger data-testid="select-movement-basis">
+                  <SelectValue placeholder="Выберите базис" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {selectedSupplierBases.map((b: any) => (
+                  <SelectItem key={b.id} value={b.name}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+                {selectedSupplierBases.length === 0 && (
+                  <SelectItem value="none" disabled>
+                    Базисы не привязаны
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
       />
 
       <AddDeliveryCostDialog

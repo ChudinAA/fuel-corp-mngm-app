@@ -1,9 +1,16 @@
-
 import { useMemo } from "react";
-import { MOVEMENT_TYPE, PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, DELIVERY_ENTITY_TYPE } from "@shared/constants";
+import {
+  MOVEMENT_TYPE,
+  PRODUCT_TYPE,
+  COUNTERPARTY_TYPE,
+  COUNTERPARTY_ROLE,
+  DELIVERY_ENTITY_TYPE,
+  ProductType,
+} from "@shared/constants";
 import { format } from "date-fns";
 import { calculateKgFromLiters } from "../utils";
 import type { AllSupplier } from "../types";
+import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
 
 interface UseMovementCalculationsProps {
   watchMovementType: string;
@@ -23,6 +30,7 @@ interface UseMovementCalculationsProps {
   prices: any[];
   deliveryCosts: any[];
   allBases?: any[];
+  isEditing: boolean;
 }
 
 export function useMovementCalculations({
@@ -43,12 +51,15 @@ export function useMovementCalculations({
   prices,
   deliveryCosts,
   allBases,
+  isEditing,
 }: UseMovementCalculationsProps) {
-  
   // Calculate quantity in kg
   const calculatedKg = useMemo(() => {
     if (inputMode === "liters" && watchLiters && watchDensity) {
-      return calculateKgFromLiters(parseFloat(watchLiters), parseFloat(watchDensity));
+      return calculateKgFromLiters(
+        parseFloat(watchLiters),
+        parseFloat(watchDensity),
+      );
     }
     return watchKg && watchKg !== "" ? parseFloat(watchKg) : 0;
   }, [inputMode, watchLiters, watchDensity, watchKg]);
@@ -56,13 +67,20 @@ export function useMovementCalculations({
   const kgNum = calculatedKg || 0;
 
   // Get purchase price and price ID
-  const { purchasePrice, priceId } = useMemo((): { purchasePrice: number | null, priceId: string | null } => {
+  const { purchasePrice, priceId } = useMemo((): {
+    purchasePrice: number | null;
+    priceId: string | null;
+  } => {
     // For internal movement, use average cost from source warehouse
     if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
-      const fromWarehouse = warehouses.find(w => w.id === watchFromWarehouseId);
+      const fromWarehouse = warehouses.find(
+        (w) => w.id === watchFromWarehouseId,
+      );
       if (fromWarehouse) {
         const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
-        const averageCost = isPvkj ? fromWarehouse.pvkjAverageCost : fromWarehouse.averageCost;
+        const averageCost = isPvkj
+          ? fromWarehouse.pvkjAverageCost
+          : fromWarehouse.averageCost;
         if (averageCost) {
           return { purchasePrice: parseFloat(averageCost), priceId: null };
         }
@@ -70,14 +88,15 @@ export function useMovementCalculations({
       return { purchasePrice: null, priceId: null };
     }
 
-    if (!watchSupplierId || !watchMovementDate) return { purchasePrice: null, priceId: null };
+    if (!watchSupplierId || !watchMovementDate)
+      return { purchasePrice: null, priceId: null };
 
     const dateStr = format(watchMovementDate, "yyyy-MM-dd'T'HH:mm:ss");
-    const supplier = suppliers.find(s => s.id === watchSupplierId);
+    const supplier = suppliers.find((s) => s.id === watchSupplierId);
     if (!supplier) return { purchasePrice: null, priceId: null };
 
     // Determine product type for price lookup
-    let priceProductType = PRODUCT_TYPE.KEROSENE;
+    let priceProductType: ProductType = PRODUCT_TYPE.KEROSENE;
     if (watchProductType === PRODUCT_TYPE.PVKJ) {
       priceProductType = PRODUCT_TYPE.PVKJ;
     }
@@ -85,7 +104,7 @@ export function useMovementCalculations({
     // Use selected basis or fallback to first supplier's basis
     let baseName = watchBasis;
     if (!baseName && supplier.baseIds && supplier.baseIds.length > 0) {
-      const firstBase = allBases?.find(b => b.id === supplier.baseIds[0]);
+      const firstBase = allBases?.find((b) => b.id === supplier.baseIds[0]);
       if (firstBase) {
         baseName = firstBase.name;
       }
@@ -94,23 +113,28 @@ export function useMovementCalculations({
     if (!baseName) return { purchasePrice: null, priceId: null };
 
     // Find price in price table
-    const matchingPrice = prices.find(p =>
-      p.counterpartyId === watchSupplierId &&
-      p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
-      p.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER &&
-      p.productType === priceProductType &&
-      p.basis === baseName &&
-      p.dateFrom <= dateStr &&
-      p.dateTo >= dateStr &&
-      p.isActive
+    const matchingPrice = prices.find(
+      (p) =>
+        p.counterpartyId === watchSupplierId &&
+        p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
+        p.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER &&
+        p.productType === priceProductType &&
+        p.basis === baseName &&
+        p.dateFrom <= dateStr &&
+        p.dateTo >= dateStr &&
+        p.isActive,
     );
 
-    if (matchingPrice && matchingPrice.priceValues && matchingPrice.priceValues.length > 0) {
+    if (
+      matchingPrice &&
+      matchingPrice.priceValues &&
+      matchingPrice.priceValues.length > 0
+    ) {
       try {
         const priceObj = JSON.parse(matchingPrice.priceValues[0]);
-        return { 
-          purchasePrice: parseFloat(priceObj.price || "0"), 
-          priceId: matchingPrice.id 
+        return {
+          purchasePrice: parseFloat(priceObj.price || "0"),
+          priceId: matchingPrice.id,
         };
       } catch {
         return { purchasePrice: null, priceId: null };
@@ -118,7 +142,18 @@ export function useMovementCalculations({
     }
 
     return { purchasePrice: null, priceId: null };
-  }, [watchMovementType, watchProductType, watchSupplierId, watchBasis, watchFromWarehouseId, watchMovementDate, warehouses, suppliers, prices, allBases]);
+  }, [
+    watchMovementType,
+    watchProductType,
+    watchSupplierId,
+    watchBasis,
+    watchFromWarehouseId,
+    watchMovementDate,
+    warehouses,
+    suppliers,
+    prices,
+    allBases,
+  ]);
 
   const purchaseAmount = useMemo(() => {
     return purchasePrice && kgNum > 0 ? purchasePrice * kgNum : 0;
@@ -128,7 +163,7 @@ export function useMovementCalculations({
   const storageCost = useMemo((): number => {
     if (!watchToWarehouseId || kgNum <= 0) return 0;
 
-    const warehouse = warehouses.find(w => w.id === watchToWarehouseId);
+    const warehouse = warehouses.find((w) => w.id === watchToWarehouseId);
     if (!warehouse || !warehouse.storageCost) return 0;
 
     const storageCostPerTon = parseFloat(warehouse.storageCost);
@@ -140,7 +175,7 @@ export function useMovementCalculations({
   const deliveryCost = useMemo((): number => {
     if (!watchToWarehouseId || !watchCarrierId || kgNum <= 0) return 0;
 
-    const toWarehouse = warehouses.find(w => w.id === watchToWarehouseId);
+    const toWarehouse = warehouses.find((w) => w.id === watchToWarehouseId);
     if (!toWarehouse) return 0;
 
     let fromEntityType = "";
@@ -148,13 +183,15 @@ export function useMovementCalculations({
 
     // For supply - get from supplier
     if (watchMovementType === MOVEMENT_TYPE.SUPPLY && watchSupplierId) {
-      const supplier = suppliers.find(s => s.id === watchSupplierId);
+      const supplier = suppliers.find((s) => s.id === watchSupplierId);
       if (!supplier) return 0;
 
       // If supplier has warehouse, use it
       if (supplier.isWarehouse) {
         fromEntityType = DELIVERY_ENTITY_TYPE.WAREHOUSE;
-        const supplierWarehouse = warehouses.find(w => w.supplierId === supplier.id);
+        const supplierWarehouse = warehouses.find(
+          (w) => w.supplierId === supplier.id,
+        );
         if (supplierWarehouse) {
           fromEntityId = supplierWarehouse.id;
         }
@@ -167,7 +204,10 @@ export function useMovementCalculations({
       }
     }
     // For internal movement - get from source warehouse
-    else if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
+    else if (
+      watchMovementType === MOVEMENT_TYPE.INTERNAL &&
+      watchFromWarehouseId
+    ) {
       fromEntityType = DELIVERY_ENTITY_TYPE.WAREHOUSE;
       fromEntityId = watchFromWarehouseId;
     }
@@ -175,12 +215,13 @@ export function useMovementCalculations({
     if (!fromEntityId) return 0;
 
     // Find delivery tariff
-    const deliveryCostRecord = deliveryCosts.find(dc =>
-      dc.carrierId === watchCarrierId &&
-      dc.fromEntityType === fromEntityType &&
-      dc.fromEntityId === fromEntityId &&
-      dc.toEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE &&
-      dc.toEntityId === toWarehouse.id
+    const deliveryCostRecord = deliveryCosts.find(
+      (dc) =>
+        dc.carrierId === watchCarrierId &&
+        dc.fromEntityType === fromEntityType &&
+        dc.fromEntityId === fromEntityId &&
+        dc.toEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE &&
+        dc.toEntityId === toWarehouse.id,
     );
 
     if (deliveryCostRecord && deliveryCostRecord.costPerKg) {
@@ -188,7 +229,25 @@ export function useMovementCalculations({
     }
 
     return 0;
-  }, [watchToWarehouseId, watchCarrierId, kgNum, watchMovementType, watchSupplierId, watchFromWarehouseId, warehouses, suppliers, deliveryCosts]);
+  }, [
+    watchToWarehouseId,
+    watchCarrierId,
+    kgNum,
+    watchMovementType,
+    watchSupplierId,
+    watchFromWarehouseId,
+    warehouses,
+    suppliers,
+    deliveryCosts,
+  ]);
+
+  // Логика проверки объема по договору поставщика
+  const supplierContractVolumeStatus = useContractVolume({
+    priceId: priceId,
+    currentQuantityKg: kgNum,
+    isEditing: isEditing,
+    mode: "opt",
+  });
 
   // Calculate totals
   const totalCost = useMemo(() => {
@@ -209,5 +268,6 @@ export function useMovementCalculations({
     deliveryCost,
     totalCost,
     costPerKg,
+    supplierContractVolumeStatus,
   };
 }

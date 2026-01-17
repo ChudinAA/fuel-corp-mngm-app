@@ -144,6 +144,7 @@ export function MovementDialog({
     deliveryCost,
     totalCost,
     costPerKg,
+    supplierContractVolumeStatus,
   } = useMovementCalculations({
     watchMovementType,
     watchProductType,
@@ -162,6 +163,7 @@ export function MovementDialog({
     prices,
     deliveryCosts,
     allBases,
+    isEditing,
   });
 
   const availableCarriers = useAvailableCarriers({
@@ -193,6 +195,7 @@ export function MovementDialog({
     kgNum,
     purchasePrice,
     warehouses,
+    supplierContractVolumeStatus,
     toast,
   });
 
@@ -261,10 +264,8 @@ export function MovementDialog({
               <MovementSourceSection
                 form={form}
                 watchMovementType={watchMovementType}
-                watchProductType={watchProductType}
                 suppliers={suppliers}
                 warehouses={warehouses}
-                allBases={allBases}
               />
             </div>
 
@@ -273,8 +274,11 @@ export function MovementDialog({
               watchMovementType={watchMovementType}
               watchFromWarehouseId={watchFromWarehouseId}
               warehouses={warehouses}
+              suppliers={suppliers}
+              allBases={allBases}
               availableCarriers={availableCarriers}
               warehouseBalance={warehouseBalance}
+              supplierContractVolumeStatus={supplierContractVolumeStatus}
             />
 
             <VolumeInputSection
