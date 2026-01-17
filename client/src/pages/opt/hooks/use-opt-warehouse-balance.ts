@@ -25,10 +25,11 @@ export function useOptWarehouseBalance({
     today.setHours(0, 0, 0, 0);
     const selectedDate = new Date(dealDate);
     selectedDate.setHours(0, 0, 0, 0);
+    // Считаем задним числом только если дата СТРОГО раньше сегодня
     return selectedDate.getTime() < today.getTime();
   }, [dealDate]);
 
-  const { data: historicalBalanceStr, isLoading } = useWarehouseBalance(
+  const { data: historicalBalanceStr, isLoading: isBalanceLoading } = useWarehouseBalance(
     isBackdated ? warehouseId : undefined,
     dealDate,
     PRODUCT_TYPE.KEROSENE
@@ -39,11 +40,10 @@ export function useOptWarehouseBalance({
     
     // Если это текущая дата, берем баланс из объекта склада (уже загружен в OptForm)
     if (!isBackdated) {
-      // Баланс будет передан через initialCurrentBalance или найден в warehouses
       return initialCurrentBalance ? parseFloat(initialCurrentBalance) : null;
     }
 
-    if (isLoading) return null;
+    if (isBalanceLoading) return null;
 
     const balanceAtDate = historicalBalanceStr ? parseFloat(historicalBalanceStr) : 0;
 
@@ -52,10 +52,10 @@ export function useOptWarehouseBalance({
     }
 
     return balanceAtDate;
-  }, [warehouseId, isBackdated, historicalBalanceStr, isLoading, isEditing, editQuantityKg, initialCurrentBalance]);
+  }, [warehouseId, isBackdated, historicalBalanceStr, isBalanceLoading, isEditing, editQuantityKg, initialCurrentBalance]);
 
   return {
     availableBalance,
-    isLoading,
+    isLoading: isBackdated ? isBalanceLoading : false,
   };
 }

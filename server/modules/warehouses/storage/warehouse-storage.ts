@@ -243,11 +243,14 @@ export class WarehouseStorage implements IWarehouseStorage {
     date: Date,
     productType: string,
   ): Promise<string> {
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
     const lastTransaction = await db.query.warehouseTransactions.findFirst({
       where: and(
         eq(warehouseTransactions.warehouseId, warehouseId),
         eq(warehouseTransactions.productType, productType),
-        sql`${warehouseTransactions.transactionDate}::timestamp <= ${date.toISOString()}::timestamp`,
+        sql`${warehouseTransactions.transactionDate} <= ${endOfDay.toISOString()}`,
         isNull(warehouseTransactions.deletedAt),
       ),
       orderBy: [desc(warehouseTransactions.transactionDate), desc(warehouseTransactions.id)],

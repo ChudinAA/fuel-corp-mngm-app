@@ -176,6 +176,6 @@ export function useOptCalculations({
     deliveryTariff,
     contractVolumeStatus,
     supplierContractVolumeStatus,
-    warehouseBalanceAtDate,
+    warehouseBalanceAtDate: warehouseBalanceAtDate !== undefined ? warehouseBalanceAtDate : null,
   };
 }
