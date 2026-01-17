@@ -426,21 +426,24 @@ export class OptStorage implements IOptStorage {
         and(
           or(eq(opt.salePriceId, priceId), eq(opt.purchasePriceId, priceId)),
           isNull(opt.deletedAt),
+          eq(opt.isDraft, false),
         ),
       );
+
     const [movementVolume] = await db
-    .select({
-      total: sql<string>`COALESCE(SUM(${movement.quantityKg}), 0)`,
-    })
-    .from(movement)
-    .where(
-      and(
-        eq(movement.purchasePriceId, priceId),
-        isNull(movement.deletedAt),
-      ),
-    );
-    const result = optVolume.total + movementVolume.total
-    return parseFloat(result || "0");
+      .select({
+        total: sql<string>`COALESCE(SUM(${movement.quantityKg}), 0)`,
+      })
+      .from(movement)
+      .where(
+        and(
+          eq(movement.purchasePriceId, priceId),
+          isNull(movement.deletedAt),
+        ),
+      );
+
+    const total = parseFloat(optVolume.total || "0") + parseFloat(movementVolume.total || "0");
+    return total;
   }
 
   async restoreOpt(
