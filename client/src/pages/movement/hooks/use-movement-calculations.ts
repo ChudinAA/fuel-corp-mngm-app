@@ -123,16 +123,14 @@ export function useMovementCalculations({
   });
 
   // Автоматическая установка выбранной цены, если она не установлена
-  useMemo(() => {
-    if (form && watchMovementType === MOVEMENT_TYPE.SUPPLY && !watchSelectedPurchasePriceId && availablePurchasePrices.length > 0) {
+  useEffect(() => {
+    if (form && watchMovementType === MOVEMENT_TYPE.SUPPLY && !selectedPurchasePriceId && availablePurchasePrices.length > 0) {
       const firstPrice = availablePurchasePrices[0];
       const compositeId = `${firstPrice.id}-0`;
-      setTimeout(() => {
-        form.setValue("selectedPurchasePriceId", compositeId);
-        setSelectedPurchasePriceId(compositeId);
-      }, 0);
+      setSelectedPurchasePriceId(compositeId);
+      form.setValue("selectedPurchasePriceId", compositeId);
     }
-  }, [form, watchMovementType, watchSelectedPurchasePriceId, availablePurchasePrices, setSelectedPurchasePriceId]);
+  }, [watchMovementType, watchSupplierId, watchBasis, watchProductType, watchMovementDate, availablePurchasePrices.length]);
 
   // Handle internal movement price (average cost)
   const finalPurchasePrice = useMemo(() => {

@@ -64,10 +64,10 @@ export function MovementCostSummary({
                   <FormLabel className="flex items-center gap-2">Цена закупки</FormLabel>
                   <Select
                     onValueChange={(value) => {
-                      field.onChange(value);
                       setSelectedPurchasePriceId(value);
+                      field.onChange(value);
                     }}
-                    value={selectedPurchasePriceId || field.value || ""}
+                    value={selectedPurchasePriceId}
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-purchase-price">
