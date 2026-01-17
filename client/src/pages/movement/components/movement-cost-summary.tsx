@@ -52,20 +52,21 @@ export function MovementCostSummary({
         {watchMovementType === MOVEMENT_TYPE.SUPPLY && availablePrices.length > 0 ? (
           <FormField
             control={form.control}
-            name="purchasePriceIndex"
+            name="selectedPurchasePriceId"
             render={({ field }) => (
               <FormItem className="flex-1">
                 <FormLabel className="flex items-center gap-2">Цена закупки</FormLabel>
                 <Select
                   onValueChange={(value) => {
-                    const index = parseInt(value);
-                    field.onChange(index);
+                    field.onChange(value);
+                    const [priceId, indexStr] = value.split("-");
+                    const index = parseInt(indexStr);
+                    form.setValue("purchasePriceIndex", index);
                     if (availablePrices[index]) {
                       form.setValue("purchasePrice", String(availablePrices[index].price));
-                      form.setValue("purchasePriceId", availablePrices[index].priceId || "");
                     }
                   }}
-                  value={String(field.value ?? 0)}
+                  value={field.value || ""}
                 >
                   <FormControl>
                     <SelectTrigger data-testid="select-purchase-price">
@@ -76,8 +77,8 @@ export function MovementCostSummary({
                   </FormControl>
                   <SelectContent>
                     {availablePrices.map((p, idx) => (
-                      <SelectItem key={`${p.price}-${idx}`} value={String(idx)}>
-                        {formatNumber(p.price)} ₽/кг
+                      <SelectItem key={`${p.priceId}-${idx}`} value={`${p.priceId}-${idx}`}>
+                        {formatNumber(p.price)} ₽/кг {p.note ? `(${p.note})` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>

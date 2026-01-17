@@ -14,9 +14,10 @@ export const movementFormSchema = z.object({
   density: z.string().optional(),
   quantityKg: z.string().optional(),
   carrierId: z.string().optional(),
+  selectedPurchasePriceId: z.string().optional().nullable(),
+  purchasePriceIndex: z.number().optional().nullable(),
   purchasePrice: z.string().optional(),
   purchasePriceId: z.string().optional(),
-  purchasePriceIndex: z.number().optional(),
   deliveryPrice: z.string().optional(),
   notes: z.string().optional(),
 });

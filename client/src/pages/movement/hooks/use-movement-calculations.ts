@@ -76,8 +76,7 @@ export function useMovementCalculations({
     priceId: string | null;
     availablePrices: any[];
   } => {
-    const watchPurchasePriceId = (watchMovementType === MOVEMENT_TYPE.SUPPLY) ? (form?.watch ? form.watch("purchasePriceId") : null) : null;
-    const watchPurchasePriceIndex = (watchMovementType === MOVEMENT_TYPE.SUPPLY) ? (form?.watch ? form.watch("purchasePriceIndex") : 0) : 0;
+    const watchSelectedPurchasePriceId = (watchMovementType === MOVEMENT_TYPE.SUPPLY) ? (form?.watch ? form.watch("selectedPurchasePriceId") : null) : null;
 
     // For internal movement, use average cost from source warehouse
     if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
@@ -144,14 +143,14 @@ export function useMovementCalculations({
           return {
             ...parsed,
             priceId: matchingPrice.id,
-            index: idx
+            index: idx,
+            compositeId: `${matchingPrice.id}-${idx}`
           };
         });
         
-        // If we have a selected index, use it
-        if (watchPurchasePriceId === matchingPrice.id || true) {
-          const selectedIndex = watchPurchasePriceIndex ?? 0;
-          const selectedPrice = priceValues[selectedIndex] || priceValues[0];
+        // If we have a selected compositeId, use it
+        if (watchSelectedPurchasePriceId) {
+          const selectedPrice = priceValues.find(p => p.compositeId === watchSelectedPurchasePriceId) || priceValues[0];
           return {
             purchasePrice: parseFloat(selectedPrice.price || "0"),
             priceId: matchingPrice.id,
