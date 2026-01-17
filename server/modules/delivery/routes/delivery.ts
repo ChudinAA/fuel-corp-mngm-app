@@ -62,9 +62,12 @@ export function registerDeliveryRoutes(app: Express) {
           req.session.userId
         );
         res.status(201).json(created);
-      } catch (error) {
+      } catch (error: any) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
+        }
+        if (error.message === "Такая запись уже существует") {
+          return res.status(400).json({ message: error.message });
         }
         console.error("Error creating delivery cost:", error);
         res.status(500).json({ message: "Ошибка создания тарифа доставки" });
