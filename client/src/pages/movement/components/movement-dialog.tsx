@@ -209,9 +209,7 @@ export function MovementDialog({
 
   const createMutation = useMutation({
     mutationFn: async (data: MovementFormData) => {
-      if (!validateForm()) {
-        throw new Error("Ошибка валидации данных");
-      }
+      validateForm();
 
       const payload = {
         movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),
@@ -251,10 +249,7 @@ export function MovementDialog({
       onOpenChange(false);
     },
     onError: (error: Error) => {
-      const errorMessage = error.message === "Ошибка валидации данных" 
-        ? error.message 
-        : "Произошла ошибка при сохранении. Проверьте введенные данные и повторите попытку.";
-      toast({ title: "Ошибка", description: errorMessage, variant: "destructive" });
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
     },
   });
 

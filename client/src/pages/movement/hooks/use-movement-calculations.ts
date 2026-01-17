@@ -141,19 +141,14 @@ export function useMovementCalculations({
       try {
         const priceValues = matchingPrice.priceValues.map((v: string) => JSON.parse(v));
         
-        // If we have a selected priceId and index, use it
-        if (watchPurchasePriceId === matchingPrice.id) {
-          const selectedPrice = priceValues[watchPurchasePriceIndex || 0];
-          return {
-            purchasePrice: parseFloat(selectedPrice.price || "0"),
-            priceId: matchingPrice.id,
-            availablePrices: priceValues
-          };
+        // Always update purchasePriceId if it's not set correctly
+        if (form && watchMovementType === MOVEMENT_TYPE.SUPPLY && form.getValues("purchasePriceId") !== matchingPrice.id) {
+          form.setValue("purchasePriceId", matchingPrice.id);
         }
 
-        const priceObj = priceValues[0];
+        const selectedPrice = priceValues[watchPurchasePriceIndex || 0];
         return {
-          purchasePrice: parseFloat(priceObj.price || "0"),
+          purchasePrice: parseFloat(selectedPrice?.price || "0"),
           priceId: matchingPrice.id,
           availablePrices: priceValues
         };
