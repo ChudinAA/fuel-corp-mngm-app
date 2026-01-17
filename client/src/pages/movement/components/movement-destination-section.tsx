@@ -60,6 +60,15 @@ export function MovementDestinationSection({
       ?.map((id) => allBases?.find((b) => b.id === id))
       .filter(Boolean) || [];
 
+  const selectedWarehouse = warehouses?.find(
+    (w) => w.id === watchFromWarehouseId,
+  );
+
+  const selectedWarehouseBases =
+    selectedWarehouse?.baseIds
+      ?.map((id) => allBases?.find((b) => b.id === id))
+      .filter(Boolean) || [];
+
   return (
     <div className="grid gap-2 md:grid-cols-4">
       <FormField
@@ -156,12 +165,45 @@ export function MovementDestinationSection({
         />
       )}
 
+      {watchMovementType === MOVEMENT_TYPE.SUPPLY ? (
+        <FormField
+          control={form.control}
+          name="basis"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                Базис Поставщика
+              </FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-movement-basis">
+                    <SelectValue placeholder="Выберите базис" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {selectedSupplierBases.map((b: any) => (
+                    <SelectItem key={b.id} value={b.name}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                  {selectedSupplierBases.length === 0 && (
+                    <SelectItem value="none" disabled>
+                      Базисы не привязаны
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      ) : (
       <FormField
         control={form.control}
         name="basis"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="flex items-center gap-2">Базис Поставщика</FormLabel>
+            <FormLabel className="flex items-center gap-2">Базис Склада</FormLabel>
             <Select onValueChange={field.onChange} value={field.value}>
               <FormControl>
                 <SelectTrigger data-testid="select-movement-basis">
@@ -169,12 +211,12 @@ export function MovementDestinationSection({
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {selectedSupplierBases.map((b: any) => (
+                {selectedWarehouseBases.map((b: any) => (
                   <SelectItem key={b.id} value={b.name}>
                     {b.name}
                   </SelectItem>
                 ))}
-                {selectedSupplierBases.length === 0 && (
+                {selectedWarehouseBases.length === 0 && (
                   <SelectItem value="none" disabled>
                     Базисы не привязаны
                   </SelectItem>
@@ -185,6 +227,7 @@ export function MovementDestinationSection({
           </FormItem>
         )}
       />
+      )}
 
       <AddDeliveryCostDialog
         editDeliveryCost={null}

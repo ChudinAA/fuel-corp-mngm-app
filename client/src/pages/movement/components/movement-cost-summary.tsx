@@ -46,11 +46,8 @@ export function MovementCostSummary({
   const { hasPermission } = useAuth();
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
 
-  const watchPurchasePriceId = form.watch("purchasePriceId");
-  const watchPurchasePriceIndex = form.watch("purchasePriceIndex");
-
   return (
-    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+    <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-5">
       <div className="flex items-end gap-1">
         {watchMovementType === MOVEMENT_TYPE.SUPPLY && availablePrices.length > 0 ? (
           <FormField
@@ -58,7 +55,7 @@ export function MovementCostSummary({
             name="purchasePriceIndex"
             render={({ field }) => (
               <FormItem className="flex-1">
-                <FormLabel>Цена закупки</FormLabel>
+                <FormLabel className="flex items-center gap-2">Цена закупки</FormLabel>
                 <Select
                   onValueChange={(value) => {
                     const index = parseInt(value);
@@ -79,7 +76,7 @@ export function MovementCostSummary({
                   <SelectContent>
                     {availablePrices.map((p, idx) => (
                       <SelectItem key={`${p.price}-${idx}`} value={String(idx)}>
-                        {formatNumber(p.price)} ₽/кг {p.note ? `(${p.note})` : ""}
+                        {formatNumber(p.price)} ₽/кг
                       </SelectItem>
                     ))}
                   </SelectContent>
