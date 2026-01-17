@@ -152,6 +152,8 @@ export function MovementDialog({
     kgNum,
     availablePrices,
     purchasePrice,
+    purchasePriceId: calcPriceId,
+    purchasePriceIndex: calcPriceIndex,
     purchaseAmount,
     storageCost,
     deliveryCost,
@@ -217,10 +219,6 @@ export function MovementDialog({
     mutationFn: async (data: MovementFormData) => {
       validateForm();
 
-      console.log("Submitting movement with selectedPurchasePriceId:", data.selectedPurchasePriceId);
-      const { priceId: extractedPriceId, index: extractedPriceIndex } = parsePriceCompositeId(data.selectedPurchasePriceId || "");
-      console.log("Extracted Price details:", { extractedPriceId, extractedPriceIndex });
-
       const payload = {
         movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),
         movementType: data.movementType,
@@ -234,8 +232,8 @@ export function MovementDialog({
         density: data.density ? parseFloat(data.density) : null,
         quantityKg: calculatedKg,
         purchasePrice: purchasePrice,
-        purchasePriceId: extractedPriceId || null,
-        purchasePriceIndex: extractedPriceIndex ?? 0,
+        purchasePriceId: calcPriceId || null,
+        purchasePriceIndex: calcPriceIndex ?? 0,
         deliveryPrice: deliveryCost > 0 && kgNum > 0 ? deliveryCost / kgNum : null,
         deliveryCost: deliveryCost,
         totalCost: totalCost,
