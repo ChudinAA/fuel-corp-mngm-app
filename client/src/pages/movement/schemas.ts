@@ -12,6 +12,8 @@ export const movementFormSchema = z.object({
   inputMode: z.enum(["liters", "kg"]),
   quantityLiters: z.string().optional(),
   density: z.string().optional(),
+  quantityKg: z.string().optional(),
+  carrierId: z.string().optional(),
   purchasePrice: z.string().optional(),
   purchasePriceId: z.string().optional(),
   purchasePriceIndex: z.number().optional(),
