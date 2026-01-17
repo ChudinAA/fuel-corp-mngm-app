@@ -42,6 +42,7 @@ export function MovementDialog({
 }: MovementDialogProps) {
   const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
+  const [selectedPurchasePriceId, setSelectedPurchasePriceId] = useState<string>("");
   const isEditing = !!editMovement;
 
   const { data: allBases } = useQuery<any[]>({
@@ -110,6 +111,7 @@ export function MovementDialog({
         carrierId: editMovement.carrierId || "",
         notes: editMovement.notes || "",
       });
+      setSelectedPurchasePriceId(editMovement.purchasePriceId ? `${editMovement.purchasePriceId}-${editMovement.purchasePriceIndex || 0}` : "");
     } else {
       setInitialWarehouseBalance(0);
       form.reset({
@@ -130,6 +132,7 @@ export function MovementDialog({
         purchasePriceId: "",
         purchasePriceIndex: 0,
       });
+      setSelectedPurchasePriceId("");
     }
   }, [editMovement, form, warehouses]);
 
@@ -180,6 +183,8 @@ export function MovementDialog({
     deliveryCosts,
     allBases,
     isEditing,
+    selectedPurchasePriceId,
+    setSelectedPurchasePriceId,
   });
 
   const availableCarriers = useAvailableCarriers({
@@ -219,6 +224,8 @@ export function MovementDialog({
     mutationFn: async (data: MovementFormData) => {
       validateForm();
 
+      const { priceId: extractedPriceId, index: extractedPriceIndex } = parsePriceCompositeId(selectedPurchasePriceId || data.selectedPurchasePriceId || "");
+
       const payload = {
         movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),
         movementType: data.movementType,
@@ -232,8 +239,8 @@ export function MovementDialog({
         density: data.density ? parseFloat(data.density) : null,
         quantityKg: calculatedKg,
         purchasePrice: purchasePrice,
-        purchasePriceId: calcPriceId || null,
-        purchasePriceIndex: calcPriceIndex ?? 0,
+        purchasePriceId: extractedPriceId || null,
+        purchasePriceIndex: extractedPriceIndex ?? 0,
         deliveryPrice: deliveryCost > 0 && kgNum > 0 ? deliveryCost / kgNum : null,
         deliveryCost: deliveryCost,
         totalCost: totalCost,
@@ -312,6 +319,8 @@ export function MovementDialog({
               deliveryCost={deliveryCost}
               costPerKg={costPerKg}
               watchMovementType={watchMovementType}
+              selectedPurchasePriceId={selectedPurchasePriceId}
+              setSelectedPurchasePriceId={setSelectedPurchasePriceId}
             />
 
             <FormField control={form.control} name="notes" render={({ field }) => (

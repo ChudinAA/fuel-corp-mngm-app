@@ -36,6 +36,8 @@ interface UseMovementCalculationsProps {
   deliveryCosts: any[];
   allBases?: any[];
   isEditing: boolean;
+  selectedPurchasePriceId: string;
+  setSelectedPurchasePriceId: (id: string) => void;
 }
 
 export function useMovementCalculations({
@@ -58,8 +60,10 @@ export function useMovementCalculations({
   deliveryCosts,
   allBases,
   isEditing,
+  selectedPurchasePriceId,
+  setSelectedPurchasePriceId,
 }: UseMovementCalculationsProps) {
-  const watchSelectedPurchasePriceId = form?.watch("selectedPurchasePriceId") || "";
+  const watchSelectedPurchasePriceId = selectedPurchasePriceId || form?.watch("selectedPurchasePriceId") || "";
 
   // Calculate quantity in kg
   const calculatedKg = useMemo(() => {
@@ -125,9 +129,10 @@ export function useMovementCalculations({
       const compositeId = `${firstPrice.id}-0`;
       setTimeout(() => {
         form.setValue("selectedPurchasePriceId", compositeId);
+        setSelectedPurchasePriceId(compositeId);
       }, 0);
     }
-  }, [form, watchMovementType, watchSelectedPurchasePriceId, availablePurchasePrices]);
+  }, [form, watchMovementType, watchSelectedPurchasePriceId, availablePurchasePrices, setSelectedPurchasePriceId]);
 
   // Handle internal movement price (average cost)
   const finalPurchasePrice = useMemo(() => {

@@ -32,6 +32,8 @@ interface MovementCostSummaryProps {
   deliveryCost: number;
   costPerKg: number;
   watchMovementType: string;
+  selectedPurchasePriceId: string;
+  setSelectedPurchasePriceId: (id: string) => void;
 }
 
 export function MovementCostSummary({
@@ -43,6 +45,8 @@ export function MovementCostSummary({
   deliveryCost,
   costPerKg,
   watchMovementType,
+  selectedPurchasePriceId,
+  setSelectedPurchasePriceId,
 }: MovementCostSummaryProps) {
   const { hasPermission } = useAuth();
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
@@ -61,8 +65,9 @@ export function MovementCostSummary({
                   <Select
                     onValueChange={(value) => {
                       field.onChange(value);
+                      setSelectedPurchasePriceId(value);
                     }}
-                    value={field.value || ""}
+                    value={selectedPurchasePriceId || field.value || ""}
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-purchase-price">
