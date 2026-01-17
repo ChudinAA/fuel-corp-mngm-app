@@ -142,8 +142,14 @@ export function useMovementCalculations({
         const priceValues = matchingPrice.priceValues.map((v: string) => JSON.parse(v));
         
         // Always update purchasePriceId if it's not set correctly
-        if (form && watchMovementType === MOVEMENT_TYPE.SUPPLY && form.getValues("purchasePriceId") !== matchingPrice.id) {
-          form.setValue("purchasePriceId", matchingPrice.id);
+        if (form && watchMovementType === MOVEMENT_TYPE.SUPPLY) {
+          const currentPriceId = form.getValues("purchasePriceId");
+          if (currentPriceId !== matchingPrice.id) {
+            // Use setTimeout to avoid state updates during render
+            setTimeout(() => {
+              form.setValue("purchasePriceId", matchingPrice.id);
+            }, 0);
+          }
         }
 
         const selectedPrice = priceValues[watchPurchasePriceIndex || 0];
