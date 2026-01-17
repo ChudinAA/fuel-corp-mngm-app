@@ -217,7 +217,9 @@ export function MovementDialog({
     mutationFn: async (data: MovementFormData) => {
       validateForm();
 
+      console.log("Submitting movement with selectedPurchasePriceId:", data.selectedPurchasePriceId);
       const { priceId: extractedPriceId, index: extractedPriceIndex } = parsePriceCompositeId(data.selectedPurchasePriceId || "");
+      console.log("Extracted Price details:", { extractedPriceId, extractedPriceIndex });
 
       const payload = {
         movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),

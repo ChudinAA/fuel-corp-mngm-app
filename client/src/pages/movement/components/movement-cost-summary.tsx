@@ -55,34 +55,12 @@ export function MovementCostSummary({
             control={form.control}
             name="selectedPurchasePriceId"
             render={({ field }) => {
-              // Автоматически выбираем первую цену, если ничего не выбрано
-              if (!field.value && availablePrices.length > 0) {
-                const firstPrice = availablePrices[0];
-                const compositeId = `${firstPrice.priceId}-0`;
-                setTimeout(() => {
-                  form.setValue("selectedPurchasePriceId", compositeId);
-                  form.setValue("purchasePriceId", firstPrice.priceId);
-                  form.setValue("purchasePriceIndex", 0);
-                  form.setValue("purchasePrice", String(firstPrice.price));
-                }, 0);
-              }
-
               return (
                 <FormItem className="flex-1">
                   <FormLabel className="flex items-center gap-2">Цена закупки</FormLabel>
                   <Select
                     onValueChange={(value) => {
                       field.onChange(value);
-                      const { priceId, index } = parsePriceCompositeId(value);
-                      const priceObj = availablePrices.find(
-                        (p) => `${p.priceId}-${p.index}` === value
-                      );
-                      
-                      if (priceObj) {
-                        form.setValue("purchasePriceId", priceId);
-                        form.setValue("purchasePriceIndex", index);
-                        form.setValue("purchasePrice", String(priceObj.price));
-                      }
                     }}
                     value={field.value || ""}
                   >
