@@ -57,9 +57,12 @@ export function registerLogisticsRoutes(app: Express) {
         });
         const item = await storage.logistics.createLogisticsCarrier(data);
         res.status(201).json(item);
-      } catch (error) {
+      } catch (error: any) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
+        }
+        if (error.message === "Такая запись уже существует") {
+          return res.status(400).json({ message: error.message });
         }
         res.status(500).json({ message: "Ошибка создания перевозчика" });
       }
@@ -163,9 +166,12 @@ export function registerLogisticsRoutes(app: Express) {
           data
         );
         res.status(201).json(item);
-      } catch (error) {
+      } catch (error: any) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
+        }
+        if (error.message === "Такая запись уже существует") {
+          return res.status(400).json({ message: error.message });
         }
         res.status(500).json({ message: "Ошибка создания места доставки" });
       }
@@ -271,9 +277,12 @@ export function registerLogisticsRoutes(app: Express) {
         });
         const item = await storage.logistics.createLogisticsVehicle(data);
         res.status(201).json(item);
-      } catch (error) {
+      } catch (error: any) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
+        }
+        if (error.message === "Такая запись уже существует") {
+          return res.status(400).json({ message: error.message });
         }
         res.status(500).json({ message: "Ошибка создания транспорта" });
       }
@@ -376,9 +385,12 @@ export function registerLogisticsRoutes(app: Express) {
         });
         const item = await storage.logistics.createLogisticsTrailer(data);
         res.status(201).json(item);
-      } catch (error) {
+      } catch (error: any) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
+        }
+        if (error.message === "Такая запись уже существует") {
+          return res.status(400).json({ message: error.message });
         }
         res.status(500).json({ message: "Ошибка создания прицепа" });
       }
@@ -481,9 +493,12 @@ export function registerLogisticsRoutes(app: Express) {
         });
         const item = await storage.logistics.createLogisticsDriver(data);
         res.status(201).json(item);
-      } catch (error) {
+      } catch (error: any) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
+        }
+        if (error.message === "Такая запись уже существует") {
+          return res.status(400).json({ message: error.message });
         }
         res.status(500).json({ message: "Ошибка создания водителя" });
       }

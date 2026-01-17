@@ -31,6 +31,19 @@ export class LogisticsStorage implements ILogisticsStorage {
   }
 
   async createLogisticsCarrier(data: InsertLogisticsCarrier): Promise<LogisticsCarrier> {
+    // Check for duplicates
+    const existing = await db.select().from(logisticsCarriers).where(
+      and(
+        eq(logisticsCarriers.name, data.name),
+        data.inn ? eq(logisticsCarriers.inn, data.inn) : sql`TRUE`,
+        isNull(logisticsCarriers.deletedAt)
+      )
+    ).limit(1);
+
+    if (existing.length > 0) {
+      throw new Error("Такая запись уже существует");
+    }
+
     const [created] = await db.insert(logisticsCarriers).values(data).returning();
     return created;
   }
@@ -62,6 +75,19 @@ export class LogisticsStorage implements ILogisticsStorage {
   }
 
   async createLogisticsDeliveryLocation(data: InsertLogisticsDeliveryLocation): Promise<LogisticsDeliveryLocation> {
+    // Check for duplicates
+    const existing = await db.select().from(logisticsDeliveryLocations).where(
+      and(
+        eq(logisticsDeliveryLocations.name, data.name),
+        data.address ? eq(logisticsDeliveryLocations.address, data.address) : sql`TRUE`,
+        isNull(logisticsDeliveryLocations.deletedAt)
+      )
+    ).limit(1);
+
+    if (existing.length > 0) {
+      throw new Error("Такая запись уже существует");
+    }
+
     const [created] = await db.insert(logisticsDeliveryLocations).values(data).returning();
     return created;
   }
@@ -96,6 +122,18 @@ export class LogisticsStorage implements ILogisticsStorage {
   }
 
   async createLogisticsVehicle(data: InsertLogisticsVehicle): Promise<LogisticsVehicle> {
+    // Check for duplicates
+    const existing = await db.select().from(logisticsVehicles).where(
+      and(
+        eq(logisticsVehicles.regNumber, data.regNumber),
+        isNull(logisticsVehicles.deletedAt)
+      )
+    ).limit(1);
+
+    if (existing.length > 0) {
+      throw new Error("Такая запись уже существует");
+    }
+
     const [created] = await db.insert(logisticsVehicles).values(data).returning();
     return created;
   }
@@ -130,6 +168,18 @@ export class LogisticsStorage implements ILogisticsStorage {
   }
 
   async createLogisticsTrailer(data: InsertLogisticsTrailer): Promise<LogisticsTrailer> {
+    // Check for duplicates
+    const existing = await db.select().from(logisticsTrailers).where(
+      and(
+        eq(logisticsTrailers.regNumber, data.regNumber),
+        isNull(logisticsTrailers.deletedAt)
+      )
+    ).limit(1);
+
+    if (existing.length > 0) {
+      throw new Error("Такая запись уже существует");
+    }
+
     const [created] = await db.insert(logisticsTrailers).values(data).returning();
     return created;
   }
@@ -164,6 +214,19 @@ export class LogisticsStorage implements ILogisticsStorage {
   }
 
   async createLogisticsDriver(data: InsertLogisticsDriver): Promise<LogisticsDriver> {
+    // Check for duplicates
+    const existing = await db.select().from(logisticsDrivers).where(
+      and(
+        eq(logisticsDrivers.fullName, data.fullName),
+        data.licenseNumber ? eq(logisticsDrivers.licenseNumber, data.licenseNumber) : sql`TRUE`,
+        isNull(logisticsDrivers.deletedAt)
+      )
+    ).limit(1);
+
+    if (existing.length > 0) {
+      throw new Error("Такая запись уже существует");
+    }
+
     const [created] = await db.insert(logisticsDrivers).values(data).returning();
     return created;
   }
