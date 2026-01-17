@@ -125,8 +125,6 @@ export function useMovementCalculations({
       const compositeId = `${firstPrice.id}-0`;
       setTimeout(() => {
         form.setValue("selectedPurchasePriceId", compositeId);
-        form.setValue("purchasePriceId", firstPrice.id);
-        form.setValue("purchasePriceIndex", 0);
       }, 0);
     }
   }, [form, watchMovementType, watchSelectedPurchasePriceId, availablePurchasePrices]);

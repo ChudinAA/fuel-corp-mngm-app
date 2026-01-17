@@ -18,6 +18,7 @@ import { MovementFormHeader } from "./movement-form-header";
 import { MovementSourceSection } from "./movement-source-section";
 import { MovementDestinationSection } from "./movement-destination-section";
 import { MovementCostSummary } from "./movement-cost-summary";
+import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 import { 
   useMovementCalculations, 
   useAvailableCarriers, 
