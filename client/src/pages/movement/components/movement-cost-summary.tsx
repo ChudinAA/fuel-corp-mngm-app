@@ -75,7 +75,7 @@ export function MovementCostSummary({
                       field.onChange(value);
                       const { priceId, index } = parsePriceCompositeId(value);
                       const priceObj = availablePrices.find(
-                        (p, idx) => `${p.priceId}-${idx}` === value
+                        (p) => `${p.priceId}-${p.index}` === value
                       );
                       
                       if (priceObj) {
@@ -94,8 +94,8 @@ export function MovementCostSummary({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {availablePrices.map((p, idx) => (
-                        <SelectItem key={`${p.priceId}-${idx}`} value={`${p.priceId}-${idx}`}>
+                      {availablePrices.map((p) => (
+                        <SelectItem key={`${p.priceId}-${p.index}`} value={`${p.priceId}-${p.index}`}>
                           {formatNumber(p.price)} ₽/кг
                         </SelectItem>
                       ))}
