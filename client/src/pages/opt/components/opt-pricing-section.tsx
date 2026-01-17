@@ -46,6 +46,7 @@ interface OptPricingSectionProps {
     status: "ok" | "warning" | "error";
     message: string;
   };
+  warehouseBalanceAtDate: number | null;
 }
 
 export function OptPricingSection({
@@ -65,9 +66,9 @@ export function OptPricingSection({
   supplierWarehouse,
   finalKg,
   isEditing,
-  initialWarehouseBalance,
   contractVolumeStatus,
   supplierContractVolumeStatus,
+  warehouseBalanceAtDate,
 }: OptPricingSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -93,10 +94,7 @@ export function OptPricingSection({
       return { status: "ok", message: "—" };
     }
 
-    // При редактировании используем начальный остаток (до вычета текущей сделки)
-    const availableBalance = isEditing
-      ? initialWarehouseBalance
-      : parseFloat(supplierWarehouse.currentBalance || "0");
+    const availableBalance = warehouseBalanceAtDate !== null ? warehouseBalanceAtDate : 0;
     const remaining = availableBalance - finalKg;
 
     if (remaining >= 0) {

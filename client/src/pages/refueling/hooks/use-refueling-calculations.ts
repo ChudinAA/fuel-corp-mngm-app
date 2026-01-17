@@ -117,7 +117,7 @@ export function useRefuelingCalculations({
     // Для керосина проверяем обычный баланс
     const availableBalanceAtDate = historicalBalance ? parseFloat(historicalBalance) : null;
     const availableBalance = availableBalanceAtDate !== null
-      ? (isEditing ? availableBalanceAtDate + parseFloat(String(initialWarehouseBalance - parseFloat(supplierWarehouse.currentBalance || "0"))) : availableBalanceAtDate)
+      ? (isEditing ? availableBalanceAtDate + (initialWarehouseBalance - parseFloat(supplierWarehouse.currentBalance || "0")) : availableBalanceAtDate)
       : (isEditing ? initialWarehouseBalance : parseFloat(supplierWarehouse.currentBalance || "0"));
     
     const remaining = availableBalance - finalKg;

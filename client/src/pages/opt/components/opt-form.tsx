@@ -46,8 +46,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
     useState<string>("");
   const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
-  const [initialWarehouseBalance, setInitialWarehouseBalance] =
-    useState<number>(0);
   const isEditing = !!editData;
 
   const form = useForm<OptFormData>({
@@ -243,12 +241,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
       // Сохраняем изначальный остаток на складе (с учетом текущей сделки)
       if (editData.warehouseId) {
-        const warehouse = warehouses.find((w) => w.id === editData.warehouseId);
-        if (warehouse) {
-          const currentBalance = parseFloat(warehouse.currentBalance || "0");
-          const dealQuantity = parseFloat(editData.quantityKg || "0");
-          setInitialWarehouseBalance(currentBalance + dealQuantity);
-        }
+        // Логика перенесена в хук useOptWarehouseBalance
       }
 
       form.reset({
@@ -501,10 +494,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
       // Проверяем достаточность объема на складе для складских поставщиков
       if (isWarehouseSupplier && supplierWarehouse) {
-        const availableBalance = warehouseBalanceAtDate !== null
-          ? (isEditing ? warehouseBalanceAtDate + parseFloat(editData.quantityKg || "0") : warehouseBalanceAtDate)
-          : (isEditing ? initialWarehouseBalance : parseFloat(supplierWarehouse.currentBalance || "0"));
-
+        const availableBalance = warehouseBalanceAtDate !== null ? warehouseBalanceAtDate : 0;
         const remaining = availableBalance - finalKg;
         if (remaining < 0) {
           toast({

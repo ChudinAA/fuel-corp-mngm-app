@@ -10,7 +10,7 @@ interface UseWarehouseBalanceProps {
   warehouses: any[];
   isEditing?: boolean;
   initialWarehouseBalance?: number;
-  historicalBalanceAtDate?: number | null;
+  watchMovementDate?: Date;
 }
 
 interface WarehouseBalanceResult {
@@ -28,7 +28,7 @@ export function useWarehouseBalance({
   warehouses,
   isEditing = false,
   initialWarehouseBalance = 0,
-  historicalBalanceAtDate = null,
+  watchMovementDate,
 }: UseWarehouseBalanceProps): WarehouseBalanceResult {
   
   return useMemo(() => {
@@ -43,6 +43,14 @@ export function useWarehouseBalance({
 
     const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
     
+    const { data: historicalBalanceStr } = useWarehouseBalance(
+      watchFromWarehouseId || undefined,
+      watchMovementDate,
+      watchProductType
+    );
+
+    const historicalBalanceAtDate = historicalBalanceStr ? parseFloat(historicalBalanceStr) : null;
+
     // Приоритет отдаем историческому балансу, если он загружен
     let balance: number;
     if (historicalBalanceAtDate !== null) {
