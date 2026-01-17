@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   MOVEMENT_TYPE,
   PRODUCT_TYPE,
