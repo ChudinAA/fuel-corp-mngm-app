@@ -46,6 +46,7 @@ interface OptPricingSectionProps {
     message: string;
   };
   warehouseBalanceAtDate: number | null;
+  isWarehouseBalanceLoading?: boolean;
 }
 
 export function OptPricingSection({
@@ -68,6 +69,7 @@ export function OptPricingSection({
   contractVolumeStatus,
   supplierContractVolumeStatus,
   warehouseBalanceAtDate,
+  isWarehouseBalanceLoading,
 }: OptPricingSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -328,8 +330,8 @@ export function OptPricingSection({
       <div className="grid gap-2 md:grid-cols-4">
         <CalculatedField
           label="Объем на складе"
-          value={warehouseStatus.message}
-          status={warehouseStatus.status}
+          value={isWarehouseBalanceLoading ? "Загрузка..." : warehouseStatus.message}
+          status={isWarehouseBalanceLoading ? "ok" : warehouseStatus.status}
         />
 
         <CalculatedField

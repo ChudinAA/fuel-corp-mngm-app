@@ -53,7 +53,7 @@ export function useOptCalculations({
     quantityKg,
   });
 
-  const { availableBalance: warehouseBalanceAtDate } = useOptWarehouseBalance({
+  const { availableBalance: warehouseBalanceAtDate, isLoading: isWarehouseBalanceLoading } = useOptWarehouseBalance({
     warehouseId: isWarehouseSupplier ? supplierWarehouse?.id : undefined,
     dealDate,
     isEditing,
@@ -177,5 +177,6 @@ export function useOptCalculations({
     contractVolumeStatus,
     supplierContractVolumeStatus,
     warehouseBalanceAtDate: (typeof warehouseBalanceAtDate === 'number' ? warehouseBalanceAtDate : (typeof warehouseBalanceAtDate === 'string' ? parseFloat(warehouseBalanceAtDate) : 0)) as number,
+    isWarehouseBalanceLoading,
   };
 }

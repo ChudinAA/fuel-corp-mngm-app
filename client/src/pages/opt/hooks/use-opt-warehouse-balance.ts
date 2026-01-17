@@ -29,33 +29,39 @@ export function useOptWarehouseBalance({
     return selectedDate.getTime() < today.getTime();
   }, [dealDate]);
 
-  const { data: historicalBalanceStr, isLoading: isBalanceLoading } = useWarehouseBalance(
+  const { data: historicalBalanceStr, isLoading: isHistoricalLoading } = useWarehouseBalance(
     isBackdated ? warehouseId : undefined,
     dealDate,
+    PRODUCT_TYPE.KEROSENE
+  );
+
+  const { data: currentBalanceStr, isLoading: isCurrentLoading } = useWarehouseBalance(
+    warehouseId,
+    new Date(),
     PRODUCT_TYPE.KEROSENE
   );
 
   const availableBalance = useMemo(() => {
     if (!warehouseId) return null;
     
-    // Если это текущая дата, берем баланс из объекта склада (уже загружен в OptForm)
-    if (!isBackdated) {
-      return initialCurrentBalance ? parseFloat(initialCurrentBalance) : null;
-    }
+    // Если мы еще загружаем данные, возвращаем null
+    if (isHistoricalLoading || isCurrentLoading) return null;
 
-    if (isBalanceLoading) return null;
-
-    const balanceAtDate = historicalBalanceStr ? parseFloat(historicalBalanceStr) : 0;
+    const hist = historicalBalanceStr ? parseFloat(historicalBalanceStr) : (initialCurrentBalance ? parseFloat(initialCurrentBalance) : 0);
+    const curr = currentBalanceStr ? parseFloat(currentBalanceStr) : (initialCurrentBalance ? parseFloat(initialCurrentBalance) : 0);
+    
+    // Используем минимум из исторического и текущего остатка
+    const baseBalance = Math.min(hist, curr);
 
     if (isEditing && editQuantityKg) {
-      return balanceAtDate + parseFloat(editQuantityKg);
+      return baseBalance + parseFloat(editQuantityKg);
     }
 
-    return balanceAtDate;
-  }, [warehouseId, isBackdated, historicalBalanceStr, isBalanceLoading, isEditing, editQuantityKg, initialCurrentBalance]);
+    return baseBalance;
+  }, [warehouseId, isBackdated, historicalBalanceStr, currentBalanceStr, isHistoricalLoading, isCurrentLoading, isEditing, editQuantityKg, initialCurrentBalance]);
 
   return {
     availableBalance,
-    isLoading: isBackdated ? isBalanceLoading : false,
+    isLoading: isHistoricalLoading || isCurrentLoading,
   };
 }

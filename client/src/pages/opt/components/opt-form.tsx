@@ -153,6 +153,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     contractVolumeStatus,
     supplierContractVolumeStatus,
     warehouseBalanceAtDate,
+    isWarehouseBalanceLoading,
   } = useOptCalculations({
     inputMode,
     quantityLiters: watchLiters,
@@ -598,6 +599,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
           contractVolumeStatus={contractVolumeStatus}
           supplierContractVolumeStatus={supplierContractVolumeStatus}
           warehouseBalanceAtDate={warehouseBalanceAtDate}
+          isWarehouseBalanceLoading={isWarehouseBalanceLoading}
         />
 
         <div className="grid gap-4 md:grid-cols-2 items-end">
