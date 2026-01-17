@@ -5,6 +5,7 @@ import { useQuantityCalculation } from "../../shared/hooks/use-quantity-calculat
 import { usePriceExtraction } from "../../shared/hooks/use-price-extraction";
 import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
+import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
 
 interface UseRefuelingCalculationsProps {
   inputMode: "liters" | "kg";
@@ -22,6 +23,7 @@ interface UseRefuelingCalculationsProps {
   productType: string;
   isEditing: boolean;
   initialWarehouseBalance: number;
+  refuelingDate?: Date;
 }
 
 export function useRefuelingCalculations({
@@ -39,6 +41,7 @@ export function useRefuelingCalculations({
   productType,
   isEditing,
   initialWarehouseBalance,
+  refuelingDate,
 }: UseRefuelingCalculationsProps) {
   const { calculatedKg, finalKg } = useQuantityCalculation({
     inputMode,
@@ -46,6 +49,11 @@ export function useRefuelingCalculations({
     density,
     quantityKg,
   });
+
+  const { data: historicalBalance } = useWarehouseBalance(
+    isWarehouseSupplier ? supplierWarehouse?.id : undefined,
+    refuelingDate
+  );
 
   const { purchasePrice, salePrice } = usePriceExtraction({
     purchasePrices,
@@ -107,9 +115,11 @@ export function useRefuelingCalculations({
     }
 
     // Для керосина проверяем обычный баланс
-    const availableBalance = isEditing
-      ? initialWarehouseBalance
-      : parseFloat(supplierWarehouse.currentBalance || "0");
+    const availableBalanceAtDate = historicalBalance ? parseFloat(historicalBalance) : null;
+    const availableBalance = availableBalanceAtDate !== null
+      ? (isEditing ? availableBalanceAtDate + parseFloat(String(initialWarehouseBalance - parseFloat(supplierWarehouse.currentBalance || "0"))) : availableBalanceAtDate)
+      : (isEditing ? initialWarehouseBalance : parseFloat(supplierWarehouse.currentBalance || "0"));
+    
     const remaining = availableBalance - finalKg;
 
     if (remaining >= 0) {

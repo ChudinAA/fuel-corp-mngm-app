@@ -5,6 +5,7 @@ import { useQuantityCalculation } from "../../shared/hooks/use-quantity-calculat
 import { usePriceExtraction } from "../../shared/hooks/use-price-extraction";
 import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
 import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
+import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
 
 interface UseOptCalculationsProps {
   inputMode: "liters" | "kg";
@@ -23,6 +24,7 @@ interface UseOptCalculationsProps {
   deliveryLocationId: string;
   bases: Base[] | undefined;
   isEditing: boolean;
+  dealDate?: Date;
 }
 
 export function useOptCalculations({
@@ -42,6 +44,7 @@ export function useOptCalculations({
   deliveryLocationId,
   bases,
   isEditing,
+  dealDate,
 }: UseOptCalculationsProps) {
   const { calculatedKg, finalKg } = useQuantityCalculation({
     inputMode,
@@ -49,6 +52,11 @@ export function useOptCalculations({
     density,
     quantityKg,
   });
+
+  const { data: historicalBalance } = useWarehouseBalance(
+    isWarehouseSupplier ? supplierWarehouse?.id : undefined,
+    dealDate
+  );
 
   const { purchasePrice, salePrice } = usePriceExtraction({
     purchasePrices,
@@ -153,6 +161,11 @@ export function useOptCalculations({
     mode: "opt",
   });
 
+  const warehouseBalanceAtDate = useMemo(() => {
+    if (!isWarehouseSupplier || !supplierWarehouse) return null;
+    return historicalBalance ? parseFloat(historicalBalance) : 0;
+  }, [isWarehouseSupplier, supplierWarehouse, historicalBalance]);
+
   return {
     calculatedKg,
     finalKg,
@@ -165,5 +178,6 @@ export function useOptCalculations({
     deliveryTariff,
     contractVolumeStatus,
     supplierContractVolumeStatus,
+    warehouseBalanceAtDate,
   };
 }

@@ -154,6 +154,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     deliveryTariff,
     contractVolumeStatus,
     supplierContractVolumeStatus,
+    warehouseBalanceAtDate,
   } = useOptCalculations({
     inputMode,
     quantityLiters: watchLiters,
@@ -171,6 +172,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     deliveryLocationId: watchDeliveryLocationId,
     bases: wholesaleBases,
     isEditing: isEditing,
+    dealDate: watchDealDate,
   });
 
   // Автоматический выбор базиса при выборе поставщика
@@ -499,14 +501,15 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
       // Проверяем достаточность объема на складе для складских поставщиков
       if (isWarehouseSupplier && supplierWarehouse) {
-        const availableBalance = isEditing
-          ? initialWarehouseBalance
-          : parseFloat(supplierWarehouse.currentBalance || "0");
+        const availableBalance = warehouseBalanceAtDate !== null
+          ? (isEditing ? warehouseBalanceAtDate + parseFloat(editData.quantityKg || "0") : warehouseBalanceAtDate)
+          : (isEditing ? initialWarehouseBalance : parseFloat(supplierWarehouse.currentBalance || "0"));
+
         const remaining = availableBalance - finalKg;
         if (remaining < 0) {
           toast({
             title: "Ошибка: недостаточно объема на складе",
-            description: `На складе "${supplierWarehouse.name}" недостаточно топлива. Доступно: ${availableBalance.toFixed(2)} кг, требуется: ${finalKg.toFixed(2)} кг`,
+            description: `На складе "${supplierWarehouse.name}" на выбранную дату недостаточно топлива. Доступно: ${availableBalance.toFixed(2)} кг, требуется: ${finalKg.toFixed(2)} кг`,
             variant: "destructive",
           });
           return;

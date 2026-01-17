@@ -144,7 +144,8 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     selectedSupplier,
     productType: watchProductType,
     isEditing,
-    initialWarehouseBalance, // Pass the initial balance
+    initialWarehouseBalance,
+    refuelingDate: watchRefuelingDate,
   });
 
   useEffect(() => {
