@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 
 export function useWarehouseBalance(warehouseId: string | undefined, date: Date | undefined, productType?: string) {
   return useQuery({
-    queryKey: ["/api/warehouses", warehouseId, "balance", date?.toISOString(), productType],
+    queryKey: ["/api/warehouses", warehouseId, "balance", date ? format(date, "yyyy-MM-dd") : undefined, productType],
     queryFn: async () => {
       if (!warehouseId || !date) return "0";
       const params = new URLSearchParams({
-        date: date.toISOString(),
+        date: format(date, "yyyy-MM-dd"),
       });
       if (productType) params.append("productType", productType);
       const res = await fetch(`/api/warehouses/${warehouseId}/balance?${params.toString()}`);

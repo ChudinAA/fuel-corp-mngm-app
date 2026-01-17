@@ -96,10 +96,6 @@ export function OptPricingSection({
     const availableBalance = warehouseBalanceAtDate !== null ? warehouseBalanceAtDate : 0;
     const remaining = availableBalance - finalKg;
 
-    if (isNaN(availableBalance)) {
-      return { status: "error", message: "Ошибка данных" };
-    }
-
     if (remaining >= 0) {
       return { status: "ok", message: `ОК: ${formatNumber(remaining)} кг` };
     } else {

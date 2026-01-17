@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 export function registerWarehousesOperationsRoutes(app: Express) {
   app.get(

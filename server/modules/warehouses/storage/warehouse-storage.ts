@@ -1,5 +1,6 @@
 import { eq, desc, sql, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
+import { format } from "date-fns";
 import {
   warehouses,
   warehouseBases,
@@ -244,10 +245,8 @@ export class WarehouseStorage implements IWarehouseStorage {
     date: Date,
     productType: string,
   ): Promise<string> {
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    const dateStr = format(date, "yyyy-MM-dd");
 
-    // Optimized: Select only the balance field and use the index
     const [lastTransaction] = await db
       .select({ balanceAfter: warehouseTransactions.balanceAfter })
       .from(warehouseTransactions)
@@ -255,7 +254,7 @@ export class WarehouseStorage implements IWarehouseStorage {
         and(
           eq(warehouseTransactions.warehouseId, warehouseId),
           eq(warehouseTransactions.productType, productType),
-          sql`${warehouseTransactions.transactionDate} <= ${endOfDay.toISOString()}`,
+          sql`CAST(${warehouseTransactions.transactionDate} AS DATE) <= CAST(${dateStr} AS DATE)`,
           isNull(warehouseTransactions.deletedAt),
         )
       )
