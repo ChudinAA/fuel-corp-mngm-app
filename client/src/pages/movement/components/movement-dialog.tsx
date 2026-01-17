@@ -62,6 +62,7 @@ export function MovementDialog({
       density: undefined,
       quantityKg: undefined,
       purchasePrice: "",
+      selectedPurchasePriceId: "",
       purchasePriceId: "",
       purchasePriceIndex: 0,
       carrierId: "",
@@ -102,6 +103,7 @@ export function MovementDialog({
         density: editMovement.density ? String(editMovement.density) : undefined,
         quantityKg: editMovement.quantityKg ? String(editMovement.quantityKg) : undefined,
         purchasePrice: editMovement.purchasePrice ? String(editMovement.purchasePrice) : "",
+        selectedPurchasePriceId: editMovement.purchasePriceId ? `${editMovement.purchasePriceId}-${editMovement.purchasePriceIndex || 0}` : "",
         purchasePriceId: editMovement.purchasePriceId || "",
         purchasePriceIndex: editMovement.purchasePriceIndex || 0,
         carrierId: editMovement.carrierId || "",
@@ -123,6 +125,9 @@ export function MovementDialog({
         quantityKg: undefined,
         carrierId: "",
         notes: "",
+        selectedPurchasePriceId: "",
+        purchasePriceId: "",
+        purchasePriceIndex: 0,
       });
     }
   }, [editMovement, form, warehouses]);

@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/form";
 import type { UseFormReturn } from "react-hook-form";
 import type { MovementFormData } from "../schemas";
+import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 
 interface MovementCostSummaryProps {
   form: UseFormReturn<MovementFormData>;
@@ -52,37 +53,57 @@ export function MovementCostSummary({
         {watchMovementType === MOVEMENT_TYPE.SUPPLY && availablePrices.length > 0 ? (
           <FormField
             control={form.control}
-            name="purchasePriceIndex"
-            render={({ field }) => (
-              <FormItem className="flex-1">
-                <FormLabel className="flex items-center gap-2">Цена закупки</FormLabel>
-                <Select
-                  onValueChange={(value) => {
-                    const index = parseInt(value);
-                    field.onChange(index);
-                    if (availablePrices[index]) {
-                      form.setValue("purchasePrice", String(availablePrices[index].price));
-                    }
-                  }}
-                  value={String(field.value ?? 0)}
-                >
-                  <FormControl>
-                    <SelectTrigger data-testid="select-purchase-price">
-                      <SelectValue placeholder="Выберите цену">
-                        {purchasePrice !== null ? `${formatNumber(purchasePrice)} ₽/кг` : "Выберите цену"}
-                      </SelectValue>
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {availablePrices.map((p, idx) => (
-                      <SelectItem key={`${p.price}-${idx}`} value={String(idx)}>
-                        {formatNumber(p.price)} ₽/кг
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormItem>
-            )}
+            name="selectedPurchasePriceId"
+            render={({ field }) => {
+              // Автоматически выбираем первую цену, если ничего не выбрано
+              if (!field.value && availablePrices.length > 0) {
+                const firstPrice = availablePrices[0];
+                const compositeId = `${firstPrice.priceId}-0`;
+                setTimeout(() => {
+                  form.setValue("selectedPurchasePriceId", compositeId);
+                  form.setValue("purchasePriceId", firstPrice.priceId);
+                  form.setValue("purchasePriceIndex", 0);
+                  form.setValue("purchasePrice", String(firstPrice.price));
+                }, 0);
+              }
+
+              return (
+                <FormItem className="flex-1">
+                  <FormLabel className="flex items-center gap-2">Цена закупки</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      const { priceId, index } = parsePriceCompositeId(value);
+                      const priceObj = availablePrices.find(
+                        (p, idx) => `${p.priceId}-${idx}` === value
+                      );
+                      
+                      if (priceObj) {
+                        form.setValue("purchasePriceId", priceId);
+                        form.setValue("purchasePriceIndex", index);
+                        form.setValue("purchasePrice", String(priceObj.price));
+                      }
+                    }}
+                    value={field.value || ""}
+                  >
+                    <FormControl>
+                      <SelectTrigger data-testid="select-purchase-price">
+                        <SelectValue placeholder="Выберите цену">
+                          {purchasePrice !== null ? `${formatNumber(purchasePrice)} ₽/кг` : "Выберите цену"}
+                        </SelectValue>
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {availablePrices.map((p, idx) => (
+                        <SelectItem key={`${p.priceId}-${idx}`} value={`${p.priceId}-${idx}`}>
+                          {formatNumber(p.price)} ₽/кг
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              );
+            }}
           />
         ) : (
           <CalculatedField

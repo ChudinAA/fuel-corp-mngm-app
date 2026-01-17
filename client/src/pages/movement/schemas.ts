@@ -15,6 +15,7 @@ export const movementFormSchema = z.object({
   quantityKg: z.string().optional(),
   carrierId: z.string().optional(),
   purchasePrice: z.string().optional(),
+  selectedPurchasePriceId: z.string().optional().nullable(),
   purchasePriceId: z.string().optional(),
   purchasePriceIndex: z.number().optional(),
   deliveryPrice: z.string().optional(),
