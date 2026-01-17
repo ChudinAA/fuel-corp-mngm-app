@@ -28,6 +28,17 @@ export class CustomerStorage implements ICustomerStorage {
   }
 
   async createCustomer(data: InsertCustomer): Promise<Customer> {
+    // Check for duplicates
+    const [existing] = await db
+      .select()
+      .from(customers)
+      .where(and(eq(customers.name, data.name), isNull(customers.deletedAt)))
+      .limit(1);
+
+    if (existing) {
+      throw new Error("Такая запись уже существует");
+    }
+
     const [customer] = await db.insert(customers).values(data).returning();
     return customer;
   }

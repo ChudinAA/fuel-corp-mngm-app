@@ -61,28 +61,36 @@ export function registerWarehousesOperationsRoutes(app: Express) {
 
         // Automatically create supplier if requested
         if (createSupplier && baseIds.length > 0) {
-          const supplierData = {
-            name: data.name,
-            baseIds: baseIds,
-            isWarehouse: true,
-            warehouseId: item.id,
-            storageCost: data.storageCost || null,
-            isActive: true,
-            createdById: req.session.userId,
-          };
+          try {
+            const supplierData = {
+              name: data.name,
+              baseIds: baseIds,
+              isWarehouse: true,
+              warehouseId: item.id,
+              storageCost: data.storageCost || null,
+              isActive: true,
+              createdById: req.session.userId,
+            };
 
-          const supplier = await storage.suppliers.createSupplier(supplierData);
-          await storage.warehouses.updateWarehouse(item.id, {
-            supplierId: supplier.id,
-            updatedById: req.session.userId,
-          });
+            const supplier = await storage.suppliers.createSupplier(supplierData);
+            await storage.warehouses.updateWarehouse(item.id, {
+              supplierId: supplier.id,
+              updatedById: req.session.userId,
+            });
+          } catch (suppError: any) {
+            console.error("Failed to auto-create supplier for warehouse:", suppError);
+            // Don't fail warehouse creation if auto-supplier fails (e.g. dupe)
+          }
         }
 
         res.status(201).json(item);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Warehouse creation error:", error);
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
+        }
+        if (error.message === "Такая запись уже существует") {
+          return res.status(400).json({ message: error.message });
         }
         res
           .status(500)

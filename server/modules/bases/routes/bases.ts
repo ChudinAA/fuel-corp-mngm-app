@@ -50,9 +50,12 @@ export function registerBasesRoutes(app: Express) {
         });
         const item = await storage.bases.createBase(data);
         res.status(201).json(item);
-      } catch (error) {
+      } catch (error: any) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
+        }
+        if (error.message === "Такая запись уже существует") {
+          return res.status(400).json({ message: error.message });
         }
         res.status(500).json({ message: "Ошибка создания базиса" });
       }

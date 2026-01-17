@@ -22,6 +22,17 @@ export class BaseStorage implements IBaseStorage {
   }
 
   async createBase(data: InsertBase): Promise<Base> {
+    // Check for duplicates
+    const [existing] = await db
+      .select()
+      .from(bases)
+      .where(and(eq(bases.name, data.name), isNull(bases.deletedAt)))
+      .limit(1);
+
+    if (existing) {
+      throw new Error("Такая запись уже существует");
+    }
+
     const [created] = await db.insert(bases).values(data).returning();
     return created;
   }

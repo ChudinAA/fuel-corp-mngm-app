@@ -70,6 +70,15 @@ export class WarehouseStorage implements IWarehouseStorage {
   ): Promise<Warehouse> {
     const { baseIds, ...warehouseData } = data;
 
+    // Check for duplicates
+    const existing = await db.query.warehouses.findFirst({
+      where: and(eq(warehouses.name, warehouseData.name), isNull(warehouses.deletedAt)),
+    });
+
+    if (existing) {
+      throw new Error("Такая запись уже существует");
+    }
+
     return await db.transaction(async (tx) => {
       // Create warehouse
       const [created] = await tx

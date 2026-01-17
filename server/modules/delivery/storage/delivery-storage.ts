@@ -27,6 +27,24 @@ export class DeliveryStorage implements IDeliveryStorage {
     data: InsertDeliveryCost,
     userId?: string
   ): Promise<DeliveryCost> {
+    // Check for duplicates
+    const existing = await db
+      .select()
+      .from(deliveryCost)
+      .where(and(
+        eq(deliveryCost.carrierId, data.carrierId),
+        eq(deliveryCost.fromEntityType, data.fromEntityType),
+        eq(deliveryCost.fromEntityId, data.fromEntityId),
+        eq(deliveryCost.toEntityType, data.toEntityType),
+        eq(deliveryCost.toEntityId, data.toEntityId),
+        isNull(deliveryCost.deletedAt)
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      throw new Error("Такая запись уже существует");
+    }
+
     const [created] = await db
       .insert(deliveryCost)
       .values({

@@ -60,31 +60,13 @@ export function registerSuppliersRoutes(app: Express) {
           warehouseId: data.warehouseId || null,
         });
 
-        // Then create warehouse if supplier is marked as warehouse and doesn't have one
-        if (
-          data.isWarehouse &&
-          !data.warehouseId &&
-          normalizedBaseIds.length > 0
-        ) {
-          const warehouse = await storage.warehouses.createWarehouse({
-            name: data.name,
-            baseIds: normalizedBaseIds,
-            supplierId: item.id,
-            storageCost: data.storageCost || null,
-            isActive: data.isActive ?? true,
-            createdById: req.session.userId,
-          });
-
-          // Link warehouse back to supplier
-          await storage.suppliers.updateSupplier(item.id, {
-            warehouseId: warehouse.id,
-          });
-        }
-
         res.status(201).json(item);
-      } catch (error) {
+      } catch (error: any) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
+        }
+        if (error.message === "Такая запись уже существует") {
+          return res.status(400).json({ message: error.message });
         }
         console.error("Error creating supplier:", error);
         res.status(500).json({ message: "Ошибка создания поставщика" });

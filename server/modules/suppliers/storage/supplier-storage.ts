@@ -65,6 +65,15 @@ export class SupplierStorage implements ISupplierStorage {
   async createSupplier(data: InsertSupplier & { baseIds?: string[] }): Promise<Supplier> {
     const { baseIds, ...supplierData } = data;
 
+    // Check for duplicates
+    const existing = await db.query.suppliers.findFirst({
+      where: and(eq(suppliers.name, supplierData.name), isNull(suppliers.deletedAt)),
+    });
+
+    if (existing) {
+      throw new Error("Такая запись уже существует");
+    }
+
     return await db.transaction(async (tx) => {
       // Create supplier
       const [created] = await tx.insert(suppliers).values(supplierData).returning();
