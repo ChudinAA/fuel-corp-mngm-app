@@ -109,7 +109,7 @@ export function useMovementCalculations({
   }, [watchMovementType, watchSupplierId, watchMovementDate, suppliers, watchProductType, watchBasis, prices, allBases]);
 
   // Extract actual price value using shared hook
-  const { purchasePrice } = usePriceExtraction({
+  const { purchasePrice, purchasePriceId, purchasePriceIndex } = usePriceExtraction({
     purchasePrices: availablePurchasePrices,
     salePrices: [],
     selectedPurchasePriceId: watchSelectedPurchasePriceId,
@@ -117,6 +117,19 @@ export function useMovementCalculations({
     isWarehouseSupplier: false,
     supplierWarehouse: undefined,
   });
+
+  // Автоматическая установка выбранной цены, если она не установлена
+  useMemo(() => {
+    if (form && watchMovementType === MOVEMENT_TYPE.SUPPLY && !watchSelectedPurchasePriceId && availablePurchasePrices.length > 0) {
+      const firstPrice = availablePurchasePrices[0];
+      const compositeId = `${firstPrice.id}-0`;
+      setTimeout(() => {
+        form.setValue("selectedPurchasePriceId", compositeId);
+        form.setValue("purchasePriceId", firstPrice.id);
+        form.setValue("purchasePriceIndex", 0);
+      }, 0);
+    }
+  }, [form, watchMovementType, watchSelectedPurchasePriceId, availablePurchasePrices]);
 
   // Handle internal movement price (average cost)
   const finalPurchasePrice = useMemo(() => {

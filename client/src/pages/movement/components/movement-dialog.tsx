@@ -216,6 +216,8 @@ export function MovementDialog({
     mutationFn: async (data: MovementFormData) => {
       validateForm();
 
+      const { priceId: extractedPriceId, index: extractedPriceIndex } = parsePriceCompositeId(data.selectedPurchasePriceId || "");
+
       const payload = {
         movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),
         movementType: data.movementType,
@@ -229,8 +231,8 @@ export function MovementDialog({
         density: data.density ? parseFloat(data.density) : null,
         quantityKg: calculatedKg,
         purchasePrice: purchasePrice,
-        purchasePriceId: data.purchasePriceId || null,
-        purchasePriceIndex: data.purchasePriceIndex || 0,
+        purchasePriceId: extractedPriceId || null,
+        purchasePriceIndex: extractedPriceIndex ?? 0,
         deliveryPrice: deliveryCost > 0 && kgNum > 0 ? deliveryCost / kgNum : null,
         deliveryCost: deliveryCost,
         totalCost: totalCost,
