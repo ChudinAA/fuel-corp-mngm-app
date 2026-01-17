@@ -16,12 +16,13 @@ import { MOVEMENT_TYPE } from "@shared/constants";
 import type { UseFormReturn } from "react-hook-form";
 import type { MovementFormData } from "../schemas";
 import type { AllSupplier } from "../types";
+import { Warehouse } from "@shared/schema";
 
 interface MovementSourceSectionProps {
   form: UseFormReturn<MovementFormData>;
   watchMovementType: string;
   suppliers: AllSupplier[];
-  warehouses: any[];
+  warehouses: Warehouse[];
 }
 
 export function MovementSourceSection({
