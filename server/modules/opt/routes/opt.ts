@@ -23,7 +23,6 @@ export function registerOptRoutes(app: Express) {
   app.get(
     "/api/opt/contract-used/:priceId",
     requireAuth,
-    requirePermission("opt", "view"),
     async (req, res) => {
       try {
         const { priceId } = req.params;

@@ -2,6 +2,7 @@ import { eq, desc, sql, or, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
 import {
   opt,
+  movement,
   warehouses,
   warehouseTransactions,
   suppliers,
@@ -416,7 +417,7 @@ export class OptStorage implements IOptStorage {
   }
 
   async getUsedVolumeByPrice(priceId: string): Promise<number> {
-    const [result] = await db
+    const [optVolume] = await db
       .select({
         total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`,
       })
@@ -427,7 +428,19 @@ export class OptStorage implements IOptStorage {
           isNull(opt.deletedAt),
         ),
       );
-    return parseFloat(result?.total || "0");
+    const [movementVolume] = await db
+    .select({
+      total: sql<string>`COALESCE(SUM(${movement.quantityKg}), 0)`,
+    })
+    .from(movement)
+    .where(
+      and(
+        eq(movement.purchasePriceId, priceId),
+        isNull(movement.deletedAt),
+      ),
+    );
+    const result = optVolume.total + movementVolume.total
+    return parseFloat(result || "0");
   }
 
   async restoreOpt(
