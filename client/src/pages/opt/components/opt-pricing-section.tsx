@@ -40,7 +40,6 @@ interface OptPricingSectionProps {
   supplierWarehouse: Warehouse | undefined;
   finalKg: number;
   isEditing: boolean;
-  initialWarehouseBalance: number;
   contractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
   supplierContractVolumeStatus: {
     status: "ok" | "warning" | "error";
@@ -96,6 +95,10 @@ export function OptPricingSection({
 
     const availableBalance = warehouseBalanceAtDate !== null ? warehouseBalanceAtDate : 0;
     const remaining = availableBalance - finalKg;
+
+    if (isNaN(availableBalance)) {
+      return { status: "error", message: "Ошибка данных" };
+    }
 
     if (remaining >= 0) {
       return { status: "ok", message: `ОК: ${formatNumber(remaining)} кг` };

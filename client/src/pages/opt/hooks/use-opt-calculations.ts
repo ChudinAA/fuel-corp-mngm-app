@@ -58,6 +58,7 @@ export function useOptCalculations({
     dealDate,
     isEditing,
     editQuantityKg: quantityKg,
+    initialCurrentBalance: supplierWarehouse?.currentBalance,
   });
 
   const { purchasePrice, salePrice } = usePriceExtraction({

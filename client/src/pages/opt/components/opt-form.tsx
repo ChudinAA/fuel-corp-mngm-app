@@ -595,7 +595,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
           supplierWarehouse={supplierWarehouse}
           finalKg={finalKg}
           isEditing={isEditing}
-          initialWarehouseBalance={initialWarehouseBalance}
           contractVolumeStatus={contractVolumeStatus}
           supplierContractVolumeStatus={supplierContractVolumeStatus}
         />

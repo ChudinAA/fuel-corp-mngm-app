@@ -52,7 +52,8 @@ export function useRefuelingCalculations({
 
   const { data: historicalBalance } = useWarehouseBalance(
     isWarehouseSupplier ? supplierWarehouse?.id : undefined,
-    refuelingDate
+    refuelingDate,
+    productType
   );
 
   const { purchasePrice, salePrice } = usePriceExtraction({

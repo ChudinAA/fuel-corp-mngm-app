@@ -10,6 +10,8 @@ interface UseOptWarehouseBalanceProps {
   initialCurrentBalance?: string;
 }
 
+import { isSameDay } from "date-fns";
+
 export function useOptWarehouseBalance({
   warehouseId,
   dealDate,
@@ -17,27 +19,40 @@ export function useOptWarehouseBalance({
   editQuantityKg,
   initialCurrentBalance,
 }: UseOptWarehouseBalanceProps) {
+  const isBackdated = useMemo(() => {
+    if (!dealDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDate = new Date(dealDate);
+    selectedDate.setHours(0, 0, 0, 0);
+    return selectedDate.getTime() < today.getTime();
+  }, [dealDate]);
+
   const { data: historicalBalanceStr, isLoading } = useWarehouseBalance(
-    warehouseId,
+    isBackdated ? warehouseId : undefined,
     dealDate,
     PRODUCT_TYPE.KEROSENE
   );
 
   const availableBalance = useMemo(() => {
-    if (!warehouseId || !dealDate) return null;
+    if (!warehouseId) return null;
     
-    // Если данные еще грузятся, возвращаем null чтобы не показывать неверный остаток
+    // Если это текущая дата, берем баланс из объекта склада (уже загружен в OptForm)
+    if (!isBackdated) {
+      // Баланс будет передан через initialCurrentBalance или найден в warehouses
+      return initialCurrentBalance ? parseFloat(initialCurrentBalance) : null;
+    }
+
     if (isLoading) return null;
 
     const balanceAtDate = historicalBalanceStr ? parseFloat(historicalBalanceStr) : 0;
 
     if (isEditing && editQuantityKg) {
-      // При редактировании: остаток на дату + объем текущей сделки (возвращаем его в "пул" доступного)
       return balanceAtDate + parseFloat(editQuantityKg);
     }
 
     return balanceAtDate;
-  }, [warehouseId, dealDate, historicalBalanceStr, isLoading, isEditing, editQuantityKg]);
+  }, [warehouseId, isBackdated, historicalBalanceStr, isLoading, isEditing, editQuantityKg, initialCurrentBalance]);
 
   return {
     availableBalance,

@@ -247,10 +247,10 @@ export class WarehouseStorage implements IWarehouseStorage {
       where: and(
         eq(warehouseTransactions.warehouseId, warehouseId),
         eq(warehouseTransactions.productType, productType),
-        sql`${warehouseTransactions.transactionDate} <= ${date.toISOString()}`,
+        sql`${warehouseTransactions.transactionDate}::timestamp <= ${date.toISOString()}::timestamp`,
         isNull(warehouseTransactions.deletedAt),
       ),
-      orderBy: [desc(warehouseTransactions.transactionDate), desc(warehouseTransactions.createdAt)],
+      orderBy: [desc(warehouseTransactions.transactionDate), desc(warehouseTransactions.id)],
     });
 
     return lastTransaction?.balanceAfter || "0";
