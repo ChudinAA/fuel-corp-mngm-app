@@ -14,7 +14,7 @@ export function registerSuppliersRoutes(app: Express) {
     async (req, res) => {
       const data = await storage.suppliers.getAllSuppliers();
       res.json(data);
-    }
+    },
   );
 
   app.get(
@@ -29,7 +29,7 @@ export function registerSuppliersRoutes(app: Express) {
         return res.status(404).json({ message: "Поставщик не найден" });
       }
       res.json(supplier);
-    }
+    },
   );
 
   app.post(
@@ -60,6 +60,26 @@ export function registerSuppliersRoutes(app: Express) {
           warehouseId: data.warehouseId || null,
         });
 
+        // Then create warehouse if supplier is marked as warehouse and doesn't have one
+        if (
+          data.isWarehouse &&
+          !data.warehouseId &&
+          normalizedBaseIds.length > 0
+        ) {
+          const warehouse = await storage.warehouses.createWarehouse({
+            name: data.name,
+            baseIds: normalizedBaseIds,
+            supplierId: item.id,
+            storageCost: data.storageCost || null,
+            isActive: data.isActive ?? true,
+            createdById: req.session.userId,
+          });
+          // Link warehouse back to supplier
+          await storage.suppliers.updateSupplier(item.id, {
+            warehouseId: warehouse.id,
+          });
+        }
+
         res.status(201).json(item);
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -71,7 +91,7 @@ export function registerSuppliersRoutes(app: Express) {
         console.error("Error creating supplier:", error);
         res.status(500).json({ message: "Ошибка создания поставщика" });
       }
-    }
+    },
   );
 
   app.patch(
@@ -110,7 +130,7 @@ export function registerSuppliersRoutes(app: Express) {
         console.error("Supplier update error:", error);
         res.status(500).json({ message: "Ошибка обновления поставщика" });
       }
-    }
+    },
   );
 
   app.delete(
@@ -141,6 +161,6 @@ export function registerSuppliersRoutes(app: Express) {
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления поставщика" });
       }
-    }
+    },
   );
 }
