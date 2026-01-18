@@ -18,6 +18,7 @@ import { z } from "zod";
 import { roles } from "./roles";
 
 // Session table for express-session storage
+// Note: Management is shared with connect-pg-simple
 export const session = pgTable("session", {
   sid: varchar("sid").primaryKey(),
   sess: jsonb("sess").notNull(),

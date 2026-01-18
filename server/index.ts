@@ -87,6 +87,17 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Run migrations automatically on startup
+  if (process.env.NODE_ENV === "production" || process.env.RUN_MIGRATIONS === "true") {
+    const { execSync } = await import("child_process");
+    try {
+      console.log("Running migrations...");
+      execSync("npx tsx server/migrate.ts", { stdio: "inherit" });
+    } catch (e) {
+      console.error("Failed to run migrations:", e);
+    }
+  }
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
