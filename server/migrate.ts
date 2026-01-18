@@ -18,32 +18,44 @@ async function runMigrations() {
     // 1. Пытаемся поправить расхождения в структуре (идемпотентно)
     console.log("🔍 Checking for schema deltas...");
     
-    // Пример идемпотентного добавления колонок, если их нет в Prod
     await db.execute(sql`
       DO $$ 
       BEGIN 
         -- 0043: add base_id to logistics_delivery_locations
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='logistics_delivery_locations' AND column_name='base_id') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='logistics_delivery_locations' AND column_name='base_id') THEN
           ALTER TABLE "logistics_delivery_locations" ADD COLUMN "base_id" uuid;
         END IF;
 
-        -- 0044: add is_draft to various deal-like tables (example: opt)
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='opt' AND column_name='is_draft') THEN
+        -- 0044: add is_draft to opt
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='opt' AND column_name='is_draft') THEN
           ALTER TABLE "opt" ADD COLUMN "is_draft" boolean DEFAULT false;
         END IF;
 
-        -- 0045: add trans_sum_price_date
-        -- (Добавьте здесь аналогичные проверки для остальных колонок из 0043-0046)
+        -- 0045: trans_sum_price_date columns (example for aircraft_refueling)
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='aircraft_refueling' AND column_name='trans_sum') THEN
+          ALTER TABLE "aircraft_refueling" ADD COLUMN "trans_sum" numeric;
+        END IF;
         
         -- 0046: add basis for movement
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='movement' AND column_name='basis') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='movement' AND column_name='basis') THEN
           ALTER TABLE "movement" ADD COLUMN "basis" text;
         END IF;
       END $$;
     `);
 
     console.log("📦 Applying file-based migrations...");
-    await migrate(db, { migrationsFolder: "./migrations" });
+    // If you are running this against a database that already has tables,
+    // and you just created your first migration, you might need to skip the initial migration
+    // or use a more manual approach.
+    try {
+      await migrate(db, { migrationsFolder: "./migrations" });
+    } catch (err: any) {
+      if (err.message.includes("already exists")) {
+        console.log("⚠️ Tables already exist, skipping initial migration setup.");
+      } else {
+        throw err;
+      }
+    }
     
     console.log("✅ Sync and migrations completed successfully");
   } catch (error) {
