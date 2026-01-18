@@ -10,8 +10,6 @@ interface UseOptWarehouseBalanceProps {
   initialCurrentBalance?: string;
 }
 
-import { isSameDay } from "date-fns";
-
 export function useOptWarehouseBalance({
   warehouseId,
   dealDate,

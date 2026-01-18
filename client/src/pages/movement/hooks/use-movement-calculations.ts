@@ -15,7 +15,6 @@ import type { UseFormReturn } from "react-hook-form";
 import type { MovementFormData } from "../schemas";
 import { usePriceExtraction } from "@/pages/shared/hooks/use-price-extraction";
 import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
-import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
 
 interface UseMovementCalculationsProps {
   form?: UseFormReturn<MovementFormData>;
