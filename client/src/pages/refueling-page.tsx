@@ -127,7 +127,6 @@ export default function RefuelingPage() {
             onEdit={handleEditRefueling}
             onCopy={handleCopyRefueling}
             onDelete={handleRefuelingDeleted}
-            productTypeFilter={productTypeFilter}
           />
         </CardContent>
       </Card>
