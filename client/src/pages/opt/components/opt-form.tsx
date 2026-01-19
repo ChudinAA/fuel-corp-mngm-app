@@ -46,7 +46,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
     useState<string>("");
   const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
-  const isEditing = !!editData;
+  const isEditing = !!editData && !!editData.id;
 
   const form = useForm<OptFormData>({
     resolver: zodResolver(optFormSchema),
@@ -541,7 +541,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       }
     }
 
-    if (editData) {
+    if (editData && editData.id) {
       updateMutation.mutate({ ...data, isDraft, id: editData.id });
     } else {
       createMutation.mutate({ ...data, isDraft });
@@ -680,10 +680,10 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
             {createMutation.isPending || updateMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {editData ? "Сохранение..." : "Создание..."}
+                {isEditing ? "Сохранение..." : "Создание..."}
               </>
             ) : (
-              <>{editData ? "Сохранить изменения" : "Создать сделку"}</>
+              <>{isEditing ? "Сохранить изменения" : "Создать сделку"}</>
             )}
           </Button>
         </div>

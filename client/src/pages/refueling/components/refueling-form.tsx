@@ -44,7 +44,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
   const [initialWarehouseBalance, setInitialWarehouseBalance] =
     useState<number>(0); // State for initial balance
-  const isEditing = !!editData;
+  const isEditing = !!editData && !!editData.id;
 
   const form = useForm<RefuelingFormData>({
     resolver: zodResolver(refuelingFormSchema),
@@ -506,7 +506,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       }
     }
 
-    if (editData) {
+    if (editData && editData.id) {
       updateMutation.mutate({ ...data, isDraft, id: editData.id });
     } else {
       createMutation.mutate({ ...data, isDraft });
@@ -637,10 +637,10 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
             {createMutation.isPending || updateMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {editData ? "Сохранение..." : "Создание..."}
+                {isEditing ? "Сохранение..." : "Создание..."}
               </>
             ) : (
-              <>{editData ? "Сохранить изменения" : "Создать запись"}</>
+              <>{isEditing ? "Сохранить изменения" : "Создать заправку"}</>
             )}
           </Button>
         </div>

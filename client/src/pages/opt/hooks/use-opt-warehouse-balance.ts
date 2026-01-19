@@ -51,7 +51,7 @@ export function useOptWarehouseBalance({
     // Используем минимум из исторического и текущего остатка
     const baseBalance = Math.min(hist, curr);
 
-    if (isEditing && editQuantityKg) {
+    if (isEditing && editQuantityKg && initialCurrentBalance) {
       return baseBalance + parseFloat(editQuantityKg);
     }
 
