@@ -88,12 +88,14 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Run migrations automatically on startup
-  try {
-    await runMigrations();
-  } catch (e) {
-    console.error("CRITICAL: Migration failed on startup. Server will not start.", e);
-    process.exit(1);
+  // Run migrations automatically on startup unless explicitly disabled
+  if (process.env.SKIP_MIGRATIONS !== "true") {
+    try {
+      await runMigrations();
+    } catch (e) {
+      console.error("CRITICAL: Migration failed on startup. Server will not start.", e);
+      process.exit(1);
+    }
   }
 
   await registerRoutes(httpServer, app);

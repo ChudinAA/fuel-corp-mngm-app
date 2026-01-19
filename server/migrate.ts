@@ -31,7 +31,13 @@ export async function runMigrations() {
 }
 
 // Allow running directly
-if (import.meta.url === `file://${process.argv[1]}` || import.meta.url.endsWith(process.argv[1])) {
+const isDirectRun = process.argv[1] && (
+  process.argv[1].endsWith('migrate.ts') || 
+  process.argv[1].endsWith('migrate.js') ||
+  (process.env.NODE_ENV === 'production' && process.argv[1].endsWith('index.cjs') && process.argv.includes('--migrate'))
+);
+
+if (isDirectRun) {
   runMigrations().catch((err) => {
     console.error(err);
     process.exit(1);
