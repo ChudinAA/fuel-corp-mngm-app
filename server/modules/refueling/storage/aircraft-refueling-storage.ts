@@ -461,6 +461,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
             eq(aircraftRefueling.purchasePriceId, priceId),
           ),
           isNull(aircraftRefueling.deletedAt),
+          eq(aircraftRefueling.isDraft, false),
         ),
       );
     return parseFloat(result?.total || "0");

@@ -42,6 +42,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
     useState<string>("");
   const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
+  const [initialQuantityKg, setInitialQuantityKg] = useState<number>(0);
   const [initialWarehouseBalance, setInitialWarehouseBalance] =
     useState<number>(0); // State for initial balance
   const isEditing = !!editData && !!editData.id;
@@ -144,6 +145,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     selectedSupplier,
     productType: watchProductType,
     isEditing,
+    initialQuantityKg,
     initialWarehouseBalance,
     refuelingDate: watchRefuelingDate,
   });
@@ -246,6 +248,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
 
       setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);
+      setInitialQuantityKg(isEditing ? parseFloat(editData.quantityKg || "0") : 0);
 
       // Set basis from editData
       if (editData.basis) {
@@ -640,7 +643,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
                 {isEditing ? "Сохранение..." : "Создание..."}
               </>
             ) : (
-              <>{isEditing ? "Сохранить изменения" : "Создать заправку"}</>
+              <>{(isEditing && !editData.isDraft) ? "Сохранить изменения" : "Создать сделку"}</>
             )}
           </Button>
         </div>

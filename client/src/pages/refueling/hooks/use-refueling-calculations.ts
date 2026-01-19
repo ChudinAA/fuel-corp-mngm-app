@@ -22,6 +22,7 @@ interface UseRefuelingCalculationsProps {
   selectedSupplier: Supplier | undefined;
   productType: string;
   isEditing: boolean;
+  initialQuantityKg?: number;
   initialWarehouseBalance: number;
   refuelingDate?: Date;
 }
@@ -33,6 +34,7 @@ export function useRefuelingCalculations({
   quantityKg,
   isWarehouseSupplier,
   supplierWarehouse,
+  selectedBasis,
   purchasePrices,
   salePrices,
   selectedPurchasePriceId,
@@ -40,6 +42,7 @@ export function useRefuelingCalculations({
   selectedSupplier,
   productType,
   isEditing,
+  initialQuantityKg = 0,
   initialWarehouseBalance,
   refuelingDate,
 }: UseRefuelingCalculationsProps) {
@@ -135,7 +138,7 @@ export function useRefuelingCalculations({
   const contractVolumeStatus = useContractVolume({
     priceId: parsePriceCompositeId(selectedSalePriceId).priceId,
     currentQuantityKg: finalKg,
-    isEditing: isEditing,
+    initialQuantityKg: initialQuantityKg,
     mode: "refueling",
   });
 
@@ -143,7 +146,7 @@ export function useRefuelingCalculations({
   const supplierContractVolumeStatus = useContractVolume({
     priceId: parsePriceCompositeId(selectedPurchasePriceId).priceId,
     currentQuantityKg: finalKg,
-    isEditing: isEditing,
+    initialQuantityKg: initialQuantityKg,
     mode: "refueling",
   });
 

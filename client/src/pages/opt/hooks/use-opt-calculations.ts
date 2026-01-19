@@ -24,6 +24,7 @@ interface UseOptCalculationsProps {
   deliveryLocationId: string;
   bases: Base[] | undefined;
   isEditing: boolean;
+  initialQuantityKg?: number;
   dealDate?: Date;
 }
 
@@ -44,6 +45,7 @@ export function useOptCalculations({
   deliveryLocationId,
   bases,
   isEditing,
+  initialQuantityKg = 0,
   dealDate,
 }: UseOptCalculationsProps) {
   const { calculatedKg, finalKg } = useQuantityCalculation({
@@ -152,7 +154,7 @@ export function useOptCalculations({
   const contractVolumeStatus = useContractVolume({
     priceId: parsePriceCompositeId(selectedSalePriceId).priceId,
     currentQuantityKg: finalKg,
-    isEditing: isEditing,
+    initialQuantityKg: initialQuantityKg,
     mode: "opt",
   });
 
@@ -160,7 +162,7 @@ export function useOptCalculations({
   const supplierContractVolumeStatus = useContractVolume({
     priceId: parsePriceCompositeId(selectedPurchasePriceId).priceId,
     currentQuantityKg: finalKg,
-    isEditing: isEditing,
+    initialQuantityKg: initialQuantityKg,
     mode: "opt",
   });
 

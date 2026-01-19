@@ -4,14 +4,14 @@ import type { Price } from "@shared/schema";
 interface UseContractVolumeProps {
   priceId: string | null;
   currentQuantityKg: number;
-  isEditing: boolean;
+  initialQuantityKg: number;
   mode: "opt" | "refueling";
 }
 
 export function useContractVolume({
   priceId,
   currentQuantityKg,
-  isEditing,
+  initialQuantityKg,
   mode,
 }: UseContractVolumeProps) {
   const { data: price, isLoading: isLoadingPrice } = useQuery<Price>({
@@ -58,7 +58,7 @@ export function useContractVolume({
     // We'd need the ORIGINAL quantity of this deal to properly show "Total - (UsedByOthers) - CurrentInput".
 
     const remaining =
-      totalVolume - usedVolume - currentQuantityKg;
+      totalVolume - usedVolume + (initialQuantityKg - currentQuantityKg);
 
     if (remaining >= 0) {
       return {
@@ -70,7 +70,7 @@ export function useContractVolume({
       return {
         remaining,
         status: "error" as const,
-        message: `Превышен! Остаток: ${(totalVolume - usedVolume).toFixed(2)} кг`,
+        message: `Превышен! Остаток: ${(totalVolume - usedVolume + initialQuantityKg).toFixed(2)} кг`,
       };
     }
   } catch (e) {

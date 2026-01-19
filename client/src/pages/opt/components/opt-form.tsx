@@ -46,6 +46,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
     useState<string>("");
   const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
+  const [initialQuantityKg, setInitialQuantityKg] = useState<number>(0);
   const isEditing = !!editData && !!editData.id;
 
   const form = useForm<OptFormData>({
@@ -171,6 +172,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     deliveryLocationId: watchDeliveryLocationId,
     bases: wholesaleBases,
     isEditing: isEditing,
+    initialQuantityKg: initialQuantityKg,
     dealDate: watchDealDate,
   });
 
@@ -263,6 +265,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
       setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);
+      setInitialQuantityKg(isEditing ? parseFloat(editData.quantityKg || "0") : 0);
 
       if (editData.quantityLiters) {
         setInputMode("liters");
@@ -683,7 +686,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
                 {isEditing ? "Сохранение..." : "Создание..."}
               </>
             ) : (
-              <>{isEditing ? "Сохранить изменения" : "Создать сделку"}</>
+              <>{(isEditing && !editData.isDraft) ? "Сохранить изменения" : "Создать сделку"}</>
             )}
           </Button>
         </div>
