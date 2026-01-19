@@ -24,7 +24,6 @@ import { useEffect } from "react";
 
 import AuthPage from "@/pages/auth-page";
 import CustomizableDashboard from "@/pages/dashboard/index";
-import DashboardTemplatesPage from "@/pages/dashboard/templates-page";
 import OptPage from "@/pages/opt-page";
 import RefuelingPage from "@/pages/refueling-page";
 import ExchangePage from "@/pages/exchange-page";
@@ -322,6 +321,12 @@ function Router() {
         </AppLayout>
       </Route>
 
+      <Route path="/lik">
+        <AppLayout>
+          <ProtectedRoute component={InDevelopmentPage} />
+        </AppLayout>
+      </Route>
+      
       <Route>
         <AppLayout>
           <NotFound />

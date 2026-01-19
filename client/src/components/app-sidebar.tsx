@@ -66,191 +66,195 @@ import {
   Globe,
   Key,
   TruckIcon,
+  Building2,
+  CarFrontIcon,
 } from "lucide-react";
 
-const getMainMenuItems = () => [
-  {
-    title: "Дашборд",
-    url: "/",
-    icon: LayoutDashboard,
-  },
-];
+const getOperationsMenuItems = (hasPermission: (p: string) => boolean) =>
+  [
+    {
+      title: "ОПТ",
+      url: "/opt",
+      icon: ShoppingCart,
+      permission: "opt.view",
+    },
+    {
+      title: "Заправка ВС",
+      url: "/refueling",
+      icon: Plane,
+      permission: "refueling.view",
+    },
+    {
+      title: "Перемещение",
+      url: "/movement",
+      icon: ArrowLeftRight,
+      permission: "movement.view",
+    },
+    {
+      title: "Биржа",
+      url: "/exchange",
+      icon: ChartCandlestick,
+      permission: "exchange.view",
+    },
+    {
+      title: "Зарубеж",
+      url: "/abroad",
+      icon: Globe,
+      permission: "movement.view",
+    },
+    {
+      title: "Аренда ТЗА",
+      url: "/rent",
+      icon: CarFrontIcon,
+      permission: "movement.view",
+    },
+    {
+      title: "Перевозка",
+      url: "/transportation",
+      icon: TruckIcon,
+      permission: "movement.view",
+    },
+    {
+      title: "ЛИК",
+      url: "/lik",
+      icon: Building2,
+      permission: "movement.view",
+    },
+  ].filter((item) => !item.permission || hasPermission(item.permission));
 
-const getOperationsMenuItems = (hasPermission: (p: string) => boolean) => [
-  {
-    title: "ОПТ",
-    url: "/opt",
-    icon: ShoppingCart,
-    permission: "opt.view",
-  },
-  {
-    title: "Заправка ВС",
-    url: "/refueling",
-    icon: Plane,
-    permission: "refueling.view",
-  },
-  {
-    title: "Биржа",
-    url: "/exchange",
-    icon: ChartCandlestick,
-    permission: "exchange.view",
-  },
-  {
-    title: "Перемещение",
-    url: "/movement",
-    icon: ArrowLeftRight,
-    permission: "movement.view",
-  },
-  {
-    title: "Зарубеж",
-    url: "/abroad",
-    icon: Globe,
-    permission: "movement.view",
-  },
-  {
-    title: "Аренда ТЗА",
-    url: "/rent",
-    icon: Key,
-    permission: "movement.view",
-  },
-  {
-    title: "Перевозка",
-    url: "/transportation",
-    icon: TruckIcon,
-    permission: "movement.view",
-  },
-].filter(item => !item.permission || hasPermission(item.permission));
+const getDataMenuItems = (hasPermission: (p: string) => boolean) =>
+  [
+    {
+      title: "Склады",
+      url: "/warehouses",
+      icon: Warehouse,
+      permission: "warehouses.view",
+    },
+    {
+      title: "Цены",
+      url: "/prices",
+      icon: DollarSign,
+      permission: "prices.view",
+    },
+    {
+      title: "Контрагенты",
+      url: "/counterparties",
+      icon: Users,
+      permission: "directories.view",
+    },
+    {
+      title: "Доставка",
+      url: "/delivery",
+      icon: Truck,
+      permission: "delivery.view",
+    },
+    {
+      title: "Справочники",
+      url: "/directories",
+      icon: BookOpen,
+      permission: "directories.view",
+    },
+  ].filter((item) => !item.permission || hasPermission(item.permission));
 
-const getDataMenuItems = (hasPermission: (p: string) => boolean) => [
-  {
-    title: "Склады",
-    url: "/warehouses",
-    icon: Warehouse,
-    permission: "warehouses.view",
-  },
-  {
-    title: "Цены",
-    url: "/prices",
-    icon: DollarSign,
-    permission: "prices.view",
-  },
-  {
-    title: "Контрагенты",
-    url: "/counterparties",
-    icon: Users,
-    permission: "directories.view",
-  },
-  {
-    title: "Доставка",
-    url: "/delivery",
-    icon: Truck,
-    permission: "delivery.view",
-  },
-  {
-    title: "Справочники",
-    url: "/directories",
-    icon: BookOpen,
-    permission: "directories.view",
-  },
-].filter(item => !item.permission || hasPermission(item.permission));
-
-const getFinanceMenuItems = (hasPermission: (p: string) => boolean) => [
-  {
-    title: "Кешфлоу",
-    url: "/finance/cashflow",
-    icon: TrendingUp,
-    permission: "finance.view",
-  },
-  {
-    title: "Платежный календарь",
-    url: "/finance/payment-calendar",
-    icon: CalendarPlus,
-    permission: "finance.view",
-  },
-  {
-    title: "Расчет цены",
-    url: "/finance/price-calculation",
-    icon: Calculator,
-    permission: "finance.view",
-  },
-].filter(item => !item.permission || hasPermission(item.permission));
+const getFinanceMenuItems = (hasPermission: (p: string) => boolean) =>
+  [
+    {
+      title: "Кешфлоу",
+      url: "/finance/cashflow",
+      icon: TrendingUp,
+      permission: "finance.view",
+    },
+    {
+      title: "Платежный календарь",
+      url: "/finance/payment-calendar",
+      icon: CalendarPlus,
+      permission: "finance.view",
+    },
+    {
+      title: "Расчет цены",
+      url: "/finance/price-calculation",
+      icon: Calculator,
+      permission: "finance.view",
+    },
+  ].filter((item) => !item.permission || hasPermission(item.permission));
 
 // New function to get reports menu items
-const getReportsMenuItems = (hasPermission: (p: string) => boolean) => [
-  {
-    title: "Текущие отчеты",
-    url: "/reports/current",
-    icon: FileText,
-    permission: "reports.view",
-  },
-  {
-    title: "Аналитические отчеты",
-    url: "/reports/analytics",
-    icon: FileCheck,
-    permission: "reports.view",
-  },
-  {
-    title: "Реестры",
-    url: "/reports/registries",
-    icon: Table2,
-    permission: "reports.view",
-  },
-  {
-    title: "Госконтракты",
-    url: "/reports/gov-contracts",
-    icon: Briefcase,
-    permission: "reports.view",
-  },
-  {
-    title: "Управленческий отчет",
-    url: "/reports/management",
-    icon: ChartSpline,
-    permission: "reports.view",
-  },
-].filter(item => !item.permission || hasPermission(item.permission));
+const getReportsMenuItems = (hasPermission: (p: string) => boolean) =>
+  [
+    {
+      title: "Текущие отчеты",
+      url: "/reports/current",
+      icon: FileText,
+      permission: "reports.view",
+    },
+    {
+      title: "Аналитические отчеты",
+      url: "/reports/analytics",
+      icon: FileCheck,
+      permission: "reports.view",
+    },
+    {
+      title: "Реестры",
+      url: "/reports/registries",
+      icon: Table2,
+      permission: "reports.view",
+    },
+    {
+      title: "Госконтракты",
+      url: "/reports/gov-contracts",
+      icon: Briefcase,
+      permission: "reports.view",
+    },
+    {
+      title: "Управленческий отчет",
+      url: "/reports/management",
+      icon: ChartSpline,
+      permission: "reports.view",
+    },
+  ].filter((item) => !item.permission || hasPermission(item.permission));
 
 // New function to get planning menu items
-const getPlanningMenuItems = (hasPermission: (p: string) => boolean) => [
-  {
-    title: "Ежемесячный план",
-    url: "/reports/monthly-plan",
-    icon: Calendar1,
-    permission: "reports.view",
-  },
-  {
-    title: "БДР",
-    url: "/reports/budget",
-    icon: Wallet,
-    permission: "reports.view",
-  },
-].filter(item => !item.permission || hasPermission(item.permission));
+const getPlanningMenuItems = (hasPermission: (p: string) => boolean) =>
+  [
+    {
+      title: "Ежемесячный план",
+      url: "/reports/monthly-plan",
+      icon: Calendar1,
+      permission: "reports.view",
+    },
+    {
+      title: "БДР",
+      url: "/reports/budget",
+      icon: Wallet,
+      permission: "reports.view",
+    },
+  ].filter((item) => !item.permission || hasPermission(item.permission));
 
-
-const getAdminMenuItems = (hasPermission: (p: string) => boolean) => [
-  {
-    title: "Пользователи",
-    url: "/admin/users",
-    icon: Users,
-    permission: "users.view",
-  },
-  {
-    title: "Роли",
-    url: "/admin/roles",
-    icon: Shield,
-    permission: "roles.view",
-  },
-  {
-    title: "Виджеты",
-    url: "/admin/widgets",
-    icon: Fullscreen,
-  },
-  {
-    title: "Настройки",
-    url: "/admin/settings",
-    icon: Settings,
-  },
-].filter(item => !item.permission || hasPermission(item.permission));
-
+const getAdminMenuItems = (hasPermission: (p: string) => boolean) =>
+  [
+    {
+      title: "Пользователи",
+      url: "/admin/users",
+      icon: Users,
+      permission: "users.view",
+    },
+    {
+      title: "Роли",
+      url: "/admin/roles",
+      icon: Shield,
+      permission: "roles.view",
+    },
+    {
+      title: "Виджеты",
+      url: "/admin/widgets",
+      icon: Fullscreen,
+    },
+    {
+      title: "Настройки",
+      url: "/admin/settings",
+      icon: Settings,
+    },
+  ].filter((item) => !item.permission || hasPermission(item.permission));
 
 export function AppSidebar() {
   const [location] = useLocation();
@@ -266,7 +270,7 @@ export function AppSidebar() {
   };
 
   const hasPerm = (p: string) => {
-    const parts = p.split('.');
+    const parts = p.split(".");
     if (parts.length !== 2) return false;
     return hasPermission(parts[0], parts[1]);
   };
@@ -294,7 +298,10 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={location === "/" || location === "/dashboard"}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location === "/" || location === "/dashboard"}
+                >
                   <Link href="/">
                     <LayoutDashboard className="h-4 w-4" />
                     <span>Дашборд</span>
@@ -325,7 +332,7 @@ export function AppSidebar() {
                             <SidebarMenuSubButton
                               asChild
                               isActive={isActive(item.url)}
-                              data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
+                              data-testid={`nav-${item.url.replace(/\//g, "-").slice(1)}`}
                             >
                               <Link href={item.url}>
                                 <item.icon className="h-4 w-4" />
@@ -363,7 +370,7 @@ export function AppSidebar() {
                             <SidebarMenuSubButton
                               asChild
                               isActive={isActive(item.url)}
-                              data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
+                              data-testid={`nav-${item.url.replace(/\//g, "-").slice(1)}`}
                             >
                               <Link href={item.url}>
                                 <item.icon className="h-4 w-4" />
@@ -401,7 +408,7 @@ export function AppSidebar() {
                             <SidebarMenuSubButton
                               asChild
                               isActive={isActive(item.url)}
-                              data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
+                              data-testid={`nav-${item.url.replace(/\//g, "-").slice(1)}`}
                             >
                               <Link href={item.url}>
                                 <item.icon className="h-4 w-4" />
@@ -440,7 +447,7 @@ export function AppSidebar() {
                             <SidebarMenuSubButton
                               asChild
                               isActive={isActive(item.url)}
-                              data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
+                              data-testid={`nav-${item.url.replace(/\//g, "-").slice(1)}`}
                             >
                               <Link href={item.url}>
                                 <item.icon className="h-4 w-4" />
@@ -479,7 +486,7 @@ export function AppSidebar() {
                             <SidebarMenuSubButton
                               asChild
                               isActive={isActive(item.url)}
-                              data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
+                              data-testid={`nav-${item.url.replace(/\//g, "-").slice(1)}`}
                             >
                               <Link href={item.url}>
                                 <item.icon className="h-4 w-4" />
@@ -517,7 +524,7 @@ export function AppSidebar() {
                             <SidebarMenuSubButton
                               asChild
                               isActive={isActive(item.url)}
-                              data-testid={`nav-${item.url.replace(/\//g, '-').slice(1)}`}
+                              data-testid={`nav-${item.url.replace(/\//g, "-").slice(1)}`}
                             >
                               <Link href={item.url}>
                                 <item.icon className="h-4 w-4" />
@@ -569,9 +576,7 @@ export function AppSidebar() {
                   <p className="text-sm font-medium">
                     {user ? `${user.firstName} ${user.lastName}` : "Гость"}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    {user?.email}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
