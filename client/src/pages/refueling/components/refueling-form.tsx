@@ -107,16 +107,16 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   );
 
   // Use filtering hook
-  const { refuelingSuppliers = [], availableBases = [], purchasePrices = [], salePrices = [] } =
+  const { refuelingSuppliers, availableBases, purchasePrices, salePrices } =
     useRefuelingFilters({
-      supplierId: watchSupplierId || "",
-      buyerId: watchBuyerId || "",
-      refuelingDate: watchRefuelingDate || new Date(),
+      supplierId: watchSupplierId,
+      buyerId: watchBuyerId,
+      refuelingDate: watchRefuelingDate,
       selectedBasis,
-      productType: watchProductType || "",
-      allPrices: allPrices || [],
-      suppliers: suppliers || [],
-      allBases: allBases || [],
+      productType: watchProductType,
+      allPrices,
+      suppliers,
+      allBases,
     });
 
   // Use calculations hook
@@ -134,22 +134,22 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     supplierContractVolumeStatus,
   } = useRefuelingCalculations({
     inputMode,
-    quantityLiters: watchLiters || "",
-    density: watchDensity || "",
-    quantityKg: watchKg || "",
+    quantityLiters: watchLiters,
+    density: watchDensity,
+    quantityKg: watchKg,
     isWarehouseSupplier,
     supplierWarehouse,
     selectedBasis,
     purchasePrices,
     salePrices,
-    selectedPurchasePriceId: selectedPurchasePriceId || "",
-    selectedSalePriceId: selectedSalePriceId || "",
+    selectedPurchasePriceId,
+    selectedSalePriceId,
     selectedSupplier,
-    productType: watchProductType || "",
+    productType: watchProductType,
     isEditing,
     initialQuantityKg,
     initialWarehouseBalance,
-    refuelingDate: watchRefuelingDate || new Date(),
+    refuelingDate: watchRefuelingDate,
   });
 
   const {
@@ -168,7 +168,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
     }),
   });
-
+  
   useEffect(() => {
     if (watchSupplierId && suppliers && allBases) {
       const supplier = suppliers.find((s) => s.id === watchSupplierId);
@@ -200,15 +200,15 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
 
   // Используем общий хук для автоматического выбора цен
   useAutoPriceSelection({
-    supplierId: watchSupplierId || "",
-    buyerId: watchBuyerId || "",
+    supplierId: watchSupplierId,
+    buyerId: watchBuyerId,
     purchasePrices,
     salePrices,
     isWarehouseSupplier,
     editData,
     setSelectedPurchasePriceId,
     setSelectedSalePriceId,
-    formSetValue: form.setValue as any,
+    formSetValue: form.setValue,
   });
 
   useEffect(() => {
@@ -349,25 +349,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         title: "Заправка создана",
         description: "Заправка ВС успешно сохранена",
       });
-      form.reset({
-        refuelingDate: new Date(),
-        productType: PRODUCT_TYPE.KEROSENE,
-        aircraftNumber: "",
-        orderNumber: "",
-        supplierId: "",
-        buyerId: "",
-        warehouseId: "",
-        inputMode: "liters",
-        quantityLiters: "",
-        density: "",
-        quantityKg: "",
-        notes: "",
-        isApproxVolume: false,
-        isDraft: false,
-        selectedPurchasePriceId: "",
-        selectedSalePriceId: "",
-        basis: "",
-      });
+      form.reset();
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
       setSelectedBasis("");
@@ -447,25 +429,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         title: "Заправка обновлена",
         description: "Заправка ВС успешно обновлена",
       });
-      form.reset({
-        refuelingDate: new Date(),
-        productType: PRODUCT_TYPE.KEROSENE,
-        aircraftNumber: "",
-        orderNumber: "",
-        supplierId: "",
-        buyerId: "",
-        warehouseId: "",
-        inputMode: "liters",
-        quantityLiters: "",
-        density: "",
-        quantityKg: "",
-        notes: "",
-        isApproxVolume: false,
-        isDraft: false,
-        selectedPurchasePriceId: "",
-        selectedSalePriceId: "",
-        basis: "",
-      });
+      form.reset();
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
       setSelectedBasis("");
@@ -570,7 +534,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       const isNewDeal = !isEditing;
       const isPublishingDraft = editData?.isDraft && !isDraft;
 
-      if ((isNewDeal || isPublishingDraft) && !isDraft) {
+      if (isNewDeal || isPublishingDraft || editData.id !== undefined) {
         checkDuplicate(() => createMutation.mutate({ ...data, isDraft }));
         return;
       }
@@ -636,7 +600,6 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
                     placeholder="Дополнительная информация..."
                     data-testid="input-notes"
                     {...field}
-                    value={field.value || ""}
                   />
                 </FormControl>
                 <FormMessage />

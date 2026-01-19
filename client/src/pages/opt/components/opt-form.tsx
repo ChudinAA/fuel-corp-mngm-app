@@ -120,25 +120,25 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
   // Use filtering hook
   const {
-    purchasePrices = [],
-    salePrices = [],
-    wholesaleSuppliers = [],
-    wholesaleBases = [],
-    availableCarriers = [],
-    availableLocations = [],
+    purchasePrices,
+    salePrices,
+    wholesaleSuppliers,
+    wholesaleBases,
+    availableCarriers,
+    availableLocations,
   } = useOptFilters({
-    supplierId: watchSupplierId || "",
-    buyerId: watchBuyerId || "",
-    dealDate: watchDealDate || new Date(),
+    supplierId: watchSupplierId,
+    buyerId: watchBuyerId,
+    dealDate: watchDealDate,
     selectedBasis,
-    carrierId: watchCarrierId || "",
-    deliveryLocationId: watchDeliveryLocationId || "",
-    allPrices: allPrices || [],
-    suppliers: suppliers || [],
-    allBases: allBases || [],
-    carriers: carriers || [],
-    deliveryLocations: deliveryLocations || [],
-    deliveryCosts: deliveryCosts || [],
+    carrierId: watchCarrierId,
+    deliveryLocationId: watchDeliveryLocationId,
+    allPrices,
+    suppliers,
+    allBases,
+    carriers,
+    deliveryLocations,
+    deliveryCosts,
     supplierWarehouse,
   });
 
@@ -159,23 +159,23 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     isWarehouseBalanceLoading,
   } = useOptCalculations({
     inputMode,
-    quantityLiters: watchLiters || "",
-    density: watchDensity || "",
-    quantityKg: watchKg || "",
+    quantityLiters: watchLiters,
+    density: watchDensity,
+    quantityKg: watchKg,
     isWarehouseSupplier,
     supplierWarehouse,
     selectedBasis,
     purchasePrices,
     salePrices,
-    selectedPurchasePriceId: selectedPurchasePriceId || "",
-    selectedSalePriceId: selectedSalePriceId || "",
-    deliveryCosts: deliveryCosts || [],
-    carrierId: watchCarrierId || "",
-    deliveryLocationId: watchDeliveryLocationId || "",
+    selectedPurchasePriceId,
+    selectedSalePriceId,
+    deliveryCosts,
+    carrierId: watchCarrierId,
+    deliveryLocationId: watchDeliveryLocationId,
     bases: wholesaleBases,
     isEditing: isEditing,
     initialQuantityKg: initialQuantityKg,
-    dealDate: watchDealDate || new Date(),
+    dealDate: watchDealDate,
   });
 
   const {
@@ -222,16 +222,16 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
   }, [watchSupplierId, suppliers, allBases, warehouses, form]);
 
   // Используем общий хук для автоматического выбора цен
-    useAutoPriceSelection({
-    supplierId: watchSupplierId || "",
-    buyerId: watchBuyerId || "",
+  useAutoPriceSelection({
+    supplierId: watchSupplierId,
+    buyerId: watchBuyerId,
     purchasePrices,
     salePrices,
     isWarehouseSupplier,
     editData,
     setSelectedPurchasePriceId,
     setSelectedSalePriceId,
-    formSetValue: form.setValue as any,
+    formSetValue: form.setValue,
   });
 
   // Update form when editData changes
@@ -285,7 +285,9 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
       setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);
-      setInitialQuantityKg(isEditing ? parseFloat(editData.quantityKg || "0") : 0);
+      setInitialQuantityKg(
+        isEditing ? parseFloat(editData.quantityKg || "0") : 0,
+      );
 
       if (editData.quantityLiters) {
         setInputMode("liters");
@@ -374,7 +376,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         isApproxVolume: false,
         selectedPurchasePriceId: "",
         selectedSalePriceId: "",
-        isDraft: false,
       });
       onSuccess?.();
     },
@@ -468,7 +469,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         isApproxVolume: false,
         selectedPurchasePriceId: "",
         selectedSalePriceId: "",
-        isDraft: false,
       });
       onSuccess?.();
     },
@@ -497,7 +497,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         return;
       }
 
-      // Проверяем наличие ошибок в ценах
+      // Проверяем налич �е ошибок в ценах
       if (!isWarehouseSupplier && purchasePrice === null) {
         toast({
           title: "Ошибка: отсутствует цена покупки",
@@ -520,7 +520,8 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
       // Проверяем достаточность объема на складе для складских поставщиков
       if (isWarehouseSupplier && supplierWarehouse) {
-        const availableBalance = warehouseBalanceAtDate !== null ? warehouseBalanceAtDate : 0;
+        const availableBalance =
+          warehouseBalanceAtDate !== null ? warehouseBalanceAtDate : 0;
         const remaining = availableBalance - finalKg;
         if (remaining < 0) {
           toast({
@@ -572,7 +573,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       const isNewDeal = !isEditing;
       const isPublishingDraft = editData?.isDraft && !isDraft;
 
-      if ((isNewDeal || isPublishingDraft) && !isDraft) {
+      if (isNewDeal || isPublishingDraft || editData.id !== undefined) {
         checkDuplicate(() => createMutation.mutate({ ...data, isDraft }));
         return;
       }
@@ -583,154 +584,157 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
   return (
     <>
       <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit((data) => onSubmit(data))}
-        className="space-y-6"
-      >
-        <OptMainFields
-          form={form}
-          wholesaleSuppliers={wholesaleSuppliers}
-          customers={customers}
-          selectedSupplier={selectedSupplier}
-          selectedBasis={selectedBasis}
-          setSelectedBasis={setSelectedBasis}
-          wholesaleBases={wholesaleBases}
-        />
-
-        <VolumeInputSection
-          form={form}
-          inputMode={inputMode}
-          setInputMode={setInputMode}
-          calculatedKg={calculatedKg}
-        />
-
-        <LogisticsSection
-          form={form}
-          carriers={availableCarriers}
-          deliveryLocations={availableLocations}
-          bases={allBases}
-          deliveryCost={deliveryCost}
-        />
-
-        <OptPricingSection
-          form={form}
-          isWarehouseSupplier={isWarehouseSupplier}
-          purchasePrices={purchasePrices}
-          salePrices={salePrices}
-          selectedPurchasePriceId={selectedPurchasePriceId}
-          selectedSalePriceId={selectedSalePriceId}
-          setSelectedPurchasePriceId={setSelectedPurchasePriceId}
-          setSelectedSalePriceId={setSelectedSalePriceId}
-          purchasePrice={purchasePrice}
-          salePrice={salePrice}
-          purchaseAmount={purchaseAmount}
-          saleAmount={saleAmount}
-          profit={profit}
-          supplierWarehouse={supplierWarehouse}
-          finalKg={finalKg}
-          isEditing={isEditing}
-          contractVolumeStatus={contractVolumeStatus}
-          supplierContractVolumeStatus={supplierContractVolumeStatus}
-          warehouseBalanceAtDate={warehouseBalanceAtDate}
-          isWarehouseBalanceLoading={isWarehouseBalanceLoading}
-        />
-
-        <div className="grid gap-4 md:grid-cols-2 items-end">
-          <FormField
-            control={form.control}
-            name="notes"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Примечания</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Дополнительная информация..."
-                    data-testid="input-notes"
-                    {...field}
-                    value={field.value || ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+        <form
+          onSubmit={form.handleSubmit((data) => onSubmit(data))}
+          className="space-y-6"
+        >
+          <OptMainFields
+            form={form}
+            wholesaleSuppliers={wholesaleSuppliers}
+            customers={customers}
+            selectedSupplier={selectedSupplier}
+            selectedBasis={selectedBasis}
+            setSelectedBasis={setSelectedBasis}
+            wholesaleBases={wholesaleBases}
           />
 
-          <FormField
-            control={form.control}
-            name="isApproxVolume"
-            render={({ field }) => (
-              <FormItem className="flex items-center gap-2 space-y-0 pb-2">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    data-testid="checkbox-approx-volume"
-                  />
-                </FormControl>
-                <FormLabel className="text-sm font-normal cursor-pointer">
-                  Примерный объем (требует уточнения)
-                </FormLabel>
-              </FormItem>
-            )}
+          <VolumeInputSection
+            form={form}
+            inputMode={inputMode}
+            setInputMode={setInputMode}
+            calculatedKg={calculatedKg}
           />
-        </div>
 
-        <div className="flex justify-end gap-4 pt-4 border-t">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              form.reset();
-              setSelectedPurchasePriceId("");
-              setSelectedSalePriceId("");
-              onSuccess?.();
-            }}
-          >
-            {editData ? "Отмена" : "Очистить"}
-          </Button>
+          <LogisticsSection
+            form={form}
+            carriers={availableCarriers}
+            deliveryLocations={availableLocations}
+            bases={allBases}
+            deliveryCost={deliveryCost}
+          />
 
-          {!isEditing || (editData && editData.isDraft) ? (
+          <OptPricingSection
+            form={form}
+            isWarehouseSupplier={isWarehouseSupplier}
+            purchasePrices={purchasePrices}
+            salePrices={salePrices}
+            selectedPurchasePriceId={selectedPurchasePriceId}
+            selectedSalePriceId={selectedSalePriceId}
+            setSelectedPurchasePriceId={setSelectedPurchasePriceId}
+            setSelectedSalePriceId={setSelectedSalePriceId}
+            purchasePrice={purchasePrice}
+            salePrice={salePrice}
+            purchaseAmount={purchaseAmount}
+            saleAmount={saleAmount}
+            profit={profit}
+            supplierWarehouse={supplierWarehouse}
+            finalKg={finalKg}
+            isEditing={isEditing}
+            contractVolumeStatus={contractVolumeStatus}
+            supplierContractVolumeStatus={supplierContractVolumeStatus}
+            warehouseBalanceAtDate={warehouseBalanceAtDate}
+            isWarehouseBalanceLoading={isWarehouseBalanceLoading}
+          />
+
+          <div className="grid gap-4 md:grid-cols-2 items-end">
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Примечания</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Дополнительная информация..."
+                      data-testid="input-notes"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="isApproxVolume"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2 space-y-0 pb-2">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="checkbox-approx-volume"
+                    />
+                  </FormControl>
+                  <FormLabel className="text-sm font-normal cursor-pointer">
+                    Примерный объем (требует уточнения)
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="flex justify-end gap-4 pt-4 border-t">
             <Button
               type="button"
-              variant="secondary"
-              disabled={createMutation.isPending || updateMutation.isPending}
+              variant="outline"
               onClick={() => {
-                form.clearErrors();
-                form.handleSubmit((data) => onSubmit(data, true))();
+                form.reset();
+                setSelectedPurchasePriceId("");
+                setSelectedSalePriceId("");
+                onSuccess?.();
               }}
             >
-              {createMutation.isPending || updateMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Сохранить черновик
+              {editData ? "Отмена" : "Очистить"}
             </Button>
-          ) : null}
 
-          <Button
-            type="submit"
-            disabled={createMutation.isPending || updateMutation.isPending}
-            data-testid="button-submit-opt"
-          >
-            {createMutation.isPending || updateMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isEditing ? "Сохранение..." : "Создание..."}
-              </>
-            ) : (
-              <>{(isEditing && !editData.isDraft) ? "Сохранить изменения" : "Создать сделку"}</>
-            )}
-          </Button>
-        </div>
-      </form>
-    </Form>
+            {!isEditing || (editData && editData.isDraft) ? (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={createMutation.isPending || updateMutation.isPending}
+                onClick={() => {
+                  form.clearErrors();
+                  form.handleSubmit((data) => onSubmit(data, true))();
+                }}
+              >
+                {createMutation.isPending || updateMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Сохранить черновик
+              </Button>
+            ) : null}
 
-    <DuplicateAlertDialog
-      open={showDuplicateDialog}
-      onOpenChange={setShowDuplicateDialog}
-      onConfirm={handleConfirm}
-      onCancel={handleCancel}
-      description="В системе уже есть сделка с такими же параметрами (дата, поставщик, покупатель, базис, место доставки и объем). Продолжить создание?"
-    />
+            <Button
+              type="submit"
+              disabled={createMutation.isPending || updateMutation.isPending}
+              data-testid="button-submit-opt"
+            >
+              {createMutation.isPending || updateMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isEditing ? "Сохранение..." : "Создание..."}
+                </>
+              ) : (
+                <>
+                  {isEditing && !editData.isDraft
+                    ? "Сохранить изменения"
+                    : "Создать сделку"}
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </Form>
+
+      <DuplicateAlertDialog
+        open={showDuplicateDialog}
+        onOpenChange={setShowDuplicateDialog}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+        description="В системе уже есть сделка с такими же параметрами (дата, поставщик, покупатель, базис, место доставки и объем). Продолжить создание?"
+      />
     </>
   );
 }

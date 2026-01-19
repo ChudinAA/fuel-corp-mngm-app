@@ -18,9 +18,9 @@ export function useDuplicateCheck({ type, getFields }: DuplicateCheckConfig) {
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
-  const checkDuplicate = async (onConfirm: () => void, onCancel?: () => void) => {
+  const checkDuplicate = async (onConfirm: () => void) => {
     const fields = getFields();
-    const endpoint = type === "opt" ? "/api/opt/check-duplicate" : "/api/refueling/check-duplicate";
+    const endpoint = `/api/${type}/check-duplicate`;
     
     const payload: any = {
       supplierId: fields.supplierId,
