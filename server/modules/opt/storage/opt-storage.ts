@@ -456,7 +456,7 @@ export class OptStorage implements IOptStorage {
   }): Promise<boolean> {
     const existing = await db.query.opt.findFirst({
       where: and(
-        sql`${opt.dealDate} = ${data.dealDate}`,
+        sql`DATE(${opt.dealDate}) = DATE(${data.dealDate})`,
         eq(opt.supplierId, data.supplierId),
         eq(opt.buyerId, data.buyerId),
         data.basis ? eq(opt.basis, data.basis) : isNull(opt.basis),

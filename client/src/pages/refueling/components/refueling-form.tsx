@@ -34,22 +34,11 @@ import { useRefuelingCalculations } from "../hooks/use-refueling-calculations";
 import { useRefuelingFilters } from "../hooks/use-refueling-filters";
 import { useAutoPriceSelection } from "../../shared/hooks/use-auto-price-selection";
 import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
-
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
+import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
 
 export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   const { toast } = useToast();
-  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
-  const [pendingData, setPendingData] = useState<{data: RefuelingFormData, isDraftSubmit?: boolean} | null>(null);
   const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
   const [selectedBasis, setSelectedBasis] = useState<string>("");
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
@@ -81,6 +70,27 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       selectedSalePriceId: "",
       basis: "",
     },
+  });
+
+  const watchSupplierId = form.watch("supplierId");
+  const watchBuyerId = form.watch("buyerId");
+  const watchRefuelingDate = form.watch("refuelingDate");
+
+  const {
+    showDuplicateDialog,
+    setShowDuplicateDialog,
+    checkDuplicate,
+    handleConfirm,
+    handleCancel,
+  } = useDuplicateCheck({
+    type: "refueling",
+    getFields: () => ({
+      date: watchRefuelingDate,
+      supplierId: watchSupplierId,
+      buyerId: watchBuyerId,
+      basis: selectedBasis,
+      quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
+    }),
   });
 
   const { data: suppliers } = useQuery<Supplier[]>({
@@ -525,38 +535,14 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     if (editData && editData.id) {
       updateMutation.mutate({ ...data, isDraft, id: editData.id });
     } else {
-      // Проверка на дубликаты перед созданием (только для новых сделок или перехода из черновика)
       const isNewDeal = !isEditing;
       const isPublishingDraft = editData?.isDraft && !isDraft;
 
       if ((isNewDeal || isPublishingDraft) && !isDraft) {
-        try {
-          const res = await apiRequest("POST", "/api/refueling/check-duplicate", {
-            refuelingDate: data.refuelingDate ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
-            supplierId: data.supplierId,
-            buyerId: data.buyerId,
-            basis: selectedBasis,
-            quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
-          });
-          const { isDuplicate } = await res.json();
-          if (isDuplicate) {
-            setPendingData({ data, isDraftSubmit });
-            setShowDuplicateDialog(true);
-            return;
-          }
-        } catch (error) {
-          console.error("Error checking duplicate:", error);
-        }
+        checkDuplicate(() => createMutation.mutate({ ...data, isDraft }));
+        return;
       }
       createMutation.mutate({ ...data, isDraft });
-    }
-  };
-
-  const confirmDuplicate = () => {
-    if (pendingData) {
-      createMutation.mutate({ ...pendingData.data, isDraft: pendingData.isDraftSubmit ?? pendingData.data.isDraft });
-      setPendingData(null);
-      setShowDuplicateDialog(false);
     }
   };
 
@@ -695,20 +681,13 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       </form>
     </Form>
 
-    <AlertDialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Идентичная сделка уже существует</AlertDialogTitle>
-          <AlertDialogDescription>
-            В системе уже есть заправка с такими же параметрами (дата, поставщик, покупатель, базис и объем). Продолжить создание?
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => setPendingData(null)}>Отмена</AlertDialogCancel>
-          <AlertDialogAction onClick={confirmDuplicate}>Продолжить</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <DuplicateAlertDialog
+      open={showDuplicateDialog}
+      onOpenChange={setShowDuplicateDialog}
+      onConfirm={handleConfirm}
+      onCancel={handleCancel}
+      description="В системе уже есть заправка с такими же параметрами (дата, поставщик, покупатель, базис и объем). Продолжить создание?"
+    />
     </>
   );
 }

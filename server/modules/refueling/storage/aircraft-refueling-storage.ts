@@ -476,7 +476,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
   }): Promise<boolean> {
     const existing = await db.query.aircraftRefueling.findFirst({
       where: and(
-        sql`${aircraftRefueling.refuelingDate} = ${data.refuelingDate}`,
+        sql`DATE(${aircraftRefueling.refuelingDate}) = DATE(${data.refuelingDate})`,
         eq(aircraftRefueling.supplierId, data.supplierId),
         eq(aircraftRefueling.buyerId, data.buyerId),
         eq(aircraftRefueling.basis, data.basis),
