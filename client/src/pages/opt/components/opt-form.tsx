@@ -71,32 +71,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     },
   });
 
-  const watchSupplierId = form.watch("supplierId");
-  const watchBuyerId = form.watch("buyerId");
-  const watchDealDate = form.watch("dealDate");
-  const watchLiters = form.watch("quantityLiters");
-  const watchDensity = form.watch("density");
-  const watchKg = form.watch("quantityKg");
-  const watchDeliveryLocationId = form.watch("deliveryLocationId");
-
-  const {
-    showDuplicateDialog,
-    setShowDuplicateDialog,
-    checkDuplicate,
-    handleConfirm,
-    handleCancel,
-  } = useDuplicateCheck({
-    type: "opt",
-    getFields: () => ({
-      date: watchDealDate,
-      supplierId: watchSupplierId,
-      buyerId: watchBuyerId,
-      basis: selectedBasis,
-      deliveryLocationId: watchDeliveryLocationId,
-      quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
-    }),
-  });
-
   const { data: suppliers } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
   });
@@ -202,6 +176,24 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     isEditing: isEditing,
     initialQuantityKg: initialQuantityKg,
     dealDate: watchDealDate,
+  });
+
+  const {
+    showDuplicateDialog,
+    setShowDuplicateDialog,
+    checkDuplicate,
+    handleConfirm,
+    handleCancel,
+  } = useDuplicateCheck({
+    type: "opt",
+    getFields: () => ({
+      date: watchDealDate,
+      supplierId: watchSupplierId,
+      buyerId: watchBuyerId,
+      basis: selectedBasis,
+      deliveryLocationId: watchDeliveryLocationId,
+      quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
+    }),
   });
 
   // Автоматический выбор базиса при выборе поставщика

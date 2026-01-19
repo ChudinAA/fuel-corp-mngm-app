@@ -72,27 +72,6 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     },
   });
 
-  const watchSupplierId = form.watch("supplierId");
-  const watchBuyerId = form.watch("buyerId");
-  const watchRefuelingDate = form.watch("refuelingDate");
-
-  const {
-    showDuplicateDialog,
-    setShowDuplicateDialog,
-    checkDuplicate,
-    handleConfirm,
-    handleCancel,
-  } = useDuplicateCheck({
-    type: "refueling",
-    getFields: () => ({
-      date: watchRefuelingDate,
-      supplierId: watchSupplierId,
-      buyerId: watchBuyerId,
-      basis: selectedBasis,
-      quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
-    }),
-  });
-
   const { data: suppliers } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
   });
@@ -171,6 +150,23 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     initialQuantityKg,
     initialWarehouseBalance,
     refuelingDate: watchRefuelingDate,
+  });
+
+  const {
+    showDuplicateDialog,
+    setShowDuplicateDialog,
+    checkDuplicate,
+    handleConfirm,
+    handleCancel,
+  } = useDuplicateCheck({
+    type: "refueling",
+    getFields: () => ({
+      date: watchRefuelingDate,
+      supplierId: watchSupplierId,
+      buyerId: watchBuyerId,
+      basis: selectedBasis,
+      quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
+    }),
   });
 
   useEffect(() => {
