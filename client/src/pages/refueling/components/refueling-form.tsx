@@ -158,6 +158,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     checkDuplicate,
     handleConfirm,
     handleCancel,
+    isChecking,
   } = useDuplicateCheck({
     type: "refueling",
     getFields: () => ({
