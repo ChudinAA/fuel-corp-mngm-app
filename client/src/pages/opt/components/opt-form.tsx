@@ -693,25 +693,25 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
               <Button
                 type="button"
                 variant="secondary"
-                disabled={createMutation.isPending || updateMutation.isPending}
+                disabled={createMutation.isPending || updateMutation.isPending || isChecking}
                 onClick={() => {
                   form.clearErrors();
                   form.handleSubmit((data) => onSubmit(data, true))();
                 }}
               >
-                {createMutation.isPending || updateMutation.isPending ? (
+                {createMutation.isPending || updateMutation.isPending || isChecking ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
-                Сохранить черновик
+                {isChecking ? "Проверка..." : "Сохранить черновик"}
               </Button>
             ) : null}
 
             <Button
               type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending}
+              disabled={createMutation.isPending || updateMutation.isPending || isChecking}
               data-testid="button-submit-opt"
             >
-              {createMutation.isPending || updateMutation.isPending ? (
+              {createMutation.isPending || updateMutation.isPending || isChecking ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {isEditing ? "Сохранение..." : "Создание..."}
