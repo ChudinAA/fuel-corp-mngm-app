@@ -107,16 +107,16 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   );
 
   // Use filtering hook
-  const { refuelingSuppliers, availableBases, purchasePrices, salePrices } =
+  const { refuelingSuppliers = [], availableBases = [], purchasePrices = [], salePrices = [] } =
     useRefuelingFilters({
-      supplierId: watchSupplierId,
-      buyerId: watchBuyerId,
-      refuelingDate: watchRefuelingDate,
+      supplierId: watchSupplierId || "",
+      buyerId: watchBuyerId || "",
+      refuelingDate: watchRefuelingDate || new Date(),
       selectedBasis,
-      productType: watchProductType,
-      allPrices,
-      suppliers,
-      allBases,
+      productType: watchProductType || "",
+      allPrices: allPrices || [],
+      suppliers: suppliers || [],
+      allBases: allBases || [],
     });
 
   // Use calculations hook
@@ -134,22 +134,22 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     supplierContractVolumeStatus,
   } = useRefuelingCalculations({
     inputMode,
-    quantityLiters: watchLiters,
-    density: watchDensity,
-    quantityKg: watchKg,
+    quantityLiters: watchLiters || "",
+    density: watchDensity || "",
+    quantityKg: watchKg || "",
     isWarehouseSupplier,
     supplierWarehouse,
     selectedBasis,
     purchasePrices,
     salePrices,
-    selectedPurchasePriceId,
-    selectedSalePriceId,
+    selectedPurchasePriceId: selectedPurchasePriceId || "",
+    selectedSalePriceId: selectedSalePriceId || "",
     selectedSupplier,
-    productType: watchProductType,
+    productType: watchProductType || "",
     isEditing,
     initialQuantityKg,
     initialWarehouseBalance,
-    refuelingDate: watchRefuelingDate,
+    refuelingDate: watchRefuelingDate || new Date(),
   });
 
   const {
@@ -200,15 +200,15 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
 
   // Используем общий хук для автоматического выбора цен
   useAutoPriceSelection({
-    supplierId: watchSupplierId,
-    buyerId: watchBuyerId,
+    supplierId: watchSupplierId || "",
+    buyerId: watchBuyerId || "",
     purchasePrices,
     salePrices,
     isWarehouseSupplier,
     editData,
     setSelectedPurchasePriceId,
     setSelectedSalePriceId,
-    formSetValue: form.setValue,
+    formSetValue: form.setValue as any,
   });
 
   useEffect(() => {
@@ -349,7 +349,25 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         title: "Заправка создана",
         description: "Заправка ВС успешно сохранена",
       });
-      form.reset();
+      form.reset({
+        refuelingDate: new Date(),
+        productType: PRODUCT_TYPE.KEROSENE,
+        aircraftNumber: "",
+        orderNumber: "",
+        supplierId: "",
+        buyerId: "",
+        warehouseId: "",
+        inputMode: "liters",
+        quantityLiters: "",
+        density: "",
+        quantityKg: "",
+        notes: "",
+        isApproxVolume: false,
+        isDraft: false,
+        selectedPurchasePriceId: "",
+        selectedSalePriceId: "",
+        basis: "",
+      });
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
       setSelectedBasis("");
@@ -429,7 +447,25 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         title: "Заправка обновлена",
         description: "Заправка ВС успешно обновлена",
       });
-      form.reset();
+      form.reset({
+        refuelingDate: new Date(),
+        productType: PRODUCT_TYPE.KEROSENE,
+        aircraftNumber: "",
+        orderNumber: "",
+        supplierId: "",
+        buyerId: "",
+        warehouseId: "",
+        inputMode: "liters",
+        quantityLiters: "",
+        density: "",
+        quantityKg: "",
+        notes: "",
+        isApproxVolume: false,
+        isDraft: false,
+        selectedPurchasePriceId: "",
+        selectedSalePriceId: "",
+        basis: "",
+      });
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
       setSelectedBasis("");
@@ -600,6 +636,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
                     placeholder="Дополнительная информация..."
                     data-testid="input-notes"
                     {...field}
+                    value={field.value || ""}
                   />
                 </FormControl>
                 <FormMessage />

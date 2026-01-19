@@ -120,25 +120,25 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
   // Use filtering hook
   const {
-    purchasePrices,
-    salePrices,
-    wholesaleSuppliers,
-    wholesaleBases,
-    availableCarriers,
-    availableLocations,
+    purchasePrices = [],
+    salePrices = [],
+    wholesaleSuppliers = [],
+    wholesaleBases = [],
+    availableCarriers = [],
+    availableLocations = [],
   } = useOptFilters({
-    supplierId: watchSupplierId,
-    buyerId: watchBuyerId,
-    dealDate: watchDealDate,
+    supplierId: watchSupplierId || "",
+    buyerId: watchBuyerId || "",
+    dealDate: watchDealDate || new Date(),
     selectedBasis,
-    carrierId: watchCarrierId,
-    deliveryLocationId: watchDeliveryLocationId,
-    allPrices,
-    suppliers,
-    allBases,
-    carriers,
-    deliveryLocations,
-    deliveryCosts,
+    carrierId: watchCarrierId || "",
+    deliveryLocationId: watchDeliveryLocationId || "",
+    allPrices: allPrices || [],
+    suppliers: suppliers || [],
+    allBases: allBases || [],
+    carriers: carriers || [],
+    deliveryLocations: deliveryLocations || [],
+    deliveryCosts: deliveryCosts || [],
     supplierWarehouse,
   });
 
@@ -159,23 +159,23 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     isWarehouseBalanceLoading,
   } = useOptCalculations({
     inputMode,
-    quantityLiters: watchLiters,
-    density: watchDensity,
-    quantityKg: watchKg,
+    quantityLiters: watchLiters || "",
+    density: watchDensity || "",
+    quantityKg: watchKg || "",
     isWarehouseSupplier,
     supplierWarehouse,
     selectedBasis,
     purchasePrices,
     salePrices,
-    selectedPurchasePriceId,
-    selectedSalePriceId,
-    deliveryCosts,
-    carrierId: watchCarrierId,
-    deliveryLocationId: watchDeliveryLocationId,
+    selectedPurchasePriceId: selectedPurchasePriceId || "",
+    selectedSalePriceId: selectedSalePriceId || "",
+    deliveryCosts: deliveryCosts || [],
+    carrierId: watchCarrierId || "",
+    deliveryLocationId: watchDeliveryLocationId || "",
     bases: wholesaleBases,
     isEditing: isEditing,
     initialQuantityKg: initialQuantityKg,
-    dealDate: watchDealDate,
+    dealDate: watchDealDate || new Date(),
   });
 
   const {
@@ -222,16 +222,16 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
   }, [watchSupplierId, suppliers, allBases, warehouses, form]);
 
   // Используем общий хук для автоматического выбора цен
-  useAutoPriceSelection({
-    supplierId: watchSupplierId,
-    buyerId: watchBuyerId,
+    useAutoPriceSelection({
+    supplierId: watchSupplierId || "",
+    buyerId: watchBuyerId || "",
     purchasePrices,
     salePrices,
     isWarehouseSupplier,
     editData,
     setSelectedPurchasePriceId,
     setSelectedSalePriceId,
-    formSetValue: form.setValue,
+    formSetValue: form.setValue as any,
   });
 
   // Update form when editData changes
@@ -374,6 +374,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         isApproxVolume: false,
         selectedPurchasePriceId: "",
         selectedSalePriceId: "",
+        isDraft: false,
       });
       onSuccess?.();
     },
@@ -467,6 +468,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         isApproxVolume: false,
         selectedPurchasePriceId: "",
         selectedSalePriceId: "",
+        isDraft: false,
       });
       onSuccess?.();
     },
@@ -645,6 +647,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
                     placeholder="Дополнительная информация..."
                     data-testid="input-notes"
                     {...field}
+                    value={field.value || ""}
                   />
                 </FormControl>
                 <FormMessage />
