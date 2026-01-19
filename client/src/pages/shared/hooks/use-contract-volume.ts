@@ -58,7 +58,7 @@ export function useContractVolume({
     // We'd need the ORIGINAL quantity of this deal to properly show "Total - (UsedByOthers) - CurrentInput".
 
     const remaining =
-      totalVolume - usedVolume - (isEditing ? 0 : currentQuantityKg);
+      totalVolume - usedVolume - currentQuantityKg;
 
     if (remaining >= 0) {
       return {
@@ -70,7 +70,7 @@ export function useContractVolume({
       return {
         remaining,
         status: "error" as const,
-        message: `Превышен! Остаток: ${(totalVolume - usedVolume + (isEditing ? currentQuantityKg : 0)).toFixed(2)} кг`,
+        message: `Превышен! Остаток: ${(totalVolume - usedVolume).toFixed(2)} кг`,
       };
     }
   } catch (e) {
