@@ -656,7 +656,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
               {createMutation.isPending || updateMutation.isPending || isChecking ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
-              {isChecking ? "Проверка..." : "Сохранить черновик"}
+              Сохранить черновик
             </Button>
           ) : null}
 
