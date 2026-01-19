@@ -126,9 +126,6 @@ export function OptTable({ onEdit, onDelete, onAdd }: OptTableProps) {
     isDeletingId, // Assuming isDeletingId is available from useOptTable for disabling delete buttons
   } = useOptTable();
 
-  const { toast } = useToast();
-  const { hasPermission } = useAuth();
-
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dealToDelete, setDealToDelete] = useState<any>(null);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
