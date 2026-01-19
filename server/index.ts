@@ -5,6 +5,7 @@ import { createServer } from "http";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
+import { runMigrations } from "./migrate";
 
 const app = express();
 const httpServer = createServer(app);
@@ -88,14 +89,12 @@ app.use((req, res, next) => {
 
 (async () => {
   // Run migrations automatically on startup
-  if (process.env.NODE_ENV === "production" || process.env.RUN_MIGRATIONS === "true") {
-    const { execSync } = await import("child_process");
-    try {
-      console.log("Running migrations...");
-      execSync("npx tsx server/migrate.ts", { stdio: "inherit" });
-    } catch (e) {
-      console.error("Failed to run migrations:", e);
-    }
+  try {
+    await runMigrations();
+  } catch (e) {
+    console.error("Failed to run migrations on startup:", e);
+    // Continue starting server, maybe it's just a transient DB error
+    // or schema is already up to date
   }
 
   await registerRoutes(httpServer, app);

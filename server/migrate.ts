@@ -13,17 +13,23 @@ if (!process.env.DATABASE_URL) {
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle(pool, { schema });
 
-async function runMigrations() {
+export async function runMigrations() {
   console.log("⏳ Running migrations...");
   try {
     await migrate(db, { migrationsFolder: "./migrations" });
     console.log("✅ Migrations completed successfully");
   } catch (error) {
     console.error("❌ Migration failed:", error);
-    process.exit(1);
+    throw error; // Rethrow to handle in server startup
   } finally {
     await pool.end();
   }
 }
 
-runMigrations();
+// Allow running directly
+if (import.meta.url === `file://${process.argv[1]}` || import.meta.url.endsWith(process.argv[1])) {
+  runMigrations().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
