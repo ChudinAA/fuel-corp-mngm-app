@@ -8,8 +8,21 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Plus, Loader2 } from "lucide-react";
 import { movementFormSchema, type MovementFormData } from "../schemas";
 import type { MovementDialogProps } from "../types";
@@ -20,14 +33,13 @@ import { MovementDestinationSection } from "./movement-destination-section";
 import { MovementCostSummary } from "./movement-cost-summary";
 import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
-import { 
-  useMovementCalculations, 
-  useAvailableCarriers, 
+import {
+  useMovementCalculations,
+  useAvailableCarriers,
   useWarehouseBalance,
-  useMovementValidation 
+  useMovementValidation,
 } from "../hooks";
 import { useWarehouseBalanceMov } from "../hooks/use-warehouse-balance";
-
 
 export function MovementDialog({
   warehouses,
@@ -40,11 +52,12 @@ export function MovementDialog({
   deliveryCosts,
   editMovement,
   open,
-  onOpenChange
+  onOpenChange,
 }: MovementDialogProps) {
   const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
-  const [selectedPurchasePriceId, setSelectedPurchasePriceId] = useState<string>("");
+  const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
+    useState<string>("");
   const isEditing = !!editMovement;
 
   const { data: allBases } = useQuery<any[]>({
@@ -75,17 +88,29 @@ export function MovementDialog({
   });
 
   // Состояние для отслеживания начального баланса при редактировании
-  const [initialWarehouseBalance, setInitialWarehouseBalance] = useState<number>(0);
+  const [initialWarehouseBalance, setInitialWarehouseBalance] =
+    useState<number>(0);
+  // Состояние для отслеживания начального количества КГ при редактировании
+  const [initialQuantityKg, setInitialQuantityKg] = useState<number>(0);
 
   // Обновляем форму при изменении editMovement или открытии диалога
   useEffect(() => {
     if (editMovement) {
       // При редактировании внутреннего перемещения вычисляем начальный баланс
-      if (editMovement.movementType === MOVEMENT_TYPE.INTERNAL && editMovement.fromWarehouseId) {
-        const fromWarehouse = warehouses.find(w => w.id === editMovement.fromWarehouseId);
+      if (
+        editMovement.movementType === MOVEMENT_TYPE.INTERNAL &&
+        editMovement.fromWarehouseId
+      ) {
+        const fromWarehouse = warehouses.find(
+          (w) => w.id === editMovement.fromWarehouseId,
+        );
         if (fromWarehouse) {
           const isPvkj = editMovement.productType === PRODUCT_TYPE.PVKJ;
-          const currentBalance = parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
+          const currentBalance = parseFloat(
+            isPvkj
+              ? fromWarehouse.pvkjBalance || "0"
+              : fromWarehouse.currentBalance || "0",
+          );
           const movementKg = parseFloat(editMovement.quantityKg || "0");
           // Восстанавливаем баланс на момент создания сделки
           setInitialWarehouseBalance(currentBalance + movementKg);
@@ -103,17 +128,36 @@ export function MovementDialog({
         fromWarehouseId: editMovement.fromWarehouseId || "",
         toWarehouseId: editMovement.toWarehouseId,
         inputMode: "kg",
-        quantityLiters: editMovement.quantityLiters ? String(editMovement.quantityLiters) : undefined,
-        density: editMovement.density ? String(editMovement.density) : undefined,
-        quantityKg: editMovement.quantityKg ? String(editMovement.quantityKg) : undefined,
-        purchasePrice: editMovement.purchasePrice ? String(editMovement.purchasePrice) : "",
-        selectedPurchasePriceId: editMovement.purchasePriceId ? `${editMovement.purchasePriceId}-${editMovement.purchasePriceIndex || 0}` : "",
+        quantityLiters: editMovement.quantityLiters
+          ? String(editMovement.quantityLiters)
+          : undefined,
+        density: editMovement.density
+          ? String(editMovement.density)
+          : undefined,
+        quantityKg: editMovement.quantityKg
+          ? String(editMovement.quantityKg)
+          : undefined,
+        purchasePrice: editMovement.purchasePrice
+          ? String(editMovement.purchasePrice)
+          : "",
+        selectedPurchasePriceId: editMovement.purchasePriceId
+          ? `${editMovement.purchasePriceId}-${editMovement.purchasePriceIndex || 0}`
+          : "",
         purchasePriceId: editMovement.purchasePriceId || "",
         purchasePriceIndex: editMovement.purchasePriceIndex || 0,
         carrierId: editMovement.carrierId || "",
         notes: editMovement.notes || "",
       });
-      setSelectedPurchasePriceId(editMovement.purchasePriceId ? `${editMovement.purchasePriceId}-${editMovement.purchasePriceIndex || 0}` : "");
+
+      setSelectedPurchasePriceId(
+        editMovement.purchasePriceId
+          ? `${editMovement.purchasePriceId}-${editMovement.purchasePriceIndex || 0}`
+          : "",
+      );
+
+      setInitialQuantityKg(
+        isEditing ? parseFloat(editMovement.quantityKg || "0") : 0,
+      );
     } else {
       setInitialWarehouseBalance(0);
       form.reset({
@@ -135,6 +179,7 @@ export function MovementDialog({
         purchasePriceIndex: 0,
       });
       setSelectedPurchasePriceId("");
+      setInitialQuantityKg(0);
     }
   }, [editMovement, form, warehouses]);
 
@@ -187,6 +232,7 @@ export function MovementDialog({
     isEditing,
     selectedPurchasePriceId,
     setSelectedPurchasePriceId,
+    initialQuantityKg,
   });
 
   const availableCarriers = useAvailableCarriers({
@@ -227,12 +273,18 @@ export function MovementDialog({
     mutationFn: async (data: MovementFormData) => {
       validateForm();
 
-      const { purchasePriceId: extractedPriceId, purchasePriceIndex: extractedPriceIndex } = extractPriceIdsForSubmit(
+      const {
+        purchasePriceId: extractedPriceId,
+        purchasePriceIndex: extractedPriceIndex,
+      } = extractPriceIdsForSubmit(
         selectedPurchasePriceId,
         "",
-        prices.filter(p => p.id === (parsePriceCompositeId(selectedPurchasePriceId).priceId)),
+        prices.filter(
+          (p) =>
+            p.id === parsePriceCompositeId(selectedPurchasePriceId).priceId,
+        ),
         [],
-        false
+        false,
       );
 
       const payload = {
@@ -244,36 +296,52 @@ export function MovementDialog({
         fromWarehouseId: data.fromWarehouseId || null,
         toWarehouseId: data.toWarehouseId,
         carrierId: data.carrierId || null,
-        quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
+        quantityLiters: data.quantityLiters
+          ? parseFloat(data.quantityLiters)
+          : null,
         density: data.density ? parseFloat(data.density) : null,
         quantityKg: calculatedKg,
         purchasePrice: purchasePrice,
         purchasePriceId: extractedPriceId || null,
         purchasePriceIndex: extractedPriceIndex ?? 0,
-        deliveryPrice: deliveryCost > 0 && kgNum > 0 ? deliveryCost / kgNum : null,
+        deliveryPrice:
+          deliveryCost > 0 && kgNum > 0 ? deliveryCost / kgNum : null,
         deliveryCost: deliveryCost,
         totalCost: totalCost,
         costPerKg: costPerKg,
         notes: data.notes || null,
       };
-      const res = await apiRequest(isEditing ? "PATCH" : "POST", isEditing ? `/api/movement/${editMovement?.id}` : "/api/movement", payload);
+      const res = await apiRequest(
+        isEditing ? "PATCH" : "POST",
+        isEditing ? `/api/movement/${editMovement?.id}` : "/api/movement",
+        payload,
+      );
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/movement"] });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
-          return key?.includes('/api/warehouses/') && key?.includes('/transactions');
-        }
+          return (
+            key?.includes("/api/warehouses/") && key?.includes("/transactions")
+          );
+        },
       });
-      toast({ title: isEditing ? "Перемещение обновлено" : "Перемещение создано", description: "Запись успешно сохранена" });
+      toast({
+        title: isEditing ? "Перемещение обновлено" : "Перемещение создано",
+        description: "Запись успешно сохранена",
+      });
       form.reset();
       onOpenChange(false);
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -281,13 +349,20 @@ export function MovementDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Редактирование перемещения" : "Новое перемещение"}</DialogTitle>
+          <DialogTitle>
+            {isEditing ? "Редактирование перемещения" : "Новое перемещение"}
+          </DialogTitle>
           <DialogDescription>
-            {isEditing ? "Изменение существующей записи" : "Создание записи о поставке или внутреннем перемещении"}
+            {isEditing
+              ? "Изменение существующей записи"
+              : "Создание записи о поставке или внутреннем перемещении"}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-6">
+          <form
+            onSubmit={form.handleSubmit((data) => createMutation.mutate(data))}
+            className="space-y-6"
+          >
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               <MovementFormHeader form={form} />
               <MovementSourceSection
@@ -332,31 +407,52 @@ export function MovementDialog({
               setSelectedPurchasePriceId={setSelectedPurchasePriceId}
             />
 
-            <FormField control={form.control} name="notes" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Примечания</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="Дополнительная информация..." 
-                    data-testid="input-movement-notes" 
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Примечания</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Дополнительная информация..."
+                      data-testid="input-movement-notes"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="flex justify-end gap-4 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Отмена
+              </Button>
+              <Button
+                type="submit"
                 disabled={
-                  createMutation.isPending || 
-                  (watchMovementType === MOVEMENT_TYPE.INTERNAL && warehouseBalance.status === "error")
-                } 
+                  createMutation.isPending ||
+                  (watchMovementType === MOVEMENT_TYPE.INTERNAL &&
+                    warehouseBalance.status === "error")
+                }
                 data-testid="button-create-movement"
               >
-                {createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isEditing ? "Обновление..." : "Сохранение..."}</> : <><Plus className="mr-2 h-4 w-4" />{isEditing ? "Обновить" : "Создать"}</>}
+                {createMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isEditing ? "Обновление..." : "Сохранение..."}
+                  </>
+                ) : (
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
+                    {isEditing ? "Обновить" : "Создать"}
+                  </>
+                )}
               </Button>
             </div>
           </form>

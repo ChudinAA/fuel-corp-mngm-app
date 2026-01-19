@@ -38,6 +38,7 @@ interface UseMovementCalculationsProps {
   isEditing: boolean;
   selectedPurchasePriceId: string;
   setSelectedPurchasePriceId: (id: string) => void;
+  initialQuantityKg: number;
 }
 
 export function useMovementCalculations({
@@ -62,6 +63,7 @@ export function useMovementCalculations({
   isEditing,
   selectedPurchasePriceId,
   setSelectedPurchasePriceId,
+  initialQuantityKg,
 }: UseMovementCalculationsProps) {
   const watchSelectedPurchasePriceId =
     selectedPurchasePriceId || form?.watch("selectedPurchasePriceId") || "";
@@ -265,7 +267,7 @@ export function useMovementCalculations({
   const supplierContractVolumeStatus = useContractVolume({
     priceId: priceId || null,
     currentQuantityKg: kgNum,
-    isEditing: isEditing,
+    initialQuantityKg: initialQuantityKg,
     mode: "opt",
   });
 
