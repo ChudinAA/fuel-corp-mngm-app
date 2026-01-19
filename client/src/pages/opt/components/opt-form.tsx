@@ -184,6 +184,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     checkDuplicate,
     handleConfirm,
     handleCancel,
+    isChecking,
   } = useDuplicateCheck({
     type: "opt",
     getFields: () => ({

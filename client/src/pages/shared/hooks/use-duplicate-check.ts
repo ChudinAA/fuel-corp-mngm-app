@@ -17,6 +17,7 @@ export interface DuplicateCheckConfig {
 export function useDuplicateCheck({ type, getFields }: DuplicateCheckConfig) {
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
 
   const checkDuplicate = async (onConfirm: () => void) => {
     const fields = getFields();
@@ -36,6 +37,7 @@ export function useDuplicateCheck({ type, getFields }: DuplicateCheckConfig) {
       payload.refuelingDate = format(fields.date, "yyyy-MM-dd");
     }
 
+    setIsChecking(true);
     try {
       const res = await apiRequest("POST", endpoint, payload);
       const { isDuplicate } = await res.json();
@@ -49,6 +51,8 @@ export function useDuplicateCheck({ type, getFields }: DuplicateCheckConfig) {
     } catch (error) {
       console.error("Error checking duplicate:", error);
       onConfirm(); // Continue even if check fails
+    } finally {
+      setIsChecking(false);
     }
   };
 
@@ -71,5 +75,6 @@ export function useDuplicateCheck({ type, getFields }: DuplicateCheckConfig) {
     checkDuplicate,
     handleConfirm,
     handleCancel,
+    isChecking,
   };
 }
