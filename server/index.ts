@@ -5,7 +5,6 @@ import { createServer } from "http";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
-import { runMigrations } from "./migrate";
 
 const app = express();
 const httpServer = createServer(app);
@@ -88,16 +87,6 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Run migrations automatically on startup unless explicitly disabled
-  if (process.env.SKIP_MIGRATIONS !== "true") {
-    try {
-      await runMigrations();
-    } catch (e) {
-      console.error("CRITICAL: Migration failed on startup. Server will not start.", e);
-      process.exit(1);
-    }
-  }
-
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

@@ -18,7 +18,6 @@ import { z } from "zod";
 import { roles } from "./roles";
 
 // Session table for express-session storage
-// Note: Management is shared with connect-pg-simple
 export const session = pgTable("session", {
   sid: varchar("sid").primaryKey(),
   sess: jsonb("sess").notNull(),
@@ -71,7 +70,6 @@ export const loginSchema = z.object({
 // ============ TYPES ============
 
 export type User = typeof users.$inferSelect;
-export type Role = typeof roles.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type RegisterUser = z.infer<typeof registerUserSchema>;
 export type LoginCredentials = z.infer<typeof loginSchema>;
