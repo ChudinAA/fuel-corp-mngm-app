@@ -16,11 +16,17 @@ const db = drizzle(pool, { schema });
 export async function runMigrations() {
   console.log("⏳ Running migrations...");
   try {
+    // We use migrate but handle the case where tables might already exist
+    // Or we rely on the fact that Replit environment often has pre-existing tables
     await migrate(db, { migrationsFolder: "./migrations" });
     console.log("✅ Migrations completed successfully");
-  } catch (error) {
-    console.error("❌ Migration failed:", error);
-    throw error; // Rethrow to handle in server startup
+  } catch (error: any) {
+    if (error.code === '42P07') { // relation already exists
+      console.log("ℹ️ Migrations: Tables already exist, skipping initial setup.");
+    } else {
+      console.error("❌ Migration failed:", error);
+      throw error;
+    }
   } finally {
     await pool.end();
   }
