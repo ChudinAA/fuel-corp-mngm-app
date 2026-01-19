@@ -7,9 +7,13 @@ export interface MovementDialogProps {
   warehouses: Warehouse[];
   suppliers: AllSupplier[];
   carriers: any[];
+  vehicles: any[];
+  trailers: any[];
+  drivers: any[];
   prices: any[];
   deliveryCosts: any[];
   editMovement: Movement | null;
+  isCopy?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }

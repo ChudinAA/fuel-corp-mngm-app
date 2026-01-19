@@ -51,6 +51,7 @@ export function MovementDialog({
   prices,
   deliveryCosts,
   editMovement,
+  isCopy,
   open,
   onOpenChange,
 }: MovementDialogProps) {
@@ -58,7 +59,7 @@ export function MovementDialog({
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
     useState<string>("");
-  const isEditing = !!editMovement;
+  const isEditing = !!editMovement && !isCopy;
 
   const { data: allBases } = useQuery<any[]>({
     queryKey: ["/api/bases"],
@@ -98,6 +99,7 @@ export function MovementDialog({
     if (editMovement) {
       // При редактировании внутреннего перемещения вычисляем начальный баланс
       if (
+        !isCopy &&
         editMovement.movementType === MOVEMENT_TYPE.INTERNAL &&
         editMovement.fromWarehouseId
       ) {
@@ -350,12 +352,18 @@ export function MovementDialog({
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "Редактирование перемещения" : "Новое перемещение"}
+            {isCopy
+              ? "Копирование перемещения"
+              : isEditing
+                ? "Редактирование перемещения"
+                : "Новое перемещение"}
           </DialogTitle>
           <DialogDescription>
-            {isEditing
-              ? "Изменение существующей записи"
-              : "Создание записи о поставке или внутреннем перемещении"}
+            {isCopy
+              ? "Создание нового перемещения на основе существующего"
+              : isEditing
+                ? "Изменение существующей записи"
+                : "Создание записи о поставке или внутреннем перемещении"}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -449,8 +457,8 @@ export function MovementDialog({
                   </>
                 ) : (
                   <>
-                    <Plus className="mr-2 h-4 w-4" />
-                    {isEditing ? "Обновить" : "Создать"}
+                    {isEditing ? null : <Plus className="mr-2 h-4 w-4" />}
+                    {isEditing ? "Обновить" : "Создать перемещение"}
                   </>
                 )}
               </Button>

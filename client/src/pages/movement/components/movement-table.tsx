@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pencil, Trash2, FileText } from "lucide-react";
+import { Pencil, Trash2, FileText, Copy } from "lucide-react";
 import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -160,6 +160,13 @@ export function MovementTable({ data, isLoading, onEdit, onDelete, isDeleting }:
                         icon: Pencil,
                         onClick: () => onEdit(item),
                         permission: { module: "movement", action: "edit" },
+                      },
+                      {
+                        id: "copy",
+                        label: "Создать копию",
+                        icon: Copy,
+                        onClick: () => onEdit({ ...item, id: undefined } as any),
+                        permission: { module: "movement", action: "create" },
                       },
                       {
                         id: "notes",
