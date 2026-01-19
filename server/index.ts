@@ -90,11 +90,10 @@ app.use((req, res, next) => {
 (async () => {
   // Run migrations automatically on startup
   try {
-    // Use a separate try-catch to ensure migration errors don't stop the server
-    // but we should log them clearly
     await runMigrations();
   } catch (e) {
-    console.error("CRITICAL: Migration failed on startup:", e);
+    console.error("CRITICAL: Migration failed on startup. Server will not start.", e);
+    process.exit(1);
   }
 
   await registerRoutes(httpServer, app);
