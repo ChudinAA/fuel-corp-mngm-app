@@ -36,13 +36,14 @@ const allowlist = [
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
 
-  console.log("running migrations...");
-  try {
-    execSync("tsx server/migrate.ts", { stdio: "inherit" });
-  } catch (err) {
-    console.error("Migration failed during build:", err);
-    process.exit(1);
-  }
+  // Migrations are handled via db:push in Replit environment
+  // console.log("running migrations...");
+  // try {
+  //   execSync("tsx server/migrate.ts", { stdio: "inherit" });
+  // } catch (err) {
+  //   console.error("Migration failed during build:", err);
+  //   process.exit(1);
+  // }
 
   console.log("building client...");
   await viteBuild();
