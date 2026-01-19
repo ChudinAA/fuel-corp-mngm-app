@@ -12,4 +12,11 @@ export interface IAircraftRefuelingStorage {
   ): Promise<AircraftRefueling | undefined>;
   deleteRefueling(id: string): Promise<boolean>;
   getUsedVolumeByPrice(priceId: string): Promise<number>;
+  checkDuplicate(data: {
+    refuelingDate: string;
+    supplierId: string;
+    buyerId: string;
+    basis: string;
+    quantityKg: number;
+  }): Promise<boolean>;
 }

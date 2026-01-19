@@ -467,6 +467,27 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
     return parseFloat(result?.total || "0");
   }
 
+  async checkDuplicate(data: {
+    refuelingDate: string;
+    supplierId: string;
+    buyerId: string;
+    basis: string;
+    quantityKg: number;
+  }): Promise<boolean> {
+    const existing = await db.query.aircraftRefueling.findFirst({
+      where: and(
+        eq(aircraftRefueling.refuelingDate, new Date(data.refuelingDate)),
+        eq(aircraftRefueling.supplierId, data.supplierId),
+        eq(aircraftRefueling.buyerId, data.buyerId),
+        eq(aircraftRefueling.basis, data.basis),
+        eq(aircraftRefueling.quantityKg, data.quantityKg.toString()),
+        isNull(aircraftRefueling.deletedAt),
+        eq(aircraftRefueling.isDraft, false),
+      ),
+    });
+    return !!existing;
+  }
+
   async restoreRefueling(
     id: string,
     oldData: any,

@@ -446,6 +446,31 @@ export class OptStorage implements IOptStorage {
     return total;
   }
 
+  async checkDuplicate(data: {
+    dealDate: string;
+    supplierId: string;
+    buyerId: string;
+    basis?: string | null;
+    deliveryLocationId?: string | null;
+    quantityKg: number;
+  }): Promise<boolean> {
+    const existing = await db.query.opt.findFirst({
+      where: and(
+        eq(opt.dealDate, new Date(data.dealDate)),
+        eq(opt.supplierId, data.supplierId),
+        eq(opt.buyerId, data.buyerId),
+        data.basis ? eq(opt.basis, data.basis) : isNull(opt.basis),
+        data.deliveryLocationId
+          ? eq(opt.deliveryLocationId, data.deliveryLocationId)
+          : isNull(opt.deliveryLocationId),
+        eq(opt.quantityKg, data.quantityKg.toString()),
+        isNull(opt.deletedAt),
+        eq(opt.isDraft, false),
+      ),
+    });
+    return !!existing;
+  }
+
   async restoreOpt(
     id: string,
     oldData: any,

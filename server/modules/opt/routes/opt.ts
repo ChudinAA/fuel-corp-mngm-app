@@ -51,6 +51,20 @@ export function registerOptRoutes(app: Express) {
   );
 
   app.post(
+    "/api/opt/check-duplicate",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const isDuplicate = await storage.opt.checkDuplicate(req.body);
+        res.json({ isDuplicate });
+      } catch (error) {
+        console.error("Error checking duplicate opt deal:", error);
+        res.status(500).json({ message: "Ошибка проверки дубликата" });
+      }
+    }
+  );
+
+  app.post(
     "/api/opt",
     requireAuth,
     requirePermission("opt", "create"),

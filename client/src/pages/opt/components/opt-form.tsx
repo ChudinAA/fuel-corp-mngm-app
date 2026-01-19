@@ -39,8 +39,21 @@ import { BASE_TYPE } from "@shared/constants";
 import { useAutoPriceSelection } from "../../shared/hooks/use-auto-price-selection";
 import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 export function OptForm({ onSuccess, editData }: OptFormProps) {
   const { toast } = useToast();
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [pendingData, setPendingData] = useState<{data: OptFormData, isDraftSubmit?: boolean} | null>(null);
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
   const [selectedBasis, setSelectedBasis] = useState<string>("");
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
@@ -459,7 +472,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     },
   });
 
-  const onSubmit = (data: OptFormData, isDraftSubmit?: boolean) => {
+  const onSubmit = async (data: OptFormData, isDraftSubmit?: boolean) => {
     const isDraft = isDraftSubmit ?? data.isDraft;
 
     // Если это не черновик, выполняем полную валидацию
@@ -547,12 +560,45 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     if (editData && editData.id) {
       updateMutation.mutate({ ...data, isDraft, id: editData.id });
     } else {
+      // Проверка на дубликаты перед созданием (только для новых сделок или перехода из черновика)
+      const isNewDeal = !isEditing;
+      const isPublishingDraft = editData?.isDraft && !isDraft;
+
+      if ((isNewDeal || isPublishingDraft) && !isDraft) {
+        try {
+          const res = await apiRequest("POST", "/api/opt/check-duplicate", {
+            dealDate: data.dealDate ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
+            supplierId: data.supplierId,
+            buyerId: data.buyerId,
+            basis: selectedBasis,
+            deliveryLocationId: data.deliveryLocationId,
+            quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
+          });
+          const { isDuplicate } = await res.json();
+          if (isDuplicate) {
+            setPendingData({ data, isDraftSubmit });
+            setShowDuplicateDialog(true);
+            return;
+          }
+        } catch (error) {
+          console.error("Error checking duplicate:", error);
+        }
+      }
       createMutation.mutate({ ...data, isDraft });
     }
   };
 
+  const confirmDuplicate = () => {
+    if (pendingData) {
+      createMutation.mutate({ ...pendingData.data, isDraft: pendingData.isDraftSubmit ?? pendingData.data.isDraft });
+      setPendingData(null);
+      setShowDuplicateDialog(false);
+    }
+  };
+
   return (
-    <Form {...form}>
+    <>
+      <Form {...form}>
       <form
         onSubmit={form.handleSubmit((data) => onSubmit(data))}
         className="space-y-6"
@@ -692,5 +738,21 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         </div>
       </form>
     </Form>
+
+    <AlertDialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Идентичная сделка уже существует</AlertDialogTitle>
+          <AlertDialogDescription>
+            В системе уже есть сделка с такими же параметрами (дата, поставщик, покупатель, базис, место доставки и объем). Продолжить создание?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setPendingData(null)}>Отмена</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmDuplicate}>Продолжить</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

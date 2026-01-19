@@ -56,6 +56,20 @@ export function registerRefuelingOperationsRoutes(app: Express) {
   );
 
   app.post(
+    "/api/refueling/check-duplicate",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const isDuplicate = await storage.aircraftRefueling.checkDuplicate(req.body);
+        res.json({ isDuplicate });
+      } catch (error) {
+        console.error("Error checking duplicate refueling:", error);
+        res.status(500).json({ message: "Ошибка проверки дубликата" });
+      }
+    }
+  );
+
+  app.post(
     "/api/refueling",
     requireAuth,
     requirePermission("refueling", "create"),
