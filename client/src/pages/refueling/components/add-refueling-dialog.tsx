@@ -7,19 +7,26 @@ export function AddRefuelingDialog({
   isOpen,
   onClose,
   editRefueling,
+  isCopy,
 }: AddRefuelingDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[800px] h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editRefueling ? "Редактирование заправки" : "Новая заправка ВС"}</DialogTitle>
+          <DialogTitle>
+            {isCopy ? "Копирование заправки" : editRefueling ? "Редактирование заправки" : "Новая заправка ВС"}
+          </DialogTitle>
           <DialogDescription>
-            {editRefueling ? "Измените данные существующей заправки" : "Заполните данные для создания новой заправки ВС"}
+            {isCopy 
+              ? "Создание новой заправки на основе существующей" 
+              : editRefueling 
+                ? "Измените данные существующей заправки" 
+                : "Заполните данные для создания новой заправки ВС"}
           </DialogDescription>
         </DialogHeader>
         <RefuelingForm 
           onSuccess={onClose} 
-          editData={editRefueling}
+          editData={editRefueling ? (isCopy ? { ...editRefueling, id: undefined as any } : editRefueling) : null}
         />
       </DialogContent>
     </Dialog>

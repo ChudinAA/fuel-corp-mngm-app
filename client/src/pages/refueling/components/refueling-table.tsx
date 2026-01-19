@@ -26,6 +26,7 @@ import {
   FileText,
   AlertCircle,
   History,
+  Copy,
 } from "lucide-react";
 import { AuditHistoryButton } from "@/components/audit-history-button";
 import {
@@ -68,15 +69,24 @@ import { ExportButton } from "@/components/export/export-button";
 interface RefuelingDealActionsProps {
   deal: any;
   onEdit: () => void;
+  onCopy: () => void;
   onDelete: () => void;
 }
 
 function RefuelingDealActions({
   deal,
   onEdit,
+  onCopy,
   onDelete,
 }: RefuelingDealActionsProps) {
   const actions: EntityAction[] = [
+    {
+      id: "copy",
+      label: "Создать копию",
+      icon: Copy,
+      onClick: onCopy,
+      permission: { module: "refueling", action: "create" },
+    },
     {
       id: "edit",
       label: "Редактировать",
@@ -109,10 +119,11 @@ function RefuelingDealActions({
 
 interface RefuelingTableProps {
   onEdit: (refueling: any) => void;
+  onCopy: (refueling: any) => void;
   onDelete?: () => void;
 }
 
-export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
+export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps) {
   const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
   const { hasPermission } = useAuth();
   const {
@@ -383,6 +394,7 @@ export function RefuelingTable({ onEdit, onDelete }: RefuelingTableProps) {
                     <RefuelingDealActions
                       deal={deal}
                       onEdit={() => onEdit(deal)}
+                      onCopy={() => onCopy(deal)}
                       onDelete={() => {
                         setDealToDelete(deal);
                         setDeleteDialogOpen(true);

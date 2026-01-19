@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 export default function RefuelingPage() {
   const [editingRefueling, setEditingRefueling] = useState<AircraftRefueling | null>(null);
+  const [isCopy, setIsCopy] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [productTypeFilter] = useState<string>("all");
@@ -26,15 +27,24 @@ export default function RefuelingPage() {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingRefueling(null);
+    setIsCopy(false);
   };
 
   const handleOpenDialog = () => {
     setEditingRefueling(null);
+    setIsCopy(false);
     setIsDialogOpen(true);
   };
 
   const handleEditRefueling = (refueling: AircraftRefueling) => {
     setEditingRefueling(refueling);
+    setIsCopy(false);
+    setIsDialogOpen(true);
+  };
+
+  const handleCopyRefueling = (refueling: AircraftRefueling) => {
+    setEditingRefueling(refueling);
+    setIsCopy(true);
     setIsDialogOpen(true);
   };
 
@@ -76,6 +86,7 @@ export default function RefuelingPage() {
         isOpen={isDialogOpen}
         onClose={handleCloseDialog}
         editRefueling={editingRefueling}
+        isCopy={isCopy}
       />
 
       <Card>
@@ -104,6 +115,7 @@ export default function RefuelingPage() {
               <ScrollArea className="flex-1">
                 <RefuelingTable 
                   onEdit={handleEditRefueling}
+                  onCopy={handleCopyRefueling}
                   onDelete={handleRefuelingDeleted}
                 />
               </ScrollArea>
@@ -113,6 +125,7 @@ export default function RefuelingPage() {
         <CardContent>
           <RefuelingTable 
             onEdit={handleEditRefueling}
+            onCopy={handleCopyRefueling}
             onDelete={handleRefuelingDeleted}
             productTypeFilter={productTypeFilter}
           />

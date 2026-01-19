@@ -25,6 +25,7 @@ import {
   FileText,
   AlertCircle,
   History,
+  Copy,
 } from "lucide-react";
 import {
   Dialog,
@@ -54,13 +55,15 @@ import { Badge } from "@/components/ui/badge";
 
 interface OptTableProps {
   onEdit: (opt: any) => void;
+  onCopy: (opt: any) => void;
   onDelete?: () => void;
-  onAdd?: () => void; // Added onAdd prop for consistency with the change snippet
+  onAdd?: () => void;
 }
 
 interface OptDealActionsProps {
   deal: any;
   onEdit: () => void;
+  onCopy: () => void;
   onDelete: () => void;
   onShowNotes?: () => void;
 }
@@ -68,6 +71,7 @@ interface OptDealActionsProps {
 function OptDealActions({
   deal,
   onEdit,
+  onCopy,
   onDelete,
   onShowNotes,
 }: OptDealActionsProps) {
@@ -82,6 +86,13 @@ function OptDealActions({
           },
         ]
       : []),
+    {
+      id: "copy",
+      label: "Создать копию",
+      icon: Copy,
+      onClick: onCopy,
+      permission: { module: "opt", action: "create" },
+    },
     {
       id: "edit",
       label: "Редактировать",
@@ -112,7 +123,7 @@ function OptDealActions({
   );
 }
 
-export function OptTable({ onEdit, onDelete, onAdd }: OptTableProps) {
+export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
   const {
     page,
     setPage,
@@ -376,6 +387,7 @@ export function OptTable({ onEdit, onDelete, onAdd }: OptTableProps) {
                     <OptDealActions
                       deal={deal}
                       onEdit={() => onEdit(deal)}
+                      onCopy={() => onCopy(deal)}
                       onDelete={() => {
                         setDealToDelete(deal);
                         setDeleteDialogOpen(true);

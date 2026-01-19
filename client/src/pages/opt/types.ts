@@ -10,6 +10,7 @@ export interface AddOptDialogProps {
   isOpen: boolean;
   onClose: () => void;
   editOpt: Opt | null;
+  isCopy?: boolean;
 }
 
 export interface CalculatedFieldProps {

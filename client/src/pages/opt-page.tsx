@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 export default function OptPage() {
   const [editingOpt, setEditingOpt] = useState<Opt | null>(null);
+  const [isCopy, setIsCopy] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const queryClient = useQueryClient();
@@ -26,15 +27,24 @@ export default function OptPage() {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingOpt(null);
+    setIsCopy(false);
   };
 
   const handleOpenDialog = () => {
     setEditingOpt(null);
+    setIsCopy(false);
     setIsDialogOpen(true);
   };
 
   const handleEditOpt = (opt: Opt) => {
     setEditingOpt(opt);
+    setIsCopy(false);
+    setIsDialogOpen(true);
+  };
+
+  const handleCopyOpt = (opt: Opt) => {
+    setEditingOpt(opt);
+    setIsCopy(true);
     setIsDialogOpen(true);
   };
 
@@ -76,6 +86,7 @@ export default function OptPage() {
         isOpen={isDialogOpen}
         onClose={handleCloseDialog}
         editOpt={editingOpt}
+        isCopy={isCopy}
       />
 
       <Card>
@@ -102,6 +113,7 @@ export default function OptPage() {
               <ScrollArea className="flex-1">
                 <OptTable
                   onEdit={handleEditOpt}
+                  onCopy={handleCopyOpt}
                   onDelete={handleOptDeleted}
                 />
               </ScrollArea>
@@ -111,6 +123,7 @@ export default function OptPage() {
         <CardContent>
           <OptTable
             onEdit={handleEditOpt}
+            onCopy={handleCopyOpt}
             onDelete={handleOptDeleted}
           />
         </CardContent>

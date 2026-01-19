@@ -10,6 +10,7 @@ export interface AddRefuelingDialogProps {
   isOpen: boolean;
   onClose: () => void;
   editRefueling: AircraftRefueling | null;
+  isCopy?: boolean;
 }
 
 export interface CalculatedFieldProps {
