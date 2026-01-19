@@ -21,6 +21,7 @@ export default function MovementPage() {
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [productFilter, setProductFilter] = useState<string | null>(null);
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
+  const [isCopy, setIsCopy] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
@@ -125,11 +126,13 @@ export default function MovementPage() {
 
   const handleEditClick = (movement: Movement) => {
     setEditingMovement(movement);
+    setIsCopy(!!movement && !movement.id);
     setIsDialogOpen(true);
   };
 
   const handleOpenDialog = () => {
     setEditingMovement(null);
+    setIsCopy(false);
     setIsDialogOpen(true);
   };
 
@@ -155,6 +158,7 @@ export default function MovementPage() {
         prices={prices || []}
         deliveryCosts={deliveryCosts || []}
         editMovement={editingMovement}
+        isCopy={isCopy}
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
       />
