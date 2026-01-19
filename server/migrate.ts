@@ -19,6 +19,10 @@ export async function runMigrations() {
     await migrate(db, { migrationsFolder: "./migrations" });
     console.log("✅ Migrations completed successfully");
   } catch (error: any) {
+    if (error.code === '42P07') { // relation already exists
+      console.log("ℹ️ Migrations: Tables already exist. This usually happens when the database was synced via db:push but the migrations metadata table is missing or out of sync. Skipping initial schema creation.");
+      return;
+    }
     console.error("❌ Migration failed:", error);
     throw error;
   } finally {
