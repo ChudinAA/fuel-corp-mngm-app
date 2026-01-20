@@ -1,3 +1,4 @@
+import { Combobox } from "@/components/ui/combobox";
 import { useState } from "react";
 import * as React from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -289,38 +290,32 @@ export function AddDeliveryCostDialog({
               control={form.control}
               name="carrierId"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="col-span-1 min-w-0">
                   <FormLabel>Перевозчик</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-delivery-carrier">
-                        <SelectValue placeholder="Выберите перевозчика" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {carriers?.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      )) || (
-                        <SelectItem value="none" disabled>
-                          Нет данных
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <div className="w-full">
+                      <Combobox
+                        options={carriers?.map((c) => ({ value: c.id, label: c.name })) || []}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Выберите перевозчика"
+                        className="w-full"
+                        dataTestId="select-delivery-carrier"
+                      />
+                    </div>
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 items-end">
+              <div className="space-y-4 col-span-1 min-w-0">
                 <FormField
                   control={form.control}
                   name="fromEntityType"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="col-span-1 min-w-0">
                       <FormLabel>Откуда (тип)</FormLabel>
                       <Select
                         onValueChange={(value) => {
@@ -351,45 +346,41 @@ export function AddDeliveryCostDialog({
                   control={form.control}
                   name="fromEntityId"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="col-span-1 min-w-0">
                       <FormLabel>Пункт отправления</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={!watchFromEntityType}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-delivery-from">
-                            <SelectValue placeholder="Выберите пункт" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {fromEntities.map((entity) => (
-                            <SelectItem key={entity.id} value={entity.id}>
-                              <div className="flex items-center gap-2">
-                                <span>{entity.name}</span>
-                                <BaseTypeBadge type={entity.baseType} short={true} />
-                              </div>
-                            </SelectItem>
-                          ))}
-                          {fromEntities.length === 0 && (
-                            <SelectItem value="none" disabled>
-                              Нет данных
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <div className="w-full">
+                          <Combobox
+                            options={fromEntities.map((entity) => ({
+                              value: entity.id,
+                              label: entity.name,
+                              render: (
+                                <div className="flex items-center gap-2">
+                                  <span>{entity.name}</span>
+                                  <BaseTypeBadge type={entity.baseType} short={true} />
+                                </div>
+                              )
+                            }))}
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            disabled={!watchFromEntityType}
+                            placeholder="Выберите пункт"
+                            className="w-full"
+                            dataTestId="select-delivery-from"
+                          />
+                        </div>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              <div className="space-y-4">
+              <div className="space-y-4 col-span-1 min-w-0">
                 <FormField
                   control={form.control}
                   name="toEntityType"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="col-span-1 min-w-0">
                       <FormLabel>Куда (тип)</FormLabel>
                       <Select
                         onValueChange={(value) => {
@@ -420,34 +411,30 @@ export function AddDeliveryCostDialog({
                   control={form.control}
                   name="toEntityId"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="col-span-1 min-w-0">
                       <FormLabel>Пункт назначения</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={!watchToEntityType}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-delivery-to">
-                            <SelectValue placeholder="Выберите пункт" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {toEntities.map((entity) => (
-                            <SelectItem key={entity.id} value={entity.id}>
-                              <div className="flex items-center gap-2">
-                                <span>{entity.name}</span>
-                                <BaseTypeBadge type={entity.baseType} short={true} />
-                              </div>
-                            </SelectItem>
-                          ))}
-                          {toEntities.length === 0 && (
-                            <SelectItem value="none" disabled>
-                              Нет данных
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <div className="w-full">
+                          <Combobox
+                            options={toEntities.map((entity) => ({
+                              value: entity.id,
+                              label: entity.name,
+                              render: (
+                                <div className="flex items-center gap-2">
+                                  <span>{entity.name}</span>
+                                  <BaseTypeBadge type={entity.baseType} short={true} />
+                                </div>
+                              )
+                            }))}
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            disabled={!watchToEntityType}
+                            placeholder="Выберите пункт"
+                            className="w-full"
+                            dataTestId="select-delivery-to"
+                          />
+                        </div>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

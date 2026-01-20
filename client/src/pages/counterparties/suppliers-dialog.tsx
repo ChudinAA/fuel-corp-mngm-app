@@ -1,3 +1,4 @@
+import { Combobox } from "@/components/ui/combobox";
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -281,28 +282,27 @@ export function AddSupplierDialog({
                 </Button>
               </div>
               {fields.map((field, index) => (
-                <div key={field.id} className="flex gap-2">
-                  <div className="flex-1">
-                    <Select
+                <div key={field.id} className="flex gap-2 items-center">
+                  <div className="flex-1 min-w-0">
+                    <Combobox
+                      options={bases.map((b) => ({
+                        value: b.id,
+                        label: b.name,
+                        render: (
+                          <div className="flex items-center gap-2">
+                            {b.name}
+                            <BaseTypeBadge type={b.baseType} />
+                          </div>
+                        )
+                      }))}
                       value={form.watch(`baseIds.${index}`) || ""}
                       onValueChange={(value) =>
                         form.setValue(`baseIds.${index}`, value)
                       }
-                    >
-                      <SelectTrigger data-testid={`select-base-${index}`}>
-                        <SelectValue placeholder="Выберите базис" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {bases.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>
-                            <div className="flex items-center gap-2">
-                              {b.name}
-                              <BaseTypeBadge type={b.baseType} />
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Выберите базис"
+                      className="w-full"
+                      dataTestId={`select-base-${index}`}
+                    />
                     {form.formState.errors.baseIds?.[index] && (
                       <p className="text-sm text-destructive mt-1">
                         {form.formState.errors.baseIds[index]?.message}
@@ -315,6 +315,7 @@ export function AddSupplierDialog({
                       variant="ghost"
                       size="icon"
                       onClick={() => remove(index)}
+                      className="shrink-0 h-9 w-9"
                     >
                       <X className="h-4 w-4" />
                     </Button>

@@ -1,3 +1,4 @@
+import { Combobox } from "@/components/ui/combobox";
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -524,28 +525,29 @@ export function AddLogisticsDialog({
                   control={form.control}
                   name="baseId"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="col-span-1 min-w-0">
                       <FormLabel>Базис</FormLabel>
-                      <Select
-                        onValueChange={(v) => field.onChange(v || undefined)}
-                        value={field.value || ""}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-logistics-base">
-                            <SelectValue placeholder="Выберите базис" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {bases.map((b) => (
-                            <SelectItem key={b.id} value={b.id}>
-                              <div className="flex items-center gap-2">
-                                {b.name}
-                                <BaseTypeBadge type={b.baseType} />
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <div className="w-full">
+                          <Combobox
+                            options={bases.map((b) => ({
+                              value: b.id,
+                              label: b.name,
+                              render: (
+                                <div className="flex items-center gap-2">
+                                  {b.name}
+                                  <BaseTypeBadge type={b.baseType} />
+                                </div>
+                              )
+                            }))}
+                            value={field.value || ""}
+                            onValueChange={(v) => field.onChange(v || undefined)}
+                            placeholder="Выберите базис"
+                            className="w-full"
+                            dataTestId="select-logistics-base"
+                          />
+                        </div>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

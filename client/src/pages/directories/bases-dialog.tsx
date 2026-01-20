@@ -1,3 +1,4 @@
+import { Combobox } from "@/components/ui/combobox";
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -195,21 +196,23 @@ export function AddBaseDialog({
               control={form.control}
               name="baseType"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="col-span-1 min-w-0">
                   <FormLabel>Тип базиса</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-base-type">
-                        <SelectValue placeholder="Выберите тип" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value={BASE_TYPE.WHOLESALE}>ОПТ</SelectItem>
-                      <SelectItem value={BASE_TYPE.REFUELING}>
-                        Заправка
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <div className="w-full">
+                      <Combobox
+                        options={[
+                          { value: BASE_TYPE.WHOLESALE, label: "ОПТ" },
+                          { value: BASE_TYPE.REFUELING, label: "Заправка" }
+                        ]}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Выберите тип"
+                        className="w-full"
+                        dataTestId="select-base-type"
+                      />
+                    </div>
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
