@@ -65,13 +65,13 @@ export function Combobox({
               <span className="text-muted-foreground truncate">{placeholder}</span>
             )}
           </div>
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50 ml-0.5" />
+          <ChevronDown className="h-3 w-3 shrink-0 opacity-50 ml-0.5" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command className="flex flex-col max-h-[300px]">
+        <Command className="flex flex-col">
           <CommandInput placeholder="Поиск..." />
-          <CommandList className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40">
+          <CommandList className="max-h-[300px] overflow-y-auto overflow-x-hidden scrollbar-thin">
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
