@@ -69,7 +69,7 @@ export function OptMainFields({
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-4">
+    <div className="grid gap-2 md:grid-cols-4">
       <FormField
         control={form.control}
         name="dealDate"
@@ -109,9 +109,9 @@ export function OptMainFields({
         control={form.control}
         name="supplierId"
         render={({ field }) => (
-          <FormItem>
+          <FormItem className="col-span-1">
             <FormLabel>Поставщик</FormLabel>
-            <div className="flex gap-1">
+            <div className="flex gap-1 items-center">
               <FormControl>
                 <Combobox
                   options={wholesaleSuppliers.map(s => ({ value: s.id, label: s.name }))}
@@ -129,6 +129,7 @@ export function OptMainFields({
                   variant="outline"
                   onClick={() => setAddSupplierOpen(true)}
                   data-testid="button-add-supplier-inline"
+                  className="shrink-0"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -142,36 +143,36 @@ export function OptMainFields({
       {selectedSupplier &&
       selectedSupplier.baseIds &&
       selectedSupplier.baseIds.length > 0 ? (
-          <FormField
-            control={form.control}
-            name="basis"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Базис</FormLabel>
-                <FormControl>
-                  <Combobox
-                    options={selectedSupplier.baseIds.map((baseId) => {
-                      const base = wholesaleBases?.find((b) => b.id === baseId);
-                      return base ? { value: base.name, label: base.name } : null;
-                    }).filter(Boolean) as any}
-                    value={field.value || selectedBasis}
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      const base = wholesaleBases?.find((b) => b.name === value);
-                      if (base) setSelectedBasis(base.name);
-                    }}
-                    placeholder="Выберите базис"
-                    dataTestId="select-basis"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <FormField
+          control={form.control}
+          name="basis"
+          render={({ field }) => (
+            <FormItem className="col-span-1">
+              <FormLabel>Базис</FormLabel>
+              <FormControl>
+                <Combobox
+                  options={selectedSupplier.baseIds.map((baseId) => {
+                    const base = wholesaleBases?.find((b) => b.id === baseId);
+                    return base ? { value: base.name, label: base.name } : null;
+                  }).filter(Boolean) as any}
+                  value={field.value || selectedBasis}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    const base = wholesaleBases?.find((b) => b.name === value);
+                    if (base) setSelectedBasis(base.name);
+                  }}
+                  placeholder="Выберите базис"
+                  dataTestId="select-basis"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       ) : (
-        <div className="space-y-2">
-          <label className="text-sm font-medium flex items-center">Базис</label>
-          <div className="flex items-center gap-2 h-10 px-3 bg-muted rounded-md">
+        <div className="space-y-2 col-span-1">
+          <label className="text-sm font-medium flex items-center h-5">Базис</label>
+          <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md text-sm">
             {selectedBasis || "—"}
           </div>
         </div>
@@ -181,9 +182,9 @@ export function OptMainFields({
         control={form.control}
         name="buyerId"
         render={({ field }) => (
-          <FormItem>
+          <FormItem className="col-span-1">
             <FormLabel>Покупатель</FormLabel>
-            <div className="flex gap-1">
+            <div className="flex gap-1 items-center">
               <FormControl>
                 <Combobox
                   options={(customers || [])
@@ -207,6 +208,7 @@ export function OptMainFields({
                   variant="outline"
                   onClick={() => setAddCustomerOpen(true)}
                   data-testid="button-add-customer-inline"
+                  className="shrink-0"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>

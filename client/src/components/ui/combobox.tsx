@@ -78,7 +78,8 @@ export function Combobox({
                   key={option.value}
                   value={option.label}
                   onSelect={() => {
-                    onValueChange(option.value === value ? "" : option.value)
+                    const newValue = option.value === value ? "" : option.value;
+                    onValueChange(newValue)
                     setOpen(false)
                   }}
                   className="flex items-center justify-between"
