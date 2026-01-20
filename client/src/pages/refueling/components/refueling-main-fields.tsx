@@ -1,3 +1,4 @@
+import { Combobox } from "@/components/ui/combobox";
 import {
   FormField,
   FormItem,
@@ -175,32 +176,21 @@ export function RefuelingMainFields({
           control={form.control}
           name="supplierId"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="col-span-1 min-w-0">
               <FormLabel>Поставщик</FormLabel>
-              <div className="flex gap-1">
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger
-                      data-testid="select-supplier"
-                      className="flex-1"
-                    >
-                      <SelectValue placeholder="Выберите поставщика" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {refuelingSuppliers.length > 0 ? (
-                      refuelingSuppliers.map((supplier) => (
-                        <SelectItem key={supplier.id} value={supplier.id}>
-                          {supplier.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="none" disabled>
-                        Нет данных
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+              <div className="flex gap-1 items-center w-full">
+                <FormControl>
+                  <div className="flex-1 min-w-0">
+                    <Combobox
+                      options={refuelingSuppliers.map(s => ({ value: s.id, label: s.name }))}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Выберите поставщика"
+                      className="w-full"
+                      dataTestId="select-supplier"
+                    />
+                  </div>
+                </FormControl>
                 {hasPermission("directories", "create") && (
                   <Button
                     type="button"
@@ -208,6 +198,7 @@ export function RefuelingMainFields({
                     variant="outline"
                     onClick={() => setAddSupplierOpen(true)}
                     data-testid="button-add-supplier-inline"
+                    className="shrink-0 h-9 w-9"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -222,36 +213,27 @@ export function RefuelingMainFields({
           control={form.control}
           name="buyerId"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="col-span-1 min-w-0">
               <FormLabel>Покупатель</FormLabel>
-              <div className="flex gap-1">
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger
-                      data-testid="select-buyer"
-                      className="flex-1"
-                    >
-                      <SelectValue placeholder="Выберите покупателя" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {customers
-                      ?.filter(
-                        (c) =>
-                          c.module === CUSTOMER_MODULE.REFUELING ||
-                          c.module === CUSTOMER_MODULE.BOTH,
-                      )
-                      .map((buyer) => (
-                        <SelectItem key={buyer.id} value={buyer.id}>
-                          {buyer.name}
-                        </SelectItem>
-                      )) || (
-                      <SelectItem value="none" disabled>
-                        Нет данных
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+              <div className="flex gap-1 items-center w-full">
+                <FormControl>
+                  <div className="flex-1 min-w-0">
+                    <Combobox
+                      options={(customers || [])
+                        ?.filter(
+                          (c) =>
+                            c.module === CUSTOMER_MODULE.REFUELING ||
+                            c.module === CUSTOMER_MODULE.BOTH,
+                        )
+                        .map(c => ({ value: c.id, label: c.name }))}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Выберите покупателя"
+                      className="w-full"
+                      dataTestId="select-buyer"
+                    />
+                  </div>
+                </FormControl>
                 {hasPermission("directories", "create") && (
                   <Button
                     type="button"
@@ -259,6 +241,7 @@ export function RefuelingMainFields({
                     variant="outline"
                     onClick={() => setAddCustomerOpen(true)}
                     data-testid="button-add-customer-inline"
+                    className="shrink-0 h-9 w-9"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -276,44 +259,36 @@ export function RefuelingMainFields({
             control={form.control}
             name="basis"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="col-span-1 min-w-0">
                 <FormLabel>Базис</FormLabel>
-                <Select
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    setSelectedBasis(value);
-                  }}
-                  value={field.value || selectedBasis}
-                  disabled={availableBases.length === 0}
-                >
-                  <FormControl>
-                    <SelectTrigger data-testid="select-basis">
-                      <SelectValue placeholder="Выберите базис" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {availableBases.map((base) => (
-                      <SelectItem key={base.id} value={base.name}>
-                        {base.name}
-                      </SelectItem>
-                    ))}
-                    {availableBases.length === 0 && (
-                      <SelectItem value="none" disabled>
-                        Нет данных
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <div className="w-full">
+                    <Combobox
+                      options={availableBases.map((base) => ({
+                        value: base.name,
+                        label: base.name
+                      }))}
+                      value={field.value || selectedBasis}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        setSelectedBasis(value);
+                      }}
+                      placeholder="Выберите базис"
+                      dataTestId="select-basis"
+                      className="w-full"
+                    />
+                  </div>
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
         ) : (
-          <div className="space-y-2">
-            <label className="text-sm font-medium flex items-center">
+          <div className="space-y-2 col-span-1 min-w-0">
+            <label className="text-sm font-medium flex items-center h-5">
               Базис
             </label>
-            <div className="flex items-center gap-2 h-10 px-3 bg-muted rounded-md">
+            <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md text-sm overflow-hidden truncate">
               {selectedBasis || "—"}
             </div>
           </div>
