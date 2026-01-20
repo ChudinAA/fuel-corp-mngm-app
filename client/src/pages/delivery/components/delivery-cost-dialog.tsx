@@ -346,9 +346,9 @@ export function AddDeliveryCostDialog({
                         <SelectContent>
                           {fromEntities.map((entity) => (
                             <SelectItem key={entity.id} value={entity.id}>
-                              <div className="flex items-center justify-between w-full gap-2">
+                              <div className="flex items-center gap-2">
                                 <span>{entity.name}</span>
-                                <BaseTypeBadge type={entity.type} short={true} />
+                                <BaseTypeBadge type={entity.baseType} short={true} />
                               </div>
                             </SelectItem>
                           ))}
@@ -415,9 +415,9 @@ export function AddDeliveryCostDialog({
                         <SelectContent>
                           {toEntities.map((entity) => (
                             <SelectItem key={entity.id} value={entity.id}>
-                              <div className="flex items-center justify-between w-full gap-2">
+                              <div className="flex items-center gap-2">
                                 <span>{entity.name}</span>
-                                <BaseTypeBadge type={entity.type} short={true} />
+                                <BaseTypeBadge type={entity.baseType} short={true} />
                               </div>
                             </SelectItem>
                           ))}
