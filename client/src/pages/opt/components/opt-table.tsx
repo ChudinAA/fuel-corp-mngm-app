@@ -199,12 +199,19 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
   const getUniqueOptions = (key: string) => {
     const values = new Set<string>();
     deals.forEach((deal: any) => {
-      const val = key.includes('.') 
-        ? key.split('.').reduce((obj, k) => obj?.[k], deal)
-        : deal[key];
-      if (val) values.add(typeof val === 'object' ? val.name : val);
+      let val;
+      if (key === 'dealDate') {
+        val = formatDate(deal.dealDate);
+      } else if (key.includes('.')) {
+        val = key.split('.').reduce((obj, k) => obj?.[k], deal);
+      } else {
+        val = deal[key];
+      }
+      
+      const label = typeof val === 'object' ? val?.name : val;
+      if (label) values.add(label);
     });
-    return Array.from(values).map(v => ({ label: v, value: v }));
+    return Array.from(values).sort().map(v => ({ label: v, value: v }));
   };
 
   const handleFilterUpdate = (columnId: string, values: string[]) => {
@@ -257,14 +264,21 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="text-sm font-semibold">
-                <div className="flex items-center gap-1">
-                  Дата
+              <TableHead className="text-sm font-semibold p-1 md:p-2 w-[100px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span>Дата</span>
+                  <TableColumnFilter
+                    title="Дата"
+                    options={getUniqueOptions("dealDate")}
+                    selectedValues={columnFilters["date"] || []}
+                    onUpdate={(values) => handleFilterUpdate("date", values)}
+                    dataTestId="filter-date"
+                  />
                 </div>
               </TableHead>
-              <TableHead className="text-sm font-semibold">
+              <TableHead className="text-sm font-semibold p-1 md:p-2">
                 <div className="flex items-center justify-between gap-1">
-                  <span>Поставщик</span>
+                  <span className="truncate max-w-[80px] md:max-w-none">Поставщик</span>
                   <TableColumnFilter
                     title="Поставщик"
                     options={getUniqueOptions("supplier")}
@@ -274,9 +288,9 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-sm font-semibold">
+              <TableHead className="text-sm font-semibold p-1 md:p-2">
                 <div className="flex items-center justify-between gap-1">
-                  <span>Покупатель</span>
+                  <span className="truncate max-w-[80px] md:max-w-none">Покупатель</span>
                   <TableColumnFilter
                     title="Покупатель"
                     options={getUniqueOptions("buyer")}
@@ -286,24 +300,24 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold">
+              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[60px]">
                 КГ
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold">
+              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[80px]">
                 Цена пок.
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold">
+              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[90px]">
                 Покупка
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold">
+              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[80px]">
                 Цена прод.
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold">
+              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[90px]">
                 Продажа
               </TableHead>
-              <TableHead className="text-sm font-semibold">
+              <TableHead className="text-sm font-semibold p-1 md:p-2">
                 <div className="flex items-center justify-between gap-1">
-                  <span>Место доставки</span>
+                  <span className="truncate max-w-[80px] md:max-w-none">Доставка</span>
                   <TableColumnFilter
                     title="Место доставки"
                     options={getUniqueOptions("deliveryLocation")}
@@ -313,16 +327,25 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-sm font-semibold">
-                Перевозчик
+              <TableHead className="text-sm font-semibold p-1 md:p-2">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="truncate max-w-[80px] md:max-w-none">Перевозчик</span>
+                  <TableColumnFilter
+                    title="Перевозчик"
+                    options={getUniqueOptions("carrier")}
+                    selectedValues={columnFilters["carrier"] || []}
+                    onUpdate={(values) => handleFilterUpdate("carrier", values)}
+                    dataTestId="filter-carrier"
+                  />
+                </div>
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold">
+              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[90px]">
                 Доставка
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold">
+              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[90px]">
                 Прибыль
               </TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="w-[40px] p-1"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -339,29 +362,29 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
               deals.map((deal) => (
                 <TableRow
                   key={deal.id}
-                  className={deal.isDraft ? "bg-muted/70 opacity-60 border-2 border-orange-200" : ""}
+                  className={cn(deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200")}
                 >
-                  <TableCell className="text-xs">
-                    <div className="flex flex-col gap-1">
+                  <TableCell className="text-[10px] md:text-xs p-1 md:p-2">
+                    <div className="flex flex-col gap-0.5">
                       <span>{formatDate(deal.dealDate)}</span>
                       {deal.isDraft && (
                         <Badge
                           variant="outline"
-                          className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                          className="inline-flex items-center rounded-full bg-amber-100 px-1 py-0 text-[10px] font-medium text-amber-800"
                         >
                           Черновик
                         </Badge>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-[11px] md:text-sm p-1 md:p-2">
                     <TooltipProvider>
-                      <div className="flex items-center gap-1.5">
-                        <span>{deal.supplier?.name || "Не указан"}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="truncate max-w-[80px] md:max-w-none">{deal.supplier?.name || "Не указан"}</span>
                         {deal.supplier?.isWarehouse && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Warehouse className="h-4 w-4 text-sky-400 flex-shrink-0 cursor-help" />
+                              <Warehouse className="h-3 w-3 text-sky-400 flex-shrink-0 cursor-help" />
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>Склад</p>
@@ -371,17 +394,17 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                       </div>
                     </TooltipProvider>
                   </TableCell>
-                  <TableCell className="text-sm">
-                    {deal.buyer?.name || "Не указан"}
+                  <TableCell className="text-[11px] md:text-sm p-1 md:p-2">
+                    <span className="truncate max-w-[80px] md:max-w-none block">{deal.buyer?.name || "Не указан"}</span>
                   </TableCell>
-                  <TableCell className="text-right font-medium text-sm">
+                  <TableCell className="text-right font-medium text-[11px] md:text-sm p-1 md:p-2">
                     <TooltipProvider>
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-1">
                         <span>{formatNumberForTable(deal.quantityKg)}</span>
                         {deal.isApproxVolume && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <AlertCircle className="h-4 w-4 text-red-300 flex-shrink-0 cursor-help" />
+                              <AlertCircle className="h-3 w-3 text-red-300 flex-shrink-0 cursor-help" />
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>Примерный объем</p>
@@ -391,7 +414,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                       </div>
                     </TooltipProvider>
                   </TableCell>
-                  <TableCell className="text-right text-sm">
+                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-2">
                     <div className="flex items-center justify-end gap-1">
                       {deal.purchasePrice
                         ? Number(deal.purchasePrice).toFixed(4)
@@ -403,8 +426,8 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
+                            width="12"
+                            height="12"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -420,30 +443,30 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right text-sm">
+                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-2">
                     {formatCurrencyForTable(deal.purchaseAmount)}
                   </TableCell>
-                  <TableCell className="text-right text-sm">
-                    {formatNumberForTable(deal.salePrice)} ₽/кг
+                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-2">
+                    {formatNumberForTable(deal.salePrice)}
                   </TableCell>
-                  <TableCell className="text-right text-sm">
+                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-2">
                     {formatCurrencyForTable(deal.saleAmount)}
                   </TableCell>
-                  <TableCell className="text-sm">
-                    {deal.deliveryLocation?.name || "—"}
+                  <TableCell className="text-[11px] md:text-sm p-1 md:p-2">
+                    <span className="truncate max-w-[100px] md:max-w-none block">{deal.deliveryLocation?.name || "—"}</span>
                   </TableCell>
-                  <TableCell className="text-sm">
-                    {deal.carrier?.name || "—"}
+                  <TableCell className="text-[11px] md:text-sm p-1 md:p-2">
+                    <span className="truncate max-w-[100px] md:max-w-none block">{deal.carrier?.name || "—"}</span>
                   </TableCell>
-                  <TableCell className="text-right text-sm">
+                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-2">
                     {deal.deliveryCost
                       ? formatCurrencyForTable(deal.deliveryCost)
                       : "—"}
                   </TableCell>
-                  <TableCell className="text-right text-green-600 font-medium text-sm">
+                  <TableCell className="text-right text-green-600 font-medium text-[11px] md:text-sm p-1 md:p-2">
                     {formatCurrencyForTable(deal.profit)}
                   </TableCell>
-                  <TableCell className="flex items-center gap-1">
+                  <TableCell className="p-1">
                     <OptDealActions
                       deal={deal}
                       onEdit={() => onEdit(deal)}

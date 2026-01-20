@@ -26,155 +26,121 @@ export class OptStorage implements IOptStorage {
     page: number = 1,
     pageSize: number = 10,
     search?: string,
+    filters?: Record<string, string[]>,
   ): Promise<{ data: any[]; total: number }> {
     const offset = (page - 1) * pageSize;
 
-    let baseQuery = db.query.opt.findMany({
-      where: isNull(opt.deletedAt),
-      limit: pageSize,
-      offset: offset,
-      orderBy: (opt, { desc }) => [desc(opt.dealDate)],
-      with: {
-        supplier: {
-          columns: {
-            id: true,
-            name: true,
-            isWarehouse: true,
-          },
-        },
-        buyer: {
-          columns: {
-            id: true,
-            name: true,
-          },
-        },
-        carrier: {
-          columns: {
-            id: true,
-            name: true,
-          },
-        },
-        deliveryLocation: {
-          columns: {
-            id: true,
-            name: true,
-          },
-        },
-        warehouse: {
-          columns: {
-            id: true,
-            name: true,
-          },
-        },
+    // Helper to build filter conditions
+    const buildFilterConditions = () => {
+      const conditions = [isNull(opt.deletedAt)];
+
+      if (filters) {
+        if (filters.supplier?.length) {
+          conditions.push(sql`${suppliers.name} IN ${filters.supplier}`);
+        }
+        if (filters.buyer?.length) {
+          conditions.push(sql`${customers.name} IN ${filters.buyer}`);
+        }
+        if (filters.deliveryLocation?.length) {
+          conditions.push(sql`${logisticsDeliveryLocations.name} IN ${filters.deliveryLocation}`);
+        }
+        if (filters.carrier?.length) {
+          conditions.push(sql`${logisticsCarriers.name} IN ${filters.carrier}`);
+        }
+        if (filters.date?.length) {
+          // Convert dates to string format for comparison
+          conditions.push(sql`TO_CHAR(${opt.dealDate}, 'DD.MM.YYYY') IN ${filters.date}`);
+        }
+      }
+
+      if (search && search.trim()) {
+        const searchPattern = `%${search.trim()}%`;
+        conditions.push(
+          or(
+            sql`${suppliers.name} ILIKE ${searchPattern}`,
+            sql`${customers.name} ILIKE ${searchPattern}`,
+            sql`${opt.basis}::text ILIKE ${searchPattern}`,
+            sql`${opt.notes}::text ILIKE ${searchPattern}`,
+            sql`${logisticsCarriers.name}::text ILIKE ${searchPattern}`,
+            sql`${logisticsDeliveryLocations.name}::text ILIKE ${searchPattern}`,
+          )
+        );
+      }
+
+      return and(...conditions);
+    };
+
+    const filterCondition = buildFilterConditions();
+
+    const rawData = await db
+      .select({
+        opt: opt,
+        supplierName: suppliers.name,
+        supplierIsWarehouse: suppliers.isWarehouse,
+        buyerName: customers.name,
+        carrierName: sql<string>`${logisticsCarriers.name}`,
+        deliveryLocationName: sql<string>`${logisticsDeliveryLocations.name}`,
+        warehouseName: sql<string>`${warehouses.name}`,
+      })
+      .from(opt)
+      .leftJoin(suppliers, eq(opt.supplierId, suppliers.id))
+      .leftJoin(customers, eq(opt.buyerId, customers.id))
+      .leftJoin(logisticsCarriers, eq(opt.carrierId, logisticsCarriers.id))
+      .leftJoin(
+        logisticsDeliveryLocations,
+        eq(opt.deliveryLocationId, logisticsDeliveryLocations.id),
+      )
+      .leftJoin(warehouses, eq(opt.warehouseId, warehouses.id))
+      .where(filterCondition)
+      .orderBy(desc(opt.dealDate))
+      .limit(pageSize)
+      .offset(offset);
+
+    const data = rawData.map((row) => ({
+      ...row.opt,
+      supplier: {
+        id: row.opt.supplierId,
+        name: row.supplierName || "Не указан",
+        isWarehouse: row.supplierIsWarehouse || false,
       },
-    });
+      buyer: {
+        id: row.opt.buyerId,
+        name: row.buyerName || "Не указан",
+      },
+      carrier: row.opt.carrierId
+        ? {
+            id: row.opt.carrierId,
+            name: row.carrierName || "Не указан",
+          }
+        : null,
+      deliveryLocation: row.opt.deliveryLocationId
+        ? {
+            id: row.opt.deliveryLocationId,
+            name: row.deliveryLocationName || "Не указано",
+          }
+        : null,
+      warehouse: row.opt.warehouseId
+        ? {
+            id: row.opt.warehouseId,
+            name: row.warehouseName || "Не указан",
+          }
+        : null,
+      isApproxVolume: row.opt.isApproxVolume || false,
+    }));
 
-    // Для поиска используем стандартный запрос с joins
-    if (search && search.trim()) {
-      const searchPattern = `%${search.trim()}%`;
-      const searchCondition = and(
-        or(
-          sql`${suppliers.name} ILIKE ${searchPattern}`,
-          sql`${customers.name} ILIKE ${searchPattern}`,
-          sql`${opt.basis}::text ILIKE ${searchPattern}`,
-          sql`${opt.notes}::text ILIKE ${searchPattern}`,
-          sql`${logisticsCarriers.name}::text ILIKE ${searchPattern}`,
-          sql`${logisticsDeliveryLocations.name}::text ILIKE ${searchPattern}`,
-        ),
-        isNull(opt.deletedAt),
-      );
-
-      const rawData = await db
-        .select({
-          opt: opt,
-          supplierName: suppliers.name,
-          supplierIsWarehouse: suppliers.isWarehouse,
-          buyerName: customers.name,
-          carrierName: sql<string>`${logisticsCarriers.name}`,
-          deliveryLocationName: sql<string>`${logisticsDeliveryLocations.name}`,
-          warehouseName: sql<string>`${warehouses.name}`,
-        })
-        .from(opt)
-        .leftJoin(suppliers, eq(opt.supplierId, suppliers.id))
-        .leftJoin(customers, eq(opt.buyerId, customers.id))
-        .leftJoin(logisticsCarriers, eq(opt.carrierId, logisticsCarriers.id))
-        .leftJoin(
-          logisticsDeliveryLocations,
-          eq(opt.deliveryLocationId, logisticsDeliveryLocations.id),
-        )
-        .leftJoin(warehouses, eq(opt.warehouseId, warehouses.id))
-        .where(searchCondition)
-        .orderBy(desc(opt.dealDate))
-        .limit(pageSize)
-        .offset(offset);
-
-      const data = rawData.map((row) => ({
-        ...row.opt,
-        supplier: {
-          id: row.opt.supplierId,
-          name: row.supplierName || "Не указан",
-          isWarehouse: row.supplierIsWarehouse || false,
-        },
-        buyer: {
-          id: row.opt.buyerId,
-          name: row.buyerName || "Не указан",
-        },
-        carrier: row.opt.carrierId
-          ? {
-              id: row.opt.carrierId,
-              name: row.carrierName || "Не указан",
-            }
-          : null,
-        deliveryLocation: row.opt.deliveryLocationId
-          ? {
-              id: row.opt.deliveryLocationId,
-              name: row.deliveryLocationName || "Не указано",
-            }
-          : null,
-        warehouse: row.opt.warehouseId
-          ? {
-              id: row.opt.warehouseId,
-              name: row.warehouseName || "Не указан",
-            }
-          : null,
-        isApproxVolume: row.opt.isApproxVolume || false,
-      }));
-
-      const [countResult] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(opt)
-        .leftJoin(suppliers, eq(opt.supplierId, suppliers.id))
-        .leftJoin(customers, eq(opt.buyerId, customers.id))
-        .leftJoin(logisticsCarriers, eq(opt.carrierId, logisticsCarriers.id))
-        .leftJoin(
-          logisticsDeliveryLocations,
-          eq(opt.deliveryLocationId, logisticsDeliveryLocations.id),
-        )
-        .where(searchCondition);
-
-      return { data, total: Number(countResult?.count || 0) };
-    }
-
-    // Без поиска используем query API с relations
-    const data = await baseQuery;
     const [countResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(opt)
-      .where(isNull(opt.deletedAt));
+      .leftJoin(suppliers, eq(opt.supplierId, suppliers.id))
+      .leftJoin(customers, eq(opt.buyerId, customers.id))
+      .leftJoin(logisticsCarriers, eq(opt.carrierId, logisticsCarriers.id))
+      .leftJoin(
+        logisticsDeliveryLocations,
+        eq(opt.deliveryLocationId, logisticsDeliveryLocations.id),
+      )
+      .where(filterCondition);
 
-    return {
-      data: data.map((item) => ({
-        ...item,
-        supplier: item.supplier || {
-          id: item.supplierId,
-          name: "Не указан",
-          isWarehouse: false,
-        },
-        buyer: item.buyer || { id: item.buyerId, name: "Не указан" },
-        isApproxVolume: item.isApproxVolume || false,
-      })),
-      total: Number(countResult?.count || 0),
-    };
+    return { data, total: Number(countResult?.count || 0) };
   }
 
   async createOpt(data: InsertOpt): Promise<Opt> {

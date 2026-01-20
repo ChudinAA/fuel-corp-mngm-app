@@ -15,7 +15,18 @@ export function registerOptRoutes(app: Express) {
       const page = parseInt(req.query.page as string) || 1;
       const pageSize = parseInt(req.query.pageSize as string) || 10;
       const search = req.query.search as string | undefined;
-      const result = await storage.opt.getOptDeals(page, pageSize, search);
+      
+      // Extract filters
+      const filters: Record<string, string[]> = {};
+      Object.keys(req.query).forEach(key => {
+        if (key.startsWith('filter_')) {
+          const columnId = key.replace('filter_', '');
+          const value = req.query[key] as string;
+          filters[columnId] = value.split(',').filter(Boolean);
+        }
+      });
+
+      const result = await storage.opt.getOptDeals(page, pageSize, search, filters);
       res.json(result);
     }
   );
