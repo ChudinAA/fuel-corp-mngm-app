@@ -11,7 +11,7 @@ export function AddRefuelingDialog({
 }: AddRefuelingDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[800px] h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[950px] h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isCopy ? "Копирование заправки" : editRefueling ? "Редактирование заправки" : "Новая заправка ВС"}
