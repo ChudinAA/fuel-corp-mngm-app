@@ -26,7 +26,7 @@ export function registerOptRoutes(app: Express) {
         }
       });
 
-      const result = await storage.opt.getOptDeals(page, pageSize, search, filters);
+      const result = await (storage.opt as any).getOptDeals(page, pageSize, search, filters);
       res.json(result);
     }
   );

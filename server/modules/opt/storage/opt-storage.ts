@@ -32,7 +32,7 @@ export class OptStorage implements IOptStorage {
 
     // Helper to build filter conditions
     const buildFilterConditions = () => {
-      const conditions = [isNull(opt.deletedAt)];
+      const conditions: any[] = [isNull(opt.deletedAt)];
 
       if (filters) {
         if (filters.supplier?.length) {

@@ -11,12 +11,12 @@ export function useOptTable() {
   const pageSize = 10;
   const { toast } = useToast();
 
-  const { data: optDeals, isLoading } = useQuery<{ data: Opt[]; total: number }>({
+  const { data: optDeals, isLoading } = useQuery<{ data: any[]; total: number }>({
     queryKey: [
       `/api/opt?page=${page}&pageSize=${pageSize}${search ? `&search=${search}` : ""}${
         Object.entries(columnFilters)
           .filter(([_, values]) => values.length > 0)
-          .map(([id, values]) => `&filter_${id}=${values.join(",")}`)
+          .map(([id, values]) => `&filter_${id}=${encodeURIComponent(values.join(","))}`)
           .join("")
       }`,
     ],

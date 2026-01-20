@@ -139,8 +139,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
     setColumnFilters,
     deleteMutation,
     handleDelete,
-    isDeletingId, // Assuming isDeletingId is available from useOptTable for disabling delete buttons
-  } = useOptTable();
+  } = useOptTable() as any;
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dealToDelete, setDealToDelete] = useState<any>(null);
@@ -191,8 +190,8 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
     );
   }
 
-  const deals = optDeals?.data || [];
-  const total = optDeals?.total || 0;
+  const deals = (optDeals as any)?.data || [];
+  const total = (optDeals as any)?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
 
   // Генерируем опции для фильтров на основе данных
