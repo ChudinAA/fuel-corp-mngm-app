@@ -371,15 +371,13 @@ export function MovementDialog({
             onSubmit={form.handleSubmit((data) => createMutation.mutate(data))}
             className="space-y-6"
           >
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 items-end">
               <MovementFormHeader form={form} />
               <MovementSourceSection
                 form={form}
                 watchMovementType={watchMovementType}
-                watchProductType={watchProductType}
                 suppliers={suppliers}
                 warehouses={warehouses}
-                allBases={allBases}
               />
             </div>
 

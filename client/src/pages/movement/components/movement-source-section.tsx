@@ -1,3 +1,4 @@
+import { Combobox } from "@/components/ui/combobox";
 import {
   FormField,
   FormItem,
@@ -45,28 +46,20 @@ export function MovementSourceSection({
         control={form.control}
         name="supplierId"
         render={({ field }) => (
-          <FormItem>
+          <FormItem className="col-span-1 min-w-0">
             <FormLabel>Поставщик</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger data-testid="select-movement-supplier">
-                  <SelectValue placeholder="Выберите поставщика">
-                    {selectedSupplier?.name}
-                  </SelectValue>
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {suppliers?.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                )) || (
-                  <SelectItem value="none" disabled>
-                    Нет данных
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            <FormControl>
+              <div className="w-full">
+                <Combobox
+                  options={suppliers?.map((s) => ({ value: s.id, label: s.name })) || []}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Выберите поставщика"
+                  className="w-full"
+                  dataTestId="select-movement-supplier"
+                />
+              </div>
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}
@@ -78,28 +71,20 @@ export function MovementSourceSection({
         control={form.control}
         name="fromWarehouseId"
         render={({ field }) => (
-          <FormItem>
+          <FormItem className="col-span-1 min-w-0">
             <FormLabel>Откуда (склад)</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger data-testid="select-movement-from">
-                  <SelectValue placeholder="Выберите склад">
-                    {selectedWarehouse?.name}
-                  </SelectValue>
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {warehouses?.map((w) => (
-                  <SelectItem key={w.id} value={w.id}>
-                    {w.name}
-                  </SelectItem>
-                )) || (
-                  <SelectItem value="none" disabled>
-                    Нет данных
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            <FormControl>
+              <div className="w-full">
+                <Combobox
+                  options={warehouses?.map((w) => ({ value: w.id, label: w.name })) || []}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Выберите склад"
+                  className="w-full"
+                  dataTestId="select-movement-from"
+                />
+              </div>
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}

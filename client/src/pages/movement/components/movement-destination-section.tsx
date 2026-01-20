@@ -1,3 +1,4 @@
+import { Combobox } from "@/components/ui/combobox";
 import {
   FormField,
   FormItem,
@@ -70,33 +71,27 @@ export function MovementDestinationSection({
       .filter(Boolean) || [];
 
   return (
-    <div className="grid gap-2 md:grid-cols-4">
+    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 items-end">
       <FormField
         control={form.control}
         name="toWarehouseId"
         render={({ field }) => (
-          <FormItem>
+          <FormItem className="col-span-1 min-w-0">
             <FormLabel className="flex items-center gap-2">
               Куда (склад)
             </FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger data-testid="select-movement-to">
-                  <SelectValue placeholder="Выберите склад" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {warehouses?.map((w) => (
-                  <SelectItem key={w.id} value={w.id}>
-                    {w.name}
-                  </SelectItem>
-                )) || (
-                  <SelectItem value="none" disabled>
-                    Нет данных
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            <FormControl>
+              <div className="w-full">
+                <Combobox
+                  options={warehouses?.map((w) => ({ value: w.id, label: w.name })) || []}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Выберите склад"
+                  className="w-full"
+                  dataTestId="select-movement-to"
+                />
+              </div>
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}
@@ -106,34 +101,23 @@ export function MovementDestinationSection({
         control={form.control}
         name="carrierId"
         render={({ field }) => (
-          <FormItem>
+          <FormItem className="col-span-1 min-w-0">
             <FormLabel className="flex items-center gap-2">
               Перевозчик
             </FormLabel>
-            <div className="flex gap-1">
-              <Select onValueChange={field.onChange} value={field.value || ""}>
-                <FormControl>
-                  <SelectTrigger
-                    data-testid="select-movement-carrier"
-                    className="flex-1"
-                  >
-                    <SelectValue placeholder="Выберите перевозчика" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {availableCarriers.length > 0 ? (
-                    availableCarriers.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" disabled>
-                      Нет перевозчиков для данного маршрута
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+            <div className="flex gap-1 items-center w-full">
+              <FormControl>
+                <div className="flex-1 min-w-0">
+                  <Combobox
+                    options={availableCarriers.map((c) => ({ value: c.id, label: c.name }))}
+                    value={field.value || ""}
+                    onValueChange={field.onChange}
+                    placeholder="Выберите перевозчика"
+                    className="w-full"
+                    dataTestId="select-movement-carrier"
+                  />
+                </div>
+              </FormControl>
               {hasPermission("delivery", "create") && (
                 <Button
                   type="button"
@@ -141,6 +125,7 @@ export function MovementDestinationSection({
                   variant="outline"
                   onClick={() => setAddDeliveryCostOpen(true)}
                   data-testid="button-add-delivery-cost-inline"
+                  className="shrink-0 h-9 w-9"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -152,17 +137,21 @@ export function MovementDestinationSection({
       />
 
       {watchMovementType === MOVEMENT_TYPE.SUPPLY ? (
-        <CalculatedField
-          label="Доступн. об-м Поставщика"
-          value={supplierContractVolumeStatus.message}
-          status={supplierContractVolumeStatus.status}
-        />
+        <div className="col-span-1 min-w-0">
+          <CalculatedField
+            label="Доступн. об-м Поставщика"
+            value={supplierContractVolumeStatus.message}
+            status={supplierContractVolumeStatus.status}
+          />
+        </div>
       ) : (
-        <CalculatedField
-          label="Объем на складе"
-          value={watchFromWarehouseId ? warehouseBalance.message : "—"}
-          status={watchFromWarehouseId ? warehouseBalance.status : "ok"}
-        />
+        <div className="col-span-1 min-w-0">
+          <CalculatedField
+            label="Объем на складе"
+            value={watchFromWarehouseId ? warehouseBalance.message : "—"}
+            status={watchFromWarehouseId ? warehouseBalance.status : "ok"}
+          />
+        </div>
       )}
 
       {watchMovementType === MOVEMENT_TYPE.SUPPLY ? (
@@ -170,29 +159,25 @@ export function MovementDestinationSection({
           control={form.control}
           name="basis"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="col-span-1 min-w-0">
               <FormLabel className="flex items-center gap-2">
                 Базис Поставщика
               </FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger data-testid="select-movement-basis">
-                    <SelectValue placeholder="Выберите базис" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {selectedSupplierBases.map((b: any) => (
-                    <SelectItem key={b.id} value={b.name}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                  {selectedSupplierBases.length === 0 && (
-                    <SelectItem value="none" disabled>
-                      Базисы не привязаны
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <div className="w-full">
+                  <Combobox
+                    options={selectedSupplierBases.map((b: any) => ({
+                      value: b.name,
+                      label: b.name
+                    }))}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Выберите базис"
+                    className="w-full"
+                    dataTestId="select-movement-basis"
+                  />
+                </div>
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -202,27 +187,23 @@ export function MovementDestinationSection({
         control={form.control}
         name="basis"
         render={({ field }) => (
-          <FormItem>
+          <FormItem className="col-span-1 min-w-0">
             <FormLabel className="flex items-center gap-2">Базис Склада</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
-              <FormControl>
-                <SelectTrigger data-testid="select-movement-basis">
-                  <SelectValue placeholder="Выберите базис" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {selectedWarehouseBases.map((b: any) => (
-                  <SelectItem key={b.id} value={b.name}>
-                    {b.name}
-                  </SelectItem>
-                ))}
-                {selectedWarehouseBases.length === 0 && (
-                  <SelectItem value="none" disabled>
-                    Базисы не привязаны
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
+            <FormControl>
+              <div className="w-full">
+                <Combobox
+                  options={selectedWarehouseBases.map((b: any) => ({
+                    value: b.name,
+                    label: b.name
+                  }))}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Выберите базис"
+                  className="w-full"
+                  dataTestId="select-movement-basis"
+                />
+              </div>
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}
