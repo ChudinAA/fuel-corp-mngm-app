@@ -1,5 +1,6 @@
 
 import React, { useState } from "react";
+import { Combobox } from "@/components/ui/combobox";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -163,26 +164,25 @@ export function AddWarehouseDialog({
                 </Button>
               </div>
               {fields.map((field, index) => (
-                <div key={field.id} className="flex gap-2">
-                  <div className="flex-1">
-                    <Select
+                <div key={field.id} className="flex gap-2 items-center">
+                  <div className="flex-1 min-w-0">
+                    <Combobox
+                      options={allBases.map((base) => ({
+                        value: base.id,
+                        label: base.name,
+                        render: (
+                          <div className="flex items-center gap-2">
+                            {base.name}
+                            <BaseTypeBadge type={base.baseType} />
+                          </div>
+                        )
+                      }))}
                       value={form.watch(`bases.${index}.baseId`) || ""}
                       onValueChange={(value) => form.setValue(`bases.${index}.baseId`, value)}
-                    >
-                      <SelectTrigger data-testid={`select-warehouse-basis-${index}`}>
-                        <SelectValue placeholder="Выберите базис" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allBases.map((base) => (
-                          <SelectItem key={base.id} value={base.id}>
-                            <div className="flex items-center gap-2">
-                              {base.name}
-                              <BaseTypeBadge type={base.baseType} />
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Выберите базис"
+                      className="w-full"
+                      dataTestId={`select-warehouse-basis-${index}`}
+                    />
                     {form.formState.errors.bases?.[index]?.baseId && (
                       <p className="text-sm text-destructive mt-1">
                         {form.formState.errors.bases[index]?.baseId?.message}
@@ -195,6 +195,7 @@ export function AddWarehouseDialog({
                       variant="ghost"
                       size="icon"
                       onClick={() => remove(index)}
+                      className="shrink-0 h-9 w-9"
                     >
                       <X className="h-4 w-4" />
                     </Button>
