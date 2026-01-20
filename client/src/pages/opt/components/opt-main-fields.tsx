@@ -154,32 +154,40 @@ export function OptMainFields({
       {selectedSupplier &&
       selectedSupplier.baseIds &&
       selectedSupplier.baseIds.length > 0 ? (
-        <FormItem>
-          <FormLabel>Базис</FormLabel>
-          <Select
-            value={selectedBasis}
-            onValueChange={(value) => {
-              const base = wholesaleBases?.find((b) => b.name === value);
-              if (base) setSelectedBasis(base.name);
-            }}
-          >
-            <FormControl>
-              <SelectTrigger data-testid="select-basis">
-                <SelectValue placeholder="Выберите базис" />
-              </SelectTrigger>
-            </FormControl>
-            <SelectContent>
-              {selectedSupplier.baseIds.map((baseId) => {
-                const base = wholesaleBases?.find((b) => b.id === baseId);
-                return base ? (
-                  <SelectItem key={base.id} value={base.name}>
-                    {base.name}
-                  </SelectItem>
-                ) : null;
-              })}
-            </SelectContent>
-          </Select>
-        </FormItem>
+        <FormField
+          control={form.control}
+          name="basis"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Базис</FormLabel>
+              <Select
+                value={field.value || selectedBasis}
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  const base = wholesaleBases?.find((b) => b.name === value);
+                  if (base) setSelectedBasis(base.name);
+                }}
+              >
+                <FormControl>
+                  <SelectTrigger data-testid="select-basis">
+                    <SelectValue placeholder="Выберите базис" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {selectedSupplier.baseIds.map((baseId) => {
+                    const base = wholesaleBases?.find((b) => b.id === baseId);
+                    return base ? (
+                      <SelectItem key={base.id} value={base.name}>
+                        {base.name}
+                      </SelectItem>
+                    ) : null;
+                  })}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       ) : (
         <div className="space-y-2">
           <label className="text-sm font-medium flex items-center">Базис</label>

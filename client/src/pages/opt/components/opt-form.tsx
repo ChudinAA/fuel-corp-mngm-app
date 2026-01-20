@@ -201,15 +201,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
   useEffect(() => {
     if (watchSupplierId && suppliers && allBases) {
       const supplier = suppliers.find((s) => s.id === watchSupplierId);
-      if (supplier?.baseIds && supplier.baseIds.length > 0) {
-        const baseId = supplier.baseIds[0];
-        const base = allBases.find(
-          (b) => b.id === baseId && b.baseType === BASE_TYPE.WHOLESALE,
-        );
-        if (base) {
-          setSelectedBasis(base.name);
-        }
-      }
 
       if (supplier?.isWarehouse) {
         const warehouse = warehouses?.find((w) => w.supplierId === supplier.id);
@@ -219,8 +210,20 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       } else {
         form.setValue("warehouseId", "");
       }
+
+      // Автоматически выбираем первый базис только при СОЗДАНИИ новой сделки
+      if (!isEditing && supplier?.baseIds && supplier.baseIds.length > 0) {
+        const baseId = supplier.baseIds[0];
+        const base = allBases.find(
+          (b) => b.id === baseId && b.baseType === BASE_TYPE.WHOLESALE,
+        );
+        if (base) {
+          form.setValue("basis", base.name);
+          setSelectedBasis(base.name);
+        }
+      }
     }
-  }, [watchSupplierId, suppliers, allBases, warehouses, form]);
+  }, [watchSupplierId, suppliers, allBases, warehouses, form, isEditing]);
 
   // Используем общий хук для автоматического выбора цен
   useAutoPriceSelection({
@@ -280,6 +283,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         deliveryLocationId: editData.deliveryLocationId || "",
         notes: editData.notes || "",
         isApproxVolume: editData.isApproxVolume || false,
+        basis: editData.basis || "",
         selectedPurchasePriceId: purchasePriceCompositeId,
         selectedSalePriceId: salePriceCompositeId,
       });

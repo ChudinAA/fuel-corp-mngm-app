@@ -18,6 +18,7 @@ export const optFormSchema = z.object({
   purchasePriceIndex: z.number().optional().nullable(),
   salePriceIndex: z.number().optional().nullable(),
   isDraft: z.boolean().default(false),
+  basis: z.string().optional().nullable(),
 });
 
 export type OptFormData = z.infer<typeof optFormSchema>;
