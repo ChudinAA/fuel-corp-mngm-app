@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Loader2 } from "lucide-react";
 import type { DeliveryCost } from "@shared/schema";
+import { BaseTypeBadge } from "@/components/base-type-badge";
 import {
   deliveryCostFormSchema,
   DELIVERY_ENTITY_TYPES,
@@ -345,7 +346,10 @@ export function AddDeliveryCostDialog({
                         <SelectContent>
                           {fromEntities.map((entity) => (
                             <SelectItem key={entity.id} value={entity.id}>
-                              {entity.name}
+                              <div className="flex items-center justify-between w-full gap-2">
+                                <span>{entity.name}</span>
+                                <BaseTypeBadge type={entity.type} short={true} />
+                              </div>
                             </SelectItem>
                           ))}
                           {fromEntities.length === 0 && (
@@ -411,7 +415,10 @@ export function AddDeliveryCostDialog({
                         <SelectContent>
                           {toEntities.map((entity) => (
                             <SelectItem key={entity.id} value={entity.id}>
-                              {entity.name}
+                              <div className="flex items-center justify-between w-full gap-2">
+                                <span>{entity.name}</span>
+                                <BaseTypeBadge type={entity.type} short={true} />
+                              </div>
                             </SelectItem>
                           ))}
                           {toEntities.length === 0 && (
