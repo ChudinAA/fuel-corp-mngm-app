@@ -56,22 +56,22 @@ export function Combobox({
           className={cn("w-full justify-between font-normal min-w-0", className)}
           data-testid={dataTestId}
         >
-          <div className="flex items-center gap-2 truncate">
+          <div className="flex items-center gap-1.5 truncate flex-1 text-left min-w-0">
             {selectedOption ? (
-              <>
+              <span className="truncate">
                 {selectedOption.render || selectedOption.label}
-              </>
+              </span>
             ) : (
-              <span className="text-muted-foreground">{placeholder}</span>
+              <span className="text-muted-foreground truncate">{placeholder}</span>
             )}
           </div>
-          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50 ml-0.5" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
+        <Command className="flex flex-col max-h-[300px]">
           <CommandInput placeholder="Поиск..." />
-          <CommandList>
+          <CommandList className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40">
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
@@ -85,7 +85,7 @@ export function Combobox({
                   }}
                   className="flex items-center justify-between"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     {option.render || option.label}
                   </div>
                   <Check

@@ -9,13 +9,6 @@ import {
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -28,8 +21,6 @@ import type { UseFormReturn } from "react-hook-form";
 import type {
   Supplier,
   Customer,
-  LogisticsCarrier,
-  Base,
 } from "@shared/schema";
 import type { OptFormData } from "../schemas";
 import { CUSTOMER_MODULE } from "@shared/constants";
@@ -176,7 +167,7 @@ export function OptMainFields({
         />
       ) : (
         <div className="space-y-2 col-span-1 min-w-0">
-          <label className="text-sm font-medium flex items-center h-5">Базис</label>
+          <label className="text-sm font-medium flex items-center h-6">Базис</label>
           <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md text-sm overflow-hidden truncate">
             {selectedBasis || "—"}
           </div>
