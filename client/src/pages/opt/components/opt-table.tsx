@@ -26,7 +26,9 @@ import {
   AlertCircle,
   History,
   Copy,
+  X,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -52,6 +54,7 @@ import {
 import { AuditPanel } from "@/components/audit-panel";
 import { ExportButton } from "@/components/export/export-button";
 import { Badge } from "@/components/ui/badge";
+import { TableColumnFilter } from "@/components/ui/table-column-filter";
 
 interface OptTableProps {
   onEdit: (opt: any) => void;
@@ -132,6 +135,8 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
     pageSize,
     optDeals,
     isLoading,
+    columnFilters,
+    setColumnFilters,
     deleteMutation,
     handleDelete,
     isDeletingId, // Assuming isDeletingId is available from useOptTable for disabling delete buttons
@@ -190,6 +195,26 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
   const total = optDeals?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
 
+  // Генерируем опции для фильтров на основе данных
+  const getUniqueOptions = (key: string) => {
+    const values = new Set<string>();
+    deals.forEach((deal: any) => {
+      const val = key.includes('.') 
+        ? key.split('.').reduce((obj, k) => obj?.[k], deal)
+        : deal[key];
+      if (val) values.add(typeof val === 'object' ? val.name : val);
+    });
+    return Array.from(values).map(v => ({ label: v, value: v }));
+  };
+
+  const handleFilterUpdate = (columnId: string, values: string[]) => {
+    setColumnFilters(prev => ({
+      ...prev,
+      [columnId]: values
+    }));
+    setPage(1);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
@@ -210,8 +235,10 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
         <Button
           variant="outline"
           size="icon"
-          disabled
-          title="Фильтры скоро будут доступны"
+          onClick={() => setColumnFilters({})}
+          disabled={Object.values(columnFilters).every(v => v.length === 0)}
+          title="Сбросить все фильтры"
+          className={cn(Object.values(columnFilters).some(v => v.length > 0) && "text-primary border-primary")}
         >
           <Filter className="h-4 w-4" />
         </Button>
@@ -230,10 +257,34 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="text-sm font-semibold">Дата</TableHead>
-              <TableHead className="text-sm font-semibold">Поставщик</TableHead>
               <TableHead className="text-sm font-semibold">
-                Покупатель
+                <div className="flex items-center gap-1">
+                  Дата
+                </div>
+              </TableHead>
+              <TableHead className="text-sm font-semibold">
+                <div className="flex items-center justify-between gap-1">
+                  <span>Поставщик</span>
+                  <TableColumnFilter
+                    title="Поставщик"
+                    options={getUniqueOptions("supplier")}
+                    selectedValues={columnFilters["supplier"] || []}
+                    onUpdate={(values) => handleFilterUpdate("supplier", values)}
+                    dataTestId="filter-supplier"
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="text-sm font-semibold">
+                <div className="flex items-center justify-between gap-1">
+                  <span>Покупатель</span>
+                  <TableColumnFilter
+                    title="Покупатель"
+                    options={getUniqueOptions("buyer")}
+                    selectedValues={columnFilters["buyer"] || []}
+                    onUpdate={(values) => handleFilterUpdate("buyer", values)}
+                    dataTestId="filter-buyer"
+                  />
+                </div>
               </TableHead>
               <TableHead className="text-right text-sm font-semibold">
                 КГ
@@ -251,7 +302,16 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                 Продажа
               </TableHead>
               <TableHead className="text-sm font-semibold">
-                Место доставки
+                <div className="flex items-center justify-between gap-1">
+                  <span>Место доставки</span>
+                  <TableColumnFilter
+                    title="Место доставки"
+                    options={getUniqueOptions("deliveryLocation")}
+                    selectedValues={columnFilters["deliveryLocation"] || []}
+                    onUpdate={(values) => handleFilterUpdate("deliveryLocation", values)}
+                    dataTestId="filter-location"
+                  />
+                </div>
               </TableHead>
               <TableHead className="text-sm font-semibold">
                 Перевозчик

@@ -7,11 +7,19 @@ import type { Opt } from "@shared/schema";
 export function useOptTable() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
   const pageSize = 10;
   const { toast } = useToast();
 
   const { data: optDeals, isLoading } = useQuery<{ data: Opt[]; total: number }>({
-    queryKey: [`/api/opt?page=${page}&pageSize=${pageSize}${search ? `&search=${search}` : ""}`],
+    queryKey: [
+      `/api/opt?page=${page}&pageSize=${pageSize}${search ? `&search=${search}` : ""}${
+        Object.entries(columnFilters)
+          .filter(([_, values]) => values.length > 0)
+          .map(([id, values]) => `&filter_${id}=${values.join(",")}`)
+          .join("")
+      }`,
+    ],
   });
 
   const deleteMutation = useMutation({
@@ -56,6 +64,8 @@ export function useOptTable() {
     pageSize,
     optDeals,
     isLoading,
+    columnFilters,
+    setColumnFilters,
     deleteMutation,
     handleDelete,
   };
