@@ -114,19 +114,39 @@ export function AddDeliveryCostDialog({
   const watchFromEntityType = form.watch("fromEntityType");
   const watchToEntityType = form.watch("toEntityType");
 
-  const fromEntities = getEntitiesByType(
-    watchFromEntityType,
-    allBases,
-    warehouses,
-    deliveryLocations,
-  );
+  const fromEntities = React.useMemo(() => {
+    const entities = getEntitiesByType(
+      watchFromEntityType,
+      allBases,
+      warehouses,
+      deliveryLocations,
+    );
+    
+    if (watchFromEntityType === DELIVERY_ENTITY_TYPES.find(t => t.value === "delivery_location")?.value || watchFromEntityType === "delivery_location") {
+      return entities.map(entity => {
+        const base = allBases.find(b => b.id === entity.baseId);
+        return { ...entity, type: base?.type || entity.type };
+      });
+    }
+    return entities;
+  }, [watchFromEntityType, allBases, warehouses, deliveryLocations]);
 
-  const toEntities = getEntitiesByType(
-    watchToEntityType,
-    allBases,
-    warehouses,
-    deliveryLocations,
-  );
+  const toEntities = React.useMemo(() => {
+    const entities = getEntitiesByType(
+      watchToEntityType,
+      allBases,
+      warehouses,
+      deliveryLocations,
+    );
+
+    if (watchToEntityType === DELIVERY_ENTITY_TYPES.find(t => t.value === "delivery_location")?.value || watchToEntityType === "delivery_location") {
+      return entities.map(entity => {
+        const base = allBases.find(b => b.id === entity.baseId);
+        return { ...entity, type: base?.type || entity.type };
+      });
+    }
+    return entities;
+  }, [watchToEntityType, allBases, warehouses, deliveryLocations]);
 
   const createMutation = useMutation({
     mutationFn: async (data: DeliveryCostFormData) => {
