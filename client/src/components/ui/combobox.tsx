@@ -49,10 +49,11 @@ export function Combobox({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          type="button"
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between font-normal", className)}
+          className={cn("w-full justify-between font-normal min-w-0", className)}
           data-testid={dataTestId}
         >
           <div className="flex items-center gap-2 truncate">
