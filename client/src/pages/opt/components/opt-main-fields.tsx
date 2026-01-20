@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Combobox } from "@/components/ui/combobox";
 import {
   FormField,
   FormItem,
@@ -111,29 +112,16 @@ export function OptMainFields({
           <FormItem>
             <FormLabel>Поставщик</FormLabel>
             <div className="flex gap-1">
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger
-                    data-testid="select-supplier"
-                    className="flex-1"
-                  >
-                    <SelectValue placeholder="Выберите поставщика" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {wholesaleSuppliers.length > 0 ? (
-                    wholesaleSuppliers.map((supplier) => (
-                      <SelectItem key={supplier.id} value={supplier.id}>
-                        {supplier.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" disabled>
-                      Нет данных
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <Combobox
+                  options={wholesaleSuppliers.map(s => ({ value: s.id, label: s.name }))}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Выберите поставщика"
+                  className="flex-1"
+                  dataTestId="select-supplier"
+                />
+              </FormControl>
               {hasPermission("directories", "create") && (
                 <Button
                   type="button"
@@ -154,40 +142,32 @@ export function OptMainFields({
       {selectedSupplier &&
       selectedSupplier.baseIds &&
       selectedSupplier.baseIds.length > 0 ? (
-        <FormField
-          control={form.control}
-          name="basis"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Базис</FormLabel>
-              <Select
-                value={field.value || selectedBasis}
-                onValueChange={(value) => {
-                  field.onChange(value);
-                  const base = wholesaleBases?.find((b) => b.name === value);
-                  if (base) setSelectedBasis(base.name);
-                }}
-              >
+          <FormField
+            control={form.control}
+            name="basis"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Базис</FormLabel>
                 <FormControl>
-                  <SelectTrigger data-testid="select-basis">
-                    <SelectValue placeholder="Выберите базис" />
-                  </SelectTrigger>
+                  <Combobox
+                    options={selectedSupplier.baseIds.map((baseId) => {
+                      const base = wholesaleBases?.find((b) => b.id === baseId);
+                      return base ? { value: base.name, label: base.name } : null;
+                    }).filter(Boolean) as any}
+                    value={field.value || selectedBasis}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      const base = wholesaleBases?.find((b) => b.name === value);
+                      if (base) setSelectedBasis(base.name);
+                    }}
+                    placeholder="Выберите базис"
+                    dataTestId="select-basis"
+                  />
                 </FormControl>
-                <SelectContent>
-                  {selectedSupplier.baseIds.map((baseId) => {
-                    const base = wholesaleBases?.find((b) => b.id === baseId);
-                    return base ? (
-                      <SelectItem key={base.id} value={base.name}>
-                        {base.name}
-                      </SelectItem>
-                    ) : null;
-                  })}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
       ) : (
         <div className="space-y-2">
           <label className="text-sm font-medium flex items-center">Базис</label>
@@ -204,30 +184,22 @@ export function OptMainFields({
           <FormItem>
             <FormLabel>Покупатель</FormLabel>
             <div className="flex gap-1">
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger data-testid="select-buyer" className="flex-1">
-                    <SelectValue placeholder="Выберите покупателя" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {customers
-                    ?.filter(
+              <FormControl>
+                <Combobox
+                  options={(customers || [])
+                    .filter(
                       (c) =>
                         c.module === CUSTOMER_MODULE.WHOLESALE ||
                         c.module === CUSTOMER_MODULE.BOTH,
                     )
-                    .map((buyer) => (
-                      <SelectItem key={buyer.id} value={buyer.id}>
-                        {buyer.name}
-                      </SelectItem>
-                    )) || (
-                    <SelectItem value="none" disabled>
-                      Нет данных
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+                    .map(c => ({ value: c.id, label: c.name }))}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Выберите покупателя"
+                  className="flex-1"
+                  dataTestId="select-buyer"
+                />
+              </FormControl>
               {hasPermission("directories", "create") && (
                 <Button
                   type="button"
