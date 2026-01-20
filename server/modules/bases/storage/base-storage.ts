@@ -1,23 +1,30 @@
-
 import { eq, asc, sql, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
-import {
-  bases,
-  type Base,
-  type InsertBase,
-} from "@shared/schema";
+import { bases, type Base, type InsertBase } from "@shared/schema";
 import type { IBaseStorage } from "./types";
 
 export class BaseStorage implements IBaseStorage {
   async getAllBases(baseType?: string): Promise<Base[]> {
     if (baseType) {
-      return db.select().from(bases).where(and(eq(bases.baseType, baseType), isNull(bases.deletedAt))).orderBy(asc(bases.name));
+      return db
+        .select()
+        .from(bases)
+        .where(and(eq(bases.baseType, baseType), isNull(bases.deletedAt)))
+        .orderBy(asc(bases.name));
     }
-    return db.select().from(bases).where(isNull(bases.deletedAt)).orderBy(asc(bases.name));
+    return db
+      .select()
+      .from(bases)
+      .where(isNull(bases.deletedAt))
+      .orderBy(asc(bases.name));
   }
 
   async getBase(id: string): Promise<Base | undefined> {
-    const [base] = await db.select().from(bases).where(and(eq(bases.id, id), isNull(bases.deletedAt))).limit(1);
+    const [base] = await db
+      .select()
+      .from(bases)
+      .where(and(eq(bases.id, id), isNull(bases.deletedAt)))
+      .limit(1);
     return base;
   }
 
@@ -26,7 +33,13 @@ export class BaseStorage implements IBaseStorage {
     const [existing] = await db
       .select()
       .from(bases)
-      .where(and(eq(bases.name, data.name), isNull(bases.deletedAt)))
+      .where(
+        and(
+          eq(bases.name, data.name),
+          eq(bases.baseType, data.baseType),
+          isNull(bases.deletedAt),
+        ),
+      )
       .limit(1);
 
     if (existing) {
@@ -37,28 +50,41 @@ export class BaseStorage implements IBaseStorage {
     return created;
   }
 
-  async updateBase(id: string, data: Partial<InsertBase>): Promise<Base | undefined> {
-    const [updated] = await db.update(bases).set({
-      ...data,
-      updatedAt: sql`NOW()`
-    }).where(eq(bases.id, id)).returning();
+  async updateBase(
+    id: string,
+    data: Partial<InsertBase>,
+  ): Promise<Base | undefined> {
+    const [updated] = await db
+      .update(bases)
+      .set({
+        ...data,
+        updatedAt: sql`NOW()`,
+      })
+      .where(eq(bases.id, id))
+      .returning();
     return updated;
   }
 
   async deleteBase(id: string, userId?: string): Promise<boolean> {
     // Soft delete
-    await db.update(bases).set({
-      deletedAt: sql`NOW()`,
-      deletedById: userId,
-    }).where(eq(bases.id, id));
+    await db
+      .update(bases)
+      .set({
+        deletedAt: sql`NOW()`,
+        deletedById: userId,
+      })
+      .where(eq(bases.id, id));
     return true;
   }
 
   async restoreBase(id: string, userId?: string): Promise<boolean> {
-    await db.update(bases).set({
-      deletedAt: null,
-      deletedById: null,
-    }).where(eq(bases.id, id));
+    await db
+      .update(bases)
+      .set({
+        deletedAt: null,
+        deletedById: null,
+      })
+      .where(eq(bases.id, id));
     return true;
   }
 }
