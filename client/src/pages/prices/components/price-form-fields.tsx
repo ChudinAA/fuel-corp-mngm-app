@@ -40,6 +40,7 @@ import {
 import { AddBaseDialog } from "@/pages/directories/bases-dialog";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { BaseTypeBadge } from "@/components/base-type-badge";
 
 interface PriceFormFieldsProps {
   control: Control<PriceFormData>;
@@ -266,7 +267,10 @@ export function PriceFormFields({
                     {availableBases?.length > 0 ? (
                       availableBases.map((b) => (
                         <SelectItem key={b.id} value={b.name}>
-                          {b.name}
+                          <div className="flex items-center gap-2">
+                            {b.name}
+                            <BaseTypeBadge type={b.baseType} short={true} />
+                          </div>
                         </SelectItem>
                       ))
                     ) : (

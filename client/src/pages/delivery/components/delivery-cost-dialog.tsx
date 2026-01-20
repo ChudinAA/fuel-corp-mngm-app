@@ -121,11 +121,11 @@ export function AddDeliveryCostDialog({
       warehouses,
       deliveryLocations,
     );
-    
+
     if (watchFromEntityType === DELIVERY_ENTITY_TYPES.find(t => t.value === "delivery_location")?.value || watchFromEntityType === "delivery_location") {
       return entities.map(entity => {
         const base = allBases.find(b => b.id === entity.baseId);
-        return { ...entity, type: base?.type || entity.type };
+        return { ...entity, baseType: base?.baseType || entity.type };
       });
     }
     return entities;
@@ -142,7 +142,7 @@ export function AddDeliveryCostDialog({
     if (watchToEntityType === DELIVERY_ENTITY_TYPES.find(t => t.value === "delivery_location")?.value || watchToEntityType === "delivery_location") {
       return entities.map(entity => {
         const base = allBases.find(b => b.id === entity.baseId);
-        return { ...entity, type: base?.type || entity.type };
+        return { ...entity, baseType: base?.baseType || entity.type };
       });
     }
     return entities;
