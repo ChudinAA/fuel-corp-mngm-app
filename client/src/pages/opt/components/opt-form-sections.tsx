@@ -234,17 +234,17 @@ export function LogisticsSection({
                             value: location.id,
                             label: location.name,
                             render: (
-                              <div className="flex items-center justify-between w-full gap-2">
+                              <div className="flex items-center w-full gap-1">
                                 <span className="truncate">{location.name}</span>
                                 {base && (
-                                  <div className="flex items-center gap-1 opacity-60 scale-90 origin-right shrink-0">
-                                    <span className="text-[13px] whitespace-nowrap">
-                                      {base.name}
-                                    </span>
+                                  <div className="flex items-center gap-1 opacity-60 scale-90 origin-right">
                                     <BaseTypeBadge
                                       type={base.baseType}
                                       short={true}
                                     />
+                                    <span className="text-[13px] whitespace-nowrap truncate">
+                                      {base.name}
+                                    </span>
                                   </div>
                                 )}
                               </div>

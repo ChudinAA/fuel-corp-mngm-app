@@ -59,7 +59,7 @@ export function Combobox({
           <div className="flex items-center gap-1.5 truncate flex-1 text-left min-w-0">
             {selectedOption ? (
               <span className="truncate">
-                {selectedOption.render || selectedOption.label}
+                {selectedOption.label}
               </span>
             ) : (
               <span className="text-muted-foreground truncate">{placeholder}</span>
