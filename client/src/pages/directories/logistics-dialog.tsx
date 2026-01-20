@@ -43,6 +43,7 @@ import {
   Warehouse,
 } from "lucide-react";
 import type { LogisticsCarrier, Base } from "@shared/schema";
+import { BaseTypeBadge } from "@/components/base-type-badge";
 
 export const LOGISTICS_TYPES = [
   { value: "carrier", label: "Перевозчик", icon: Truck },
@@ -52,38 +53,43 @@ export const LOGISTICS_TYPES = [
   { value: "driver", label: "Водитель", icon: User },
 ] as const;
 
-const logisticsFormSchema = z.object({
-  type: z.enum([
-    "carrier",
-    "delivery_location",
-    "vehicle",
-    "trailer",
-    "driver",
-  ]),
-  name: z.string().min(1, "Укажите название"),
-  description: z.string().optional(),
-  address: z.string().optional(),
-  inn: z.string().optional(),
-  carrierId: z.string().optional(),
-  baseId: z.string().optional(),
-  plateNumber: z.string().optional(),
-  vehicleType: z.string().optional(),
-  capacityKg: z.string().optional(),
-  fullName: z.string().optional(),
-  phone: z.string().optional(),
-  licenseNumber: z.string().optional(),
-  licenseExpiry: z.string().optional(),
-  notes: z.string().optional(),
-  isActive: z.boolean().default(true),
-}).refine((data) => {
-  if (data.type === "delivery_location" && !data.baseId) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Выберите базис",
-  path: ["baseId"],
-});
+const logisticsFormSchema = z
+  .object({
+    type: z.enum([
+      "carrier",
+      "delivery_location",
+      "vehicle",
+      "trailer",
+      "driver",
+    ]),
+    name: z.string().min(1, "Укажите название"),
+    description: z.string().optional(),
+    address: z.string().optional(),
+    inn: z.string().optional(),
+    carrierId: z.string().optional(),
+    baseId: z.string().optional(),
+    plateNumber: z.string().optional(),
+    vehicleType: z.string().optional(),
+    capacityKg: z.string().optional(),
+    fullName: z.string().optional(),
+    phone: z.string().optional(),
+    licenseNumber: z.string().optional(),
+    licenseExpiry: z.string().optional(),
+    notes: z.string().optional(),
+    isActive: z.boolean().default(true),
+  })
+  .refine(
+    (data) => {
+      if (data.type === "delivery_location" && !data.baseId) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Выберите базис",
+      path: ["baseId"],
+    },
+  );
 
 type LogisticsFormData = z.infer<typeof logisticsFormSchema>;
 
@@ -158,20 +164,20 @@ export function AddLogisticsDialog({
   useEffect(() => {
     // Custom reset logic to preserve baseId if needed
     const currentBaseId = form.getValues("baseId");
-    
+
     form.setValue("inn", "");
     form.setValue("contactPerson", "");
     form.setValue("phone", "");
     form.setValue("address", "");
     form.setValue("coordinates", "");
     form.setValue("carrierId", undefined);
-    
+
     if (selectedType !== "delivery_location") {
       form.setValue("baseId", undefined);
     } else {
       form.setValue("baseId", currentBaseId);
     }
-    
+
     form.setValue("plateNumber", "");
     form.setValue("vehicleType", "");
     form.setValue("capacityKg", "");
@@ -516,23 +522,6 @@ export function AddLogisticsDialog({
               <>
                 <FormField
                   control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Адрес</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Полный адрес"
-                          data-testid="input-logistics-address"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
                   name="baseId"
                   render={({ field }) => (
                     <FormItem>
@@ -549,11 +538,31 @@ export function AddLogisticsDialog({
                         <SelectContent>
                           {bases.map((b) => (
                             <SelectItem key={b.id} value={b.id}>
-                              {b.name}
+                              <div className="flex items-center gap-2">
+                                {b.name}
+                                <BaseTypeBadge type={b.baseType} />
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Адрес</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Полный адрес"
+                          data-testid="input-logistics-address"
+                          {...field}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

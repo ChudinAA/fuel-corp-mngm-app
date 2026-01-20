@@ -3,7 +3,6 @@ import { useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { BASE_TYPE } from "@shared/constants";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -33,8 +32,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Loader2, Building2, X } from "lucide-react";
+import { Plus, Loader2, X } from "lucide-react";
 import type { Supplier, Base } from "@shared/schema";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 

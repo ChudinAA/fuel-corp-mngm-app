@@ -10,13 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Loader2, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Warehouse, WholesaleBase, RefuelingBase } from "@shared/schema";
+import type { Warehouse } from "@shared/schema";
 import { newWarehouseFormSchema } from "../schemas";
 import type { NewWarehouseFormValues } from "../types";
-import { BASE_TYPE } from "@shared/constants";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 
 interface AddWarehouseDialogProps {
