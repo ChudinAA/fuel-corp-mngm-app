@@ -1,14 +1,26 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Maximize2 } from "lucide-react";
 import type { Opt } from "@shared/schema";
 import { AddOptDialog } from "./opt/components/add-opt-dialog";
 import { OptTable } from "./opt/components/opt-table";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function OptPage() {
@@ -17,12 +29,7 @@ export default function OptPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const { hasPermission } = useAuth();
-
-  const { data: optDeals } = useQuery<{ data: Opt[]; total: number }>({
-    queryKey: ["/api/opt?page=1&pageSize=1000"],
-  });
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
@@ -52,28 +59,12 @@ export default function OptPage() {
     queryClient.invalidateQueries({ queryKey: ["/api/opt"] });
   };
 
-  // Вычисление накопительной прибыли за текущий месяц
-  const cumulativeProfit = optDeals?.data?.reduce((sum, deal) => {
-    if (!deal.createdAt) return sum;
-    const dealDate = new Date(deal.createdAt);
-    const now = new Date();
-    if (dealDate.getMonth() === now.getMonth() && dealDate.getFullYear() === now.getFullYear()) {
-      return sum + parseFloat(deal.profit || "0");
-    }
-    return sum;
-  }, 0) || 0;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Оптовые продажи (ОПТ)</h1>
-          <p className="text-muted-foreground">
-            Учет оптовых сделок с автоматическим расчетом цен
-          </p>
-          <p className="text-sm font-medium mt-2">
-            Прибыль накопительно (текущий месяц): <span className="text-green-600">{cumulativeProfit.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽</span>
-          </p>
+          <p className="text-muted-foreground">Учет оптовых сделок</p>
         </div>
         {hasPermission("opt", "create") && (
           <Button onClick={handleOpenDialog} data-testid="button-add-opt">
@@ -94,9 +85,7 @@ export default function OptPage() {
         <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
           <div>
             <CardTitle>Список сделок</CardTitle>
-            <CardDescription>
-              Последние 10 записей
-            </CardDescription>
+            <CardDescription>Последние 10 записей</CardDescription>
           </div>
           <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
             <DialogTrigger asChild>

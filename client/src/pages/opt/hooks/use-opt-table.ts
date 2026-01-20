@@ -2,13 +2,12 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Opt } from "@shared/schema";
 
 export function useOptTable() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
-  const pageSize = 10;
+  const pageSize = 20;
   const { toast } = useToast();
 
   const { data: optDeals, isLoading } = useQuery<{ data: any[]; total: number }>({

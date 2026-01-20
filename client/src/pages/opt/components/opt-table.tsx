@@ -21,7 +21,6 @@ import {
   Search,
   Filter,
   Warehouse,
-  MoreVertical,
   FileText,
   AlertCircle,
   History,
@@ -44,9 +43,6 @@ import {
 } from "@/components/ui/tooltip";
 import { formatNumberForTable, formatCurrencyForTable } from "../utils";
 import { useOptTable } from "../hooks/use-opt-table";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
-import { useNavigate } from "react-router-dom";
 import {
   EntityActionsMenu,
   EntityAction,
@@ -363,108 +359,108 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   key={deal.id}
                   className={cn(deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200")}
                 >
-                  <TableCell className="text-[10px] md:text-xs p-1 md:p-2">
-                    <div className="flex flex-col gap-0.5">
-                      <span>{formatDate(deal.dealDate)}</span>
-                      {deal.isDraft && (
-                        <Badge
-                          variant="outline"
-                          className="inline-flex items-center rounded-full bg-amber-100 px-1 py-0 text-[10px] font-medium text-amber-800"
-                        >
-                          Черновик
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-[11px] md:text-sm p-1 md:p-2">
-                    <TooltipProvider>
-                      <div className="flex items-center gap-1">
-                        <span className="truncate max-w-[80px] md:max-w-none">{deal.supplier?.name || "Не указан"}</span>
-                        {deal.supplier?.isWarehouse && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Warehouse className="h-3 w-3 text-sky-400 flex-shrink-0 cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Склад</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                    </TooltipProvider>
-                  </TableCell>
-                  <TableCell className="text-[11px] md:text-sm p-1 md:p-2">
-                    <span className="truncate max-w-[80px] md:max-w-none block">{deal.buyer?.name || "Не указан"}</span>
-                  </TableCell>
-                  <TableCell className="text-right font-medium text-[11px] md:text-sm p-1 md:p-2">
-                    <TooltipProvider>
-                      <div className="flex items-center justify-end gap-1">
-                        <span>{formatNumberForTable(deal.quantityKg)}</span>
-                        {deal.isApproxVolume && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <AlertCircle className="h-3 w-3 text-red-300 flex-shrink-0 cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Примерный объем</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                    </TooltipProvider>
-                  </TableCell>
-                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-2">
-                    <div className="flex items-center justify-end gap-1">
-                      {deal.purchasePrice
-                        ? Number(deal.purchasePrice).toFixed(4)
-                        : "-"}
-                      {deal.purchasePriceModified && (
-                        <span
-                          className="text-orange-500"
-                          title="Цена закупки была автоматически пересчитана"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                            <line x1="12" y1="9" x2="12" y2="13" />
-                            <line x1="12" y1="17" x2="12.01" y2="17" />
-                          </svg>
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-2">
-                    {formatCurrencyForTable(deal.purchaseAmount)}
-                  </TableCell>
-                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-2">
-                    {formatNumberForTable(deal.salePrice)}
-                  </TableCell>
-                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-2">
-                    {formatCurrencyForTable(deal.saleAmount)}
-                  </TableCell>
-                  <TableCell className="text-[11px] md:text-sm p-1 md:p-2">
-                    <span className="truncate max-w-[100px] md:max-w-none block">{deal.deliveryLocation?.name || "—"}</span>
-                  </TableCell>
-                  <TableCell className="text-[11px] md:text-sm p-1 md:p-2">
-                    <span className="truncate max-w-[100px] md:max-w-none block">{deal.carrier?.name || "—"}</span>
-                  </TableCell>
-                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-2">
-                    {deal.deliveryCost
-                      ? formatCurrencyForTable(deal.deliveryCost)
-                      : "—"}
-                  </TableCell>
-                  <TableCell className="text-right text-green-600 font-medium text-[11px] md:text-sm p-1 md:p-2">
-                    {formatCurrencyForTable(deal.profit)}
-                  </TableCell>
+                  <TableCell className="text-[10px] md:text-xs p-1 md:p-3">
+    <div className="flex flex-col gap-0.5">
+      <span>{formatDate(deal.dealDate)}</span>
+      {deal.isDraft && (
+        <Badge
+          variant="outline"
+          className="rounded-full bg-amber-100 px-1.5 py-0 text-[11px] text-amber-800 w-fit"
+        >
+          Черновик
+        </Badge>
+      )}
+    </div>
+  </TableCell>
+  <TableCell className="text-[11px] md:text-sm p-1 md:p-3">
+    <TooltipProvider>
+      <div className="flex items-center gap-1">
+        <span className="truncate max-w-[80px] md:max-w-none">{deal.supplier?.name || "Не указан"}</span>
+        {deal.supplier?.isWarehouse && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Warehouse className="h-3.5 w-3.5 text-sky-400 flex-shrink-0 cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Склад</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+    </TooltipProvider>
+  </TableCell>
+  <TableCell className="text-[11px] md:text-sm p-1 md:p-3">
+    <span className="truncate max-w-[80px] md:max-w-none block">{deal.buyer?.name || "Не указан"}</span>
+  </TableCell>
+  <TableCell className="text-right font-medium text-[11px] md:text-sm p-1 md:p-3">
+    <TooltipProvider>
+      <div className="flex items-center justify-end gap-1">
+        <span>{formatNumberForTable(deal.quantityKg)}</span>
+        {deal.isApproxVolume && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <AlertCircle className="h-3.5 w-3.5 text-red-300 flex-shrink-0 cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Примерный объем</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+    </TooltipProvider>
+  </TableCell>
+  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-3">
+    <div className="flex items-center justify-end gap-1">
+      {deal.purchasePrice
+        ? Number(deal.purchasePrice).toFixed(4)
+        : "-"}
+      {deal.purchasePriceModified && (
+        <span
+          className="text-orange-500"
+          title="Цена закупки была автоматически пересчитана"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </span>
+      )}
+    </div>
+  </TableCell>
+  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-3">
+    {formatCurrencyForTable(deal.purchaseAmount)}
+  </TableCell>
+  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-3">
+    {formatNumberForTable(deal.salePrice)}
+  </TableCell>
+  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-3">
+    {formatCurrencyForTable(deal.saleAmount)}
+  </TableCell>
+  <TableCell className="text-[11px] md:text-sm p-1 md:p-3">
+    <span className="truncate max-w-[100px] md:max-w-none block">{deal.deliveryLocation?.name || "—"}</span>
+  </TableCell>
+  <TableCell className="text-[11px] md:text-sm p-1 md:p-3">
+    <span className="truncate max-w-[100px] md:max-w-none block">{deal.carrier?.name || "—"}</span>
+  </TableCell>
+  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-3">
+    {deal.deliveryCost
+      ? formatCurrencyForTable(deal.deliveryCost)
+      : "—"}
+  </TableCell>
+  <TableCell className="text-right text-green-600 font-medium text-[11px] md:text-sm p-1 md:p-3">
+    {formatCurrencyForTable(deal.profit)}
+  </TableCell>
                   <TableCell className="p-1">
                     <OptDealActions
                       deal={deal}
