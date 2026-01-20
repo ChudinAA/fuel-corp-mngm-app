@@ -285,7 +285,7 @@ export function RefuelingMainFields({
           />
         ) : (
           <div className="space-y-2 col-span-1 min-w-0">
-            <label className="text-sm font-medium flex items-center h-5">
+            <label className="text-sm font-medium flex items-center h-6">
               Базис
             </label>
             <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md text-sm overflow-hidden truncate">
