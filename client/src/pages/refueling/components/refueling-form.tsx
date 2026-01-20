@@ -37,8 +37,6 @@ import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
 
-import { useBasisSelection } from "../../shared/hooks/use-basis-selection";
-
 export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
@@ -108,19 +106,98 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     (w) => w.supplierId === watchSupplierId,
   );
 
-  // Use shared hook for basis selection
-  useBasisSelection({
-    form,
-    watchSupplierId,
-    suppliers,
-    allBases,
-    warehouses,
-    editData,
-    baseType: BASE_TYPE.REFUELING,
-    setSelectedBasis,
-    basisFieldName: "basis",
+  // Use filtering hook
+  const { refuelingSuppliers, availableBases, purchasePrices, salePrices } =
+    useRefuelingFilters({
+      supplierId: watchSupplierId,
+      buyerId: watchBuyerId,
+      refuelingDate: watchRefuelingDate,
+      selectedBasis,
+      productType: watchProductType,
+      allPrices,
+      suppliers,
+      allBases,
+    });
+
+  // Use calculations hook
+  const {
+    calculatedKg,
+    finalKg,
+    purchasePrice,
+    salePrice,
+    purchaseAmount,
+    saleAmount,
+    agentFee,
+    profit,
+    warehouseStatus,
+    contractVolumeStatus,
+    supplierContractVolumeStatus,
+  } = useRefuelingCalculations({
+    inputMode,
+    quantityLiters: watchLiters,
+    density: watchDensity,
+    quantityKg: watchKg,
+    isWarehouseSupplier,
+    supplierWarehouse,
+    selectedBasis,
+    purchasePrices,
+    salePrices,
+    selectedPurchasePriceId,
+    selectedSalePriceId,
+    selectedSupplier,
+    productType: watchProductType,
+    isEditing,
+    initialQuantityKg,
+    initialWarehouseBalance,
+    refuelingDate: watchRefuelingDate,
   });
 
+  const {
+    showDuplicateDialog,
+    setShowDuplicateDialog,
+    checkDuplicate,
+    handleConfirm,
+    handleCancel,
+    isChecking,
+  } = useDuplicateCheck({
+    type: "refueling",
+    getFields: () => ({
+      date: watchRefuelingDate,
+      supplierId: watchSupplierId,
+      buyerId: watchBuyerId,
+      basis: selectedBasis,
+      quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
+    }),
+  });
+  
+  useEffect(() => {
+    if (watchSupplierId && suppliers && allBases) {
+      const supplier = suppliers.find((s) => s.id === watchSupplierId);
+
+      if (supplier?.isWarehouse) {
+        const warehouse = warehouses?.find((w) => w.supplierId === supplier.id);
+        if (warehouse) {
+          form.setValue("warehouseId", warehouse.id);
+        }
+      } else {
+        form.setValue("warehouseId", "");
+      }
+
+      // Автоматически выбираем первый базис при выборе поставщика
+      if (supplier?.baseIds && supplier.baseIds.length >= 1 && !editData) {
+        const refuelingBases = allBases.filter(
+          (b) =>
+            supplier.baseIds?.includes(b.id) &&
+            b.baseType === BASE_TYPE.REFUELING,
+        );
+        if (refuelingBases.length > 0) {
+          const firstBase = refuelingBases[0];
+          form.setValue("basis", firstBase.name);
+          setSelectedBasis(firstBase.name);
+        }
+      }
+    }
+  }, [watchSupplierId, suppliers, allBases, warehouses, form, editData]);
 
   // Используем общий хук для автоматического выбора цен
   useAutoPriceSelection({

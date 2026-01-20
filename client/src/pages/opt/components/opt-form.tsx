@@ -41,8 +41,6 @@ import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
 
-import { useBasisSelection } from "../../shared/hooks/use-basis-selection";
-
 export function OptForm({ onSuccess, editData }: OptFormProps) {
   const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
@@ -81,12 +79,12 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     queryKey: ["/api/bases"],
   });
 
-  const { data: warehouses } = useQuery<Warehouse[]>({
-    queryKey: ["/api/warehouses"],
-  });
-
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
+  });
+
+  const { data: warehouses } = useQuery<Warehouse[]>({
+    queryKey: ["/api/warehouses"],
   });
 
   const { data: carriers } = useQuery<LogisticsCarrier[]>({
@@ -120,18 +118,109 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     (w) => w.supplierId === watchSupplierId,
   );
 
-  // Use shared hook for basis selection
-  useBasisSelection({
-    form,
-    watchSupplierId,
+  // Use filtering hook
+  const {
+    purchasePrices,
+    salePrices,
+    wholesaleSuppliers,
+    wholesaleBases,
+    availableCarriers,
+    availableLocations,
+  } = useOptFilters({
+    supplierId: watchSupplierId,
+    buyerId: watchBuyerId,
+    dealDate: watchDealDate,
+    selectedBasis,
+    carrierId: watchCarrierId,
+    deliveryLocationId: watchDeliveryLocationId,
+    allPrices,
     suppliers,
     allBases,
-    warehouses,
-    editData,
-    baseType: BASE_TYPE.WHOLESALE,
-    setSelectedBasis,
+    carriers,
+    deliveryLocations,
+    deliveryCosts,
+    supplierWarehouse,
   });
 
+  // Use calculations hook
+  const {
+    calculatedKg,
+    finalKg,
+    purchasePrice,
+    salePrice,
+    deliveryCost,
+    purchaseAmount,
+    saleAmount,
+    profit,
+    deliveryTariff,
+    contractVolumeStatus,
+    supplierContractVolumeStatus,
+    warehouseBalanceAtDate,
+    isWarehouseBalanceLoading,
+  } = useOptCalculations({
+    inputMode,
+    quantityLiters: watchLiters,
+    density: watchDensity,
+    quantityKg: watchKg,
+    isWarehouseSupplier,
+    supplierWarehouse,
+    selectedBasis,
+    purchasePrices,
+    salePrices,
+    selectedPurchasePriceId,
+    selectedSalePriceId,
+    deliveryCosts,
+    carrierId: watchCarrierId,
+    deliveryLocationId: watchDeliveryLocationId,
+    bases: wholesaleBases,
+    isEditing: isEditing,
+    initialQuantityKg: initialQuantityKg,
+    dealDate: watchDealDate,
+  });
+
+  const {
+    showDuplicateDialog,
+    setShowDuplicateDialog,
+    checkDuplicate,
+    handleConfirm,
+    handleCancel,
+    isChecking
+  } = useDuplicateCheck({
+    type: "opt",
+    getFields: () => ({
+      date: watchDealDate,
+      supplierId: watchSupplierId,
+      buyerId: watchBuyerId,
+      basis: selectedBasis,
+      deliveryLocationId: watchDeliveryLocationId,
+      quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
+    }),
+  });
+
+  // Автоматический выбор базиса при выборе поставщика
+  useEffect(() => {
+    if (watchSupplierId && suppliers && allBases) {
+      const supplier = suppliers.find((s) => s.id === watchSupplierId);
+      if (supplier?.baseIds && supplier.baseIds.length > 0) {
+        const baseId = supplier.baseIds[0];
+        const base = allBases.find(
+          (b) => b.id === baseId && b.baseType === BASE_TYPE.WHOLESALE,
+        );
+        if (base) {
+          setSelectedBasis(base.name);
+        }
+      }
+
+      if (supplier?.isWarehouse) {
+        const warehouse = warehouses?.find((w) => w.supplierId === supplier.id);
+        if (warehouse) {
+          form.setValue("warehouseId", warehouse.id);
+        }
+      } else {
+        form.setValue("warehouseId", "");
+      }
+    }
+  }, [watchSupplierId, suppliers, allBases, warehouses, form]);
 
   // Используем общий хук для автоматического выбора цен
   useAutoPriceSelection({
