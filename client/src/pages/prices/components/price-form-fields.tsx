@@ -1,3 +1,4 @@
+import { Combobox } from "@/components/ui/combobox";
 import {
   FormField,
   FormItem,
@@ -194,26 +195,20 @@ export function PriceFormFields({
           control={control}
           name="counterpartyId"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="col-span-1 min-w-0">
               <FormLabel>Контрагент</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger data-testid="select-counterparty">
-                    <SelectValue placeholder="Выберите контрагента" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {contractors?.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  )) || (
-                    <SelectItem value="none" disabled>
-                      Нет данных
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <div className="w-full">
+                  <Combobox
+                    options={contractors?.map((c) => ({ value: c.id, label: c.name })) || []}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Выберите контрагента"
+                    className="w-full"
+                    dataTestId="select-counterparty"
+                  />
+                </div>
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -223,7 +218,7 @@ export function PriceFormFields({
           control={control}
           name="productType"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="col-span-1 min-w-0">
               <FormLabel>Тип продукта</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
@@ -231,7 +226,6 @@ export function PriceFormFields({
                     <SelectValue />
                   </SelectTrigger>
                 </FormControl>
-                {}
                 <SelectContent>
                   <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
                   <SelectItem value={PRODUCT_TYPE.SERVICE}>Услуга</SelectItem>
@@ -251,35 +245,30 @@ export function PriceFormFields({
           control={control}
           name="basis"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="col-span-1 min-w-0">
               <FormLabel>Базис (место поставки/заправки)</FormLabel>
-              <div className="flex gap-1">
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger
-                      data-testid="select-basis"
-                      className="flex-1"
-                    >
-                      <SelectValue placeholder="Выберите базис" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {availableBases?.length > 0 ? (
-                      availableBases.map((b) => (
-                        <SelectItem key={b.id} value={b.name}>
+              <div className="flex gap-1 items-center w-full">
+                <FormControl>
+                  <div className="flex-1 min-w-0">
+                    <Combobox
+                      options={availableBases?.map((b) => ({
+                        value: b.name,
+                        label: b.name,
+                        render: (
                           <div className="flex items-center gap-2">
                             {b.name}
                             <BaseTypeBadge type={b.baseType} short={true} />
                           </div>
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="none" disabled>
-                        Нет доступных базисов
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                        )
+                      })) || []}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Выберите базис"
+                      className="w-full"
+                      dataTestId="select-basis"
+                    />
+                  </div>
+                </FormControl>
                 {hasPermission("directories", "create") && (
                   <Button
                     type="button"
@@ -287,6 +276,7 @@ export function PriceFormFields({
                     variant="outline"
                     onClick={() => setAddBaseOpen(true)}
                     data-testid="button-add-customer-inline"
+                    className="shrink-0 h-9 w-9"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
