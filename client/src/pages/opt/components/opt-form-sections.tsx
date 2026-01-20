@@ -1,3 +1,4 @@
+import { Combobox } from "@/components/ui/combobox";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -219,50 +220,45 @@ export function LogisticsSection({
             control={form.control}
             name="deliveryLocationId"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="col-span-1 min-w-0">
                 <FormLabel className="flex items-center gap-2">
                   Точка поставки
                 </FormLabel>
-                <div className="flex gap-1">
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger
-                        data-testid="select-delivery-location"
-                        className="flex-1"
-                      >
-                        <SelectValue placeholder="Выберите место">
-                          {selectedLocation?.name}
-                        </SelectValue>
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {deliveryLocations?.map((location) => {
-                        const base = getBase(location.baseId || "");
-                        return (
-                          <SelectItem key={location.id} value={location.id}>
-                            <div className="flex items-center justify-between w-full gap-2">
-                              <span>{location.name}</span>
-                              {base && (
-                                <div className="flex items-center gap-1 opacity-60 scale-90 origin-right">
-                                  <span className="text-[13px] whitespace-nowrap">
-                                    {base.name}
-                                  </span>
-                                  <BaseTypeBadge
-                                    type={base.baseType}
-                                    short={true}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          </SelectItem>
-                        );
-                      }) || (
-                        <SelectItem value="none" disabled>
-                          Нет данных
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                <div className="flex gap-1 items-center w-full">
+                  <FormControl>
+                    <div className="flex-1 min-w-0">
+                      <Combobox
+                        options={deliveryLocations?.map((location) => {
+                          const base = getBase(location.baseId || "");
+                          return {
+                            value: location.id,
+                            label: location.name,
+                            render: (
+                              <div className="flex items-center justify-between w-full gap-2">
+                                <span className="truncate">{location.name}</span>
+                                {base && (
+                                  <div className="flex items-center gap-1 opacity-60 scale-90 origin-right shrink-0">
+                                    <span className="text-[13px] whitespace-nowrap">
+                                      {base.name}
+                                    </span>
+                                    <BaseTypeBadge
+                                      type={base.baseType}
+                                      short={true}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          };
+                        }) || []}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Выберите место"
+                        className="w-full"
+                        dataTestId="select-delivery-location"
+                      />
+                    </div>
+                  </FormControl>
                   {hasPermission("directories", "create") && (
                     <Button
                       type="button"
@@ -270,6 +266,7 @@ export function LogisticsSection({
                       variant="outline"
                       onClick={() => setAddDeliveryLocationOpen(true)}
                       data-testid="button-add-delivery-location-inline"
+                      className="shrink-0 h-9 w-9"
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -284,32 +281,26 @@ export function LogisticsSection({
             control={form.control}
             name="carrierId"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="col-span-1 min-w-0">
                 <FormLabel className="flex items-center gap-2">
                   Перевозчик
                 </FormLabel>
-                <div className="flex gap-1">
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger
-                        data-testid="select-carrier"
-                        className="flex-1"
-                      >
-                        <SelectValue placeholder="Выберите перевозчика" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {carriers?.map((carrier) => (
-                        <SelectItem key={carrier.id} value={carrier.id}>
-                          {carrier.name}
-                        </SelectItem>
-                      )) || (
-                        <SelectItem value="none" disabled>
-                          Нет данных
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                <div className="flex gap-1 items-center w-full">
+                  <FormControl>
+                    <div className="flex-1 min-w-0">
+                      <Combobox
+                        options={carriers?.map((carrier) => ({
+                          value: carrier.id,
+                          label: carrier.name
+                        })) || []}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Выберите перевозчика"
+                        className="w-full"
+                        dataTestId="select-carrier"
+                      />
+                    </div>
+                  </FormControl>
                   {hasPermission("delivery", "create") && (
                     <Button
                       type="button"
@@ -317,6 +308,7 @@ export function LogisticsSection({
                       variant="outline"
                       onClick={() => setAddDeliveryCostOpen(true)}
                       data-testid="button-add-delivery-cost-inline"
+                      className="shrink-0 h-9 w-9"
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
