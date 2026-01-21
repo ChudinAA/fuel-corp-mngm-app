@@ -318,9 +318,9 @@ export function PricesTable({
                 </div>
               </TableHead>
               <TableHead className="text-right">Цена (₽/кг)</TableHead>
-              <TableHead className="text-right">Объем</TableHead>
-              <TableHead className="text-right">Выборка</TableHead>
-              <TableHead className="w-[30px]"></TableHead>
+              <TableHead className="text-center">Объем (кг)</TableHead>
+              <TableHead className="text-center">Выборка (кг)</TableHead>
+              <TableHead className="w-[10px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -343,7 +343,7 @@ export function PricesTable({
                     data-testid={`row-price-${price.id}`}
                     className={isExpired ? "opacity-60" : ""}
                   >
-                    <TableCell className="text-sm whitespace-nowrap">
+                    <TableCell className="text-[13px] whitespace-nowrap">
                       {formatDate(price.dateFrom)} -{" "}
                       <span className={isExpired ? "text-red-400/70" : ""}>
                         {formatDate(price.dateTo)}
@@ -420,13 +420,13 @@ export function PricesTable({
                       {getPriceDisplay(price.priceValues)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {price.volume ? `${formatNumberForTable(price.volume)} кг` : "—"}
+                      {price.volume ? `${formatNumberForTable(price.volume)}` : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <span>
                           {price.soldVolume && parseFloat(price.soldVolume) > 0
-                            ? `${formatNumberForTable(price.soldVolume)} кг`
+                            ? `${formatNumberForTable(price.soldVolume)}`
                             : "—"}
                         </span>
                         <Tooltip>
