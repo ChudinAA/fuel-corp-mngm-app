@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -7,8 +6,10 @@ import type { AircraftRefueling } from "@shared/schema";
 
 export function useRefuelingTable() {
   const [search, setSearch] = useState("");
-  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
-  const pageSize = 20;
+  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>(
+    {},
+  );
+  const pageSize = 10;
   const { toast } = useToast();
 
   const filterParams = Object.entries(columnFilters)
@@ -16,27 +17,25 @@ export function useRefuelingTable() {
     .map(([columnId, values]) => `&filter_${columnId}=${values.join(",")}`)
     .join("");
 
-  const { 
-    data, 
-    isLoading, 
-    fetchNextPage, 
-    hasNextPage, 
-    isFetchingNextPage 
-  } = useInfiniteQuery({
-    queryKey: [`/api/refueling`, { search, columnFilters }],
-    queryFn: async ({ pageParam = 0 }) => {
-      const res = await apiRequest(
-        "GET", 
-        `/api/refueling?offset=${pageParam}&pageSize=${pageSize}${search ? `&search=${search}` : ""}${filterParams}`
-      );
-      return res.json();
-    },
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      const currentCount = allPages.reduce((sum, page) => sum + page.data.length, 0);
-      return currentCount < lastPage.total ? currentCount : undefined;
-    },
-  });
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery({
+      queryKey: [`/api/refueling`, { search, columnFilters }],
+      queryFn: async ({ pageParam = 0 }) => {
+        const res = await apiRequest(
+          "GET",
+          `/api/refueling?offset=${pageParam}&pageSize=${pageSize}${search ? `&search=${search}` : ""}${filterParams}`,
+        );
+        return res.json();
+      },
+      initialPageParam: 0,
+      getNextPageParam: (lastPage, allPages) => {
+        const currentCount = allPages.reduce(
+          (sum, page) => sum + page.data.length,
+          0,
+        );
+        return currentCount < lastPage.total ? currentCount : undefined;
+      },
+    });
 
   const refuelingDeals = useMemo(() => {
     if (!data) return { data: [], total: 0 };
@@ -53,10 +52,17 @@ export function useRefuelingTable() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/refueling`] });
-      toast({ title: "Заправка удалена", description: "Заправка ВС успешно удалена" });
+      toast({
+        title: "Заправка удалена",
+        description: "Заправка ВС успешно удалена",
+      });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 

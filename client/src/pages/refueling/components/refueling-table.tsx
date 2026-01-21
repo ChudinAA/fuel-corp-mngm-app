@@ -115,7 +115,11 @@ interface RefuelingTableProps {
   onDelete?: () => void;
 }
 
-export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps) {
+export function RefuelingTable({
+  onEdit,
+  onCopy,
+  onDelete,
+}: RefuelingTableProps) {
   const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
   const { hasPermission } = useAuth();
   const {
@@ -146,19 +150,19 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
     const deals = refuelingDeals?.data || [];
     const values = new Map<string, string>();
     deals.forEach((deal: any) => {
-      if (key === 'refuelingDate') {
+      if (key === "refuelingDate") {
         const val = formatDate(deal.refuelingDate);
         values.set(val, val);
-      } else if (key === 'productType') {
+      } else if (key === "productType") {
         const label = getProductLabel(deal.productType);
         values.set(label, deal.productType);
-      } else if (key.includes('.')) {
-        const val = key.split('.').reduce((obj, k) => obj?.[k], deal);
-        const label = typeof val === 'object' ? val?.name : val;
+      } else if (key.includes(".")) {
+        const val = key.split(".").reduce((obj, k) => obj?.[k], deal);
+        const label = typeof val === "object" ? val?.name : val;
         if (label) values.set(label, label);
       } else {
         const val = deal[key];
-        const label = typeof val === 'object' ? val?.name : val;
+        const label = typeof val === "object" ? val?.name : val;
         if (label) values.set(label, label);
       }
     });
@@ -170,7 +174,7 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
   const handleFilterUpdate = (columnId: string, values: string[]) => {
     setColumnFilters((prev: Record<string, string[]>) => ({
       ...prev,
-      [columnId]: values
+      [columnId]: values,
     }));
   };
 
@@ -211,7 +215,6 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
   const filteredDeals = allDeals;
 
   const deals = filteredDeals;
-  const total = (refuelingDeals as any)?.total || 0;
 
   return (
     <div className="space-y-4">
@@ -234,9 +237,14 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
           variant="outline"
           size="icon"
           onClick={() => setColumnFilters({})}
-          disabled={Object.values(columnFilters).every((v: any) => v.length === 0)}
+          disabled={Object.values(columnFilters).every(
+            (v: any) => v.length === 0,
+          )}
           title="Сбросить все фильтры"
-          className={cn(Object.values(columnFilters).some((v: any) => v.length > 0) && "text-primary border-primary")}
+          className={cn(
+            Object.values(columnFilters).some((v: any) => v.length > 0) &&
+              "text-primary border-primary",
+          )}
         >
           <Filter className="h-4 w-4" />
         </Button>
@@ -255,7 +263,7 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="text-sm font-semibold p-1 md:p-2 w-[100px]">
+              <TableHead className="text-sm font-semibold p-1 md:p-2 w-[90px]">
                 <div className="flex items-center justify-between gap-1">
                   <span>Дата</span>
                   <TableColumnFilter
@@ -274,27 +282,37 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                     title="Продукт"
                     options={getUniqueOptions("productType")}
                     selectedValues={columnFilters["productType"] || []}
-                    onUpdate={(values) => handleFilterUpdate("productType", values)}
+                    onUpdate={(values) =>
+                      handleFilterUpdate("productType", values)
+                    }
                     dataTestId="filter-product"
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-sm font-semibold p-1 md:p-2">Борт</TableHead>
+              <TableHead className="text-sm font-semibold p-1 md:p-2">
+                Борт
+              </TableHead>
               <TableHead className="text-sm font-semibold p-1 md:p-2">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="truncate max-w-[80px] md:max-w-none">Поставщик</span>
+                  <span className="truncate max-w-[80px] md:max-w-none">
+                    Поставщик
+                  </span>
                   <TableColumnFilter
                     title="Поставщик"
                     options={getUniqueOptions("supplier")}
                     selectedValues={columnFilters["supplier"] || []}
-                    onUpdate={(values) => handleFilterUpdate("supplier", values)}
+                    onUpdate={(values) =>
+                      handleFilterUpdate("supplier", values)
+                    }
                     dataTestId="filter-supplier"
                   />
                 </div>
               </TableHead>
               <TableHead className="text-sm font-semibold p-1 md:p-2">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="truncate max-w-[80px] md:max-w-none">Покупатель</span>
+                  <span className="truncate max-w-[80px] md:max-w-none">
+                    Покупатель
+                  </span>
                   <TableColumnFilter
                     title="Покупатель"
                     options={getUniqueOptions("buyer")}
@@ -343,9 +361,12 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
               </TableRow>
             ) : (
               deals.map((deal: any) => (
-                <TableRow 
+                <TableRow
                   key={deal.id}
-                  className={cn(deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200")}
+                  className={cn(
+                    deal.isDraft &&
+                      "bg-muted/70 opacity-60 border-2 border-orange-200",
+                  )}
                 >
                   <TableCell className="text-[10px] md:text-xs p-1 md:p-4">
                     <div className="flex flex-col gap-0.5">
@@ -353,7 +374,7 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                       {deal.isDraft && (
                         <Badge
                           variant="outline"
-                          className="rounded-full bg-amber-100 px-1.5 py-0 text-[11px] text-amber-800 w-fit"
+                          className="rounded-full bg-amber-100 px-1 py-0 text-[11px] text-amber-800 w-fit"
                         >
                           Черновик
                         </Badge>
@@ -369,7 +390,7 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                           ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"
                           : deal.productType === PRODUCT_TYPE.PVKJ
                             ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30"
-                            : ""
+                            : "",
                       )}
                     >
                       {getProductLabel(deal.productType)}
@@ -381,7 +402,9 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                   <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
                     <TooltipProvider>
                       <div className="flex items-center gap-1">
-                        <span className="truncate max-w-[80px] md:max-w-none">{deal.supplier?.name || "Не указан"}</span>
+                        <span className="truncate max-w-[80px] md:max-w-none">
+                          {deal.supplier?.name || "Не указан"}
+                        </span>
                         {deal.supplier?.isWarehouse && (
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -396,13 +419,19 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                     </TooltipProvider>
                   </TableCell>
                   <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
-                    <span className="truncate max-w-[80px] md:max-w-none block">{deal.buyer?.name || "Не указан"}</span>
+                    <span className="truncate max-w-[80px] md:max-w-none block">
+                      {deal.buyer?.name || "Не указан"}
+                    </span>
                   </TableCell>
                   <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
-                      <span className="truncate max-w-[50px] md:max-w-none block">{formatNumberForTable(deal.quantityLiters) || "-"}</span>
+                    <span className="truncate max-w-[50px] md:max-w-none block">
+                      {formatNumberForTable(deal.quantityLiters) || "-"}
+                    </span>
                   </TableCell>
                   <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
-                      <span className="truncate max-w-[50px] md:max-w-none block">{deal.density || "-"}</span>
+                    <span className="truncate max-w-[50px] md:max-w-none block">
+                      {deal.density || "-"}
+                    </span>
                   </TableCell>
                   <TableCell className="text-right font-medium text-[11px] md:text-sm p-1 md:p-4">
                     <TooltipProvider>
@@ -493,12 +522,6 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
           </Button>
         </div>
       )}
-
-      <div className="flex items-center justify-between text-sm text-muted-foreground pt-2">
-        <p>
-          Показано {deals.length} из {total}
-        </p>
-      </div>
 
       <DeleteConfirmDialog
         open={deleteDialogOpen}

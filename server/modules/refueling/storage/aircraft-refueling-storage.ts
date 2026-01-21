@@ -23,16 +23,11 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
   }
 
   async getRefuelings(
-    offsetOrPage: number = 0,
+    offset: number = 0,
     pageSize: number = 20,
     search?: string,
     filters?: Record<string, string[]>,
   ): Promise<{ data: any[]; total: number }> {
-    let offset = offsetOrPage;
-    if (offsetOrPage > 0 && offsetOrPage < 100 && (offsetOrPage % pageSize !== 0 || offsetOrPage === 1)) {
-        offset = (offsetOrPage - 1) * pageSize;
-    }
-
     const baseConditions: any[] = [isNull(aircraftRefueling.deletedAt)];
 
     if (search && search.trim()) {
@@ -49,21 +44,23 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
 
     if (filters) {
       if (filters.supplier?.length) {
-          baseConditions.push(sql`${suppliers.name} IN ${filters.supplier}`);
+        baseConditions.push(sql`${suppliers.name} IN ${filters.supplier}`);
       }
       if (filters.buyer?.length) {
-          baseConditions.push(sql`${customers.name} IN ${filters.buyer}`);
+        baseConditions.push(sql`${customers.name} IN ${filters.buyer}`);
       }
       if (filters.productType?.length) {
-          baseConditions.push(sql`${aircraftRefueling.productType} IN ${filters.productType}`);
+        baseConditions.push(
+          sql`${aircraftRefueling.productType} IN ${filters.productType}`,
+        );
       }
       if (filters.date?.length) {
         // Convert dates to string format for comparison
-          baseConditions.push(sql`TO_CHAR(${aircraftRefueling.refuelingDate}, 'DD.MM.YYYY') IN ${filters.date}`);
+        baseConditions.push(
+          sql`TO_CHAR(${aircraftRefueling.refuelingDate}, 'DD.MM.YYYY') IN ${filters.date}`,
+        );
       }
     }
-
-    
 
     const whereCondition = and(...baseConditions);
 
@@ -119,7 +116,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
     return await db.transaction(async (tx) => {
       const [created] = await tx
         .insert(aircraftRefueling)
-        .values(data as any)
+        .values(data)
         .returning();
 
       // Для услуги заправки или черновика не создаем транзакции на складе
@@ -128,31 +125,30 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         data.warehouseId &&
         data.productType !== PRODUCT_TYPE.SERVICE
       ) {
-        const warehouseResult = await tx.query.warehouses.findFirst({
+        const warehouse = await tx.query.warehouses.findFirst({
           where: eq(warehouses.id, data.warehouseId),
         });
-        const warehouse = (warehouseResult as any);
 
         if (!warehouse) {
           throw new Error("Warehouse not found");
         }
 
-        const quantity = parseFloat((data.quantityKg as any) as string);
+        const quantity = parseFloat(data.quantityKg);
         const isPvkj = data.productType === PRODUCT_TYPE.PVKJ;
 
         const currentBalance = parseFloat(
           isPvkj
-            ? (warehouse.pvkjBalance as any) || "0"
-            : (warehouse.currentBalance as any) || "0",
+            ? warehouse.pvkjBalance || "0"
+            : warehouse.currentBalance || "0",
         );
         const averageCost = isPvkj
-          ? (warehouse.pvkjAverageCost as any) || "0"
-          : (warehouse.averageCost as any) || "0";
+          ? warehouse.pvkjAverageCost || "0"
+          : warehouse.averageCost || "0";
         const newBalance = Math.max(0, currentBalance - quantity);
 
         const updateData: any = {
           updatedAt: sql`NOW()`,
-          updatedById: data.createdById as any,
+          updatedById: data.createdById,
         };
 
         if (isPvkj) {
@@ -181,9 +177,9 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
             balanceAfter: newBalance.toString(),
             averageCostBefore: averageCost,
             averageCostAfter: averageCost,
-            createdById: data.createdById as any,
+            createdById: data.createdById,
             transactionDate: data.refuelingDate,
-          } as any)
+          })
           .returning();
 
         await tx
@@ -223,10 +219,9 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         data.quantityKg &&
         data.productType !== PRODUCT_TYPE.SERVICE
       ) {
-        const warehouseResult = await tx.query.warehouses.findFirst({
+        const warehouse = await tx.query.warehouses.findFirst({
           where: eq(warehouses.id, data.warehouseId),
         });
-        const warehouse = warehouseResult as any;
 
         if (warehouse) {
           const quantity = parseFloat(data.quantityKg.toString());
@@ -244,7 +239,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
 
           const updateData: any = {
             updatedAt: sql`NOW()`,
-            updatedById: data.updatedById as any,
+            updatedById: data.updatedById,
           };
 
           if (isPvkj) {
@@ -267,18 +262,18 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
               sourceType: SOURCE_TYPE.REFUELING,
               sourceId: currentRefueling.id,
               quantity: (-quantity).toString(),
-              sum: data.purchaseAmount as any,
-              price: data.purchasePrice as any,
+              sum: data.purchaseAmount,
+              price: data.purchasePrice,
               balanceBefore: currentBalance.toString(),
               balanceAfter: newBalance.toString(),
               averageCostBefore: averageCost,
               averageCostAfter: averageCost,
-              createdById: data.updatedById as any,
-              transactionDate: data.refuelingDate as any,
+              createdById: data.updatedById,
+              transactionDate: data.refuelingDate,
             })
             .returning();
 
-          (data as any).transactionId = transaction.id;
+          data.transactionId = transaction.id;
         }
       }
       // Проверяем изменилось ли количество КГ и есть ли привязанная транзакция (для НЕ черновиков)
@@ -302,18 +297,17 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
           const quantityDiff = newQuantityKg - oldQuantityKg;
 
           if (currentRefueling.warehouse && currentRefueling.transaction) {
-            const warehouse = currentRefueling.warehouse as any;
             const isPvkj = currentRefueling.productType === PRODUCT_TYPE.PVKJ;
             const currentBalance = parseFloat(
               isPvkj
-                ? warehouse.pvkjBalance || "0"
-                : warehouse.currentBalance || "0",
+                ? currentRefueling.warehouse.pvkjBalance || "0"
+                : currentRefueling.warehouse.currentBalance || "0",
             );
             const newBalance = Math.max(0, currentBalance - quantityDiff);
 
             const warehouseUpdateData: any = {
               updatedAt: sql`NOW()`,
-              updatedById: data.updatedById as any,
+              updatedById: data.updatedById,
             };
 
             if (isPvkj) {
@@ -350,7 +344,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         .set({
           ...data,
           updatedAt: sql`NOW()`,
-        } as any)
+        })
         .where(eq(aircraftRefueling.id, id))
         .returning();
 
@@ -378,11 +372,10 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         const isPvkj = currentRefueling.productType === PRODUCT_TYPE.PVKJ;
 
         if (currentRefueling.warehouse) {
-          const warehouse = currentRefueling.warehouse as any;
           const currentBalance = parseFloat(
             isPvkj
-              ? warehouse.pvkjBalance || "0"
-              : warehouse.currentBalance || "0",
+              ? currentRefueling.warehouse.pvkjBalance || "0"
+              : currentRefueling.warehouse.currentBalance || "0",
           );
           const newBalance = currentBalance + quantityKg;
 
@@ -545,15 +538,15 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
           columns: {
             id: true,
             name: true,
-          } as any,
+          },
         },
         warehouse: {
           columns: {
             id: true,
             name: true,
-          } as any,
+          },
         },
-      } as any,
+      },
     });
 
     return data;
