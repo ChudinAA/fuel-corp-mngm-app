@@ -6,9 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pencil, Trash2, FileText, Copy, Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
-import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
-import { AuditPanel } from "@/components/audit-panel";
+import { Pencil, Trash2, FileText, Copy, Search, Filter, ChevronLeft, ChevronRight, History } from "lucide-react";
+import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ExportButton } from "@/components/export/export-button";
 import { formatNumber, formatDate } from "../utils";
@@ -26,7 +25,7 @@ const formatNumberWithK = (value: string | number) => {
   return formatNumber(num);
 };
 
-export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'data' | 'isLoading' | 'isDeleting'>) {
+export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<MovementTableProps, 'data' | 'isLoading' | 'isDeleting'> & { onShowHistory: () => void }) {
   const {
     page,
     setPage,
@@ -45,7 +44,6 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
   const [selectedNotes, setSelectedNotes] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { hasPermission } = useAuth();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -90,7 +88,7 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 px-4 md:px-6">
         {[1, 2, 3].map((i) => (
           <Skeleton key={i} className="h-12 w-full" />
         ))}
@@ -98,11 +96,11 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
     );
   }
 
+  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
+
   const total = movements?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
   const data = movements?.data || [];
-
-  console.log("MovementTable Rendering:", { movements, total, pageSize, totalPages, dataLength: data.length });
 
   return (
     <div className="space-y-4 px-4 md:px-6">
@@ -128,15 +126,23 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
           >
             <Filter className="h-4 w-4" />
           </Button>
+          <Button
+            variant="outline"
+            onClick={onShowHistory}
+            title="Аудит всех перемещений"
+          >
+            <History className="h-4 w-4 mr-2" />
+            История изменений
+          </Button>
+          <ExportButton moduleName="movement" />
         </div>
-        <ExportButton module="movement" />
       </div>
 
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px] text-xs md:text-sm px-2 md:px-4">
+              <TableHead className="w-[90px] text-xs md:text-sm px-2 md:px-4">
                 <div className="flex items-center justify-between gap-1">
                   <span>Дата</span>
                   <TableColumnFilter
@@ -147,7 +153,7 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="w-[110px] text-xs md:text-sm px-2 md:px-4">
+              <TableHead className="w-[100px] text-xs md:text-sm px-2 md:px-4">
                 <div className="flex items-center justify-between gap-1">
                   <span>Тип</span>
                   <TableColumnFilter
@@ -158,9 +164,9 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="w-[100px] text-xs md:text-sm px-2 md:px-4">
-                <div className="flex items-center justify-between gap-1">
-                  <span>Прод.</span>
+              <TableHead className="w-[90px] text-xs md:text-sm px-2 md:px-2">
+                <div className="flex items-center justify-between gap-0.5">
+                  <span>Продукт</span>
                   <TableColumnFilter
                     title="Продукт"
                     options={getUniqueOptions("product")}
@@ -169,7 +175,7 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="flex-1 min-w-[140px] text-xs md:text-sm px-2 md:px-4">
+              <TableHead className="flex-1 min-w-[120px] text-xs md:text-sm px-2 md:px-4">
                 <div className="flex items-center justify-between gap-1">
                   <span className="truncate">Откуда</span>
                   <TableColumnFilter
@@ -180,7 +186,7 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="flex-1 min-w-[140px] text-xs md:text-sm px-2 md:px-4">
+              <TableHead className="flex-1 min-w-[120px] text-xs md:text-sm px-2 md:px-4">
                 <div className="flex items-center justify-between gap-1">
                   <span className="truncate">Куда</span>
                   <TableColumnFilter
@@ -191,12 +197,12 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-right w-[70px] text-xs md:text-sm px-2 md:px-4">КГ</TableHead>
-              <TableHead className="text-right w-[90px] text-xs md:text-sm px-2 md:px-4 leading-tight">Цена закупки</TableHead>
-              <TableHead className="text-right w-[100px] text-xs md:text-sm px-2 md:px-4 leading-tight">Сумма закупки</TableHead>
-              <TableHead className="flex-1 min-w-[120px] text-xs md:text-sm px-2 md:px-4">
-                <div className="flex items-center justify-between gap-1">
-                  <span className="truncate">Пер-к</span>
+              <TableHead className="text-right w-[80px] text-xs md:text-sm px-2 md:px-4">КГ</TableHead>
+              <TableHead className="text-right w-[90px] text-xs md:text-sm px-2 md:px-3 leading-tight">Цена закупки</TableHead>
+              <TableHead className="text-right w-[100px] text-xs md:text-sm px-2 md:px-3 leading-tight">Сумма закупки</TableHead>
+              <TableHead className="flex-1 min-w-[120px] text-xs md:text-sm px-2 md:px-2">
+                <div className="flex items-center justify-between gap-0.5">
+                  <span className="truncate">Перевозчик</span>
                   <TableColumnFilter
                     title="Перевозчик"
                     options={getUniqueOptions("carrierName")}
@@ -205,10 +211,10 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-right w-[80px] text-xs md:text-sm px-2 md:px-4">Дост.</TableHead>
-              <TableHead className="text-right w-[80px] text-xs md:text-sm px-2 md:px-4">Хран.</TableHead>
-              <TableHead className="text-right w-[90px] text-xs md:text-sm px-2 md:px-4 leading-tight">Себест.</TableHead>
-              <TableHead className="w-[50px] px-2 md:px-4"></TableHead>
+              <TableHead className="text-right w-[80px] text-xs md:text-sm px-2 md:px-1">Доставка</TableHead>
+              <TableHead className="text-right w-[80px] text-xs md:text-sm px-2 md:px-3">Хранение</TableHead>
+              <TableHead className="text-right w-[90px] text-xs md:text-sm px-2 md:px-3 leading-tight">Себест.</TableHead>
+              <TableHead className="w-[30px] px-2 md:px-2"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -229,13 +235,13 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
 
                 return (
                   <TableRow key={item.id} className="hover:bg-muted/50 transition-colors">
-                    <TableCell className="text-xs md:text-sm py-3 px-2 md:px-4 whitespace-nowrap">{formatDate(item.movementDate)}</TableCell>
-                    <TableCell className="py-3 px-2 md:px-4">
+                    <TableCell className="text-[11px] md:text-xs py-2 px-1 md:px-2 whitespace-nowrap">{formatDate(item.movementDate)}</TableCell>
+                    <TableCell className="py-2 px-1 md:px-2">
                       <Badge variant="outline" className="text-[11px] md:text-xs px-2 py-0.5 h-6">
                         {item.movementType === MOVEMENT_TYPE.SUPPLY ? "Покупка" : "Внутреннее"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="py-3 px-2 md:px-4">
+                    <TableCell className="py-2 px-1 md:px-2">
                       <Badge variant="outline" className={cn(
                         "text-[11px] md:text-xs px-2 py-0.5 h-6",
                         item.productType === PRODUCT_TYPE.PVKJ 
@@ -258,7 +264,7 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                     <TableCell className="text-right text-xs md:text-sm py-3 px-2 md:px-4">{formatNumberWithK(deliveryCost)}</TableCell>
                     <TableCell className="text-right text-xs md:text-sm py-3 px-2 md:px-4">{formatNumberWithK(storageCost)}</TableCell>
                     <TableCell className="text-right font-medium text-xs md:text-sm py-3 px-2 md:px-4 whitespace-nowrap">{formatNumber(costPerKg)}</TableCell>
-                    <TableCell className="py-3 px-2 md:px-4">
+                    <TableCell className="py-3 px-2 md:px-1">
                       <EntityActionsMenu
                         actions={[
                           {
@@ -351,6 +357,12 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
           </DialogHeader>
         </DialogContent>
       </Dialog>
+      <AuditPanel
+        isOpen={auditPanelOpen}
+        onClose={() => setAuditPanelOpen(false)}
+        moduleName="movement"
+        title="История изменений - Перемещения"
+      />
     </div>
   );
 }

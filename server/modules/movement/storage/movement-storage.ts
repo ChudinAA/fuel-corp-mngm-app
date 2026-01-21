@@ -55,6 +55,17 @@ export class MovementStorage implements IMovementStorage {
     const baseConditions: any[] = [isNull(movement.deletedAt)];
 
     if (filters) {
+      if (filters.search?.length) {
+        const searchTerm = `%${filters.search[0]}%`;
+        baseConditions.push(or(
+          sql`(SELECT name FROM suppliers WHERE id = ${movement.supplierId}) ILIKE ${searchTerm}`,
+          sql`(SELECT name FROM warehouses WHERE id = ${movement.fromWarehouseId}) ILIKE ${searchTerm}`,
+          sql`(SELECT name FROM warehouses WHERE id = ${movement.toWarehouseId}) ILIKE ${searchTerm}`,
+          sql`(SELECT name FROM logistics_carriers WHERE id = ${movement.carrierId}) ILIKE ${searchTerm}`,
+          sql`${movement.vehicleNumber} ILIKE ${searchTerm}`,
+          sql`${movement.basis} ILIKE ${searchTerm}`
+        ));
+      }
       if (filters.date?.length) {
         baseConditions.push(
           sql`TO_CHAR(${movement.movementDate}, 'DD.MM.YYYY') IN (${sql.join(

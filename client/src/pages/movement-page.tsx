@@ -2,24 +2,16 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, ChevronLeft, ChevronRight, Search, History } from "lucide-react";
+import { Plus } from "lucide-react";
 import { AuditPanel } from "@/components/audit-panel";
 import type { Movement, Warehouse } from "@shared/schema";
 import { MovementDialog } from "./movement/components/movement-dialog";
 import { MovementTable } from "./movement/components/movement-table";
-import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
-import { ExportButton } from "@/components/export/export-button";
 
 export default function MovementPage() {
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string | null>(null);
-  const [productFilter, setProductFilter] = useState<string | null>(null);
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
   const [isCopy, setIsCopy] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -129,6 +121,7 @@ export default function MovementPage() {
           <MovementTable
             onEdit={handleEditClick}
             onDelete={(id) => deleteMutation.mutate(id)}
+            onShowHistory={() => setAuditPanelOpen(true)}
           />
         </CardContent>
       </Card>
