@@ -181,7 +181,7 @@ export function PricesTable({
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/prices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prices/list"] });
       toast({ title: "Цена удалена", description: "Запись успешно удалена" });
     },
     onError: () => {
