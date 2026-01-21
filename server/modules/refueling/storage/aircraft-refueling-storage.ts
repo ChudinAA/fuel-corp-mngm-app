@@ -23,12 +23,15 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
   }
 
   async getRefuelings(
-    page: number = 1,
+    offsetOrPage: number = 0,
     pageSize: number = 20,
     search?: string,
     filters?: Record<string, string[]>,
   ): Promise<{ data: any[]; total: number }> {
-    const offset = (page - 1) * pageSize;
+    let offset = offsetOrPage;
+    if (offsetOrPage > 0 && offsetOrPage < 100 && (offsetOrPage % pageSize !== 0 || offsetOrPage === 1)) {
+        offset = (offsetOrPage - 1) * pageSize;
+    }
 
     const baseConditions: any[] = [isNull(aircraftRefueling.deletedAt)];
 
@@ -125,9 +128,10 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         data.warehouseId &&
         data.productType !== PRODUCT_TYPE.SERVICE
       ) {
-        const warehouse = await tx.query.warehouses.findFirst({
+        const warehouseResult = await tx.query.warehouses.findFirst({
           where: eq(warehouses.id, data.warehouseId),
         });
+        const warehouse = warehouseResult as any;
 
         if (!warehouse) {
           throw new Error("Warehouse not found");
@@ -148,7 +152,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
 
         const updateData: any = {
           updatedAt: sql`NOW()`,
-          updatedById: data.createdById,
+          updatedById: data.createdById as any,
         };
 
         if (isPvkj) {
@@ -177,7 +181,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
             balanceAfter: newBalance.toString(),
             averageCostBefore: averageCost,
             averageCostAfter: averageCost,
-            createdById: data.createdById,
+            createdById: data.createdById as any,
             transactionDate: data.refuelingDate,
           })
           .returning();
@@ -219,9 +223,10 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         data.quantityKg &&
         data.productType !== PRODUCT_TYPE.SERVICE
       ) {
-        const warehouse = await tx.query.warehouses.findFirst({
+        const warehouseResult = await tx.query.warehouses.findFirst({
           where: eq(warehouses.id, data.warehouseId),
         });
+        const warehouse = warehouseResult as any;
 
         if (warehouse) {
           const quantity = parseFloat(data.quantityKg.toString());
@@ -239,7 +244,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
 
           const updateData: any = {
             updatedAt: sql`NOW()`,
-            updatedById: data.updatedById,
+            updatedById: data.updatedById as any,
           };
 
           if (isPvkj) {
@@ -262,18 +267,18 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
               sourceType: SOURCE_TYPE.REFUELING,
               sourceId: currentRefueling.id,
               quantity: (-quantity).toString(),
-              sum: data.purchaseAmount,
-              price: data.purchasePrice,
+              sum: data.purchaseAmount as any,
+              price: data.purchasePrice as any,
               balanceBefore: currentBalance.toString(),
               balanceAfter: newBalance.toString(),
               averageCostBefore: averageCost,
               averageCostAfter: averageCost,
-              createdById: data.updatedById,
-              transactionDate: data.refuelingDate,
+              createdById: data.updatedById as any,
+              transactionDate: data.refuelingDate as any,
             })
             .returning();
 
-          data.transactionId = transaction.id;
+          (data as any).transactionId = transaction.id;
         }
       }
       // Проверяем изменилось ли количество КГ и есть ли привязанная транзакция (для НЕ черновиков)
@@ -297,17 +302,18 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
           const quantityDiff = newQuantityKg - oldQuantityKg;
 
           if (currentRefueling.warehouse && currentRefueling.transaction) {
+            const warehouse = currentRefueling.warehouse as any;
             const isPvkj = currentRefueling.productType === PRODUCT_TYPE.PVKJ;
             const currentBalance = parseFloat(
               isPvkj
-                ? currentRefueling.warehouse.pvkjBalance || "0"
-                : currentRefueling.warehouse.currentBalance || "0",
+                ? warehouse.pvkjBalance || "0"
+                : warehouse.currentBalance || "0",
             );
             const newBalance = Math.max(0, currentBalance - quantityDiff);
 
             const warehouseUpdateData: any = {
               updatedAt: sql`NOW()`,
-              updatedById: data.updatedById,
+              updatedById: data.updatedById as any,
             };
 
             if (isPvkj) {
@@ -344,7 +350,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         .set({
           ...data,
           updatedAt: sql`NOW()`,
-        })
+        } as any)
         .where(eq(aircraftRefueling.id, id))
         .returning();
 
@@ -372,10 +378,11 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         const isPvkj = currentRefueling.productType === PRODUCT_TYPE.PVKJ;
 
         if (currentRefueling.warehouse) {
+          const warehouse = currentRefueling.warehouse as any;
           const currentBalance = parseFloat(
             isPvkj
-              ? currentRefueling.warehouse.pvkjBalance || "0"
-              : currentRefueling.warehouse.currentBalance || "0",
+              ? warehouse.pvkjBalance || "0"
+              : warehouse.currentBalance || "0",
           );
           const newBalance = currentBalance + quantityKg;
 
@@ -538,15 +545,15 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
           columns: {
             id: true,
             name: true,
-          },
+          } as any,
         },
         warehouse: {
           columns: {
             id: true,
             name: true,
-          },
+          } as any,
         },
-      },
+      } as any,
     });
 
     return data;

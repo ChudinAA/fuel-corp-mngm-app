@@ -12,7 +12,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     requireAuth,
     requirePermission("refueling", "view"),
     async (req, res) => {
-      const page = parseInt(req.query.page as string) || 1;
+      const offset = parseInt(req.query.offset as string) || 0;
       const pageSize = parseInt(req.query.pageSize as string) || 20;
       const search = req.query.search as string | undefined;
 
@@ -25,7 +25,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
       });
 
       const result = await (storage.aircraftRefueling as any).getRefuelings(
-        page,
+        offset,
         pageSize,
         search,
         filters

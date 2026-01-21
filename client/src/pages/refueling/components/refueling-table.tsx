@@ -119,13 +119,10 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
   const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
   const { hasPermission } = useAuth();
   const {
-    page,
-    setPage,
-    search,
-    setSearch,
-    pageSize,
-    refuelingDeals,
     isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
     columnFilters,
     setColumnFilters,
     deleteMutation,
@@ -168,21 +165,19 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
   };
 
   const handleFilterUpdate = (columnId: string, values: string[]) => {
-    setColumnFilters((prev: any) => ({
+    setColumnFilters((prev: Record<string, string[]>) => ({
       ...prev,
       [columnId]: values
     }));
-    setPage(1);
   };
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput);
-      setPage(1);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchInput, setSearch, setPage]);
+  }, [searchInput, setSearch]);
 
   useEffect(() => {
     if (searchInputRef.current && searchInput) {
@@ -214,7 +209,6 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
 
   const deals = filteredDeals;
   const total = (refuelingDeals as any)?.total || 0;
-  const totalPages = Math.ceil(total / pageSize);
 
   return (
     <div className="space-y-4">
@@ -483,35 +477,25 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
         </Table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Показано {(page - 1) * pageSize + 1} -{" "}
-            {Math.min(page * pageSize, total)} из {total}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={page === 1}
-              onClick={() => setPage(page - 1)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm">
-              {page} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={page === totalPages}
-              onClick={() => setPage(page + 1)}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+      {hasNextPage && (
+        <div className="flex justify-center pt-4">
+          <Button
+            variant="outline"
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="w-full max-w-xs"
+            data-testid="button-load-more"
+          >
+            {isFetchingNextPage ? "Загрузка..." : "Загрузить еще"}
+          </Button>
         </div>
       )}
+
+      <div className="flex items-center justify-between text-sm text-muted-foreground pt-2">
+        <p>
+          Показано {deals.length} из {total}
+        </p>
+      </div>
 
       <DeleteConfirmDialog
         open={deleteDialogOpen}
