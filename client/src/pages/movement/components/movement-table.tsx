@@ -98,9 +98,11 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
     );
   }
 
-  const total = (movements as any)?.total || 0;
+  const total = movements?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
-  const data = (movements as any)?.data || [];
+  const data = movements?.data || [];
+
+  console.log("MovementTable Rendering:", { movements, total, pageSize, totalPages, dataLength: data.length });
 
   return (
     <div className="space-y-4">
