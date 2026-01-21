@@ -50,13 +50,13 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
 
         if (columnId === "date") {
           const dateConditions = values.map(v => sql`DATE(${aircraftRefueling.refuelingDate}) = TO_DATE(${v}, 'DD.MM.YYYY')`);
-          baseConditions.push(or(...dateConditions)!);
+          baseConditions.push(or(...dateConditions) as any);
         } else if (columnId === "product") {
-          baseConditions.push(sql`${aircraftRefueling.productType} IN (${sql.join(values, sql`, `)})`);
+          baseConditions.push(sql`${aircraftRefueling.productType} IN (${sql.join(values, sql`, `)})` as any);
         } else if (columnId === "supplier") {
-          baseConditions.push(sql`${suppliers.name} IN (${sql.join(values, sql`, `)})`);
+          baseConditions.push(sql`${suppliers.name} IN (${sql.join(values, sql`, `)})` as any);
         } else if (columnId === "buyer") {
-          baseConditions.push(sql`${customers.name} IN (${sql.join(values, sql`, `)})`);
+          baseConditions.push(sql`${customers.name} IN (${sql.join(values, sql`, `)})` as any);
         }
       });
     }

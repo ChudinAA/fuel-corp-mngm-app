@@ -24,7 +24,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         }
       });
 
-      const result = await storage.aircraftRefueling.getRefuelings(
+      const result = await (storage.aircraftRefueling as any).getRefuelings(
         page,
         pageSize,
         search,
