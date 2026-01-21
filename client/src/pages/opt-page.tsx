@@ -85,7 +85,6 @@ export default function OptPage() {
         <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
           <div>
             <CardTitle>Список сделок</CardTitle>
-            <CardDescription>Последние 10 записей</CardDescription>
           </div>
           <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
             <DialogTrigger asChild>
