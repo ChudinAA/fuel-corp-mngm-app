@@ -119,7 +119,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
     return await db.transaction(async (tx) => {
       const [created] = await tx
         .insert(aircraftRefueling)
-        .values(data)
+        .values(data as any)
         .returning();
 
       // Для услуги заправки или черновика не создаем транзакции на складе
@@ -131,23 +131,23 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         const warehouseResult = await tx.query.warehouses.findFirst({
           where: eq(warehouses.id, data.warehouseId),
         });
-        const warehouse = warehouseResult as any;
+        const warehouse = (warehouseResult as any);
 
         if (!warehouse) {
           throw new Error("Warehouse not found");
         }
 
-        const quantity = parseFloat(data.quantityKg);
+        const quantity = parseFloat((data.quantityKg as any) as string);
         const isPvkj = data.productType === PRODUCT_TYPE.PVKJ;
 
         const currentBalance = parseFloat(
           isPvkj
-            ? warehouse.pvkjBalance || "0"
-            : warehouse.currentBalance || "0",
+            ? (warehouse.pvkjBalance as any) || "0"
+            : (warehouse.currentBalance as any) || "0",
         );
         const averageCost = isPvkj
-          ? warehouse.pvkjAverageCost || "0"
-          : warehouse.averageCost || "0";
+          ? (warehouse.pvkjAverageCost as any) || "0"
+          : (warehouse.averageCost as any) || "0";
         const newBalance = Math.max(0, currentBalance - quantity);
 
         const updateData: any = {
@@ -183,7 +183,7 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
             averageCostAfter: averageCost,
             createdById: data.createdById as any,
             transactionDate: data.refuelingDate,
-          })
+          } as any)
           .returning();
 
         await tx

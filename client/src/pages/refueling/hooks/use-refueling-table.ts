@@ -65,13 +65,14 @@ export function useRefuelingTable() {
   };
 
   return {
-    page,
-    setPage,
+    refuelingDeals,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
     search,
     setSearch,
     pageSize,
-    refuelingDeals,
-    isLoading,
     columnFilters,
     setColumnFilters,
     deleteMutation,

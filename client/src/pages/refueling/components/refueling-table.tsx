@@ -119,10 +119,13 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
   const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
   const { hasPermission } = useAuth();
   const {
+    refuelingDeals,
     isLoading,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    search,
+    setSearch,
     columnFilters,
     setColumnFilters,
     deleteMutation,
