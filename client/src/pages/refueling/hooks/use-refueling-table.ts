@@ -8,11 +8,17 @@ import type { AircraftRefueling } from "@shared/schema";
 export function useRefuelingTable() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
   const pageSize = 10;
   const { toast } = useToast();
 
+  const filterParams = Object.entries(columnFilters)
+    .filter(([_, values]) => values.length > 0)
+    .map(([columnId, values]) => `&filter_${columnId}=${values.join(",")}`)
+    .join("");
+
   const { data: refuelingDeals, isLoading } = useQuery<{ data: AircraftRefueling[]; total: number }>({
-    queryKey: [`/api/refueling?page=${page}&pageSize=${pageSize}${search ? `&search=${search}` : ""}`],
+    queryKey: [`/api/refueling?page=${page}&pageSize=${pageSize}${search ? `&search=${search}` : ""}${filterParams}`],
   });
 
   const deleteMutation = useMutation({
@@ -46,6 +52,8 @@ export function useRefuelingTable() {
     pageSize,
     refuelingDeals,
     isLoading,
+    columnFilters,
+    setColumnFilters,
     deleteMutation,
     handleDelete,
   };

@@ -15,10 +15,20 @@ export function registerRefuelingOperationsRoutes(app: Express) {
       const page = parseInt(req.query.page as string) || 1;
       const pageSize = parseInt(req.query.pageSize as string) || 10;
       const search = req.query.search as string | undefined;
+
+      const filters: Record<string, string[]> = {};
+      Object.entries(req.query).forEach(([key, value]) => {
+        if (key.startsWith("filter_") && typeof value === "string") {
+          const columnId = key.replace("filter_", "");
+          filters[columnId] = value.split(",").filter(Boolean);
+        }
+      });
+
       const result = await storage.aircraftRefueling.getRefuelings(
         page,
         pageSize,
-        search
+        search,
+        filters
       );
       res.json(result);
     }

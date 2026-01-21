@@ -26,116 +26,87 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
     page: number = 1,
     pageSize: number = 10,
     search?: string,
+    filters?: Record<string, string[]>,
   ): Promise<{ data: any[]; total: number }> {
     const offset = (page - 1) * pageSize;
 
-    // Если есть поиск, используем старый подход с joins
+    const baseConditions = [isNull(aircraftRefueling.deletedAt)];
+
     if (search && search.trim()) {
       const searchPattern = `%${search.trim()}%`;
-      const searchCondition = and(
+      baseConditions.push(
         or(
           sql`${suppliers.name} ILIKE ${searchPattern}`,
           sql`${customers.name} ILIKE ${searchPattern}`,
           sql`${aircraftRefueling.aircraftNumber}::text ILIKE ${searchPattern}`,
           sql`${aircraftRefueling.notes}::text ILIKE ${searchPattern}`,
-        ),
-        isNull(aircraftRefueling.deletedAt),
+        )
       );
-
-      const rawData = await db
-        .select({
-          refueling: aircraftRefueling,
-          supplierName: suppliers.name,
-          supplierIsWarehouse: suppliers.isWarehouse,
-          buyerName: customers.name,
-          warehouseName: sql<string>`${warehouses.name}`,
-        })
-        .from(aircraftRefueling)
-        .leftJoin(suppliers, eq(aircraftRefueling.supplierId, suppliers.id))
-        .leftJoin(customers, eq(aircraftRefueling.buyerId, customers.id))
-        .leftJoin(warehouses, eq(aircraftRefueling.warehouseId, warehouses.id))
-        .where(searchCondition)
-        .orderBy(desc(aircraftRefueling.refuelingDate))
-        .limit(pageSize)
-        .offset(offset);
-
-      const data = rawData.map((row) => ({
-        ...row.refueling,
-        supplier: {
-          id: row.refueling.supplierId,
-          name: row.supplierName || "Не указан",
-          isWarehouse: row.supplierIsWarehouse || false,
-        },
-        buyer: {
-          id: row.refueling.buyerId,
-          name: row.buyerName || "Не указан",
-        },
-        warehouse: row.refueling.warehouseId
-          ? {
-              id: row.refueling.warehouseId,
-              name: row.warehouseName || "Не указан",
-            }
-          : null,
-      }));
-
-      const [countResult] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(aircraftRefueling)
-        .leftJoin(suppliers, eq(aircraftRefueling.supplierId, suppliers.id))
-        .leftJoin(customers, eq(aircraftRefueling.buyerId, customers.id))
-        .where(searchCondition);
-
-      return { data, total: Number(countResult?.count || 0) };
     }
 
-    // Без поиска используем query API с relations
-    const data = await db.query.aircraftRefueling.findMany({
-      where: isNull(aircraftRefueling.deletedAt),
-      limit: pageSize,
-      offset: offset,
-      orderBy: (aircraftRefueling, { desc }) => [
-        desc(aircraftRefueling.refuelingDate),
-      ],
-      with: {
-        supplier: {
-          columns: {
-            id: true,
-            name: true,
-            isWarehouse: true,
-          },
-        },
-        buyer: {
-          columns: {
-            id: true,
-            name: true,
-          },
-        },
-        warehouse: {
-          columns: {
-            id: true,
-            name: true,
-          },
-        },
+    if (filters) {
+      Object.entries(filters).forEach(([columnId, values]) => {
+        if (!values || values.length === 0) return;
+
+        if (columnId === "date") {
+          const dateConditions = values.map(v => sql`DATE(${aircraftRefueling.refuelingDate}) = TO_DATE(${v}, 'DD.MM.YYYY')`);
+          baseConditions.push(or(...dateConditions)!);
+        } else if (columnId === "product") {
+          baseConditions.push(sql`${aircraftRefueling.productType} IN (${sql.join(values, sql`, `)})`);
+        } else if (columnId === "supplier") {
+          baseConditions.push(sql`${suppliers.name} IN (${sql.join(values, sql`, `)})`);
+        } else if (columnId === "buyer") {
+          baseConditions.push(sql`${customers.name} IN (${sql.join(values, sql`, `)})`);
+        }
+      });
+    }
+
+    const whereCondition = and(...baseConditions);
+
+    const rawData = await db
+      .select({
+        refueling: aircraftRefueling,
+        supplierName: suppliers.name,
+        supplierIsWarehouse: suppliers.isWarehouse,
+        buyerName: customers.name,
+        warehouseName: sql<string>`${warehouses.name}`,
+      })
+      .from(aircraftRefueling)
+      .leftJoin(suppliers, eq(aircraftRefueling.supplierId, suppliers.id))
+      .leftJoin(customers, eq(aircraftRefueling.buyerId, customers.id))
+      .leftJoin(warehouses, eq(aircraftRefueling.warehouseId, warehouses.id))
+      .where(whereCondition)
+      .orderBy(desc(aircraftRefueling.refuelingDate))
+      .limit(pageSize)
+      .offset(offset);
+
+    const data = rawData.map((row) => ({
+      ...row.refueling,
+      supplier: {
+        id: row.refueling.supplierId,
+        name: row.supplierName || "Не указан",
+        isWarehouse: row.supplierIsWarehouse || false,
       },
-    });
+      buyer: {
+        id: row.refueling.buyerId,
+        name: row.buyerName || "Не указан",
+      },
+      warehouse: row.refueling.warehouseId
+        ? {
+            id: row.refueling.warehouseId,
+            name: row.warehouseName || "Не указан",
+          }
+        : null,
+    }));
 
     const [countResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(aircraftRefueling)
-      .where(isNull(aircraftRefueling.deletedAt));
+      .leftJoin(suppliers, eq(aircraftRefueling.supplierId, suppliers.id))
+      .leftJoin(customers, eq(aircraftRefueling.buyerId, customers.id))
+      .where(whereCondition);
 
-    return {
-      data: data.map((item) => ({
-        ...item,
-        supplier: item.supplier || {
-          id: item.supplierId,
-          name: "Не указан",
-          isWarehouse: false,
-        },
-        buyer: item.buyer || { id: item.buyerId, name: "Не указан" },
-      })),
-      total: Number(countResult?.count || 0),
-    };
+    return { data, total: Number(countResult?.count || 0) };
   }
 
   async createRefueling(

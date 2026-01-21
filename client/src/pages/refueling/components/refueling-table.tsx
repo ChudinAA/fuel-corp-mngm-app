@@ -63,6 +63,8 @@ import { AuditPanel } from "@/components/audit-panel";
 import { ExportButton } from "@/components/export/export-button";
 import { cn } from "@/lib/utils";
 
+import { TableColumnFilter } from "@/components/ui/table-column-filter";
+
 interface RefuelingDealActionsProps {
   deal: any;
   onEdit: () => void;
@@ -131,9 +133,11 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
     pageSize,
     refuelingDeals,
     isLoading,
+    columnFilters,
+    setColumnFilters,
     deleteMutation,
     handleDelete,
-  } = useRefuelingTable();
+  } = useRefuelingTable() as any;
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dealToDelete, setDealToDelete] = useState<any>(null);
@@ -143,6 +147,36 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
   const searchInputRef = useRef<HTMLInputElement>(null);
   const cursorPositionRef = useRef<number>(0);
   const [deletedDealsAuditOpen, setDeletedDealsAuditOpen] = useState(false);
+
+  // Генерируем опции для фильтров на основе данных
+  const getUniqueOptions = (key: string) => {
+    const deals = refuelingDeals?.data || [];
+    const values = new Set<string>();
+    deals.forEach((deal: any) => {
+      let val;
+      if (key === 'refuelingDate') {
+        val = formatDate(deal.refuelingDate);
+      } else if (key === 'productType') {
+        val = getProductLabel(deal.productType);
+      } else if (key.includes('.')) {
+        val = key.split('.').reduce((obj, k) => obj?.[k], deal);
+      } else {
+        val = deal[key];
+      }
+      
+      const label = typeof val === 'object' ? val?.name : val;
+      if (label) values.add(label);
+    });
+    return Array.from(values).sort().map(v => ({ label: v, value: v }));
+  };
+
+  const handleFilterUpdate = (columnId: string, values: string[]) => {
+    setColumnFilters((prev: any) => ({
+      ...prev,
+      [columnId]: values
+    }));
+    setPage(1);
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -178,14 +212,11 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
     );
   }
 
-  const allDeals = refuelingDeals?.data || [];
-  const filteredDeals =
-    productTypeFilter === "all"
-      ? allDeals
-      : allDeals.filter((deal) => deal.productType === productTypeFilter);
+  const allDeals = (refuelingDeals as any)?.data || [];
+  const filteredDeals = allDeals;
 
   const deals = filteredDeals;
-  const total = filteredDeals.length;
+  const total = (refuelingDeals as any)?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
 
   return (
@@ -205,19 +236,16 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
             data-testid="input-search-refueling"
           />
         </div>
-        <Select value={productTypeFilter} onValueChange={setProductTypeFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Тип продукта" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Все продукты</SelectItem>
-            <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
-            <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
-            <SelectItem value={PRODUCT_TYPE.SERVICE}>
-              Услуга заправки
-            </SelectItem>
-          </SelectContent>
-        </Select>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setColumnFilters({})}
+          disabled={Object.values(columnFilters).every((v: any) => v.length === 0)}
+          title="Сбросить все фильтры"
+          className={cn(Object.values(columnFilters).some((v: any) => v.length > 0) && "text-primary border-primary")}
+        >
+          <Filter className="h-4 w-4" />
+        </Button>
         <Button
           variant="outline"
           onClick={() => setDeletedDealsAuditOpen(true)}
@@ -233,31 +261,74 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="text-sm font-semibold">Дата</TableHead>
-              <TableHead className="text-sm font-semibold">Продукт</TableHead>
-              <TableHead className="text-sm font-semibold">Борт</TableHead>
-              <TableHead className="text-sm font-semibold">Поставщик</TableHead>
-              <TableHead className="text-sm font-semibold">
-                Покупатель
+              <TableHead className="text-sm font-semibold p-1 md:p-2 w-[100px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span>Дата</span>
+                  <TableColumnFilter
+                    title="Дата"
+                    options={getUniqueOptions("refuelingDate")}
+                    selectedValues={columnFilters["date"] || []}
+                    onUpdate={(values) => handleFilterUpdate("date", values)}
+                    dataTestId="filter-date"
+                  />
+                </div>
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold">
+              <TableHead className="text-sm font-semibold p-1 md:p-2">
+                <div className="flex items-center justify-between gap-1">
+                  <span>Продукт</span>
+                  <TableColumnFilter
+                    title="Продукт"
+                    options={getUniqueOptions("productType")}
+                    selectedValues={columnFilters["product"] || []}
+                    onUpdate={(values) => handleFilterUpdate("product", values)}
+                    dataTestId="filter-product"
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="text-sm font-semibold p-1 md:p-2">Борт</TableHead>
+              <TableHead className="text-sm font-semibold p-1 md:p-2">
+                <div className="flex items-center justify-between gap-1">
+                  <span>Поставщик</span>
+                  <TableColumnFilter
+                    title="Поставщик"
+                    options={getUniqueOptions("supplier")}
+                    selectedValues={columnFilters["supplier"] || []}
+                    onUpdate={(values) => handleFilterUpdate("supplier", values)}
+                    dataTestId="filter-supplier"
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="text-sm font-semibold p-1 md:p-2">
+                <div className="flex items-center justify-between gap-1">
+                  <span>Покупатель</span>
+                  <TableColumnFilter
+                    title="Покупатель"
+                    options={getUniqueOptions("buyer")}
+                    selectedValues={columnFilters["buyer"] || []}
+                    onUpdate={(values) => handleFilterUpdate("buyer", values)}
+                    dataTestId="filter-buyer"
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[60px]">
                 КГ
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold">
+              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[80px]">
                 Цена пок.
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold">
+              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[90px]">
                 Покупка
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold">
+              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[80px]">
                 Цена прод.
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold">
+              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[90px]">
                 Продажа
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold">
+              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[90px]">
                 Прибыль
               </TableHead>
+              <TableHead className="w-[40px] p-1"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -271,49 +342,50 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                 </TableCell>
               </TableRow>
             ) : (
-              deals.map((deal) => (
+              deals.map((deal: any) => (
                 <TableRow 
                   key={deal.id}
                   className={cn(deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200")}
                 >
-                  <TableCell>
-                    <div className="flex flex-col gap-1">
+                  <TableCell className="text-[10px] md:text-xs p-1 md:p-3">
+                    <div className="flex flex-col gap-0.5">
                       <span>{formatDate(deal.refuelingDate)}</span>
                       {deal.isDraft && (
                         <Badge
                           variant="outline"
-                          className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                          className="rounded-full bg-amber-100 px-1.5 py-0 text-[11px] text-amber-800 w-fit"
                         >
                           Черновик
                         </Badge>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-[11px] md:text-sm p-1 md:p-3">
                     <Badge
                       variant="outline"
-                      className={
+                      className={cn(
+                        "whitespace-nowrap inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold",
                         deal.productType === PRODUCT_TYPE.KEROSENE
                           ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"
                           : deal.productType === PRODUCT_TYPE.PVKJ
                             ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30"
                             : ""
-                      }
+                      )}
                     >
                       {getProductLabel(deal.productType)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-[11px] md:text-sm p-1 md:p-3">
                     {deal.aircraftNumber || "—"}
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-[11px] md:text-sm p-1 md:p-3">
                     <TooltipProvider>
-                      <div className="flex items-center gap-1.5">
-                        <span>{deal.supplier?.name || "Не указан"}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="truncate max-w-[80px] md:max-w-none">{deal.supplier?.name || "Не указан"}</span>
                         {deal.supplier?.isWarehouse && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Warehouse className="h-4 w-4 text-sky-400 flex-shrink-0 cursor-help" />
+                              <Warehouse className="h-3.5 w-3.5 text-sky-400 flex-shrink-0 cursor-help" />
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>Склад</p>
@@ -323,17 +395,17 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                       </div>
                     </TooltipProvider>
                   </TableCell>
-                  <TableCell className="text-sm">
-                    {deal.buyer?.name || "Не указан"}
+                  <TableCell className="text-[11px] md:text-sm p-1 md:p-3">
+                    <span className="truncate max-w-[80px] md:max-w-none block">{deal.buyer?.name || "Не указан"}</span>
                   </TableCell>
-                  <TableCell className="text-right font-medium text-sm">
+                  <TableCell className="text-right font-medium text-[11px] md:text-sm p-1 md:p-3">
                     <TooltipProvider>
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-1">
                         <span>{formatNumberForTable(deal.quantityKg)}</span>
                         {deal.isApproxVolume && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <AlertCircle className="h-4 w-4 text-red-300 flex-shrink-0 cursor-help" />
+                              <AlertCircle className="h-3.5 w-3.5 text-red-300 flex-shrink-0 cursor-help" />
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>Примерный объем</p>
@@ -343,7 +415,7 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                       </div>
                     </TooltipProvider>
                   </TableCell>
-                  <TableCell className="text-right text-sm">
+                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-3">
                     <div className="flex items-center justify-end gap-1">
                       {deal.purchasePrice
                         ? Number(deal.purchasePrice).toFixed(4)
@@ -355,8 +427,8 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
+                            width="12"
+                            height="12"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -372,19 +444,19 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right text-sm">
+                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-3">
                     {formatCurrencyForTable(deal.purchaseAmount)}
                   </TableCell>
-                  <TableCell className="text-right text-sm">
+                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-3">
                     {formatNumber(deal.salePrice)} ₽/кг
                   </TableCell>
-                  <TableCell className="text-right text-sm">
+                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-3">
                     {formatCurrencyForTable(deal.saleAmount)}
                   </TableCell>
-                  <TableCell className="text-right text-green-600 font-medium text-sm">
+                  <TableCell className="text-right text-green-600 font-medium text-[11px] md:text-sm p-1 md:p-3">
                     {formatCurrencyForTable(deal.profit)}
                   </TableCell>
-                  <TableCell className="flex items-center justify-end gap-2 py-3">
+                  <TableCell className="p-1">
                     <RefuelingDealActions
                       deal={deal}
                       onEdit={() => onEdit(deal)}
