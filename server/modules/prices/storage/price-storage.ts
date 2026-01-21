@@ -27,6 +27,8 @@ export class PriceStorage implements IPriceStorage {
     counterpartyId?: string;
     basis?: string;
     productType?: string;
+    limit?: number;
+    offset?: number;
   }): Promise<Price[]> {
     const conditions = [isNull(prices.deletedAt)];
 
@@ -46,11 +48,20 @@ export class PriceStorage implements IPriceStorage {
         conditions.push(eq(prices.productType, filters.productType));
     }
 
-    const allPrices = await db
+    const query = db
       .select()
       .from(prices)
       .where(and(...conditions))
       .orderBy(desc(prices.dateFrom));
+
+    if (filters?.limit !== undefined) {
+      query.limit(filters.limit);
+    }
+    if (filters?.offset !== undefined) {
+      query.offset(filters.offset);
+    }
+
+    const allPrices = await query;
     return allPrices;
   }
 

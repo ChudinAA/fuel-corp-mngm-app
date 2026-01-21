@@ -92,7 +92,9 @@ export function registerPricesRoutes(app: Express) {
         dateFrom,
         dateTo,
         basis,
-        productType
+        productType,
+        limit,
+        offset
       } = req.query;
 
       const data = await storage.prices.getAllPrices({
@@ -103,6 +105,8 @@ export function registerPricesRoutes(app: Express) {
         dateTo: dateTo as string,
         basis: basis as string,
         productType: productType as string,
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
       });
       res.json(data);
     }

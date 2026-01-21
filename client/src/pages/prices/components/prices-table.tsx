@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState, useMemo, Fragment } from "react";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTitle as DialogTitlePrimitive,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -40,6 +41,7 @@ import {
   StickyNote,
   History,
   Filter,
+  Loader2,
 } from "lucide-react";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
@@ -54,6 +56,8 @@ import {
 import { usePriceSelection } from "../hooks/use-price-selection";
 import { formatNumber, formatNumberForTable, formatDate, getPriceDisplay, getProductTypeLabel } from "../utils";
 import { cn } from "@/lib/utils";
+
+const PAGE_SIZE = 10;
 
 export function PricesTable({
   dealTypeFilter,
@@ -71,9 +75,25 @@ export function PricesTable({
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
 
-  const { data: prices, isLoading } = useQuery<Price[]>({
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery<Price[]>({
     queryKey: ["/api/prices/list"],
+    queryFn: async ({ pageParam = 0 }) => {
+      const res = await apiRequest("GET", `/api/prices/list?limit=${PAGE_SIZE}&offset=${pageParam}`);
+      return res.json();
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.length === PAGE_SIZE ? allPages.length * PAGE_SIZE : undefined;
+    },
   });
+
+  const prices = useMemo(() => data?.pages.flat() || [], [data]);
 
   const { data: allContractors } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
@@ -213,6 +233,7 @@ export function PricesTable({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
+            data-testid="input-search-prices"
           />
         </div>
         <Button
@@ -222,6 +243,7 @@ export function PricesTable({
           disabled={Object.values(columnFilters).every((v: any) => v.length === 0)}
           title="Сбросить все фильтры"
           className={cn(Object.values(columnFilters).some((v: any) => v.length > 0) && "text-primary border-primary")}
+          data-testid="button-reset-filters"
         >
           <Filter className="h-4 w-4" />
         </Button>
@@ -229,6 +251,7 @@ export function PricesTable({
           variant="outline"
           onClick={() => setAuditPanelOpen(true)}
           title="Аудит всех цен"
+          data-testid="button-audit-history"
         >
           <History className="h-4 w-4 mr-2" />
           История изменений
@@ -510,6 +533,27 @@ export function PricesTable({
         </Table>
       </div>
 
+      {hasNextPage && (
+        <div className="flex justify-center pt-4">
+          <Button
+            variant="outline"
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="w-full max-w-xs gap-2"
+            data-testid="button-load-more-prices"
+          >
+            {isFetchingNextPage ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Загрузка...
+              </>
+            ) : (
+              "Загрузить еще"
+            )}
+          </Button>
+        </div>
+      )}
+
       <DeleteConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
@@ -567,3 +611,4 @@ export function PricesTable({
     </div>
   );
 }
+
