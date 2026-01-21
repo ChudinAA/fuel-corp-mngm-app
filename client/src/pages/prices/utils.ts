@@ -9,6 +9,19 @@ export const formatNumber = (value: string | number | null) => {
   return new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(num);
 };
 
+export const formatNumberForTable = (value: string | number | null | undefined): string => {
+  if (value === null || value === undefined || value === "") return "—";
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  if (isNaN(num)) return "0";
+
+  if (num >= 1000) {
+    const kValue = num / 1000;
+    return `${kValue.toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}к`;
+  }
+
+  return num.toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+};
+
 export const formatDate = (dateStr: string | null) => {
   if (!dateStr) return "—";
   return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });

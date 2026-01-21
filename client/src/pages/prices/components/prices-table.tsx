@@ -52,7 +52,7 @@ import {
   PRODUCT_TYPE,
 } from "@shared/constants";
 import { usePriceSelection } from "../hooks/use-price-selection";
-import { formatNumber, formatDate, getPriceDisplay, getProductTypeLabel } from "../utils";
+import { formatNumber, formatNumberForTable, formatDate, getPriceDisplay, getProductTypeLabel } from "../utils";
 import { cn } from "@/lib/utils";
 
 export function PricesTable({
@@ -171,7 +171,7 @@ export function PricesTable({
         return true;
       })
       .sort((a, b) => {
-        return new Date(b.dateFrom).getTime() - new Date(a.dateFrom).getTime();
+        return new Date(b.dateTo).getTime() - new Date(a.dateTo).getTime();
       }) || [];
   }, [prices, dealTypeFilter, roleFilter, productTypeFilter, columnFilters, search, customers, allContractors]);
 
@@ -239,7 +239,7 @@ export function PricesTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[120px]">
+              <TableHead className="w-[110px]">
                 <div className="flex items-center justify-between gap-1">
                   <span>Период</span>
                   <TableColumnFilter
@@ -251,8 +251,8 @@ export function PricesTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="w-[80px]">
-                <div className="flex items-center justify-between gap-1">
+              <TableHead className="w-[60px]">
+                <div className="flex items-center justify-between gap-0">
                   <span>Тип</span>
                   <TableColumnFilter
                     title="Тип"
@@ -266,8 +266,8 @@ export function PricesTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="w-[80px]">
-                <div className="flex items-center justify-between gap-1">
+              <TableHead className="w-[60px]">
+                <div className="flex items-center justify-between gap-0">
                   <span>Роль</span>
                   <TableColumnFilter
                     title="Роль"
@@ -317,10 +317,10 @@ export function PricesTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-right w-[100px]">Цена (₽/кг)</TableHead>
-              <TableHead className="text-right w-[100px]">Объем</TableHead>
-              <TableHead className="text-right w-[100px]">Выборка</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="text-right">Цена (₽/кг)</TableHead>
+              <TableHead className="text-right">Объем</TableHead>
+              <TableHead className="text-right">Выборка</TableHead>
+              <TableHead className="w-[30px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -420,13 +420,13 @@ export function PricesTable({
                       {getPriceDisplay(price.priceValues)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {price.volume ? `${formatNumber(price.volume)} кг` : "—"}
+                      {price.volume ? `${formatNumberForTable(price.volume)} кг` : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <span>
                           {price.soldVolume && parseFloat(price.soldVolume) > 0
-                            ? `${formatNumber(price.soldVolume)} кг`
+                            ? `${formatNumberForTable(price.soldVolume)} кг`
                             : "—"}
                         </span>
                         <Tooltip>
