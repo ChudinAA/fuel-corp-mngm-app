@@ -127,9 +127,7 @@ export class MovementStorage implements IMovementStorage {
           sql`(SELECT name FROM suppliers WHERE id = ${movement.supplierId}) ILIKE ${searchPattern}`,
           sql`(SELECT name FROM warehouses WHERE id = ${movement.fromWarehouseId}) ILIKE ${searchPattern}`,
           sql`(SELECT name FROM warehouses WHERE id = ${movement.toWarehouseId}) ILIKE ${searchPattern}`,
-          sql`(SELECT name FROM logistics_carriers WHERE id = ${movement.carrierId}) ILIKE ${searchPattern}`,
-          sql`${movement.vehicleNumber} ILIKE ${searchPattern}`,
-          sql`${movement.basis} ILIKE ${searchPattern}`
+          sql`(SELECT name FROM logistics_carriers WHERE id = ${movement.carrierId}) ILIKE ${searchPattern}`
         ),
       );
     }
