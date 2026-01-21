@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, asc, isNull } from "drizzle-orm";
+import { eq, and, desc, sql, asc, isNull, or } from "drizzle-orm";
 import { db } from "server/db";
 import {
   prices,
@@ -9,6 +9,7 @@ import {
   type InsertPrice,
   type DeliveryCost,
   type InsertDeliveryCost,
+  movement,
 } from "@shared/schema";
 import {
   COUNTERPARTY_TYPE,
@@ -30,13 +31,19 @@ export class PriceStorage implements IPriceStorage {
     const conditions = [isNull(prices.deletedAt)];
 
     if (filters) {
-      if (filters.dateFrom) conditions.push(sql`${prices.dateTo} >= ${filters.dateFrom}`);
-      if (filters.dateTo) conditions.push(sql`${prices.dateFrom} <= ${filters.dateTo}`);
-      if (filters.counterpartyType) conditions.push(eq(prices.counterpartyType, filters.counterpartyType));
-      if (filters.counterpartyRole) conditions.push(eq(prices.counterpartyRole, filters.counterpartyRole));
-      if (filters.counterpartyId) conditions.push(eq(prices.counterpartyId, filters.counterpartyId));
+      if (filters.dateFrom)
+        conditions.push(sql`${prices.dateTo} >= ${filters.dateFrom}`);
+      if (filters.dateTo)
+        conditions.push(sql`${prices.dateFrom} <= ${filters.dateTo}`);
+      if (filters.counterpartyType)
+        conditions.push(eq(prices.counterpartyType, filters.counterpartyType));
+      if (filters.counterpartyRole)
+        conditions.push(eq(prices.counterpartyRole, filters.counterpartyRole));
+      if (filters.counterpartyId)
+        conditions.push(eq(prices.counterpartyId, filters.counterpartyId));
       if (filters.basis) conditions.push(eq(prices.basis, filters.basis));
-      if (filters.productType) conditions.push(eq(prices.productType, filters.productType));
+      if (filters.productType)
+        conditions.push(eq(prices.productType, filters.productType));
     }
 
     const allPrices = await db
@@ -146,73 +153,51 @@ export class PriceStorage implements IPriceStorage {
     }
 
     if (counterpartyType === COUNTERPARTY_TYPE.WHOLESALE) {
-      if (price.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER) {
-        // Ищем сделки, где этот контрагент - поставщик
-        const optDeals = await db
-          .select({
-            total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`,
-          })
-          .from(opt)
-          .where(
-            and(
-              eq(opt.supplierId, counterpartyId),
-              eq(opt.basis, basis),
-              sql`${opt.createdAt}::date >= ${dateFrom}`,
-              sql`${opt.createdAt}::date <= ${dateTo}`,
-            ),
-          );
-        totalVolume += parseFloat(optDeals[0]?.total || "0");
-      } else if (price.counterpartyRole === COUNTERPARTY_ROLE.BUYER) {
-        // Ищем сделки, где этот контрагент - покупатель
-        const optDeals = await db
-          .select({
-            total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`,
-          })
-          .from(opt)
-          .where(
-            and(
-              eq(opt.buyerId, counterpartyId),
-              eq(opt.basis, basis),
-              sql`${opt.createdAt}::date >= ${dateFrom}`,
-              sql`${opt.createdAt}::date <= ${dateTo}`,
-            ),
-          );
-        totalVolume += parseFloat(optDeals[0]?.total || "0");
-      }
+      const [optVolume] = await db
+        .select({
+          total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`,
+        })
+        .from(opt)
+        .where(
+          and(
+            or(eq(opt.salePriceId, priceId), eq(opt.purchasePriceId, priceId)),
+            isNull(opt.deletedAt),
+            eq(opt.isDraft, false),
+          ),
+        );
+
+      const [movementVolume] = await db
+        .select({
+          total: sql<string>`COALESCE(SUM(${movement.quantityKg}), 0)`,
+        })
+        .from(movement)
+        .where(
+          and(
+            eq(movement.purchasePriceId, priceId),
+            isNull(movement.deletedAt),
+          ),
+        );
+
+      totalVolume =
+        parseFloat(optVolume.total || "0") +
+        parseFloat(movementVolume.total || "0");
     } else if (counterpartyType === COUNTERPARTY_TYPE.REFUELING) {
-      if (price.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER) {
-        // Ищем сделки, где этот контрагент - поставщик
-        const refuelingDeals = await db
-          .select({
-            total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`,
-          })
-          .from(aircraftRefueling)
-          .where(
-            and(
-              eq(aircraftRefueling.supplierId, counterpartyId),
-              eq(aircraftRefueling.basis, basis),
-              sql`${aircraftRefueling.refuelingDate} >= ${dateFrom}`,
-              sql`${aircraftRefueling.refuelingDate} <= ${dateTo}`,
+      const [result] = await db
+        .select({
+          total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`,
+        })
+        .from(aircraftRefueling)
+        .where(
+          and(
+            or(
+              eq(aircraftRefueling.salePriceId, priceId),
+              eq(aircraftRefueling.purchasePriceId, priceId),
             ),
-          );
-        totalVolume += parseFloat(refuelingDeals[0]?.total || "0");
-      } else if (price.counterpartyRole === COUNTERPARTY_ROLE.BUYER) {
-        // Ищем сделки, где этот контрагент - покупатель
-        const refuelingDeals = await db
-          .select({
-            total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`,
-          })
-          .from(aircraftRefueling)
-          .where(
-            and(
-              eq(aircraftRefueling.buyerId, counterpartyId),
-              eq(aircraftRefueling.basis, basis),
-              sql`${aircraftRefueling.refuelingDate} >= ${dateFrom}`,
-              sql`${aircraftRefueling.refuelingDate} <= ${dateTo}`,
-            ),
-          );
-        totalVolume += parseFloat(refuelingDeals[0]?.total || "0");
-      }
+            isNull(aircraftRefueling.deletedAt),
+            eq(aircraftRefueling.isDraft, false),
+          ),
+        );
+      totalVolume = parseFloat(result?.total || "0");
     }
 
     // Обновляем значение в базе данных
