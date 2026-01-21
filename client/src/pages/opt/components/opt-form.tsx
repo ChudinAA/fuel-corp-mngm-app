@@ -96,7 +96,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
   });
 
   const { data: allPrices } = useQuery<Price[]>({
-    queryKey: ["/api/prices"],
+    queryKey: ["/api/prices/list"],
   });
 
   const { data: deliveryCosts } = useQuery<DeliveryCost[]>({
@@ -184,7 +184,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     checkDuplicate,
     handleConfirm,
     handleCancel,
-    isChecking
+    isChecking,
   } = useDuplicateCheck({
     type: "opt",
     getFields: () => ({
@@ -698,13 +698,19 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
               <Button
                 type="button"
                 variant="secondary"
-                disabled={createMutation.isPending || updateMutation.isPending || isChecking}
+                disabled={
+                  createMutation.isPending ||
+                  updateMutation.isPending ||
+                  isChecking
+                }
                 onClick={() => {
                   form.clearErrors();
                   form.handleSubmit((data) => onSubmit(data, true))();
                 }}
               >
-                {createMutation.isPending || updateMutation.isPending || isChecking ? (
+                {createMutation.isPending ||
+                updateMutation.isPending ||
+                isChecking ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
                 Сохранить черновик
@@ -713,10 +719,16 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
             <Button
               type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending || isChecking}
+              disabled={
+                createMutation.isPending ||
+                updateMutation.isPending ||
+                isChecking
+              }
               data-testid="button-submit-opt"
             >
-              {createMutation.isPending || updateMutation.isPending || isChecking ? (
+              {createMutation.isPending ||
+              updateMutation.isPending ||
+              isChecking ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {isEditing ? "Сохранение..." : "Создание..."}

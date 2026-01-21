@@ -44,9 +44,9 @@ export default function MovementPage() {
   });
 
   const { data: prices } = useQuery({
-    queryKey: ["/api/prices"],
+    queryKey: ["/api/prices/list"],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/prices");
+      const res = await apiRequest("GET", "/api/prices/list");
       return res.json();
     },
   });

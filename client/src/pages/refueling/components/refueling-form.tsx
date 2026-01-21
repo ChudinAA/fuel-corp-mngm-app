@@ -81,7 +81,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   });
 
   const { data: allPrices } = useQuery<Price[]>({
-    queryKey: ["/api/prices"],
+    queryKey: ["/api/prices/list"],
   });
 
   const { data: warehouses } = useQuery<Warehouse[]>({

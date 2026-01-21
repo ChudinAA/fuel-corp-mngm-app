@@ -81,21 +81,6 @@ export function registerPricesRoutes(app: Express) {
   );
 
   app.get(
-    "/api/prices/:id",
-    requireAuth,
-    requirePermission("prices", "view"),
-    auditView(ENTITY_TYPES.PRICE),
-    async (req, res) => {
-      const id = req.params.id;
-      const price = await storage.prices.getPrice(id);
-      if (!price) {
-        return res.status(404).json({ message: "Цена не найдена" });
-      }
-      res.json(price);
-    }
-  );
-
-  app.get(
     "/api/prices/list",
     requireAuth,
     requirePermission("prices", "view"),
@@ -120,6 +105,21 @@ export function registerPricesRoutes(app: Express) {
         productType: productType as string,
       });
       res.json(data);
+    }
+  );
+
+  app.get(
+    "/api/prices/:id",
+    requireAuth,
+    requirePermission("prices", "view"),
+    auditView(ENTITY_TYPES.PRICE),
+    async (req, res) => {
+      const id = req.params.id;
+      const price = await storage.prices.getPrice(id);
+      if (!price) {
+        return res.status(404).json({ message: "Цена не найдена" });
+      }
+      res.json(price);
     }
   );
 

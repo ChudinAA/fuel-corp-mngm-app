@@ -107,6 +107,12 @@ export function PricesTable({
       } else if (key === 'date') {
         const val = formatDate(price.dateFrom);
         values.set(val, val);
+      } else if (key === 'counterpartyType') {
+        const label = price.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE ? "ОПТ" : "Заправка ВС";
+        values.set(label, price.counterpartyType);
+      } else if (key === 'counterpartyRole') {
+        const label = price.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER ? "Поставщик" : "Покупатель";
+        values.set(label, price.counterpartyRole);
       } else {
         const val = price[key];
         if (val) values.set(String(val), String(val));
