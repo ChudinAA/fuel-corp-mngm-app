@@ -14,7 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Search, Pencil, Trash2, RefreshCw, Package, Plane, TruckIcon, ShoppingCart, FileText, StickyNote, History } from "lucide-react";
 import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
-import { TableColumnFilter } from "@/components/table-column-filter";
+import { TableColumnFilter } from "@/components/ui/table-column-filter";
 import type { Price, Supplier, Customer } from "@shared/schema";
 import type { PricesTableProps } from "../types";
 
