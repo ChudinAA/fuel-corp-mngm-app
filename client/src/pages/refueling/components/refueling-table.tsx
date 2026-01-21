@@ -144,23 +144,27 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
   // Генерируем опции для фильтров на основе данных
   const getUniqueOptions = (key: string) => {
     const deals = refuelingDeals?.data || [];
-    const values = new Set<string>();
+    const values = new Map<string, string>();
     deals.forEach((deal: any) => {
-      let val;
       if (key === 'refuelingDate') {
-        val = formatDate(deal.refuelingDate);
+        const val = formatDate(deal.refuelingDate);
+        values.set(val, val);
       } else if (key === 'productType') {
-        val = getProductLabel(deal.productType);
+        const label = getProductLabel(deal.productType);
+        values.set(label, deal.productType);
       } else if (key.includes('.')) {
-        val = key.split('.').reduce((obj, k) => obj?.[k], deal);
+        const val = key.split('.').reduce((obj, k) => obj?.[k], deal);
+        const label = typeof val === 'object' ? val?.name : val;
+        if (label) values.set(label, label);
       } else {
-        val = deal[key];
+        const val = deal[key];
+        const label = typeof val === 'object' ? val?.name : val;
+        if (label) values.set(label, label);
       }
-      
-      const label = typeof val === 'object' ? val?.name : val;
-      if (label) values.add(label);
     });
-    return Array.from(values).sort().map(v => ({ label: v, value: v }));
+    return Array.from(values.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([label, value]) => ({ label, value }));
   };
 
   const handleFilterUpdate = (columnId: string, values: string[]) => {
