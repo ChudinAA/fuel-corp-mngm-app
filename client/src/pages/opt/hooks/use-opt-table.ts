@@ -1,24 +1,42 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export function useOptTable() {
-  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
   const pageSize = 20;
   const { toast } = useToast();
 
-  const { data: optDeals, isLoading } = useQuery<{ data: any[]; total: number }>({
+  const {
+    data: optDeals,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery<{ data: any[]; total: number }>({
     queryKey: [
-      `/api/opt?page=${page}&pageSize=${pageSize}${search ? `&search=${search}` : ""}${
-        Object.entries(columnFilters)
-          .filter(([_, values]) => values.length > 0)
-          .map(([id, values]) => `&filter_${id}=${encodeURIComponent(values.join(","))}`)
-          .join("")
-      }`,
+      "/api/opt",
+      { search, columnFilters },
     ],
+    queryFn: async ({ pageParam = 0 }) => {
+      const filters = Object.entries(columnFilters)
+        .filter(([_, values]) => values.length > 0)
+        .map(([id, values]) => `&filter_${id}=${encodeURIComponent(values.join(","))}`)
+        .join("");
+      
+      const res = await apiRequest(
+        "GET",
+        `/api/opt?offset=${pageParam}&pageSize=${pageSize}${search ? `&search=${search}` : ""}${filters}`
+      );
+      return res.json();
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const loadedCount = allPages.length * pageSize;
+      return loadedCount < lastPage.total ? loadedCount : undefined;
+    },
   });
 
   const deleteMutation = useMutation({
@@ -28,10 +46,7 @@ export function useOptTable() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 
-        predicate: (query) => {
-          const key = query.queryKey[0] as string;
-          return key?.startsWith('/api/opt');
-        }
+        queryKey: ["/api/opt"]
       });
       toast({ title: "Сделка удалена", description: "Оптовая сделка успешно удалена" });
     },
@@ -56,13 +71,14 @@ export function useOptTable() {
   };
 
   return {
-    page,
-    setPage,
     search,
     setSearch,
     pageSize,
     optDeals,
     isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
     columnFilters,
     setColumnFilters,
     deleteMutation,

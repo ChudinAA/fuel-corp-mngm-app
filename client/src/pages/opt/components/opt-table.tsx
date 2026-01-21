@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,6 @@ import {
 import {
   Pencil,
   Trash2,
-  ChevronLeft,
-  ChevronRight,
   Search,
   Filter,
   Warehouse,
@@ -25,7 +23,7 @@ import {
   AlertCircle,
   History,
   Copy,
-  X,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -124,18 +122,21 @@ function OptDealActions({
 
 export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
   const {
-    page,
-    setPage,
     search,
     setSearch,
     pageSize,
     optDeals,
     isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
     columnFilters,
     setColumnFilters,
     deleteMutation,
     handleDelete,
   } = useOptTable() as any;
+
+  const deals = useMemo(() => optDeals?.pages.flatMap((page: any) => page.data) || [], [optDeals]);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dealToDelete, setDealToDelete] = useState<any>(null);
@@ -150,11 +151,10 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput);
-      setPage(1); // Reset to first page when searching
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchInput, setSearch, setPage]);
+  }, [searchInput, setSearch]);
 
   // Restore focus and cursor position after data update
   useEffect(() => {
@@ -186,36 +186,8 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
     );
   }
 
-  const deals = (optDeals as any)?.data || [];
-  const total = (optDeals as any)?.total || 0;
-  const totalPages = Math.ceil(total / pageSize);
-
-  // Генерируем опции для фильтров на основе данных
-  const getUniqueOptions = (key: string) => {
-    const values = new Set<string>();
-    deals.forEach((deal: any) => {
-      let val;
-      if (key === 'dealDate') {
-        val = formatDate(deal.dealDate);
-      } else if (key.includes('.')) {
-        val = key.split('.').reduce((obj, k) => obj?.[k], deal);
-      } else {
-        val = deal[key];
-      }
-      
-      const label = typeof val === 'object' ? val?.name : val;
-      if (label) values.add(label);
-    });
-    return Array.from(values).sort().map(v => ({ label: v, value: v }));
-  };
-
-  const handleFilterUpdate = (columnId: string, values: string[]) => {
-    setColumnFilters(prev => ({
-      ...prev,
-      [columnId]: values
-    }));
-    setPage(1);
-  };
+  const dealsToDisplay = deals;
+  const total = optDeals?.pages[0]?.total || 0;
 
   return (
     <div className="space-y-4">
@@ -238,9 +210,9 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
           variant="outline"
           size="icon"
           onClick={() => setColumnFilters({})}
-          disabled={Object.values(columnFilters).every(v => v.length === 0)}
+          disabled={Object.values(columnFilters).every((v: any) => v.length === 0)}
           title="Сбросить все фильтры"
-          className={cn(Object.values(columnFilters).some(v => v.length > 0) && "text-primary border-primary")}
+          className={cn(Object.values(columnFilters).some((v: any) => v.length > 0) && "text-primary border-primary")}
         >
           <Filter className="h-4 w-4" />
         </Button>
@@ -344,7 +316,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {deals.length === 0 ? (
+            {dealsToDisplay.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={14}
@@ -354,7 +326,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                 </TableCell>
               </TableRow>
             ) : (
-              deals.map((deal) => (
+              dealsToDisplay.map((deal: any) => (
                 <TableRow
                   key={deal.id}
                   className={cn(deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200")}
@@ -487,33 +459,24 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
         </Table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Показано {(page - 1) * pageSize + 1} -{" "}
-            {Math.min(page * pageSize, total)} из {total}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={page === 1}
-              onClick={() => setPage(page - 1)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm">
-              {page} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={page === totalPages}
-              onClick={() => setPage(page + 1)}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+      {hasNextPage && (
+        <div className="flex justify-center pt-4">
+          <Button
+            variant="outline"
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="w-full max-w-xs gap-2"
+            data-testid="button-load-more-opt"
+          >
+            {isFetchingNextPage ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Загрузка...
+              </>
+            ) : (
+              "Загрузить еще"
+            )}
+          </Button>
         </div>
       )}
 
