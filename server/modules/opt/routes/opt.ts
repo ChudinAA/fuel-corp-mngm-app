@@ -12,7 +12,7 @@ export function registerOptRoutes(app: Express) {
     requireAuth,
     requirePermission("opt", "view"),
     async (req, res) => {
-      const page = parseInt(req.query.page as string) || 1;
+      const offset = parseInt(req.query.offset as string) || 0;
       const pageSize = parseInt(req.query.pageSize as string) || 20;
       const search = req.query.search as string | undefined;
       
@@ -26,7 +26,7 @@ export function registerOptRoutes(app: Express) {
         }
       });
 
-      const result = await (storage.opt as any).getOptDeals(page, pageSize, search, filters);
+      const result = await (storage.opt as any).getOptDeals(offset, pageSize, search, filters);
       res.json(result);
     }
   );

@@ -186,8 +186,33 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
     );
   }
 
+  // Генерируем опции для фильтров на основе данных
+  const getUniqueOptions = (key: string) => {
+    const values = new Set<string>();
+    deals.forEach((deal: any) => {
+      let val;
+      if (key === 'dealDate') {
+        val = formatDate(deal.dealDate);
+      } else if (key.includes('.')) {
+        val = key.split('.').reduce((obj, k) => obj?.[k], deal);
+      } else {
+        val = deal[key];
+      }
+
+      const label = typeof val === 'object' ? val?.name : val;
+      if (label) values.add(label);
+    });
+    return Array.from(values).sort().map(v => ({ label: v, value: v }));
+  };
+  
+  const handleFilterUpdate = (columnId: string, values: string[]) => {
+    setColumnFilters(prev => ({
+      ...prev,
+      [columnId]: values
+    }));
+  };
+  
   const dealsToDisplay = deals;
-  const total = optDeals?.pages[0]?.total || 0;
 
   return (
     <div className="space-y-4">

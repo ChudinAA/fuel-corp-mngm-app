@@ -23,12 +23,21 @@ export class OptStorage implements IOptStorage {
   }
 
   async getOptDeals(
-    page: number = 1,
+    offsetOrPage: number = 0,
     pageSize: number = 20,
     search?: string,
     filters?: Record<string, string[]>,
   ): Promise<{ data: any[]; total: number }> {
-    const offset = (page - 1) * pageSize;
+    // Determine if we're using offset (new approach) or page (old approach)
+    // If offsetOrPage is 0 or large, it's likely an offset. 
+    // If it's 1, 2, 3... and we want to maintain compatibility, we need a hint.
+    // In our new code, we pass offset (0, 20, 40...).
+    // In old code, we passed page (1, 2, 3...).
+    let offset = offsetOrPage;
+    if (offsetOrPage > 0 && offsetOrPage < 100 && (offsetOrPage % pageSize !== 0 || offsetOrPage === 1)) {
+        // This looks like a page number (1-based)
+        offset = (offsetOrPage - 1) * pageSize;
+    }
 
     // Helper to build filter conditions
     const buildFilterConditions = () => {
