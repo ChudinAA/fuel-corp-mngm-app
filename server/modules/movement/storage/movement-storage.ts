@@ -60,21 +60,19 @@ export class MovementStorage implements IMovementStorage {
 
         if (columnId === "date") {
           const dateConditions = values.map(v => sql`DATE(${movement.movementDate}) = TO_DATE(${v}, 'DD.MM.YYYY')`);
-          baseConditions.push(or(...dateConditions) as any);
+          baseConditions.push(sql`(${sql.join(dateConditions, sql` OR `)})` as any);
         } else if (columnId === "type") {
           baseConditions.push(sql`${movement.movementType} IN (${sql.join(values, sql`, `)})` as any);
         } else if (columnId === "product") {
           baseConditions.push(sql`${movement.productType} IN (${sql.join(values, sql`, `)})` as any);
         } else if (columnId === "from") {
           const conditions = values.map(v => 
-            or(
-              sql`${warehouses.name} = ${v}`,
-              sql`${opt.supplierId} IN (SELECT id FROM suppliers WHERE name = ${v})`
-            )
+            sql`(${movement.movementType} = ${MOVEMENT_TYPE.SUPPLY} AND (SELECT name FROM suppliers WHERE id = ${movement.supplierId}) = ${v}) OR
+                (${movement.movementType} = ${MOVEMENT_TYPE.INTERNAL} AND (SELECT name FROM warehouses WHERE id = ${movement.fromWarehouseId}) = ${v})`
           );
-          baseConditions.push(or(...conditions) as any);
+          baseConditions.push(sql`(${sql.join(conditions, sql` OR `)})` as any);
         } else if (columnId === "to") {
-          baseConditions.push(sql`${warehouses.name} IN (${sql.join(values, sql`, `)})` as any);
+          baseConditions.push(sql`(SELECT name FROM warehouses WHERE id = ${movement.toWarehouseId}) IN (${sql.join(values, sql`, `)})` as any);
         } else if (columnId === "carrier") {
           baseConditions.push(sql`(SELECT name FROM carriers WHERE id = ${movement.carrierId}) IN (${sql.join(values, sql`, `)})` as any);
         }
@@ -129,7 +127,7 @@ export class MovementStorage implements IMovementStorage {
     const [countResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(movement)
-      .where(isNull(movement.deletedAt));
+      .where(whereCondition);
     return { data: enrichedData, total: Number(countResult?.count || 0) };
   }
 

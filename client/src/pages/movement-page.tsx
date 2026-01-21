@@ -164,79 +164,11 @@ export default function MovementPage() {
       />
 
       <Card>
-        <CardHeader>
-          <CardTitle>Список перемещений</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Поиск..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-search-movement" />
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={typeFilter === MOVEMENT_TYPE.SUPPLY ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setTypeFilter(typeFilter === MOVEMENT_TYPE.SUPPLY ? null : MOVEMENT_TYPE.SUPPLY)}
-                >
-                  Покупка
-                </Button>
-                <Button
-                  variant={typeFilter === MOVEMENT_TYPE.INTERNAL ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setTypeFilter(typeFilter === MOVEMENT_TYPE.INTERNAL ? null : MOVEMENT_TYPE.INTERNAL)}
-                >
-                  Внутреннее
-                </Button>
-              </div>
-              <Select value={productFilter || "all"} onValueChange={(value) => setProductFilter(value === "all" ? null : value)}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Все продукты" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все продукты</SelectItem>
-                  <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
-                  <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                onClick={() => setAuditPanelOpen(true)}
-                title="Аудит всех перемещений"
-              >
-                <History className="h-4 w-4 mr-2" />
-                История изменений
-              </Button>
-              <ExportButton moduleName="movement" />
-            </div>
-
-            <div className="border rounded-lg">
-              <MovementTable
-                data={data}
-                isLoading={isLoading}
-                onEdit={handleEditClick}
-                onDelete={(id) => deleteMutation.mutate(id)}
-                isDeleting={deleteMutation.isPending}
-              />
-            </div>
-
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Показаны {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} из {total}
-                </p>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="icon" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="icon" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+        <CardContent className="p-0">
+          <MovementTable
+            onEdit={handleEditClick}
+            onDelete={(id) => deleteMutation.mutate(id)}
+          />
         </CardContent>
       </Card>
 
