@@ -22,13 +22,10 @@ import {
   Search,
   Filter,
   Warehouse,
-  MoreVertical,
-  FileText,
   AlertCircle,
   History,
   Copy,
 } from "lucide-react";
-import { AuditHistoryButton } from "@/components/audit-history-button";
 import {
   EntityActionsMenu,
   EntityAction,
@@ -62,9 +59,9 @@ import {
 import { useRefuelingTable } from "../hooks/use-refueling-table";
 import { PRODUCT_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
-import { useNavigate } from "react-router-dom";
 import { AuditPanel } from "@/components/audit-panel";
 import { ExportButton } from "@/components/export/export-button";
+import { cn } from "@/lib/utils";
 
 interface RefuelingDealActionsProps {
   deal: any;
@@ -261,9 +258,6 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
               <TableHead className="text-right text-sm font-semibold">
                 Прибыль
               </TableHead>
-              <TableHead className="w-[100px] text-right text-sm font-semibold">
-                Действия
-              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -280,7 +274,7 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
               deals.map((deal) => (
                 <TableRow 
                   key={deal.id}
-                  className={deal.isDraft ? "bg-muted/70 opacity-60 border-2 border-orange-200" : ""}
+                  className={cn(deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200")}
                 >
                   <TableCell>
                     <div className="flex flex-col gap-1">

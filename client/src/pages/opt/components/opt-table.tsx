@@ -357,7 +357,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
               deals.map((deal) => (
                 <TableRow
                   key={deal.id}
-                  className={cn(deal.isDraft && "bg-muted/70 opacity-60 border-[1.5px] border-orange-200")}
+                  className={cn(deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200")}
                 >
                   <TableCell className="text-[10px] md:text-xs p-1 md:p-4">
                     <div className="flex flex-col gap-0.5">
