@@ -52,7 +52,7 @@ export class PriceStorage implements IPriceStorage {
       .select()
       .from(prices)
       .where(and(...conditions))
-      .orderBy(desc(prices.dateFrom));
+      .orderBy(desc(prices.dateTo));
 
     if (filters?.limit !== undefined) {
       query.limit(filters.limit);
