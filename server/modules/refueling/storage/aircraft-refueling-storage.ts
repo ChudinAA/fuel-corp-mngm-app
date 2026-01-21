@@ -60,6 +60,8 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
       }
     }
 
+    
+
     const whereCondition = and(...baseConditions);
 
     const rawData = await db

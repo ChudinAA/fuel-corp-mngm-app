@@ -13,7 +13,8 @@ export function registerMovementRoutes(app: Express) {
     requirePermission("movement", "view"),
     async (req, res) => {
       const page = parseInt(req.query.page as string) || 1;
-      const pageSize = parseInt(req.query.pageSize as string) || 10;
+      const pageSize = parseInt(req.query.pageSize as string) || 20;
+      const search = req.query.search as string | undefined;
 
       const filters: Record<string, string[]> = {};
       Object.entries(req.query).forEach(([key, value]) => {
@@ -27,7 +28,7 @@ export function registerMovementRoutes(app: Express) {
         }
       });
 
-      const result = await (storage.movement as any).getMovements(page, pageSize, filters);
+      const result = await (storage.movement as any).getMovements(page, pageSize, search, filters);
       res.json(result);
     }
   );

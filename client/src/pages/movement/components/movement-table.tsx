@@ -96,8 +96,6 @@ export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<Movement
     );
   }
 
-  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
-
   const total = movements?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
   const data = movements?.data || [];
@@ -357,12 +355,6 @@ export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<Movement
           </DialogHeader>
         </DialogContent>
       </Dialog>
-      <AuditPanel
-        isOpen={auditPanelOpen}
-        onClose={() => setAuditPanelOpen(false)}
-        moduleName="movement"
-        title="История изменений - Перемещения"
-      />
     </div>
   );
 }

@@ -321,7 +321,7 @@ export function PriceFormFields({
                   <FormControl>
                     <Input
                       type="number"
-                      step="0.0001"
+                      step="0.00001"
                       min="0"
                       placeholder="Цена за кг (₽)"
                       data-testid={`input-price-${index}`}
