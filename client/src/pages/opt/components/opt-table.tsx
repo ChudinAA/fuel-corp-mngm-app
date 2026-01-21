@@ -206,7 +206,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
   };
   
   const handleFilterUpdate = (columnId: string, values: string[]) => {
-    setColumnFilters((prev: Record<string, string[]>) => ({
+    setColumnFilters(prev => ({
       ...prev,
       [columnId]: values
     }));
