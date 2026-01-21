@@ -10,13 +10,14 @@ import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Search, Pencil, Trash2, RefreshCw, Package, Plane, TruckIcon, ShoppingCart, FileText, StickyNote, History } from "lucide-react";
-import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
+import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
 import { TableColumnFilter } from "@/components/ui/table-column-filter";
 import type { Price, Supplier, Customer } from "@shared/schema";
 import type { PricesTableProps } from "../types";
+import { COUNTERPARTY_ROLE } from "@shared/constants";
+import { usePriceSelection } from "../hooks/use-price-selection";
 
 export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onEdit }: PricesTableProps) {
   const [filters, setFilters] = useState({
@@ -36,10 +37,9 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
   const [selectedPrice, setSelectedPrice] = useState<Price | null>(null);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
-  const { hasPermission } = useAuth();
 
   const { data: prices, isLoading } = useQuery<Price[]>({
-    queryKey: ["/api/prices", {
+    queryKey: ["/api/prices/list", {
       counterpartyType: filters.dealType !== "all" ? filters.dealType : (dealTypeFilter !== "all" ? dealTypeFilter : undefined),
       counterpartyRole: filters.role !== "all" ? filters.role : (roleFilter !== "all" ? roleFilter : undefined),
       productType: filters.productType !== "all" ? filters.productType : (productTypeFilter !== "all" ? productTypeFilter : undefined),

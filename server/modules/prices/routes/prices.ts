@@ -96,7 +96,7 @@ export function registerPricesRoutes(app: Express) {
   );
 
   app.get(
-    "/api/prices",
+    "/api/prices/list",
     requireAuth,
     requirePermission("prices", "view"),
     async (req, res) => {
