@@ -128,7 +128,7 @@ export class MovementStorage implements IMovementStorage {
       .select({ count: sql<number>`count(*)` })
       .from(movement)
       .where(whereCondition);
-    return { data: enrichedData, total: Number(countResult?.count || 0) };
+    return { data: enrichedData as any[], total: Number(countResult?.count || 0) };
   }
 
   async createMovement(data: InsertMovement): Promise<Movement> {

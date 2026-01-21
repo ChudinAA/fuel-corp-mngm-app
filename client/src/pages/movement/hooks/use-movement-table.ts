@@ -7,7 +7,7 @@ export function useMovementTable() {
   const [search, setSearch] = useState("");
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
 
-  const { data: movements, isLoading } = useQuery({
+  const { data: movements, isLoading } = useQuery<{ data: any[], total: number }>({
     queryKey: ["/api/movement", { page, pageSize, search, ...Object.fromEntries(
       Object.entries(columnFilters).map(([k, v]) => [`filter_${k}`, v.join(",")])
     )}],
