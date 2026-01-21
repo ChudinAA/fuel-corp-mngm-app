@@ -22,7 +22,6 @@ export function registerBasesRoutes(app: Express) {
     "/api/bases/:id",
     requireAuth,
     requirePermission("directories", "view"),
-    auditView(ENTITY_TYPES.BASE),
     async (req, res) => {
       const id = req.params.id;
       const base = await storage.bases.getBase(id);

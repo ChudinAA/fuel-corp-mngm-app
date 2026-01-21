@@ -29,7 +29,6 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/carriers/:id",
     requireAuth,
     requirePermission("directories", "view"),
-    auditView(ENTITY_TYPES.LOGISTICS_CARRIER),
     async (req, res) => {
       const id = req.params.id;
       const carrier = await storage.logistics.getLogisticsCarrier(id);
@@ -136,7 +135,6 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/delivery-locations/:id",
     requireAuth,
     requirePermission("directories", "view"),
-    auditView(ENTITY_TYPES.LOGISTICS_DELIVERY_LOCATION),
     async (req, res) => {
       const id = req.params.id;
       const location = await storage.logistics.getLogisticsDeliveryLocation(id);
@@ -249,7 +247,6 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/vehicles/:id",
     requireAuth,
     requirePermission("directories", "view"),
-    auditView(ENTITY_TYPES.LOGISTICS_VEHICLE),
     async (req, res) => {
       const id = req.params.id;
       const vehicle = await storage.logistics.getLogisticsVehicle(id);
@@ -357,7 +354,6 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/trailers/:id",
     requireAuth,
     requirePermission("directories", "view"),
-    auditView(ENTITY_TYPES.LOGISTICS_TRAILER),
     async (req, res) => {
       const id = req.params.id;
       const trailer = await storage.logistics.getLogisticsTrailer(id);
@@ -465,7 +461,6 @@ export function registerLogisticsRoutes(app: Express) {
     "/api/logistics/drivers/:id",
     requireAuth,
     requirePermission("directories", "view"),
-    auditView(ENTITY_TYPES.LOGISTICS_DRIVER),
     async (req, res) => {
       const id = req.params.id;
       const driver = await storage.logistics.getLogisticsDriver(id);

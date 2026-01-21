@@ -22,7 +22,6 @@ export function registerCustomersRoutes(app: Express) {
     "/api/customers/:id",
     requireAuth,
     requirePermission("directories", "view"),
-    auditView(ENTITY_TYPES.CUSTOMER),
     async (req, res) => {
       const id = req.params.id;
       const customer = await storage.customers.getCustomer(id);

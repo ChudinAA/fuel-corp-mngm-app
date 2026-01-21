@@ -28,7 +28,6 @@ export function registerDeliveryRoutes(app: Express) {
     "/api/delivery-costs/:id",
     requireAuth,
     requirePermission("delivery", "view"),
-    auditView(ENTITY_TYPES.DELIVERY_COST),
     async (req: Request, res: Response) => {
       try {
         const id = req.params.id;

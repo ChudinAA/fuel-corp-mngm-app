@@ -112,7 +112,6 @@ export function registerPricesRoutes(app: Express) {
     "/api/prices/:id",
     requireAuth,
     requirePermission("prices", "view"),
-    auditView(ENTITY_TYPES.PRICE),
     async (req, res) => {
       const id = req.params.id;
       const price = await storage.prices.getPrice(id);

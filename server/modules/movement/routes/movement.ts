@@ -37,7 +37,6 @@ export function registerMovementRoutes(app: Express) {
     "/api/movement/:id",
     requireAuth,
     requirePermission("movement", "view"),
-    auditView(ENTITY_TYPES.MOVEMENT),
     async (req, res) => {
       const id = req.params.id;
       const item = await storage.movement.getMovement(id);

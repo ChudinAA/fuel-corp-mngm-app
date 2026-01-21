@@ -54,7 +54,6 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     "/api/refueling/:id",
     requireAuth,
     requirePermission("refueling", "view"),
-    auditView(ENTITY_TYPES.AIRCRAFT_REFUELING),
     async (req, res) => {
       const id = req.params.id;
       const item = await storage.aircraftRefueling.getRefueling(id);

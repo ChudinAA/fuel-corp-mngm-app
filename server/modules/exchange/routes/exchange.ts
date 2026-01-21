@@ -28,7 +28,6 @@ export function registerExchangeRoutes(app: Express) {
     "/api/exchange/:id",
     requireAuth,
     requirePermission("exchange", "view"),
-    auditView(ENTITY_TYPES.EXCHANGE),
     async (req, res) => {
       const item = await storage.exchange.getExchange(req.params.id);
       if (!item) {

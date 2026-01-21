@@ -21,7 +21,6 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     "/api/warehouses/:id",
     requireAuth,
     requirePermission("warehouses", "view"),
-    auditView(ENTITY_TYPES.WAREHOUSE),
     async (req, res) => {
       const id = req.params.id;
       const warehouse = await storage.warehouses.getWarehouse(id);

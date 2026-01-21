@@ -27,7 +27,6 @@ export function registerAdminRoutes(app: Express) {
   app.get(
     "/api/roles/:id",
     requirePermission("admin", "view"),
-    auditView(ENTITY_TYPES.ROLE),
     async (req, res) => {
       const id = req.params.id;
       const role = await storage.roles.getRole(id);
@@ -121,7 +120,6 @@ export function registerAdminRoutes(app: Express) {
   app.get(
     "/api/admin/users/:id",
     requirePermission("admin", "view"),
-    auditView(ENTITY_TYPES.USER),
     async (req, res) => {
       const id = req.params.id;
       const user = await storage.users.getUser(id);

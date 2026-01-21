@@ -21,7 +21,6 @@ export function registerSuppliersRoutes(app: Express) {
     "/api/suppliers/:id",
     requireAuth,
     requirePermission("directories", "view"),
-    auditView(ENTITY_TYPES.SUPPLIER),
     async (req, res) => {
       const id = req.params.id;
       const supplier = await storage.suppliers.getSupplier(id);
