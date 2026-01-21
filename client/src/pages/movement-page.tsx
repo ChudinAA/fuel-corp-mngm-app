@@ -164,6 +164,9 @@ export default function MovementPage() {
       />
 
       <Card>
+        <CardHeader>
+          <CardTitle>Список перемещений</CardTitle>
+        </CardHeader>
         <CardContent className="p-0">
           <MovementTable
             onEdit={handleEditClick}

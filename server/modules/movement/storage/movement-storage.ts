@@ -55,28 +55,27 @@ export class MovementStorage implements IMovementStorage {
     const baseConditions: any[] = [isNull(movement.deletedAt)];
 
     if (filters) {
-      Object.entries(filters).forEach(([columnId, values]) => {
-        if (!values || values.length === 0) return;
-
-        if (columnId === "date") {
-          const dateConditions = values.map(v => sql`DATE(${movement.movementDate}) = TO_DATE(${v}, 'DD.MM.YYYY')`);
-          baseConditions.push(sql`(${sql.join(dateConditions, sql` OR `)})` as any);
-        } else if (columnId === "type") {
-          baseConditions.push(sql`${movement.movementType} IN (${sql.join(values, sql`, `)})` as any);
-        } else if (columnId === "product") {
-          baseConditions.push(sql`${movement.productType} IN (${sql.join(values, sql`, `)})` as any);
-        } else if (columnId === "from") {
-          const conditions = values.map(v => 
-            sql`(${movement.movementType} = ${MOVEMENT_TYPE.SUPPLY} AND (SELECT name FROM suppliers WHERE id = ${movement.supplierId}) = ${v}) OR
-                (${movement.movementType} = ${MOVEMENT_TYPE.INTERNAL} AND (SELECT name FROM warehouses WHERE id = ${movement.fromWarehouseId}) = ${v})`
-          );
-          baseConditions.push(sql`(${sql.join(conditions, sql` OR `)})` as any);
-        } else if (columnId === "to") {
-          baseConditions.push(sql`(SELECT name FROM warehouses WHERE id = ${movement.toWarehouseId}) IN (${sql.join(values, sql`, `)})` as any);
-        } else if (columnId === "carrier") {
-          baseConditions.push(sql`(SELECT name FROM carriers WHERE id = ${movement.carrierId}) IN (${sql.join(values, sql`, `)})` as any);
-        }
-      });
+      if (filters.date?.length) {
+        baseConditions.push(sql`TO_CHAR(${movement.movementDate}, 'DD.MM.YYYY') IN (${sql.join(filters.date.map(v => sql`${v}`), sql`, `)})`);
+      }
+      if (filters.type?.length) {
+        baseConditions.push(sql`${movement.movementType} IN (${sql.join(filters.type.map(v => sql`${v}`), sql`, `)})`);
+      }
+      if (filters.product?.length) {
+        baseConditions.push(sql`${movement.productType} IN (${sql.join(filters.product.map(v => sql`${v}`), sql`, `)})`);
+      }
+      if (filters.from?.length) {
+        baseConditions.push(or(
+          and(eq(movement.movementType, MOVEMENT_TYPE.SUPPLY), sql`(SELECT name FROM suppliers WHERE id = ${movement.supplierId}) IN (${sql.join(filters.from.map(v => sql`${v}`), sql`, `)})`),
+          and(eq(movement.movementType, MOVEMENT_TYPE.INTERNAL), sql`(SELECT name FROM warehouses WHERE id = ${movement.fromWarehouseId}) IN (${sql.join(filters.from.map(v => sql`${v}`), sql`, `)})`)
+        ));
+      }
+      if (filters.to?.length) {
+        baseConditions.push(sql`(SELECT name FROM warehouses WHERE id = ${movement.toWarehouseId}) IN (${sql.join(filters.to.map(v => sql`${v}`), sql`, `)})`);
+      }
+      if (filters.carrier?.length) {
+        baseConditions.push(sql`(SELECT name FROM carriers WHERE id = ${movement.carrierId}) IN (${sql.join(filters.carrier.map(v => sql`${v}`), sql`, `)})`);
+      }
     }
 
     const whereCondition = and(...baseConditions);

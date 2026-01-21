@@ -8,17 +8,18 @@ export function useMovementTable() {
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
 
   const { data: movements, isLoading } = useQuery<{ data: any[], total: number }>({
-    queryKey: ["/api/movement", page, pageSize, search, ...Object.entries(columnFilters).map(([k, v]) => `${k}:${v.join(",")}`)],
+    queryKey: ["/api/movement", page, pageSize, search, columnFilters],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: page.toString(),
         pageSize: pageSize.toString(),
-        search: search
       });
+      
+      if (search) params.append("search", search);
       
       Object.entries(columnFilters).forEach(([k, v]) => {
         if (v.length > 0) {
-          params.append(`filter_${k}`, v.join(","));
+          v.forEach(val => params.append(`filter_${k}`, val));
         }
       });
 

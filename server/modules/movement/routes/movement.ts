@@ -17,9 +17,13 @@ export function registerMovementRoutes(app: Express) {
 
       const filters: Record<string, string[]> = {};
       Object.entries(req.query).forEach(([key, value]) => {
-        if (key.startsWith("filter_") && typeof value === "string") {
+        if (key.startsWith("filter_")) {
           const columnId = key.replace("filter_", "");
-          filters[columnId] = value.split(",").filter(Boolean);
+          if (Array.isArray(value)) {
+            filters[columnId] = value as string[];
+          } else if (typeof value === "string") {
+            filters[columnId] = value.split(",").filter(Boolean);
+          }
         }
       });
 

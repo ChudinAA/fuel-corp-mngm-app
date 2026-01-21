@@ -61,7 +61,7 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
   };
 
   const getUniqueOptions = (key: string) => {
-    const data = movements?.data || [];
+    const data = (movements as any)?.data || [];
     const values = new Map<string, string>();
     data.forEach((item: any) => {
       if (key === 'date') {
@@ -98,33 +98,35 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
     );
   }
 
-  const data = movements?.data || [];
-  const total = movements?.total || 0;
-  const totalPages = Math.ceil(total / pageSize);
+    const total = (movements as any)?.total || 0;
+    const totalPages = Math.ceil(total / pageSize);
 
-  return (
+    const data = (movements as any)?.data || [];
+
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            ref={searchInputRef}
-            placeholder="Поиск..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="pl-9"
-          />
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4 flex-1">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              ref={searchInputRef}
+              placeholder="Поиск..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setColumnFilters({})}
+            disabled={Object.values(columnFilters).every((v) => v.length === 0)}
+            title="Сбросить все фильтры"
+            className={cn(Object.values(columnFilters).some((v) => v.length > 0) && "text-primary border-primary")}
+          >
+            <Filter className="h-4 w-4" />
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setColumnFilters({})}
-          disabled={Object.values(columnFilters).every((v) => v.length === 0)}
-          title="Сбросить все фильтры"
-          className={cn(Object.values(columnFilters).some((v) => v.length > 0) && "text-primary border-primary")}
-        >
-          <Filter className="h-4 w-4" />
-        </Button>
         <ExportButton module="movement" />
       </div>
 
@@ -242,7 +244,9 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                     <TableCell className="text-right">
                       {purchasePrice !== null ? `${formatNumber(purchasePrice)} ₽/кг` : "—"}
                     </TableCell>
-                    <TableCell className="text-right">{formatNumberWithK(purchaseAmount)}</TableCell>
+                    <TableCell className="text-right">
+                      {purchaseAmount > 0 ? formatNumberWithK(purchaseAmount) : "—"}
+                    </TableCell>
                     <TableCell>{item.carrierName || "—"}</TableCell>
                     <TableCell className="text-right">{formatNumberWithK(deliveryCost)}</TableCell>
                     <TableCell className="text-right">{formatNumberWithK(storageCost)}</TableCell>
