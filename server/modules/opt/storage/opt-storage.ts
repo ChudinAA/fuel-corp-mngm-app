@@ -28,18 +28,11 @@ export class OptStorage implements IOptStorage {
     search?: string,
     filters?: Record<string, string[]>,
   ): Promise<{ data: any[]; total: number }> {
-    // Determine if we're using offset (new approach) or page (old approach)
-    // If offsetOrPage is 0 or large, it's likely an offset. 
-    // If it's 1, 2, 3... and we want to maintain compatibility, we need a hint.
-    // In our new code, we pass offset (0, 20, 40...).
-    // In old code, we passed page (1, 2, 3...).
     let offset = offsetOrPage;
     if (offsetOrPage > 0 && offsetOrPage < 100 && (offsetOrPage % pageSize !== 0 || offsetOrPage === 1)) {
-        // This looks like a page number (1-based)
         offset = (offsetOrPage - 1) * pageSize;
     }
 
-    // Helper to build filter conditions
     const buildFilterConditions = () => {
       const conditions: any[] = [isNull(opt.deletedAt)];
 
@@ -57,7 +50,6 @@ export class OptStorage implements IOptStorage {
           conditions.push(sql`${logisticsCarriers.name} IN ${filters.carrier}`);
         }
         if (filters.date?.length) {
-          // Convert dates to string format for comparison
           conditions.push(sql`TO_CHAR(${opt.dealDate}, 'DD.MM.YYYY') IN ${filters.date}`);
         }
       }
@@ -158,12 +150,13 @@ export class OptStorage implements IOptStorage {
 
       // Обновляем остаток на складе только если это склад-поставщик и НЕ черновик
       if (!created.isDraft && created.warehouseId && created.quantityKg) {
-        const warehouse = await tx.query.warehouses.findFirst({
+        const warehouseResult = await tx.query.warehouses.findFirst({
           where: eq(warehouses.id, created.warehouseId),
           with: {
             supplier: true,
           },
         });
+        const warehouse = warehouseResult as any;
 
         // Проверяем что это склад поставщика
         if (warehouse && warehouse.supplierId) {
@@ -176,7 +169,7 @@ export class OptStorage implements IOptStorage {
             .set({
               currentBalance: newBalance.toFixed(2),
               updatedAt: sql`NOW()`,
-              updatedById: data.createdById,
+              updatedById: data.createdById as any,
             })
             .where(eq(warehouses.id, created.warehouseId));
 
@@ -196,7 +189,7 @@ export class OptStorage implements IOptStorage {
               balanceAfter: newBalance.toString(),
               averageCostBefore: warehouse.averageCost || "0",
               averageCostAfter: warehouse.averageCost || "0",
-              createdById: data.createdById,
+              createdById: data.createdById as any,
               transactionDate: created.dealDate,
             })
             .returning();
@@ -235,10 +228,11 @@ export class OptStorage implements IOptStorage {
 
       // Если сделка становится не черновиком, создаем транзакцию
       if (transitioningFromDraft && data.warehouseId && data.quantityKg) {
-        const warehouse = await tx.query.warehouses.findFirst({
+        const warehouseResult = await tx.query.warehouses.findFirst({
           where: eq(warehouses.id, data.warehouseId),
           with: { supplier: true },
         });
+        const warehouse = warehouseResult as any;
 
         if (warehouse && warehouse.supplierId) {
           const quantityKg = parseFloat(data.quantityKg.toString());
@@ -250,7 +244,7 @@ export class OptStorage implements IOptStorage {
             .set({
               currentBalance: newBalance.toFixed(2),
               updatedAt: sql`NOW()`,
-              updatedById: data.updatedById,
+              updatedById: data.updatedById as any,
             })
             .where(eq(warehouses.id, data.warehouseId));
 
@@ -263,18 +257,18 @@ export class OptStorage implements IOptStorage {
               sourceType: SOURCE_TYPE.OPT,
               sourceId: currentOpt.id,
               quantity: (-quantityKg).toString(),
-              sum: data.purchaseAmount,
-              price: data.purchasePrice,
+              sum: data.purchaseAmount as any,
+              price: data.purchasePrice as any,
               balanceBefore: currentBalance.toString(),
               balanceAfter: newBalance.toString(),
               averageCostBefore: warehouse.averageCost || "0",
               averageCostAfter: warehouse.averageCost || "0",
-              createdById: data.updatedById,
-              transactionDate: data.dealDate,
+              createdById: data.updatedById as any,
+              transactionDate: data.dealDate as any,
             })
             .returning();
 
-          data.transactionId = transaction.id;
+          (data as any).transactionId = transaction.id;
         }
       }
       // Проверяем изменилось ли количество КГ и есть ли привязанная транзакция (для НЕ черновиков)
@@ -329,8 +323,8 @@ export class OptStorage implements IOptStorage {
         .set({
           ...data,
           updatedAt: sql`NOW()`,
-          updatedById: data.updatedById,
-        })
+          updatedById: data.updatedById as any,
+        } as any)
         .where(eq(opt.id, id))
         .returning();
 
@@ -354,9 +348,10 @@ export class OptStorage implements IOptStorage {
         currentOpt.warehouseId &&
         currentOpt.warehouse
       ) {
+        const warehouse = currentOpt.warehouse as any;
         const quantityKg = parseFloat(currentOpt.quantityKg);
         const currentBalance = parseFloat(
-          currentOpt.warehouse.currentBalance || "0",
+          warehouse.currentBalance || "0",
         );
         const newBalance = currentBalance + quantityKg;
 
@@ -508,33 +503,33 @@ export class OptStorage implements IOptStorage {
             id: true,
             name: true,
             isWarehouse: true,
-          },
+          } as any,
         },
         buyer: {
           columns: {
             id: true,
             name: true,
-          },
+          } as any,
         },
         carrier: {
           columns: {
             id: true,
             name: true,
-          },
+          } as any,
         },
         deliveryLocation: {
           columns: {
             id: true,
             name: true,
-          },
+          } as any,
         },
         warehouse: {
           columns: {
             id: true,
             name: true,
-          },
+          } as any,
         },
-      },
+      } as any,
     });
 
     return data.map((item) => ({
