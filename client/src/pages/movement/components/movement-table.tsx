@@ -105,7 +105,7 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
   console.log("MovementTable Rendering:", { movements, total, pageSize, totalPages, dataLength: data.length });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 px-4 md:px-6">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4 flex-1">
           <div className="relative flex-1 max-w-sm">
@@ -136,8 +136,8 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[90px] text-[11px] md:text-xs px-1 md:px-2">
-                <div className="flex items-center justify-between gap-0.5">
+              <TableHead className="w-[100px] text-xs md:text-sm px-2 md:px-4">
+                <div className="flex items-center justify-between gap-1">
                   <span>Дата</span>
                   <TableColumnFilter
                     title="Дата"
@@ -147,8 +147,8 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="w-[100px] text-[11px] md:text-xs px-1 md:px-2">
-                <div className="flex items-center justify-between gap-0.5">
+              <TableHead className="w-[110px] text-xs md:text-sm px-2 md:px-4">
+                <div className="flex items-center justify-between gap-1">
                   <span>Тип</span>
                   <TableColumnFilter
                     title="Тип"
@@ -158,8 +158,8 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="w-[90px] text-[11px] md:text-xs px-1 md:px-2">
-                <div className="flex items-center justify-between gap-0.5">
+              <TableHead className="w-[100px] text-xs md:text-sm px-2 md:px-4">
+                <div className="flex items-center justify-between gap-1">
                   <span>Прод.</span>
                   <TableColumnFilter
                     title="Продукт"
@@ -169,8 +169,8 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="min-w-[120px] text-[11px] md:text-xs px-1 md:px-2">
-                <div className="flex items-center justify-between gap-0.5">
+              <TableHead className="flex-1 min-w-[140px] text-xs md:text-sm px-2 md:px-4">
+                <div className="flex items-center justify-between gap-1">
                   <span className="truncate">Откуда</span>
                   <TableColumnFilter
                     title="Откуда"
@@ -180,8 +180,8 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="min-w-[120px] text-[11px] md:text-xs px-1 md:px-2">
-                <div className="flex items-center justify-between gap-0.5">
+              <TableHead className="flex-1 min-w-[140px] text-xs md:text-sm px-2 md:px-4">
+                <div className="flex items-center justify-between gap-1">
                   <span className="truncate">Куда</span>
                   <TableColumnFilter
                     title="Куда"
@@ -191,11 +191,11 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-right w-[60px] text-[11px] md:text-xs px-1 md:px-2">КГ</TableHead>
-              <TableHead className="text-right w-[80px] text-[11px] md:text-xs px-1 md:px-2 leading-tight">Цена закупки</TableHead>
-              <TableHead className="text-right w-[90px] text-[11px] md:text-xs px-1 md:px-2 leading-tight">Сумма закупки</TableHead>
-              <TableHead className="w-[100px] text-[11px] md:text-xs px-1 md:px-2">
-                <div className="flex items-center justify-between gap-0.5">
+              <TableHead className="text-right w-[70px] text-xs md:text-sm px-2 md:px-4">КГ</TableHead>
+              <TableHead className="text-right w-[90px] text-xs md:text-sm px-2 md:px-4 leading-tight">Цена закупки</TableHead>
+              <TableHead className="text-right w-[100px] text-xs md:text-sm px-2 md:px-4 leading-tight">Сумма закупки</TableHead>
+              <TableHead className="flex-1 min-w-[120px] text-xs md:text-sm px-2 md:px-4">
+                <div className="flex items-center justify-between gap-1">
                   <span className="truncate">Пер-к</span>
                   <TableColumnFilter
                     title="Перевозчик"
@@ -205,10 +205,10 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-right w-[70px] text-[11px] md:text-xs px-1 md:px-2">Дост.</TableHead>
-              <TableHead className="text-right w-[70px] text-[11px] md:text-xs px-1 md:px-2">Хран.</TableHead>
-              <TableHead className="text-right w-[80px] text-[11px] md:text-xs px-1 md:px-2 leading-tight">Себест.</TableHead>
-              <TableHead className="w-[40px] px-1"></TableHead>
+              <TableHead className="text-right w-[80px] text-xs md:text-sm px-2 md:px-4">Дост.</TableHead>
+              <TableHead className="text-right w-[80px] text-xs md:text-sm px-2 md:px-4">Хран.</TableHead>
+              <TableHead className="text-right w-[90px] text-xs md:text-sm px-2 md:px-4 leading-tight">Себест.</TableHead>
+              <TableHead className="w-[50px] px-2 md:px-4"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -229,15 +229,15 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
 
                 return (
                   <TableRow key={item.id} className="hover:bg-muted/50 transition-colors">
-                    <TableCell className="text-[11px] md:text-xs py-2 px-1 md:px-2 whitespace-nowrap">{formatDate(item.movementDate)}</TableCell>
-                    <TableCell className="py-2 px-1 md:px-2">
-                      <Badge variant="outline" className="text-[10px] md:text-[11px] px-1 py-0 h-5">
+                    <TableCell className="text-xs md:text-sm py-3 px-2 md:px-4 whitespace-nowrap">{formatDate(item.movementDate)}</TableCell>
+                    <TableCell className="py-3 px-2 md:px-4">
+                      <Badge variant="outline" className="text-[11px] md:text-xs px-2 py-0.5 h-6">
                         {item.movementType === MOVEMENT_TYPE.SUPPLY ? "Покупка" : "Внутреннее"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="py-2 px-1 md:px-2">
+                    <TableCell className="py-3 px-2 md:px-4">
                       <Badge variant="outline" className={cn(
-                        "text-[10px] md:text-[11px] px-1 py-0 h-5",
+                        "text-[11px] md:text-xs px-2 py-0.5 h-6",
                         item.productType === PRODUCT_TYPE.PVKJ 
                           ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30 text-purple-700 dark:text-purple-300' 
                           : 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30 text-blue-700 dark:text-blue-300'
@@ -245,20 +245,20 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                         {getProductLabel(item.productType || PRODUCT_TYPE.KEROSENE)}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-[11px] md:text-xs py-2 px-1 md:px-2 truncate max-w-[120px]">{item.fromName || "—"}</TableCell>
-                    <TableCell className="text-[11px] md:text-xs py-2 px-1 md:px-2 truncate max-w-[120px]">{item.toName || "—"}</TableCell>
-                    <TableCell className="text-right font-medium text-[11px] md:text-xs py-2 px-1 md:px-2">{formatNumberWithK(item.quantityKg)}</TableCell>
-                    <TableCell className="text-right text-[11px] md:text-xs py-2 px-1 md:px-2 whitespace-nowrap">
+                    <TableCell className="text-xs md:text-sm py-3 px-2 md:px-4 truncate max-w-[140px]">{item.fromName || "—"}</TableCell>
+                    <TableCell className="text-xs md:text-sm py-3 px-2 md:px-4 truncate max-w-[140px]">{item.toName || "—"}</TableCell>
+                    <TableCell className="text-right font-medium text-xs md:text-sm py-3 px-2 md:px-4">{formatNumberWithK(item.quantityKg)}</TableCell>
+                    <TableCell className="text-right text-xs md:text-sm py-3 px-2 md:px-4 whitespace-nowrap">
                       {purchasePrice !== null ? formatNumber(purchasePrice) : "—"}
                     </TableCell>
-                    <TableCell className="text-right text-[11px] md:text-xs py-2 px-1 md:px-2">
+                    <TableCell className="text-right text-xs md:text-sm py-3 px-2 md:px-4">
                       {purchaseAmount > 0 ? formatNumberWithK(purchaseAmount) : "—"}
                     </TableCell>
-                    <TableCell className="text-[11px] md:text-xs py-2 px-1 md:px-2 truncate max-w-[100px]">{item.carrierName || "—"}</TableCell>
-                    <TableCell className="text-right text-[11px] md:text-xs py-2 px-1 md:px-2">{formatNumberWithK(deliveryCost)}</TableCell>
-                    <TableCell className="text-right text-[11px] md:text-xs py-2 px-1 md:px-2">{formatNumberWithK(storageCost)}</TableCell>
-                    <TableCell className="text-right font-medium text-[11px] md:text-xs py-2 px-1 md:px-2 whitespace-nowrap">{formatNumber(costPerKg)}</TableCell>
-                    <TableCell className="py-2 px-1">
+                    <TableCell className="text-xs md:text-sm py-3 px-2 md:px-4 truncate max-w-[120px]">{item.carrierName || "—"}</TableCell>
+                    <TableCell className="text-right text-xs md:text-sm py-3 px-2 md:px-4">{formatNumberWithK(deliveryCost)}</TableCell>
+                    <TableCell className="text-right text-xs md:text-sm py-3 px-2 md:px-4">{formatNumberWithK(storageCost)}</TableCell>
+                    <TableCell className="text-right font-medium text-xs md:text-sm py-3 px-2 md:px-4 whitespace-nowrap">{formatNumber(costPerKg)}</TableCell>
+                    <TableCell className="py-3 px-2 md:px-4">
                       <EntityActionsMenu
                         actions={[
                           {
