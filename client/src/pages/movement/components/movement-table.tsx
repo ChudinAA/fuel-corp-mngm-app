@@ -136,8 +136,8 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[110px]">
-                <div className="flex items-center justify-between gap-1">
+              <TableHead className="w-[90px] text-[11px] md:text-xs px-1 md:px-2">
+                <div className="flex items-center justify-between gap-0.5">
                   <span>Дата</span>
                   <TableColumnFilter
                     title="Дата"
@@ -147,8 +147,8 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="w-[120px]">
-                <div className="flex items-center justify-between gap-1">
+              <TableHead className="w-[100px] text-[11px] md:text-xs px-1 md:px-2">
+                <div className="flex items-center justify-between gap-0.5">
                   <span>Тип</span>
                   <TableColumnFilter
                     title="Тип"
@@ -158,9 +158,9 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="w-[110px]">
-                <div className="flex items-center justify-between gap-1">
-                  <span>Продукт</span>
+              <TableHead className="w-[90px] text-[11px] md:text-xs px-1 md:px-2">
+                <div className="flex items-center justify-between gap-0.5">
+                  <span>Прод.</span>
                   <TableColumnFilter
                     title="Продукт"
                     options={getUniqueOptions("product")}
@@ -169,9 +169,9 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="w-[160px]">
-                <div className="flex items-center justify-between gap-1">
-                  <span>Откуда</span>
+              <TableHead className="min-w-[120px] text-[11px] md:text-xs px-1 md:px-2">
+                <div className="flex items-center justify-between gap-0.5">
+                  <span className="truncate">Откуда</span>
                   <TableColumnFilter
                     title="Откуда"
                     options={getUniqueOptions("fromName")}
@@ -180,9 +180,9 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="w-[160px]">
-                <div className="flex items-center justify-between gap-1">
-                  <span>Куда</span>
+              <TableHead className="min-w-[120px] text-[11px] md:text-xs px-1 md:px-2">
+                <div className="flex items-center justify-between gap-0.5">
+                  <span className="truncate">Куда</span>
                   <TableColumnFilter
                     title="Куда"
                     options={getUniqueOptions("toName")}
@@ -191,12 +191,12 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-right w-[80px]">КГ</TableHead>
-              <TableHead className="text-right w-[100px]">Цена покупки</TableHead>
-              <TableHead className="text-right w-[130px]">Сумма покупки</TableHead>
-              <TableHead className="w-[120px]">
-                <div className="flex items-center justify-between gap-1">
-                  <span>Перевозчик</span>
+              <TableHead className="text-right w-[60px] text-[11px] md:text-xs px-1 md:px-2">КГ</TableHead>
+              <TableHead className="text-right w-[80px] text-[11px] md:text-xs px-1 md:px-2 leading-tight">Цена закупки</TableHead>
+              <TableHead className="text-right w-[90px] text-[11px] md:text-xs px-1 md:px-2 leading-tight">Сумма закупки</TableHead>
+              <TableHead className="w-[100px] text-[11px] md:text-xs px-1 md:px-2">
+                <div className="flex items-center justify-between gap-0.5">
+                  <span className="truncate">Пер-к</span>
                   <TableColumnFilter
                     title="Перевозчик"
                     options={getUniqueOptions("carrierName")}
@@ -205,10 +205,10 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-right w-[90px]">Доставка</TableHead>
-              <TableHead className="text-right w-[90px]">Хранение</TableHead>
-              <TableHead className="text-right w-[110px]">Себестоимость</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="text-right w-[70px] text-[11px] md:text-xs px-1 md:px-2">Дост.</TableHead>
+              <TableHead className="text-right w-[70px] text-[11px] md:text-xs px-1 md:px-2">Хран.</TableHead>
+              <TableHead className="text-right w-[80px] text-[11px] md:text-xs px-1 md:px-2 leading-tight">Себест.</TableHead>
+              <TableHead className="w-[40px] px-1"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -228,32 +228,37 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
                 const costPerKg = item.costPerKg ? parseFloat(item.costPerKg) : 0;
 
                 return (
-                  <TableRow key={item.id}>
-                    <TableCell>{formatDate(item.movementDate)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
+                  <TableRow key={item.id} className="hover:bg-muted/50 transition-colors">
+                    <TableCell className="text-[11px] md:text-xs py-2 px-1 md:px-2 whitespace-nowrap">{formatDate(item.movementDate)}</TableCell>
+                    <TableCell className="py-2 px-1 md:px-2">
+                      <Badge variant="outline" className="text-[10px] md:text-[11px] px-1 py-0 h-5">
                         {item.movementType === MOVEMENT_TYPE.SUPPLY ? "Покупка" : "Внутреннее"}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={item.productType === PRODUCT_TYPE.PVKJ ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30' : 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30'}>
+                    <TableCell className="py-2 px-1 md:px-2">
+                      <Badge variant="outline" className={cn(
+                        "text-[10px] md:text-[11px] px-1 py-0 h-5",
+                        item.productType === PRODUCT_TYPE.PVKJ 
+                          ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30 text-purple-700 dark:text-purple-300' 
+                          : 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30 text-blue-700 dark:text-blue-300'
+                      )}>
                         {getProductLabel(item.productType || PRODUCT_TYPE.KEROSENE)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{item.fromName || "—"}</TableCell>
-                    <TableCell>{item.toName || "—"}</TableCell>
-                    <TableCell className="text-right font-medium">{formatNumberWithK(item.quantityKg)}</TableCell>
-                    <TableCell className="text-right">
-                      {purchasePrice !== null ? `${formatNumber(purchasePrice)} ₽/кг` : "—"}
+                    <TableCell className="text-[11px] md:text-xs py-2 px-1 md:px-2 truncate max-w-[120px]">{item.fromName || "—"}</TableCell>
+                    <TableCell className="text-[11px] md:text-xs py-2 px-1 md:px-2 truncate max-w-[120px]">{item.toName || "—"}</TableCell>
+                    <TableCell className="text-right font-medium text-[11px] md:text-xs py-2 px-1 md:px-2">{formatNumberWithK(item.quantityKg)}</TableCell>
+                    <TableCell className="text-right text-[11px] md:text-xs py-2 px-1 md:px-2 whitespace-nowrap">
+                      {purchasePrice !== null ? formatNumber(purchasePrice) : "—"}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right text-[11px] md:text-xs py-2 px-1 md:px-2">
                       {purchaseAmount > 0 ? formatNumberWithK(purchaseAmount) : "—"}
                     </TableCell>
-                    <TableCell>{item.carrierName || "—"}</TableCell>
-                    <TableCell className="text-right">{formatNumberWithK(deliveryCost)}</TableCell>
-                    <TableCell className="text-right">{formatNumberWithK(storageCost)}</TableCell>
-                    <TableCell className="text-right font-medium">{formatNumber(costPerKg)} ₽/кг</TableCell>
-                    <TableCell>
+                    <TableCell className="text-[11px] md:text-xs py-2 px-1 md:px-2 truncate max-w-[100px]">{item.carrierName || "—"}</TableCell>
+                    <TableCell className="text-right text-[11px] md:text-xs py-2 px-1 md:px-2">{formatNumberWithK(deliveryCost)}</TableCell>
+                    <TableCell className="text-right text-[11px] md:text-xs py-2 px-1 md:px-2">{formatNumberWithK(storageCost)}</TableCell>
+                    <TableCell className="text-right font-medium text-[11px] md:text-xs py-2 px-1 md:px-2 whitespace-nowrap">{formatNumber(costPerKg)}</TableCell>
+                    <TableCell className="py-2 px-1">
                       <EntityActionsMenu
                         actions={[
                           {

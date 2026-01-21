@@ -26,15 +26,6 @@ export default function MovementPage() {
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
   const { hasPermission } = useAuth();
-  const pageSize = 20;
-
-  const { data: movementData, isLoading } = useQuery({
-    queryKey: ["/api/movement", page, pageSize],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/movement?page=${page}&pageSize=${pageSize}`);
-      return res.json();
-    },
-  });
 
   const { data: warehouses } = useQuery<Warehouse[]>({
     queryKey: ["/api/warehouses"],
@@ -90,39 +81,6 @@ export default function MovementPage() {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
     },
   });
-
-  // Фильтрация и поиск
-  const filteredData = useMemo(() => {
-    let result = movementData?.data || [];
-
-    // Поиск
-    if (search) {
-      const searchLower = search.toLowerCase();
-      result = result.filter((item: any) => 
-        item.fromName?.toLowerCase().includes(searchLower) ||
-        item.toName?.toLowerCase().includes(searchLower) ||
-        item.carrierName?.toLowerCase().includes(searchLower) ||
-        item.notes?.toLowerCase().includes(searchLower) ||
-        item.quantityKg?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Фильтр по типу
-    if (typeFilter) {
-      result = result.filter((item: any) => item.movementType === typeFilter);
-    }
-
-    // Фильтр по продукту
-    if (productFilter) {
-      result = result.filter((item: any) => item.productType === productFilter);
-    }
-
-    return result;
-  }, [movementData?.data, search, typeFilter, productFilter]);
-
-  const data = filteredData;
-  const total = movementData?.total || 0;
-  const totalPages = Math.ceil(total / pageSize);
 
   const handleEditClick = (movement: Movement) => {
     setEditingMovement(movement);

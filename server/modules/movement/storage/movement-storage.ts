@@ -1,4 +1,4 @@
-import { eq, desc, sql, and, gt, isNull } from "drizzle-orm";
+import { eq, desc, sql, and, gt, isNull, or } from "drizzle-orm";
 import { db } from "server/db";
 import {
   movement,
@@ -56,25 +56,64 @@ export class MovementStorage implements IMovementStorage {
 
     if (filters) {
       if (filters.date?.length) {
-        baseConditions.push(sql`TO_CHAR(${movement.movementDate}, 'DD.MM.YYYY') IN (${sql.join(filters.date.map(v => sql`${v}`), sql`, `)})`);
+        baseConditions.push(
+          sql`TO_CHAR(${movement.movementDate}, 'DD.MM.YYYY') IN (${sql.join(
+            filters.date.map((v) => sql`${v}`),
+            sql`, `,
+          )})`,
+        );
       }
       if (filters.type?.length) {
-        baseConditions.push(sql`${movement.movementType} IN (${sql.join(filters.type.map(v => sql`${v}`), sql`, `)})`);
+        baseConditions.push(
+          sql`${movement.movementType} IN (${sql.join(
+            filters.type.map((v) => sql`${v}`),
+            sql`, `,
+          )})`,
+        );
       }
       if (filters.product?.length) {
-        baseConditions.push(sql`${movement.productType} IN (${sql.join(filters.product.map(v => sql`${v}`), sql`, `)})`);
+        baseConditions.push(
+          sql`${movement.productType} IN (${sql.join(
+            filters.product.map((v) => sql`${v}`),
+            sql`, `,
+          )})`,
+        );
       }
       if (filters.from?.length) {
-        baseConditions.push(or(
-          and(eq(movement.movementType, MOVEMENT_TYPE.SUPPLY), sql`(SELECT name FROM suppliers WHERE id = ${movement.supplierId}) IN (${sql.join(filters.from.map(v => sql`${v}`), sql`, `)})`),
-          and(eq(movement.movementType, MOVEMENT_TYPE.INTERNAL), sql`(SELECT name FROM warehouses WHERE id = ${movement.fromWarehouseId}) IN (${sql.join(filters.from.map(v => sql`${v}`), sql`, `)})`)
-        ));
+        baseConditions.push(
+          or(
+            and(
+              eq(movement.movementType, MOVEMENT_TYPE.SUPPLY),
+              sql`(SELECT name FROM suppliers WHERE id = ${movement.supplierId}) IN (${sql.join(
+                filters.from.map((v) => sql`${v}`),
+                sql`, `,
+              )})`,
+            ),
+            and(
+              eq(movement.movementType, MOVEMENT_TYPE.INTERNAL),
+              sql`(SELECT name FROM warehouses WHERE id = ${movement.fromWarehouseId}) IN (${sql.join(
+                filters.from.map((v) => sql`${v}`),
+                sql`, `,
+              )})`,
+            ),
+          ),
+        );
       }
       if (filters.to?.length) {
-        baseConditions.push(sql`(SELECT name FROM warehouses WHERE id = ${movement.toWarehouseId}) IN (${sql.join(filters.to.map(v => sql`${v}`), sql`, `)})`);
+        baseConditions.push(
+          sql`(SELECT name FROM warehouses WHERE id = ${movement.toWarehouseId}) IN (${sql.join(
+            filters.to.map((v) => sql`${v}`),
+            sql`, `,
+          )})`,
+        );
       }
       if (filters.carrier?.length) {
-        baseConditions.push(sql`(SELECT name FROM carriers WHERE id = ${movement.carrierId}) IN (${sql.join(filters.carrier.map(v => sql`${v}`), sql`, `)})`);
+        baseConditions.push(
+          sql`(SELECT name FROM logistics_carriers WHERE id = ${movement.carrierId}) IN (${sql.join(
+            filters.carrier.map((v) => sql`${v}`),
+            sql`, `,
+          )})`,
+        );
       }
     }
 
@@ -127,7 +166,10 @@ export class MovementStorage implements IMovementStorage {
       .select({ count: sql<number>`count(*)` })
       .from(movement)
       .where(whereCondition);
-    return { data: enrichedData as any[], total: Number(countResult?.count || 0) };
+    return {
+      data: enrichedData as any[],
+      total: Number(countResult?.count || 0),
+    };
   }
 
   async createMovement(data: InsertMovement): Promise<Movement> {

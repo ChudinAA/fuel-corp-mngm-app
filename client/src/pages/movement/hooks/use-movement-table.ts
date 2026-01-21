@@ -4,7 +4,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 export function useMovementTable() {
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(20);
   const [search, setSearch] = useState("");
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
 
