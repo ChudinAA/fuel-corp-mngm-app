@@ -26,7 +26,7 @@ export default function MovementPage() {
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
   const { hasPermission } = useAuth();
-  const pageSize = 10;
+  const pageSize = 20;
 
   const { data: movementData, isLoading } = useQuery({
     queryKey: ["/api/movement", page, pageSize],
@@ -141,7 +141,7 @@ export default function MovementPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Перемещение</h1>
-          <p className="text-muted-foreground">Учет поставок и внутренних перемещений топлива</p>
+          <p className="text-muted-foreground">Учет покупок и внутренних перемещений топлива</p>
         </div>
         {hasPermission("movement", "create") && (
           <Button onClick={handleOpenDialog} data-testid="button-add-movement">
@@ -166,7 +166,6 @@ export default function MovementPage() {
       <Card>
         <CardHeader>
           <CardTitle>Список перемещений</CardTitle>
-          <CardDescription>История покупок и внутренних перемещений</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">

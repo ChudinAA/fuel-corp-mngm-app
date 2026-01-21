@@ -48,11 +48,43 @@ export class MovementStorage implements IMovementStorage {
   async getMovements(
     page: number,
     pageSize: number,
+    filters?: Record<string, string[]>,
   ): Promise<{ data: Movement[]; total: number }> {
     const offset = (page - 1) * pageSize;
 
+    const baseConditions: any[] = [isNull(movement.deletedAt)];
+
+    if (filters) {
+      Object.entries(filters).forEach(([columnId, values]) => {
+        if (!values || values.length === 0) return;
+
+        if (columnId === "date") {
+          const dateConditions = values.map(v => sql`DATE(${movement.movementDate}) = TO_DATE(${v}, 'DD.MM.YYYY')`);
+          baseConditions.push(or(...dateConditions) as any);
+        } else if (columnId === "type") {
+          baseConditions.push(sql`${movement.movementType} IN (${sql.join(values, sql`, `)})` as any);
+        } else if (columnId === "product") {
+          baseConditions.push(sql`${movement.productType} IN (${sql.join(values, sql`, `)})` as any);
+        } else if (columnId === "from") {
+          const conditions = values.map(v => 
+            or(
+              sql`${warehouses.name} = ${v}`,
+              sql`${opt.supplierId} IN (SELECT id FROM suppliers WHERE name = ${v})`
+            )
+          );
+          baseConditions.push(or(...conditions) as any);
+        } else if (columnId === "to") {
+          baseConditions.push(sql`${warehouses.name} IN (${sql.join(values, sql`, `)})` as any);
+        } else if (columnId === "carrier") {
+          baseConditions.push(sql`(SELECT name FROM carriers WHERE id = ${movement.carrierId}) IN (${sql.join(values, sql`, `)})` as any);
+        }
+      });
+    }
+
+    const whereCondition = and(...baseConditions);
+
     const data = await db.query.movement.findMany({
-      where: isNull(movement.deletedAt),
+      where: whereCondition,
       limit: pageSize,
       offset: offset,
       orderBy: (movement, { desc }) => [desc(movement.movementDate)],

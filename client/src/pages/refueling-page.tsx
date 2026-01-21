@@ -76,9 +76,6 @@ export default function RefuelingPage() {
         <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
           <div>
             <CardTitle>Список заправок</CardTitle>
-            <CardDescription>
-              Последние 10 записей
-            </CardDescription>
           </div>
           <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
             <Button 
