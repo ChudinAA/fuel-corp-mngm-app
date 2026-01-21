@@ -18,11 +18,31 @@ import {
 import type { IPriceStorage } from "../../../storage/types";
 
 export class PriceStorage implements IPriceStorage {
-  async getAllPrices(): Promise<Price[]> {
+  async getAllPrices(filters?: {
+    dateFrom?: string;
+    dateTo?: string;
+    counterpartyType?: string;
+    counterpartyRole?: string;
+    counterpartyId?: string;
+    basis?: string;
+    productType?: string;
+  }): Promise<Price[]> {
+    const conditions = [isNull(prices.deletedAt)];
+
+    if (filters) {
+      if (filters.dateFrom) conditions.push(sql`${prices.dateTo} >= ${filters.dateFrom}`);
+      if (filters.dateTo) conditions.push(sql`${prices.dateFrom} <= ${filters.dateTo}`);
+      if (filters.counterpartyType) conditions.push(eq(prices.counterpartyType, filters.counterpartyType));
+      if (filters.counterpartyRole) conditions.push(eq(prices.counterpartyRole, filters.counterpartyRole));
+      if (filters.counterpartyId) conditions.push(eq(prices.counterpartyId, filters.counterpartyId));
+      if (filters.basis) conditions.push(eq(prices.basis, filters.basis));
+      if (filters.productType) conditions.push(eq(prices.productType, filters.productType));
+    }
+
     const allPrices = await db
       .select()
       .from(prices)
-      .where(isNull(prices.deletedAt))
+      .where(and(...conditions))
       .orderBy(desc(prices.dateFrom));
     return allPrices;
   }

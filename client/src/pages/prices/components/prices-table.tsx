@@ -14,14 +14,20 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Search, Pencil, Trash2, RefreshCw, Package, Plane, TruckIcon, ShoppingCart, FileText, StickyNote, History } from "lucide-react";
 import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
+import { TableColumnFilter } from "@/components/table-column-filter";
 import type { Price, Supplier, Customer } from "@shared/schema";
 import type { PricesTableProps } from "../types";
-import { formatNumber, formatDate, getPriceDisplay, getProductTypeLabel } from "../utils";
-import { usePriceSelection } from "../hooks/use-price-selection";
-import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, PRODUCT_TYPE } from "@shared/constants";
-import { useAuth } from "@/hooks/use-auth";
 
 export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onEdit }: PricesTableProps) {
+  const [filters, setFilters] = useState({
+    dateRange: { from: undefined as Date | undefined, to: undefined as Date | undefined },
+    dealType: "all",
+    role: "all",
+    counterpartyId: "all",
+    basis: "all",
+    productType: "all",
+  });
+
   const [search, setSearch] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [priceToDelete, setPriceToDelete] = useState<Price | null>(null);
@@ -33,7 +39,15 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
   const { hasPermission } = useAuth();
 
   const { data: prices, isLoading } = useQuery<Price[]>({
-    queryKey: ["/api/prices"],
+    queryKey: ["/api/prices", {
+      counterpartyType: filters.dealType !== "all" ? filters.dealType : (dealTypeFilter !== "all" ? dealTypeFilter : undefined),
+      counterpartyRole: filters.role !== "all" ? filters.role : (roleFilter !== "all" ? roleFilter : undefined),
+      productType: filters.productType !== "all" ? filters.productType : (productTypeFilter !== "all" ? productTypeFilter : undefined),
+      counterpartyId: filters.counterpartyId !== "all" ? filters.counterpartyId : undefined,
+      basis: filters.basis !== "all" ? filters.basis : undefined,
+      dateFrom: filters.dateRange.from?.toISOString(),
+      dateTo: filters.dateRange.to?.toISOString(),
+    }],
   });
 
   const { data: allContractors } = useQuery<Supplier[]>({
@@ -131,12 +145,98 @@ export function PricesTable({ dealTypeFilter, roleFilter, productTypeFilter, onE
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Период</TableHead>
-              <TableHead className="w-[60px]">Тип</TableHead>
-              <TableHead className="w-[60px]">Роль</TableHead>
-              <TableHead>Контрагент</TableHead>
-              <TableHead>Базис</TableHead>
-              <TableHead>Продукт</TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Период
+                  <TableColumnFilter
+                    type="date-range"
+                    value={filters.dateRange}
+                    onChange={(val) => setFilters(prev => ({ ...prev, dateRange: val }))}
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="w-[60px]">
+                <div className="flex items-center gap-2">
+                  Тип
+                  <TableColumnFilter
+                    type="select"
+                    options={[
+                      { label: "Все", value: "all" },
+                      { label: "ОПТ", value: COUNTERPARTY_TYPE.WHOLESALE },
+                      { label: "Заправка ВС", value: COUNTERPARTY_TYPE.REFUELING },
+                    ]}
+                    value={filters.dealType}
+                    onChange={(val) => setFilters(prev => ({ ...prev, dealType: val }))}
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="w-[60px]">
+                <div className="flex items-center gap-2">
+                  Роль
+                  <TableColumnFilter
+                    type="select"
+                    options={[
+                      { label: "Все", value: "all" },
+                      { label: "Поставщик", value: COUNTERPARTY_ROLE.SUPPLIER },
+                      { label: "Покупатель", value: COUNTERPARTY_ROLE.BUYER },
+                    ]}
+                    value={filters.role}
+                    onChange={(val) => setFilters(prev => ({ ...prev, role: val }))}
+                  />
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Контрагент
+                  <TableColumnFilter
+                    type="select"
+                    options={[
+                      { label: "Все", value: "all" },
+                      ...(filters.role === COUNTERPARTY_ROLE.BUYER ? (customers || []) : (allContractors || [])).map(c => ({
+                        label: c.name,
+                        value: c.id
+                      }))
+                    ]}
+                    value={filters.counterpartyId}
+                    onChange={(val) => setFilters(prev => ({ ...prev, counterpartyId: val }))}
+                  />
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Базис
+                  <TableColumnFilter
+                    type="select"
+                    options={[
+                      { label: "Все", value: "all" },
+                      ...Array.from(new Set(prices?.map(p => p.basis).filter(Boolean) || [])).map(b => ({
+                        label: b!,
+                        value: b!
+                      }))
+                    ]}
+                    value={filters.basis}
+                    onChange={(val) => setFilters(prev => ({ ...prev, basis: val }))}
+                  />
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Продукт
+                  <TableColumnFilter
+                    type="select"
+                    options={[
+                      { label: "Все", value: "all" },
+                      { label: "Керосин", value: PRODUCT_TYPE.KEROSENE },
+                      { label: "Услуги", value: PRODUCT_TYPE.SERVICE },
+                      { label: "ПВКЖ", value: PRODUCT_TYPE.PVKJ },
+                      { label: "Агентское", value: PRODUCT_TYPE.AGENT },
+                      { label: "Хранение", value: PRODUCT_TYPE.STORAGE },
+                    ]}
+                    value={filters.productType}
+                    onChange={(val) => setFilters(prev => ({ ...prev, productType: val }))}
+                  />
+                </div>
+              </TableHead>
               <TableHead className="text-right">Цена (₽/кг)</TableHead>
               <TableHead className="text-right">Объем</TableHead>
               <TableHead className="text-right">Выборка</TableHead>

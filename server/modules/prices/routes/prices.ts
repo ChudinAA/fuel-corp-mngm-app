@@ -100,15 +100,25 @@ export function registerPricesRoutes(app: Express) {
     requireAuth,
     requirePermission("prices", "view"),
     async (req, res) => {
-      const { counterpartyRole, counterpartyType } = req.query;
-      if (counterpartyRole && counterpartyType) {
-        const data = await storage.prices.getPricesByRole(
-          counterpartyRole as string,
-          counterpartyType as string
-        );
-        return res.json(data);
-      }
-      const data = await storage.prices.getAllPrices();
+      const { 
+        counterpartyRole, 
+        counterpartyType, 
+        counterpartyId,
+        dateFrom,
+        dateTo,
+        basis,
+        productType
+      } = req.query;
+
+      const data = await storage.prices.getAllPrices({
+        counterpartyRole: counterpartyRole as string,
+        counterpartyType: counterpartyType as string,
+        counterpartyId: counterpartyId as string,
+        dateFrom: dateFrom as string,
+        dateTo: dateTo as string,
+        basis: basis as string,
+        productType: productType as string,
+      });
       res.json(data);
     }
   );
