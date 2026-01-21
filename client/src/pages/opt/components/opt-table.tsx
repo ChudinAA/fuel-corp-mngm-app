@@ -295,7 +295,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[60px]">
+              <TableHead className="text-center text-sm font-semibold p-1 md:p-2 w-[60px]">
                 КГ
               </TableHead>
               <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[80px]">

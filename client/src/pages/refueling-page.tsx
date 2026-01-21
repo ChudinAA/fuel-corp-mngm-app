@@ -20,10 +20,6 @@ export default function RefuelingPage() {
   const queryClient = useQueryClient();
   const { hasPermission } = useAuth();
 
-  const { data: refuelingDeals } = useQuery<{ data: AircraftRefueling[]; total: number }>({
-    queryKey: ["/api/refueling?page=1&pageSize=1000"],
-  });
-
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingRefueling(null);
@@ -52,26 +48,13 @@ export default function RefuelingPage() {
     queryClient.invalidateQueries({ queryKey: ["/api/refueling"] });
   };
 
-  // Вычисление накопительной прибыли за текущий месяц
-  const cumulativeProfit = refuelingDeals?.data?.reduce((sum, deal) => {
-    const dealDate = new Date(deal.refuelingDate);
-    const now = new Date();
-    if (dealDate.getMonth() === now.getMonth() && dealDate.getFullYear() === now.getFullYear()) {
-      return sum + parseFloat(deal.profit || "0");
-    }
-    return sum;
-  }, 0) || 0;
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Заправка ВС</h1>
           <p className="text-muted-foreground">
-            Учет заправок воздушных судов с автоматическим расчетом цен
-          </p>
-          <p className="text-sm font-medium mt-2">
-            Прибыль накопительно (текущий месяц): <span className="text-green-600">{cumulativeProfit.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽</span>
+            Учет заправок воздушных судов
           </p>
         </div>
         {hasPermission("refueling", "create") && (

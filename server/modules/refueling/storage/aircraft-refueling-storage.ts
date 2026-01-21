@@ -24,13 +24,13 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
 
   async getRefuelings(
     page: number = 1,
-    pageSize: number = 10,
+    pageSize: number = 20,
     search?: string,
     filters?: Record<string, string[]>,
   ): Promise<{ data: any[]; total: number }> {
     const offset = (page - 1) * pageSize;
 
-    const baseConditions = [isNull(aircraftRefueling.deletedAt)];
+    const baseConditions: any[] = [isNull(aircraftRefueling.deletedAt)];
 
     if (search && search.trim()) {
       const searchPattern = `%${search.trim()}%`;
@@ -40,25 +40,24 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
           sql`${customers.name} ILIKE ${searchPattern}`,
           sql`${aircraftRefueling.aircraftNumber}::text ILIKE ${searchPattern}`,
           sql`${aircraftRefueling.notes}::text ILIKE ${searchPattern}`,
-        )
+        ),
       );
     }
 
     if (filters) {
-      Object.entries(filters).forEach(([columnId, values]) => {
-        if (!values || values.length === 0) return;
-
-        if (columnId === "date") {
-          const dateConditions = values.map(v => sql`DATE(${aircraftRefueling.refuelingDate}) = TO_DATE(${v}, 'DD.MM.YYYY')`);
-          baseConditions.push(or(...dateConditions) as any);
-        } else if (columnId === "product") {
-          baseConditions.push(sql`${aircraftRefueling.productType} IN (${sql.join(values, sql`, `)})` as any);
-        } else if (columnId === "supplier") {
-          baseConditions.push(sql`${suppliers.name} IN (${sql.join(values, sql`, `)})` as any);
-        } else if (columnId === "buyer") {
-          baseConditions.push(sql`${customers.name} IN (${sql.join(values, sql`, `)})` as any);
-        }
-      });
+      if (filters.supplier?.length) {
+          baseConditions.push(sql`${suppliers.name} IN ${filters.supplier}`);
+      }
+      if (filters.buyer?.length) {
+          baseConditions.push(sql`${customers.name} IN ${filters.buyer}`);
+      }
+      if (filters.productType?.length) {
+          baseConditions.push(sql`${aircraftRefueling.productType} IN ${filters.productType}`);
+      }
+      if (filters.date?.length) {
+        // Convert dates to string format for comparison
+          baseConditions.push(sql`TO_CHAR(${aircraftRefueling.refuelingDate}, 'DD.MM.YYYY') IN ${filters.date}`);
+      }
     }
 
     const whereCondition = and(...baseConditions);

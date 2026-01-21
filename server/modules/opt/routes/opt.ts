@@ -13,7 +13,7 @@ export function registerOptRoutes(app: Express) {
     requirePermission("opt", "view"),
     async (req, res) => {
       const page = parseInt(req.query.page as string) || 1;
-      const pageSize = parseInt(req.query.pageSize as string) || 10;
+      const pageSize = parseInt(req.query.pageSize as string) || 20;
       const search = req.query.search as string | undefined;
       
       // Extract filters
@@ -50,7 +50,6 @@ export function registerOptRoutes(app: Express) {
     "/api/opt/:id",
     requireAuth,
     requirePermission("opt", "view"),
-    auditView(ENTITY_TYPES.OPT),
     async (req, res) => {
       const id = req.params.id;
       const item = await storage.opt.getOpt(id);

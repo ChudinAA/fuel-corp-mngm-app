@@ -24,7 +24,7 @@ export class OptStorage implements IOptStorage {
 
   async getOptDeals(
     page: number = 1,
-    pageSize: number = 10,
+    pageSize: number = 20,
     search?: string,
     filters?: Record<string, string[]>,
   ): Promise<{ data: any[]; total: number }> {

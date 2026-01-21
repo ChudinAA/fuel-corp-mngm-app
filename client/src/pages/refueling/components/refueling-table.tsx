@@ -31,13 +31,6 @@ import {
   EntityAction,
 } from "@/components/entity-actions-menu";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -279,8 +272,8 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                   <TableColumnFilter
                     title="Продукт"
                     options={getUniqueOptions("productType")}
-                    selectedValues={columnFilters["product"] || []}
-                    onUpdate={(values) => handleFilterUpdate("product", values)}
+                    selectedValues={columnFilters["productType"] || []}
+                    onUpdate={(values) => handleFilterUpdate("productType", values)}
                     dataTestId="filter-product"
                   />
                 </div>
@@ -288,7 +281,7 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
               <TableHead className="text-sm font-semibold p-1 md:p-2">Борт</TableHead>
               <TableHead className="text-sm font-semibold p-1 md:p-2">
                 <div className="flex items-center justify-between gap-1">
-                  <span>Поставщик</span>
+                  <span className="truncate max-w-[80px] md:max-w-none">Поставщик</span>
                   <TableColumnFilter
                     title="Поставщик"
                     options={getUniqueOptions("supplier")}
@@ -300,7 +293,7 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
               </TableHead>
               <TableHead className="text-sm font-semibold p-1 md:p-2">
                 <div className="flex items-center justify-between gap-1">
-                  <span>Покупатель</span>
+                  <span className="truncate max-w-[80px] md:max-w-none">Покупатель</span>
                   <TableColumnFilter
                     title="Покупатель"
                     options={getUniqueOptions("buyer")}
@@ -310,7 +303,13 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[60px]">
+              <TableHead className="text-center text-sm font-semibold p-1 md:p-2 w-[50px]">
+                Литры
+              </TableHead>
+              <TableHead className="text-center text-sm font-semibold p-1 md:p-2 w-[50px]">
+                Плотн.
+              </TableHead>
+              <TableHead className="text-center text-sm font-semibold p-1 md:p-2 w-[60px]">
                 КГ
               </TableHead>
               <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[80px]">
@@ -347,7 +346,7 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                   key={deal.id}
                   className={cn(deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200")}
                 >
-                  <TableCell className="text-[10px] md:text-xs p-1 md:p-3">
+                  <TableCell className="text-[10px] md:text-xs p-1 md:p-4">
                     <div className="flex flex-col gap-0.5">
                       <span>{formatDate(deal.refuelingDate)}</span>
                       {deal.isDraft && (
@@ -360,7 +359,7 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-[11px] md:text-sm p-1 md:p-3">
+                  <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
                     <Badge
                       variant="outline"
                       className={cn(
@@ -375,10 +374,10 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                       {getProductLabel(deal.productType)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-[11px] md:text-sm p-1 md:p-3">
+                  <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
                     {deal.aircraftNumber || "—"}
                   </TableCell>
-                  <TableCell className="text-[11px] md:text-sm p-1 md:p-3">
+                  <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
                     <TooltipProvider>
                       <div className="flex items-center gap-1">
                         <span className="truncate max-w-[80px] md:max-w-none">{deal.supplier?.name || "Не указан"}</span>
@@ -395,10 +394,16 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                       </div>
                     </TooltipProvider>
                   </TableCell>
-                  <TableCell className="text-[11px] md:text-sm p-1 md:p-3">
+                  <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
                     <span className="truncate max-w-[80px] md:max-w-none block">{deal.buyer?.name || "Не указан"}</span>
                   </TableCell>
-                  <TableCell className="text-right font-medium text-[11px] md:text-sm p-1 md:p-3">
+                  <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
+                      <span className="truncate max-w-[50px] md:max-w-none block">{formatNumberForTable(deal.quantityLiters) || "-"}</span>
+                  </TableCell>
+                  <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
+                      <span className="truncate max-w-[50px] md:max-w-none block">{deal.density || "-"}</span>
+                  </TableCell>
+                  <TableCell className="text-right font-medium text-[11px] md:text-sm p-1 md:p-4">
                     <TooltipProvider>
                       <div className="flex items-center justify-end gap-1">
                         <span>{formatNumberForTable(deal.quantityKg)}</span>
@@ -415,7 +420,7 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                       </div>
                     </TooltipProvider>
                   </TableCell>
-                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-3">
+                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-4">
                     <div className="flex items-center justify-end gap-1">
                       {deal.purchasePrice
                         ? Number(deal.purchasePrice).toFixed(4)
@@ -444,16 +449,16 @@ export function RefuelingTable({ onEdit, onCopy, onDelete }: RefuelingTableProps
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-3">
+                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-4">
                     {formatCurrencyForTable(deal.purchaseAmount)}
                   </TableCell>
-                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-3">
+                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-4">
                     {formatNumber(deal.salePrice)} ₽/кг
                   </TableCell>
-                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-3">
+                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-4">
                     {formatCurrencyForTable(deal.saleAmount)}
                   </TableCell>
-                  <TableCell className="text-right text-green-600 font-medium text-[11px] md:text-sm p-1 md:p-3">
+                  <TableCell className="text-right text-green-600 font-medium text-[11px] md:text-sm p-1 md:p-4">
                     {formatCurrencyForTable(deal.profit)}
                   </TableCell>
                   <TableCell className="p-1">
