@@ -118,10 +118,10 @@ export class MovementStorage implements IMovementStorage {
       ...mov,
       fromName:
         mov.movementType === MOVEMENT_TYPE.SUPPLY && mov.supplier
-          ? mov.supplier.name
-          : mov.fromWarehouse?.name || null,
-      toName: mov.toWarehouse?.name || mov.toWarehouseId,
-      carrierName: mov.carrier?.name || null,
+          ? (mov.supplier as any).name
+          : (mov.fromWarehouse as any)?.name || null,
+      toName: (mov.toWarehouse as any)?.name || mov.toWarehouseId,
+      carrierName: (mov.carrier as any)?.name || null,
     }));
 
     const [countResult] = await db
