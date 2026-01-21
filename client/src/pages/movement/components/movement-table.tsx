@@ -98,11 +98,11 @@ export function MovementTable({ onEdit, onDelete }: Omit<MovementTableProps, 'da
     );
   }
 
-    const total = (movements as any)?.total || 0;
-    const totalPages = Math.ceil(total / pageSize);
+  const total = (movements as any)?.total || 0;
+  const totalPages = Math.ceil(total / pageSize);
+  const data = (movements as any)?.data || [];
 
-    const data = (movements as any)?.data || [];
-
+  return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4 flex-1">
