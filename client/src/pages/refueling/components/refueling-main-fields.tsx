@@ -182,9 +182,7 @@ export function RefuelingMainFields({
                 <FormControl>
                   <div className="flex-1 min-w-0">
                     <Combobox
-                      options={refuelingSuppliers
-                        .filter(s => s.isActive)
-                        .map(s => ({ value: s.id, label: s.name }))}
+                      options={refuelingSuppliers.map(s => ({ value: s.id, label: s.name }))}
                       value={field.value}
                       onValueChange={field.onChange}
                       placeholder="Выберите поставщика"
@@ -224,9 +222,8 @@ export function RefuelingMainFields({
                       options={(customers || [])
                         ?.filter(
                           (c) =>
-                            c.isActive &&
-                            (c.module === CUSTOMER_MODULE.REFUELING ||
-                            c.module === CUSTOMER_MODULE.BOTH),
+                            c.module === CUSTOMER_MODULE.REFUELING ||
+                            c.module === CUSTOMER_MODULE.BOTH,
                         )
                         .map(c => ({ value: c.id, label: c.name }))}
                       value={field.value}

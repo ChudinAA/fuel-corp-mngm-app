@@ -51,9 +51,7 @@ export function MovementSourceSection({
             <FormControl>
               <div className="w-full">
                 <Combobox
-                  options={suppliers
-                    ?.filter(s => s.isActive)
-                    ?.map((s) => ({ value: s.id, label: s.name })) || []}
+                  options={suppliers?.map((s) => ({ value: s.id, label: s.name })) || []}
                   value={field.value}
                   onValueChange={field.onChange}
                   placeholder="Выберите поставщика"
@@ -78,9 +76,7 @@ export function MovementSourceSection({
             <FormControl>
               <div className="w-full">
                 <Combobox
-                  options={warehouses
-                    ?.filter(w => w.isActive)
-                    ?.map((w) => ({ value: w.id, label: w.name })) || []}
+                  options={warehouses?.map((w) => ({ value: w.id, label: w.name })) || []}
                   value={field.value}
                   onValueChange={field.onChange}
                   placeholder="Выберите склад"

@@ -51,7 +51,6 @@ export function useOptFilters({
   const wholesaleSuppliers = useMemo(() => {
     return (
       suppliers?.filter((supplier) => {
-        if (!supplier.isActive) return false;
         if (!supplier.baseIds || supplier.baseIds.length === 0) return false;
         return allBases?.some(
           (base) =>
@@ -83,7 +82,6 @@ export function useOptFilters({
   const availableLocations = useMemo(() => {
     return (
       deliveryLocations?.filter((location) => {
-        if (!location.isActive) return false;
         if (!buyerId || !dealDate) return true;
 
         const buyerSalePrices = locationAvailableSaleLookup.data || [];
