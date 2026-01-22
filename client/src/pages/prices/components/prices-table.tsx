@@ -81,7 +81,7 @@ export function PricesTable({
     hasNextPage,
     isFetchingNextPage,
     isLoading,
-  } = useInfiniteQuery<Price[]>({
+  } = useInfiniteQuery<{ data: Price[]; total: number }>({
     queryKey: ["/api/prices/list"],
     queryFn: async ({ pageParam = 0 }) => {
       const res = await apiRequest("GET", `/api/prices/list?limit=${PAGE_SIZE}&offset=${pageParam}`);
@@ -89,11 +89,12 @@ export function PricesTable({
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
-      return lastPage.length === PAGE_SIZE ? allPages.length * PAGE_SIZE : undefined;
+      const loadedCount = allPages.length * PAGE_SIZE;
+      return loadedCount < lastPage.total ? loadedCount : undefined;
     },
   });
 
-  const prices = useMemo(() => data?.pages.flat() || [], [data]);
+  const prices = useMemo(() => data?.pages.flatMap(page => page.data) || [], [data]);
 
   const { data: allContractors } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
