@@ -19,6 +19,38 @@ import {
 import type { IPriceStorage } from "../../../storage/types";
 
 export class PriceStorage implements IPriceStorage {
+  async findActivePrices(filters: {
+    counterpartyId: string;
+    counterpartyRole: string;
+    counterpartyType: string;
+    basis?: string;
+    productType?: string;
+    date: string;
+  }): Promise<Price[]> {
+    const conditions = [
+      isNull(prices.deletedAt),
+      eq(prices.isActive, true),
+      eq(prices.counterpartyId, filters.counterpartyId),
+      eq(prices.counterpartyRole, filters.counterpartyRole),
+      eq(prices.counterpartyType, filters.counterpartyType),
+      sql`${prices.dateFrom} <= ${filters.date}`,
+      sql`${prices.dateTo} >= ${filters.date}`,
+    ];
+
+    if (filters.basis) {
+      conditions.push(eq(prices.basis, filters.basis));
+    }
+    if (filters.productType) {
+      conditions.push(eq(prices.productType, filters.productType));
+    }
+
+    return db
+      .select()
+      .from(prices)
+      .where(and(...conditions))
+      .orderBy(desc(prices.dateTo));
+  }
+
   async getAllPrices(filters?: {
     dateFrom?: string;
     dateTo?: string;

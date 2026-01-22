@@ -99,19 +99,16 @@ export function registerPricesRoutes(app: Express) {
           return res.status(400).json({ message: "Missing required parameters" });
         }
 
-        const data = await storage.prices.getAllPrices({
+        const data = await storage.prices.findActivePrices({
           counterpartyId: counterpartyId as string,
           counterpartyRole: counterpartyRole as string,
           counterpartyType: counterpartyType as string,
           basis: basis as string,
           productType: productType as string,
-          dateFrom: date as string,
-          dateTo: date as string,
+          date: date as string,
         });
 
-        // Filter active only on server if needed, although storage does some filtering
-        const activePrices = data.filter(p => p.isActive);
-        res.json(activePrices);
+        res.json(data);
       } catch (error) {
         console.error("Price lookup error:", error);
         res.status(500).json({ message: "Error looking up prices" });
