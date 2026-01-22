@@ -79,15 +79,23 @@ export function useMovementCalculations({
 
   const kgNum = calculatedKg || 0;
 
+  const supplier = suppliers.find((s) => s.id === watchSupplierId);
+  
+  let baseName = watchBasis;
+  if (!baseName && supplier && supplier.baseIds && supplier.baseIds.length > 0) {
+    const firstBase = allBases?.find((b) => b.id === supplier.baseIds[0]);
+    if (firstBase) baseName = firstBase.name;
+  }
+  
   // Find matching prices for supplier
   const purchaseLookup = usePriceLookup({
     counterpartyId: watchSupplierId,
     counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
     counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
-    basis: watchBasis,
+    basis: baseName,
     productType: watchProductType,
     date: watchMovementDate,
-    enabled: !!watchSupplierId && !!watchBasis && !!watchMovementDate,
+    enabled: !!watchSupplierId && !!baseName && !!watchMovementDate,
   });
 
   const availablePurchasePrices = useMemo(() => {
