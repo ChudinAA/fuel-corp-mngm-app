@@ -187,8 +187,9 @@ export function OptMainFields({
                     options={(customers || [])
                       .filter(
                         (c) =>
-                          c.module === CUSTOMER_MODULE.WHOLESALE ||
-                          c.module === CUSTOMER_MODULE.BOTH,
+                          c.isActive &&
+                          (c.module === CUSTOMER_MODULE.WHOLESALE ||
+                          c.module === CUSTOMER_MODULE.BOTH),
                       )
                       .map(c => ({ value: c.id, label: c.name }))}
                     value={field.value}
