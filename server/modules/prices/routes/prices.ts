@@ -128,37 +128,32 @@ export function registerPricesRoutes(app: Express) {
     requireAuth,
     requirePermission("prices", "view"),
     async (req, res) => {
-      try {
-        const {
-          counterpartyRole,
-          counterpartyType,
-          counterpartyId,
-          dateFrom,
-          dateTo,
-          basis,
-          productType,
-          offset,
-          pageSize,
-        } = req.query;
+      const {
+        counterpartyRole,
+        counterpartyType,
+        counterpartyId,
+        dateFrom,
+        dateTo,
+        basis,
+        productType,
+        offset,
+        pageSize,
+      } = req.query;
 
-        const data = await storage.prices.getAllPrices(
-          offset ? parseInt(offset as string) : 0,
-          pageSize ? parseInt(pageSize as string) : 20,
-          {
-            counterpartyRole: counterpartyRole as string,
-            counterpartyType: counterpartyType as string,
-            counterpartyId: counterpartyId as string,
-            dateFrom: dateFrom as string,
-            dateTo: dateTo as string,
-            basis: basis as string,
-            productType: productType as string,
-          },
-        );
-        res.json(data);
-      } catch (error) {
-        console.error("GetAllPrices error:", error);
-        res.status(500).json({ data: [], total: 0, message: "Internal server error" });
-      }
+      const data = await storage.prices.getAllPrices(
+        offset ? parseInt(offset as string) : 0,
+        pageSize ? parseInt(pageSize as string) : 20,
+        {
+          counterpartyRole: counterpartyRole as string,
+          counterpartyType: counterpartyType as string,
+          counterpartyId: counterpartyId as string,
+          dateFrom: dateFrom as string,
+          dateTo: dateTo as string,
+          basis: basis as string,
+          productType: productType as string,
+        },
+      );
+      res.json(data);
     },
   );
 
