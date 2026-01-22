@@ -6,7 +6,7 @@ interface PriceLookupParams {
   counterpartyId: string;
   counterpartyRole: string;
   counterpartyType: string;
-  basis?: string;
+  basis?: string | null;
   productType?: string;
   date: Date | null;
   enabled?: boolean;
@@ -46,6 +46,11 @@ export function usePriceLookup({
       if (!res.ok) throw new Error("Failed to fetch prices");
       return res.json();
     },
-    enabled: enabled && !!counterpartyId && !!counterpartyRole && !!counterpartyType && !!dateStr,
+    enabled:
+      enabled &&
+      !!counterpartyId &&
+      !!counterpartyRole &&
+      !!counterpartyType &&
+      !!dateStr,
   });
 }

@@ -80,10 +80,6 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     queryKey: ["/api/bases"],
   });
 
-  const { data: allPrices } = useQuery<Price[]>({
-    queryKey: ["/api/prices/list"],
-  });
-
   const { data: warehouses } = useQuery<Warehouse[]>({
     queryKey: ["/api/warehouses"],
   });
@@ -114,7 +110,6 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       refuelingDate: watchRefuelingDate,
       selectedBasis,
       productType: watchProductType,
-      allPrices,
       suppliers,
       allBases,
     });

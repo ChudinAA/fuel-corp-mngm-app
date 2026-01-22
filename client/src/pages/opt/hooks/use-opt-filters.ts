@@ -46,7 +46,7 @@ export function useOptFilters({
   deliveryCosts,
   supplierWarehouse,
 }: UseOptFiltersProps) {
-  // Вызываем хуки поиска цен на верхнем уровне, а не внутри useMemo
+  
   const purchaseLookup = usePriceLookup({
     counterpartyId: supplierId,
     counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,

@@ -2,7 +2,8 @@
 import { useMemo } from "react";
 import { format } from "date-fns";
 import type { Supplier, Base, Price } from "@shared/schema";
-import { BASE_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, PRODUCT_TYPE } from "@shared/constants";
+import { BASE_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, PRODUCT_TYPE, ProductType } from "@shared/constants";
+import { usePriceLookup } from "@/pages/shared/hooks/use-price-lookup";
 
 interface UseRefuelingFiltersProps {
   supplierId: string;
@@ -10,7 +11,6 @@ interface UseRefuelingFiltersProps {
   refuelingDate: Date;
   selectedBasis: string;
   productType: string;
-  allPrices: Price[] | undefined;
   suppliers: Supplier[] | undefined;
   allBases: Base[] | undefined;
 }
@@ -21,7 +21,6 @@ export function useRefuelingFilters({
   refuelingDate,
   selectedBasis,
   productType,
-  allPrices,
   suppliers,
   allBases,
 }: UseRefuelingFiltersProps) {
@@ -45,59 +44,36 @@ export function useRefuelingFilters({
       supplier.baseIds.includes(b.id)
     );
   }, [supplierId, suppliers, allBases]);
+  
+  const purchaseLookup = usePriceLookup({
+    counterpartyId: supplierId,
+    counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
+    counterpartyType: COUNTERPARTY_TYPE.REFUELING,
+    basis: selectedBasis,
+    productType: productType,
+    date: refuelingDate,
+    enabled: !!supplierId && !!selectedBasis && !!refuelingDate,
+  });
 
+  const saleLookup = usePriceLookup({
+    counterpartyId: buyerId,
+    counterpartyRole: COUNTERPARTY_ROLE.BUYER,
+    counterpartyType: COUNTERPARTY_TYPE.REFUELING,
+    basis: null,
+    productType: productType,
+    date: refuelingDate,
+    enabled: !!buyerId && !!refuelingDate,
+  });
+  
+  // Фильтрация цен покупки
   const purchasePrices = useMemo(() => {
-    if (!supplierId || !refuelingDate || !selectedBasis || !allPrices) return [];
+    return purchaseLookup.data || [];
+  }, [purchaseLookup.data]);
 
-    const dateStr = format(refuelingDate, "yyyy-MM-dd");
-    const supplier = suppliers?.find(s => s.id === supplierId);
-    if (!supplier) return [];
-
-    let priceProductType = PRODUCT_TYPE.KEROSENE;
-    if (productType === PRODUCT_TYPE.PVKJ) {
-      priceProductType = PRODUCT_TYPE.PVKJ;
-    } else if (productType === PRODUCT_TYPE.SERVICE) {
-      priceProductType = PRODUCT_TYPE.SERVICE;
-    }
-
-    return allPrices.filter(p => {
-      const basicMatch = p.counterpartyId === supplierId &&
-        p.counterpartyType === COUNTERPARTY_TYPE.REFUELING &&
-        p.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER &&
-        p.productType === priceProductType &&
-        p.basis === selectedBasis &&
-        p.dateFrom <= dateStr &&
-        p.dateTo >= dateStr &&
-        p.isActive;
-
-      return basicMatch;
-    });
-  }, [supplierId, refuelingDate, selectedBasis, productType, allPrices, suppliers]);
-
+  // Фильтрация цен продажи
   const salePrices = useMemo(() => {
-    if (!buyerId || !refuelingDate || !allPrices) return [];
-
-    const dateStr = format(refuelingDate, "yyyy-MM-dd");
-
-    let priceProductType = PRODUCT_TYPE.KEROSENE;
-    if (productType === PRODUCT_TYPE.PVKJ) {
-      priceProductType = PRODUCT_TYPE.PVKJ;
-    } else if (productType === PRODUCT_TYPE.SERVICE) {
-      priceProductType = PRODUCT_TYPE.SERVICE;
-    }
-
-    return allPrices.filter(p => {
-      const basicMatch = p.counterpartyId === buyerId &&
-        p.counterpartyType === COUNTERPARTY_TYPE.REFUELING &&
-        p.counterpartyRole === COUNTERPARTY_ROLE.BUYER &&
-        p.productType === priceProductType &&
-        p.dateFrom <= dateStr &&
-        p.dateTo >= dateStr &&
-        p.isActive;
-
-      return basicMatch;
-    });
-  }, [buyerId, refuelingDate, productType, allPrices]);
+    return saleLookup.data || [];
+  }, [saleLookup.data]);
 
   return {
     refuelingSuppliers,
