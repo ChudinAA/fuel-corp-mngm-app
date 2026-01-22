@@ -48,12 +48,17 @@ export class MovementStorage implements IMovementStorage {
   }
 
   async getMovements(
-    page: number,
+    offsetOrPage: number,
     pageSize: number,
     search?: string,
     filters?: Record<string, string[]>,
-  ): Promise<{ data: Movement[]; total: number }> {
-    const offset = (page - 1) * pageSize;
+  ): Promise<{ data: any[]; total: number }> {
+    // If we're getting a small number (like 1, 2, 3), it's likely a page number (old behavior)
+    // If it's 0 or large, it's likely an offset (new behavior)
+    let offset = offsetOrPage;
+    if (offsetOrPage > 0 && offsetOrPage < 100) { // Simple heuristic for page number
+       offset = (offsetOrPage - 1) * pageSize;
+    }
 
     const baseConditions: any[] = [isNull(movement.deletedAt)];
 

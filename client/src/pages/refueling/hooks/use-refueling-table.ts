@@ -9,7 +9,7 @@ export function useRefuelingTable() {
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>(
     {},
   );
-  const pageSize = 10;
+  const pageSize = 20;
   const { toast } = useToast();
 
   const filterParams = Object.entries(columnFilters)

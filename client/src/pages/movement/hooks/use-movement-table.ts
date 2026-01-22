@@ -1,18 +1,24 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 
 export function useMovementTable() {
-  const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [search, setSearch] = useState("");
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
 
-  const { data: movements, isLoading } = useQuery<{ data: any[], total: number }>({
-    queryKey: ["/api/movement", page, pageSize, search, columnFilters],
-    queryFn: async () => {
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ["/api/movement", pageSize, search, columnFilters],
+    queryFn: async ({ pageParam = 0 }) => {
       const params = new URLSearchParams({
-        page: page.toString(),
+        offset: pageParam.toString(),
         pageSize: pageSize.toString(),
       });
       
@@ -25,19 +31,29 @@ export function useMovementTable() {
       });
 
       const res = await apiRequest("GET", `/api/movement?${params.toString()}`);
-      return res.json();
-    }
+      return res.json() as Promise<{ data: any[], total: number }>;
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const loadedCount = allPages.length * pageSize;
+      return loadedCount < lastPage.total ? loadedCount : undefined;
+    },
   });
 
+  const movements = data?.pages.flatMap((page) => page.data) || [];
+  const total = data?.pages[0]?.total || 0;
+
   return {
-    page,
-    setPage,
     search,
     setSearch,
     pageSize,
     movements,
+    total,
     isLoading,
     columnFilters,
     setColumnFilters,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   };
 }

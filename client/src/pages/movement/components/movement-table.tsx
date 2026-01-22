@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pencil, Trash2, FileText, Copy, Search, Filter, ChevronLeft, ChevronRight, History } from "lucide-react";
+import { Pencil, Trash2, FileText, Copy, Search, Filter, History } from "lucide-react";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ExportButton } from "@/components/export/export-button";
@@ -27,15 +27,16 @@ const formatNumberWithK = (value: string | number) => {
 
 export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<MovementTableProps, 'data' | 'isLoading' | 'isDeleting'> & { onShowHistory: () => void }) {
   const {
-    page,
-    setPage,
     search,
     setSearch,
-    pageSize,
     movements,
+    total,
     isLoading,
     columnFilters,
     setColumnFilters,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   } = useMovementTable();
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -48,10 +49,9 @@ export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<Movement
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput);
-      setPage(1);
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchInput, setSearch, setPage]);
+  }, [searchInput, setSearch]);
 
   const getProductLabel = (productType: string) => {
     if (productType === PRODUCT_TYPE.PVKJ) return "ПВКЖ";
@@ -59,7 +59,7 @@ export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<Movement
   };
 
   const getUniqueOptions = (key: string) => {
-    const data = (movements as any)?.data || [];
+    const data = movements || [];
     const values = new Map<string, string>();
     data.forEach((item: any) => {
       if (key === 'date') {
@@ -83,7 +83,6 @@ export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<Movement
 
   const handleFilterUpdate = (columnId: string, values: string[]) => {
     setColumnFilters((prev) => ({ ...prev, [columnId]: values }));
-    setPage(1);
   };
 
   if (isLoading) {
@@ -96,12 +95,10 @@ export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<Movement
     );
   }
 
-  const total = movements?.total || 0;
-  const totalPages = Math.ceil(total / pageSize);
-  const data = movements?.data || [];
+  const data = movements || [];
 
   return (
-    <div className="space-y-4 px-4 md:px-6">
+    <div className="space-y-4 px-4 md:px-6 pb-20">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4 flex-1">
           <div className="relative flex-1 max-w-sm">
@@ -136,7 +133,7 @@ export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<Movement
         </div>
       </div>
 
-      <div className="border rounded-lg">
+      <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -317,23 +314,28 @@ export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<Movement
         </Table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Показано {(page - 1) * pageSize + 1} -{" "}
-            {Math.min(page * pageSize, total)} из {total}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" disabled={page === 1} onClick={() => setPage(page - 1)}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm">{page} / {totalPages}</span>
-            <Button variant="outline" size="icon" disabled={page === totalPages} onClick={() => setPage(page + 1)}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      <div className="flex flex-col items-center justify-center py-4 gap-2">
+        <p className="text-sm text-muted-foreground">
+          Показано {data.length} из {total}
+        </p>
+        {hasNextPage && (
+          <Button
+            variant="outline"
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="w-full max-w-xs"
+          >
+            {isFetchingNextPage ? (
+              <>
+                <Skeleton className="h-4 w-4 mr-2 rounded-full animate-spin" />
+                Загрузка...
+              </>
+            ) : (
+              "Загрузить еще"
+            )}
+          </Button>
+        )}
+      </div>
 
       <DeleteConfirmDialog
         open={deleteDialogOpen}

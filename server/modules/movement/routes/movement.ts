@@ -12,7 +12,7 @@ export function registerMovementRoutes(app: Express) {
     requireAuth,
     requirePermission("movement", "view"),
     async (req, res) => {
-      const page = parseInt(req.query.page as string) || 1;
+      const offset = parseInt(req.query.offset as string) || 0;
       const pageSize = parseInt(req.query.pageSize as string) || 20;
       const search = req.query.search as string | undefined;
 
@@ -28,7 +28,7 @@ export function registerMovementRoutes(app: Express) {
         }
       });
 
-      const result = await (storage.movement as any).getMovements(page, pageSize, search, filters);
+      const result = await (storage.movement as any).getMovements(offset, pageSize, search, filters);
       res.json(result);
     }
   );
