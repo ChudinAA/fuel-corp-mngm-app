@@ -2,23 +2,17 @@ import { eq, and, desc, sql, asc, isNull, or } from "drizzle-orm";
 import { db } from "server/db";
 import {
   prices,
-  deliveryCost,
   opt,
   aircraftRefueling,
   type Price,
   type InsertPrice,
-  type DeliveryCost,
-  type InsertDeliveryCost,
   movement,
 } from "@shared/schema";
 import {
   COUNTERPARTY_TYPE,
-  COUNTERPARTY_ROLE,
-  PRODUCT_TYPE,
 } from "@shared/constants";
-import type { IPriceStorage } from "../../../storage/types";
 
-export class PriceStorage implements IPriceStorage {
+export class PriceStorage {
   async findActivePrices(filters: {
     counterpartyId: string;
     counterpartyRole: string;

@@ -15,7 +15,7 @@ import {
 import { IOptStorage } from "./types";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 
-export class OptStorage implements IOptStorage {
+export class OptStorage {
   async getOpt(id: string): Promise<Opt | undefined> {
     return db.query.opt.findFirst({
       where: and(eq(opt.id, id), isNull(opt.deletedAt)),
@@ -28,7 +28,6 @@ export class OptStorage implements IOptStorage {
     search?: string,
     filters?: Record<string, string[]>,
   ): Promise<{ data: any[]; total: number }> {
-
     // Helper to build filter conditions
     const buildFilterConditions = () => {
       const conditions: any[] = [isNull(opt.deletedAt)];
@@ -41,14 +40,18 @@ export class OptStorage implements IOptStorage {
           conditions.push(sql`${customers.name} IN ${filters.buyer}`);
         }
         if (filters.deliveryLocation?.length) {
-          conditions.push(sql`${logisticsDeliveryLocations.name} IN ${filters.deliveryLocation}`);
+          conditions.push(
+            sql`${logisticsDeliveryLocations.name} IN ${filters.deliveryLocation}`,
+          );
         }
         if (filters.carrier?.length) {
           conditions.push(sql`${logisticsCarriers.name} IN ${filters.carrier}`);
         }
         if (filters.date?.length) {
           // Convert dates to string format for comparison
-          conditions.push(sql`TO_CHAR(${opt.dealDate}, 'DD.MM.YYYY') IN ${filters.date}`);
+          conditions.push(
+            sql`TO_CHAR(${opt.dealDate}, 'DD.MM.YYYY') IN ${filters.date}`,
+          );
         }
       }
 
@@ -62,7 +65,7 @@ export class OptStorage implements IOptStorage {
             sql`${opt.notes}::text ILIKE ${searchPattern}`,
             sql`${logisticsCarriers.name}::text ILIKE ${searchPattern}`,
             sql`${logisticsDeliveryLocations.name}::text ILIKE ${searchPattern}`,
-          )
+          ),
         );
       }
 
@@ -401,13 +404,12 @@ export class OptStorage implements IOptStorage {
       })
       .from(movement)
       .where(
-        and(
-          eq(movement.purchasePriceId, priceId),
-          isNull(movement.deletedAt),
-        ),
+        and(eq(movement.purchasePriceId, priceId), isNull(movement.deletedAt)),
       );
 
-    const total = parseFloat(optVolume.total || "0") + parseFloat(movementVolume.total || "0");
+    const total =
+      parseFloat(optVolume.total || "0") +
+      parseFloat(movementVolume.total || "0");
     return total;
   }
 
