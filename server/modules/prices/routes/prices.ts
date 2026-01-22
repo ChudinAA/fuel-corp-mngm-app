@@ -81,6 +81,45 @@ export function registerPricesRoutes(app: Express) {
   );
 
   app.get(
+    "/api/prices/find-active",
+    requireAuth,
+    requirePermission("prices", "view"),
+    async (req, res) => {
+      try {
+        const {
+          counterpartyId,
+          counterpartyRole,
+          counterpartyType,
+          basis,
+          productType,
+          date,
+        } = req.query;
+
+        if (!counterpartyId || !counterpartyRole || !counterpartyType || !date) {
+          return res.status(400).json({ message: "Missing required parameters" });
+        }
+
+        const data = await storage.prices.getAllPrices({
+          counterpartyId: counterpartyId as string,
+          counterpartyRole: counterpartyRole as string,
+          counterpartyType: counterpartyType as string,
+          basis: basis as string,
+          productType: productType as string,
+          dateFrom: date as string,
+          dateTo: date as string,
+        });
+
+        // Filter active only on server if needed, although storage does some filtering
+        const activePrices = data.filter(p => p.isActive);
+        res.json(activePrices);
+      } catch (error) {
+        console.error("Price lookup error:", error);
+        res.status(500).json({ message: "Error looking up prices" });
+      }
+    }
+  );
+
+  app.get(
     "/api/prices/list",
     requireAuth,
     requirePermission("prices", "view"),

@@ -41,6 +41,9 @@ import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
 
+import { usePriceLookup } from "../../shared/hooks/use-price-lookup";
+import { COUNTERPARTY_ROLE, COUNTERPARTY_TYPE, PRODUCT_TYPE } from "@shared/constants";
+
 export function OptForm({ onSuccess, editData }: OptFormProps) {
   const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
@@ -95,22 +98,52 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     queryKey: ["/api/logistics/delivery-locations"],
   });
 
-  const { data: allPrices } = useQuery<Price[]>({
-    queryKey: ["/api/prices/list"],
+  // Fetch purchase prices specifically
+  const watchSupplierId = form.watch("supplierId");
+  const watchBuyerId = form.watch("buyerId");
+  const watchDealDate = form.watch("dealDate");
+
+  const { data: purchasePricesLookup } = usePriceLookup({
+    counterpartyId: watchSupplierId,
+    counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
+    counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
+    basis: selectedBasis,
+    productType: PRODUCT_TYPE.KEROSENE,
+    date: watchDealDate,
+    enabled: !!watchSupplierId && !!selectedBasis && !!watchDealDate,
+  });
+
+  // Determine sale basis name
+  const watchDeliveryLocationId = form.watch("deliveryLocationId");
+  let saleBasisName = selectedBasis;
+  if (watchDeliveryLocationId && deliveryLocations && allBases) {
+    const selectedLocation = deliveryLocations.find(loc => loc.id === watchDeliveryLocationId);
+    if (selectedLocation?.baseId) {
+      const locationBase = allBases.find(b => b.id === selectedLocation.baseId);
+      if (locationBase) {
+        saleBasisName = locationBase.name;
+      }
+    }
+  }
+
+  const { data: salePricesLookup } = usePriceLookup({
+    counterpartyId: watchBuyerId,
+    counterpartyRole: COUNTERPARTY_ROLE.BUYER,
+    counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
+    basis: saleBasisName,
+    productType: PRODUCT_TYPE.KEROSENE,
+    date: watchDealDate,
+    enabled: !!watchBuyerId && !!saleBasisName && !!watchDealDate,
   });
 
   const { data: deliveryCosts } = useQuery<DeliveryCost[]>({
     queryKey: ["/api/delivery-costs"],
   });
 
-  const watchSupplierId = form.watch("supplierId");
-  const watchBuyerId = form.watch("buyerId");
-  const watchDealDate = form.watch("dealDate");
   const watchLiters = form.watch("quantityLiters");
   const watchDensity = form.watch("density");
   const watchKg = form.watch("quantityKg");
   const watchCarrierId = form.watch("carrierId");
-  const watchDeliveryLocationId = form.watch("deliveryLocationId");
 
   const selectedSupplier = suppliers?.find((s) => s.id === watchSupplierId);
   const isWarehouseSupplier = selectedSupplier?.isWarehouse || false;
@@ -133,7 +166,9 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     selectedBasis,
     carrierId: watchCarrierId,
     deliveryLocationId: watchDeliveryLocationId,
-    allPrices,
+    allPrices: undefined, // We pass separate results now
+    purchasePricesLookup,
+    salePricesLookup,
     suppliers,
     allBases,
     carriers,

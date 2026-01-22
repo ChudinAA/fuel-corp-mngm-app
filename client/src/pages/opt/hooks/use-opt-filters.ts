@@ -12,6 +12,8 @@ interface UseOptFiltersProps {
   carrierId: string;
   deliveryLocationId: string;
   allPrices: Price[] | undefined;
+  purchasePricesLookup?: Price[];
+  salePricesLookup?: Price[];
   suppliers: Supplier[] | undefined;
   allBases: Base[] | undefined;
   carriers: LogisticsCarrier[] | undefined;
@@ -28,6 +30,8 @@ export function useOptFilters({
   carrierId,
   deliveryLocationId,
   allPrices,
+  purchasePricesLookup,
+  salePricesLookup,
   suppliers,
   allBases,
   carriers,
@@ -37,13 +41,14 @@ export function useOptFilters({
 }: UseOptFiltersProps) {
   // Фильтрация цен покупки
   const purchasePrices = useMemo(() => {
-    if (!supplierId || !selectedBasis || !dealDate) return [];
+    if (purchasePricesLookup) return purchasePricesLookup;
+    if (!supplierId || !selectedBasis || !dealDate || !allPrices) return [];
 
     const dateStr = format(dealDate, "yyyy-MM-dd");
     const supplier = suppliers?.find(s => s.id === supplierId);
     if (!supplier) return [];
 
-    return allPrices?.filter(p =>
+    return allPrices.filter(p =>
       p.counterpartyId === supplierId &&
       p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
       p.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER &&
@@ -53,7 +58,7 @@ export function useOptFilters({
       p.dateTo >= dateStr &&
       p.isActive
     ) || [];
-  }, [supplierId, selectedBasis, dealDate, suppliers, allPrices]);
+  }, [supplierId, selectedBasis, dealDate, suppliers, allPrices, purchasePricesLookup]);
 
   // Фильтрация поставщиков с wholesale базисами
   const wholesaleSuppliers = useMemo(() => {
@@ -75,10 +80,13 @@ export function useOptFilters({
     return deliveryLocations?.filter(location => {
       // Фильтр 1: По привязке к базисам из цен продажи покупателя
       // Ищем цены продажи для этого покупателя на эту дату
-      if (!buyerId || !dealDate || !allPrices) return true;
+      if (!buyerId || !dealDate) return true;
       const dateStr = format(dealDate, "yyyy-MM-dd");
 
-      const buyerSalePrices = allPrices.filter(p =>
+      const currentPrices = salePricesLookup || allPrices;
+      if (!currentPrices) return true;
+
+      const buyerSalePrices = currentPrices.filter(p =>
         p.counterpartyId === buyerId &&
         p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
         p.counterpartyRole === COUNTERPARTY_ROLE.BUYER &&
@@ -102,7 +110,7 @@ export function useOptFilters({
       // Мы НЕ фильтруем точки поставки по выбранному перевозчику, чтобы пользователь мог всегда сменить точку.
       return true;
     }) || [];
-  }, [deliveryLocations, carrierId, deliveryCosts, selectedBasis, wholesaleBases, supplierWarehouse, buyerId, dealDate, allPrices, allBases]);
+  }, [deliveryLocations, carrierId, deliveryCosts, selectedBasis, wholesaleBases, supplierWarehouse, buyerId, dealDate, allPrices, allBases, salePricesLookup]);
   
   // Фильтрация доступных перевозчиков
   const availableCarriers = useMemo(() => {
@@ -144,7 +152,8 @@ export function useOptFilters({
   // Фильтрация цен продажи
   // Используем baseId из выбранного места доставки, если оно есть
   const salePrices = useMemo(() => {
-    if (!buyerId || !dealDate) return [];
+    if (salePricesLookup) return salePricesLookup;
+    if (!buyerId || !dealDate || !allPrices) return [];
 
     const dateStr = format(dealDate, "yyyy-MM-dd");
 
@@ -164,7 +173,7 @@ export function useOptFilters({
 
     if (!saleBasisName) return [];
 
-    return allPrices?.filter(p =>
+    return allPrices.filter(p =>
       p.counterpartyId === buyerId &&
       p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
       p.counterpartyRole === COUNTERPARTY_ROLE.BUYER &&
@@ -174,7 +183,7 @@ export function useOptFilters({
       p.dateTo >= dateStr &&
       p.isActive
     ) || [];
-  }, [buyerId, dealDate, allPrices, selectedBasis, deliveryLocationId, deliveryLocations, allBases]);
+  }, [buyerId, dealDate, allPrices, selectedBasis, deliveryLocationId, deliveryLocations, allBases, salePricesLookup]);
   
   return {
     purchasePrices,
