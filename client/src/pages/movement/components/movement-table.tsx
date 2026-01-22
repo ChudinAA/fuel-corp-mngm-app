@@ -87,7 +87,7 @@ export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<Movement
 
   if (isLoading) {
     return (
-      <div className="space-y-4 px-4 md:px-6">
+      <div className="space-y-4 px-4 md:px-6 pb-5">
         {[1, 2, 3].map((i) => (
           <Skeleton key={i} className="h-12 w-full" />
         ))}
@@ -98,7 +98,7 @@ export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<Movement
   const data = movements || [];
 
   return (
-    <div className="space-y-4 px-4 md:px-6 pb-20">
+    <div className="space-y-4 px-4 md:px-6 pb-5">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4 flex-1">
           <div className="relative flex-1 max-w-sm">
