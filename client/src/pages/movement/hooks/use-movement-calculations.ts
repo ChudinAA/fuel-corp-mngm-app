@@ -7,7 +7,6 @@ import {
   DELIVERY_ENTITY_TYPE,
   ProductType,
 } from "@shared/constants";
-import { format } from "date-fns";
 import { calculateKgFromLiters } from "../utils";
 import type { AllSupplier } from "../types";
 import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
@@ -15,6 +14,7 @@ import type { UseFormReturn } from "react-hook-form";
 import type { MovementFormData } from "../schemas";
 import { usePriceExtraction } from "@/pages/shared/hooks/use-price-extraction";
 import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
+import { usePriceLookup } from "@/pages/shared/hooks/use-price-lookup";
 
 interface UseMovementCalculationsProps {
   form?: UseFormReturn<MovementFormData>;
@@ -32,7 +32,6 @@ interface UseMovementCalculationsProps {
   inputMode: "liters" | "kg";
   warehouses: any[];
   suppliers: AllSupplier[];
-  prices: any[];
   deliveryCosts: any[];
   allBases?: any[];
   isEditing: boolean;
@@ -57,7 +56,6 @@ export function useMovementCalculations({
   inputMode,
   warehouses,
   suppliers,
-  prices,
   deliveryCosts,
   allBases,
   isEditing,
@@ -82,52 +80,19 @@ export function useMovementCalculations({
   const kgNum = calculatedKg || 0;
 
   // Find matching prices for supplier
+  const purchaseLookup = usePriceLookup({
+    counterpartyId: watchSupplierId,
+    counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
+    counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
+    basis: watchBasis,
+    productType: watchProductType,
+    date: watchMovementDate,
+    enabled: !!watchSupplierId && !!watchBasis && !!watchMovementDate,
+  });
+
   const availablePurchasePrices = useMemo(() => {
-    if (
-      watchMovementType !== MOVEMENT_TYPE.SUPPLY ||
-      !watchSupplierId ||
-      !watchMovementDate
-    )
-      return [];
-
-    const dateStr = format(watchMovementDate, "yyyy-MM-dd'T'HH:mm:ss");
-    const supplier = suppliers.find((s) => s.id === watchSupplierId);
-    if (!supplier) return [];
-
-    let priceProductType: ProductType = PRODUCT_TYPE.KEROSENE;
-    if (watchProductType === PRODUCT_TYPE.PVKJ) {
-      priceProductType = PRODUCT_TYPE.PVKJ;
-    }
-
-    let baseName = watchBasis;
-    if (!baseName && supplier.baseIds && supplier.baseIds.length > 0) {
-      const firstBase = allBases?.find((b) => b.id === supplier.baseIds[0]);
-      if (firstBase) baseName = firstBase.name;
-    }
-
-    if (!baseName) return [];
-
-    return prices.filter(
-      (p) =>
-        p.counterpartyId === watchSupplierId &&
-        p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
-        p.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER &&
-        p.productType === priceProductType &&
-        p.basis === baseName &&
-        p.dateFrom <= dateStr &&
-        p.dateTo >= dateStr &&
-        p.isActive,
-    );
-  }, [
-    watchMovementType,
-    watchSupplierId,
-    watchMovementDate,
-    suppliers,
-    watchProductType,
-    watchBasis,
-    prices,
-    allBases,
-  ]);
+    return purchaseLookup.data || [];
+  }, [purchaseLookup.data]);
 
   // Extract actual price value using shared hook
   const { purchasePrice, purchasePriceId, purchasePriceIndex } =

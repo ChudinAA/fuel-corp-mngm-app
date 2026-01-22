@@ -48,7 +48,6 @@ export function MovementDialog({
   vehicles,
   trailers,
   drivers,
-  prices,
   deliveryCosts,
   editMovement,
   isCopy,
@@ -228,7 +227,6 @@ export function MovementDialog({
     inputMode,
     warehouses,
     suppliers,
-    prices,
     deliveryCosts,
     allBases,
     isEditing,
@@ -281,7 +279,7 @@ export function MovementDialog({
       } = extractPriceIdsForSubmit(
         selectedPurchasePriceId,
         "",
-        prices.filter(
+        availablePrices.filter(
           (p) =>
             p.id === parsePriceCompositeId(selectedPurchasePriceId).priceId,
         ),

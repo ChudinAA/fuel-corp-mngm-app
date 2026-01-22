@@ -43,14 +43,6 @@ export default function MovementPage() {
     },
   });
 
-  const { data: prices } = useQuery({
-    queryKey: ["/api/prices/list"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/prices/list");
-      return res.json();
-    },
-  });
-
   const { data: deliveryCosts } = useQuery({
     queryKey: ["/api/delivery-costs"],
     queryFn: async () => {
@@ -70,7 +62,11 @@ export default function MovementPage() {
       toast({ title: "Перемещение удалено" });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -91,7 +87,9 @@ export default function MovementPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Перемещение</h1>
-          <p className="text-muted-foreground">Учет покупок и внутренних перемещений топлива</p>
+          <p className="text-muted-foreground">
+            Учет покупок и внутренних перемещений топлива
+          </p>
         </div>
         {hasPermission("movement", "create") && (
           <Button onClick={handleOpenDialog} data-testid="button-add-movement">
@@ -105,7 +103,6 @@ export default function MovementPage() {
         warehouses={warehouses || []}
         suppliers={suppliers || []}
         carriers={carriers || []}
-        prices={prices || []}
         deliveryCosts={deliveryCosts || []}
         editMovement={editingMovement}
         isCopy={isCopy}
