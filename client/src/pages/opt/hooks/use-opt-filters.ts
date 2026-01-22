@@ -83,6 +83,7 @@ export function useOptFilters({
   const availableLocations = useMemo(() => {
     return (
       deliveryLocations?.filter((location) => {
+        if (!location.isActive) return false;
         if (!buyerId || !dealDate) return true;
 
         const buyerSalePrices = locationAvailableSaleLookup.data || [];

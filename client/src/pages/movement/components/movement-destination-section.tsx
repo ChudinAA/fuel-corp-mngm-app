@@ -83,7 +83,9 @@ export function MovementDestinationSection({
             <FormControl>
               <div className="w-full">
                 <Combobox
-                  options={warehouses?.map((w) => ({ value: w.id, label: w.name })) || []}
+                  options={warehouses
+                    ?.filter(w => w.isActive)
+                    ?.map((w) => ({ value: w.id, label: w.name })) || []}
                   value={field.value}
                   onValueChange={field.onChange}
                   placeholder="Выберите склад"
@@ -109,7 +111,9 @@ export function MovementDestinationSection({
               <FormControl>
                 <div className="flex-1 min-w-0">
                   <Combobox
-                    options={availableCarriers.map((c) => ({ value: c.id, label: c.name }))}
+                    options={availableCarriers
+                      .filter(c => c.isActive)
+                      .map((c) => ({ value: c.id, label: c.name }))}
                     value={field.value || ""}
                     onValueChange={field.onChange}
                     placeholder="Выберите перевозчика"
