@@ -25,6 +25,7 @@ import {
   AlertCircle,
   History,
   Copy,
+  Loader2,
 } from "lucide-react";
 import {
   EntityActionsMenu,
@@ -515,10 +516,17 @@ export function RefuelingTable({
             variant="outline"
             onClick={() => fetchNextPage()}
             disabled={isFetchingNextPage}
-            className="w-full max-w-xs"
-            data-testid="button-load-more"
+            className="w-full max-w-xs gap-2"
+            data-testid="button-load-more-refueling"
           >
-            {isFetchingNextPage ? "Загрузка..." : "Загрузить еще"}
+            {isFetchingNextPage ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Загрузка...
+              </>
+            ) : (
+              "Загрузить еще"
+            )}
           </Button>
         </div>
       )}

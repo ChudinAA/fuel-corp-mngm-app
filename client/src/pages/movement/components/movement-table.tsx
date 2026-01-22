@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pencil, Trash2, FileText, Copy, Search, Filter, History } from "lucide-react";
+import { Pencil, Trash2, FileText, Copy, Search, Filter, History, Loader2 } from "lucide-react";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ExportButton } from "@/components/export/export-button";
@@ -314,28 +314,26 @@ export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<Movement
         </Table>
       </div>
 
-      <div className="flex flex-col items-center justify-center py-4 gap-2">
-        <p className="text-sm text-muted-foreground">
-          Показано {data.length} из {total}
-        </p>
-        {hasNextPage && (
+      {hasNextPage && (
+        <div className="flex justify-center pt-4">
           <Button
             variant="outline"
             onClick={() => fetchNextPage()}
             disabled={isFetchingNextPage}
-            className="w-full max-w-xs"
+            className="w-full max-w-xs gap-2"
+            data-testid="button-load-more-movement"
           >
             {isFetchingNextPage ? (
               <>
-                <Skeleton className="h-4 w-4 mr-2 rounded-full animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Загрузка...
               </>
             ) : (
               "Загрузить еще"
             )}
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       <DeleteConfirmDialog
         open={deleteDialogOpen}

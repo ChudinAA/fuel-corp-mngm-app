@@ -3,7 +3,7 @@ import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 
 export function useMovementTable() {
-  const [pageSize] = useState(20);
+  const [pageSize] = useState(10);
   const [search, setSearch] = useState("");
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
 
