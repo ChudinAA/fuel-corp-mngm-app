@@ -6,6 +6,7 @@ import type {
   LogisticsCarrier,
   LogisticsDeliveryLocation,
   DeliveryCost,
+  Price,
 } from "@shared/schema";
 import {
   COUNTERPARTY_TYPE,
@@ -45,32 +46,20 @@ export function useOptFilters({
   deliveryCosts,
   supplierWarehouse,
 }: UseOptFiltersProps) {
-  // Фильтрация цен покупки
-  const purchasePrices = useMemo(() => {
-    if (!supplierId || !selectedBasis || !dealDate) return [];
+  // Вызываем хуки поиска цен на верхнем уровне, а не внутри useMemo
+  const purchaseLookup = usePriceLookup({
+    counterpartyId: supplierId,
+    counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
+    counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
+    basis: selectedBasis,
+    productType: PRODUCT_TYPE.KEROSENE,
+    date: dealDate,
+    enabled: !!supplierId && !!selectedBasis && !!dealDate,
+  });
 
-    const { data: purchasePricesLookup } = usePriceLookup({
-      counterpartyId: supplierId,
-      counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
-      counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
-      basis: selectedBasis,
-      productType: PRODUCT_TYPE.KEROSENE,
-      date: dealDate,
-      enabled: !!supplierId && !!selectedBasis && !!dealDate,
-    });
-
-    return purchasePricesLookup;
-  }, [supplierId, selectedBasis, dealDate, suppliers]);
-
-  // Фильтрация цен продажи
-  // Используем baseId из выбранного места доставки, если оно есть
-  const salePrices = useMemo(() => {
-    if (!buyerId || !dealDate) return [];
-
-    // Определяем базис для фильтрации цен продажи
-    let saleBasisName = selectedBasis;
-
-    // Если выбрано место доставки с привязанным базисом, используем его
+  // Определяем базис для фильтрации цен продажи
+  const saleBasisName = useMemo(() => {
+    let name = selectedBasis;
     if (deliveryLocationId && deliveryLocations && allBases) {
       const selectedLocation = deliveryLocations.find(
         (loc) => loc.id === deliveryLocationId,
@@ -80,32 +69,32 @@ export function useOptFilters({
           (b) => b.id === selectedLocation.baseId,
         );
         if (locationBase) {
-          saleBasisName = locationBase.name;
+          name = locationBase.name;
         }
       }
     }
+    return name;
+  }, [selectedBasis, deliveryLocationId, deliveryLocations, allBases]);
 
-    if (!saleBasisName) return [];
+  const saleLookup = usePriceLookup({
+    counterpartyId: buyerId,
+    counterpartyRole: COUNTERPARTY_ROLE.BUYER,
+    counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
+    basis: saleBasisName,
+    productType: PRODUCT_TYPE.KEROSENE,
+    date: dealDate,
+    enabled: !!buyerId && !!saleBasisName && !!dealDate,
+  });
 
-    const { data: salePricesLookup } = usePriceLookup({
-      counterpartyId: buyerId,
-      counterpartyRole: COUNTERPARTY_ROLE.BUYER,
-      counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
-      basis: saleBasisName,
-      productType: PRODUCT_TYPE.KEROSENE,
-      date: dealDate,
-      enabled: !!buyerId && !!saleBasisName && !!dealDate,
-    });
+  // Фильтрация цен покупки
+  const purchasePrices = useMemo(() => {
+    return purchaseLookup.data || [];
+  }, [purchaseLookup.data]);
 
-    return salePricesLookup;
-  }, [
-    buyerId,
-    dealDate,
-    selectedBasis,
-    deliveryLocationId,
-    deliveryLocations,
-    allBases,
-  ]);
+  // Фильтрация цен продажи
+  const salePrices = useMemo(() => {
+    return saleLookup.data || [];
+  }, [saleLookup.data]);
 
   // Фильтрация поставщиков с wholesale базисами
   const wholesaleSuppliers = useMemo(() => {
@@ -114,7 +103,7 @@ export function useOptFilters({
         if (!supplier.baseIds || supplier.baseIds.length === 0) return false;
         return allBases?.some(
           (base) =>
-            supplier.baseIds.includes(base.id) &&
+            supplier.baseIds && supplier.baseIds.includes(base.id) &&
             base.baseType === BASE_TYPE.WHOLESALE,
         );
       }) || []
@@ -130,15 +119,10 @@ export function useOptFilters({
   const availableLocations = useMemo(() => {
     return (
       deliveryLocations?.filter((location) => {
-        // Фильтр 1: По привязке к базисам из цен продажи покупателя
-        // Ищем цены продажи для этого покупателя на эту дату
         if (!buyerId || !dealDate) return true;
         const dateStr = format(dealDate, "yyyy-MM-dd");
 
-        const currentPrices = salePrices;
-        if (!currentPrices) return true;
-
-        const buyerSalePrices = currentPrices.filter(
+        const buyerSalePrices = salePrices.filter(
           (p) =>
             p.counterpartyId === buyerId &&
             p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
@@ -186,7 +170,6 @@ export function useOptFilters({
         const base = wholesaleBases?.find((b) => b.name === selectedBasis);
         const warehouse = supplierWarehouse;
 
-        // Фильтр 1: По Базису поставщика / Складу
         const hasTariffFromSource = deliveryCosts.some(
           (dc) =>
             dc.carrierId === carrier.id &&
@@ -200,7 +183,6 @@ export function useOptFilters({
 
         if (!hasTariffFromSource && (base || warehouse)) return false;
 
-        // Фильтр 2: По Точке поставки (если выбрана)
         if (deliveryLocationId) {
           const hasTariffToDestination = deliveryCosts.some(
             (dc) =>
@@ -238,3 +220,4 @@ export function useOptFilters({
     availableLocations,
   };
 }
+

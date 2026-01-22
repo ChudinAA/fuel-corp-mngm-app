@@ -26,7 +26,12 @@ export function usePriceLookup({
   return useQuery<Price[]>({
     queryKey: [
       "/api/prices/find-active",
-      { counterpartyId, counterpartyRole, counterpartyType, basis, productType, date: dateStr },
+      counterpartyId,
+      counterpartyRole,
+      counterpartyType,
+      basis,
+      productType,
+      dateStr,
     ],
     queryFn: async () => {
       const params = new URLSearchParams();
