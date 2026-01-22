@@ -42,8 +42,18 @@ export function Combobox({
   dataTestId,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
+  const [search, setSearch] = React.useState("")
 
   const selectedOption = options.find((option) => option.value === value)
+
+  const filteredOptions = React.useMemo(() => {
+    if (!search) return options;
+    const lowerSearch = search.toLowerCase();
+    return options.filter(option => 
+      option.label.toLowerCase().includes(lowerSearch) || 
+      option.value.toLowerCase().includes(lowerSearch)
+    );
+  }, [options, search]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -69,19 +79,24 @@ export function Combobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command className="flex flex-col">
-          <CommandInput placeholder="Поиск..." />
+        <Command className="flex flex-col" shouldFilter={false}>
+          <CommandInput 
+            placeholder="Поиск..." 
+            value={search}
+            onValueChange={setSearch}
+          />
           <CommandList className="max-h-[300px] overflow-y-auto overflow-x-hidden scrollbar-thin">
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
-              {options.map((option) => (
+              {filteredOptions.map((option) => (
                 <CommandItem
                   key={option.value}
-                  value={option.label}
+                  value={option.value}
                   onSelect={() => {
                     const newValue = option.value === value ? "" : option.value;
                     onValueChange(newValue)
                     setOpen(false)
+                    setSearch("")
                   }}
                   className="flex items-center justify-between"
                 >
