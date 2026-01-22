@@ -81,7 +81,7 @@ export function PricesTable({
     hasNextPage,
     isFetchingNextPage,
     isLoading,
-  } = useInfiniteQuery<{ data: Price[]; total: number }>({
+  } = useInfiniteQuery<Price[]>({
     queryKey: ["/api/prices/list"],
     queryFn: async ({ pageParam = 0 }) => {
       const res = await apiRequest("GET", `/api/prices/list?limit=${PAGE_SIZE}&offset=${pageParam}`);
@@ -89,12 +89,11 @@ export function PricesTable({
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
-      const loadedCount = allPages.length * PAGE_SIZE;
-      return loadedCount < lastPage.total ? loadedCount : undefined;
+      return lastPage.length === PAGE_SIZE ? allPages.length * PAGE_SIZE : undefined;
     },
   });
 
-  const prices = useMemo(() => data?.pages.flatMap((page: any) => page.data) || [], [data]);
+  const prices = useMemo(() => data?.pages.flat() || [], [data]);
 
   const { data: allContractors } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
@@ -119,7 +118,6 @@ export function PricesTable({
   const getUniqueOptions = (key: string) => {
     const values = new Map<string, string>();
     prices?.forEach((price: any) => {
-      if (!price) return;
       if (key === 'counterpartyId') {
         const name = getContractorName(price.counterpartyId, price.counterpartyType, price.counterpartyRole);
         values.set(name, price.counterpartyId);
@@ -127,10 +125,8 @@ export function PricesTable({
         const label = getProductTypeLabel(price.productType);
         values.set(label, price.productType);
       } else if (key === 'date') {
-        if (price.dateFrom) {
-          const val = formatDate(price.dateFrom);
-          values.set(val, val);
-        }
+        const val = formatDate(price.dateFrom);
+        values.set(val, val);
       } else if (key === 'counterpartyType') {
         const label = price.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE ? "ОПТ" : "Заправка ВС";
         values.set(label, price.counterpartyType);

@@ -216,7 +216,7 @@ export function registerPricesRoutes(app: Express) {
             );
 
             if (overlapResult.status === "error") {
-              return res.status(400).json({ message: overlapResult.message });
+              return res.status(400).json({ message: overlapResult.status === "error" ? overlapResult.message : undefined });
             }
           }
         }
