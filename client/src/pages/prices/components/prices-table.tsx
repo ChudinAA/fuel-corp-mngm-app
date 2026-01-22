@@ -87,17 +87,32 @@ export function PricesTable({
     useInfiniteQuery<{ data: any[]; total: number }>({
       queryKey: ["/api/prices/list"],
       queryFn: async ({ pageParam = 0 }) => {
+      try {
         const res = await apiRequest(
           "GET",
           `/api/prices/list?offset=${pageParam}&pageSize=${PAGE_SIZE}`,
         );
-        return res.json();
-      },
-      initialPageParam: 0,
-      getNextPageParam: (lastPage, allPages) => {
-        const loadedCount = allPages.length * PAGE_SIZE;
-        return loadedCount < lastPage.total ? loadedCount : undefined;
-      },
+        if (!res.ok) return { data: [], total: 0 };
+        const result = await res.json();
+        return result && typeof result === "object" && Array.isArray(result.data)
+          ? result
+          : { data: [], total: 0 };
+      } catch (error) {
+        console.error("Fetch prices error:", error);
+        return { data: [], total: 0 };
+      }
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage || typeof lastPage !== "object" || !Array.isArray(lastPage.data)) {
+        return undefined;
+      }
+      const loadedCount = allPages.reduce(
+        (total, page) => total + (page.data?.length || 0),
+        0,
+      );
+      return loadedCount < (lastPage.total || 0) ? loadedCount : undefined;
+    },
     });
 
   const prices = useMemo(() => data?.pages.flatMap((page: any) => page.data) || [], [data]);
