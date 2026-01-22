@@ -54,7 +54,13 @@ import {
   PRODUCT_TYPE,
 } from "@shared/constants";
 import { usePriceSelection } from "../hooks/use-price-selection";
-import { formatNumber, formatNumberForTable, formatDate, getPriceDisplay, getProductTypeLabel } from "../utils";
+import {
+  formatNumber,
+  formatNumberForTable,
+  formatDate,
+  getPriceDisplay,
+  getProductTypeLabel,
+} from "../utils";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
@@ -65,7 +71,9 @@ export function PricesTable({
   productTypeFilter,
   onEdit,
 }: PricesTableProps) {
-  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
+  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>(
+    {},
+  );
   const [search, setSearch] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [priceToDelete, setPriceToDelete] = useState<Price | null>(null);
@@ -75,25 +83,24 @@ export function PricesTable({
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-  } = useInfiniteQuery<Price[]>({
-    queryKey: ["/api/prices/list"],
-    queryFn: async ({ pageParam = 0 }) => {
-      const res = await apiRequest("GET", `/api/prices/list?limit=${PAGE_SIZE}&offset=${pageParam}`);
-      return res.json();
-    },
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      return lastPage.length === PAGE_SIZE ? allPages.length * PAGE_SIZE : undefined;
-    },
-  });
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery<{ data: any[]; total: number }>({
+      queryKey: ["/api/prices/list"],
+      queryFn: async ({ pageParam = 0 }) => {
+        const res = await apiRequest(
+          "GET",
+          `/api/prices/list?offset=${pageParam}&pageSize=${PAGE_SIZE}`,
+        );
+        return res.json();
+      },
+      initialPageParam: 0,
+      getNextPageParam: (lastPage, allPages) => {
+        const loadedCount = allPages.length * PAGE_SIZE;
+        return loadedCount < lastPage.total ? loadedCount : undefined;
+      },
+    });
 
-  const prices = useMemo(() => data?.pages.flat() || [], [data]);
+  const prices = useMemo(() => data?.pages.flatMap((page: any) => page.data) || [], [data]);
 
   const { data: allContractors } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
@@ -118,20 +125,30 @@ export function PricesTable({
   const getUniqueOptions = (key: string) => {
     const values = new Map<string, string>();
     prices?.forEach((price: any) => {
-      if (key === 'counterpartyId') {
-        const name = getContractorName(price.counterpartyId, price.counterpartyType, price.counterpartyRole);
+      if (key === "counterpartyId") {
+        const name = getContractorName(
+          price.counterpartyId,
+          price.counterpartyType,
+          price.counterpartyRole,
+        );
         values.set(name, price.counterpartyId);
-      } else if (key === 'productType') {
+      } else if (key === "productType") {
         const label = getProductTypeLabel(price.productType);
         values.set(label, price.productType);
-      } else if (key === 'date') {
+      } else if (key === "date") {
         const val = formatDate(price.dateFrom);
         values.set(val, val);
-      } else if (key === 'counterpartyType') {
-        const label = price.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE ? "ОПТ" : "Заправка ВС";
+      } else if (key === "counterpartyType") {
+        const label =
+          price.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE
+            ? "ОПТ"
+            : "Заправка ВС";
         values.set(label, price.counterpartyType);
-      } else if (key === 'counterpartyRole') {
-        const label = price.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER ? "Поставщик" : "Покупатель";
+      } else if (key === "counterpartyRole") {
+        const label =
+          price.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER
+            ? "Поставщик"
+            : "Покупатель";
         values.set(label, price.counterpartyRole);
       } else {
         const val = price[key];
@@ -146,54 +163,73 @@ export function PricesTable({
   const handleFilterUpdate = (columnId: string, values: string[]) => {
     setColumnFilters((prev) => ({
       ...prev,
-      [columnId]: values
+      [columnId]: values,
     }));
   };
 
   const filteredPrices = useMemo(() => {
-    return prices
-      ?.filter((p) => {
-        // Быстрые фильтры
-        if (dealTypeFilter !== "all" && p.counterpartyType !== dealTypeFilter) return false;
-        if (roleFilter !== "all" && p.counterpartyRole !== roleFilter) return false;
-        if (productTypeFilter !== "all" && p.productType !== productTypeFilter) return false;
-
-        // Колончатые фильтры
-        for (const [columnId, selectedValues] of Object.entries(columnFilters)) {
-          if (!selectedValues || selectedValues.length === 0) continue;
-          
-          if (columnId === 'date') {
-            const dateStr = formatDate(p.dateFrom);
-            if (!selectedValues.includes(dateStr)) return false;
-          } else {
-            const val = p[columnId as keyof Price];
-            if (!selectedValues.includes(String(val))) return false;
-          }
-        }
-
-        // Поиск
-        if (search) {
-          const searchLower = search.toLowerCase();
-          const contractorName = getContractorName(
-            p.counterpartyId,
-            p.counterpartyType,
-            p.counterpartyRole,
-          ).toLowerCase();
-          const basis = (p.basis || "").toLowerCase();
-          if (
-            !contractorName.includes(searchLower) &&
-            !basis.includes(searchLower)
-          ) {
+    return (
+      prices
+        ?.filter((p) => {
+          // Быстрые фильтры
+          if (dealTypeFilter !== "all" && p.counterpartyType !== dealTypeFilter)
             return false;
-          }
-        }
+          if (roleFilter !== "all" && p.counterpartyRole !== roleFilter)
+            return false;
+          if (
+            productTypeFilter !== "all" &&
+            p.productType !== productTypeFilter
+          )
+            return false;
 
-        return true;
-      })
-      .sort((a, b) => {
-        return new Date(b.dateTo).getTime() - new Date(a.dateTo).getTime();
-      }) || [];
-  }, [prices, dealTypeFilter, roleFilter, productTypeFilter, columnFilters, search, customers, allContractors]);
+          // Колончатые фильтры
+          for (const [columnId, selectedValues] of Object.entries(
+            columnFilters,
+          )) {
+            if (!selectedValues || selectedValues.length === 0) continue;
+
+            if (columnId === "date") {
+              const dateStr = formatDate(p.dateFrom);
+              if (!selectedValues.includes(dateStr)) return false;
+            } else {
+              const val = p[columnId as keyof Price];
+              if (!selectedValues.includes(String(val))) return false;
+            }
+          }
+
+          // Поиск
+          if (search) {
+            const searchLower = search.toLowerCase();
+            const contractorName = getContractorName(
+              p.counterpartyId,
+              p.counterpartyType,
+              p.counterpartyRole,
+            ).toLowerCase();
+            const basis = (p.basis || "").toLowerCase();
+            if (
+              !contractorName.includes(searchLower) &&
+              !basis.includes(searchLower)
+            ) {
+              return false;
+            }
+          }
+
+          return true;
+        })
+        .sort((a, b) => {
+          return new Date(b.dateTo).getTime() - new Date(a.dateTo).getTime();
+        }) || []
+    );
+  }, [
+    prices,
+    dealTypeFilter,
+    roleFilter,
+    productTypeFilter,
+    columnFilters,
+    search,
+    customers,
+    allContractors,
+  ]);
 
   const deleteMutation = useMutation({
     mutationFn: async (priceId: string) => {
@@ -240,9 +276,14 @@ export function PricesTable({
           variant="outline"
           size="icon"
           onClick={() => setColumnFilters({})}
-          disabled={Object.values(columnFilters).every((v: any) => v.length === 0)}
+          disabled={Object.values(columnFilters).every(
+            (v: any) => v.length === 0,
+          )}
           title="Сбросить все фильтры"
-          className={cn(Object.values(columnFilters).some((v: any) => v.length > 0) && "text-primary border-primary")}
+          className={cn(
+            Object.values(columnFilters).some((v: any) => v.length > 0) &&
+              "text-primary border-primary",
+          )}
           data-testid="button-reset-filters"
         >
           <Filter className="h-4 w-4" />
@@ -281,10 +322,15 @@ export function PricesTable({
                     title="Тип"
                     options={[
                       { label: "ОПТ", value: COUNTERPARTY_TYPE.WHOLESALE },
-                      { label: "Заправка ВС", value: COUNTERPARTY_TYPE.REFUELING },
+                      {
+                        label: "Заправка ВС",
+                        value: COUNTERPARTY_TYPE.REFUELING,
+                      },
                     ]}
                     selectedValues={columnFilters["counterpartyType"] || []}
-                    onUpdate={(values) => handleFilterUpdate("counterpartyType", values)}
+                    onUpdate={(values) =>
+                      handleFilterUpdate("counterpartyType", values)
+                    }
                     dataTestId="filter-type"
                   />
                 </div>
@@ -299,7 +345,9 @@ export function PricesTable({
                       { label: "Покупатель", value: COUNTERPARTY_ROLE.BUYER },
                     ]}
                     selectedValues={columnFilters["counterpartyRole"] || []}
-                    onUpdate={(values) => handleFilterUpdate("counterpartyRole", values)}
+                    onUpdate={(values) =>
+                      handleFilterUpdate("counterpartyRole", values)
+                    }
                     dataTestId="filter-role"
                   />
                 </div>
@@ -311,7 +359,9 @@ export function PricesTable({
                     title="Контрагент"
                     options={getUniqueOptions("counterpartyId")}
                     selectedValues={columnFilters["counterpartyId"] || []}
-                    onUpdate={(values) => handleFilterUpdate("counterpartyId", values)}
+                    onUpdate={(values) =>
+                      handleFilterUpdate("counterpartyId", values)
+                    }
                     dataTestId="filter-counterparty"
                   />
                 </div>
@@ -335,7 +385,9 @@ export function PricesTable({
                     title="Продукт"
                     options={getUniqueOptions("productType")}
                     selectedValues={columnFilters["productType"] || []}
-                    onUpdate={(values) => handleFilterUpdate("productType", values)}
+                    onUpdate={(values) =>
+                      handleFilterUpdate("productType", values)
+                    }
                     dataTestId="filter-product"
                   />
                 </div>
@@ -443,7 +495,9 @@ export function PricesTable({
                       {getPriceDisplay(price.priceValues)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {price.volume ? `${formatNumberForTable(price.volume)}` : "—"}
+                      {price.volume
+                        ? `${formatNumberForTable(price.volume)}`
+                        : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -611,4 +665,3 @@ export function PricesTable({
     </div>
   );
 }
-

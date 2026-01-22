@@ -51,17 +51,19 @@ export class PriceStorage implements IPriceStorage {
       .orderBy(desc(prices.dateTo));
   }
 
-  async getAllPrices(filters?: {
-    dateFrom?: string;
-    dateTo?: string;
-    counterpartyType?: string;
-    counterpartyRole?: string;
-    counterpartyId?: string;
-    basis?: string;
-    productType?: string;
-    limit?: number;
-    offset?: number;
-  }): Promise<Price[]> {
+  async getAllPrices(
+    offset: number = 0,
+    pageSize: number = 20,
+    filters?: {
+      dateFrom?: string;
+      dateTo?: string;
+      counterpartyType?: string;
+      counterpartyRole?: string;
+      counterpartyId?: string;
+      basis?: string;
+      productType?: string;
+    },
+  ): Promise<{ data: any[]; total: number }> {
     const conditions = [isNull(prices.deletedAt)];
 
     if (filters) {
@@ -80,21 +82,20 @@ export class PriceStorage implements IPriceStorage {
         conditions.push(eq(prices.productType, filters.productType));
     }
 
-    const query = db
+    const data = await db
       .select()
       .from(prices)
       .where(and(...conditions))
-      .orderBy(desc(prices.dateTo));
+      .orderBy(desc(prices.dateTo))
+      .limit(pageSize)
+      .offset(offset);
 
-    if (filters?.limit !== undefined) {
-      query.limit(filters.limit);
-    }
-    if (filters?.offset !== undefined) {
-      query.offset(filters.offset);
-    }
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(prices)
+      .where(and(...conditions));
 
-    const allPrices = await query;
-    return allPrices;
+    return { data, total: Number(countResult?.count || 0) };
   }
 
   async getPrice(id: string): Promise<Price | undefined> {

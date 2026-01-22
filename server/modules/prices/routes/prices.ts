@@ -40,7 +40,7 @@ export function registerPricesRoutes(app: Express) {
           basis as string,
           dateFrom as string,
           dateTo as string,
-          priceId as string | undefined
+          priceId as string | undefined,
         );
 
         res.json({ totalVolume: totalVolume.toFixed(2) });
@@ -48,7 +48,7 @@ export function registerPricesRoutes(app: Express) {
         console.error("Selection calculation error:", error);
         res.status(500).json({ message: "Ошибка расчета выборки" });
       }
-    }
+    },
   );
 
   app.get(
@@ -74,10 +74,10 @@ export function registerPricesRoutes(app: Express) {
         String(productType),
         String(dateFrom),
         String(dateTo),
-        excludeId ? String(excludeId) : undefined
+        excludeId ? String(excludeId) : undefined,
       );
       res.json(result);
-    }
+    },
   );
 
   app.get(
@@ -95,8 +95,15 @@ export function registerPricesRoutes(app: Express) {
           date,
         } = req.query;
 
-        if (!counterpartyId || !counterpartyRole || !counterpartyType || !date) {
-          return res.status(400).json({ message: "Missing required parameters" });
+        if (
+          !counterpartyId ||
+          !counterpartyRole ||
+          !counterpartyType ||
+          !date
+        ) {
+          return res
+            .status(400)
+            .json({ message: "Missing required parameters" });
         }
 
         const data = await storage.prices.findActivePrices({
@@ -113,7 +120,7 @@ export function registerPricesRoutes(app: Express) {
         console.error("Price lookup error:", error);
         res.status(500).json({ message: "Error looking up prices" });
       }
-    }
+    },
   );
 
   app.get(
@@ -121,31 +128,33 @@ export function registerPricesRoutes(app: Express) {
     requireAuth,
     requirePermission("prices", "view"),
     async (req, res) => {
-      const { 
-        counterpartyRole, 
-        counterpartyType, 
+      const {
+        counterpartyRole,
+        counterpartyType,
         counterpartyId,
         dateFrom,
         dateTo,
         basis,
         productType,
-        limit,
-        offset
+        offset,
+        pageSize,
       } = req.query;
 
-      const data = await storage.prices.getAllPrices({
-        counterpartyRole: counterpartyRole as string,
-        counterpartyType: counterpartyType as string,
-        counterpartyId: counterpartyId as string,
-        dateFrom: dateFrom as string,
-        dateTo: dateTo as string,
-        basis: basis as string,
-        productType: productType as string,
-        limit: limit ? parseInt(limit as string) : undefined,
-        offset: offset ? parseInt(offset as string) : undefined,
-      });
+      const data = await storage.prices.getAllPrices(
+        offset ? parseInt(offset as string) : 0,
+        pageSize ? parseInt(pageSize as string) : 20,
+        {
+          counterpartyRole: counterpartyRole as string,
+          counterpartyType: counterpartyType as string,
+          counterpartyId: counterpartyId as string,
+          dateFrom: dateFrom as string,
+          dateTo: dateTo as string,
+          basis: basis as string,
+          productType: productType as string,
+        },
+      );
       res.json(data);
-    }
+    },
   );
 
   app.get(
@@ -159,7 +168,7 @@ export function registerPricesRoutes(app: Express) {
         return res.status(404).json({ message: "Цена не найдена" });
       }
       res.json(price);
-    }
+    },
   );
 
   app.post(
@@ -174,7 +183,7 @@ export function registerPricesRoutes(app: Express) {
     async (req, res) => {
       try {
         const body = req.body;
-        
+
         if (!body.volume) {
           return res.status(400).json({ message: "Укажите объем по договору" });
         }
@@ -187,7 +196,7 @@ export function registerPricesRoutes(app: Express) {
           String(body.basis),
           String(body.productType),
           String(body.dateFrom),
-          String(body.dateTo)
+          String(body.dateTo),
         );
 
         if (overlapResult.status === "error") {
@@ -197,7 +206,7 @@ export function registerPricesRoutes(app: Express) {
         const processedData = {
           ...body,
           priceValues: body.priceValues?.map((pv: { price: string }) =>
-            JSON.stringify({ price: parseFloat(pv.price) })
+            JSON.stringify({ price: parseFloat(pv.price) }),
           ),
           volume: body.volume ? String(body.volume) : null,
           counterpartyId: body.counterpartyId,
@@ -215,7 +224,7 @@ export function registerPricesRoutes(app: Express) {
         console.error("Price creation error:", error);
         res.status(500).json({ message: "Ошибка создания цены" });
       }
-    }
+    },
   );
 
   app.patch(
@@ -227,7 +236,7 @@ export function registerPricesRoutes(app: Express) {
       operation: AUDIT_OPERATIONS.UPDATE,
       getOldData: async (req) => {
         const prices = await storage.prices.getAllPrices();
-        return prices.find(p => p.id === req.params.id);
+        return prices.find((p) => p.id === req.params.id);
       },
       getNewData: (req) => req.body,
     }),
@@ -248,11 +257,16 @@ export function registerPricesRoutes(app: Express) {
               String(body.productType || currentPrice.productType),
               String(body.dateFrom),
               String(body.dateTo),
-              String(id)
+              String(id),
             );
 
             if (overlapResult.status === "error") {
-              return res.status(400).json({ message: overlapResult.status === "error" ? overlapResult.message : undefined });
+              return res.status(400).json({
+                message:
+                  overlapResult.status === "error"
+                    ? overlapResult.message
+                    : undefined,
+              });
             }
           }
         }
@@ -261,7 +275,7 @@ export function registerPricesRoutes(app: Express) {
         const processedData = {
           ...body,
           priceValues: body.priceValues?.map((pv: { price: string }) =>
-            JSON.stringify({ price: parseFloat(pv.price) })
+            JSON.stringify({ price: parseFloat(pv.price) }),
           ),
           volume: body.volume ? String(body.volume) : null,
           notes: body.notes || null,
@@ -277,7 +291,7 @@ export function registerPricesRoutes(app: Express) {
         console.error("Price update error:", error);
         res.status(500).json({ message: "Ошибка обновления цены" });
       }
-    }
+    },
   );
 
   app.delete(
@@ -289,7 +303,7 @@ export function registerPricesRoutes(app: Express) {
       operation: AUDIT_OPERATIONS.DELETE,
       getOldData: async (req) => {
         const prices = await storage.prices.getAllPrices();
-        return prices.find(p => p.id === req.params.id);
+        return prices.find((p) => p.id === req.params.id);
       },
     }),
     async (req, res) => {
@@ -300,7 +314,6 @@ export function registerPricesRoutes(app: Express) {
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления цены" });
       }
-    }
+    },
   );
-
-  }
+}
