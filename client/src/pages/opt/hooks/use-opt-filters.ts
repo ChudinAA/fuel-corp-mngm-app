@@ -46,7 +46,62 @@ export function useOptFilters({
   deliveryCosts,
   supplierWarehouse,
 }: UseOptFiltersProps) {
-  
+
+  // Фильтрация поставщиков с wholesale базисами
+  const wholesaleSuppliers = useMemo(() => {
+    return (
+      suppliers?.filter((supplier) => {
+        if (!supplier.baseIds || supplier.baseIds.length === 0) return false;
+        return allBases?.some(
+          (base) =>
+            supplier.baseIds &&
+            supplier.baseIds.includes(base.id) &&
+            base.baseType === BASE_TYPE.WHOLESALE,
+        );
+      }) || []
+    );
+  }, [suppliers, allBases]);
+
+  // Фильтрация базисов типа wholesale
+  const wholesaleBases = useMemo(() => {
+    return allBases?.filter((b) => b.baseType === BASE_TYPE.WHOLESALE) || [];
+  }, [allBases]);
+
+  // Все возможные цены на текущую дату для выбранного Покупателя
+  const locationAvailableSaleLookup = usePriceLookup({
+    counterpartyId: buyerId,
+    counterpartyRole: COUNTERPARTY_ROLE.BUYER,
+    counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
+    basis: null,
+    productType: PRODUCT_TYPE.KEROSENE,
+    date: dealDate,
+    enabled: !!buyerId && !!dealDate,
+  });
+
+  // Фильтрация доступных мест доставки
+  const availableLocations = useMemo(() => {
+    return (
+      deliveryLocations?.filter((location) => {
+        if (!buyerId || !dealDate) return true;
+
+        const buyerSalePrices = locationAvailableSaleLookup.data || [];
+        if (buyerSalePrices.length > 0) {
+          const activeSaleBasises = new Set(
+            buyerSalePrices.map((p) => p.basis),
+          );
+          if (location.baseId) {
+            const locBase = allBases?.find((b) => b.id === location.baseId);
+            if (locBase && !activeSaleBasises.has(locBase.name)) {
+              return false;
+            }
+          }
+        }
+
+        return true;
+      }) || []
+    );
+  }, [buyerId, dealDate, allBases, locationAvailableSaleLookup.data]);
+
   const purchaseLookup = usePriceLookup({
     counterpartyId: supplierId,
     counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
@@ -95,71 +150,6 @@ export function useOptFilters({
   const salePrices = useMemo(() => {
     return saleLookup.data || [];
   }, [saleLookup.data]);
-
-  // Фильтрация поставщиков с wholesale базисами
-  const wholesaleSuppliers = useMemo(() => {
-    return (
-      suppliers?.filter((supplier) => {
-        if (!supplier.baseIds || supplier.baseIds.length === 0) return false;
-        return allBases?.some(
-          (base) =>
-            supplier.baseIds && supplier.baseIds.includes(base.id) &&
-            base.baseType === BASE_TYPE.WHOLESALE,
-        );
-      }) || []
-    );
-  }, [suppliers, allBases]);
-
-  // Фильтрация базисов типа wholesale
-  const wholesaleBases = useMemo(() => {
-    return allBases?.filter((b) => b.baseType === BASE_TYPE.WHOLESALE) || [];
-  }, [allBases]);
-
-  // Фильтрация доступных мест доставки
-  const availableLocations = useMemo(() => {
-    return (
-      deliveryLocations?.filter((location) => {
-        if (!buyerId || !dealDate) return true;
-        const dateStr = format(dealDate, "yyyy-MM-dd");
-
-        const buyerSalePrices = salePrices.filter(
-          (p) =>
-            p.counterpartyId === buyerId &&
-            p.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE &&
-            p.counterpartyRole === COUNTERPARTY_ROLE.BUYER &&
-            p.productType === PRODUCT_TYPE.KEROSENE &&
-            p.dateFrom <= dateStr &&
-            p.dateTo >= dateStr &&
-            p.isActive,
-        );
-
-        if (buyerSalePrices.length > 0) {
-          const activeSaleBasises = new Set(
-            buyerSalePrices.map((p) => p.basis),
-          );
-          if (location.baseId) {
-            const locBase = allBases?.find((b) => b.id === location.baseId);
-            if (locBase && !activeSaleBasises.has(locBase.name)) {
-              return false;
-            }
-          }
-        }
-
-        return true;
-      }) || []
-    );
-  }, [
-    deliveryLocations,
-    carrierId,
-    deliveryCosts,
-    selectedBasis,
-    wholesaleBases,
-    supplierWarehouse,
-    buyerId,
-    dealDate,
-    allBases,
-    salePrices,
-  ]);
 
   // Фильтрация доступных перевозчиков
   const availableCarriers = useMemo(() => {
@@ -220,4 +210,3 @@ export function useOptFilters({
     availableLocations,
   };
 }
-
