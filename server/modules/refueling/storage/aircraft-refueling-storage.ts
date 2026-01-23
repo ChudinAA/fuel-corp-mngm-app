@@ -11,6 +11,7 @@ import {
 } from "@shared/schema";
 import { IAircraftRefuelingStorage } from "./types";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
+import { WarehouseTransactionService } from "server/modules/warehouses/services/warehouse-transaction-service";
 
 export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
   async getRefueling(id: string): Promise<AircraftRefueling | undefined> {
@@ -122,65 +123,23 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
       // Для услуги заправки или черновика не создаем транзакции на складе
       if (
         !created.isDraft &&
-        data.warehouseId &&
-        data.productType !== PRODUCT_TYPE.SERVICE
+        created.warehouseId &&
+        (created.productType === PRODUCT_TYPE.KEROSENE ||
+          created.productType === PRODUCT_TYPE.PVKJ)
       ) {
-        const warehouse = await tx.query.warehouses.findFirst({
-          where: eq(warehouses.id, data.warehouseId),
-        });
-
-        if (!warehouse) {
-          throw new Error("Warehouse not found");
-        }
-
-        const quantity = parseFloat(data.quantityKg);
-        const isPvkj = data.productType === PRODUCT_TYPE.PVKJ;
-
-        const currentBalance = parseFloat(
-          isPvkj
-            ? warehouse.pvkjBalance || "0"
-            : warehouse.currentBalance || "0",
-        );
-        const averageCost = isPvkj
-          ? warehouse.pvkjAverageCost || "0"
-          : warehouse.averageCost || "0";
-        const newBalance = Math.max(0, currentBalance - quantity);
-
-        const updateData: any = {
-          updatedAt: sql`NOW()`,
-          updatedById: data.createdById,
-        };
-
-        if (isPvkj) {
-          updateData.pvkjBalance = newBalance.toFixed(2);
-        } else {
-          updateData.currentBalance = newBalance.toFixed(2);
-        }
-
-        await tx
-          .update(warehouses)
-          .set(updateData)
-          .where(eq(warehouses.id, data.warehouseId));
-
-        const [transaction] = await tx
-          .insert(warehouseTransactions)
-          .values({
-            warehouseId: data.warehouseId,
-            transactionType: TRANSACTION_TYPE.SALE,
-            productType: data.productType || PRODUCT_TYPE.KEROSENE,
-            sourceType: SOURCE_TYPE.REFUELING,
-            sourceId: created.id,
-            quantity: (-quantity).toString(),
-            sum: data.purchaseAmount,
-            price: data.purchasePrice,
-            balanceBefore: currentBalance.toString(),
-            balanceAfter: newBalance.toString(),
-            averageCostBefore: averageCost,
-            averageCostAfter: averageCost,
-            createdById: data.createdById,
-            transactionDate: data.refuelingDate,
-          })
-          .returning();
+        const { transaction } =
+          await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+            tx,
+            created.warehouseId,
+            TRANSACTION_TYPE.SALE,
+            created.productType,
+            SOURCE_TYPE.REFUELING,
+            created.id,
+            parseFloat(created.quantityKg),
+            parseFloat(created.purchaseAmount || "0"),
+            data.createdById,
+            created.refuelingDate,
+          );
 
         await tx
           .update(aircraftRefueling)
@@ -199,10 +158,6 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
     return await db.transaction(async (tx) => {
       const currentRefueling = await tx.query.aircraftRefueling.findFirst({
         where: eq(aircraftRefueling.id, id),
-        with: {
-          warehouse: true,
-          transaction: true,
-        },
       });
 
       if (!currentRefueling) {
@@ -217,64 +172,24 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         transitioningFromDraft &&
         data.warehouseId &&
         data.quantityKg &&
-        data.productType !== PRODUCT_TYPE.SERVICE
+        (data.productType === PRODUCT_TYPE.KEROSENE ||
+          data.productType === PRODUCT_TYPE.PVKJ)
       ) {
-        const warehouse = await tx.query.warehouses.findFirst({
-          where: eq(warehouses.id, data.warehouseId),
-        });
-
-        if (warehouse) {
-          const quantity = parseFloat(data.quantityKg.toString());
-          const isPvkj = data.productType === PRODUCT_TYPE.PVKJ;
-
-          const currentBalance = parseFloat(
-            isPvkj
-              ? warehouse.pvkjBalance || "0"
-              : warehouse.currentBalance || "0",
+        const { transaction } =
+          await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+            tx,
+            data.warehouseId,
+            TRANSACTION_TYPE.SALE,
+            data.productType,
+            SOURCE_TYPE.REFUELING,
+            currentRefueling.id,
+            data.quantityKg,
+            data.purchaseAmount || 0,
+            data.updatedById,
+            data.refuelingDate,
           );
-          const averageCost = isPvkj
-            ? warehouse.pvkjAverageCost || "0"
-            : warehouse.averageCost || "0";
-          const newBalance = Math.max(0, currentBalance - quantity);
 
-          const updateData: any = {
-            updatedAt: sql`NOW()`,
-            updatedById: data.updatedById,
-          };
-
-          if (isPvkj) {
-            updateData.pvkjBalance = newBalance.toFixed(2);
-          } else {
-            updateData.currentBalance = newBalance.toFixed(2);
-          }
-
-          await tx
-            .update(warehouses)
-            .set(updateData)
-            .where(eq(warehouses.id, data.warehouseId));
-
-          const [transaction] = await tx
-            .insert(warehouseTransactions)
-            .values({
-              warehouseId: data.warehouseId,
-              transactionType: TRANSACTION_TYPE.SALE,
-              productType: data.productType || PRODUCT_TYPE.KEROSENE,
-              sourceType: SOURCE_TYPE.REFUELING,
-              sourceId: currentRefueling.id,
-              quantity: (-quantity).toString(),
-              sum: data.purchaseAmount,
-              price: data.purchasePrice,
-              balanceBefore: currentBalance.toString(),
-              balanceAfter: newBalance.toString(),
-              averageCostBefore: averageCost,
-              averageCostAfter: averageCost,
-              createdById: data.updatedById,
-              transactionDate: data.refuelingDate,
-            })
-            .returning();
-
-          data.transactionId = transaction.id;
-        }
+        data.transactionId = transaction.id;
       }
       // Проверяем изменилось ли количество КГ и есть ли привязанная транзакция (для НЕ черновиков)
       else if (
@@ -282,60 +197,39 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         data.quantityKg &&
         currentRefueling.transactionId &&
         currentRefueling.warehouseId &&
-        currentRefueling.productType !== PRODUCT_TYPE.SERVICE
+        (currentRefueling.productType === PRODUCT_TYPE.KEROSENE ||
+          currentRefueling.productType === PRODUCT_TYPE.PVKJ)
       ) {
-        if (data.productType === PRODUCT_TYPE.SERVICE) {
+        if (data.productType !== currentRefueling.productType) {
           throw new Error(
-            "You can`t change productType from PVKJ/KEROSENE to SERVICE for active deal",
+            "Нельзя поменять тип продукта для существующей сделки",
+          );
+        }
+
+        if (data.warehouseId !== currentRefueling.warehouseId) {
+          throw new Error(
+            "Нельзя поменять склад-источник для существующей сделки",
           );
         }
 
         const oldQuantityKg = parseFloat(currentRefueling.quantityKg);
         const newQuantityKg = parseFloat(data.quantityKg.toString());
+        const oldTotalCost = parseFloat(currentRefueling.purchaseAmount || "0");
+        const newTotalCost = data.purchaseAmount || 0;
 
         if (oldQuantityKg !== newQuantityKg) {
-          const quantityDiff = newQuantityKg - oldQuantityKg;
-
-          if (currentRefueling.warehouse && currentRefueling.transaction) {
-            const isPvkj = currentRefueling.productType === PRODUCT_TYPE.PVKJ;
-            const currentBalance = parseFloat(
-              isPvkj
-                ? currentRefueling.warehouse.pvkjBalance || "0"
-                : currentRefueling.warehouse.currentBalance || "0",
-            );
-            const newBalance = Math.max(0, currentBalance - quantityDiff);
-
-            const warehouseUpdateData: any = {
-              updatedAt: sql`NOW()`,
-              updatedById: data.updatedById,
-            };
-
-            if (isPvkj) {
-              warehouseUpdateData.pvkjBalance = newBalance.toFixed(2);
-            } else {
-              warehouseUpdateData.currentBalance = newBalance.toFixed(2);
-            }
-
-            await tx
-              .update(warehouses)
-              .set(warehouseUpdateData)
-              .where(eq(warehouses.id, currentRefueling.warehouseId));
-
-            await tx
-              .update(warehouseTransactions)
-              .set({
-                quantity: (-newQuantityKg).toString(),
-                sum: data.purchaseAmount?.toString(),
-                price: data.purchasePrice?.toString(),
-                balanceAfter: newBalance.toString(),
-                updatedAt: sql`NOW()`,
-                updatedById: data.updatedById,
-                transactionDate: data.refuelingDate,
-              })
-              .where(
-                eq(warehouseTransactions.id, currentRefueling.transactionId),
-              );
-          }
+          await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
+            tx,
+            currentRefueling.transactionId,
+            currentRefueling.warehouseId,
+            oldQuantityKg,
+            oldTotalCost,
+            newQuantityKg,
+            newTotalCost,
+            currentRefueling.productType,
+            data.updatedById,
+            data.refuelingDate,
+          );
         }
       }
 
@@ -366,46 +260,21 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         currentRefueling &&
         currentRefueling.transactionId &&
         currentRefueling.warehouseId &&
-        currentRefueling.productType !== PRODUCT_TYPE.SERVICE
+        (currentRefueling.productType === PRODUCT_TYPE.KEROSENE ||
+          currentRefueling.productType === PRODUCT_TYPE.PVKJ)
       ) {
         const quantityKg = parseFloat(currentRefueling.quantityKg);
-        const isPvkj = currentRefueling.productType === PRODUCT_TYPE.PVKJ;
+        const totalCost = parseFloat(currentRefueling.purchaseAmount || "0");
 
-        if (currentRefueling.warehouse) {
-          const currentBalance = parseFloat(
-            isPvkj
-              ? currentRefueling.warehouse.pvkjBalance || "0"
-              : currentRefueling.warehouse.currentBalance || "0",
-          );
-          const newBalance = currentBalance + quantityKg;
-
-          const updateData: any = {
-            updatedAt: sql`NOW()`,
-            updatedById: userId,
-          };
-
-          if (isPvkj) {
-            updateData.pvkjBalance = newBalance.toFixed(2);
-          } else {
-            updateData.currentBalance = newBalance.toFixed(2);
-          }
-
-          await tx
-            .update(warehouses)
-            .set(updateData)
-            .where(eq(warehouses.id, currentRefueling.warehouseId));
-
-          // Soft delete транзакции
-          await tx
-            .update(warehouseTransactions)
-            .set({
-              deletedAt: sql`NOW()`,
-              deletedById: userId,
-            })
-            .where(
-              eq(warehouseTransactions.id, currentRefueling.transactionId),
-            );
-        }
+        await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
+          tx,
+          currentRefueling.transactionId,
+          currentRefueling.warehouseId,
+          quantityKg,
+          totalCost,
+          currentRefueling.productType,
+          userId,
+        );
       }
 
       await tx

@@ -14,6 +14,7 @@ import {
 } from "@shared/schema";
 import { IOptStorage } from "./types";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
+import { WarehouseTransactionService } from "server/modules/warehouses/services/warehouse-transaction-service";
 
 export class OptStorage {
   async getOpt(id: string): Promise<Opt | undefined> {
@@ -151,55 +152,25 @@ export class OptStorage {
 
       // Обновляем остаток на складе только если это склад-поставщик и НЕ черновик
       if (!created.isDraft && created.warehouseId && created.quantityKg) {
-        const warehouse = await tx.query.warehouses.findFirst({
-          where: eq(warehouses.id, created.warehouseId),
-          with: {
-            supplier: true,
-          },
-        });
+        const { transaction } =
+          await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+            tx,
+            created.warehouseId,
+            TRANSACTION_TYPE.SALE,
+            PRODUCT_TYPE.KEROSENE,
+            SOURCE_TYPE.OPT,
+            created.id,
+            parseFloat(created.quantityKg),
+            parseFloat(created.purchaseAmount || "0"),
+            data.createdById,
+            created.dealDate,
+          );
 
-        // Проверяем что это склад поставщика
-        if (warehouse && warehouse.supplierId) {
-          const quantityKg = parseFloat(created.quantityKg);
-          const currentBalance = parseFloat(warehouse.currentBalance || "0");
-          const newBalance = Math.max(0, currentBalance - quantityKg);
-
-          await tx
-            .update(warehouses)
-            .set({
-              currentBalance: newBalance.toFixed(2),
-              updatedAt: sql`NOW()`,
-              updatedById: data.createdById,
-            })
-            .where(eq(warehouses.id, created.warehouseId));
-
-          // Создаем запись транзакции
-          const [transaction] = await tx
-            .insert(warehouseTransactions)
-            .values({
-              warehouseId: created.warehouseId,
-              transactionType: TRANSACTION_TYPE.SALE,
-              productType: PRODUCT_TYPE.KEROSENE,
-              sourceType: SOURCE_TYPE.OPT,
-              sourceId: created.id,
-              quantity: (-quantityKg).toString(),
-              sum: created.purchaseAmount,
-              price: created.purchasePrice,
-              balanceBefore: currentBalance.toString(),
-              balanceAfter: newBalance.toString(),
-              averageCostBefore: warehouse.averageCost || "0",
-              averageCostAfter: warehouse.averageCost || "0",
-              createdById: data.createdById,
-              transactionDate: created.dealDate,
-            })
-            .returning();
-
-          // Сохраняем ID транзакции в сделке
-          await tx
-            .update(opt)
-            .set({ transactionId: transaction.id })
-            .where(eq(opt.id, created.id));
-        }
+        // Сохраняем ID транзакции в сделке
+        await tx
+          .update(opt)
+          .set({ transactionId: transaction.id })
+          .where(eq(opt.id, created.id));
       }
 
       return created;
@@ -214,10 +185,6 @@ export class OptStorage {
       // Получаем текущую сделку с relations
       const currentOpt = await tx.query.opt.findFirst({
         where: eq(opt.id, id),
-        with: {
-          warehouse: true,
-          transaction: true,
-        },
       });
 
       if (!currentOpt) return undefined;
@@ -228,47 +195,21 @@ export class OptStorage {
 
       // Если сделка становится не черновиком, создаем транзакцию
       if (transitioningFromDraft && data.warehouseId && data.quantityKg) {
-        const warehouse = await tx.query.warehouses.findFirst({
-          where: eq(warehouses.id, data.warehouseId),
-          with: { supplier: true },
-        });
+        const { transaction } =
+          await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+            tx,
+            data.warehouseId,
+            TRANSACTION_TYPE.SALE,
+            PRODUCT_TYPE.KEROSENE,
+            SOURCE_TYPE.OPT,
+            currentOpt.id,
+            data.quantityKg,
+            data.purchaseAmount || 0,
+            data.updatedById,
+            data.dealDate,
+          );
 
-        if (warehouse && warehouse.supplierId) {
-          const quantityKg = parseFloat(data.quantityKg.toString());
-          const currentBalance = parseFloat(warehouse.currentBalance || "0");
-          const newBalance = Math.max(0, currentBalance - quantityKg);
-
-          await tx
-            .update(warehouses)
-            .set({
-              currentBalance: newBalance.toFixed(2),
-              updatedAt: sql`NOW()`,
-              updatedById: data.updatedById,
-            })
-            .where(eq(warehouses.id, data.warehouseId));
-
-          const [transaction] = await tx
-            .insert(warehouseTransactions)
-            .values({
-              warehouseId: data.warehouseId,
-              transactionType: TRANSACTION_TYPE.SALE,
-              productType: PRODUCT_TYPE.KEROSENE,
-              sourceType: SOURCE_TYPE.OPT,
-              sourceId: currentOpt.id,
-              quantity: (-quantityKg).toString(),
-              sum: data.purchaseAmount,
-              price: data.purchasePrice,
-              balanceBefore: currentBalance.toString(),
-              balanceAfter: newBalance.toString(),
-              averageCostBefore: warehouse.averageCost || "0",
-              averageCostAfter: warehouse.averageCost || "0",
-              createdById: data.updatedById,
-              transactionDate: data.dealDate,
-            })
-            .returning();
-
-          data.transactionId = transaction.id;
-        }
+        data.transactionId = transaction.id;
       }
       // Проверяем изменилось ли количество КГ и есть ли привязанная транзакция (для НЕ черновиков)
       else if (
@@ -277,42 +218,30 @@ export class OptStorage {
         currentOpt.transactionId &&
         currentOpt.warehouseId
       ) {
+        if (data.warehouseId !== currentOpt.warehouseId) {
+          throw new Error(
+            "Нельзя поменять склад-источник для существующей сделки",
+          );
+        }
+
         const oldQuantityKg = parseFloat(currentOpt.quantityKg);
-        const newQuantityKg = parseFloat(data.quantityKg.toString());
+        const newQuantityKg = data.quantityKg;
+        const oldTotalCost = parseFloat(currentOpt.purchaseAmount || "0");
+        const newTotalCost = data.purchaseAmount || 0;
 
         if (oldQuantityKg !== newQuantityKg) {
-          const quantityDiff = newQuantityKg - oldQuantityKg;
-
-          if (currentOpt.warehouse && currentOpt.transaction) {
-            const currentBalance = parseFloat(
-              currentOpt.warehouse.currentBalance || "0",
-            );
-            const newBalance = Math.max(0, currentBalance - quantityDiff);
-
-            // Обновляем баланс склада
-            await tx
-              .update(warehouses)
-              .set({
-                currentBalance: newBalance.toFixed(2),
-                updatedAt: sql`NOW()`,
-                updatedById: data.updatedById,
-              })
-              .where(eq(warehouses.id, currentOpt.warehouseId));
-
-            // Обновляем транзакцию
-            await tx
-              .update(warehouseTransactions)
-              .set({
-                quantity: (-newQuantityKg).toString(),
-                sum: data.purchaseAmount?.toString(),
-                price: data.purchasePrice?.toString(),
-                balanceAfter: newBalance.toString(),
-                updatedAt: sql`NOW()`,
-                updatedById: data.updatedById,
-                transactionDate: data.dealDate,
-              })
-              .where(eq(warehouseTransactions.id, currentOpt.transactionId));
-          }
+          await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
+            tx,
+            currentOpt.transactionId,
+            currentOpt.warehouseId,
+            oldQuantityKg,
+            oldTotalCost,
+            newQuantityKg,
+            newTotalCost,
+            PRODUCT_TYPE.KEROSENE,
+            data.updatedById,
+            data.dealDate,
+          );
         }
       }
 
@@ -333,43 +262,23 @@ export class OptStorage {
 
   async deleteOpt(id: string, userId?: string): Promise<boolean> {
     await db.transaction(async (tx) => {
-      // Получаем сделку с relations
       const currentOpt = await tx.query.opt.findFirst({
         where: eq(opt.id, id),
-        with: {
-          warehouse: true,
-        },
       });
 
-      if (
-        currentOpt &&
-        currentOpt.transactionId &&
-        currentOpt.warehouseId &&
-        currentOpt.warehouse
-      ) {
+      if (currentOpt && currentOpt.transactionId && currentOpt.warehouseId) {
         const quantityKg = parseFloat(currentOpt.quantityKg);
-        const currentBalance = parseFloat(
-          currentOpt.warehouse.currentBalance || "0",
+        const totalCost = parseFloat(currentOpt.purchaseAmount || "0");
+
+        await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
+          tx,
+          currentOpt.transactionId,
+          currentOpt.warehouseId,
+          quantityKg,
+          totalCost,
+          PRODUCT_TYPE.KEROSENE,
+          userId,
         );
-        const newBalance = currentBalance + quantityKg;
-
-        await tx
-          .update(warehouses)
-          .set({
-            currentBalance: newBalance.toFixed(2),
-            updatedAt: sql`NOW()`,
-            updatedById: userId,
-          })
-          .where(eq(warehouses.id, currentOpt.warehouseId));
-
-        // Soft delete транзакции
-        await tx
-          .update(warehouseTransactions)
-          .set({
-            deletedAt: sql`NOW()`,
-            deletedById: userId,
-          })
-          .where(eq(warehouseTransactions.id, currentOpt.transactionId));
       }
 
       await tx
