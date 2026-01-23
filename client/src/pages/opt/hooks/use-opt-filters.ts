@@ -158,6 +158,9 @@ export function useOptFilters({
   const availableCarriers = useMemo(() => {
     return (
       carriers?.filter((carrier) => {
+        // Если это превозчик, которую мы только что выбрали/создали, всегда показываем её
+        if (carrier.id === carrierId) return true;
+        
         if (!deliveryCosts) return true;
 
         const base = wholesaleBases?.find((b) => b.name === selectedBasis);
@@ -202,6 +205,7 @@ export function useOptFilters({
     wholesaleBases,
     supplierWarehouse,
     deliveryLocationId,
+    carrierId,
   ]);
 
   return {

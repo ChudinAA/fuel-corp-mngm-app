@@ -236,6 +236,7 @@ export function AddPriceDialog({
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/prices/list"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prices/find-active"] });
       toast({
         title: editPrice ? "Цена обновлена" : "Цена добавлена",
         description: editPrice
