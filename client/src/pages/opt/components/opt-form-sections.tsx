@@ -228,7 +228,7 @@ export function LogisticsSection({
                   <FormControl>
                     <div className="flex-1 min-w-0">
                       <Combobox
-                        options={deliveryLocations?.map((location) => {
+                        options={(deliveryLocations || []).map((location) => {
                           const base = getBase(location.baseId || "");
                           return {
                             value: location.id,
@@ -250,7 +250,7 @@ export function LogisticsSection({
                               </div>
                             )
                           };
-                        }) || []}
+                        })}
                         value={field.value}
                         onValueChange={field.onChange}
                         placeholder="Выберите место"

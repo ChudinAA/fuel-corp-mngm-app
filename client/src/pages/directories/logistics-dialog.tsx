@@ -265,6 +265,8 @@ export function AddLogisticsDialog({
       queryClient.invalidateQueries({ queryKey: ["/api/logistics/vehicles"] });
       queryClient.invalidateQueries({ queryKey: ["/api/logistics/trailers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/logistics/drivers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prices/find-active"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/delivery-costs"] });
       toast({
         title: editItem ? "Запись обновлена" : "Запись добавлена",
         description: editItem

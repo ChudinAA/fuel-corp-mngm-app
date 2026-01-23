@@ -82,6 +82,9 @@ export function useOptFilters({
   const availableLocations = useMemo(() => {
     return (
       deliveryLocations?.filter((location) => {
+        // Если это точка, которую мы только что выбрали/создали, всегда показываем её
+        if (location.id === deliveryLocationId) return true;
+
         if (!buyerId || !dealDate) return true;
 
         const buyerSalePrices = locationAvailableSaleLookup.data || [];
@@ -100,7 +103,7 @@ export function useOptFilters({
         return true;
       }) || []
     );
-  }, [buyerId, dealDate, allBases, locationAvailableSaleLookup.data]);
+  }, [buyerId, dealDate, allBases, locationAvailableSaleLookup.data, deliveryLocationId, deliveryLocations]);
 
   const purchaseLookup = usePriceLookup({
     counterpartyId: supplierId,
