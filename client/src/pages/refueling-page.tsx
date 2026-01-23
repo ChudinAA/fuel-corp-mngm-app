@@ -46,6 +46,7 @@ export default function RefuelingPage() {
 
   const handleRefuelingDeleted = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/refueling"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
   };
 
   return (

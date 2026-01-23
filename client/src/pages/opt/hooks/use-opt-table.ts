@@ -5,7 +5,9 @@ import { useToast } from "@/hooks/use-toast";
 
 export function useOptTable() {
   const [search, setSearch] = useState("");
-  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
+  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>(
+    {},
+  );
   const pageSize = 20;
   const { toast } = useToast();
 
@@ -16,19 +18,19 @@ export function useOptTable() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery<{ data: any[]; total: number }>({
-    queryKey: [
-      "/api/opt",
-      { search, columnFilters },
-    ],
+    queryKey: ["/api/opt", { search, columnFilters }],
     queryFn: async ({ pageParam = 0 }) => {
       const filters = Object.entries(columnFilters)
         .filter(([_, values]) => values.length > 0)
-        .map(([id, values]) => `&filter_${id}=${encodeURIComponent(values.join(","))}`)
+        .map(
+          ([id, values]) =>
+            `&filter_${id}=${encodeURIComponent(values.join(","))}`,
+        )
         .join("");
-      
+
       const res = await apiRequest(
         "GET",
-        `/api/opt?offset=${pageParam}&pageSize=${pageSize}${search ? `&search=${search}` : ""}${filters}`
+        `/api/opt?offset=${pageParam}&pageSize=${pageSize}${search ? `&search=${search}` : ""}${filters}`,
       );
       return res.json();
     },
@@ -45,29 +47,24 @@ export function useOptTable() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
-        queryKey: ["/api/opt"]
+      queryClient.invalidateQueries({ queryKey: ["/api/opt"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      toast({
+        title: "Сделка удалена",
+        description: "Оптовая сделка успешно удалена",
       });
-      toast({ title: "Сделка удалена", description: "Оптовая сделка успешно удалена" });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
   const handleDelete = (id: string) => {
-    const confirmed = window.confirm(
-      "Вы уверены, что хотите удалить эту сделку?\n\n" +
-      "⚠️ ВНИМАНИЕ: Удаление сделки повлияет на:\n" +
-      "• Остатки на складах\n" +
-      "• Транзакции склада (warehouse_transactions)\n" +
-      "• Связанные перемещения\n\n" +
-      "Это действие необратимо!"
-    );
-
-    if (confirmed) {
-      deleteMutation.mutate(id);
-    }
+    deleteMutation.mutate(id);
   };
 
   return {

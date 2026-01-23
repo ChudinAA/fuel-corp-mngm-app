@@ -57,6 +57,7 @@ export default function OptPage() {
 
   const handleOptDeleted = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/opt"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
   };
 
   return (
