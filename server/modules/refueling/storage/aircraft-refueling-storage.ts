@@ -259,20 +259,12 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
       if (
         currentRefueling &&
         currentRefueling.transactionId &&
-        currentRefueling.warehouseId &&
         (currentRefueling.productType === PRODUCT_TYPE.KEROSENE ||
           currentRefueling.productType === PRODUCT_TYPE.PVKJ)
       ) {
-        const quantityKg = parseFloat(currentRefueling.quantityKg);
-        const totalCost = parseFloat(currentRefueling.purchaseAmount || "0");
-
         await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
           tx,
           currentRefueling.transactionId,
-          currentRefueling.warehouseId,
-          quantityKg,
-          totalCost,
-          currentRefueling.productType,
           userId,
         );
       }

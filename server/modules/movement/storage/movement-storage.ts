@@ -348,44 +348,17 @@ export class MovementStorage implements IMovementStorage {
     await db.transaction(async (tx) => {
       const currentMovement = await tx.query.movement.findFirst({
         where: eq(movement.id, id),
-        with: {
-          toWarehouse: true,
-          fromWarehouse: true,
-          transaction: true,
-          sourceTransaction: true,
-        },
       });
 
       if (!currentMovement) {
-        console.log("❌ Перемещение не найдено");
-        return;
+        throw new Error("Перемещение не найдено");
       }
 
-      console.log("✓ Перемещение найдено:", {
-        id: currentMovement.id,
-        type: currentMovement.movementType,
-        productType: currentMovement.productType,
-        date: currentMovement.movementDate,
-        fromWarehouse: currentMovement.fromWarehouse?.name,
-        toWarehouse: currentMovement.toWarehouse?.name,
-      });
-
-      const quantityKg = parseFloat(currentMovement.quantityKg);
-      const totalCost = parseFloat(currentMovement.totalCost || "0");
-
       // Откатываем изменения на складе назначения
-      if (
-        currentMovement.transactionId &&
-        currentMovement.toWarehouseId &&
-        currentMovement.toWarehouse
-      ) {
+      if (currentMovement.transactionId) {
         await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
           tx,
           currentMovement.transactionId,
-          currentMovement.toWarehouseId,
-          quantityKg,
-          totalCost,
-          currentMovement.productType,
           userId,
         );
       }
@@ -393,17 +366,11 @@ export class MovementStorage implements IMovementStorage {
       // Откатываем изменения на складе-источнике для внутренних перемещений
       if (
         currentMovement.movementType === MOVEMENT_TYPE.INTERNAL &&
-        currentMovement.sourceTransactionId &&
-        currentMovement.fromWarehouseId &&
-        currentMovement.fromWarehouse
+        currentMovement.sourceTransactionId
       ) {
         await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
           tx,
           currentMovement.sourceTransactionId,
-          currentMovement.fromWarehouseId,
-          quantityKg,
-          0,
-          currentMovement.productType,
           userId,
         );
       }

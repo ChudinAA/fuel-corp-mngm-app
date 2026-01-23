@@ -266,17 +266,10 @@ export class OptStorage {
         where: eq(opt.id, id),
       });
 
-      if (currentOpt && currentOpt.transactionId && currentOpt.warehouseId) {
-        const quantityKg = parseFloat(currentOpt.quantityKg);
-        const totalCost = parseFloat(currentOpt.purchaseAmount || "0");
-
+      if (currentOpt && currentOpt.transactionId) {
         await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
           tx,
           currentOpt.transactionId,
-          currentOpt.warehouseId,
-          quantityKg,
-          totalCost,
-          PRODUCT_TYPE.KEROSENE,
           userId,
         );
       }
