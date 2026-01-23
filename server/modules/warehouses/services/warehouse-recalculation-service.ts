@@ -1,24 +1,8 @@
-
-import { eq, and, gt, sql, or } from "drizzle-orm";
+import { eq, and, gte, sql, or, isNull, desc, asc } from "drizzle-orm";
 import { warehouses, warehouseTransactions, opt, aircraftRefueling, movement } from "@shared/schema";
 import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 
-/**
- * Сервис для комплексного пересчета транзакций и сделок после изменения перемещений
- * 
- * Основные задачи:
- * 1. Пересчет всех транзакций склада после определенной даты с учетом изменения себестоимости
- * 2. Каскадное обновление связанных сделок (ОПТ и Заправки)
- * 3. Обработка внутренних перемещений, затрагивающих несколько складов
- */
 export class WarehouseRecalculationService {
-  /**
-   * Полный пересчет всех транзакций и сделок после изменения перемещения
-   * 
-   * @param tx - Database transaction
-   * @param affectedWarehouses - Массив затронутых складов с датами и типами продуктов
-   * @param updatedById - ID пользователя, вносящего изменения
-   */
   static async recalculateAllAffectedTransactions(
     tx: any,
     affectedWarehouses: Array<{
@@ -26,14 +10,25 @@ export class WarehouseRecalculationService {
       afterDate: string;
       productType: string;
     }>,
-    updatedById?: string
+    updatedById?: string,
+    visitedWarehouses?: Set<string>
   ) {
     console.log('  [WarehouseRecalculationService] recalculateAllAffectedTransactions');
     console.log('    Количество затронутых складов:', affectedWarehouses.length);
     
-    // Обрабатываем каждый затронутый склад
+    const visited = visitedWarehouses || new Set<string>();
+    
     for (let i = 0; i < affectedWarehouses.length; i++) {
       const { warehouseId, afterDate, productType } = affectedWarehouses[i];
+      const key = `${warehouseId}:${productType}`;
+      
+      if (visited.has(key)) {
+        console.log(`    Склад ${warehouseId} (${productType}) уже обработан, пропускаем`);
+        continue;
+      }
+      
+      visited.add(key);
+      
       console.log(`\n    === Пересчет склада ${i + 1} из ${affectedWarehouses.length} ===`);
       console.log('    Warehouse ID:', warehouseId);
       console.log('    After Date:', afterDate);
@@ -44,7 +39,8 @@ export class WarehouseRecalculationService {
         warehouseId,
         afterDate,
         productType,
-        updatedById
+        updatedById,
+        visited
       );
       
       console.log(`    ✓ Склад ${i + 1} пересчитан`);
@@ -53,61 +49,69 @@ export class WarehouseRecalculationService {
     console.log('\n  ✓ Все затронутые склады пересчитаны');
   }
 
-  /**
-   * Пересчитывает всю цепочку транзакций для конкретного склада
-   * 
-   * Алгоритм:
-   * 1. Получаем начальное состояние склада на момент afterDate
-   * 2. Получаем все транзакции после этой даты в хронологическом порядке
-   * 3. Последовательно пересчитываем каждую транзакцию
-   * 4. Для каждой транзакции обновляем связанные сделки
-   */
   private static async recalculateWarehouseChain(
     tx: any,
     warehouseId: string,
     afterDate: string,
     productType: string,
-    updatedById?: string
+    updatedById?: string,
+    visitedWarehouses?: Set<string>
   ) {
     console.log('      [recalculateWarehouseChain] Начало пересчета цепочки');
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
+    const visited = visitedWarehouses || new Set<string>();
 
-    // Получаем текущее состояние склада до afterDate
-    const initialState = await this.getWarehouseStateAtDate(
+    const initialState = await this.getWarehouseStateBeforeDate(
       tx,
       warehouseId,
       afterDate,
       productType
     );
 
-    console.log('      Начальное состояние на', afterDate, ':', initialState);
+    console.log('      Начальное состояние до', afterDate, ':', initialState);
 
-    // Получаем все транзакции после указанной даты, отсортированные по времени
-    const transactions = await tx.query.warehouseTransactions.findMany({
-      where: and(
-        eq(warehouseTransactions.warehouseId, warehouseId),
-        eq(warehouseTransactions.productType, productType),
-        gt(warehouseTransactions.createdAt, afterDate)
-      ),
-      orderBy: (warehouseTransactions, { asc }) => [asc(warehouseTransactions.createdAt)],
-      with: {
-        warehouse: true,
-      }
-    });
+    const transactions = await tx
+      .select()
+      .from(warehouseTransactions)
+      .where(
+        and(
+          eq(warehouseTransactions.warehouseId, warehouseId),
+          eq(warehouseTransactions.productType, productType),
+          isNull(warehouseTransactions.deletedAt),
+          or(
+            gte(warehouseTransactions.transactionDate, afterDate),
+            and(
+              isNull(warehouseTransactions.transactionDate),
+              gte(warehouseTransactions.createdAt, afterDate)
+            )
+          )
+        )
+      )
+      .orderBy(
+        asc(sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`),
+        asc(warehouseTransactions.createdAt),
+        asc(warehouseTransactions.id)
+      );
 
     console.log('      Найдено транзакций для пересчета:', transactions.length);
 
     let currentBalance = initialState.balance;
     let currentAverageCost = initialState.averageCost;
+    
+    const cascadeRecalculations: Array<{
+      warehouseId: string;
+      afterDate: string;
+      productType: string;
+    }> = [];
 
-    // Последовательно пересчитываем каждую транзакцию
     for (let i = 0; i < transactions.length; i++) {
       const transaction = transactions[i];
       console.log(`\n      --- Транзакция ${i + 1}/${transactions.length} ---`);
       console.log('      ID:', transaction.id);
       console.log('      Type:', transaction.transactionType);
       console.log('      Source:', transaction.sourceType, transaction.sourceId);
-      console.log('      Date:', transaction.createdAt);
+      console.log('      TransactionDate:', transaction.transactionDate);
+      console.log('      CreatedAt:', transaction.createdAt);
       
       const quantity = Math.abs(parseFloat(transaction.quantity));
       const isReceipt = transaction.transactionType === TRANSACTION_TYPE.RECEIPT || 
@@ -121,12 +125,12 @@ export class WarehouseRecalculationService {
       
       let newBalance: number;
       let newAverageCost: number;
+      let newSum: number;
+      let newPrice: number;
 
       if (isReceipt) {
-        // Приход - пересчитываем среднюю себестоимость
         newBalance = currentBalance + quantity;
         
-        // Получаем стоимость поступления
         const incomingCost = await this.getTransactionIncomingCost(
           tx,
           transaction.sourceType,
@@ -140,24 +144,32 @@ export class WarehouseRecalculationService {
         newAverageCost = newBalance > 0 
           ? (totalCurrentCost + incomingCost) / newBalance 
           : 0;
+        
+        newSum = incomingCost;
+        newPrice = quantity > 0 ? incomingCost / quantity : 0;
       } else {
-        // Расход - себестоимость не меняется
         newBalance = Math.max(0, currentBalance - quantity);
         newAverageCost = currentAverageCost;
+        
+        newSum = quantity * currentAverageCost;
+        newPrice = currentAverageCost;
       }
 
       console.log('      После пересчета:', {
         balance: newBalance,
         averageCost: newAverageCost,
+        sum: newSum,
+        price: newPrice,
       });
 
-      // Обновляем транзакцию
       await tx.update(warehouseTransactions)
         .set({
           balanceBefore: currentBalance.toString(),
           balanceAfter: newBalance.toString(),
           averageCostBefore: currentAverageCost.toFixed(4),
           averageCostAfter: newAverageCost.toFixed(4),
+          sum: newSum.toFixed(2),
+          price: newPrice.toFixed(4),
           updatedAt: sql`NOW()`,
           updatedById,
         })
@@ -165,7 +177,6 @@ export class WarehouseRecalculationService {
 
       console.log('      ✓ Транзакция обновлена в БД');
 
-      // Обновляем связанную сделку, если это продажа
       if (transaction.transactionType === TRANSACTION_TYPE.SALE) {
         console.log('      → Обновление связанной сделки (продажа)');
         await this.updateRelatedDeal(
@@ -177,23 +188,25 @@ export class WarehouseRecalculationService {
         );
       }
 
-      // Если это перемещение, обновляем связанное перемещение
-      if (transaction.sourceType === SOURCE_TYPE.MOVEMENT) {
-        console.log('      → Распространение пересчета на связанное перемещение');
-        await this.propagateMovementRecalculation(
+      if (transaction.sourceType === SOURCE_TYPE.MOVEMENT && 
+          transaction.transactionType === TRANSACTION_TYPE.TRANSFER_OUT) {
+        const movementCascade = await this.getMovementCascadeInfo(
           tx,
           transaction.sourceId,
           newAverageCost,
-          updatedById
+          quantity,
+          visited
         );
+        
+        if (movementCascade) {
+          cascadeRecalculations.push(movementCascade);
+        }
       }
 
-      // Обновляем текущее состояние для следующей итерации
       currentBalance = newBalance;
       currentAverageCost = newAverageCost;
     }
 
-    // Обновляем финальное состояние склада
     console.log('\n      Финальное состояние склада:', {
       balance: currentBalance,
       averageCost: currentAverageCost,
@@ -217,43 +230,61 @@ export class WarehouseRecalculationService {
       .where(eq(warehouses.id, warehouseId));
 
     console.log('      ✓ Склад обновлен с финальными значениями');
+
+    for (const cascade of cascadeRecalculations) {
+      const cascadeKey = `${cascade.warehouseId}:${cascade.productType}`;
+      if (visited.has(cascadeKey)) {
+        console.log(`      → Каскадный пересчет ${cascade.warehouseId} уже в процессе, пропускаем`);
+        continue;
+      }
+      
+      visited.add(cascadeKey);
+      console.log(`\n      → Каскадный пересчет склада-получателя: ${cascade.warehouseId}`);
+      await this.recalculateWarehouseChain(
+        tx,
+        cascade.warehouseId,
+        cascade.afterDate,
+        cascade.productType,
+        updatedById,
+        visited
+      );
+    }
   }
 
-  /**
-   * Получает состояние склада на определенную дату
-   */
-  private static async getWarehouseStateAtDate(
+  private static async getWarehouseStateBeforeDate(
     tx: any,
     warehouseId: string,
     beforeDate: string,
     productType: string
   ): Promise<{ balance: number; averageCost: number }> {
-    const isPvkj = productType === PRODUCT_TYPE.PVKJ;
+    const lastTransaction = await tx
+      .select()
+      .from(warehouseTransactions)
+      .where(
+        and(
+          eq(warehouseTransactions.warehouseId, warehouseId),
+          eq(warehouseTransactions.productType, productType),
+          isNull(warehouseTransactions.deletedAt),
+          sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt}) < ${beforeDate}`
+        )
+      )
+      .orderBy(
+        desc(sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`),
+        desc(warehouseTransactions.createdAt),
+        desc(warehouseTransactions.id)
+      )
+      .limit(1);
 
-    // Получаем последнюю транзакцию до указанной даты
-    const lastTransaction = await tx.query.warehouseTransactions.findFirst({
-      where: and(
-        eq(warehouseTransactions.warehouseId, warehouseId),
-        eq(warehouseTransactions.productType, productType),
-        sql`${warehouseTransactions.createdAt} <= ${beforeDate}`
-      ),
-      orderBy: (warehouseTransactions, { desc }) => [desc(warehouseTransactions.createdAt)],
-    });
-
-    if (lastTransaction) {
+    if (lastTransaction.length > 0) {
       return {
-        balance: parseFloat(lastTransaction.balanceAfter || "0"),
-        averageCost: parseFloat(lastTransaction.averageCostAfter || "0"),
+        balance: parseFloat(lastTransaction[0].balanceAfter || "0"),
+        averageCost: parseFloat(lastTransaction[0].averageCostAfter || "0"),
       };
     }
 
-    // Если нет транзакций до этой даты, возвращаем нулевые значения
     return { balance: 0, averageCost: 0 };
   }
 
-  /**
-   * Получает стоимость поступления для транзакции
-   */
   private static async getTransactionIncomingCost(
     tx: any,
     sourceType: string,
@@ -270,13 +301,69 @@ export class WarehouseRecalculationService {
       }
     }
 
-    // Для других типов (продажи) стоимость не применяется к приходу
     return 0;
   }
 
-  /**
-   * Обновляет связанную сделку (ОПТ или Заправка) с новой себестоимостью
-   */
+  private static async getMovementCascadeInfo(
+    tx: any,
+    movementId: string,
+    newSourceAverageCost: number,
+    quantity: number,
+    visitedWarehouses: Set<string>
+  ): Promise<{ warehouseId: string; afterDate: string; productType: string } | null> {
+    const movementRecord = await tx.query.movement.findFirst({
+      where: eq(movement.id, movementId),
+    });
+
+    if (!movementRecord || !movementRecord.toWarehouseId || !movementRecord.fromWarehouseId) {
+      return null;
+    }
+
+    const cascadeKey = `${movementRecord.toWarehouseId}:${movementRecord.productType || "kerosene"}`;
+    if (visitedWarehouses.has(cascadeKey)) {
+      console.log(`        Склад-получатель ${movementRecord.toWarehouseId} уже в очереди на пересчет`);
+      return null;
+    }
+
+    const newTotalCost = quantity * newSourceAverageCost;
+    const oldTotalCost = parseFloat(movementRecord.totalCost || "0");
+    
+    if (Math.abs(newTotalCost - oldTotalCost) > 0.01) {
+      console.log(`        Обновление стоимости перемещения: ${oldTotalCost} -> ${newTotalCost}`);
+      
+      await tx.update(movement)
+        .set({
+          totalCost: newTotalCost.toFixed(2),
+          updatedAt: sql`NOW()`,
+        })
+        .where(eq(movement.id, movementId));
+
+      const destinationTransaction = await tx.query.warehouseTransactions.findFirst({
+        where: and(
+          eq(warehouseTransactions.sourceType, SOURCE_TYPE.MOVEMENT),
+          eq(warehouseTransactions.sourceId, movementId),
+          eq(warehouseTransactions.warehouseId, movementRecord.toWarehouseId),
+          or(
+            eq(warehouseTransactions.transactionType, TRANSACTION_TYPE.RECEIPT),
+            eq(warehouseTransactions.transactionType, TRANSACTION_TYPE.TRANSFER_IN)
+          ),
+          isNull(warehouseTransactions.deletedAt)
+        )
+      });
+
+      if (destinationTransaction) {
+        const txDate = destinationTransaction.transactionDate || destinationTransaction.createdAt;
+        return {
+          warehouseId: movementRecord.toWarehouseId,
+          afterDate: txDate,
+          productType: movementRecord.productType || "kerosene",
+        };
+      }
+    }
+
+    return null;
+  }
+
   private static async updateRelatedDeal(
     tx: any,
     sourceType: string,
@@ -365,108 +452,25 @@ export class WarehouseRecalculationService {
     }
   }
 
-  /**
-   * Распространяет пересчет на склады, затронутые перемещением
-   * 
-   * При внутреннем перемещении может быть затронут склад-получатель,
-   * если изменилась себестоимость склада-отправителя
-   */
-  private static async propagateMovementRecalculation(
-    tx: any,
-    movementId: string,
-    newSourceAverageCost: number,
-    updatedById?: string
-  ) {
-    console.log('        [propagateMovementRecalculation]');
-    console.log('        Movement ID:', movementId);
-    console.log('        New source average cost:', newSourceAverageCost);
-    
-    const movementRecord = await tx.query.movement.findFirst({
-      where: eq(movement.id, movementId),
-      with: {
-        toWarehouse: true,
-        fromWarehouse: true,
-      }
-    });
-
-    if (!movementRecord) {
-      console.log('        ⚠ Перемещение не найдено');
-      return;
-    }
-
-    console.log('        Перемещение найдено:', {
-      type: movementRecord.movementType,
-      from: movementRecord.fromWarehouse?.name,
-      to: movementRecord.toWarehouse?.name,
-    });
-
-    // Для внутренних перемещений пересчитываем склад-получатель
-    if (movementRecord.toWarehouseId && movementRecord.fromWarehouseId) {
-      console.log('        → Внутреннее перемещение, пересчитываем склад-получатель');
-      
-      // Получаем транзакцию прихода на склад-получатель
-      const destinationTransaction = await tx.query.warehouseTransactions.findFirst({
-        where: and(
-          eq(warehouseTransactions.sourceType, SOURCE_TYPE.MOVEMENT),
-          eq(warehouseTransactions.sourceId, movementId),
-          eq(warehouseTransactions.warehouseId, movementRecord.toWarehouseId),
-          or(
-            eq(warehouseTransactions.transactionType, TRANSACTION_TYPE.RECEIPT),
-            eq(warehouseTransactions.transactionType, TRANSACTION_TYPE.TRANSFER_IN)
-          )
-        )
-      });
-
-      if (destinationTransaction) {
-        console.log('        Транзакция прихода найдена:', destinationTransaction.id);
-        console.log('        Пересчет склада-получателя с даты:', destinationTransaction.createdAt);
-        
-        // Пересчитываем склад-получатель, так как себестоимость источника изменилась
-        await this.recalculateWarehouseChain(
-          tx,
-          movementRecord.toWarehouseId,
-          destinationTransaction.createdAt,
-          movementRecord.productType,
-          updatedById
-        );
-        
-        console.log('        ✓ Склад-получатель пересчитан');
-      } else {
-        console.log('        ⚠ Транзакция прихода на склад-получатель не найдена');
-      }
-    } else {
-      console.log('        ⚠ Не внутреннее перемещение, пропускаем');
-    }
-  }
-
-  /**
-   * Создает список затронутых складов для пересчета
-   * 
-   * @param movementRecord - Запись перемещения
-   * @param movementDate - Дата перемещения
-   * @returns Массив объектов с информацией о затронутых складах
-   */
   static getAffectedWarehouses(
     movementRecord: any,
     movementDate: string
   ): Array<{ warehouseId: string; afterDate: string; productType: string }> {
     const affected: Array<{ warehouseId: string; afterDate: string; productType: string }> = [];
 
-    // Склад-получатель всегда затронут
-    if (movementRecord.toWarehouseId) {
-      affected.push({
-        warehouseId: movementRecord.toWarehouseId,
-        afterDate: movementDate,
-        productType: movementRecord.productType,
-      });
-    }
-
-    // Склад-отправитель затронут при внутреннем перемещении
     if (movementRecord.fromWarehouseId) {
       affected.push({
         warehouseId: movementRecord.fromWarehouseId,
         afterDate: movementDate,
-        productType: movementRecord.productType,
+        productType: movementRecord.productType || "kerosene",
+      });
+    }
+
+    if (movementRecord.toWarehouseId) {
+      affected.push({
+        warehouseId: movementRecord.toWarehouseId,
+        afterDate: movementDate,
+        productType: movementRecord.productType || "kerosene",
       });
     }
 

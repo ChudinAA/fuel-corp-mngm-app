@@ -61,6 +61,14 @@ export const CUSTOMER_MODULE = {
   BOTH: 'both',
 } as const;
 
+// Recalculation queue status
+export const RECALCULATION_STATUS = {
+  PENDING: 'pending',
+  PROCESSING: 'processing',
+  COMPLETED: 'completed',
+  FAILED: 'failed',
+} as const;
+
 // Type exports for TypeScript
 export type ProductType = typeof PRODUCT_TYPE[keyof typeof PRODUCT_TYPE];
 export type TransactionType = typeof TRANSACTION_TYPE[keyof typeof TRANSACTION_TYPE];
@@ -70,3 +78,4 @@ export type CounterpartyType = typeof COUNTERPARTY_TYPE[keyof typeof COUNTERPART
 export type CounterpartyRole = typeof COUNTERPARTY_ROLE[keyof typeof COUNTERPARTY_ROLE];
 export type BaseType = typeof BASE_TYPE[keyof typeof BASE_TYPE];
 export type CustomerModule = typeof CUSTOMER_MODULE[keyof typeof CUSTOMER_MODULE];
+export type RecalculationStatus = typeof RECALCULATION_STATUS[keyof typeof RECALCULATION_STATUS];

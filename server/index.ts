@@ -5,6 +5,7 @@ import { createServer } from "http";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
+import { RecalculationWorker } from "./modules/warehouses/services/recalculation-worker";
 
 const app = express();
 const httpServer = createServer(app);
@@ -120,6 +121,9 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
+      
+      RecalculationWorker.start(5000);
+      log("Recalculation worker started");
     },
   );
 })();

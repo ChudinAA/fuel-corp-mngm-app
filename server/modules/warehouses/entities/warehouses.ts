@@ -216,3 +216,54 @@ export type InsertWarehouseTransaction = z.infer<
 >;
 
 export type WarehouseBase = typeof warehouseBases.$inferSelect;
+
+// ============ RECALCULATION QUEUE ============
+
+export const recalculationQueue = pgTable(
+  "recalculation_queue",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    warehouseId: uuid("warehouse_id")
+      .notNull()
+      .references(() => warehouses.id),
+    productType: text("product_type").notNull().default("kerosene"),
+    afterDate: timestamp("after_date", { mode: "string" }).notNull(),
+    status: text("status").notNull().default("pending"),
+    priority: integer("priority").default(0),
+    attempts: integer("attempts").default(0),
+    errorMessage: text("error_message"),
+    processingStartedAt: timestamp("processing_started_at", { mode: "string" }),
+    processedAt: timestamp("processed_at", { mode: "string" }),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+    createdById: uuid("created_by_id").references(() => users.id),
+  },
+  (table) => ({
+    warehouseProductIdx: index("recalculation_queue_warehouse_product_idx").on(
+      table.warehouseId,
+      table.productType,
+    ),
+    statusIdx: index("recalculation_queue_status_idx").on(table.status),
+    priorityIdx: index("recalculation_queue_priority_idx").on(table.priority, table.createdAt),
+  }),
+);
+
+export const recalculationQueueRelations = relations(
+  recalculationQueue,
+  ({ one }) => ({
+    warehouse: one(warehouses, {
+      fields: [recalculationQueue.warehouseId],
+      references: [warehouses.id],
+    }),
+    createdBy: one(users, {
+      fields: [recalculationQueue.createdById],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const insertRecalculationQueueSchema = createInsertSchema(
+  recalculationQueue,
+).omit({ id: true, createdAt: true });
+
+export type RecalculationQueueItem = typeof recalculationQueue.$inferSelect;
+export type InsertRecalculationQueueItem = z.infer<typeof insertRecalculationQueueSchema>;

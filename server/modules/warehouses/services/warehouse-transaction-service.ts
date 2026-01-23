@@ -1,11 +1,61 @@
-import { eq, and, gt, sql } from "drizzle-orm";
+import { eq, and, gt, sql, isNull, desc, asc } from "drizzle-orm";
 import { warehouses, warehouseTransactions } from "@shared/schema";
 import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
+import { RecalculationQueueService } from "./recalculation-queue-service";
 
 export class WarehouseTransactionService {
-  /**
-   * Создает транзакцию и обновляет баланс склада
-   */
+  private static isBackdated(dealDate?: string): boolean {
+    if (!dealDate) return false;
+    
+    const txDate = new Date(dealDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    txDate.setHours(0, 0, 0, 0);
+    
+    return txDate < today;
+  }
+
+  private static async getLatestTransactionDate(
+    tx: any,
+    warehouseId: string,
+    productType: string
+  ): Promise<string | null> {
+    const latest = await tx
+      .select()
+      .from(warehouseTransactions)
+      .where(
+        and(
+          eq(warehouseTransactions.warehouseId, warehouseId),
+          eq(warehouseTransactions.productType, productType),
+          isNull(warehouseTransactions.deletedAt)
+        )
+      )
+      .orderBy(
+        desc(sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`),
+        desc(warehouseTransactions.id)
+      )
+      .limit(1);
+
+    if (latest.length > 0) {
+      return latest[0].transactionDate || latest[0].createdAt;
+    }
+    return null;
+  }
+
+  private static async needsRecalculation(
+    tx: any,
+    warehouseId: string,
+    productType: string,
+    dealDate?: string
+  ): Promise<boolean> {
+    if (!dealDate) return false;
+    
+    const latestDate = await this.getLatestTransactionDate(tx, warehouseId, productType);
+    if (!latestDate) return false;
+    
+    return new Date(dealDate) < new Date(latestDate);
+  }
+
   static async createTransactionAndUpdateWarehouse(
     tx: any,
     warehouseId: string,
@@ -47,20 +97,16 @@ export class WarehouseTransactionService {
       transactionType === TRANSACTION_TYPE.RECEIPT ||
       transactionType === TRANSACTION_TYPE.TRANSFER_IN;
 
-    // Расчет нового баланса и себестоимости
     if (isReceipt) {
-      // Приход
       newBalance = currentBalance + quantity;
       const totalCurrentCost = currentBalance * currentCost;
       newAverageCost =
         newBalance > 0 ? (totalCurrentCost + totalCost) / newBalance : 0;
     } else {
-      // Расход
       newBalance = Math.max(0, currentBalance - quantity);
-      newAverageCost = currentCost; // При расходе себестоимость не меняется
+      newAverageCost = currentCost;
     }
 
-    // Обновляем склад
     if (isPvkj) {
       await tx
         .update(warehouses)
@@ -83,7 +129,6 @@ export class WarehouseTransactionService {
         .where(eq(warehouses.id, warehouseId));
     }
 
-    // При расходе totalCost = 0
     if (totalCost === 0) {
       sum = quantity * currentCost;
       price = currentCost;
@@ -92,7 +137,6 @@ export class WarehouseTransactionService {
       price = quantity > 0 ? totalCost / quantity : 0;
     }
 
-    // Создаем транзакцию
     const [transaction] = await tx
       .insert(warehouseTransactions)
       .values({
@@ -113,12 +157,21 @@ export class WarehouseTransactionService {
       })
       .returning();
 
+    const needsRecalc = await this.needsRecalculation(tx, warehouseId, productType, dealDate);
+    if (needsRecalc && dealDate) {
+      console.log(`[WarehouseTransactionService] Backdated transaction detected, queuing recalculation for ${warehouseId}`);
+      await RecalculationQueueService.addToQueue(
+        warehouseId,
+        productType,
+        dealDate,
+        createdById,
+        1
+      );
+    }
+
     return { transaction, newAverageCost, newBalance };
   }
 
-  /**
-   * Обновляет транзакцию и пересчитывает баланс склада
-   */
   static async updateTransactionAndRecalculateWarehouse(
     tx: any,
     transactionId: string,
@@ -133,7 +186,6 @@ export class WarehouseTransactionService {
   ) {
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
 
-    // Получаем информацию о транзакции для определения типа операции
     const transaction = await tx.query.warehouseTransactions.findFirst({
       where: eq(warehouseTransactions.id, transactionId),
     });
@@ -174,7 +226,6 @@ export class WarehouseTransactionService {
     let price: number;
 
     if (isReceipt) {
-      // Для прихода: откатываем добавление, затем применяем новое
       balanceBeforeOldOperation = currentBalance - oldQuantity;
       totalCostBeforeOldOperation = currentBalance * currentCost - oldTotalCost;
 
@@ -183,16 +234,14 @@ export class WarehouseTransactionService {
       newAverageCost =
         newBalance > 0 ? newTotalCostInWarehouse / newBalance : 0;
     } else {
-      // Для расхода: откатываем вычитание (добавляем обратно), затем применяем новое вычитание
       balanceBeforeOldOperation = currentBalance + oldQuantity;
       totalCostBeforeOldOperation = balanceBeforeOldOperation * currentCost;
 
       newBalance = Math.max(0, balanceBeforeOldOperation - newQuantity);
-      newTotalCostInWarehouse = totalCostBeforeOldOperation; // При расходе себестоимость не меняется
-      newAverageCost = currentCost; // Сохраняем текущую себестоимость
+      newTotalCostInWarehouse = totalCostBeforeOldOperation;
+      newAverageCost = currentCost;
     }
 
-    // При расходе totalCost = 0
     if (newTotalCost === 0) {
       sum = newQuantity * currentCost;
       price = currentCost;
@@ -201,7 +250,6 @@ export class WarehouseTransactionService {
       price = newQuantity > 0 ? newTotalCost / newQuantity : 0;
     }
 
-    // Обновляем склад
     if (isPvkj) {
       await tx
         .update(warehouses)
@@ -224,7 +272,6 @@ export class WarehouseTransactionService {
         .where(eq(warehouses.id, warehouseId));
     }
 
-    // Обновляем транзакцию
     await tx
       .update(warehouseTransactions)
       .set({
@@ -241,18 +288,29 @@ export class WarehouseTransactionService {
       })
       .where(eq(warehouseTransactions.id, transactionId));
 
+    const oldTxDate = transaction.transactionDate || transaction.createdAt;
+    const effectiveDate = dealDate && new Date(dealDate) < new Date(oldTxDate) ? dealDate : oldTxDate;
+    
+    const needsRecalc = await this.needsRecalculation(tx, warehouseId, productType, effectiveDate);
+    if (needsRecalc || this.isBackdated(effectiveDate)) {
+      console.log(`[WarehouseTransactionService] Transaction update requires recalculation for ${warehouseId}`);
+      await RecalculationQueueService.addToQueue(
+        warehouseId,
+        productType,
+        effectiveDate,
+        updatedById,
+        1
+      );
+    }
+
     return { newAverageCost, newBalance };
   }
 
-  /**
-   * Удаляет транзакцию и откатывает изменения склада
-   */
   static async deleteTransactionAndRevertWarehouse(
     tx: any,
     transactionId: string,
     updatedById?: string,
   ) {
-    // Получаем информацию о транзакции для определения типа операции
     const transaction = await tx.query.warehouseTransactions.findFirst({
       where: eq(warehouseTransactions.id, transactionId),
     });
@@ -289,13 +347,11 @@ export class WarehouseTransactionService {
     let newAverageCost = currentCost;
 
     if (transaction.averageCostBefore !== transaction.averageCostAfter) {
-      // Пересчитываем среднюю себестоимость
       const totalCostBeforeRemoval = currentBalance * currentCost;
       const newTotalCost = Math.max(0, totalCostBeforeRemoval - totalCost);
       newAverageCost = newBalance > 0 ? newTotalCost / newBalance : 0;
     }
 
-    // Обновляем склад
     if (isPvkj) {
       await tx
         .update(warehouses)
@@ -318,7 +374,6 @@ export class WarehouseTransactionService {
         .where(eq(warehouses.id, transaction.warehouseId));
     }
 
-    // Soft delete транзакции
     await tx
       .update(warehouseTransactions)
       .set({
@@ -327,12 +382,28 @@ export class WarehouseTransactionService {
       })
       .where(eq(warehouseTransactions.id, transactionId));
 
+    const txDate = transaction.transactionDate || transaction.createdAt;
+    const needsRecalc = await this.needsRecalculation(
+      tx, 
+      transaction.warehouseId, 
+      transaction.productType || "kerosene", 
+      txDate
+    );
+    
+    if (needsRecalc || this.isBackdated(txDate)) {
+      console.log(`[WarehouseTransactionService] Transaction deletion requires recalculation for ${transaction.warehouseId}`);
+      await RecalculationQueueService.addToQueue(
+        transaction.warehouseId,
+        transaction.productType || "kerosene",
+        txDate,
+        updatedById,
+        1
+      );
+    }
+
     return { newAverageCost, newBalance };
   }
 
-  /**
-   * Восстанавливет транзакцию и пересчитывает баланс склада
-   */
   static async restoreTransactionAndRecalculateWarehouse(
     tx: any,
     transactionId: string,
@@ -374,13 +445,11 @@ export class WarehouseTransactionService {
     let newAverageCost = currentCost;
 
     if (transaction.averageCostBefore !== transaction.averageCostAfter) {
-      // Пересчитываем среднюю себестоимость
       const totalCostBeforeRemoval = currentBalance * currentCost;
       const newTotalCost = Math.max(0, totalCostBeforeRemoval + totalCost);
       newAverageCost = newBalance > 0 ? newTotalCost / newBalance : 0;
     }
 
-    // Обновляем склад
     if (isPvkj) {
       await tx
         .update(warehouses)
@@ -403,7 +472,6 @@ export class WarehouseTransactionService {
         .where(eq(warehouses.id, transaction.warehouseId));
     }
 
-    // Restore soft delete транзакции
     await tx
       .update(warehouseTransactions)
       .set({
@@ -411,6 +479,25 @@ export class WarehouseTransactionService {
         deletedById: null,
       })
       .where(eq(warehouseTransactions.id, transactionId));
+
+    const txDate = transaction.transactionDate || transaction.createdAt;
+    const needsRecalc = await this.needsRecalculation(
+      tx, 
+      transaction.warehouseId, 
+      transaction.productType || "kerosene", 
+      txDate
+    );
+    
+    if (needsRecalc || this.isBackdated(txDate)) {
+      console.log(`[WarehouseTransactionService] Transaction restore requires recalculation for ${transaction.warehouseId}`);
+      await RecalculationQueueService.addToQueue(
+        transaction.warehouseId,
+        transaction.productType || "kerosene",
+        txDate,
+        updatedById,
+        1
+      );
+    }
 
     return { newAverageCost, newBalance };
   }
