@@ -405,29 +405,20 @@ export class MovementStorage implements IMovementStorage {
 
       // Restore associated transactions
       if (oldData.transactionId) {
-        await tx
-          .update(warehouseTransactions)
-          .set({
-            deletedAt: null,
-            deletedById: null,
-          })
-          .where(eq(warehouseTransactions.id, oldData.transactionId));
+        await WarehouseTransactionService.restoreTransactionAndRecalculateWarehouse(
+          tx,
+          oldData.transactionId,
+          userId,
+        );
       }
 
       if (oldData.sourceTransactionId) {
-        await tx
-          .update(warehouseTransactions)
-          .set({
-            deletedAt: null,
-            deletedById: null,
-          })
-          .where(eq(warehouseTransactions.id, oldData.sourceTransactionId));
+        await WarehouseTransactionService.restoreTransactionAndRecalculateWarehouse(
+          tx,
+          oldData.sourceTransactionId,
+          userId,
+        );
       }
-
-      // Recalculate warehouse balances
-      // This is complex and should use the same logic as createMovement
-      // For simplicity, we'll just restore the transactions
-      // The warehouse balances will be recalculated on next transaction
     });
 
     return true;

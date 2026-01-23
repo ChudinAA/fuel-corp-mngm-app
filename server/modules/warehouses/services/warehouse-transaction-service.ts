@@ -1,31 +1,6 @@
 import { eq, and, gt, sql } from "drizzle-orm";
-import {
-  warehouses,
-  warehouseTransactions,
-  opt,
-  aircraftRefueling,
-  movement,
-} from "@shared/schema";
-import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
-
-interface WarehouseUpdate {
-  warehouseId: string;
-  productType: string;
-  quantity: number;
-  totalCost: number;
-  isPvkj: boolean;
-}
-
-interface TransactionRecord {
-  warehouseId: string;
-  transactionType: string;
-  productType: string;
-  sourceType: string;
-  sourceId: string;
-  quantity: number;
-  createdById?: string;
-  updatedById?: string;
-}
+import { warehouses, warehouseTransactions } from "@shared/schema";
+import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 
 export class WarehouseTransactionService {
   /**
@@ -349,6 +324,91 @@ export class WarehouseTransactionService {
       .set({
         deletedAt: sql`NOW()`,
         deletedById: updatedById,
+      })
+      .where(eq(warehouseTransactions.id, transactionId));
+
+    return { newAverageCost, newBalance };
+  }
+
+  /**
+   * Восстанавливет транзакцию и пересчитывает баланс склада
+   */
+  static async restoreTransactionAndRecalculateWarehouse(
+    tx: any,
+    transactionId: string,
+    updatedById?: string,
+  ) {
+    const transaction = await tx.query.warehouseTransactions.findFirst({
+      where: eq(warehouseTransactions.id, transactionId),
+    });
+
+    if (!transaction) {
+      throw new Error(`Transaction ${transactionId} not found`);
+    }
+
+    const isPvkj = transaction.productType === PRODUCT_TYPE.PVKJ;
+
+    const warehouse = await tx.query.warehouses.findFirst({
+      where: eq(warehouses.id, transaction.warehouseId),
+    });
+
+    if (!warehouse) {
+      throw new Error(`Warehouse ${transaction.warehouseId} not found`);
+    }
+
+    const quantity = parseFloat(transaction.quantity);
+    const totalCost = parseFloat(transaction.sum || "0");
+
+    let currentBalance: number;
+    let currentCost: number;
+
+    if (isPvkj) {
+      currentBalance = parseFloat(warehouse.pvkjBalance || "0");
+      currentCost = parseFloat(warehouse.pvkjAverageCost || "0");
+    } else {
+      currentBalance = parseFloat(warehouse.currentBalance || "0");
+      currentCost = parseFloat(warehouse.averageCost || "0");
+    }
+
+    const newBalance = Math.max(0, currentBalance + quantity);
+    let newAverageCost = currentCost;
+
+    if (transaction.averageCostBefore !== transaction.averageCostAfter) {
+      // Пересчитываем среднюю себестоимость
+      const totalCostBeforeRemoval = currentBalance * currentCost;
+      const newTotalCost = Math.max(0, totalCostBeforeRemoval + totalCost);
+      newAverageCost = newBalance > 0 ? newTotalCost / newBalance : 0;
+    }
+
+    // Обновляем склад
+    if (isPvkj) {
+      await tx
+        .update(warehouses)
+        .set({
+          pvkjBalance: newBalance.toFixed(2),
+          pvkjAverageCost: newAverageCost.toFixed(4),
+          updatedAt: sql`NOW()`,
+          updatedById: updatedById,
+        })
+        .where(eq(warehouses.id, transaction.warehouseId));
+    } else {
+      await tx
+        .update(warehouses)
+        .set({
+          currentBalance: newBalance.toFixed(2),
+          averageCost: newAverageCost.toFixed(4),
+          updatedAt: sql`NOW()`,
+          updatedById: updatedById,
+        })
+        .where(eq(warehouses.id, transaction.warehouseId));
+    }
+
+    // Restore soft delete транзакции
+    await tx
+      .update(warehouseTransactions)
+      .set({
+        deletedAt: null,
+        deletedById: null,
       })
       .where(eq(warehouseTransactions.id, transactionId));
 

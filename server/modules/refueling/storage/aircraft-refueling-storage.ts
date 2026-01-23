@@ -337,51 +337,12 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         .where(eq(aircraftRefueling.id, id));
 
       // Restore associated transaction if exists and not a service
-      if (
-        oldData.transactionId &&
-        oldData.productType !== PRODUCT_TYPE.SERVICE
-      ) {
-        await tx
-          .update(warehouseTransactions)
-          .set({
-            deletedAt: null,
-            deletedById: null,
-          })
-          .where(eq(warehouseTransactions.id, oldData.transactionId));
-
-        // Recalculate warehouse balance
-        if (oldData.warehouseId && oldData.quantityKg) {
-          const warehouse = await tx.query.warehouses.findFirst({
-            where: eq(warehouses.id, oldData.warehouseId),
-          });
-
-          if (warehouse) {
-            const quantityKg = parseFloat(oldData.quantityKg);
-            const isPvkj = oldData.productType === PRODUCT_TYPE.PVKJ;
-            const currentBalance = parseFloat(
-              isPvkj
-                ? warehouse.pvkjBalance || "0"
-                : warehouse.currentBalance || "0",
-            );
-            const newBalance = Math.max(0, currentBalance - quantityKg);
-
-            const updateData: any = {
-              updatedAt: sql`NOW()`,
-              updatedById: userId,
-            };
-
-            if (isPvkj) {
-              updateData.pvkjBalance = newBalance.toFixed(2);
-            } else {
-              updateData.currentBalance = newBalance.toFixed(2);
-            }
-
-            await tx
-              .update(warehouses)
-              .set(updateData)
-              .where(eq(warehouses.id, oldData.warehouseId));
-          }
-        }
+      if (oldData.transactionId) {
+        await WarehouseTransactionService.restoreTransactionAndRecalculateWarehouse(
+          tx,
+          oldData.transactionId,
+          userId,
+        );
       }
     });
 
