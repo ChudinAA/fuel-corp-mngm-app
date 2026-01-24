@@ -131,3 +131,13 @@ app.use((req, res, next) => {
     },
   );
 })();
+
+// Graceful shutdown
+const shutdown = () => {
+  log("Shutting down...");
+  RecalculationWorker.stop();
+  process.exit(0);
+};
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
