@@ -21,8 +21,25 @@ export function useWarehouseBalance(warehouseId: string | undefined, date: Date 
   });
 }
 
+import { useState, useEffect } from "react";
+
+export function useWarehouseBalance(warehouseId: string | undefined, date: Date | undefined, productType?: string) {
+  // ...
+}
+
 export function useWarehouses() {
-  return useQuery({
+  const [forcedPollingCount, setForcedPollingCount] = useState(0);
+
+  useEffect(() => {
+    if (forcedPollingCount > 0) {
+      const timer = setTimeout(() => {
+        setForcedPollingCount(prev => prev - 1);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [forcedPollingCount]);
+
+  const query = useQuery({
     queryKey: ["/api/warehouses"],
     queryFn: async () => {
       const res = await fetch("/api/warehouses");
@@ -30,6 +47,8 @@ export function useWarehouses() {
       return res.json();
     },
     refetchInterval: (query) => {
+      if (forcedPollingCount > 0) return 2000;
+      
       const warehouses = query.state.data as any[];
       if (warehouses && warehouses.some((w: any) => w.isRecalculating)) {
         return 2000; // Poll every 2s if any warehouse is recalculating
@@ -37,4 +56,9 @@ export function useWarehouses() {
       return false; // Disable polling otherwise
     }
   });
+
+  return {
+    ...query,
+    startForcedPolling: () => setForcedPollingCount(3) // 3 times * 2s = 6s of forced polling
+  };
 }
