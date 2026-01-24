@@ -1,7 +1,8 @@
 import { db } from "server/db";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { RecalculationQueueService } from "./recalculation-queue-service";
 import { WarehouseRecalculationService } from "./warehouse-recalculation-service";
+import { warehouses } from "@shared/schema";
 
 export class RecalculationWorker {
   private static isRunning = false;
@@ -48,34 +49,49 @@ export class RecalculationWorker {
         return;
       }
 
-      console.log(`[RecalculationWorker] Processing task ${task.id} for warehouse ${task.warehouseId}`);
+      console.log(
+        `[RecalculationWorker] Processing task ${task.id} for warehouse ${task.warehouseId}`,
+      );
+
+      // Set isRecalculating flag
+      await this.setWarehouseRecalculatingFlag(true, task.warehouseId);
 
       try {
         await db.transaction(async (tx) => {
-          await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${task.warehouseId} || ${task.productType}))`);
+          await tx.execute(
+            sql`SELECT pg_advisory_xact_lock(hashtext(${task.warehouseId} || ${task.productType}))`,
+          );
 
           const visitedWarehouses = new Set<string>();
-          
+
           await WarehouseRecalculationService.recalculateAllAffectedTransactions(
             tx,
-            [{
-              warehouseId: task.warehouseId,
-              afterDate: task.afterDate || new Date(0).toISOString(),
-              productType: task.productType || "kerosene",
-            }],
+            [
+              {
+                warehouseId: task.warehouseId,
+                afterDate: task.afterDate || new Date(0).toISOString(),
+                productType: task.productType || "kerosene",
+              },
+            ],
             task.createdById || undefined,
-            visitedWarehouses
+            visitedWarehouses,
           );
         });
 
         await RecalculationQueueService.markAsCompleted(task.id);
-        console.log(`[RecalculationWorker] Task ${task.id} completed successfully`);
-
+        await this.setWarehouseRecalculatingFlag(false, task.warehouseId);
+        console.log(
+          `[RecalculationWorker] Task ${task.id} completed successfully`,
+        );
       } catch (error: any) {
         console.error(`[RecalculationWorker] Task ${task.id} failed:`, error);
-        await RecalculationQueueService.markAsFailed(task.id, error.message || "Unknown error");
+        await RecalculationQueueService.markAsFailed(
+          task.id,
+          error.message || "Unknown error",
+        );
+        // Set isRecalculating flag
+        await this.setWarehouseRecalculatingFlag(false, task.warehouseId);
       }
-
     } catch (error) {
       console.error("[RecalculationWorker] Error in processNextTask:", error);
     } finally {
@@ -83,31 +99,57 @@ export class RecalculationWorker {
     }
   }
 
-  static async processImmediately(warehouseId: string, productType: string, afterDate: string, userId?: string) {
-    console.log(`[RecalculationWorker] Processing immediately for warehouse ${warehouseId}`);
+  static async processImmediately(
+    warehouseId: string,
+    productType: string,
+    afterDate: string,
+    userId?: string,
+  ) {
+    console.log(
+      `[RecalculationWorker] Processing immediately for warehouse ${warehouseId}`,
+    );
 
     try {
       await db.transaction(async (tx) => {
-        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${warehouseId} || ${productType}))`);
+        await tx.execute(
+          sql`SELECT pg_advisory_xact_lock(hashtext(${warehouseId} || ${productType}))`,
+        );
 
         const visitedWarehouses = new Set<string>();
-        
+
         await WarehouseRecalculationService.recalculateAllAffectedTransactions(
           tx,
-          [{
-            warehouseId,
-            afterDate,
-            productType,
-          }],
+          [
+            {
+              warehouseId,
+              afterDate,
+              productType,
+            },
+          ],
           userId,
-          visitedWarehouses
+          visitedWarehouses,
         );
       });
 
-      console.log(`[RecalculationWorker] Immediate processing completed for warehouse ${warehouseId}`);
+      console.log(
+        `[RecalculationWorker] Immediate processing completed for warehouse ${warehouseId}`,
+      );
     } catch (error) {
-      console.error(`[RecalculationWorker] Immediate processing failed for warehouse ${warehouseId}:`, error);
+      console.error(
+        `[RecalculationWorker] Immediate processing failed for warehouse ${warehouseId}:`,
+        error,
+      );
       throw error;
     }
+  }
+
+  static async setWarehouseRecalculatingFlag(
+    isRecalculating: boolean,
+    warehouseId: any,
+  ) {
+    await db
+      .update(warehouses)
+      .set({ isRecalculating: isRecalculating })
+      .where(eq(warehouses.id, warehouseId));
   }
 }

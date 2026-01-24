@@ -43,7 +43,8 @@ export const warehouses = pgTable(
       precision: 12,
       scale: 4,
     }).default("0"),
-    storageCost: decimal("storage_cost", { precision: 12, scale: 2 }), // Moved from logistics
+    storageCost: decimal("storage_cost", { precision: 12, scale: 2 }),
+    isRecalculating: boolean("is_recalculating").default(false),
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -243,7 +244,10 @@ export const recalculationQueue = pgTable(
       table.productType,
     ),
     statusIdx: index("recalculation_queue_status_idx").on(table.status),
-    priorityIdx: index("recalculation_queue_priority_idx").on(table.priority, table.createdAt),
+    priorityIdx: index("recalculation_queue_priority_idx").on(
+      table.priority,
+      table.createdAt,
+    ),
   }),
 );
 
@@ -266,4 +270,6 @@ export const insertRecalculationQueueSchema = createInsertSchema(
 ).omit({ id: true, createdAt: true });
 
 export type RecalculationQueueItem = typeof recalculationQueue.$inferSelect;
-export type InsertRecalculationQueueItem = z.infer<typeof insertRecalculationQueueSchema>;
+export type InsertRecalculationQueueItem = z.infer<
+  typeof insertRecalculationQueueSchema
+>;

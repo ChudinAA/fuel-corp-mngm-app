@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pencil, Trash2, TrendingUp, TrendingDown, Warehouse as WarehouseIcon, Droplets, Fuel } from "lucide-react";
+import { Pencil, Trash2, TrendingUp, TrendingDown, Warehouse as WarehouseIcon, Droplets, Fuel, Loader2 } from "lucide-react";
 import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -128,6 +128,12 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
             <CardTitle className="text-lg flex items-center gap-2">
               <WarehouseIcon className="h-4 w-4 text-sky-400" />
               {warehouse.name}
+              {warehouse.isRecalculating && (
+                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200 animate-pulse flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Пересчет...
+                </Badge>
+              )}
               {isInactive && <Badge variant="destructive">Неактивен</Badge>}
             </CardTitle>
             {warehouse.baseIds && warehouse.baseIds.length > 0 && allBases && (
