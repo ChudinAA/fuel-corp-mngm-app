@@ -1,6 +1,10 @@
 import { RecalculationWorker } from "../../warehouses/services/recalculation-worker";
-import { insertAircraftRefuelingSchema, PRODUCT_TYPE } from "@shared/schema";
+import { insertAircraftRefuelingSchema } from "@shared/schema";
+import { PRODUCT_TYPE } from "@shared/constants";
 import { z } from "zod";
+import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
+import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 
 export function registerRefuelingOperationsRoutes(app: Express) {
   app.get(

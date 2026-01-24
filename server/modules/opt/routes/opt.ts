@@ -1,6 +1,12 @@
-import { RecalculationWorker } from "../../warehouses/services/recalculation-worker";
+import type { Express } from "express";
+import { storage } from "../../../storage/index";
 import { insertOptSchema } from "@shared/schema";
 import { z } from "zod";
+import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
+import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
+import { RecalculationWorker } from "../../warehouses/services/recalculation-worker";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 export function registerOptRoutes(app: Express) {
   app.get(
@@ -96,7 +102,7 @@ export function registerOptRoutes(app: Express) {
 
           if (dealDate.getTime() === today.getTime()) {
             try {
-              await RecalculationWorker.processImmediately(item.warehouseId, "kerosene", item.dealDate, req.session.userId as string);
+              await RecalculationWorker.processImmediately(item.warehouseId, PRODUCT_TYPE.KEROSENE, item.dealDate, req.session.userId as string);
             } catch (e) {
               console.error(`Failed instant recalc for opt: ${e}`);
             }
