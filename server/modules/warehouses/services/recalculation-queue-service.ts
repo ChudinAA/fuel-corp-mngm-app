@@ -37,8 +37,15 @@ export class RecalculationQueueService {
         
         console.log(`[RecalculationQueue] Updated existing task ${existingPending.id} with earlier date: ${afterDate}`);
       }
+
+      // Ensure isRecalculating is true even if updating existing task
+      await (db as any).execute(sql`UPDATE warehouses SET is_recalculating = true WHERE id = ${warehouseId}`);
+      
       return;
     }
+
+    // Set isRecalculating immediately before inserting task
+    await (db as any).execute(sql`UPDATE warehouses SET is_recalculating = true WHERE id = ${warehouseId}`);
 
     await db.insert(recalculationQueue).values({
       warehouseId,
