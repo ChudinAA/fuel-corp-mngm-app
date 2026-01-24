@@ -36,7 +36,6 @@ import { useAutoPriceSelection } from "../../shared/hooks/use-auto-price-selecti
 import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
-import { useWarehouses } from "@/hooks/use-warehouse-balance";
 
 export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   const { toast } = useToast();
@@ -81,7 +80,9 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     queryKey: ["/api/bases"],
   });
 
-  const { data: warehouses } = useWarehouses(); 
+  const { data: warehouses } = useQuery<Warehouse[]>({
+    queryKey: ["/api/warehouses"],
+  });
 
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],

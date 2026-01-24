@@ -79,6 +79,7 @@ export class RecalculationWorker {
         });
 
         await RecalculationQueueService.markAsCompleted(task.id);
+        await this.setWarehouseRecalculatingFlag(false, task.warehouseId);
         console.log(
           `[RecalculationWorker] Task ${task.id} completed successfully`,
         );
@@ -88,14 +89,57 @@ export class RecalculationWorker {
           task.id,
           error.message || "Unknown error",
         );
-      } finally {
-        // Always reset isRecalculating flag in finally to ensure UI doesn't get stuck
+        // Set isRecalculating flag
         await this.setWarehouseRecalculatingFlag(false, task.warehouseId);
       }
     } catch (error) {
       console.error("[RecalculationWorker] Error in processNextTask:", error);
     } finally {
       this.isProcessing = false;
+    }
+  }
+
+  static async processImmediately(
+    warehouseId: string,
+    productType: string,
+    afterDate: string,
+    userId?: string,
+  ) {
+    console.log(
+      `[RecalculationWorker] Processing immediately for warehouse ${warehouseId}`,
+    );
+
+    try {
+      await db.transaction(async (tx) => {
+        await tx.execute(
+          sql`SELECT pg_advisory_xact_lock(hashtext(${warehouseId} || ${productType}))`,
+        );
+
+        const visitedWarehouses = new Set<string>();
+
+        await WarehouseRecalculationService.recalculateAllAffectedTransactions(
+          tx,
+          [
+            {
+              warehouseId,
+              afterDate,
+              productType,
+            },
+          ],
+          userId,
+          visitedWarehouses,
+        );
+      });
+
+      console.log(
+        `[RecalculationWorker] Immediate processing completed for warehouse ${warehouseId}`,
+      );
+    } catch (error) {
+      console.error(
+        `[RecalculationWorker] Immediate processing failed for warehouse ${warehouseId}:`,
+        error,
+      );
+      throw error;
     }
   }
 

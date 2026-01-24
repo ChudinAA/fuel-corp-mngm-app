@@ -2,19 +2,9 @@ import { PRODUCT_TYPE } from "@shared/constants";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 
-export function useWarehouseBalance(
-  warehouseId: string | undefined,
-  date: Date | undefined,
-  productType?: string,
-) {
+export function useWarehouseBalance(warehouseId: string | undefined, date: Date | undefined, productType?: string) {
   return useQuery({
-    queryKey: [
-      "/api/warehouses",
-      warehouseId,
-      "balance",
-      date ? format(date, "yyyy-MM-dd") : undefined,
-      productType,
-    ],
+    queryKey: ["/api/warehouses", warehouseId, "balance", date ? format(date, "yyyy-MM-dd") : undefined, productType],
     queryFn: async () => {
       if (productType === PRODUCT_TYPE.SERVICE) return "0";
       if (!warehouseId || !date) return "0";
@@ -22,32 +12,11 @@ export function useWarehouseBalance(
         date: format(date, "yyyy-MM-dd"),
       });
       if (productType) params.append("productType", productType);
-      const res = await fetch(
-        `/api/warehouses/${warehouseId}/balance?${params.toString()}`,
-      );
+      const res = await fetch(`/api/warehouses/${warehouseId}/balance?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch balance");
       const data = await res.json();
       return data.balance as string;
     },
     enabled: !!warehouseId && !!date,
-  });
-}
-
-export function useWarehouses() {
-  return useQuery({
-    queryKey: ["/api/warehouses"],
-    queryFn: async () => {
-      const res = await fetch("/api/warehouses");
-      if (!res.ok) throw new Error("Failed to fetch warehouses");
-      return res.json();
-    },
-    refetchInterval: (query) => {
-      const warehouses = query.state.data as any[];
-      if (warehouses && warehouses.some((w: any) => w.isRecalculating)) {
-        console.log("Warehouse is recalculating, polling every 2s");
-        return 2000; // Poll every 2s if any warehouse is recalculating
-      }
-      return false; // Disable polling otherwise
-    },
   });
 }

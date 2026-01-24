@@ -39,7 +39,6 @@ import { useAutoPriceSelection } from "../../shared/hooks/use-auto-price-selecti
 import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
-import { useWarehouses } from "@/hooks/use-warehouse-balance";
 
 export function OptForm({ onSuccess, editData }: OptFormProps) {
   const { toast } = useToast();
@@ -83,7 +82,9 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     queryKey: ["/api/customers"],
   });
 
-  const { data: warehouses } = useWarehouses(); 
+  const { data: warehouses } = useQuery<Warehouse[]>({
+    queryKey: ["/api/warehouses"],
+  });
 
   const { data: carriers } = useQuery<LogisticsCarrier[]>({
     queryKey: ["/api/logistics/carriers"],
