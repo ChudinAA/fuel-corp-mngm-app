@@ -99,56 +99,6 @@ export class RecalculationWorker {
     }
   }
 
-  static async processImmediately(
-    warehouseId: string,
-    productType: string,
-    afterDate: string,
-    userId?: string,
-  ) {
-    console.log(
-      `[RecalculationWorker] Processing immediately for warehouse ${warehouseId}`,
-    );
-
-    // Set isRecalculating flag
-    await this.setWarehouseRecalculatingFlag(true, warehouseId);
-
-    try {
-      await db.transaction(async (tx) => {
-        await tx.execute(
-          sql`SELECT pg_advisory_xact_lock(hashtext(${warehouseId} || ${productType}))`,
-        );
-
-        const visitedWarehouses = new Set<string>();
-
-        await WarehouseRecalculationService.recalculateAllAffectedTransactions(
-          tx,
-          [
-            {
-              warehouseId,
-              afterDate,
-              productType,
-            },
-          ],
-          userId,
-          visitedWarehouses,
-        );
-      });
-
-      console.log(
-        `[RecalculationWorker] Immediate processing completed for warehouse ${warehouseId}`,
-      );
-    } catch (error) {
-      console.error(
-        `[RecalculationWorker] Immediate processing failed for warehouse ${warehouseId}:`,
-        error,
-      );
-      throw error;
-    } finally {
-      // Always reset isRecalculating flag
-      await this.setWarehouseRecalculatingFlag(false, warehouseId);
-    }
-  }
-
   static async setWarehouseRecalculatingFlag(
     isRecalculating: boolean,
     warehouseId: any,

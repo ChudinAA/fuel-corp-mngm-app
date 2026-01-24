@@ -4,21 +4,10 @@ import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 import { RecalculationQueueService } from "./recalculation-queue-service";
 
 export class WarehouseTransactionService {
-  private static isBackdated(dealDate?: string): boolean {
-    if (!dealDate) return false;
-    
-    const txDate = new Date(dealDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    txDate.setHours(0, 0, 0, 0);
-    
-    return txDate < today;
-  }
-
   private static async getLatestTransactionDate(
     tx: any,
     warehouseId: string,
-    productType: string
+    productType: string,
   ): Promise<string | null> {
     const latest = await tx
       .select()
@@ -27,12 +16,14 @@ export class WarehouseTransactionService {
         and(
           eq(warehouseTransactions.warehouseId, warehouseId),
           eq(warehouseTransactions.productType, productType),
-          isNull(warehouseTransactions.deletedAt)
-        )
+          isNull(warehouseTransactions.deletedAt),
+        ),
       )
       .orderBy(
-        desc(sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`),
-        desc(warehouseTransactions.id)
+        desc(
+          sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`,
+        ),
+        desc(warehouseTransactions.id),
       )
       .limit(1);
 
@@ -46,13 +37,17 @@ export class WarehouseTransactionService {
     tx: any,
     warehouseId: string,
     productType: string,
-    dealDate?: string
+    dealDate?: string,
   ): Promise<boolean> {
     if (!dealDate) return false;
-    
-    const latestDate = await this.getLatestTransactionDate(tx, warehouseId, productType);
+
+    const latestDate = await this.getLatestTransactionDate(
+      tx,
+      warehouseId,
+      productType,
+    );
     if (!latestDate) return false;
-    
+
     return new Date(dealDate) < new Date(latestDate);
   }
 
@@ -157,15 +152,22 @@ export class WarehouseTransactionService {
       })
       .returning();
 
-    const needsRecalc = await this.needsRecalculation(tx, warehouseId, productType, dealDate);
+    const needsRecalc = await this.needsRecalculation(
+      tx,
+      warehouseId,
+      productType,
+      dealDate,
+    );
     if (needsRecalc && dealDate) {
-      console.log(`[WarehouseTransactionService] Backdated transaction detected, queuing recalculation for ${warehouseId}`);
+      console.log(
+        `[WarehouseTransactionService] Backdated transaction detected, queuing recalculation for ${warehouseId}`,
+      );
       await RecalculationQueueService.addToQueue(
         warehouseId,
         productType,
         dealDate,
         createdById,
-        1
+        1,
       );
     }
 
@@ -289,17 +291,27 @@ export class WarehouseTransactionService {
       .where(eq(warehouseTransactions.id, transactionId));
 
     const oldTxDate = transaction.transactionDate || transaction.createdAt;
-    const effectiveDate = dealDate && new Date(dealDate) < new Date(oldTxDate) ? dealDate : oldTxDate;
-    
-    const needsRecalc = await this.needsRecalculation(tx, warehouseId, productType, effectiveDate);
-    if (needsRecalc || this.isBackdated(effectiveDate)) {
-      console.log(`[WarehouseTransactionService] Transaction update requires recalculation for ${warehouseId}`);
+    const effectiveDate =
+      dealDate && new Date(dealDate) < new Date(oldTxDate)
+        ? dealDate
+        : oldTxDate;
+
+    const needsRecalc = await this.needsRecalculation(
+      tx,
+      warehouseId,
+      productType,
+      effectiveDate,
+    );
+    if (needsRecalc) {
+      console.log(
+        `[WarehouseTransactionService] Transaction update requires recalculation for ${warehouseId}`,
+      );
       await RecalculationQueueService.addToQueue(
         warehouseId,
         productType,
         effectiveDate,
         updatedById,
-        1
+        1,
       );
     }
 
@@ -384,20 +396,22 @@ export class WarehouseTransactionService {
 
     const txDate = transaction.transactionDate || transaction.createdAt;
     const needsRecalc = await this.needsRecalculation(
-      tx, 
-      transaction.warehouseId, 
-      transaction.productType || "kerosene", 
-      txDate
+      tx,
+      transaction.warehouseId,
+      transaction.productType || "kerosene",
+      txDate,
     );
-    
-    if (needsRecalc || this.isBackdated(txDate)) {
-      console.log(`[WarehouseTransactionService] Transaction deletion requires recalculation for ${transaction.warehouseId}`);
+
+    if (needsRecalc) {
+      console.log(
+        `[WarehouseTransactionService] Transaction deletion requires recalculation for ${transaction.warehouseId}`,
+      );
       await RecalculationQueueService.addToQueue(
         transaction.warehouseId,
         transaction.productType || "kerosene",
         txDate,
         updatedById,
-        1
+        1,
       );
     }
 
@@ -482,20 +496,22 @@ export class WarehouseTransactionService {
 
     const txDate = transaction.transactionDate || transaction.createdAt;
     const needsRecalc = await this.needsRecalculation(
-      tx, 
-      transaction.warehouseId, 
-      transaction.productType || "kerosene", 
-      txDate
+      tx,
+      transaction.warehouseId,
+      transaction.productType || "kerosene",
+      txDate,
     );
-    
-    if (needsRecalc || this.isBackdated(txDate)) {
-      console.log(`[WarehouseTransactionService] Transaction restore requires recalculation for ${transaction.warehouseId}`);
+
+    if (needsRecalc) {
+      console.log(
+        `[WarehouseTransactionService] Transaction restore requires recalculation for ${transaction.warehouseId}`,
+      );
       await RecalculationQueueService.addToQueue(
         transaction.warehouseId,
         transaction.productType || "kerosene",
         txDate,
         updatedById,
-        1
+        1,
       );
     }
 

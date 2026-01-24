@@ -31,7 +31,7 @@ export default function WarehousesPage() {
   const { toast } = useToast();
   const { hasPermission } = useAuth();
 
-  const { data: warehouses } = useWarehouses(); 
+  const { data: warehouses, isLoading } = useWarehouses(); 
 
   const filteredWarehouses = warehouses?.filter(w => {
     const matchesSearch = w.name.toLowerCase().includes(search.toLowerCase());

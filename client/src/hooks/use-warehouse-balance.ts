@@ -32,7 +32,7 @@ export function useWarehouses() {
     refetchInterval: (query) => {
       const warehouses = query.state.data as any[];
       if (warehouses && warehouses.some((w: any) => w.isRecalculating)) {
-        return 3000; // Poll every 3s if any warehouse is recalculating
+        return 2000; // Poll every 2s if any warehouse is recalculating
       }
       return false; // Disable polling otherwise
     }
