@@ -29,7 +29,6 @@ export default function WarehousesPage() {
 
   const { data: warehouses, isLoading } = useQuery<WarehouseType[]>({
     queryKey: ["/api/warehouses"],
-    refetchInterval: 10000,
   });
 
   const { data: allBases = [] } = useQuery<any[]>({

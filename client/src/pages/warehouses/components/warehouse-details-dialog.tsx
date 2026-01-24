@@ -72,6 +72,7 @@ export function WarehouseDetailsDialog({
   const { data: transactions, isLoading } = useQuery<WarehouseTransaction[]>({
     queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
     enabled: open,
+    refetchInterval: 10000,
   });
 
   const dailyGroups = useMemo(() => {
