@@ -319,8 +319,8 @@ export function MovementDialog({
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/movement"] });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/movement"] });
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;

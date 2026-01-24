@@ -347,6 +347,9 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
+        queryKey: ["/api/warehouses"],
+      });
+      queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
           return (
@@ -439,6 +442,9 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/warehouses"],
+      });
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
