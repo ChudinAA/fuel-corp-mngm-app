@@ -2,6 +2,7 @@ import { eq, and, gt, sql, isNull, desc, asc } from "drizzle-orm";
 import { warehouses, warehouseTransactions } from "@shared/schema";
 import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 import { RecalculationQueueService } from "./recalculation-queue-service";
+import { RecalculationWorker } from "./recalculation-worker";
 
 export class WarehouseTransactionService {
   private static async getLatestTransactionDate(
@@ -162,6 +163,7 @@ export class WarehouseTransactionService {
       console.log(
         `[WarehouseTransactionService] Backdated transaction detected, queuing recalculation for ${warehouseId}`,
       );
+      // Removed direct setWarehouseRecalculatingFlag call here as it's handled inside addToQueue
       await RecalculationQueueService.addToQueue(
         warehouseId,
         productType,
@@ -306,6 +308,7 @@ export class WarehouseTransactionService {
       console.log(
         `[WarehouseTransactionService] Transaction update requires recalculation for ${warehouseId}`,
       );
+      await RecalculationWorker.setWarehouseRecalculatingFlag(true, warehouseId)
       await RecalculationQueueService.addToQueue(
         warehouseId,
         productType,
@@ -406,6 +409,7 @@ export class WarehouseTransactionService {
       console.log(
         `[WarehouseTransactionService] Transaction deletion requires recalculation for ${transaction.warehouseId}`,
       );
+      await RecalculationWorker.setWarehouseRecalculatingFlag(true, transaction.warehouseId)
       await RecalculationQueueService.addToQueue(
         transaction.warehouseId,
         transaction.productType || "kerosene",
@@ -506,6 +510,7 @@ export class WarehouseTransactionService {
       console.log(
         `[WarehouseTransactionService] Transaction restore requires recalculation for ${transaction.warehouseId}`,
       );
+      await RecalculationWorker.setWarehouseRecalculatingFlag(true, transaction.warehouseId)
       await RecalculationQueueService.addToQueue(
         transaction.warehouseId,
         transaction.productType || "kerosene",

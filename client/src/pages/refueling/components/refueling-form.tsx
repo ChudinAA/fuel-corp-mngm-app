@@ -81,7 +81,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     queryKey: ["/api/bases"],
   });
 
-  const { data: warehouses, startForcedPolling } = useWarehouses(); 
+  const { data: warehouses } = useWarehouses(); 
 
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
@@ -331,7 +331,6 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       return res.json();
     },
     onSuccess: () => {
-      startForcedPolling();
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
@@ -412,7 +411,6 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       return res.json();
     },
     onSuccess: () => {
-      startForcedPolling();
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;

@@ -83,7 +83,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     queryKey: ["/api/customers"],
   });
 
-  const { data: warehouses, startForcedPolling } = useWarehouses(); 
+  const { data: warehouses } = useWarehouses(); 
 
   const { data: carriers } = useQuery<LogisticsCarrier[]>({
     queryKey: ["/api/logistics/carriers"],
@@ -345,7 +345,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       return res.json();
     },
     onSuccess: () => {
-      startForcedPolling();
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
@@ -439,7 +438,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       return res.json();
     },
     onSuccess: () => {
-      startForcedPolling();
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
