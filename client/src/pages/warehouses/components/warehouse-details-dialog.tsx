@@ -38,11 +38,6 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import type { Warehouse, Base } from "@shared/schema";
 import type { WarehouseTransaction } from "../types";
 import { formatNumber, formatCurrency } from "../utils";
@@ -72,7 +67,7 @@ export function WarehouseDetailsDialog({
   const { data: transactions, isLoading } = useQuery<WarehouseTransaction[]>({
     queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
     enabled: open,
-    refetchInterval: 10000,
+    refetchInterval: 5000,
   });
 
   const dailyGroups = useMemo(() => {

@@ -66,7 +66,6 @@ export function WarehouseCard({
 
   const { data: transactions } = useQuery<WarehouseTransaction[]>({
     queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
-    refetchInterval: 10000,
   });
 
   const getBaseNames = (baseIds: string[] | null | undefined) => {

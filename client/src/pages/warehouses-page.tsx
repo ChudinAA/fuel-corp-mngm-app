@@ -24,15 +24,11 @@ export default function WarehousesPage() {
     useState<WarehouseType | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
-  const { toast } = useToast();
   const { hasPermission } = useAuth();
 
   const { data: warehouses, isLoading } = useQuery<WarehouseType[]>({
     queryKey: ["/api/warehouses"],
-  });
-
-  const { data: allBases = [] } = useQuery<any[]>({
-    queryKey: ["/api/bases"],
+    refetchInterval: 10000,
   });
 
   const filteredWarehouses =
