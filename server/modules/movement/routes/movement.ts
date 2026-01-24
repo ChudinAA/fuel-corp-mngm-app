@@ -5,6 +5,7 @@ import { insertMovementSchema } from "@shared/schema";
 import { z } from "zod";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
+import { RecalculationWorker } from "../../warehouses/services/recalculation-worker";
 
 export function registerMovementRoutes(app: Express) {
   app.get(
@@ -98,6 +99,27 @@ export function registerMovementRoutes(app: Express) {
         };
 
         const movementRecord = await storage.movement.createMovement(dbData);
+
+        // Instant recalculation for today's internal movements
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const mDate = new Date(data.movementDate);
+        mDate.setHours(0, 0, 0, 0);
+
+        if (mDate.getTime() === today.getTime()) {
+          const affected = [];
+          if (data.fromWarehouseId) affected.push({ id: data.fromWarehouseId, pt: data.productType });
+          if (data.toWarehouseId) affected.push({ id: data.toWarehouseId, pt: data.productType });
+
+          for (const aff of affected) {
+            try {
+              await RecalculationWorker.processImmediately(aff.id, aff.pt, data.movementDate, req.session.userId as string);
+            } catch (e) {
+              console.error(`Failed instant recalc for movement: ${e}`);
+            }
+          }
+        }
+
         res.status(201).json(movementRecord);
       } catch (error) {
         if (error instanceof z.ZodError) {

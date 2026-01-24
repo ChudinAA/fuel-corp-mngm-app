@@ -1,10 +1,6 @@
-import type { Express } from "express";
-import { storage } from "../../../storage/index";
+import { RecalculationWorker } from "../../warehouses/services/recalculation-worker";
 import { insertOptSchema } from "@shared/schema";
 import { z } from "zod";
-import { requireAuth, requirePermission } from "../../../middleware/middleware";
-import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
-import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 
 export function registerOptRoutes(app: Express) {
   app.get(
@@ -90,6 +86,23 @@ export function registerOptRoutes(app: Express) {
           createdById: req.session.userId,
         });
         const item = await storage.opt.createOpt(data);
+
+        // Instant recalculation for today's warehouse operations
+        if (item.warehouseId) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const dealDate = new Date(item.dealDate);
+          dealDate.setHours(0, 0, 0, 0);
+
+          if (dealDate.getTime() === today.getTime()) {
+            try {
+              await RecalculationWorker.processImmediately(item.warehouseId, "kerosene", item.dealDate, req.session.userId as string);
+            } catch (e) {
+              console.error(`Failed instant recalc for opt: ${e}`);
+            }
+          }
+        }
+
         res.status(201).json(item);
       } catch (error) {
         if (error instanceof z.ZodError) {
