@@ -79,7 +79,6 @@ export class RecalculationWorker {
         });
 
         await RecalculationQueueService.markAsCompleted(task.id);
-        await this.setWarehouseRecalculatingFlag(false, task.warehouseId);
         console.log(
           `[RecalculationWorker] Task ${task.id} completed successfully`,
         );
@@ -89,7 +88,8 @@ export class RecalculationWorker {
           task.id,
           error.message || "Unknown error",
         );
-        // Set isRecalculating flag
+      } finally {
+        // Always reset isRecalculating flag in finally to ensure UI doesn't get stuck
         await this.setWarehouseRecalculatingFlag(false, task.warehouseId);
       }
     } catch (error) {
@@ -108,6 +108,9 @@ export class RecalculationWorker {
     console.log(
       `[RecalculationWorker] Processing immediately for warehouse ${warehouseId}`,
     );
+
+    // Set isRecalculating flag
+    await this.setWarehouseRecalculatingFlag(true, warehouseId);
 
     try {
       await db.transaction(async (tx) => {
@@ -140,6 +143,9 @@ export class RecalculationWorker {
         error,
       );
       throw error;
+    } finally {
+      // Always reset isRecalculating flag
+      await this.setWarehouseRecalculatingFlag(false, warehouseId);
     }
   }
 

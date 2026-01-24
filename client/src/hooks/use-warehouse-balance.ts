@@ -18,5 +18,29 @@ export function useWarehouseBalance(warehouseId: string | undefined, date: Date 
       return data.balance as string;
     },
     enabled: !!warehouseId && !!date,
+    refetchInterval: (query) => {
+      // If we had the warehouse object, we could check isRecalculating
+      // But we can also check the response data if it includes status
+      // For now, if we're on the balance hook, we might want to poll if any recalculation is happening
+      return 5000; 
+    }
+  });
+}
+
+export function useWarehouses() {
+  return useQuery({
+    queryKey: ["/api/warehouses"],
+    queryFn: async () => {
+      const res = await fetch("/api/warehouses");
+      if (!res.ok) throw new Error("Failed to fetch warehouses");
+      return res.json();
+    },
+    refetchInterval: (query) => {
+      const warehouses = query.state.data as any[];
+      if (warehouses && warehouses.some((w: any) => w.isRecalculating)) {
+        return 2000; // Poll every 2s if any warehouse is recalculating
+      }
+      return false; // Disable polling otherwise
+    }
   });
 }
