@@ -1,3 +1,4 @@
+import { useWarehouses } from "@/hooks/use-warehouse-balance";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -80,9 +81,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     queryKey: ["/api/bases"],
   });
 
-  const { data: warehouses } = useQuery<Warehouse[]>({
-    queryKey: ["/api/warehouses"],
-  });
+  const { data: warehouses } = useWarehouses();
 
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],

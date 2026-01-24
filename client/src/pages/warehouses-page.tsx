@@ -19,6 +19,7 @@ import { WarehouseCard } from "./warehouses/components/warehouse-card";
 import { AddWarehouseDialog } from "./warehouses/components/add-warehouse-dialog";
 import { WarehouseDetailsDialog } from "./warehouses/components/warehouse-details-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { useWarehouses } from "@/hooks/use-warehouse-balance";
 
 export default function WarehousesPage() {
   const [search, setSearch] = useState("");
@@ -30,9 +31,7 @@ export default function WarehousesPage() {
   const { toast } = useToast();
   const { hasPermission } = useAuth();
 
-  const { data: warehouses, isLoading } = useQuery<WarehouseType[]>({
-    queryKey: ["/api/warehouses"],
-  });
+  const { data: warehouses, isLoading } = useWarehouses();
 
   const { data: allBases = [] } = useQuery<any[]>({
     queryKey: ["/api/bases"],
