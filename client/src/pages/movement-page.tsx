@@ -11,6 +11,8 @@ import { MovementDialog } from "./movement/components/movement-dialog";
 import { MovementTable } from "./movement/components/movement-table";
 import { useAuth } from "@/hooks/use-auth";
 
+import { useWarehouses } from "@/hooks/use-warehouse-balance";
+
 export default function MovementPage() {
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
   const [isCopy, setIsCopy] = useState(false);
@@ -19,13 +21,7 @@ export default function MovementPage() {
   const { toast } = useToast();
   const { hasPermission } = useAuth();
 
-  const { data: warehouses } = useQuery<Warehouse[]>({
-    queryKey: ["/api/warehouses"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/warehouses");
-      return res.json();
-    },
-  });
+  const { data: warehouses } = useWarehouses();
 
   const { data: suppliers } = useQuery({
     queryKey: ["/api/suppliers"],

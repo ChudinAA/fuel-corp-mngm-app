@@ -129,9 +129,9 @@ export function WarehouseCard({ warehouse, onEdit, onViewDetails }: WarehouseCar
               <WarehouseIcon className="h-4 w-4 text-sky-400" />
               {warehouse.name}
               {warehouse.isRecalculating && (
-                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200 animate-pulse flex items-center gap-1">
+                <Badge variant="outline" className="animate-pulse flex items-center gap-1 bg-primary/5 text-primary border-primary/20">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Пересчет...
+                  Расчет...
                 </Badge>
               )}
               {isInactive && <Badge variant="destructive">Неактивен</Badge>}
