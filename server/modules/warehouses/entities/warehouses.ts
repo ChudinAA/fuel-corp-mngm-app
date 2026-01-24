@@ -43,8 +43,7 @@ export const warehouses = pgTable(
       precision: 12,
       scale: 4,
     }).default("0"),
-    storageCost: decimal("storage_cost", { precision: 12, scale: 2 }),
-    isRecalculating: boolean("is_recalculating").default(false),
+    storageCost: decimal("storage_cost", { precision: 12, scale: 2 }), // Moved from logistics
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),

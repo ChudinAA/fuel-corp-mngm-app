@@ -167,14 +167,6 @@ export class WarehouseTransactionService {
         createdById,
         1
       );
-    } else if (dealDate && !this.isBackdated(dealDate)) {
-      // Optimization: Process today's operations immediately
-      try {
-        const { RecalculationWorker } = await import("./recalculation-worker");
-        await RecalculationWorker.processImmediately(warehouseId, productType, dealDate, createdById);
-      } catch (error) {
-        console.error("[WarehouseTransactionService] Failed immediate processing:", error);
-      }
     }
 
     return { transaction, newAverageCost, newBalance };
@@ -309,14 +301,6 @@ export class WarehouseTransactionService {
         updatedById,
         1
       );
-    } else if (effectiveDate && !this.isBackdated(effectiveDate)) {
-      // Optimization: Process today's operations immediately
-      try {
-        const { RecalculationWorker } = await import("./recalculation-worker");
-        await RecalculationWorker.processImmediately(warehouseId, productType, effectiveDate, updatedById);
-      } catch (error) {
-        console.error("[WarehouseTransactionService] Failed immediate processing:", error);
-      }
     }
 
     return { newAverageCost, newBalance };
@@ -415,19 +399,6 @@ export class WarehouseTransactionService {
         updatedById,
         1
       );
-    } else if (txDate && !this.isBackdated(txDate)) {
-      // Optimization: Process today's operations immediately
-      try {
-        const { RecalculationWorker } = await import("./recalculation-worker");
-        await RecalculationWorker.processImmediately(
-          transaction.warehouseId, 
-          transaction.productType || "kerosene", 
-          txDate, 
-          updatedById
-        );
-      } catch (error) {
-        console.error("[WarehouseTransactionService] Failed immediate processing on delete:", error);
-      }
     }
 
     return { newAverageCost, newBalance };
@@ -526,19 +497,6 @@ export class WarehouseTransactionService {
         updatedById,
         1
       );
-    } else if (txDate && !this.isBackdated(txDate)) {
-      // Optimization: Process today's operations immediately
-      try {
-        const { RecalculationWorker } = await import("./recalculation-worker");
-        await RecalculationWorker.processImmediately(
-          transaction.warehouseId, 
-          transaction.productType || "kerosene", 
-          txDate, 
-          updatedById
-        );
-      } catch (error) {
-        console.error("[WarehouseTransactionService] Failed immediate processing on restore:", error);
-      }
     }
 
     return { newAverageCost, newBalance };

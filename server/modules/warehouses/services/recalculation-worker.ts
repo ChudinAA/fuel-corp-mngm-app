@@ -1,6 +1,5 @@
 import { db } from "server/db";
-import { sql, eq } from "drizzle-orm";
-import { warehouses } from "@shared/schema";
+import { sql } from "drizzle-orm";
 import { RecalculationQueueService } from "./recalculation-queue-service";
 import { WarehouseRecalculationService } from "./warehouse-recalculation-service";
 
@@ -55,11 +54,6 @@ export class RecalculationWorker {
         await db.transaction(async (tx) => {
           await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${task.warehouseId} || ${task.productType}))`);
 
-          // Set isRecalculating flag
-          await tx.update(warehouses)
-            .set({ isRecalculating: true })
-            .where(eq(warehouses.id, task.warehouseId));
-
           const visitedWarehouses = new Set<string>();
           
           await WarehouseRecalculationService.recalculateAllAffectedTransactions(
@@ -72,11 +66,6 @@ export class RecalculationWorker {
             task.createdById || undefined,
             visitedWarehouses
           );
-
-          // Reset isRecalculating flag
-          await tx.update(warehouses)
-            .set({ isRecalculating: false })
-            .where(eq(warehouses.id, task.warehouseId));
         });
 
         await RecalculationQueueService.markAsCompleted(task.id);
@@ -84,16 +73,6 @@ export class RecalculationWorker {
 
       } catch (error: any) {
         console.error(`[RecalculationWorker] Task ${task.id} failed:`, error);
-        
-        // Ensure flag is reset even on failure
-        try {
-          await db.update(warehouses)
-            .set({ isRecalculating: false })
-            .where(eq(warehouses.id, task.warehouseId));
-        } catch (resetError) {
-          console.error("[RecalculationWorker] Failed to reset isRecalculating flag:", resetError);
-        }
-
         await RecalculationQueueService.markAsFailed(task.id, error.message || "Unknown error");
       }
 
@@ -111,11 +90,6 @@ export class RecalculationWorker {
       await db.transaction(async (tx) => {
         await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${warehouseId} || ${productType}))`);
 
-        // Set isRecalculating flag
-        await tx.update(warehouses)
-          .set({ isRecalculating: true })
-          .where(eq(warehouses.id, warehouseId));
-
         const visitedWarehouses = new Set<string>();
         
         await WarehouseRecalculationService.recalculateAllAffectedTransactions(
@@ -128,26 +102,11 @@ export class RecalculationWorker {
           userId,
           visitedWarehouses
         );
-
-        // Reset isRecalculating flag
-        await tx.update(warehouses)
-          .set({ isRecalculating: false })
-          .where(eq(warehouses.id, warehouseId));
       });
 
       console.log(`[RecalculationWorker] Immediate processing completed for warehouse ${warehouseId}`);
     } catch (error) {
       console.error(`[RecalculationWorker] Immediate processing failed for warehouse ${warehouseId}:`, error);
-      
-      // Ensure flag is reset on failure
-      try {
-        await db.update(warehouses)
-          .set({ isRecalculating: false })
-          .where(eq(warehouses.id, warehouseId));
-      } catch (resetError) {
-        console.error("[RecalculationWorker] Failed to reset isRecalculating flag in immediate mode:", resetError);
-      }
-      
       throw error;
     }
   }

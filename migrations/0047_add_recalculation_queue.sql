@@ -1,5 +1,3 @@
-ALTER TABLE warehouses ADD COLUMN IF NOT EXISTS is_recalculating BOOLEAN DEFAULT false;
-
 CREATE TABLE IF NOT EXISTS "recalculation_queue" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "warehouse_id" uuid NOT NULL,
