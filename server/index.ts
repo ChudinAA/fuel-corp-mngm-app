@@ -80,7 +80,11 @@ app.use((req, res, next) => {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
-      log(logLine);
+      if (process.env.DEBUG_NETWORK === "true") {
+        log(logLine);
+      } else if (res.statusCode >= 400) {
+        log(`ERROR: ${logLine}`);
+      }
     }
   });
 
