@@ -1,6 +1,7 @@
 import { PRODUCT_TYPE } from "@shared/constants";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { useState, useEffect } from "react";
 
 export function useWarehouseBalance(warehouseId: string | undefined, date: Date | undefined, productType?: string) {
   return useQuery({
@@ -19,12 +20,6 @@ export function useWarehouseBalance(warehouseId: string | undefined, date: Date 
     },
     enabled: !!warehouseId && !!date,
   });
-}
-
-import { useState, useEffect } from "react";
-
-export function useWarehouseBalance(warehouseId: string | undefined, date: Date | undefined, productType?: string) {
-  // ...
 }
 
 export function useWarehouses() {
