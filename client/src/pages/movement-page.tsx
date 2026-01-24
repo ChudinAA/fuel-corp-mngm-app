@@ -10,7 +10,6 @@ import type { Movement, Warehouse } from "@shared/schema";
 import { MovementDialog } from "./movement/components/movement-dialog";
 import { MovementTable } from "./movement/components/movement-table";
 import { useAuth } from "@/hooks/use-auth";
-
 import { useWarehouses } from "@/hooks/use-warehouse-balance";
 
 export default function MovementPage() {
@@ -21,7 +20,7 @@ export default function MovementPage() {
   const { toast } = useToast();
   const { hasPermission } = useAuth();
 
-  const { data: warehouses } = useWarehouses();
+  const { data: warehouses } = useWarehouses(); 
 
   const { data: suppliers } = useQuery({
     queryKey: ["/api/suppliers"],

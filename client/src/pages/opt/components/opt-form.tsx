@@ -1,4 +1,3 @@
-import { useWarehouses } from "@/hooks/use-warehouse-balance";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -40,6 +39,7 @@ import { useAutoPriceSelection } from "../../shared/hooks/use-auto-price-selecti
 import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
+import { useWarehouses } from "@/hooks/use-warehouse-balance";
 
 export function OptForm({ onSuccess, editData }: OptFormProps) {
   const { toast } = useToast();
@@ -83,7 +83,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     queryKey: ["/api/customers"],
   });
 
-  const { data: warehouses } = useWarehouses();
+  const { data: warehouses } = useWarehouses(); 
 
   const { data: carriers } = useQuery<LogisticsCarrier[]>({
     queryKey: ["/api/logistics/carriers"],
@@ -346,9 +346,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["/api/warehouses"],
-      });
-      queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
           return (
@@ -441,9 +438,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["/api/warehouses"],
-      });
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;

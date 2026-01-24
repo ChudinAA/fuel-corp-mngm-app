@@ -1,4 +1,3 @@
-import { useWarehouses } from "@/hooks/use-warehouse-balance";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -37,6 +36,7 @@ import { useAutoPriceSelection } from "../../shared/hooks/use-auto-price-selecti
 import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
+import { useWarehouses } from "@/hooks/use-warehouse-balance";
 
 export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   const { toast } = useToast();
@@ -81,7 +81,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     queryKey: ["/api/bases"],
   });
 
-  const { data: warehouses } = useWarehouses();
+  const { data: warehouses } = useWarehouses(); 
 
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
@@ -332,9 +332,6 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["/api/warehouses"],
-      });
-      queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
           return (
@@ -414,9 +411,6 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["/api/warehouses"],
-      });
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;

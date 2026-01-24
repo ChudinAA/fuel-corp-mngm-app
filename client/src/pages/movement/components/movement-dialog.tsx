@@ -39,9 +39,10 @@ import {
   useWarehouseBalance,
   useMovementValidation,
 } from "../hooks";
-import { useWarehouses } from "@/hooks/use-warehouse-balance";
+import { useWarehouseBalanceMov } from "../hooks/use-warehouse-balance";
 
 export function MovementDialog({
+  warehouses,
   suppliers,
   carriers,
   vehicles,
@@ -54,7 +55,6 @@ export function MovementDialog({
   onOpenChange,
 }: MovementDialogProps) {
   const { toast } = useToast();
-  const { data: warehouses = [] } = useWarehouses();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
     useState<string>("");
@@ -319,8 +319,8 @@ export function MovementDialog({
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/movement"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;

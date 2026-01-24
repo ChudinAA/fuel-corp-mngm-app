@@ -1,6 +1,6 @@
-import { RecalculationWorker } from "../../warehouses/services/recalculation-worker";
+import type { Express } from "express";
+import { storage } from "../../../storage/index";
 import { insertAircraftRefuelingSchema } from "@shared/schema";
-import { PRODUCT_TYPE } from "@shared/constants";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
@@ -94,23 +94,6 @@ export function registerRefuelingOperationsRoutes(app: Express) {
           createdById: req.session.userId,
         });
         const item = await storage.aircraftRefueling.createRefueling(data);
-
-        // Instant recalculation for today's warehouse operations
-        if (item.warehouseId && item.productType !== PRODUCT_TYPE.SERVICE) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const refuelDate = new Date(item.refuelingDate);
-          refuelDate.setHours(0, 0, 0, 0);
-
-          if (refuelDate.getTime() === today.getTime()) {
-            try {
-              await RecalculationWorker.processImmediately(item.warehouseId, item.productType || "kerosene", item.refuelingDate, req.session.userId as string);
-            } catch (e) {
-              console.error(`Failed instant recalc for refueling: ${e}`);
-            }
-          }
-        }
-
         res.status(201).json(item);
       } catch (error) {
         if (error instanceof z.ZodError) {

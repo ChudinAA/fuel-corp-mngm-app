@@ -2,16 +2,30 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Search, Filter, Plus, History } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Filter,
+  Plus,
+  History,
+} from "lucide-react";
 import { AuditPanel } from "@/components/audit-panel";
 import type { Exchange, Warehouse } from "@shared/schema";
 import { ExchangeDialog } from "./exchange/components/exchange-dialog";
 import { ExchangeTable } from "./exchange/components/exchange-table";
 import { useAuth } from "@/hooks/use-auth";
 import { ExportButton } from "@/components/export/export-button";
+import { useWarehouses } from "@/hooks/use-warehouse-balance";
 
 export default function ExchangePage() {
   const [page, setPage] = useState(1);
@@ -21,14 +35,15 @@ export default function ExchangePage() {
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
   const { hasPermission } = useAuth();
-  const pageSize = 10;
+  const pageSize = 20;
 
-  const { data: warehouses } = useQuery<Warehouse[]>({
-    queryKey: ["/api/warehouses"],
-  });
+  const { data: warehouses } = useWarehouses();
 
-  const { data: exchanges, isLoading } = useQuery<{ data: Exchange[]; total: number }>({
-    queryKey: ["/api/exchange?page=1&pageSize=1000"],
+  const { data: exchanges, isLoading } = useQuery<{
+    data: Exchange[];
+    total: number;
+  }>({
+    queryKey: ["/api/exchange?page=1&pageSize=20"],
   });
 
   const deleteMutation = useMutation({
@@ -39,10 +54,17 @@ export default function ExchangePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/exchange"] });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
-      toast({ title: "Сделка удалена", description: "Биржевая сделка успешно удалена" });
+      toast({
+        title: "Сделка удалена",
+        description: "Биржевая сделка успешно удалена",
+      });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -126,13 +148,16 @@ export default function ExchangePage() {
               isLoading={isLoading}
               onEdit={handleEditClick}
               onDelete={(id) => deleteMutation.mutate(id)}
-              isDeletingId={deleteMutation.isPending ? deleteMutation.variables : undefined}
+              isDeletingId={
+                deleteMutation.isPending ? deleteMutation.variables : undefined
+              }
             />
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  Показано {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, total)} из {total}
+                  Показано {(page - 1) * pageSize + 1} -{" "}
+                  {Math.min(page * pageSize, total)} из {total}
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
@@ -143,7 +168,9 @@ export default function ExchangePage() {
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <span className="text-sm">{page} / {totalPages}</span>
+                  <span className="text-sm">
+                    {page} / {totalPages}
+                  </span>
                   <Button
                     variant="outline"
                     size="icon"
