@@ -100,10 +100,12 @@ export function OptPricingSection({
     const availableBalance =
       warehouseBalanceAtDate !== null ? warehouseBalanceAtDate : 0;
 
+    // Остаток на складе сейчас (без учета текущего ввода)
     if (finalKg <= 0) {
       return { status: "ok", message: `${formatNumber(availableBalance)} кг` };
     }
 
+    // Показываем сколько останется: (Доступно) - (Новый ввод)
     const remaining = availableBalance - finalKg;
 
     if (remaining >= 0) {

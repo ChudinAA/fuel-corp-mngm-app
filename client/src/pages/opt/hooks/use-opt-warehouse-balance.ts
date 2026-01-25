@@ -57,11 +57,13 @@ export function useOptWarehouseBalance({
     // Используем минимум из исторического и текущего остатка
     const baseBalance = Math.min(hist, curr);
 
-    if (isEditing && editQuantityKg) {
-      return baseBalance + parseFloat(editQuantityKg);
-    }
-
-    return baseBalance;
+    // ВАЖНО: При редактировании editQuantityKg — это ИЗНАЧАЛЬНЫЙ объем сделки.
+    // Чтобы получить "доступный остаток" (включая объем текущей сделки),
+    // нам нужно прибавить его к baseBalance, если бэк его исключил.
+    // Если мы создаем новую сделку, editQuantityKg = 0.
+    
+    const initialQty = editQuantityKg ? parseFloat(editQuantityKg) : 0;
+    return baseBalance + initialQty;
   }, [
     warehouseId,
     isBackdated,
@@ -69,7 +71,6 @@ export function useOptWarehouseBalance({
     currentData,
     isHistoricalLoading,
     isCurrentLoading,
-    isEditing,
     editQuantityKg,
     initialCurrentBalance,
   ]);
