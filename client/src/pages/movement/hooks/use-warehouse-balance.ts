@@ -10,7 +10,7 @@ interface UseWarehouseBalanceProps {
   kgNum: number;
   warehouses: any[];
   isEditing?: boolean;
-  initialWarehouseBalance?: number;
+  initialQuantityKg?: number;
   watchMovementDate?: Date;
 }
 
@@ -29,7 +29,7 @@ export function useWarehouseBalanceMov(props: UseWarehouseBalanceProps): Warehou
     kgNum,
     warehouses,
     isEditing = false,
-    initialWarehouseBalance = 0,
+    initialQuantityKg = 0,
     watchMovementDate,
   } = props;
 
@@ -83,8 +83,8 @@ export function useWarehouseBalanceMov(props: UseWarehouseBalanceProps): Warehou
     let baseBalance = Math.min(hist, curr);
     
     // ВАЖНО: Приводим к единообразию с ОПТ и Заправками.
-    // initialWarehouseBalance теперь передается как начальный объем сделки (initialQuantityKg).
-    let balance = isEditing ? baseBalance + initialWarehouseBalance : baseBalance;
+    // initialQuantityKg теперь передается как начальный объем сделки (initialQuantityKg).
+    let balance = isEditing ? baseBalance + initialQuantityKg : baseBalance;
 
     const cost = historicalBalanceStr && typeof historicalBalanceStr === 'object' && 'averageCost' in historicalBalanceStr && historicalBalanceStr.averageCost
       ? parseFloat(historicalBalanceStr.averageCost)
@@ -111,7 +111,7 @@ export function useWarehouseBalanceMov(props: UseWarehouseBalanceProps): Warehou
     }
 
     return { balance, cost, status: "ok", message: `${balance.toLocaleString()} кг` };
-  }, [watchMovementType, watchProductType, watchFromWarehouseId, kgNum, warehouses, isEditing, initialWarehouseBalance, historicalBalanceStr, currentBalanceStr, isLoading]);
+  }, [watchMovementType, watchProductType, watchFromWarehouseId, kgNum, warehouses, isEditing, initialQuantityKg, historicalBalanceStr, currentBalanceStr, isLoading]);
 }
 
 export const useWarehouseBalance = useWarehouseBalanceMov;

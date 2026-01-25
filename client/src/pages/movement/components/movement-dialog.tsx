@@ -87,9 +87,6 @@ export function MovementDialog({
     },
   });
 
-  // Состояние для отслеживания начального баланса при редактировании
-  const [initialWarehouseBalance, setInitialWarehouseBalance] =
-    useState<number>(0);
   // Состояние для отслеживания начального количества КГ при редактировании
   const [initialQuantityKg, setInitialQuantityKg] = useState<number>(0);
 
@@ -147,7 +144,6 @@ export function MovementDialog({
         isEditing ? parseFloat(editMovement.quantityKg || "0") : 0,
       );
     } else {
-      setInitialWarehouseBalance(0);
       form.reset({
         movementDate: new Date(),
         movementType: MOVEMENT_TYPE.SUPPLY,
@@ -240,7 +236,7 @@ export function MovementDialog({
     kgNum,
     warehouses,
     isEditing,
-    initialWarehouseBalance,
+    initialQuantityKg,
     watchMovementDate,
   });
 
