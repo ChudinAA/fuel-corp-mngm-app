@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useWarehouseBalance as useBaseWarehouseBalance } from "@/hooks/use-warehouse-balance";
+import { formatNumber } from "../utils";
 
 interface UseWarehouseBalanceProps {
   watchMovementType: string;
@@ -80,6 +81,9 @@ export function useWarehouseBalanceMov(props: UseWarehouseBalanceProps): Warehou
       : parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
     
     let baseBalance = Math.min(hist, curr);
+    
+    // ВАЖНО: Приводим к единообразию с ОПТ и Заправками.
+    // initialWarehouseBalance теперь передается как начальный объем сделки (initialQuantityKg).
     let balance = isEditing ? baseBalance + initialWarehouseBalance : baseBalance;
 
     const cost = historicalBalanceStr && typeof historicalBalanceStr === 'object' && 'averageCost' in historicalBalanceStr && historicalBalanceStr.averageCost
@@ -94,6 +98,10 @@ export function useWarehouseBalanceMov(props: UseWarehouseBalanceProps): Warehou
       return { balance, cost, status: "error", message: "Нет себестоимости" };
     }
 
+    if (kgNum <= 0) {
+      return { status: "ok", message: `${formatNumber(balance)} кг` };
+    }
+    
     if (kgNum > 0) {
       const remaining = balance - kgNum;
       if (remaining < 0) {

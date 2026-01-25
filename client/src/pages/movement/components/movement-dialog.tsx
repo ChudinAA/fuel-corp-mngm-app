@@ -96,28 +96,15 @@ export function MovementDialog({
   // Обновляем форму при изменении editMovement или открытии диалога
   useEffect(() => {
     if (editMovement) {
-      // При редактировании внутреннего перемещения вычисляем начальный баланс
+      // При редактировании внутреннего перемещения вычисляем начальное количество КГ
       if (
         !isCopy &&
         editMovement.movementType === MOVEMENT_TYPE.INTERNAL &&
         editMovement.fromWarehouseId
       ) {
-        const fromWarehouse = warehouses.find(
-          (w) => w.id === editMovement.fromWarehouseId,
-        );
-        if (fromWarehouse) {
-          const isPvkj = editMovement.productType === PRODUCT_TYPE.PVKJ;
-          const currentBalance = parseFloat(
-            isPvkj
-              ? fromWarehouse.pvkjBalance || "0"
-              : fromWarehouse.currentBalance || "0",
-          );
-          const movementKg = parseFloat(editMovement.quantityKg || "0");
-          // Восстанавливаем баланс на момент создания сделки
-          setInitialWarehouseBalance(currentBalance + movementKg);
-        }
+        setInitialQuantityKg(parseFloat(editMovement.quantityKg || "0"));
       } else {
-        setInitialWarehouseBalance(0);
+        setInitialQuantityKg(0);
       }
 
       form.reset({
