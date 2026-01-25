@@ -6,6 +6,7 @@ import { usePriceExtraction } from "../../shared/hooks/use-price-extraction";
 import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
 import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
+import { formatNumber } from "../utils";
 
 interface UseRefuelingCalculationsProps {
   inputMode: "liters" | "kg";
@@ -134,7 +135,7 @@ export function useRefuelingCalculations({
       return { status: "ok", message: "Объем не со склада" };
     }
 
-    if (!supplierWarehouse || finalKg <= 0) {
+    if (!supplierWarehouse) {
       return { status: "ok", message: "—" };
     }
 
@@ -143,6 +144,10 @@ export function useRefuelingCalculations({
     }
 
     const availableBalance = warehouseBalanceAtDate !== null ? warehouseBalanceAtDate : 0;
+
+    if (finalKg <= 0) {
+      return { status: "ok", message: `${formatNumber(availableBalance)} кг` };
+    }
     
     const remaining = availableBalance - finalKg;
 

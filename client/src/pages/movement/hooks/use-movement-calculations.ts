@@ -1,3 +1,4 @@
+import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
 import { useEffect, useMemo } from "react";
 import {
   MOVEMENT_TYPE,
@@ -139,8 +140,25 @@ export function useMovementCalculations({
   ]);
 
   // Handle internal movement price (average cost)
+  const { data: fromWarehouseData, isLoading: isFromWarehouseLoading } = useWarehouseBalance(
+    (watchMovementType === MOVEMENT_TYPE.INTERNAL) ? watchFromWarehouseId : undefined,
+    watchMovementDate,
+    watchProductType
+  );
+
+  const warehousePriceAtDate = useMemo(() => {
+    if (isFromWarehouseLoading) return null;
+    return fromWarehouseData && typeof fromWarehouseData === 'object' && 'averageCost' in fromWarehouseData 
+      ? (fromWarehouseData.averageCost ? parseFloat(fromWarehouseData.averageCost) : null) 
+      : null;
+  }, [fromWarehouseData, isFromWarehouseLoading]);
+
   const finalPurchasePrice = useMemo(() => {
     if (watchMovementType === MOVEMENT_TYPE.INTERNAL && watchFromWarehouseId) {
+      if (warehousePriceAtDate !== null) {
+        return warehousePriceAtDate;
+      }
+      
       const fromWarehouse = warehouses.find(
         (w) => w.id === watchFromWarehouseId,
       );
@@ -159,6 +177,7 @@ export function useMovementCalculations({
     warehouses,
     watchProductType,
     purchasePrice,
+    warehousePriceAtDate
   ]);
 
   const purchaseAmount = useMemo(() => {

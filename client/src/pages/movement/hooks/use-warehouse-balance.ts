@@ -82,8 +82,8 @@ export function useWarehouseBalanceMov(props: UseWarehouseBalanceProps): Warehou
     let baseBalance = Math.min(hist, curr);
     let balance = isEditing ? baseBalance + initialWarehouseBalance : baseBalance;
 
-    const cost = historicalBalanceStr && typeof historicalBalanceStr === 'object' && 'averageCost' in historicalBalanceStr
-      ? (historicalBalanceStr.averageCost ? parseFloat(historicalBalanceStr.averageCost) : parseFloat(isPvkj ? fromWarehouse.pvkjAverageCost || "0" : fromWarehouse.averageCost || "0"))
+    const cost = historicalBalanceStr && typeof historicalBalanceStr === 'object' && 'averageCost' in historicalBalanceStr && historicalBalanceStr.averageCost
+      ? parseFloat(historicalBalanceStr.averageCost)
       : parseFloat(isPvkj ? fromWarehouse.pvkjAverageCost || "0" : fromWarehouse.averageCost || "0");
 
     if (balance <= 0) {
