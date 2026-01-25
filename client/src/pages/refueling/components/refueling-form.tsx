@@ -333,6 +333,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/refueling/contract-used"] });
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
@@ -414,6 +415,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/refueling/contract-used"] });
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;

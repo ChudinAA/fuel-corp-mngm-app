@@ -237,6 +237,9 @@ export function AddPriceDialog({
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/prices/list"] });
       queryClient.invalidateQueries({ queryKey: ["/api/prices/find-active"] });
+      if (data.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/prices", data.id] });
+      }
       toast({
         title: editPrice ? "Цена обновлена" : "Цена добавлена",
         description: editPrice
@@ -316,7 +319,7 @@ export function AddPriceDialog({
 
       try {
         const result = await dateCheck.checkAsync(checkParams);
-        
+
         if (result && result.status === "error") {
           toast({
             title: "Ошибка пересечения дат!",

@@ -49,6 +49,7 @@ export function useOptTable() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/opt"] });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/opt/contract-used"] });
       toast({
         title: "Сделка удалена",
         description: "Оптовая сделка успешно удалена",

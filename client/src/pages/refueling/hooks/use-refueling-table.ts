@@ -53,6 +53,7 @@ export function useRefuelingTable() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/refueling`] });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/refueling/contract-used"] });
       toast({
         title: "Заправка удалена",
         description: "Заправка ВС успешно удалена",

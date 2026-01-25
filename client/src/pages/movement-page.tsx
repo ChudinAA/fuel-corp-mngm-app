@@ -59,6 +59,7 @@ export default function MovementPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/movement"] });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/opt/contract-used"] });
       toast({ title: "Перемещение удалено" });
     },
     onError: (error: Error) => {
