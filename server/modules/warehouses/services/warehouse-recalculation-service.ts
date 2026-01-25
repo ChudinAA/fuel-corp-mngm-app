@@ -1,6 +1,7 @@
 import { eq, and, gte, sql, or, isNull, desc, asc } from "drizzle-orm";
 import { warehouses, warehouseTransactions, opt, aircraftRefueling, movement } from "@shared/schema";
 import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
+import { parse } from "path";
 
 export class WarehouseRecalculationService {
   static async recalculateAllAffectedTransactions(
@@ -420,9 +421,10 @@ export class WarehouseRecalculationService {
       if (refuel && refuel.productType !== PRODUCT_TYPE.SERVICE) {
         const quantityKg = parseFloat(refuel.quantityKg);
         const salePrice = parseFloat(refuel.salePrice || "0");
+        const agentFee = parseFloat(refuel.agentFee || "0");
         const purchaseAmount = quantityKg * newAverageCost;
         const saleAmount = quantityKg * salePrice;
-        const profit = saleAmount - purchaseAmount;
+        const profit = saleAmount - purchaseAmount - agentFee;
 
         console.log('        Заправка до обновления:', {
           purchasePrice: refuel.purchasePrice,

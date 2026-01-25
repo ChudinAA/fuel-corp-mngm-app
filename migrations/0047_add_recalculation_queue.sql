@@ -29,3 +29,6 @@ DO $$ BEGIN
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
+
+-- Add agent_fee to aircraft_refueling table
+ALTER TABLE aircraft_refueling ADD COLUMN IF NOT EXISTS agent_fee numeric(15, 2) DEFAULT '0';

@@ -326,6 +326,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
         purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
         saleAmount: saleAmount !== null ? saleAmount : null,
+        agentFee: agentFee !== null ? agentFee : null,
         profit: profit !== null ? profit : null,
       };
       const res = await apiRequest("POST", "/api/refueling", payload);
@@ -402,6 +403,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
         purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
         saleAmount: saleAmount !== null ? saleAmount : null,
+        agentFee: agentFee !== null ? agentFee : null,
         profit: profit !== null ? profit : null,
       };
       const res = await apiRequest(
