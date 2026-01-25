@@ -63,7 +63,7 @@ export function useOptCalculations({
     warehouseId: isWarehouseSupplier ? supplierWarehouse?.id : undefined,
     dealDate,
     isEditing,
-    editQuantityKg: quantityKg,
+    editQuantityKg: quantityKg || "0",
     initialCurrentBalance: supplierWarehouse?.currentBalance,
   });
 
@@ -178,55 +178,6 @@ export function useOptCalculations({
     initialQuantityKg: initialQuantityKg,
     mode: "opt",
   });
-
-  const { 
-    calculatedKg,
-    finalKg,
-    purchasePrice,
-    salePrice,
-    deliveryCost,
-    purchaseAmount,
-    saleAmount,
-    profit,
-    deliveryTariff,
-    contractVolumeStatus,
-    supplierContractVolumeStatus,
-    warehouseBalanceAtDate: (typeof warehouseBalanceAtDate === 'number' ? warehouseBalanceAtDate : (typeof warehouseBalanceAtDate === 'string' ? parseFloat(warehouseBalanceAtDate) : 0)) as number,
-    isWarehouseBalanceLoading,
-    warehousePriceAtDate,
-  } = useMemo(() => {
-    return {
-      calculatedKg,
-      finalKg,
-      purchasePrice,
-      salePrice,
-      deliveryCost,
-      purchaseAmount,
-      saleAmount,
-      profit,
-      deliveryTariff,
-      contractVolumeStatus,
-      supplierContractVolumeStatus,
-      warehouseBalanceAtDate,
-      isWarehouseBalanceLoading,
-      warehousePriceAtDate,
-    };
-  }, [
-    calculatedKg,
-    finalKg,
-    purchasePrice,
-    salePrice,
-    deliveryCost,
-    purchaseAmount,
-    saleAmount,
-    profit,
-    deliveryTariff,
-    contractVolumeStatus,
-    supplierContractVolumeStatus,
-    warehouseBalanceAtDate,
-    isWarehouseBalanceLoading,
-    warehousePriceAtDate,
-  ]);
 
   return {
     calculatedKg,

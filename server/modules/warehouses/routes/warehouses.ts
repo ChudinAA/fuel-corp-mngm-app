@@ -63,22 +63,22 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         // Automatically create supplier if requested
         if (createSupplier && baseIds.length > 0) {
           try {
-            const supplierData = {
+            const supplierData: any = {
               name: data.name,
               baseIds: baseIds,
               isWarehouse: true,
               warehouseId: item.id,
               storageCost: data.storageCost || null,
               isActive: true,
-              createdById: req.session.userId,
+              createdById: req.session.userId ? String(req.session.userId) : null,
             };
 
             const supplier =
               await storage.suppliers.createSupplier(supplierData);
             await storage.warehouses.updateWarehouse(item.id, {
               supplierId: supplier.id,
-              updatedById: req.session.userId,
-            });
+              updatedById: req.session.userId ? String(req.session.userId) : null,
+            } as any);
           } catch (suppError: any) {
             console.error(
               "Failed to auto-create supplier for warehouse:",
@@ -195,13 +195,13 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           }
         }
 
-        await storage.warehouses.deleteWarehouse(id, req.session.userId);
+        await storage.warehouses.deleteWarehouse(id, req.session.userId ? String(req.session.userId) : undefined);
         res.json({ message: "Склад удален" });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Warehouse deletion error:", error);
         res
           .status(500)
-          .json({ message: "Ошибка удаления склада", error: error.message });
+          .json({ message: "Ошибка удаления склада", error: error?.message || String(error) });
       }
     },
   );

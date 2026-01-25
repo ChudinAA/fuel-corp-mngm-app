@@ -151,6 +151,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     supplierContractVolumeStatus,
     warehouseBalanceAtDate,
     isWarehouseBalanceLoading,
+    warehousePriceAtDate,
   } = useOptCalculations({
     inputMode,
     quantityLiters: watchLiters,

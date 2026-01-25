@@ -43,12 +43,12 @@ export function useOptWarehouseBalance({
     // Если мы еще загружаем данные, возвращаем null
     if (isHistoricalLoading || isCurrentLoading) return null;
 
-    const hist = historicalData?.balance
+    const hist = historicalData && typeof historicalData === 'object' && 'balance' in historicalData
       ? parseFloat(historicalData.balance)
       : initialCurrentBalance
         ? parseFloat(initialCurrentBalance)
         : 0;
-    const curr = currentData?.balance
+    const curr = currentData && typeof currentData === 'object' && 'balance' in currentData
       ? parseFloat(currentData.balance)
       : initialCurrentBalance
         ? parseFloat(initialCurrentBalance)
@@ -76,7 +76,7 @@ export function useOptWarehouseBalance({
 
   const warehousePrice = useMemo(() => {
     if (isHistoricalLoading) return null;
-    return historicalData?.averageCost ? parseFloat(historicalData.averageCost) : null;
+    return historicalData && typeof historicalData === 'object' && 'averageCost' in historicalData ? (historicalData.averageCost ? parseFloat(historicalData.averageCost) : null) : null;
   }, [historicalData, isHistoricalLoading]);
 
   return {
