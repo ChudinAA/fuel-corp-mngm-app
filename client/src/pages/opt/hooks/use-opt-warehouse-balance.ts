@@ -34,7 +34,7 @@ export function useOptWarehouseBalance({
       PRODUCT_TYPE.KEROSENE,
     );
 
-  const { data: currentBalanceStr, isLoading: isCurrentLoading } =
+  const { data: currentBalance, isLoading: isCurrentLoading } =
     useWarehouseBalance(warehouseId, new Date(), PRODUCT_TYPE.KEROSENE);
 
   const availableBalance = useMemo(() => {
@@ -48,7 +48,7 @@ export function useOptWarehouseBalance({
       : initialCurrentBalance
         ? parseFloat(initialCurrentBalance)
         : 0;
-    const curr = currentBalanceStr
+    const curr = currentBalance.balance
       ? parseFloat(currentBalanceStr)
       : initialCurrentBalance
         ? parseFloat(initialCurrentBalance)

@@ -14,7 +14,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     async (req, res) => {
       const data = await storage.warehouses.getAllWarehouses();
       res.json(data);
-    }
+    },
   );
 
   app.get(
@@ -28,7 +28,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         return res.status(404).json({ message: "Склад не найден" });
       }
       res.json(warehouse);
-    }
+    },
   );
 
   app.post(
@@ -54,7 +54,8 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           baseIds,
           createdById: req.session.userId,
           supplierId: warehouseData.supplierId || null,
-          storageCost: warehouseData.storageCost === "" ? null : warehouseData.storageCost,
+          storageCost:
+            warehouseData.storageCost === "" ? null : warehouseData.storageCost,
         };
 
         const item = await storage.warehouses.createWarehouse(data);
@@ -72,13 +73,17 @@ export function registerWarehousesOperationsRoutes(app: Express) {
               createdById: req.session.userId,
             };
 
-            const supplier = await storage.suppliers.createSupplier(supplierData);
+            const supplier =
+              await storage.suppliers.createSupplier(supplierData);
             await storage.warehouses.updateWarehouse(item.id, {
               supplierId: supplier.id,
               updatedById: req.session.userId,
             });
           } catch (suppError: any) {
-            console.error("Failed to auto-create supplier for warehouse:", suppError);
+            console.error(
+              "Failed to auto-create supplier for warehouse:",
+              suppError,
+            );
             // Don't fail warehouse creation if auto-supplier fails (e.g. dupe)
           }
         }
@@ -96,7 +101,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           .status(500)
           .json({ message: "Ошибка создания склада", error: error.message });
       }
-    }
+    },
   );
 
   app.patch(
@@ -148,7 +153,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         console.error("Warehouse update error:", error);
         res.status(500).json({ message: "Ошибка обновления склада" });
       }
-    }
+    },
   );
 
   app.delete(
@@ -184,7 +189,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           } catch (supplierError) {
             console.error(
               "Error updating supplier during warehouse deletion:",
-              supplierError
+              supplierError,
             );
             // Continue with warehouse deletion even if supplier update fails
           }
@@ -198,7 +203,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           .status(500)
           .json({ message: "Ошибка удаления склада", error: error.message });
       }
-    }
+    },
   );
 
   app.get(
@@ -208,14 +213,13 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        const transactions = await storage.warehouses.getWarehouseTransactions(
-          id
-        );
+        const transactions =
+          await storage.warehouses.getWarehouseTransactions(id);
         res.json(transactions);
       } catch (error) {
         res.status(500).json({ message: "Ошибка получения транзакций склада" });
       }
-    }
+    },
   );
 
   app.get(
@@ -226,20 +230,21 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       try {
         const id = req.params.id;
         const dateStr = req.query.date as string;
-        const productType = (req.query.productType as string) || PRODUCT_TYPE.KEROSENE;
+        const productType =
+          (req.query.productType as string) || PRODUCT_TYPE.KEROSENE;
         if (!dateStr) {
           return res.status(400).json({ message: "Дата не указана" });
         }
         const date = new Date(dateStr);
-        const balance = await storage.warehouses.getWarehouseBalanceAtDate(
+        const balanceData = await storage.warehouses.getWarehouseBalanceAtDate(
           id,
           date,
-          productType
+          productType,
         );
-        res.json({ balance });
+        res.json(balanceData);
       } catch (error) {
         res.status(500).json({ message: "Ошибка получения остатка склада" });
       }
-    }
+    },
   );
 }

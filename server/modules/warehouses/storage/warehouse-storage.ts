@@ -12,7 +12,7 @@ import {
 import { IWarehouseStorage } from "./types";
 import { PRODUCT_TYPE } from "@shared/constants";
 
-export class WarehouseStorage implements IWarehouseStorage {
+export class WarehouseStorage {
   async getAllWarehouses(): Promise<Warehouse[]> {
     const warehousesList = await db.query.warehouses.findMany({
       where: isNull(warehouses.deletedAt),
@@ -73,7 +73,10 @@ export class WarehouseStorage implements IWarehouseStorage {
 
     // Check for duplicates
     const existing = await db.query.warehouses.findFirst({
-      where: and(eq(warehouses.name, warehouseData.name), isNull(warehouses.deletedAt)),
+      where: and(
+        eq(warehouses.name, warehouseData.name),
+        isNull(warehouses.deletedAt),
+      ),
     });
 
     if (existing) {
@@ -244,11 +247,11 @@ export class WarehouseStorage implements IWarehouseStorage {
     warehouseId: string,
     date: Date,
     productType: string,
-  ): Promise<string> {
+  ): Promise<{ balance: string; averageCost: string }> {
     const dateStr = format(date, "yyyy-MM-dd");
 
     const [lastTransaction] = await db
-      .select({ balanceAfter: warehouseTransactions.balanceAfter })
+      .select()
       .from(warehouseTransactions)
       .where(
         and(
@@ -256,12 +259,19 @@ export class WarehouseStorage implements IWarehouseStorage {
           eq(warehouseTransactions.productType, productType),
           sql`CAST(${warehouseTransactions.transactionDate} AS DATE) <= CAST(${dateStr} AS DATE)`,
           isNull(warehouseTransactions.deletedAt),
-        )
+        ),
       )
-      .orderBy(desc(warehouseTransactions.transactionDate), desc(warehouseTransactions.id))
+      .orderBy(
+        desc(warehouseTransactions.transactionDate),
+        desc(warehouseTransactions.createdAt),
+        desc(warehouseTransactions.id),
+      )
       .limit(1);
 
-    return lastTransaction?.balanceAfter || "0";
+    return {
+      balance: lastTransaction?.balanceAfter || "0",
+      averageCost: lastTransaction.averageCostAfter || "0",
+    };
   }
 
   async getWarehouseStatsForDashboard(): Promise<any[]> {
