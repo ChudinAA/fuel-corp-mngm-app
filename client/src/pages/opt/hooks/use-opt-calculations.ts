@@ -55,7 +55,11 @@ export function useOptCalculations({
     quantityKg,
   });
 
-  const { availableBalance: warehouseBalanceAtDate, isLoading: isWarehouseBalanceLoading } = useOptWarehouseBalance({
+  const { 
+    availableBalance: warehouseBalanceAtDate, 
+    warehousePrice: warehousePriceAtDate,
+    isLoading: isWarehouseBalanceLoading 
+  } = useOptWarehouseBalance({
     warehouseId: isWarehouseSupplier ? supplierWarehouse?.id : undefined,
     dealDate,
     isEditing,
@@ -63,7 +67,7 @@ export function useOptCalculations({
     initialCurrentBalance: supplierWarehouse?.currentBalance,
   });
 
-  const { purchasePrice, salePrice } = usePriceExtraction({
+  const { purchasePrice: extractedPurchasePrice, salePrice: extractedSalePrice } = usePriceExtraction({
     purchasePrices,
     salePrices,
     selectedPurchasePriceId,
@@ -71,6 +75,15 @@ export function useOptCalculations({
     isWarehouseSupplier,
     supplierWarehouse,
   });
+
+  const purchasePrice = useMemo(() => {
+    if (isWarehouseSupplier) {
+      return warehousePriceAtDate !== null ? warehousePriceAtDate : extractedPurchasePrice;
+    }
+    return extractedPurchasePrice;
+  }, [isWarehouseSupplier, warehousePriceAtDate, extractedPurchasePrice]);
+
+  const salePrice = extractedSalePrice;
 
   // Получение стоимости доставки
   const deliveryCost = useMemo((): number | null => {
@@ -180,5 +193,6 @@ export function useOptCalculations({
     supplierContractVolumeStatus,
     warehouseBalanceAtDate: (typeof warehouseBalanceAtDate === 'number' ? warehouseBalanceAtDate : (typeof warehouseBalanceAtDate === 'string' ? parseFloat(warehouseBalanceAtDate) : 0)) as number,
     isWarehouseBalanceLoading,
+    warehousePriceAtDate,
   };
 }

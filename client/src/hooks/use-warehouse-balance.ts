@@ -15,7 +15,10 @@ export function useWarehouseBalance(warehouseId: string | undefined, date: Date 
       const res = await fetch(`/api/warehouses/${warehouseId}/balance?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch balance");
       const data = await res.json();
-      return data.balance as string;
+      return {
+        balance: data.balance as string,
+        averageCost: data.averageCost as string | null
+      };
     },
     enabled: !!warehouseId && !!date,
   });

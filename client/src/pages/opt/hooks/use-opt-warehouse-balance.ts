@@ -27,14 +27,14 @@ export function useOptWarehouseBalance({
     return selectedDate.getTime() < today.getTime();
   }, [dealDate]);
 
-  const { data: historicalBalanceStr, isLoading: isHistoricalLoading } =
+  const { data: historicalData, isLoading: isHistoricalLoading } =
     useWarehouseBalance(
       isBackdated ? warehouseId : undefined,
       dealDate,
       PRODUCT_TYPE.KEROSENE,
     );
 
-  const { data: currentBalance, isLoading: isCurrentLoading } =
+  const { data: currentData, isLoading: isCurrentLoading } =
     useWarehouseBalance(warehouseId, new Date(), PRODUCT_TYPE.KEROSENE);
 
   const availableBalance = useMemo(() => {
@@ -43,13 +43,13 @@ export function useOptWarehouseBalance({
     // Если мы еще загружаем данные, возвращаем null
     if (isHistoricalLoading || isCurrentLoading) return null;
 
-    const hist = historicalBalanceStr
-      ? parseFloat(historicalBalanceStr)
+    const hist = historicalData?.balance
+      ? parseFloat(historicalData.balance)
       : initialCurrentBalance
         ? parseFloat(initialCurrentBalance)
         : 0;
-    const curr = currentBalance.balance
-      ? parseFloat(currentBalanceStr)
+    const curr = currentData?.balance
+      ? parseFloat(currentData.balance)
       : initialCurrentBalance
         ? parseFloat(initialCurrentBalance)
         : 0;
@@ -65,8 +65,8 @@ export function useOptWarehouseBalance({
   }, [
     warehouseId,
     isBackdated,
-    historicalBalanceStr,
-    currentBalanceStr,
+    historicalData,
+    currentData,
     isHistoricalLoading,
     isCurrentLoading,
     isEditing,
@@ -74,8 +74,14 @@ export function useOptWarehouseBalance({
     initialCurrentBalance,
   ]);
 
+  const warehousePrice = useMemo(() => {
+    if (isHistoricalLoading) return null;
+    return historicalData?.averageCost ? parseFloat(historicalData.averageCost) : null;
+  }, [historicalData, isHistoricalLoading]);
+
   return {
     availableBalance,
+    warehousePrice,
     isLoading: isHistoricalLoading || isCurrentLoading,
   };
 }
