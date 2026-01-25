@@ -139,7 +139,6 @@ export function useMovementCalculations({
     availablePurchasePrices.length,
   ]);
 
-  // Handle internal movement price (average cost)
   const { data: fromWarehouseData, isLoading: isFromWarehouseLoading } = useWarehouseBalance(
     (watchMovementType === MOVEMENT_TYPE.INTERNAL) ? watchFromWarehouseId : undefined,
     watchMovementDate,
