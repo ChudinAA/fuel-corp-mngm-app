@@ -526,11 +526,17 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       if (isWarehouseSupplier && supplierWarehouse) {
         const availableBalance =
           warehouseBalanceAtDate !== null ? warehouseBalanceAtDate : 0;
-        const remaining = availableBalance - finalKg;
-        if (remaining < 0) {
+        
+        // ВАЖНО: При проверке перед сохранением мы должны убедиться, что
+        // остаток БЕЗ учета текущей сделки достаточен для нового объема
+        const baseBalance = isEditing 
+          ? availableBalance - finalKg 
+          : availableBalance;
+
+        if (baseBalance < 0) {
           toast({
             title: "Ошибка: недостаточно объема на складе",
-            description: `На складе "${supplierWarehouse.name}" на выбранную дату недостаточно топлива. Доступно: ${availableBalance.toFixed(2)} кг, требуется: ${finalKg.toFixed(2)} кг`,
+            description: `На складе "${supplierWarehouse.name}" на выбранную дату недостаточно топлива. Доступно: ${baseBalance.toFixed(2)} кг, требуется: ${finalKg.toFixed(2)} кг`,
             variant: "destructive",
           });
           return;

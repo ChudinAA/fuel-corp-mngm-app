@@ -63,7 +63,7 @@ export function useOptCalculations({
     warehouseId: isWarehouseSupplier ? supplierWarehouse?.id : undefined,
     dealDate,
     isEditing,
-    editQuantityKg: quantityKg || "0",
+    editQuantityKg: finalKg.toString(),
     initialCurrentBalance: supplierWarehouse?.currentBalance,
   });
 
