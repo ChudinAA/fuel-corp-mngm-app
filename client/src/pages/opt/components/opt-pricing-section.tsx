@@ -93,11 +93,17 @@ export function OptPricingSection({
       return { status: "ok", message: "Объем не со склада" };
     }
 
-    if (!supplierWarehouse || finalKg <= 0) {
+    if (!supplierWarehouse) {
       return { status: "ok", message: "—" };
     }
 
-    const availableBalance = warehouseBalanceAtDate !== null ? warehouseBalanceAtDate : 0;
+    const availableBalance =
+      warehouseBalanceAtDate !== null ? warehouseBalanceAtDate : 0;
+
+    if (finalKg <= 0) {
+      return { status: "ok", message: `${formatNumber(availableBalance)} кг` };
+    }
+
     const remaining = availableBalance - finalKg;
 
     if (remaining >= 0) {
@@ -210,21 +216,23 @@ export function OptPricingSection({
             )}
           </div>
         ) : (
-          <div className="flex flex-col gap-1">
-            <CalculatedField
-              label="Покупка"
-              value={
-                purchasePrice !== null ? formatNumber(purchasePrice) : "Нет цены!"
-              }
-              suffix={purchasePrice !== null ? " ₽/кг" : ""}
-              status={purchasePrice !== null ? "ok" : "error"}
-            />
-            {isWarehouseSupplier && (
-              <span className="text-[10px] text-muted-foreground px-1 leading-none">
-                {isWarehouseBalanceLoading ? "Загрузка цены..." : warehousePriceAtDate !== null ? "Цена со склада на дату" : "Цена не найдена"}
-              </span>
-            )}
-          </div>
+          <CalculatedField
+            label="Покупка"
+            value={
+              purchasePrice !== null
+                ? formatNumber(purchasePrice)
+                : isWarehouseSupplier && isWarehouseBalanceLoading
+                  ? "Загрузка..."
+                  : "Нет цены!"
+            }
+            suffix={purchasePrice !== null ? " ₽/кг" : ""}
+            status={
+              purchasePrice !== null ||
+              (isWarehouseSupplier && isWarehouseBalanceLoading)
+                ? "ok"
+                : "error"
+            }
+          />
         )}
 
         <CalculatedField
@@ -339,7 +347,9 @@ export function OptPricingSection({
       <div className="grid gap-2 md:grid-cols-4">
         <CalculatedField
           label="Объем на складе"
-          value={isWarehouseBalanceLoading ? "Загрузка..." : warehouseStatus.message}
+          value={
+            isWarehouseBalanceLoading ? "Загрузка..." : warehouseStatus.message
+          }
           status={isWarehouseBalanceLoading ? "ok" : warehouseStatus.status}
         />
 
