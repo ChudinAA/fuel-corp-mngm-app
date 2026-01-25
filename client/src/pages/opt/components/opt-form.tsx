@@ -637,6 +637,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
             supplierContractVolumeStatus={supplierContractVolumeStatus}
             warehouseBalanceAtDate={warehouseBalanceAtDate}
             isWarehouseBalanceLoading={isWarehouseBalanceLoading}
+            warehousePriceAtDate={warehousePriceAtDate}
           />
 
           <div className="grid gap-4 md:grid-cols-2 items-end">

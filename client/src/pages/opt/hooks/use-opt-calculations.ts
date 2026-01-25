@@ -179,6 +179,55 @@ export function useOptCalculations({
     mode: "opt",
   });
 
+  const { 
+    calculatedKg,
+    finalKg,
+    purchasePrice,
+    salePrice,
+    deliveryCost,
+    purchaseAmount,
+    saleAmount,
+    profit,
+    deliveryTariff,
+    contractVolumeStatus,
+    supplierContractVolumeStatus,
+    warehouseBalanceAtDate: (typeof warehouseBalanceAtDate === 'number' ? warehouseBalanceAtDate : (typeof warehouseBalanceAtDate === 'string' ? parseFloat(warehouseBalanceAtDate) : 0)) as number,
+    isWarehouseBalanceLoading,
+    warehousePriceAtDate,
+  } = useMemo(() => {
+    return {
+      calculatedKg,
+      finalKg,
+      purchasePrice,
+      salePrice,
+      deliveryCost,
+      purchaseAmount,
+      saleAmount,
+      profit,
+      deliveryTariff,
+      contractVolumeStatus,
+      supplierContractVolumeStatus,
+      warehouseBalanceAtDate,
+      isWarehouseBalanceLoading,
+      warehousePriceAtDate,
+    };
+  }, [
+    calculatedKg,
+    finalKg,
+    purchasePrice,
+    salePrice,
+    deliveryCost,
+    purchaseAmount,
+    saleAmount,
+    profit,
+    deliveryTariff,
+    contractVolumeStatus,
+    supplierContractVolumeStatus,
+    warehouseBalanceAtDate,
+    isWarehouseBalanceLoading,
+    warehousePriceAtDate,
+  ]);
+
   return {
     calculatedKg,
     finalKg,

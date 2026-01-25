@@ -47,6 +47,7 @@ interface OptPricingSectionProps {
   };
   warehouseBalanceAtDate: number | null;
   isWarehouseBalanceLoading?: boolean;
+  warehousePriceAtDate?: number | null;
 }
 
 export function OptPricingSection({
@@ -70,6 +71,7 @@ export function OptPricingSection({
   supplierContractVolumeStatus,
   warehouseBalanceAtDate,
   isWarehouseBalanceLoading,
+  warehousePriceAtDate,
 }: OptPricingSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -208,14 +210,21 @@ export function OptPricingSection({
             )}
           </div>
         ) : (
-          <CalculatedField
-            label="Покупка"
-            value={
-              purchasePrice !== null ? formatNumber(purchasePrice) : "Нет цены!"
-            }
-            suffix={purchasePrice !== null ? " ₽/кг" : ""}
-            status={purchasePrice !== null ? "ok" : "error"}
-          />
+          <div className="flex flex-col gap-1">
+            <CalculatedField
+              label="Покупка"
+              value={
+                purchasePrice !== null ? formatNumber(purchasePrice) : "Нет цены!"
+              }
+              suffix={purchasePrice !== null ? " ₽/кг" : ""}
+              status={purchasePrice !== null ? "ok" : "error"}
+            />
+            {isWarehouseSupplier && (
+              <span className="text-[10px] text-muted-foreground px-1 leading-none">
+                {isWarehouseBalanceLoading ? "Загрузка цены..." : warehousePriceAtDate !== null ? "Цена со склада на дату" : "Цена не найдена"}
+              </span>
+            )}
+          </div>
         )}
 
         <CalculatedField
