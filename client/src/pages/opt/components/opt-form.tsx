@@ -285,7 +285,9 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);
       setInitialQuantityKg(
-        isEditing ? parseFloat(editData.quantityKg || "0") : 0,
+        isEditing && !editData.isDraft
+          ? parseFloat(editData.quantityKg || "0")
+          : 0,
       );
 
       if (editData.quantityLiters) {

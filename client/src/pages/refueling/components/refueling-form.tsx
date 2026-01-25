@@ -164,7 +164,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
     }),
   });
-  
+
   useEffect(() => {
     if (watchSupplierId && suppliers && allBases) {
       const supplier = suppliers.find((s) => s.id === watchSupplierId);
@@ -263,7 +263,11 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
 
       setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);
-      setInitialQuantityKg(isEditing ? parseFloat(editData.quantityKg || "0") : 0);
+      setInitialQuantityKg(
+        isEditing && !editData.isDraft
+          ? parseFloat(editData.quantityKg || "0")
+          : 0,
+      );
 
       // Set basis from editData
       if (editData.basis) {
@@ -333,7 +337,9 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/refueling/contract-used"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/refueling/contract-used"],
+      });
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
@@ -415,7 +421,9 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/refueling/contract-used"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/refueling/contract-used"],
+      });
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
@@ -544,146 +552,162 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
 
   return (
     <>
-    <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit((data) => onSubmit(data))}
-        className="space-y-6"
-      >
-        <RefuelingMainFields
-          form={form}
-          refuelingSuppliers={refuelingSuppliers}
-          customers={customers}
-          selectedSupplier={selectedSupplier}
-          selectedBasis={selectedBasis}
-          setSelectedBasis={setSelectedBasis}
-          availableBases={availableBases}
-          allBases={allBases}
-        />
-
-        <VolumeInputSection
-          form={form}
-          inputMode={inputMode}
-          setInputMode={setInputMode}
-          calculatedKg={calculatedKg}
-        />
-
-        <RefuelingPricingSection
-          form={form}
-          isWarehouseSupplier={isWarehouseSupplier}
-          purchasePrices={purchasePrices}
-          salePrices={salePrices}
-          selectedPurchasePriceId={selectedPurchasePriceId}
-          selectedSalePriceId={selectedSalePriceId}
-          setSelectedPurchasePriceId={setSelectedPurchasePriceId}
-          setSelectedSalePriceId={setSelectedSalePriceId}
-          purchasePrice={purchasePrice}
-          salePrice={salePrice}
-          purchaseAmount={purchaseAmount}
-          saleAmount={saleAmount}
-          profit={profit}
-          agentFee={agentFee}
-          warehouseStatus={warehouseStatus}
-          contractVolumeStatus={contractVolumeStatus}
-          supplierContractVolumeStatus={supplierContractVolumeStatus}
-          productType={watchProductType}
-        />
-
-        <div className="grid gap-4 md:grid-cols-2 items-end">
-          <FormField
-            control={form.control}
-            name="notes"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Примечания</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Дополнительная информация..."
-                    data-testid="input-notes"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit((data) => onSubmit(data))}
+          className="space-y-6"
+        >
+          <RefuelingMainFields
+            form={form}
+            refuelingSuppliers={refuelingSuppliers}
+            customers={customers}
+            selectedSupplier={selectedSupplier}
+            selectedBasis={selectedBasis}
+            setSelectedBasis={setSelectedBasis}
+            availableBases={availableBases}
+            allBases={allBases}
           />
 
-          <FormField
-            control={form.control}
-            name="isApproxVolume"
-            render={({ field }) => (
-              <FormItem className="flex items-center gap-2 space-y-0 pb-2">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    data-testid="checkbox-approx-volume"
-                  />
-                </FormControl>
-                <FormLabel className="text-sm font-normal cursor-pointer">
-                  Примерный объем (требует уточнения)
-                </FormLabel>
-              </FormItem>
-            )}
+          <VolumeInputSection
+            form={form}
+            inputMode={inputMode}
+            setInputMode={setInputMode}
+            calculatedKg={calculatedKg}
           />
-        </div>
 
-        <div className="flex justify-end gap-4 pt-4 border-t">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              form.reset();
-              setSelectedPurchasePriceId("");
-              setSelectedSalePriceId("");
-              setSelectedBasis("");
-              onSuccess?.();
-            }}
-          >
-            {editData ? "Отмена" : "Очистить"}
-          </Button>
+          <RefuelingPricingSection
+            form={form}
+            isWarehouseSupplier={isWarehouseSupplier}
+            purchasePrices={purchasePrices}
+            salePrices={salePrices}
+            selectedPurchasePriceId={selectedPurchasePriceId}
+            selectedSalePriceId={selectedSalePriceId}
+            setSelectedPurchasePriceId={setSelectedPurchasePriceId}
+            setSelectedSalePriceId={setSelectedSalePriceId}
+            purchasePrice={purchasePrice}
+            salePrice={salePrice}
+            purchaseAmount={purchaseAmount}
+            saleAmount={saleAmount}
+            profit={profit}
+            agentFee={agentFee}
+            warehouseStatus={warehouseStatus}
+            contractVolumeStatus={contractVolumeStatus}
+            supplierContractVolumeStatus={supplierContractVolumeStatus}
+            productType={watchProductType}
+          />
 
-          {!isEditing || (editData && editData.isDraft) ? (
+          <div className="grid gap-4 md:grid-cols-2 items-end">
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Примечания</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Дополнительная информация..."
+                      data-testid="input-notes"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="isApproxVolume"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2 space-y-0 pb-2">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="checkbox-approx-volume"
+                    />
+                  </FormControl>
+                  <FormLabel className="text-sm font-normal cursor-pointer">
+                    Примерный объем (требует уточнения)
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="flex justify-end gap-4 pt-4 border-t">
             <Button
               type="button"
-              variant="secondary"
-              disabled={createMutation.isPending || updateMutation.isPending || isChecking}
+              variant="outline"
               onClick={() => {
-                form.clearErrors();
-                form.handleSubmit((data) => onSubmit(data, true))();
+                form.reset();
+                setSelectedPurchasePriceId("");
+                setSelectedSalePriceId("");
+                setSelectedBasis("");
+                onSuccess?.();
               }}
             >
-              {createMutation.isPending || updateMutation.isPending || isChecking ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Сохранить черновик
+              {editData ? "Отмена" : "Очистить"}
             </Button>
-          ) : null}
 
-          <Button
-            type="submit"
-            disabled={createMutation.isPending || updateMutation.isPending || isChecking}
-            data-testid="button-submit-refueling"
-          >
-            {createMutation.isPending || updateMutation.isPending || isChecking ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isEditing ? "Сохранение..." : "Создание..."}
-              </>
-            ) : (
-              <>{(isEditing && !editData.isDraft) ? "Сохранить изменения" : "Создать сделку"}</>
-            )}
-          </Button>
-        </div>
-      </form>
-    </Form>
+            {!isEditing || (editData && editData.isDraft) ? (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={
+                  createMutation.isPending ||
+                  updateMutation.isPending ||
+                  isChecking
+                }
+                onClick={() => {
+                  form.clearErrors();
+                  form.handleSubmit((data) => onSubmit(data, true))();
+                }}
+              >
+                {createMutation.isPending ||
+                updateMutation.isPending ||
+                isChecking ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Сохранить черновик
+              </Button>
+            ) : null}
 
-    <DuplicateAlertDialog
-      open={showDuplicateDialog}
-      onOpenChange={setShowDuplicateDialog}
-      onConfirm={handleConfirm}
-      onCancel={handleCancel}
-      description="В системе уже есть заправка с такими же параметрами (дата, поставщик, покупатель, базис и объем). Продолжить создание?"
-    />
+            <Button
+              type="submit"
+              disabled={
+                createMutation.isPending ||
+                updateMutation.isPending ||
+                isChecking
+              }
+              data-testid="button-submit-refueling"
+            >
+              {createMutation.isPending ||
+              updateMutation.isPending ||
+              isChecking ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isEditing ? "Сохранение..." : "Создание..."}
+                </>
+              ) : (
+                <>
+                  {isEditing && !editData.isDraft
+                    ? "Сохранить изменения"
+                    : "Создать сделку"}
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </Form>
+
+      <DuplicateAlertDialog
+        open={showDuplicateDialog}
+        onOpenChange={setShowDuplicateDialog}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+        description="В системе уже есть заправка с такими же параметрами (дата, поставщик, покупатель, базис и объем). Продолжить создание?"
+      />
     </>
   );
 }
