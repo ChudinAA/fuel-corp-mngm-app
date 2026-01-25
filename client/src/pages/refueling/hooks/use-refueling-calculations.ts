@@ -53,21 +53,43 @@ export function useRefuelingCalculations({
     quantityKg,
   });
 
-  const { data: historicalBalanceStr, isLoading: isHistoricalLoading } = useWarehouseBalance(
+  const { data: warehouseData, isLoading: isHistoricalLoading } = useWarehouseBalance(
     isWarehouseSupplier ? supplierWarehouse?.id : undefined,
     refuelingDate,
     productType
   );
 
-  const { data: currentBalanceStr, isLoading: isCurrentLoading } = useWarehouseBalance(
+  const { data: currentWarehouseData, isLoading: isCurrentLoading } = useWarehouseBalance(
     isWarehouseSupplier ? supplierWarehouse?.id : undefined,
     new Date(),
     productType
   );
 
+  const warehouseBalanceAtDate = useMemo(() => {
+    if (isHistoricalLoading || isCurrentLoading) return null;
+    
+    const hist = warehouseData && typeof warehouseData === 'object' && 'balance' in warehouseData
+      ? parseFloat(warehouseData.balance)
+      : parseFloat(productType === PRODUCT_TYPE.PVKJ ? supplierWarehouse?.pvkjBalance || "0" : supplierWarehouse?.currentBalance || "0");
+      
+    const curr = currentWarehouseData && typeof currentWarehouseData === 'object' && 'balance' in currentWarehouseData
+      ? parseFloat(currentWarehouseData.balance)
+      : parseFloat(productType === PRODUCT_TYPE.PVKJ ? supplierWarehouse?.pvkjBalance || "0" : supplierWarehouse?.currentBalance || "0");
+
+    const baseBalance = Math.min(hist, curr);
+    return isEditing ? baseBalance + initialQuantityKg : baseBalance;
+  }, [warehouseData, currentWarehouseData, isHistoricalLoading, isCurrentLoading, isEditing, initialQuantityKg, supplierWarehouse, productType]);
+
+  const warehousePriceAtDate = useMemo(() => {
+    if (isHistoricalLoading) return null;
+    return warehouseData && typeof warehouseData === 'object' && 'averageCost' in warehouseData 
+      ? (warehouseData.averageCost ? parseFloat(warehouseData.averageCost) : null) 
+      : null;
+  }, [warehouseData, isHistoricalLoading]);
+
   const isBalanceLoading = isHistoricalLoading || isCurrentLoading;
 
-  const { purchasePrice, salePrice } = usePriceExtraction({
+  const { purchasePrice: extractedPurchasePrice, salePrice } = usePriceExtraction({
     purchasePrices,
     salePrices,
     selectedPurchasePriceId,
@@ -77,6 +99,13 @@ export function useRefuelingCalculations({
     selectedSupplier,
     productType,
   });
+
+  const purchasePrice = useMemo(() => {
+    if (isWarehouseSupplier && productType !== PRODUCT_TYPE.SERVICE) {
+      return warehousePriceAtDate !== null ? warehousePriceAtDate : extractedPurchasePrice;
+    }
+    return extractedPurchasePrice;
+  }, [isWarehouseSupplier, productType, warehousePriceAtDate, extractedPurchasePrice]);
 
   const purchaseAmount =
     purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
@@ -113,12 +142,7 @@ export function useRefuelingCalculations({
       return { status: "ok", message: "Загрузка..." };
     }
 
-    const isPvkj = productType === PRODUCT_TYPE.PVKJ;
-    const hist = historicalBalanceStr ? parseFloat(historicalBalanceStr) : parseFloat(isPvkj ? supplierWarehouse.pvkjBalance || "0" : supplierWarehouse.currentBalance || "0");
-    const curr = currentBalanceStr ? parseFloat(currentBalanceStr) : parseFloat(isPvkj ? supplierWarehouse.pvkjBalance || "0" : supplierWarehouse.currentBalance || "0");
-    
-    const baseBalance = Math.min(hist, curr);
-    const availableBalance = isEditing ? baseBalance + initialWarehouseBalance : baseBalance;
+    const availableBalance = warehouseBalanceAtDate !== null ? warehouseBalanceAtDate : 0;
     
     const remaining = availableBalance - finalKg;
 

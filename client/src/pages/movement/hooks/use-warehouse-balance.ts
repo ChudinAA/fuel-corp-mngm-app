@@ -71,13 +71,20 @@ export function useWarehouseBalanceMov(props: UseWarehouseBalanceProps): Warehou
 
     const isPvkj = watchProductType === PRODUCT_TYPE.PVKJ;
     
-    const hist = historicalBalanceStr ? parseFloat(historicalBalanceStr) : parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
-    const curr = currentBalanceStr ? parseFloat(currentBalanceStr) : parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
+    const hist = historicalBalanceStr && typeof historicalBalanceStr === 'object' && 'balance' in historicalBalanceStr
+      ? parseFloat(historicalBalanceStr.balance)
+      : parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
+      
+    const curr = currentBalanceStr && typeof currentBalanceStr === 'object' && 'balance' in currentBalanceStr
+      ? parseFloat(currentBalanceStr.balance)
+      : parseFloat(isPvkj ? fromWarehouse.pvkjBalance || "0" : fromWarehouse.currentBalance || "0");
     
     let baseBalance = Math.min(hist, curr);
     let balance = isEditing ? baseBalance + initialWarehouseBalance : baseBalance;
 
-    const cost = parseFloat(isPvkj ? fromWarehouse.pvkjAverageCost || "0" : fromWarehouse.averageCost || "0");
+    const cost = historicalBalanceStr && typeof historicalBalanceStr === 'object' && 'averageCost' in historicalBalanceStr
+      ? (historicalBalanceStr.averageCost ? parseFloat(historicalBalanceStr.averageCost) : parseFloat(isPvkj ? fromWarehouse.pvkjAverageCost || "0" : fromWarehouse.averageCost || "0"))
+      : parseFloat(isPvkj ? fromWarehouse.pvkjAverageCost || "0" : fromWarehouse.averageCost || "0");
 
     if (balance <= 0) {
       return { balance, cost, status: "error", message: "Склад пуст" };
