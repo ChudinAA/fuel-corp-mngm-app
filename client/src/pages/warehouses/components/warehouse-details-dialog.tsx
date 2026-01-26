@@ -206,168 +206,166 @@ export function WarehouseDetailsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4 py-4 min-h-0">
-          <div className="grid grid-cols-5 gap-4 shrink-0">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Остаток (Керосин)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xl font-semibold">
-                  {formatNumber(warehouse.currentBalance || "0")} кг
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Себестоимость (Керосин)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xl font-semibold">
-                  {formatCurrency(warehouse.averageCost || "0")}/кг
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Остаток (ПВКЖ)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xl font-semibold">
-                  {formatNumber(warehouse.pvkjBalance || "0")} кг
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Себестоимость (ПВКЖ)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xl font-semibold">
-                  {formatCurrency(warehouse.pvkjAverageCost || "0")}/кг
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Базисы
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {warehouse.baseIds && warehouse.baseIds.length > 0 && bases ? (
-                  <div className="flex flex-wrap gap-1">
-                    {warehouse.baseIds.map((baseId) => {
-                      const base = bases.find((b: any) => b.id === baseId);
-                      if (!base) return null;
-                      const baseIcon = getBaseIcon(base.baseType);
-                      const BaseIcon = baseIcon.icon;
-                      return (
-                        <TooltipProvider key={baseId}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge
-                                variant="outline"
-                                className="flex items-center gap-1"
-                              >
-                                <BaseIcon
-                                  className={`h-3 w-3 ${baseIcon.color}`}
-                                />
-                                {base.name}
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{baseIcon.label}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <Badge variant="outline">—</Badge>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <Separator className="shrink-0" />
-
-          <ScrollArea className="flex-1 min-h-0 pr-4">
-            {isLoading ? (
-              <div className="space-y-2">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : dailyGroups.length > 0 ? (
-              <div className="min-w-fit overflow-x-auto relative">
-                <Table className="relative min-w-[1100px] border-collapse">
-                  <TableHeader className="sticky top-0 z-[100] bg-background">
-                    <TableRow className="hover:bg-transparent shadow-[0_1px_0_0_rgba(0,0,0,0.1)]">
-                      <TableHead className="text-center w-[10%] min-w-[100px] bg-background sticky top-0 border-b">
-                        Дата
-                      </TableHead>
-                      <TableHead className="w-[8%] min-w-[80px] bg-background sticky top-0 border-b">
-                        Продукт
-                      </TableHead>
-                      <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
-                        Поступление, кг
-                      </TableHead>
-                      <TableHead className="text-center w-[12%] min-w-[110px] bg-background sticky top-0 border-b">
-                        Сумма прихода
-                      </TableHead>
-                      <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
-                        Расход, кг
-                      </TableHead>
-                      <TableHead className="text-center w-[12%] min-w-[110px] bg-background sticky top-0 border-b">
-                        Сумма расхода
-                      </TableHead>
-                      <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
-                        Остаток
-                      </TableHead>
-                      <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
-                        Вход. цена
-                      </TableHead>
-                      <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
-                        Себест.
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {dailyGroups.map((group) => {
-                      const sortedProducts = Object.values(group.products).sort(
-                        (a) => (a.productType === PRODUCT_TYPE.KEROSENE ? -1 : 1),
-                      );
-                      return (
-                        <DailyRowGroup
-                          key={group.date}
-                          group={group}
-                          products={sortedProducts}
-                          getTransactionIcon={getTransactionIcon}
-                          getTransactionTypeLabel={getTransactionTypeLabel}
-                        />
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Package className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                <p>Нет операций по складу</p>
-              </div>
-            )}
-          </ScrollArea>
+        <div className="grid grid-cols-5 gap-4 py-4 shrink-0">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Остаток (Керосин)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xl font-semibold">
+                {formatNumber(warehouse.currentBalance || "0")} кг
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Себестоимость (Керосин)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xl font-semibold">
+                {formatCurrency(warehouse.averageCost || "0")}/кг
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Остаток (ПВКЖ)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xl font-semibold">
+                {formatNumber(warehouse.pvkjBalance || "0")} кг
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Себестоимость (ПВКЖ)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xl font-semibold">
+                {formatCurrency(warehouse.pvkjAverageCost || "0")}/кг
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Базисы
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {warehouse.baseIds && warehouse.baseIds.length > 0 && bases ? (
+                <div className="flex flex-wrap gap-1">
+                  {warehouse.baseIds.map((baseId) => {
+                    const base = bases.find((b: any) => b.id === baseId);
+                    if (!base) return null;
+                    const baseIcon = getBaseIcon(base.baseType);
+                    const BaseIcon = baseIcon.icon;
+                    return (
+                      <TooltipProvider key={baseId}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge
+                              variant="outline"
+                              className="flex items-center gap-1"
+                            >
+                              <BaseIcon
+                                className={`h-3 w-3 ${baseIcon.color}`}
+                              />
+                              {base.name}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{baseIcon.label}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })}
+                </div>
+              ) : (
+                <Badge variant="outline">—</Badge>
+              )}
+            </CardContent>
+          </Card>
         </div>
+
+        <Separator />
+
+        <ScrollArea className="h-[calc(90vh-320px)] pr-4">
+          {isLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : dailyGroups.length > 0 ? (
+            <div className="min-w-fit overflow-x-auto relative">
+              <Table className="relative min-w-[1100px] border-collapse">
+                <TableHeader className="sticky top-0 z-[100] bg-background">
+                  <TableRow className="hover:bg-transparent shadow-[0_1px_0_0_rgba(0,0,0,0.1)]">
+                    <TableHead className="text-center w-[10%] min-w-[100px] bg-background sticky top-0 border-b">
+                      Дата
+                    </TableHead>
+                    <TableHead className="w-[8%] min-w-[80px] bg-background sticky top-0 border-b">
+                      Продукт
+                    </TableHead>
+                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
+                      Поступление, кг
+                    </TableHead>
+                    <TableHead className="text-center w-[12%] min-w-[110px] bg-background sticky top-0 border-b">
+                      Сумма прихода
+                    </TableHead>
+                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
+                      Расход, кг
+                    </TableHead>
+                    <TableHead className="text-center w-[12%] min-w-[110px] bg-background sticky top-0 border-b">
+                      Сумма расхода
+                    </TableHead>
+                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
+                      Остаток
+                    </TableHead>
+                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
+                      Вход. цена
+                    </TableHead>
+                    <TableHead className="text-center w-[11%] min-w-[100px] bg-background sticky top-0 border-b">
+                      Себест.
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dailyGroups.map((group) => {
+                    const sortedProducts = Object.values(group.products).sort(
+                      (a) => (a.productType === PRODUCT_TYPE.KEROSENE ? -1 : 1),
+                    );
+                    return (
+                      <DailyRowGroup
+                        key={group.date}
+                        group={group}
+                        products={sortedProducts}
+                        getTransactionIcon={getTransactionIcon}
+                        getTransactionTypeLabel={getTransactionTypeLabel}
+                      />
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Package className="h-12 w-12 mx-auto mb-4 opacity-20" />
+              <p>Нет операций по складу</p>
+            </div>
+          )}
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
