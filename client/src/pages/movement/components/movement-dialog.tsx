@@ -290,6 +290,7 @@ export function MovementDialog({
         deliveryPrice:
           deliveryCost > 0 && kgNum > 0 ? deliveryCost / kgNum : null,
         deliveryCost: deliveryCost,
+        storageCost: storageCost,
         totalCost: totalCost,
         costPerKg: costPerKg,
         notes: data.notes || null,

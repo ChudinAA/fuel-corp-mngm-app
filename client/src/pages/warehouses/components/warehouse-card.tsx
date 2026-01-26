@@ -97,7 +97,7 @@ export function WarehouseCard({
     let pvkjExpense = 0;
 
     transactions.forEach((tx) => {
-      const txDate = new Date(tx.createdAt);
+      const txDate = new Date(tx.transactionDate || tx.createdAt);
       if (
         txDate.getMonth() === currentMonth &&
         txDate.getFullYear() === currentYear

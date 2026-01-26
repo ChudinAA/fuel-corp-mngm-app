@@ -19,7 +19,6 @@ import {
   SOURCE_TYPE,
 } from "@shared/constants";
 import { WarehouseTransactionService } from "../../warehouses/services/warehouse-transaction-service";
-import { WarehouseRecalculationService } from "../../warehouses/services/warehouse-recalculation-service";
 
 export class MovementStorage implements IMovementStorage {
   async getMovement(id: string): Promise<Movement | undefined> {

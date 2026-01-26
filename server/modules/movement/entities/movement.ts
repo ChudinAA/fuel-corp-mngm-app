@@ -43,6 +43,7 @@ export const movement = pgTable(
     purchasePriceIndex: integer("purchase_price_index").default(0),
     deliveryPrice: decimal("delivery_price", { precision: 12, scale: 4 }),
     deliveryCost: decimal("delivery_cost", { precision: 15, scale: 2 }),
+    storageCost: decimal("storage_cost", { precision: 15, scale: 2 }),
     totalCost: decimal("total_cost", { precision: 15, scale: 2 }),
     costPerKg: decimal("cost_per_kg", { precision: 12, scale: 4 }),
     carrierId: uuid("carrier_id").references(() => logisticsCarriers.id),
@@ -51,10 +52,6 @@ export const movement = pgTable(
     trailerNumber: text("trailer_number"),
     driverName: text("driver_name"),
     notes: text("notes"),
-    storageTariff: decimal("storage_tariff", { precision: 12, scale: 4 }),
-    storageCost: decimal("storage_cost", { precision: 15, scale: 2 }),
-    totalPurchaseAmount: decimal("total_purchase_amount", { precision: 15, scale: 2 }),
-    profit: decimal("profit", { precision: 15, scale: 2 }),
     transactionId: uuid("transaction_id").references(
       () => warehouseTransactions.id,
     ),
@@ -140,6 +137,7 @@ export const insertMovementSchema = z.object({
   purchasePriceIndex: z.number().nullable().optional(),
   deliveryPrice: z.number().nullable().optional(),
   deliveryCost: z.number().nullable().optional(),
+  storageCost: z.number().nullable().optional(),
   totalCost: z.number().nullable().optional(),
   costPerKg: z.number().nullable().optional(),
   carrierId: z.string().nullable().optional(),
@@ -148,10 +146,6 @@ export const insertMovementSchema = z.object({
   trailerNumber: z.string().nullable().optional(),
   driverName: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
-  storageTariff: z.number().nullable().optional(),
-  storageCost: z.number().nullable().optional(),
-  totalPurchaseAmount: z.number().nullable().optional(),
-  profit: z.number().nullable().optional(),
   createdById: z.string().nullable().optional(),
 });
 
