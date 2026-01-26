@@ -72,7 +72,6 @@ export class RecalculationWorker {
                 warehouseId: task.warehouseId,
                 afterDate: task.afterDate || new Date(0).toISOString(),
                 productType: task.productType || "kerosene",
-                excludeTransactionId: task.excludeTransactionId || undefined,
               },
             ],
             task.createdById || undefined,
@@ -94,57 +93,12 @@ export class RecalculationWorker {
         );
         // Set isRecalculating flag
         await this.setWarehouseRecalculatingFlag(false, task.warehouseId);
+        SSEService.notifyRecalculationCompleted(task.warehouseId, task.productType);
       }
     } catch (error) {
       console.error("[RecalculationWorker] Error in processNextTask:", error);
     } finally {
       this.isProcessing = false;
-    }
-  }
-
-  static async processImmediately(
-    warehouseId: string,
-    productType: string,
-    afterDate: string,
-    userId?: string,
-  ) {
-    console.log(
-      `[RecalculationWorker] Processing immediately for warehouse ${warehouseId}`,
-    );
-
-    try {
-      await db.transaction(async (tx) => {
-        await tx.execute(
-          sql`SELECT pg_advisory_xact_lock(hashtext(${warehouseId} || ${productType}))`,
-        );
-
-        const visitedWarehouses = new Set<string>();
-
-        await WarehouseRecalculationService.recalculateAllAffectedTransactions(
-          tx,
-          [
-            {
-              warehouseId,
-              afterDate,
-              productType,
-            },
-          ],
-          userId,
-          visitedWarehouses,
-        );
-      });
-
-      SSEService.notifyRecalculationCompleted(warehouseId, productType);
-
-      console.log(
-        `[RecalculationWorker] Immediate processing completed for warehouse ${warehouseId}`,
-      );
-    } catch (error) {
-      console.error(
-        `[RecalculationWorker] Immediate processing failed for warehouse ${warehouseId}:`,
-        error,
-      );
-      throw error;
     }
   }
 
