@@ -80,10 +80,10 @@ export class WarehouseRecalculationService {
           eq(warehouseTransactions.productType, productType),
           isNull(warehouseTransactions.deletedAt),
           or(
-            gte(warehouseTransactions.transactionDate, afterDate),
+            gt(warehouseTransactions.transactionDate, afterDate),
             and(
               isNull(warehouseTransactions.transactionDate),
-              gte(warehouseTransactions.createdAt, afterDate)
+              gt(warehouseTransactions.createdAt, afterDate)
             )
           )
         )

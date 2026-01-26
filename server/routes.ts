@@ -28,6 +28,7 @@ import { registerGovernmentContractRoutes } from "./modules/gov-contracts/routes
 import { registerBudgetRoutes } from "./modules/budget/routes/budget";
 import { registerManagementReportRoutes } from "./modules/management-report/routes/management-report";
 import { registerExportRoutes } from "./modules/export/routes/export";
+import { SSEService } from "./services/sse-service";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -37,6 +38,16 @@ export async function registerRoutes(
   app.set("trust proxy", 1);
 
   await seedDefaultRoles();
+
+  // SSE Endpoint
+  app.get("/api/events", (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+    SSEService.register(res);
+  });
+
 
   // Apply audit context enrichment globally
   app.use(enrichAuditContext);

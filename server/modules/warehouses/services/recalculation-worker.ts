@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { RecalculationQueueService } from "./recalculation-queue-service";
 import { WarehouseRecalculationService } from "./warehouse-recalculation-service";
 import { warehouses } from "@shared/schema";
+import { SSEService } from "server/services/sse-service";
 
 export class RecalculationWorker {
   private static isRunning = false;
@@ -80,6 +81,7 @@ export class RecalculationWorker {
 
         await RecalculationQueueService.markAsCompleted(task.id);
         await this.setWarehouseRecalculatingFlag(false, task.warehouseId);
+        SSEService.notifyRecalculationCompleted(task.warehouseId, task.productType);
         console.log(
           `[RecalculationWorker] Task ${task.id} completed successfully`,
         );
@@ -130,6 +132,8 @@ export class RecalculationWorker {
           visitedWarehouses,
         );
       });
+
+      SSEService.notifyRecalculationCompleted(warehouseId, productType);
 
       console.log(
         `[RecalculationWorker] Immediate processing completed for warehouse ${warehouseId}`,

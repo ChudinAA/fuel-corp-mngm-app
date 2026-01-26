@@ -153,7 +153,7 @@ export class WarehouseTransactionService {
         averageCostBefore: currentCost.toString(),
         averageCostAfter: newAverageCost.toString(),
         createdById,
-        transactionDate: dealDate,
+        transactionDate: dealDate ? new Date(new Date(dealDate).setHours(23, 59, 59, 999)).toISOString() : null,
       })
       .returning();
 
