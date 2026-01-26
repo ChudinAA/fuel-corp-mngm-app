@@ -188,6 +188,20 @@ export class WarehouseRecalculationService {
         );
       }
 
+      if (transaction.transactionType === TRANSACTION_TYPE.TRANSFER_OUT || 
+          transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN) {
+        if (transaction.sourceType === SOURCE_TYPE.MOVEMENT) {
+          console.log('      → Обновление сделки перемещения');
+          await this.updateMovementDeal(
+            tx,
+            transaction.sourceId,
+            currentAverageCost,
+            transaction.transactionType,
+            updatedById
+          );
+        }
+      }
+
       if (transaction.sourceType === SOURCE_TYPE.MOVEMENT && 
           transaction.transactionType === TRANSACTION_TYPE.TRANSFER_OUT) {
         const movementCascade = await this.getMovementCascadeInfo(
@@ -297,7 +311,13 @@ export class WarehouseRecalculationService {
       });
 
       if (movementRecord) {
-        return parseFloat(movementRecord.totalCost || "0");
+        // Себестоимость для получателя = (Кол-во * Новая цена закупки отправителя) + Доставка + Хранение
+        const purchasePrice = parseFloat(movementRecord.purchasePrice || "0");
+        const deliveryCost = parseFloat(movementRecord.deliveryCost || "0");
+        const storageCost = parseFloat(movementRecord.storageCost || "0");
+        
+        const incomingCost = (quantity * purchasePrice) + deliveryCost + storageCost;
+        return incomingCost;
       }
     }
 
@@ -328,12 +348,14 @@ export class WarehouseRecalculationService {
     const newTotalCost = quantity * newSourceAverageCost;
     const oldTotalCost = parseFloat(movementRecord.totalCost || "0");
 
-    if (Math.abs(newTotalCost - oldTotalCost) > 0.01) {
-      console.log(`        Обновление стоимости перемещения: ${oldTotalCost} -> ${newTotalCost}`);
+    // При каскадном пересчете мы обновляем только purchasePrice. 
+    // totalCost для получателя пересчитывается в getTransactionIncomingCost
+    if (Math.abs(newSourceAverageCost - parseFloat(movementRecord.purchasePrice || "0")) > 0.0001) {
+      console.log(`        Обновление цены закупки перемещения: ${movementRecord.purchasePrice} -> ${newSourceAverageCost}`);
 
       await tx.update(movement)
         .set({
-          totalCost: newTotalCost.toFixed(2),
+          purchasePrice: newSourceAverageCost.toFixed(4),
           updatedAt: sql`NOW()`,
         })
         .where(eq(movement.id, movementId));
@@ -451,6 +473,55 @@ export class WarehouseRecalculationService {
         console.log('        ✓ Заправка обновлена');
       }
     }
+  }
+
+  private static async updateMovementDeal(
+    tx: any,
+    movementId: string,
+    newAverageCost: number,
+    transactionType: string,
+    updatedById?: string
+  ) {
+    console.log('        [updateMovementDeal]', movementId);
+    console.log('        New average cost:', newAverageCost);
+
+    const deal = await tx.query.movement.findFirst({
+      where: eq(movement.id, movementId),
+    });
+
+    if (!deal) return;
+
+    const quantityKg = parseFloat(deal.quantityKg);
+    const deliveryCost = parseFloat(deal.deliveryCost || "0");
+    const storageCost = parseFloat(deal.storageCost || "0");
+    
+    // Если это расход со склада-отправителя, обновляем цену закупки
+    if (transactionType === TRANSACTION_TYPE.TRANSFER_OUT) {
+      const purchaseAmount = quantityKg * newAverageCost;
+      const totalPurchaseAmount = purchaseAmount + deliveryCost + storageCost;
+      const totalCost = parseFloat(deal.totalCost || "0"); // Это сумма продажи (если есть) или просто общая стоимость
+      // В перемещениях прибыль обычно не считается так же как в ОПТ, 
+      // но если поля есть, обновляем их для консистентности
+      const profit = totalCost - totalPurchaseAmount;
+
+      console.log('        Перемещение до обновления (отправитель):', {
+        purchasePrice: deal.purchasePrice,
+        purchaseAmount: deal.totalCost,
+      });
+
+      await tx.update(movement)
+        .set({
+          purchasePrice: newAverageCost.toFixed(4),
+          totalCost: purchaseAmount.toFixed(2), // Для отправителя totalCost - это стоимость по себестоимости
+          totalPurchaseAmount: totalPurchaseAmount.toFixed(2),
+          profit: profit.toFixed(2),
+          updatedAt: sql`NOW()`,
+          updatedById,
+        })
+        .where(eq(movement.id, movementId));
+    } 
+    // Если это приход на склад-получатель, мы уже обновили totalCost при обработке TRANSFER_OUT
+    // Но здесь мы можем убедиться, что все суммы верны
   }
 
   static getAffectedWarehouses(

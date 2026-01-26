@@ -51,6 +51,10 @@ export const movement = pgTable(
     trailerNumber: text("trailer_number"),
     driverName: text("driver_name"),
     notes: text("notes"),
+    storageTariff: decimal("storage_tariff", { precision: 12, scale: 4 }),
+    storageCost: decimal("storage_cost", { precision: 15, scale: 2 }),
+    totalPurchaseAmount: decimal("total_purchase_amount", { precision: 15, scale: 2 }),
+    profit: decimal("profit", { precision: 15, scale: 2 }),
     transactionId: uuid("transaction_id").references(
       () => warehouseTransactions.id,
     ),
@@ -144,6 +148,10 @@ export const insertMovementSchema = z.object({
   trailerNumber: z.string().nullable().optional(),
   driverName: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  storageTariff: z.number().nullable().optional(),
+  storageCost: z.number().nullable().optional(),
+  totalPurchaseAmount: z.number().nullable().optional(),
+  profit: z.number().nullable().optional(),
   createdById: z.string().nullable().optional(),
 });
 
