@@ -160,12 +160,14 @@ export class WarehouseTransactionService {
     const needsRecalc = await this.needsRecalculation(tx, warehouseId, productType, dealDate);
     if (needsRecalc && dealDate) {
       console.log(`[WarehouseTransactionService] Backdated transaction detected, queuing recalculation for ${warehouseId}`);
+      console.log(`[WarehouseTransactionService] Excluding transaction ${transaction.id} from recalculation`);
       await RecalculationQueueService.addToQueue(
         warehouseId,
         productType,
         dealDate,
         createdById,
-        1
+        1,
+        transaction.id
       );
     }
 
@@ -284,7 +286,7 @@ export class WarehouseTransactionService {
         averageCostAfter: newAverageCost.toFixed(4),
         updatedAt: sql`NOW()`,
         updatedById,
-        transactionDate: dealDate,
+        transactionDate: dealDate ? new Date(new Date(dealDate).setHours(23, 59, 59, 999)).toISOString() : null,
       })
       .where(eq(warehouseTransactions.id, transactionId));
 

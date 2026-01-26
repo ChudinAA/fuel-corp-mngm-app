@@ -72,6 +72,7 @@ export class RecalculationWorker {
                 warehouseId: task.warehouseId,
                 afterDate: task.afterDate || new Date(0).toISOString(),
                 productType: task.productType || "kerosene",
+                excludeTransactionId: task.excludeTransactionId || undefined,
               },
             ],
             task.createdById || undefined,

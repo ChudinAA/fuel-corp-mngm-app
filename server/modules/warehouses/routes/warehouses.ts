@@ -5,6 +5,7 @@ import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { PRODUCT_TYPE } from "@shared/constants";
+import { SSEService } from "../../../services/sse-service";
 
 export function registerWarehousesOperationsRoutes(app: Express) {
   app.get(
@@ -245,6 +246,26 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       } catch (error) {
         res.status(500).json({ message: "Ошибка получения остатка склада" });
       }
+    },
+  );
+
+  app.get(
+    "/api/warehouses/sse/events",
+    requireAuth,
+    (req, res) => {
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.flushHeaders();
+
+      res.write("data: {\"type\":\"connected\"}\n\n");
+
+      SSEService.register(res);
+
+      req.on("close", () => {
+        res.end();
+      });
     },
   );
 }

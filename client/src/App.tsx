@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { useWarehouseSSE } from "@/hooks/use-warehouse-sse";
 import {
   SidebarProvider,
   SidebarTrigger,
@@ -75,6 +76,8 @@ function ProtectedRoute({
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
+  
+  useWarehouseSSE(!!user);
 
   if (isLoading) {
     return (

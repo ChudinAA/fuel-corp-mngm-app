@@ -1,4 +1,4 @@
-import { eq, and, gte, sql, or, isNull, desc, asc } from "drizzle-orm";
+import { eq, and, gte, gt, sql, or, isNull, desc, asc, ne } from "drizzle-orm";
 import { warehouses, warehouseTransactions, opt, aircraftRefueling, movement } from "@shared/schema";
 import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { parse } from "path";
@@ -10,6 +10,7 @@ export class WarehouseRecalculationService {
       warehouseId: string;
       afterDate: string;
       productType: string;
+      excludeTransactionId?: string;
     }>,
     updatedById?: string,
     visitedWarehouses?: Set<string>
@@ -20,7 +21,7 @@ export class WarehouseRecalculationService {
     const visited = visitedWarehouses || new Set<string>();
     
     for (let i = 0; i < affectedWarehouses.length; i++) {
-      const { warehouseId, afterDate, productType } = affectedWarehouses[i];
+      const { warehouseId, afterDate, productType, excludeTransactionId } = affectedWarehouses[i];
       const key = `${warehouseId}:${productType}`;
       
       if (visited.has(key)) {
@@ -34,6 +35,7 @@ export class WarehouseRecalculationService {
       console.log('    Warehouse ID:', warehouseId);
       console.log('    After Date:', afterDate);
       console.log('    Product Type:', productType);
+      console.log('    Exclude Transaction ID:', excludeTransactionId || 'none');
       
       await this.recalculateWarehouseChain(
         tx,
@@ -41,7 +43,8 @@ export class WarehouseRecalculationService {
         afterDate,
         productType,
         updatedById,
-        visited
+        visited,
+        excludeTransactionId
       );
       
       console.log(`    ✓ Склад ${i + 1} пересчитан`);
@@ -56,43 +59,113 @@ export class WarehouseRecalculationService {
     afterDate: string,
     productType: string,
     updatedById?: string,
-    visitedWarehouses?: Set<string>
+    visitedWarehouses?: Set<string>,
+    excludeTransactionId?: string
   ) {
     console.log('      [recalculateWarehouseChain] Начало пересчета цепочки');
+    console.log('      excludeTransactionId:', excludeTransactionId || 'none');
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
     const visited = visitedWarehouses || new Set<string>();
 
+    // Если есть исключаемая транзакция, используем её как точку отсчета
+    let effectiveAfterDate = afterDate;
+    let excludedTxInfo: { transactionDate: string; createdAt: string; id: string } | null = null;
+    
+    if (excludeTransactionId) {
+      const excludedTx = await tx
+        .select()
+        .from(warehouseTransactions)
+        .where(eq(warehouseTransactions.id, excludeTransactionId))
+        .limit(1);
+      
+      if (excludedTx.length > 0) {
+        excludedTxInfo = excludedTx[0];
+        // Используем дату исключаемой транзакции как точку отсчета
+        effectiveAfterDate = excludedTx[0].transactionDate || excludedTx[0].createdAt;
+        console.log(`      Используем дату исключаемой транзакции: ${effectiveAfterDate}`);
+      }
+    }
+
+    // Получаем начальное состояние: учитываем исключаемую транзакцию как точку отсчета
     const initialState = await this.getWarehouseStateBeforeDate(
       tx,
       warehouseId,
-      afterDate,
-      productType
+      effectiveAfterDate,
+      productType,
+      excludeTransactionId
     );
 
-    console.log('      Начальное состояние до', afterDate, ':', initialState);
+    console.log('      Начальное состояние:', initialState);
 
-    const transactions = await tx
-      .select()
-      .from(warehouseTransactions)
-      .where(
-        and(
-          eq(warehouseTransactions.warehouseId, warehouseId),
-          eq(warehouseTransactions.productType, productType),
-          isNull(warehouseTransactions.deletedAt),
-          or(
-            gt(warehouseTransactions.transactionDate, afterDate),
-            and(
-              isNull(warehouseTransactions.transactionDate),
-              gt(warehouseTransactions.createdAt, afterDate)
+    // Получаем транзакции СТРОГО ПОСЛЕ исключаемой транзакции
+    // Используем gt (строго больше) для даты и исключаем саму транзакцию
+    let transactions: any[];
+    
+    if (excludedTxInfo) {
+      // При наличии исключаемой транзакции:
+      // 1. Берем все транзакции с той же датой или позже
+      // 2. Исключаем саму транзакцию
+      // 3. Сортируем так, чтобы транзакции ПОСЛЕ исключаемой шли правильно
+      const allTransactions = await tx
+        .select()
+        .from(warehouseTransactions)
+        .where(
+          and(
+            eq(warehouseTransactions.warehouseId, warehouseId),
+            eq(warehouseTransactions.productType, productType),
+            isNull(warehouseTransactions.deletedAt),
+            ne(warehouseTransactions.id, excludeTransactionId),
+            or(
+              gt(warehouseTransactions.transactionDate, effectiveAfterDate),
+              and(
+                eq(warehouseTransactions.transactionDate, effectiveAfterDate),
+                gt(warehouseTransactions.createdAt, excludedTxInfo.createdAt)
+              ),
+              and(
+                eq(warehouseTransactions.transactionDate, effectiveAfterDate),
+                eq(warehouseTransactions.createdAt, excludedTxInfo.createdAt),
+                gt(warehouseTransactions.id, excludedTxInfo.id)
+              ),
+              and(
+                isNull(warehouseTransactions.transactionDate),
+                gt(warehouseTransactions.createdAt, effectiveAfterDate)
+              )
             )
           )
         )
-      )
-      .orderBy(
-        asc(sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`),
-        asc(warehouseTransactions.createdAt),
-        asc(warehouseTransactions.id)
-      );
+        .orderBy(
+          asc(sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`),
+          asc(warehouseTransactions.createdAt),
+          asc(warehouseTransactions.id)
+        );
+      
+      transactions = allTransactions;
+      console.log(`      Исключена транзакция ${excludeTransactionId}, пересчет начинается с транзакций после нее`);
+    } else {
+      // Стандартная логика без исключаемой транзакции
+      transactions = await tx
+        .select()
+        .from(warehouseTransactions)
+        .where(
+          and(
+            eq(warehouseTransactions.warehouseId, warehouseId),
+            eq(warehouseTransactions.productType, productType),
+            isNull(warehouseTransactions.deletedAt),
+            or(
+              gte(warehouseTransactions.transactionDate, effectiveAfterDate),
+              and(
+                isNull(warehouseTransactions.transactionDate),
+                gte(warehouseTransactions.createdAt, effectiveAfterDate)
+              )
+            )
+          )
+        )
+        .orderBy(
+          asc(sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`),
+          asc(warehouseTransactions.createdAt),
+          asc(warehouseTransactions.id)
+        );
+    }
 
     console.log('      Найдено транзакций для пересчета:', transactions.length);
 
@@ -256,8 +329,28 @@ export class WarehouseRecalculationService {
     tx: any,
     warehouseId: string,
     beforeDate: string,
-    productType: string
+    productType: string,
+    excludeTransactionId?: string
   ): Promise<{ balance: number; averageCost: number }> {
+    // Если есть исключаемая транзакция, берем её balanceAfter как начальную точку
+    // Это нужно для пересчета транзакций ПОСЛЕ исключаемой
+    if (excludeTransactionId) {
+      const excludedTx = await tx
+        .select()
+        .from(warehouseTransactions)
+        .where(eq(warehouseTransactions.id, excludeTransactionId))
+        .limit(1);
+      
+      if (excludedTx.length > 0) {
+        console.log('      Используем balanceAfter исключаемой транзакции как начальное состояние');
+        return {
+          balance: parseFloat(excludedTx[0].balanceAfter || "0"),
+          averageCost: parseFloat(excludedTx[0].averageCostAfter || "0"),
+        };
+      }
+    }
+
+    // Стандартная логика: берем последнюю транзакцию до указанной даты
     const lastTransaction = await tx
       .select()
       .from(warehouseTransactions)

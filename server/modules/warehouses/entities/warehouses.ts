@@ -229,6 +229,7 @@ export const recalculationQueue = pgTable(
       .references(() => warehouses.id),
     productType: text("product_type").notNull().default("kerosene"),
     afterDate: timestamp("after_date", { mode: "string" }).notNull(),
+    excludeTransactionId: uuid("exclude_transaction_id"),
     status: text("status").notNull().default("pending"),
     priority: integer("priority").default(0),
     attempts: integer("attempts").default(0),

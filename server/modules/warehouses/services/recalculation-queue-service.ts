@@ -9,7 +9,8 @@ export class RecalculationQueueService {
     productType: string,
     afterDate: string,
     createdById?: string,
-    priority: number = 0
+    priority: number = 0,
+    excludeTransactionId?: string
   ): Promise<void> {
     const existingPending = await db.query.recalculationQueue.findFirst({
       where: and(
@@ -32,6 +33,7 @@ export class RecalculationQueueService {
           .set({
             afterDate,
             priority: Math.max(existingPending.priority || 0, priority),
+            excludeTransactionId: excludeTransactionId || existingPending.excludeTransactionId,
           })
           .where(eq(recalculationQueue.id, existingPending.id));
         
@@ -44,12 +46,13 @@ export class RecalculationQueueService {
       warehouseId,
       productType,
       afterDate,
+      excludeTransactionId: excludeTransactionId || null,
       status: RECALCULATION_STATUS.PENDING,
       priority,
       createdById,
     });
 
-    console.log(`[RecalculationQueue] Added new task for warehouse ${warehouseId}, productType ${productType}, afterDate ${afterDate}`);
+    console.log(`[RecalculationQueue] Added new task for warehouse ${warehouseId}, productType ${productType}, afterDate ${afterDate}, excludeTransactionId ${excludeTransactionId || 'none'}`);
   }
 
   static async claimNextTask() {
@@ -76,6 +79,7 @@ export class RecalculationQueueService {
         warehouseId: row.warehouse_id,
         productType: row.product_type,
         afterDate: row.after_date,
+        excludeTransactionId: row.exclude_transaction_id,
         status: row.status,
         priority: row.priority,
         attempts: row.attempts,
