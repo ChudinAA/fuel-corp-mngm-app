@@ -29,6 +29,8 @@ export const customers = pgTable("customers", {
   phone: text("phone"),
   email: text("email"),
   module: text("module").notNull(), // "wholesale", "refueling", "both"
+  isIntermediary: boolean("is_intermediary").default(false),
+  isForeign: boolean("is_foreign").default(false),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -40,6 +42,8 @@ export const customers = pgTable("customers", {
   moduleIdx: index("customers_module_idx").on(table.module),
   nameIdx: index("customers_name_idx").on(table.name),
   isActiveIdx: index("customers_is_active_idx").on(table.isActive),
+  isIntermediaryIdx: index("customers_is_intermediary_idx").on(table.isIntermediary),
+  isForeignIdx: index("customers_is_foreign_idx").on(table.isForeign),
 }));
 
 // ============ RELATIONS ============

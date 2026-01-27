@@ -32,6 +32,8 @@ export const suppliers = pgTable("suppliers", {
   isWarehouse: boolean("is_warehouse").default(false),
   warehouseId: uuid("warehouse_id").references(() => warehouses.id),
   storageCost: decimal("storage_cost", { precision: 12, scale: 2 }),
+  isIntermediary: boolean("is_intermediary").default(false),
+  isForeign: boolean("is_foreign").default(false),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -43,6 +45,8 @@ export const suppliers = pgTable("suppliers", {
   nameIdx: index("suppliers_name_idx").on(table.name),
   isActiveIdx: index("suppliers_is_active_idx").on(table.isActive),
   isWarehouseIdx: index("suppliers_is_warehouse_idx").on(table.isWarehouse),
+  isIntermediaryIdx: index("suppliers_is_intermediary_idx").on(table.isIntermediary),
+  isForeignIdx: index("suppliers_is_foreign_idx").on(table.isForeign),
 }));
 
 // Junction table for supplier-base many-to-many relationship

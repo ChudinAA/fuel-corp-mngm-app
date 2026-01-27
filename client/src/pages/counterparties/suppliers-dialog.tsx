@@ -48,6 +48,8 @@ const supplierFormSchema = z.object({
   agentFee: z.coerce.number().optional(),
   isWarehouse: z.boolean().default(false),
   storageCost: z.coerce.number().optional(),
+  isIntermediary: z.boolean().default(false),
+  isForeign: z.boolean().default(false),
   isActive: z.boolean().default(true),
 });
 
@@ -89,6 +91,8 @@ export function AddSupplierDialog({
       agentFee: undefined,
       isWarehouse: false,
       storageCost: undefined,
+      isIntermediary: false,
+      isForeign: false,
       isActive: true,
     },
   });
@@ -127,6 +131,8 @@ export function AddSupplierDialog({
           data.isWarehouse && data.storageCost
             ? String(data.storageCost)
             : null,
+        isIntermediary: data.isIntermediary,
+        isForeign: data.isForeign,
         isActive: data.isActive,
       };
 
@@ -155,6 +161,8 @@ export function AddSupplierDialog({
         agentFee: undefined,
         isWarehouse: false,
         storageCost: undefined,
+        isIntermediary: false,
+        isForeign: false,
         isActive: true,
       });
       setOpen(false);
@@ -196,6 +204,8 @@ export function AddSupplierDialog({
         storageCost: editItem.storageCost
           ? parseFloat(editItem.storageCost)
           : undefined,
+        isIntermediary: editItem.isIntermediary || false,
+        isForeign: editItem.isForeign || false,
         isActive: editItem.isActive,
       });
     }
@@ -213,6 +223,8 @@ export function AddSupplierDialog({
         agentFee: undefined,
         isWarehouse: false,
         storageCost: undefined,
+        isIntermediary: false,
+        isForeign: false,
         isActive: true,
       });
       if (onEditComplete) {
@@ -446,6 +458,45 @@ export function AddSupplierDialog({
                 </FormItem>
               )}
             />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="isIntermediary"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-2 space-y-0">
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="switch-is-intermediary"
+                      />
+                    </FormControl>
+                    <FormLabel className="font-normal cursor-pointer text-sm">
+                      Посредник
+                    </FormLabel>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="isForeign"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-2 space-y-0">
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="switch-is-foreign"
+                      />
+                    </FormControl>
+                    <FormLabel className="font-normal cursor-pointer text-sm">
+                      Зарубеж
+                    </FormLabel>
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}

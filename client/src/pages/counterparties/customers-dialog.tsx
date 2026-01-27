@@ -26,6 +26,8 @@ const customerFormSchema = z.object({
   email: z.string().email("Неверный формат email").optional().or(z.literal("")),
   inn: z.string().optional(),
   contractNumber: z.string().optional(),
+  isIntermediary: z.boolean().default(false),
+  isForeign: z.boolean().default(false),
   isActive: z.boolean().default(true),
 });
 
@@ -65,6 +67,8 @@ export function AddCustomerDialog({
       email: "",
       inn: "",
       contractNumber: "",
+      isIntermediary: false,
+      isForeign: false,
       isActive: true,
     },
   });
@@ -81,6 +85,8 @@ export function AddCustomerDialog({
         email: editCustomer.email || "",
         inn: editCustomer.inn || "",
         contractNumber: editCustomer.contractNumber || "",
+        isIntermediary: editCustomer.isIntermediary || false,
+        isForeign: editCustomer.isForeign || false,
         isActive: editCustomer.isActive,
       });
     }
@@ -97,6 +103,8 @@ export function AddCustomerDialog({
         email: data.email || null,
         inn: data.inn,
         contractNumber: data.contractNumber,
+        isIntermediary: data.isIntermediary,
+        isForeign: data.isForeign,
         isActive: data.isActive,
       };
 
@@ -123,6 +131,8 @@ export function AddCustomerDialog({
         email: "",
         inn: "",
         contractNumber: "",
+        isIntermediary: false,
+        isForeign: false,
         isActive: true,
       });
       setOpen(false);
@@ -150,6 +160,8 @@ export function AddCustomerDialog({
         email: "",
         inn: "",
         contractNumber: "",
+        isIntermediary: false,
+        isForeign: false,
         isActive: true,
       });
       if (onEditComplete) {
@@ -304,6 +316,33 @@ export function AddCustomerDialog({
                 </FormItem>
               )}
             />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="isIntermediary"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-2 space-y-0">
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-customer-intermediary" />
+                    </FormControl>
+                    <FormLabel className="font-normal cursor-pointer text-sm">Посредник</FormLabel>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="isForeign"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-2 space-y-0">
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-customer-foreign" />
+                    </FormControl>
+                    <FormLabel className="font-normal cursor-pointer text-sm">Зарубеж</FormLabel>
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
