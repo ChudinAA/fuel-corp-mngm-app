@@ -99,9 +99,33 @@ RESTful endpoints organized by module:
 - `/api/exchange/*` - Exchange transaction tracking
 - `/api/movement/*` - Movement and transfer records
 - `/api/opt/*` - Wholesale trading operations
-- `/api/refueling/*` - Aircraft refueling records
+- `/api/refueling/*` - Aircraft refueling records (domestic)
+- `/api/refueling-abroad/*` - Aircraft refueling abroad (international operations with USD pricing)
+- `/api/exchange-rates/*` - Currency exchange rates management
+- `/api/storage-cards/*` - Foreign airport storage cards for fuel tracking
 
 All endpoints require authentication via `requireAuth` middleware.
+
+### Refueling Abroad Module
+
+The system includes a specialized module for international fuel operations:
+
+**Key Features:**
+- Multi-currency support (USD primary, converted to RUB at end)
+- Flexible intermediary commission calculation via formula input
+- Foreign supplier/customer management with `isForeign` and `isIntermediary` flags
+- Storage cards for tracking fuel inventory at foreign airports
+- Dual pricing display (USD and RUB) with automatic exchange rate conversion
+
+**Commission Formula System:**
+- Supports arithmetic expressions with variables: `purchasePrice`, `salePrice`, `quantity`, `exchangeRate`
+- Preset formulas available (% of sale, fixed per kg, % of margin)
+- Manual override option for one-time adjustments
+
+**Database Tables:**
+- `refueling_abroad` - Core transaction records with USD/RUB pricing
+- `exchange_rates` - Currency rates with date tracking
+- `storage_cards` - Foreign airport fuel storage tracking
 
 ### Frontend Architecture
 
