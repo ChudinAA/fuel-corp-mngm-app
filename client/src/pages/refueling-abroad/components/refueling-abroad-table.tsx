@@ -93,7 +93,7 @@ export function RefuelingAbroadTable({ onEdit, onCopy }: RefuelingAbroadTablePro
               <TableCell>
                 {new Date(item.refuelingDate).toLocaleDateString("ru-RU")}
               </TableCell>
-              <TableCell className="font-mono">{item.airportCode}</TableCell>
+              <TableCell className="font-mono">{item.airport || "—"}</TableCell>
               <TableCell>{item.aircraftNumber || "—"}</TableCell>
               <TableCell>{getSupplierName(item.supplierId)}</TableCell>
               <TableCell>{getCustomerName(item.buyerId)}</TableCell>
