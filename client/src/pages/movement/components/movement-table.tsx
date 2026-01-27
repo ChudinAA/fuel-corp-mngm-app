@@ -225,7 +225,7 @@ export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<Movement
                 const purchasePrice = item.purchasePrice ? parseFloat(item.purchasePrice) : null;
                 const purchaseAmount = purchasePrice && quantityKg > 0 ? purchasePrice * quantityKg : 0;
                 const deliveryCost = item.deliveryCost ? parseFloat(item.deliveryCost) : 0;
-                const storageCost = (parseFloat(item.totalCost || "0") - purchaseAmount - deliveryCost);
+                const storageCost = parseFloat(item.storageCost || "0");
                 const costPerKg = item.costPerKg ? parseFloat(item.costPerKg) : 0;
 
                 return (
@@ -249,7 +249,7 @@ export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<Movement
                     <TableCell className="text-xs md:text-sm py-3 px-2 md:px-4 truncate max-w-[140px]">{item.fromName || "—"}</TableCell>
                     <TableCell className="text-xs md:text-sm py-3 px-2 md:px-4 truncate max-w-[140px]">{item.toName || "—"}</TableCell>
                     <TableCell className="text-right font-medium text-xs md:text-sm py-3 px-2 md:px-4">{formatNumberWithK(item.quantityKg)}</TableCell>
-                    <TableCell className="text-right text-xs md:text-sm py-3 px-2 md:px-4 whitespace-nowrap">
+                    <TableCell className="text-right font-bold text-xs md:text-sm py-3 px-2 md:px-4 whitespace-nowrap">
                       {purchasePrice !== null ? formatNumber(purchasePrice) : "—"}
                     </TableCell>
                     <TableCell className="text-right text-xs md:text-sm py-3 px-2 md:px-4">
@@ -258,7 +258,7 @@ export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<Movement
                     <TableCell className="text-xs md:text-sm py-3 px-2 md:px-4 truncate max-w-[120px]">{item.carrierName || "—"}</TableCell>
                     <TableCell className="text-right text-xs md:text-sm py-3 px-2 md:px-4">{formatNumberWithK(deliveryCost)}</TableCell>
                     <TableCell className="text-right text-xs md:text-sm py-3 px-2 md:px-4">{formatNumberWithK(storageCost)}</TableCell>
-                    <TableCell className="text-right font-medium text-xs md:text-sm py-3 px-2 md:px-4 whitespace-nowrap">{formatNumber(costPerKg)}</TableCell>
+                    <TableCell className="text-right font-bold text-xs md:text-sm py-3 px-2 md:px-4 whitespace-nowrap">{formatNumber(costPerKg)}</TableCell>
                     <TableCell className="py-3 px-2 md:px-1">
                       <EntityActionsMenu
                         actions={[
