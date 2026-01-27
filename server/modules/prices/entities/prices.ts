@@ -35,6 +35,8 @@ export const prices = pgTable("prices", {
   notes: text("notes"),
   soldVolume: decimal("sold_volume", { precision: 15, scale: 2 }).default("0"),
   dateCheckWarning: text("date_check_warning"),
+  currency: text("currency").default("RUB"),
+  exchangeRateId: uuid("exchange_rate_id"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -48,6 +50,7 @@ export const prices = pgTable("prices", {
   dateRangeIdx: index("prices_date_range_idx").on(table.dateFrom, table.dateTo),
   activeIdx: index("prices_is_active_idx").on(table.isActive),
   basisProductIdx: index("prices_basis_product_idx").on(table.basis, table.productType),
+  currencyIdx: index("prices_currency_idx").on(table.currency),
 }));
 
 // ============ RELATIONS ============

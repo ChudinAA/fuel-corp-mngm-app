@@ -21,6 +21,14 @@ export const SOURCE_TYPE = {
   MOVEMENT: 'movement',
   OPT: 'opt',
   REFUELING: 'refueling',
+  REFUELING_ABROAD: 'refueling_abroad',
+} as const;
+
+// Currencies for foreign operations
+export const CURRENCY = {
+  RUB: 'RUB',
+  USD: 'USD',
+  EUR: 'EUR',
 } as const;
 
 // Movement types
@@ -40,6 +48,7 @@ export const DELIVERY_ENTITY_TYPE = {
 export const COUNTERPARTY_TYPE = {
   WHOLESALE: 'wholesale',
   REFUELING: 'refueling',
+  REFUELING_ABROAD: 'refueling_abroad',
 } as const;
 
 // Counterparty roles
@@ -79,3 +88,5 @@ export type CounterpartyRole = typeof COUNTERPARTY_ROLE[keyof typeof COUNTERPART
 export type BaseType = typeof BASE_TYPE[keyof typeof BASE_TYPE];
 export type CustomerModule = typeof CUSTOMER_MODULE[keyof typeof CUSTOMER_MODULE];
 export type RecalculationStatus = typeof RECALCULATION_STATUS[keyof typeof RECALCULATION_STATUS];
+export type SourceType = typeof SOURCE_TYPE[keyof typeof SOURCE_TYPE];
+export type Currency = typeof CURRENCY[keyof typeof CURRENCY];

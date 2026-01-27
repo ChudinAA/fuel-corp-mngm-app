@@ -24,6 +24,7 @@ import { BudgetStorage } from "../modules/budget/storage/budget-storage";
 import { ManagementReportStorage } from "../modules/management-report/storage/management-report-storage";
 import { ExchangeRatesStorage } from "../modules/exchange-rates/storage/exchange-rates-storage";
 import { StorageCardsStorage } from "../modules/storage-cards/storage/storage-cards-storage";
+import { RefuelingAbroadStorage } from "../modules/refueling-abroad/storage/refueling-abroad-storage";
 
 export * from "./types";
 
@@ -54,6 +55,7 @@ export class Storage {
   public managementReport: ManagementReportStorage;
   public exchangeRates: ExchangeRatesStorage;
   public storageCards: StorageCardsStorage;
+  public refuelingAbroad: RefuelingAbroadStorage;
 
   constructor() {
     this.users = new UserStorage();
@@ -82,6 +84,7 @@ export class Storage {
     this.managementReport = new ManagementReportStorage();
     this.exchangeRates = new ExchangeRatesStorage();
     this.storageCards = new StorageCardsStorage();
+    this.refuelingAbroad = new RefuelingAbroadStorage();
   }
 }
 
