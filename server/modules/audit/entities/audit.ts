@@ -62,6 +62,7 @@ export type AuditOperation = typeof AUDIT_OPERATIONS[keyof typeof AUDIT_OPERATIO
 export const ENTITY_TYPES = {
   OPT: 'opt',
   AIRCRAFT_REFUELING: 'aircraft_refueling',
+  AIRCRAFT_REFUELING_ABROAD: 'aircraft_refueling_abroad',
   MOVEMENT: 'movement',
   EXCHANGE: 'exchange',
   WAREHOUSE: 'warehouses',
@@ -80,6 +81,8 @@ export const ENTITY_TYPES = {
   PRICE_CALCULATION: 'price_calculations',
   USER: 'users',
   ROLE: 'roles',
+  EXCHANGE_RATE: 'exchange_rates',
+  STORAGE_CARD: 'storage_cards',
 } as const;
 
 export type EntityType = typeof ENTITY_TYPES[keyof typeof ENTITY_TYPES];

@@ -28,6 +28,8 @@ import { registerGovernmentContractRoutes } from "./modules/gov-contracts/routes
 import { registerBudgetRoutes } from "./modules/budget/routes/budget";
 import { registerManagementReportRoutes } from "./modules/management-report/routes/management-report";
 import { registerExportRoutes } from "./modules/export/routes/export";
+import { registerExchangeRatesRoutes } from "./modules/exchange-rates/routes/exchange-rates";
+import { registerStorageCardsRoutes } from "./modules/storage-cards/routes/storage-cards";
 import { SSEService } from "./services/sse-service";
 
 export async function registerRoutes(
@@ -79,6 +81,8 @@ export async function registerRoutes(
   registerBudgetRoutes(app);
   registerManagementReportRoutes(app);
   registerExportRoutes(app);
+  registerExchangeRatesRoutes(app);
+  registerStorageCardsRoutes(app);
 
   return httpServer;
 }

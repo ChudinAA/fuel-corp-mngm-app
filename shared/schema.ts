@@ -23,3 +23,5 @@ export * from "server/modules/budget/entities/budget";
 export * from "server/modules/management-report/entities/management-report";
 export * from "server/modules/export/entities/export-config";
 export * from "server/modules/dashboard/entities/dashboard";
+export * from "server/modules/exchange-rates/entities/exchange-rates";
+export * from "server/modules/storage-cards/entities/storage-cards";
