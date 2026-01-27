@@ -128,6 +128,9 @@ export class LogisticsStorage implements ILogisticsStorage {
       .where(
         and(
           eq(logisticsDeliveryLocations.name, data.name),
+          data.baseId
+            ? eq(logisticsDeliveryLocations.baseId, data.baseId)
+            : sql`TRUE`,
           isNull(logisticsDeliveryLocations.deletedAt),
         ),
       )
