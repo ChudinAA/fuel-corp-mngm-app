@@ -8,26 +8,30 @@ import { HelpCircle, Calculator } from "lucide-react";
 import { evaluateCommissionFormula, validateCommissionFormula, formatCurrency } from "../utils";
 
 interface CommissionCalculatorProps {
-  formula: string;
-  onFormulaChange: (formula: string) => void;
   purchasePrice: number;
   salePrice: number;
   quantity: number;
   exchangeRate: number;
+  commissionFormula?: string;
+  manualCommissionUsd?: string;
+  onFormulaChange: (formula: string) => void;
   onManualCommissionChange?: (value: string) => void;
-  manualCommission?: string;
+  onCommissionCalculated?: (usd: number | null, rub: number | null) => void;
 }
 
 export function CommissionCalculator({
-  formula,
-  onFormulaChange,
   purchasePrice,
   salePrice,
   quantity,
   exchangeRate,
+  commissionFormula = "",
+  manualCommissionUsd = "",
+  onFormulaChange,
   onManualCommissionChange,
-  manualCommission = "",
+  onCommissionCalculated,
 }: CommissionCalculatorProps) {
+  const formula = commissionFormula;
+  const manualCommission = manualCommissionUsd;
   const [isFormulaValid, setIsFormulaValid] = useState(true);
   const [calculatedValue, setCalculatedValue] = useState<number | null>(null);
 
@@ -53,6 +57,15 @@ export function CommissionCalculator({
       setCalculatedValue(null);
     }
   }, [formula, purchasePrice, salePrice, quantity, exchangeRate]);
+
+  useEffect(() => {
+    if (onCommissionCalculated) {
+      const manualValue = manualCommission ? parseFloat(manualCommission) : null;
+      const finalUsd = manualValue ?? calculatedValue;
+      const finalRub = finalUsd !== null ? finalUsd * exchangeRate : null;
+      onCommissionCalculated(finalUsd, finalRub);
+    }
+  }, [calculatedValue, manualCommission, exchangeRate, onCommissionCalculated]);
 
   const presetFormulas = [
     { label: "% от продажи", formula: "(salePrice - purchasePrice) * quantity * 0.05", description: "5% от маржи" },

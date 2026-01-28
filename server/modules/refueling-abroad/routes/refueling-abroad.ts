@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { refuelingAbroadStorage } from "../storage/refueling-abroad-storage";
+import { refuelingAbroadIntermediariesStorage } from "../storage/refueling-abroad-intermediaries-storage";
 import { insertRefuelingAbroadSchema } from "../entities/refueling-abroad";
+import { insertRefuelingAbroadIntermediarySchema } from "../entities/refueling-abroad-intermediaries";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 
@@ -156,6 +158,88 @@ export function registerRefuelingAbroadRoutes(app: Express) {
       } catch (error: any) {
         console.error("Error fetching by storage card:", error);
         res.status(500).json({ message: "Ошибка получения записей" });
+      }
+    }
+  );
+
+  app.get(
+    "/api/refueling-abroad/:id/intermediaries",
+    requireAuth,
+    requirePermission("refueling", "view"),
+    async (req, res) => {
+      try {
+        const items = await refuelingAbroadIntermediariesStorage.getByRefuelingIdWithDetails(req.params.id);
+        res.json(items);
+      } catch (error: any) {
+        console.error("Error fetching intermediaries:", error);
+        res.status(500).json({ message: "Ошибка получения посредников" });
+      }
+    }
+  );
+
+  app.put(
+    "/api/refueling-abroad/:id/intermediaries",
+    requireAuth,
+    requirePermission("refueling", "edit"),
+    async (req, res) => {
+      try {
+        const intermediariesSchema = z.array(
+          insertRefuelingAbroadIntermediarySchema.omit({ refuelingAbroadId: true })
+        );
+        const validatedData = intermediariesSchema.parse(req.body);
+        const items = await refuelingAbroadIntermediariesStorage.replaceForRefueling(
+          req.params.id,
+          validatedData
+        );
+        res.json(items);
+      } catch (error: any) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: "Ошибка валидации", errors: error.errors });
+        }
+        console.error("Error updating intermediaries:", error);
+        res.status(500).json({ message: "Ошибка обновления посредников" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/refueling-abroad/:id/intermediaries",
+    requireAuth,
+    requirePermission("refueling", "edit"),
+    async (req, res) => {
+      try {
+        const validatedData = insertRefuelingAbroadIntermediarySchema
+          .omit({ refuelingAbroadId: true })
+          .parse(req.body);
+        const item = await refuelingAbroadIntermediariesStorage.create({
+          ...validatedData,
+          refuelingAbroadId: req.params.id,
+        });
+        res.status(201).json(item);
+      } catch (error: any) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: "Ошибка валидации", errors: error.errors });
+        }
+        console.error("Error creating intermediary:", error);
+        res.status(500).json({ message: "Ошибка добавления посредника" });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/refueling-abroad/:refuelingId/intermediaries/:id",
+    requireAuth,
+    requirePermission("refueling", "edit"),
+    async (req, res) => {
+      try {
+        const success = await refuelingAbroadIntermediariesStorage.delete(req.params.id);
+        if (!success) {
+          return res.status(404).json({ message: "Посредник не найден" });
+        }
+        res.json({ success: true });
+      } catch (error: any) {
+        console.error("Error deleting intermediary:", error);
+        res.status(500).json({ message: "Ошибка удаления посредника" });
       }
     }
   );

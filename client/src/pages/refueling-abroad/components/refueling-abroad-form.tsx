@@ -579,13 +579,13 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
             </div>
             
             <CommissionCalculator
-              formula={watchedValues.commissionFormula || ""}
+              commissionFormula={watchedValues.commissionFormula || ""}
               onFormulaChange={(val) => form.setValue("commissionFormula", val)}
               purchasePrice={calculations.purchasePrice}
               salePrice={calculations.salePrice}
               quantity={calculations.finalKg}
               exchangeRate={currentExchangeRate}
-              manualCommission={watchedValues.commissionUsd || ""}
+              manualCommissionUsd={watchedValues.commissionUsd || ""}
               onManualCommissionChange={(val) => form.setValue("commissionUsd", val)}
             />
           </CardContent>

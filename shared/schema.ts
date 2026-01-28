@@ -26,3 +26,4 @@ export * from "server/modules/dashboard/entities/dashboard";
 export * from "server/modules/exchange-rates/entities/exchange-rates";
 export * from "server/modules/storage-cards/entities/storage-cards";
 export * from "server/modules/refueling-abroad/entities/refueling-abroad";
+export * from "server/modules/refueling-abroad/entities/refueling-abroad-intermediaries";
