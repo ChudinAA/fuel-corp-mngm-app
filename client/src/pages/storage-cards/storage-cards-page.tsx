@@ -6,9 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import {
   Dialog,
   DialogContent,
@@ -24,18 +22,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Search, CreditCard } from "lucide-react";
+import { Plus, Search, CreditCard, Package, DollarSign, Globe } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { StorageCardItem } from "./components/storage-card-item";
 
 interface StorageCard {
   id: string;
@@ -295,29 +286,10 @@ export default function StorageCardsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<StorageCard | null>(null);
-  const [deleteCardId, setDeleteCardId] = useState<string | null>(null);
+  const [viewingCard, setViewingCard] = useState<StorageCard | null>(null);
 
   const { data: storageCards, isLoading } = useQuery<StorageCard[]>({
     queryKey: ["/api/storage-cards"],
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await apiRequest("DELETE", `/api/storage-cards/${id}`);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/storage-cards"] });
-      toast({ title: "Карта хранения удалена" });
-      setDeleteCardId(null);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Ошибка удаления",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
   });
 
   const filteredCards = storageCards?.filter((card) => {
@@ -331,15 +303,25 @@ export default function StorageCardsPage() {
     );
   });
 
-  const formatNumber = (value: string | null) => {
-    if (!value) return "—";
-    const num = parseFloat(value);
-    return isNaN(num) ? "—" : num.toLocaleString("ru-RU", { minimumFractionDigits: 2 });
-  };
+  const totalBalance = storageCards?.reduce(
+    (sum, c) => sum + parseFloat(c.currentBalance || "0"),
+    0
+  ) || 0;
+
+  const activeCards = storageCards?.filter((c) => c.isActive !== false).length || 0;
+
+  const countries = new Set(storageCards?.map((c) => c.country) || []).size;
+
+  const formatNumber = (value: number) =>
+    new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(value);
 
   const handleEdit = (card: StorageCard) => {
     setEditingCard(card);
     setDialogOpen(true);
+  };
+
+  const handleViewDetails = (card: StorageCard) => {
+    setViewingCard(card);
   };
 
   const handleDialogClose = () => {
@@ -380,114 +362,143 @@ export default function StorageCardsPage() {
         )}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Список карт хранения
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Поиск по названию, стране, аэропорту..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-                data-testid="input-search"
-              />
-            </div>
-          </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Общий баланс
+            </CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatNumber(totalBalance)} кг</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Активных карт
+            </CardTitle>
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{activeCards}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Стран
+            </CardTitle>
+            <Globe className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{countries}</div>
+          </CardContent>
+        </Card>
+      </div>
 
-          {isLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : !filteredCards?.length ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Карты хранения не найдены
-            </div>
-          ) : (
-            <div className="border rounded-md overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Название</TableHead>
-                    <TableHead>Страна</TableHead>
-                    <TableHead>Аэропорт</TableHead>
-                    <TableHead>Код</TableHead>
-                    <TableHead className="text-right">Баланс</TableHead>
-                    <TableHead className="text-right">Ср. стоимость</TableHead>
-                    <TableHead>Статус</TableHead>
-                    <TableHead className="w-[100px]" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCards.map((card) => (
-                    <TableRow key={card.id} data-testid={`row-card-${card.id}`}>
-                      <TableCell className="font-medium">{card.name}</TableCell>
-                      <TableCell>{card.country}</TableCell>
-                      <TableCell>{card.airport}</TableCell>
-                      <TableCell>
-                        {card.airportCode && (
-                          <Badge variant="outline">{card.airportCode}</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatNumber(card.currentBalance)} {card.currency}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatNumber(card.averageCost)} {card.averageCostCurrency}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={card.isActive ? "default" : "secondary"}>
-                          {card.isActive ? "Активна" : "Неактивна"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          {hasPermission("storage-cards", "edit") && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEdit(card)}
-                              data-testid={`button-edit-${card.id}`}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {hasPermission("storage-cards", "delete") && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setDeleteCardId(card.id)}
-                              data-testid={`button-delete-${card.id}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Поиск по названию, стране, аэропорту..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+            data-testid="input-search"
+          />
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-32" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : !filteredCards?.length ? (
+        <Card>
+          <CardContent className="text-center py-8 text-muted-foreground">
+            Карты хранения не найдены
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredCards.map((card) => (
+            <StorageCardItem
+              key={card.id}
+              card={card}
+              onEdit={handleEdit}
+              onViewDetails={handleViewDetails}
+            />
+          ))}
+        </div>
+      )}
+
+      <Dialog open={!!viewingCard} onOpenChange={(open) => !open && setViewingCard(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              {viewingCard?.name}
+            </DialogTitle>
+          </DialogHeader>
+          {viewingCard && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Страна</p>
+                  <p className="font-medium">{viewingCard.country}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Аэропорт</p>
+                  <p className="font-medium">
+                    {viewingCard.airport}
+                    {viewingCard.airportCode && ` (${viewingCard.airportCode})`}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Баланс</p>
+                  <p className="font-medium text-lg">
+                    {formatNumber(parseFloat(viewingCard.currentBalance || "0"))} кг
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Себестоимость</p>
+                  <p className="font-medium">
+                    {parseFloat(viewingCard.averageCost || "0").toFixed(4)} {viewingCard.averageCostCurrency || viewingCard.currency || "USD"}/кг
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Валюта</p>
+                  <p className="font-medium">{viewingCard.currency || "USD"}</p>
+                </div>
+                {viewingCard.storageCost && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Стоимость хранения</p>
+                    <p className="font-medium">{viewingCard.storageCost}</p>
+                  </div>
+                )}
+              </div>
+              {viewingCard.notes && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Примечания</p>
+                  <p>{viewingCard.notes}</p>
+                </div>
+              )}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      <DeleteConfirmDialog
-        open={!!deleteCardId}
-        onOpenChange={(open) => !open && setDeleteCardId(null)}
-        onConfirm={() => deleteCardId && deleteMutation.mutate(deleteCardId)}
-        title="Удалить карту хранения?"
-        description="Карта хранения будет удалена. Это действие нельзя отменить."
-      />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
