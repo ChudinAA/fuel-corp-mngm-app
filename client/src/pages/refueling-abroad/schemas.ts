@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+export const intermediaryItemSchema = z.object({
+  id: z.string().optional(),
+  intermediaryId: z.string(),
+  orderIndex: z.number(),
+  commissionFormula: z.string().optional().nullable(),
+  commissionUsd: z.number().optional().nullable(),
+  commissionRub: z.number().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
 export const refuelingAbroadFormSchema = z.object({
   refuelingDate: z.date().optional().nullable(),
   productType: z.string().optional().nullable(),
@@ -11,14 +21,7 @@ export const refuelingAbroadFormSchema = z.object({
   buyerId: z.string().min(1, "Выберите покупателя"),
   storageCardId: z.string().optional().nullable(),
   
-  intermediaries: z.array(z.object({
-    intermediaryId: z.string().min(1, "Выберите посредника"),
-    commissionFormula: z.string().optional().nullable(),
-    commissionUsd: z.number().optional().nullable(),
-    commissionRub: z.number().optional().nullable(),
-    notes: z.string().optional().nullable(),
-    orderIndex: z.number()
-  })).default([]),
+  intermediaries: z.array(intermediaryItemSchema).default([]),
   
   inputMode: z.enum(["liters", "kg"]).default("kg"),
   quantityLiters: z.string().optional().nullable(),

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -19,13 +20,24 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { refuelingAbroadFormSchema, type RefuelingAbroadFormData } from "../schemas";
 import type { RefuelingAbroadFormProps } from "../types";
 import { useRefuelingAbroadCalculations } from "../hooks/use-refueling-abroad-calculations";
-import { CommissionCalculator } from "./commission-calculator";
+import { IntermediariesSection } from "./intermediaries-section";
 import { formatCurrency, formatNumber } from "../utils";
 import { PRODUCT_TYPES_ABROAD } from "../constants";
 import type { Supplier, Customer, ExchangeRate, StorageCard } from "@shared/schema";
 
+interface IntermediaryItem {
+  id?: string;
+  intermediaryId: string;
+  orderIndex: number;
+  commissionFormula: string;
+  commissionUsd: number | null;
+  commissionRub: number | null;
+  notes: string;
+}
+
 export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadFormProps) {
   const { toast } = useToast();
+  const [intermediariesList, setIntermediariesList] = useState<IntermediaryItem[]>([]);
   
   const { data: suppliers = [] } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
@@ -43,8 +55,32 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
     queryKey: ["/api/storage-cards"],
   });
   
+  const { data: existingIntermediaries = [] } = useQuery<IntermediaryItem[]>({
+    queryKey: ["/api/refueling-abroad", editData?.id, "intermediaries"],
+    queryFn: async () => {
+      if (!editData?.id) return [];
+      const res = await fetch(`/api/refueling-abroad/${editData.id}/intermediaries`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!editData?.id,
+  });
+  
+  useEffect(() => {
+    if (existingIntermediaries.length > 0) {
+      setIntermediariesList(existingIntermediaries.map(item => ({
+        id: item.id,
+        intermediaryId: item.intermediaryId,
+        orderIndex: item.orderIndex,
+        commissionFormula: item.commissionFormula || "",
+        commissionUsd: item.commissionUsd ? parseFloat(String(item.commissionUsd)) : null,
+        commissionRub: item.commissionRub ? parseFloat(String(item.commissionRub)) : null,
+        notes: item.notes || "",
+      })));
+    }
+  }, [existingIntermediaries]);
+  
   const foreignSuppliers = suppliers.filter(s => s.isForeign || s.isIntermediary);
-  const intermediaries = suppliers.filter(s => s.isIntermediary);
   
   const latestUsdRate = exchangeRates
     .filter(r => r.currency === "USD" && r.isActive)
@@ -60,8 +96,8 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
       airportCode: editData?.airport || "",
       supplierId: editData?.supplierId || "",
       buyerId: editData?.buyerId || "",
-      intermediaryId: editData?.intermediaryId || "",
       storageCardId: editData?.storageCardId || "",
+      intermediaries: [],
       inputMode: "kg",
       quantityLiters: "",
       density: "0.8",
@@ -70,8 +106,6 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
       salePriceUsd: editData?.salePriceUsd || "",
       exchangeRateId: editData?.exchangeRateId || latestUsdRate?.id || "",
       manualExchangeRate: "",
-      commissionFormula: editData?.intermediaryCommissionFormula || "",
-      commissionUsd: editData?.intermediaryCommissionUsd || "",
       notes: editData?.notes || "",
       isDraft: editData?.isDraft || false,
     },
@@ -83,6 +117,15 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
     ? parseFloat(watchedValues.manualExchangeRate) 
     : (selectedExchangeRate ? parseFloat(selectedExchangeRate.rate) : 0);
   
+  const totalIntermediaryCommissionUsd = intermediariesList.reduce(
+    (sum, item) => sum + (item.commissionUsd || 0),
+    0
+  );
+  const totalIntermediaryCommissionRub = intermediariesList.reduce(
+    (sum, item) => sum + (item.commissionRub || 0),
+    0
+  );
+  
   const calculations = useRefuelingAbroadCalculations({
     inputMode: watchedValues.inputMode,
     quantityLiters: watchedValues.quantityLiters || "",
@@ -91,8 +134,8 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
     purchasePriceUsd: watchedValues.purchasePriceUsd || "",
     salePriceUsd: watchedValues.salePriceUsd || "",
     exchangeRate: currentExchangeRate,
-    commissionFormula: watchedValues.commissionFormula || "",
-    manualCommissionUsd: watchedValues.commissionUsd || "",
+    commissionFormula: "",
+    manualCommissionUsd: totalIntermediaryCommissionUsd.toString(),
   });
   
   const createMutation = useMutation({
@@ -106,11 +149,11 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
         country: null,
         supplierId: (data.supplierId && data.supplierId !== "none") ? data.supplierId : null,
         buyerId: (data.buyerId && data.buyerId !== "none") ? data.buyerId : null,
-        intermediaryId: (data.intermediaryId && data.intermediaryId !== "none") ? data.intermediaryId : null,
+        intermediaryId: null,
         storageCardId: (data.storageCardId && data.storageCardId !== "none") ? data.storageCardId : null,
-        intermediaryCommissionFormula: data.commissionFormula || null,
-        intermediaryCommissionUsd: calculations.commissionUsd ?? null,
-        intermediaryCommissionRub: calculations.commissionRub ?? null,
+        intermediaryCommissionFormula: null,
+        intermediaryCommissionUsd: totalIntermediaryCommissionUsd || null,
+        intermediaryCommissionRub: totalIntermediaryCommissionRub || null,
         quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
         density: data.density ? parseFloat(data.density) : null,
         quantityKg: calculations.finalKg || 0,
@@ -131,10 +174,32 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
         isDraft: data.isDraft,
       };
       
+      let refuelingId: string;
+      
       if (editData) {
-        return apiRequest("PATCH", `/api/refueling-abroad/${editData.id}`, payload);
+        const response = await apiRequest("PATCH", `/api/refueling-abroad/${editData.id}`, payload);
+        const result = await response.json();
+        refuelingId = editData.id;
+      } else {
+        const response = await apiRequest("POST", "/api/refueling-abroad", payload);
+        const result = await response.json();
+        refuelingId = result.id;
       }
-      return apiRequest("POST", "/api/refueling-abroad", payload);
+      
+      const intermediariesPayload = intermediariesList
+        .filter(item => item.intermediaryId && item.intermediaryId !== "none")
+        .map((item, index) => ({
+          intermediaryId: item.intermediaryId,
+          orderIndex: index,
+          commissionFormula: item.commissionFormula || null,
+          commissionUsd: item.commissionUsd ?? null,
+          commissionRub: item.commissionRub ?? null,
+          notes: item.notes || null,
+        }));
+      
+      await apiRequest("PUT", `/api/refueling-abroad/${refuelingId}/intermediaries`, intermediariesPayload);
+      
+      return { id: refuelingId };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/refueling-abroad"] });
@@ -297,7 +362,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Контрагенты</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="supplierId"
@@ -355,33 +420,17 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                 </FormItem>
               )}
             />
-            
-            <FormField
-              control={form.control}
-              name="intermediaryId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Посредник (опционально)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ""}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-intermediary">
-                        <SelectValue placeholder="Не выбран" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">Без посредника</SelectItem>
-                      {intermediaries.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormItem>
-              )}
-            />
           </CardContent>
         </Card>
+        
+        <IntermediariesSection
+          intermediaries={intermediariesList}
+          onChange={setIntermediariesList}
+          purchasePrice={calculations.purchasePrice}
+          salePrice={calculations.salePrice}
+          quantity={calculations.finalKg}
+          exchangeRate={currentExchangeRate}
+        />
         
         <Card>
           <CardHeader className="pb-3">
@@ -577,17 +626,6 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                 )}
               />
             </div>
-            
-            <CommissionCalculator
-              commissionFormula={watchedValues.commissionFormula || ""}
-              onFormulaChange={(val) => form.setValue("commissionFormula", val)}
-              purchasePrice={calculations.purchasePrice}
-              salePrice={calculations.salePrice}
-              quantity={calculations.finalKg}
-              exchangeRate={currentExchangeRate}
-              manualCommissionUsd={watchedValues.commissionUsd || ""}
-              onManualCommissionChange={(val) => form.setValue("commissionUsd", val)}
-            />
           </CardContent>
         </Card>
         
@@ -609,8 +647,8 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                 <div className="font-medium">{formatCurrency(calculations.saleAmountUsd, "USD")}</div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Комиссия (USD)</Label>
-                <div className="font-medium">{formatCurrency(calculations.commissionUsd, "USD")}</div>
+                <Label className="text-xs text-muted-foreground">Комиссия посредников (USD)</Label>
+                <div className="font-medium">{formatCurrency(totalIntermediaryCommissionUsd, "USD")}</div>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Прибыль (USD)</Label>
@@ -630,8 +668,8 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                 <div className="font-medium">{formatCurrency(calculations.saleAmountRub, "RUB")}</div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Комиссия (RUB)</Label>
-                <div className="font-medium">{formatCurrency(calculations.commissionRub, "RUB")}</div>
+                <Label className="text-xs text-muted-foreground">Комиссия посредников (RUB)</Label>
+                <div className="font-medium">{formatCurrency(totalIntermediaryCommissionRub, "RUB")}</div>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Прибыль (RUB)</Label>
