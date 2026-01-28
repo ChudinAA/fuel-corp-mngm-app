@@ -5,6 +5,8 @@ import { insertRefuelingAbroadSchema } from "../entities/refueling-abroad";
 import { insertRefuelingAbroadIntermediarySchema } from "../entities/refueling-abroad-intermediaries";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import { auditLog } from "../../audit/middleware/audit-middleware";
+import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 
 export function registerRefuelingAbroadRoutes(app: Express) {
   app.get(
@@ -59,6 +61,11 @@ export function registerRefuelingAbroadRoutes(app: Express) {
     "/api/refueling-abroad",
     requireAuth,
     requirePermission("refueling", "create"),
+    auditLog({
+      entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
+      operation: AUDIT_OPERATIONS.CREATE,
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const validatedData = insertRefuelingAbroadSchema.parse(req.body);
@@ -79,6 +86,14 @@ export function registerRefuelingAbroadRoutes(app: Express) {
     "/api/refueling-abroad/:id",
     requireAuth,
     requirePermission("refueling", "edit"),
+    auditLog({
+      entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
+      operation: AUDIT_OPERATIONS.UPDATE,
+      getOldData: async (req) => {
+        return await refuelingAbroadStorage.getById(req.params.id);
+      },
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const validatedData = insertRefuelingAbroadSchema.parse(req.body);
@@ -102,6 +117,13 @@ export function registerRefuelingAbroadRoutes(app: Express) {
     "/api/refueling-abroad/:id",
     requireAuth,
     requirePermission("refueling", "delete"),
+    auditLog({
+      entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
+      operation: AUDIT_OPERATIONS.DELETE,
+      getOldData: async (req) => {
+        return await refuelingAbroadStorage.getById(req.params.id);
+      },
+    }),
     async (req, res) => {
       try {
         const userId = req.session.userId?.toString();
