@@ -5,6 +5,7 @@ import { refuelingAbroad, InsertRefuelingAbroad, RefuelingAbroad } from "../enti
 export interface IRefuelingAbroadStorage {
   getAll(): Promise<RefuelingAbroad[]>;
   getById(id: string): Promise<RefuelingAbroad | undefined>;
+  getByIdIncludingDeleted(id: string): Promise<RefuelingAbroad | undefined>;
   getByDateRange(from: Date, to: Date): Promise<RefuelingAbroad[]>;
   getBySupplierId(supplierId: string): Promise<RefuelingAbroad[]>;
   getByBuyerId(buyerId: string): Promise<RefuelingAbroad[]>;
@@ -13,7 +14,9 @@ export interface IRefuelingAbroadStorage {
   create(data: InsertRefuelingAbroad, userId?: string): Promise<RefuelingAbroad>;
   update(id: string, data: Partial<InsertRefuelingAbroad>, userId?: string): Promise<RefuelingAbroad | undefined>;
   softDelete(id: string, userId?: string): Promise<boolean>;
+  restore(id: string, userId?: string): Promise<RefuelingAbroad | undefined>;
   getDrafts(): Promise<RefuelingAbroad[]>;
+  getDeleted(): Promise<RefuelingAbroad[]>;
 }
 
 export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
@@ -30,6 +33,14 @@ export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
       .select()
       .from(refuelingAbroad)
       .where(and(eq(refuelingAbroad.id, id), isNull(refuelingAbroad.deletedAt)));
+    return result;
+  }
+
+  async getByIdIncludingDeleted(id: string): Promise<RefuelingAbroad | undefined> {
+    const [result] = await db
+      .select()
+      .from(refuelingAbroad)
+      .where(eq(refuelingAbroad.id, id));
     return result;
   }
 
@@ -137,6 +148,28 @@ export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
       .where(and(eq(refuelingAbroad.id, id), isNull(refuelingAbroad.deletedAt)))
       .returning();
     return !!result;
+  }
+
+  async restore(id: string, userId?: string): Promise<RefuelingAbroad | undefined> {
+    const [result] = await db
+      .update(refuelingAbroad)
+      .set({
+        deletedAt: null,
+        deletedById: null,
+        updatedAt: new Date().toISOString(),
+        updatedById: userId,
+      })
+      .where(eq(refuelingAbroad.id, id))
+      .returning();
+    return result;
+  }
+
+  async getDeleted(): Promise<RefuelingAbroad[]> {
+    return db
+      .select()
+      .from(refuelingAbroad)
+      .where(sql`${refuelingAbroad.deletedAt} IS NOT NULL`)
+      .orderBy(desc(refuelingAbroad.deletedAt));
   }
 
   async getDrafts(): Promise<RefuelingAbroad[]> {

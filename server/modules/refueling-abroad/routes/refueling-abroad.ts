@@ -265,4 +265,46 @@ export function registerRefuelingAbroadRoutes(app: Express) {
       }
     }
   );
+
+  app.get(
+    "/api/refueling-abroad-deleted",
+    requireAuth,
+    requirePermission("refueling", "view"),
+    async (req, res) => {
+      try {
+        const items = await refuelingAbroadStorage.getDeleted();
+        res.json(items);
+      } catch (error: any) {
+        console.error("Error fetching deleted records:", error);
+        res.status(500).json({ message: "Ошибка получения удаленных записей" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/refueling-abroad/:id/restore",
+    requireAuth,
+    requirePermission("refueling", "edit"),
+    auditLog({
+      entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
+      operation: AUDIT_OPERATIONS.UPDATE,
+      getOldData: async (req) => {
+        return await refuelingAbroadStorage.getByIdIncludingDeleted(req.params.id);
+      },
+      getNewData: () => ({ restored: true }),
+    }),
+    async (req, res) => {
+      try {
+        const userId = req.session.userId?.toString();
+        const item = await refuelingAbroadStorage.restore(req.params.id, userId);
+        if (!item) {
+          return res.status(404).json({ message: "Запись не найдена" });
+        }
+        res.json(item);
+      } catch (error: any) {
+        console.error("Error restoring refueling abroad record:", error);
+        res.status(500).json({ message: "Ошибка восстановления записи" });
+      }
+    }
+  );
 }
