@@ -98,7 +98,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
   const createMutation = useMutation({
     mutationFn: async (data: RefuelingAbroadFormData) => {
       const payload = {
-        refuelingDate: data.refuelingDate ? data.refuelingDate.toISOString().split("T")[0] : null,
+        refuelingDate: data.refuelingDate ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
         productType: data.productType || null,
         aircraftNumber: data.aircraftNumber || null,
         orderNumber: data.flightNumber || null,
