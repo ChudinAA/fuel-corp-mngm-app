@@ -9,8 +9,16 @@ export const refuelingAbroadFormSchema = z.object({
   
   supplierId: z.string().min(1, "Выберите поставщика"),
   buyerId: z.string().min(1, "Выберите покупателя"),
-  intermediaryId: z.string().optional().nullable(),
   storageCardId: z.string().optional().nullable(),
+  
+  intermediaries: z.array(z.object({
+    intermediaryId: z.string().min(1, "Выберите посредника"),
+    commissionFormula: z.string().optional().nullable(),
+    commissionUsd: z.number().optional().nullable(),
+    commissionRub: z.number().optional().nullable(),
+    notes: z.string().optional().nullable(),
+    orderIndex: z.number()
+  })).default([]),
   
   inputMode: z.enum(["liters", "kg"]).default("kg"),
   quantityLiters: z.string().optional().nullable(),
@@ -21,9 +29,6 @@ export const refuelingAbroadFormSchema = z.object({
   salePriceUsd: z.string().optional().nullable(),
   exchangeRateId: z.string().optional().nullable(),
   manualExchangeRate: z.string().optional().nullable(),
-  
-  commissionFormula: z.string().optional().nullable(),
-  commissionUsd: z.string().optional().nullable(),
   
   notes: z.string().optional().nullable(),
   isDraft: z.boolean().default(false),
