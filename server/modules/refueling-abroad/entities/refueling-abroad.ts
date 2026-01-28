@@ -50,6 +50,11 @@ export const refuelingAbroad = pgTable(
     exchangeRateId: uuid("exchange_rate_id").references(() => exchangeRates.id),
     exchangeRateValue: decimal("exchange_rate_value", { precision: 15, scale: 4 }),
     
+    purchaseExchangeRateId: uuid("purchase_exchange_rate_id").references(() => exchangeRates.id),
+    purchaseExchangeRateValue: decimal("purchase_exchange_rate_value", { precision: 15, scale: 4 }),
+    saleExchangeRateId: uuid("sale_exchange_rate_id").references(() => exchangeRates.id),
+    saleExchangeRateValue: decimal("sale_exchange_rate_value", { precision: 15, scale: 4 }),
+    
     purchasePriceUsd: decimal("purchase_price_usd", { precision: 12, scale: 4 }),
     purchasePriceRub: decimal("purchase_price_rub", { precision: 12, scale: 4 }),
     purchasePriceId: uuid("purchase_price_id").references(() => prices.id),
@@ -155,6 +160,10 @@ export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
     currency: z.string().default("USD"),
     exchangeRateId: z.string().nullable().optional(),
     exchangeRateValue: z.number().nullable().optional(),
+    purchaseExchangeRateId: z.string().nullable().optional(),
+    purchaseExchangeRateValue: z.number().nullable().optional(),
+    saleExchangeRateId: z.string().nullable().optional(),
+    saleExchangeRateValue: z.number().nullable().optional(),
     purchasePriceUsd: z.number().nullable().optional(),
     purchasePriceRub: z.number().nullable().optional(),
     purchasePriceId: z.string().nullable().optional(),

@@ -167,6 +167,12 @@ export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
     if (data.exchangeRateValue !== undefined) {
       result.exchangeRateValue = data.exchangeRateValue !== null ? String(data.exchangeRateValue) : null;
     }
+    if (data.purchaseExchangeRateValue !== undefined) {
+      result.purchaseExchangeRateValue = data.purchaseExchangeRateValue !== null ? String(data.purchaseExchangeRateValue) : null;
+    }
+    if (data.saleExchangeRateValue !== undefined) {
+      result.saleExchangeRateValue = data.saleExchangeRateValue !== null ? String(data.saleExchangeRateValue) : null;
+    }
     if (data.purchasePriceUsd !== undefined) {
       result.purchasePriceUsd = data.purchasePriceUsd !== null ? String(data.purchasePriceUsd) : null;
     }
