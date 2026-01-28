@@ -8,7 +8,8 @@ interface UseRefuelingAbroadCalculationsProps {
   quantityKg: string;
   purchasePriceUsd: string;
   salePriceUsd: string;
-  exchangeRate: number;
+  purchaseExchangeRate: number;
+  saleExchangeRate: number;
   commissionFormula: string;
   manualCommissionUsd: string;
 }
@@ -20,7 +21,8 @@ export function useRefuelingAbroadCalculations({
   quantityKg,
   purchasePriceUsd,
   salePriceUsd,
-  exchangeRate,
+  purchaseExchangeRate,
+  saleExchangeRate,
   commissionFormula,
   manualCommissionUsd,
 }: UseRefuelingAbroadCalculationsProps) {
@@ -69,24 +71,24 @@ export function useRefuelingAbroadCalculations({
         purchasePrice,
         salePrice,
         quantity: finalKg,
-        exchangeRate,
+        exchangeRate: saleExchangeRate,
       });
       return calculated;
     }
     return null;
-  }, [manualCommissionUsd, commissionFormula, purchasePrice, salePrice, finalKg, exchangeRate]);
+  }, [manualCommissionUsd, commissionFormula, purchasePrice, salePrice, finalKg, saleExchangeRate]);
 
   const purchaseAmountRub = useMemo(() => {
-    return purchaseAmountUsd !== null && exchangeRate > 0 ? purchaseAmountUsd * exchangeRate : null;
-  }, [purchaseAmountUsd, exchangeRate]);
+    return purchaseAmountUsd !== null && purchaseExchangeRate > 0 ? purchaseAmountUsd * purchaseExchangeRate : null;
+  }, [purchaseAmountUsd, purchaseExchangeRate]);
 
   const saleAmountRub = useMemo(() => {
-    return saleAmountUsd !== null && exchangeRate > 0 ? saleAmountUsd * exchangeRate : null;
-  }, [saleAmountUsd, exchangeRate]);
+    return saleAmountUsd !== null && saleExchangeRate > 0 ? saleAmountUsd * saleExchangeRate : null;
+  }, [saleAmountUsd, saleExchangeRate]);
 
   const commissionRub = useMemo(() => {
-    return commissionUsd !== null && exchangeRate > 0 ? commissionUsd * exchangeRate : null;
-  }, [commissionUsd, exchangeRate]);
+    return commissionUsd !== null && saleExchangeRate > 0 ? commissionUsd * saleExchangeRate : null;
+  }, [commissionUsd, saleExchangeRate]);
 
   const profitUsd = useMemo(() => {
     if (purchaseAmountUsd === null || saleAmountUsd === null) return null;
@@ -95,8 +97,10 @@ export function useRefuelingAbroadCalculations({
   }, [purchaseAmountUsd, saleAmountUsd, commissionUsd]);
 
   const profitRub = useMemo(() => {
-    return profitUsd !== null && exchangeRate > 0 ? profitUsd * exchangeRate : null;
-  }, [profitUsd, exchangeRate]);
+    if (purchaseAmountRub === null || saleAmountRub === null) return null;
+    const commissionRubVal = commissionRub || 0;
+    return saleAmountRub - purchaseAmountRub - commissionRubVal;
+  }, [purchaseAmountRub, saleAmountRub, commissionRub]);
 
   return {
     calculatedKg,

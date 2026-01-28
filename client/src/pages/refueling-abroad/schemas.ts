@@ -30,8 +30,11 @@ export const refuelingAbroadFormSchema = z.object({
   
   purchasePriceUsd: z.string().optional().nullable(),
   salePriceUsd: z.string().optional().nullable(),
-  exchangeRateId: z.string().optional().nullable(),
-  manualExchangeRate: z.string().optional().nullable(),
+  
+  purchaseExchangeRateId: z.string().optional().nullable(),
+  manualPurchaseExchangeRate: z.string().optional().nullable(),
+  saleExchangeRateId: z.string().optional().nullable(),
+  manualSaleExchangeRate: z.string().optional().nullable(),
   
   notes: z.string().optional().nullable(),
   isDraft: z.boolean().default(false),

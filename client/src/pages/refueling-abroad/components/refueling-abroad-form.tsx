@@ -112,10 +112,16 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
   });
   
   const watchedValues = form.watch();
-  const selectedExchangeRate = exchangeRates.find(r => r.id === watchedValues.exchangeRateId);
-  const currentExchangeRate = watchedValues.manualExchangeRate 
-    ? parseFloat(watchedValues.manualExchangeRate) 
-    : (selectedExchangeRate ? parseFloat(selectedExchangeRate.rate) : 0);
+  
+  const selectedPurchaseExchangeRate = exchangeRates.find(r => r.id === watchedValues.purchaseExchangeRateId);
+  const purchaseExchangeRate = watchedValues.manualPurchaseExchangeRate 
+    ? parseFloat(watchedValues.manualPurchaseExchangeRate) 
+    : (selectedPurchaseExchangeRate ? parseFloat(selectedPurchaseExchangeRate.rate) : 0);
+  
+  const selectedSaleExchangeRate = exchangeRates.find(r => r.id === watchedValues.saleExchangeRateId);
+  const saleExchangeRate = watchedValues.manualSaleExchangeRate 
+    ? parseFloat(watchedValues.manualSaleExchangeRate) 
+    : (selectedSaleExchangeRate ? parseFloat(selectedSaleExchangeRate.rate) : 0);
   
   const totalIntermediaryCommissionUsd = intermediariesList.reduce(
     (sum, item) => sum + (item.commissionUsd || 0),
@@ -133,7 +139,8 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
     quantityKg: watchedValues.quantityKg || "",
     purchasePriceUsd: watchedValues.purchasePriceUsd || "",
     salePriceUsd: watchedValues.salePriceUsd || "",
-    exchangeRate: currentExchangeRate,
+    purchaseExchangeRate,
+    saleExchangeRate,
     commissionFormula: "",
     manualCommissionUsd: totalIntermediaryCommissionUsd.toString(),
   });
@@ -158,12 +165,14 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
         density: data.density ? parseFloat(data.density) : null,
         quantityKg: calculations.finalKg || 0,
         currency: "USD",
-        exchangeRateId: data.exchangeRateId || null,
-        exchangeRateValue: currentExchangeRate || null,
+        purchaseExchangeRateId: data.purchaseExchangeRateId || null,
+        purchaseExchangeRateValue: purchaseExchangeRate || null,
+        saleExchangeRateId: data.saleExchangeRateId || null,
+        saleExchangeRateValue: saleExchangeRate || null,
         purchasePriceUsd: calculations.purchasePrice || null,
-        purchasePriceRub: calculations.purchasePrice && currentExchangeRate ? calculations.purchasePrice * currentExchangeRate : null,
+        purchasePriceRub: calculations.purchasePrice && purchaseExchangeRate ? calculations.purchasePrice * purchaseExchangeRate : null,
         salePriceUsd: calculations.salePrice || null,
-        salePriceRub: calculations.salePrice && currentExchangeRate ? calculations.salePrice * currentExchangeRate : null,
+        salePriceRub: calculations.salePrice && saleExchangeRate ? calculations.salePrice * saleExchangeRate : null,
         purchaseAmountUsd: calculations.purchaseAmountUsd || null,
         saleAmountUsd: calculations.saleAmountUsd || null,
         purchaseAmountRub: calculations.purchaseAmountRub || null,
@@ -429,7 +438,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
           purchasePrice={calculations.purchasePrice}
           salePrice={calculations.salePrice}
           quantity={calculations.finalKg}
-          exchangeRate={currentExchangeRate}
+          exchangeRate={saleExchangeRate}
         />
         
         <Card>
@@ -582,49 +591,103 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                 )}
               />
               
-              <FormField
-                control={form.control}
-                name="exchangeRateId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Курс USD/RUB</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-exchange-rate">
-                          <SelectValue placeholder="Выберите курс" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {exchangeRates.filter(r => r.currency === "USD").map((rate) => (
-                          <SelectItem key={rate.id} value={rate.id}>
-                            {rate.rate} ({new Date(rate.rateDate).toLocaleDateString("ru-RU")})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="manualExchangeRate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Или ввести вручную</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        step="0.01" 
-                        placeholder={selectedExchangeRate?.rate || "90.00"} 
-                        {...field} 
-                        value={field.value || ""} 
-                        data-testid="input-manual-exchange-rate" 
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+              </div>
+            
+            <div className="border-t pt-4 mt-4">
+              <h4 className="text-sm font-medium mb-3">Курсы USD/RUB</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <h5 className="text-xs text-muted-foreground font-medium">Для закупки</h5>
+                  <FormField
+                    control={form.control}
+                    name="purchaseExchangeRateId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Курс из справочника</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-purchase-exchange-rate">
+                              <SelectValue placeholder="Выберите курс" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {exchangeRates.filter(r => r.currency === "USD").map((rate) => (
+                              <SelectItem key={rate.id} value={rate.id}>
+                                {rate.rate} ({new Date(rate.rateDate).toLocaleDateString("ru-RU")})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="manualPurchaseExchangeRate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Или вручную</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            placeholder={selectedPurchaseExchangeRate?.rate || "90.00"} 
+                            {...field} 
+                            value={field.value || ""} 
+                            data-testid="input-manual-purchase-exchange-rate" 
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <div className="space-y-3">
+                  <h5 className="text-xs text-muted-foreground font-medium">Для продажи</h5>
+                  <FormField
+                    control={form.control}
+                    name="saleExchangeRateId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Курс из справочника</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-sale-exchange-rate">
+                              <SelectValue placeholder="Выберите курс" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {exchangeRates.filter(r => r.currency === "USD").map((rate) => (
+                              <SelectItem key={rate.id} value={rate.id}>
+                                {rate.rate} ({new Date(rate.rateDate).toLocaleDateString("ru-RU")})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="manualSaleExchangeRate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Или вручную</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            placeholder={selectedSaleExchangeRate?.rate || "90.00"} 
+                            {...field} 
+                            value={field.value || ""} 
+                            data-testid="input-manual-sale-exchange-rate" 
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
