@@ -152,26 +152,59 @@ export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
       .orderBy(desc(refuelingAbroad.createdAt));
   }
 
-  private transformData(data: Partial<InsertRefuelingAbroad>) {
-    return {
-      ...data,
-      quantityLiters: data.quantityLiters !== undefined ? String(data.quantityLiters) : undefined,
-      density: data.density !== undefined ? String(data.density) : undefined,
-      quantityKg: data.quantityKg !== undefined ? String(data.quantityKg) : undefined,
-      exchangeRateValue: data.exchangeRateValue !== undefined ? String(data.exchangeRateValue) : undefined,
-      purchasePriceUsd: data.purchasePriceUsd !== undefined ? String(data.purchasePriceUsd) : undefined,
-      purchasePriceRub: data.purchasePriceRub !== undefined ? String(data.purchasePriceRub) : undefined,
-      salePriceUsd: data.salePriceUsd !== undefined ? String(data.salePriceUsd) : undefined,
-      salePriceRub: data.salePriceRub !== undefined ? String(data.salePriceRub) : undefined,
-      purchaseAmountUsd: data.purchaseAmountUsd !== undefined ? String(data.purchaseAmountUsd) : undefined,
-      purchaseAmountRub: data.purchaseAmountRub !== undefined ? String(data.purchaseAmountRub) : undefined,
-      saleAmountUsd: data.saleAmountUsd !== undefined ? String(data.saleAmountUsd) : undefined,
-      saleAmountRub: data.saleAmountRub !== undefined ? String(data.saleAmountRub) : undefined,
-      profitUsd: data.profitUsd !== undefined ? String(data.profitUsd) : undefined,
-      profitRub: data.profitRub !== undefined ? String(data.profitRub) : undefined,
-      intermediaryCommissionUsd: data.intermediaryCommissionUsd !== undefined ? String(data.intermediaryCommissionUsd) : undefined,
-      intermediaryCommissionRub: data.intermediaryCommissionRub !== undefined ? String(data.intermediaryCommissionRub) : undefined,
-    };
+  private transformData(data: Partial<InsertRefuelingAbroad>): any {
+    const result: any = { ...data };
+    
+    if (data.quantityLiters !== undefined) {
+      result.quantityLiters = data.quantityLiters !== null ? String(data.quantityLiters) : null;
+    }
+    if (data.density !== undefined) {
+      result.density = data.density !== null ? String(data.density) : null;
+    }
+    if (data.quantityKg !== undefined) {
+      result.quantityKg = data.quantityKg !== null ? String(data.quantityKg) : null;
+    }
+    if (data.exchangeRateValue !== undefined) {
+      result.exchangeRateValue = data.exchangeRateValue !== null ? String(data.exchangeRateValue) : null;
+    }
+    if (data.purchasePriceUsd !== undefined) {
+      result.purchasePriceUsd = data.purchasePriceUsd !== null ? String(data.purchasePriceUsd) : null;
+    }
+    if (data.purchasePriceRub !== undefined) {
+      result.purchasePriceRub = data.purchasePriceRub !== null ? String(data.purchasePriceRub) : null;
+    }
+    if (data.salePriceUsd !== undefined) {
+      result.salePriceUsd = data.salePriceUsd !== null ? String(data.salePriceUsd) : null;
+    }
+    if (data.salePriceRub !== undefined) {
+      result.salePriceRub = data.salePriceRub !== null ? String(data.salePriceRub) : null;
+    }
+    if (data.purchaseAmountUsd !== undefined) {
+      result.purchaseAmountUsd = data.purchaseAmountUsd !== null ? String(data.purchaseAmountUsd) : null;
+    }
+    if (data.purchaseAmountRub !== undefined) {
+      result.purchaseAmountRub = data.purchaseAmountRub !== null ? String(data.purchaseAmountRub) : null;
+    }
+    if (data.saleAmountUsd !== undefined) {
+      result.saleAmountUsd = data.saleAmountUsd !== null ? String(data.saleAmountUsd) : null;
+    }
+    if (data.saleAmountRub !== undefined) {
+      result.saleAmountRub = data.saleAmountRub !== null ? String(data.saleAmountRub) : null;
+    }
+    if (data.profitUsd !== undefined) {
+      result.profitUsd = data.profitUsd !== null ? String(data.profitUsd) : null;
+    }
+    if (data.profitRub !== undefined) {
+      result.profitRub = data.profitRub !== null ? String(data.profitRub) : null;
+    }
+    if (data.intermediaryCommissionUsd !== undefined) {
+      result.intermediaryCommissionUsd = data.intermediaryCommissionUsd !== null ? String(data.intermediaryCommissionUsd) : null;
+    }
+    if (data.intermediaryCommissionRub !== undefined) {
+      result.intermediaryCommissionRub = data.intermediaryCommissionRub !== null ? String(data.intermediaryCommissionRub) : null;
+    }
+    
+    return result;
   }
 }
 

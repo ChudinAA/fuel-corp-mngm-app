@@ -60,7 +60,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
     async (req, res) => {
       try {
         const validatedData = insertRefuelingAbroadSchema.parse(req.body);
-        const userId = req.user?.id;
+        const userId = req.session.userId?.toString();
         const item = await refuelingAbroadStorage.create(validatedData, userId);
         res.status(201).json(item);
       } catch (error: any) {
@@ -79,8 +79,8 @@ export function registerRefuelingAbroadRoutes(app: Express) {
     requirePermission("refueling", "edit"),
     async (req, res) => {
       try {
-        const validatedData = insertRefuelingAbroadSchema.partial().parse(req.body);
-        const userId = req.user?.id;
+        const validatedData = insertRefuelingAbroadSchema.parse(req.body);
+        const userId = req.session.userId?.toString();
         const item = await refuelingAbroadStorage.update(req.params.id, validatedData, userId);
         if (!item) {
           return res.status(404).json({ message: "Запись не найдена" });
@@ -102,7 +102,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
     requirePermission("refueling", "delete"),
     async (req, res) => {
       try {
-        const userId = req.user?.id;
+        const userId = req.session.userId?.toString();
         const success = await refuelingAbroadStorage.softDelete(req.params.id, userId);
         if (!success) {
           return res.status(404).json({ message: "Запись не найдена" });

@@ -104,29 +104,29 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
         orderNumber: data.flightNumber || null,
         airport: data.airportCode || null,
         country: null,
-        supplierId: (data.supplierId && data.supplierId !== "none") ? data.supplierId : data.supplierId,
-        buyerId: (data.buyerId && data.buyerId !== "none") ? data.buyerId : data.buyerId,
+        supplierId: (data.supplierId && data.supplierId !== "none") ? data.supplierId : null,
+        buyerId: (data.buyerId && data.buyerId !== "none") ? data.buyerId : null,
         intermediaryId: (data.intermediaryId && data.intermediaryId !== "none") ? data.intermediaryId : null,
         storageCardId: (data.storageCardId && data.storageCardId !== "none") ? data.storageCardId : null,
         intermediaryCommissionFormula: data.commissionFormula || null,
-        intermediaryCommissionUsd: calculations.commissionUsd?.toString() || null,
-        intermediaryCommissionRub: calculations.commissionRub?.toString() || null,
+        intermediaryCommissionUsd: calculations.commissionUsd ?? null,
+        intermediaryCommissionRub: calculations.commissionRub ?? null,
         quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
         density: data.density ? parseFloat(data.density) : null,
         quantityKg: calculations.finalKg || 0,
         currency: "USD",
         exchangeRateId: data.exchangeRateId || null,
-        exchangeRateValue: currentExchangeRate,
-        purchasePriceUsd: calculations.purchasePrice || 0,
-        purchasePriceRub: (calculations.purchasePrice || 0) * currentExchangeRate,
-        salePriceUsd: calculations.salePrice || 0,
-        salePriceRub: (calculations.salePrice || 0) * currentExchangeRate,
-        purchaseAmountUsd: calculations.purchaseAmountUsd || 0,
-        saleAmountUsd: calculations.saleAmountUsd || 0,
-        purchaseAmountRub: calculations.purchaseAmountRub || 0,
-        saleAmountRub: calculations.saleAmountRub || 0,
-        profitUsd: calculations.profitUsd?.toString() || null,
-        profitRub: calculations.profitRub?.toString() || null,
+        exchangeRateValue: currentExchangeRate || null,
+        purchasePriceUsd: calculations.purchasePrice || null,
+        purchasePriceRub: calculations.purchasePrice && currentExchangeRate ? calculations.purchasePrice * currentExchangeRate : null,
+        salePriceUsd: calculations.salePrice || null,
+        salePriceRub: calculations.salePrice && currentExchangeRate ? calculations.salePrice * currentExchangeRate : null,
+        purchaseAmountUsd: calculations.purchaseAmountUsd || null,
+        saleAmountUsd: calculations.saleAmountUsd || null,
+        purchaseAmountRub: calculations.purchaseAmountRub || null,
+        saleAmountRub: calculations.saleAmountRub || null,
+        profitUsd: calculations.profitUsd ?? null,
+        profitRub: calculations.profitRub ?? null,
         notes: data.notes || null,
         isDraft: data.isDraft,
       };
@@ -189,7 +189,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={field.value}
+                        selected={field.value || undefined}
                         onSelect={field.onChange}
                         locale={ru}
                         initialFocus
@@ -208,7 +208,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                 <FormItem>
                   <FormLabel>Код аэропорта</FormLabel>
                   <FormControl>
-                    <Input placeholder="JFK" {...field} data-testid="input-airport-code" />
+                    <Input placeholder="JFK" {...field} value={field.value || ""} data-testid="input-airport-code" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -247,7 +247,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Продукт</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
                     <FormControl>
                       <SelectTrigger data-testid="select-product-type">
                         <SelectValue placeholder="Выберите" />
@@ -504,6 +504,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                         type="number" 
                         step="0.0001" 
                         {...field} 
+                        value={field.value || ""}
                         data-testid="input-purchase-price-usd" 
                       />
                     </FormControl>
@@ -523,6 +524,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                         type="number" 
                         step="0.0001" 
                         {...field} 
+                        value={field.value || ""}
                         data-testid="input-sale-price-usd" 
                       />
                     </FormControl>
