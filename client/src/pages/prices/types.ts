@@ -2,6 +2,7 @@ import {
   CounterpartyRole,
   CounterpartyType,
   ProductType,
+  Currency,
 } from "@shared/constants";
 import type { Price } from "@shared/schema";
 
@@ -17,6 +18,7 @@ export interface PriceFormData {
   priceValues: Array<{ price: string }>;
   contractNumber?: string;
   notes?: string;
+  currency?: Currency;
 }
 
 export interface PriceDialogProps {

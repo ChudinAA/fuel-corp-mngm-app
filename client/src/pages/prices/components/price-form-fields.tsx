@@ -31,12 +31,14 @@ import type {
   UseFieldArrayRemove,
   UseFieldArrayAppend,
 } from "react-hook-form";
+import { useWatch } from "react-hook-form";
 import type { PriceFormData } from "../types";
 import type { Base, Supplier, Customer } from "@shared/schema";
 import {
   PRODUCT_TYPE,
   COUNTERPARTY_TYPE,
   COUNTERPARTY_ROLE,
+  CURRENCY,
 } from "@shared/constants";
 import { AddBaseDialog } from "@/pages/directories/bases-dialog";
 import { useState } from "react";
@@ -62,6 +64,8 @@ export function PriceFormFields({
 }: PriceFormFieldsProps) {
   const { hasPermission } = useAuth();
   const [addBaseOpen, setAddBaseOpen] = useState(false);
+  
+  const counterpartyType = useWatch({ control, name: "counterpartyType" });
 
   return (
     <>
@@ -156,6 +160,9 @@ export function PriceFormFields({
                   <SelectItem value={COUNTERPARTY_TYPE.REFUELING}>
                     Заправка ВС
                   </SelectItem>
+                  <SelectItem value={COUNTERPARTY_TYPE.REFUELING_ABROAD}>
+                    Заправка ВС Зарубеж
+                  </SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -188,6 +195,31 @@ export function PriceFormFields({
             </FormItem>
           )}
         />
+
+        {counterpartyType === COUNTERPARTY_TYPE.REFUELING_ABROAD && (
+          <FormField
+            control={control}
+            name="currency"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Валюта</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value || CURRENCY.USD}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-currency">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value={CURRENCY.USD}>USD</SelectItem>
+                    <SelectItem value={CURRENCY.EUR}>EUR</SelectItem>
+                    <SelectItem value={CURRENCY.RUB}>RUB</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
