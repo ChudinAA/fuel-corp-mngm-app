@@ -106,8 +106,8 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
         country: null,
         supplierId: data.supplierId,
         buyerId: data.buyerId,
-        intermediaryId: data.intermediaryId || null,
-        storageCardId: data.storageCardId || null,
+        intermediaryId: (data.intermediaryId && data.intermediaryId !== "none") ? data.intermediaryId : null,
+        storageCardId: (data.storageCardId && data.storageCardId !== "none") ? data.storageCardId : null,
         intermediaryCommissionFormula: data.commissionFormula || null,
         intermediaryCommissionUsd: calculations.commissionUsd?.toString() || null,
         intermediaryCommissionRub: calculations.commissionRub?.toString() || null,
@@ -279,7 +279,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Без карты</SelectItem>
+                      <SelectItem value="none">Без карты</SelectItem>
                       {storageCards.map((card) => (
                         <SelectItem key={card.id} value={card.id}>
                           {card.name} ({card.airportCode})
@@ -364,7 +364,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Без посредника</SelectItem>
+                      <SelectItem value="none">Без посредника</SelectItem>
                       {intermediaries.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.name}
