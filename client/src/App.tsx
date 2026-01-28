@@ -49,6 +49,7 @@ import GovContractsPage from "@/pages/reports/gov-contracts-page";
 import BudgetPage from "@/pages/reports/budget-page";
 import ManagementReportPage from "@/pages/reports/management-report-page";
 import NotFound from "@/pages/not-found";
+import StorageCardsPage from "@/pages/storage-cards/storage-cards-page";
 
 import InDevelopmentPage from "@/pages/shared/in-development";
 
@@ -219,6 +220,12 @@ function Router() {
       <Route path="/directories">
         <AppLayout>
           <ProtectedRoute component={DirectoriesPage} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/storage-cards">
+        <AppLayout>
+          <ProtectedRoute component={StorageCardsPage} />
         </AppLayout>
       </Route>
 

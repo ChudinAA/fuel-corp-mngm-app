@@ -57,7 +57,7 @@ export function registerStorageCardsRoutes(app: Express) {
         const validatedData = insertStorageCardSchema.parse(req.body);
         const data = {
           ...validatedData,
-          createdById: req.session.userId,
+          createdById: req.session.userId?.toString(),
         };
 
         const item = await storage.storageCards.createStorageCard(data);
@@ -128,7 +128,7 @@ export function registerStorageCardsRoutes(app: Express) {
       try {
         const success = await storage.storageCards.deleteStorageCard(
           req.params.id,
-          req.session.userId
+          req.session.userId?.toString()
         );
         if (!success) {
           return res.status(404).json({ message: "Карта хранения не найдена" });
@@ -181,7 +181,7 @@ export function registerStorageCardsRoutes(app: Express) {
         });
         const data = {
           ...validatedData,
-          createdById: req.session.userId,
+          createdById: req.session.userId?.toString(),
         };
 
         const transaction = await storage.storageCards.createTransaction(data);
@@ -207,7 +207,7 @@ export function registerStorageCardsRoutes(app: Express) {
       try {
         const success = await storage.storageCards.deleteTransaction(
           req.params.id,
-          req.session.userId
+          req.session.userId?.toString()
         );
         if (!success) {
           return res.status(404).json({ message: "Транзакция не найдена" });

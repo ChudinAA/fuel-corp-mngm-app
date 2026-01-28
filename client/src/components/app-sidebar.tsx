@@ -38,6 +38,7 @@ import {
   DollarSign,
   Truck,
   BookOpen,
+  CreditCard,
   LayoutDashboard,
   Settings,
   Users,
@@ -153,6 +154,12 @@ const getDataMenuItems = (hasPermission: (p: string) => boolean) =>
       url: "/directories",
       icon: BookOpen,
       permission: "directories.view",
+    },
+    {
+      title: "Карты хранения",
+      url: "/storage-cards",
+      icon: CreditCard,
+      permission: "storage-cards.view",
     },
   ].filter((item) => !item.permission || hasPermission(item.permission));
 
