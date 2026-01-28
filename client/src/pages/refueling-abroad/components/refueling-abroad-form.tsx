@@ -104,8 +104,8 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
         orderNumber: data.flightNumber || null,
         airport: data.airportCode,
         country: null,
-        supplierId: data.supplierId,
-        buyerId: data.buyerId,
+        supplierId: (data.supplierId && data.supplierId !== "none") ? data.supplierId : data.supplierId,
+        buyerId: (data.buyerId && data.buyerId !== "none") ? data.buyerId : data.buyerId,
         intermediaryId: (data.intermediaryId && data.intermediaryId !== "none") ? data.intermediaryId : null,
         storageCardId: (data.storageCardId && data.storageCardId !== "none") ? data.storageCardId : null,
         intermediaryCommissionFormula: data.commissionFormula || null,
@@ -311,14 +311,15 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {foreignSuppliers.length === 0 && (
-                        <SelectItem value="" disabled>Нет иностранных поставщиков</SelectItem>
+                      {foreignSuppliers.length === 0 ? (
+                        <SelectItem value="none" disabled>Нет иностранных поставщиков</SelectItem>
+                      ) : (
+                        foreignSuppliers.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name} {s.isIntermediary ? "(посредник)" : ""}
+                          </SelectItem>
+                        ))
                       )}
-                      {foreignSuppliers.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name} {s.isIntermediary ? "(посредник)" : ""}
-                        </SelectItem>
-                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -339,11 +340,15 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {customers.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name} {c.isForeign ? "(иностранный)" : ""}
-                        </SelectItem>
-                      ))}
+                      {customers.length === 0 ? (
+                        <SelectItem value="none" disabled>Нет покупателей</SelectItem>
+                      ) : (
+                        customers.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name} {c.isForeign ? "(иностранный)" : ""}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
