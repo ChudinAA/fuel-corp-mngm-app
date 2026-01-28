@@ -15,15 +15,17 @@ export default function PricesPage() {
   const [editingPrice, setEditingPrice] = useState<Price | null>(null);
   const [wholesaleEnabled, setWholesaleEnabled] = useState(false);
   const [refuelingEnabled, setRefuelingEnabled] = useState(false);
+  const [refuelingAbroadEnabled, setRefuelingAbroadEnabled] = useState(false);
   const [supplierEnabled, setSupplierEnabled] = useState(false);
   const [buyerEnabled, setBuyerEnabled] = useState(false);
   const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
 
-  const getDealTypeFilter = (): "all" | "wholesale" | "refueling" => {
-    if (!wholesaleEnabled && !refuelingEnabled) return "all";
-    if (wholesaleEnabled && refuelingEnabled) return "all";
+  const getDealTypeFilter = (): "all" | "wholesale" | "refueling" | "refueling_abroad" => {
+    const enabledCount = [wholesaleEnabled, refuelingEnabled, refuelingAbroadEnabled].filter(Boolean).length;
+    if (enabledCount === 0 || enabledCount > 1) return "all";
     if (wholesaleEnabled) return COUNTERPARTY_TYPE.WHOLESALE;
     if (refuelingEnabled) return COUNTERPARTY_TYPE.REFUELING;
+    if (refuelingAbroadEnabled) return COUNTERPARTY_TYPE.REFUELING_ABROAD;
     return "all";
   };
 
@@ -67,9 +69,20 @@ export default function PricesPage() {
               size="sm"
               onClick={() => setRefuelingEnabled(!refuelingEnabled)}
               className="gap-2"
+              data-testid="button-filter-refueling"
             >
               <Plane className={`h-4 w-4 ${!refuelingEnabled ? 'text-purple-500' : ''}`} />
               Заправка ВС
+            </Button>
+            <Button
+              variant={refuelingAbroadEnabled ? "default" : "outline"}
+              size="sm"
+              onClick={() => setRefuelingAbroadEnabled(!refuelingAbroadEnabled)}
+              className="gap-2"
+              data-testid="button-filter-refueling-abroad"
+            >
+              <Plane className={`h-4 w-4 ${!refuelingAbroadEnabled ? 'text-teal-500' : ''}`} />
+              Заправка ВС Зарубеж
             </Button>
             <div className="w-px h-6 bg-border mx-1" />
             <Button

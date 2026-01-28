@@ -142,7 +142,9 @@ export function PricesTable({
         const label =
           price.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE
             ? "ОПТ"
-            : "Заправка ВС";
+            : price.counterpartyType === COUNTERPARTY_TYPE.REFUELING
+            ? "Заправка ВС"
+            : "Заправка ВС Зарубеж";
         values.set(label, price.counterpartyType);
       } else if (key === "counterpartyRole") {
         const label =
@@ -431,8 +433,11 @@ export function PricesTable({
                             {price.counterpartyType ===
                             COUNTERPARTY_TYPE.WHOLESALE ? (
                               <Package className="h-5 w-5 text-blue-500/70" />
-                            ) : (
+                            ) : price.counterpartyType ===
+                              COUNTERPARTY_TYPE.REFUELING ? (
                               <Plane className="h-5 w-5 text-purple-500/70" />
+                            ) : (
+                              <Plane className="h-5 w-5 text-teal-500/70" />
                             )}
                           </div>
                         </TooltipTrigger>
@@ -440,7 +445,10 @@ export function PricesTable({
                           {price.counterpartyType ===
                           COUNTERPARTY_TYPE.WHOLESALE
                             ? "ОПТ"
-                            : "Заправка ВС"}
+                            : price.counterpartyType ===
+                              COUNTERPARTY_TYPE.REFUELING
+                            ? "Заправка ВС"
+                            : "Заправка ВС Зарубеж"}
                         </TooltipContent>
                       </Tooltip>
                     </TableCell>
