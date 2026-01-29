@@ -109,6 +109,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
       saleExchangeRateId: editData?.saleExchangeRateId || latestUsdRate?.id || "",
       manualSaleExchangeRate: editData?.saleExchangeRateValue?.toString() || "",
       notes: editData?.notes || "",
+      isApproxVolume: editData?.isApproxVolume || false,
       isDraft: editData?.isDraft || false,
     },
   });
@@ -182,6 +183,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
         profitUsd: calculations.profitUsd ?? null,
         profitRub: calculations.profitRub ?? null,
         notes: data.notes || null,
+        isApproxVolume: data.isApproxVolume || false,
         isDraft: data.isDraft,
       };
       
@@ -428,6 +430,29 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                     </SelectContent>
                   </Select>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="isApproxVolume"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center space-x-3 space-y-0 p-4">
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      checked={field.value}
+                      onChange={field.onChange}
+                      data-testid="checkbox-is-approx-volume"
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Примерный объем (требует уточнения)
+                    </FormLabel>
+                  </div>
                 </FormItem>
               )}
             />

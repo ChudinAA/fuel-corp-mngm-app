@@ -37,6 +37,7 @@ export const refuelingAbroadFormSchema = z.object({
   manualSaleExchangeRate: z.string().optional().nullable(),
   
   notes: z.string().optional().nullable(),
+  isApproxVolume: z.boolean().default(false),
   isDraft: z.boolean().default(false),
 }).superRefine((data, ctx) => {
   if (!data.isDraft) {

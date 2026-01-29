@@ -142,7 +142,10 @@ export function CommissionCalculator({
             step="0.01"
             placeholder="0.00"
             value={manualCommission}
-            onChange={(e) => onManualCommissionChange?.(e.target.value)}
+            onChange={(e) => {
+              // Ensure we pass the raw value for the input to remain responsive
+              onManualCommissionChange?.(e.target.value);
+            }}
             data-testid="input-manual-commission"
           />
         </div>
