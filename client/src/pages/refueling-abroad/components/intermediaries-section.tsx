@@ -198,25 +198,31 @@ export function IntermediariesSection({
                   salePrice={salePrice}
                   quantity={quantity}
                   exchangeRate={exchangeRate}
-                  commissionFormula={item.commissionFormula}
-                  manualCommissionUsd={item.commissionUsd?.toString() || ""}
+                  commissionFormula={item.commissionFormula || ""}
+                  manualCommissionUsd={item.commissionUsd !== null && item.commissionUsd !== undefined ? item.commissionUsd.toString() : ""}
                   onFormulaChange={(formula) =>
                     handleUpdate(index, "commissionFormula", formula)
                   }
                   onManualCommissionChange={(usd) => {
                     const parsed = usd === "" ? null : parseFloat(usd);
-                    handleUpdate(index, "commissionUsd", parsed);
-                    handleUpdate(
-                      index,
-                      "commissionRub",
-                      parsed === null ? null : parsed * exchangeRate
-                    );
+                    const updated = [...intermediaries];
+                    updated[index] = {
+                      ...updated[index],
+                      commissionUsd: parsed,
+                      commissionRub: parsed === null ? null : parsed * exchangeRate
+                    };
+                    onChange(updated);
                   }}
                   onCommissionCalculated={(usd, rub) => {
                     // Only update if current value is different to avoid state spam
+                    // And only if it's not a manual override or if the manual override matches
                     if (intermediaries[index].commissionUsd !== usd || intermediaries[index].commissionRub !== rub) {
-                      handleUpdate(index, "commissionUsd", usd);
-                      handleUpdate(index, "commissionRub", rub);
+                      // If we have a formula, the formula result should be updated
+                      // If formula is empty, we don't want to overwrite manual values with nulls from calculator
+                      if (intermediaries[index].commissionFormula || usd !== null) {
+                         handleUpdate(index, "commissionUsd", usd);
+                         handleUpdate(index, "commissionRub", rub);
+                      }
                     }
                   }}
                 />

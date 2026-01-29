@@ -37,11 +37,14 @@ export function CommissionCalculator({
 
   // Sync internal state with props only when they change from outside
   useEffect(() => {
-    setFormula(commissionFormula);
+    setFormula(commissionFormula || "");
   }, [commissionFormula]);
 
   useEffect(() => {
-    setManualCommission(manualCommissionUsd);
+    // Ensure we don't overwrite manual input with empty string if we have a value
+    if (manualCommissionUsd !== undefined) {
+      setManualCommission(manualCommissionUsd);
+    }
   }, [manualCommissionUsd]);
 
   useEffect(() => {
@@ -70,9 +73,13 @@ export function CommissionCalculator({
   useEffect(() => {
     if (onCommissionCalculated) {
       const manualValue = manualCommission ? parseFloat(manualCommission) : null;
-      // If manual input is active (not empty), we should use it. 
-      const finalUsd = (manualCommission !== "" && !isNaN(manualValue as number)) ? manualValue : calculatedValue;
+      // Priority: 
+      // 1. Manual input if it's a valid number string (not just empty)
+      // 2. Calculated value from formula
+      const isManualActive = manualCommission !== "" && !isNaN(manualValue as number);
+      const finalUsd = isManualActive ? manualValue : calculatedValue;
       const finalRub = finalUsd !== null ? finalUsd * exchangeRate : null;
+      
       onCommissionCalculated(finalUsd, finalRub);
     }
   }, [calculatedValue, manualCommission, exchangeRate]);
