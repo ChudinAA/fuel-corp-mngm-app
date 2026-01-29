@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -34,15 +34,18 @@ export function CommissionCalculator({
   const [manualCommission, setManualCommission] = useState(manualCommissionUsd);
   const [isFormulaValid, setIsFormulaValid] = useState(true);
   const [calculatedValue, setCalculatedValue] = useState<number | null>(null);
+  const lastEmittedUsd = useRef<number | null>(null);
 
-  // Sync internal state with props only when they change from outside
+  // Sync internal state with props only when they change from outside (e.g. initial load or reset)
   useEffect(() => {
     setFormula(commissionFormula || "");
   }, [commissionFormula]);
 
   useEffect(() => {
-    // Ensure we don't overwrite manual input with empty string if we have a value
-    if (manualCommissionUsd !== undefined) {
+    // Only update local manual state if the prop changed to something different 
+    // from what we last sent up to the parent. This prevents the feedback loop.
+    const propValue = manualCommissionUsd !== "" ? parseFloat(manualCommissionUsd) : null;
+    if (propValue !== lastEmittedUsd.current) {
       setManualCommission(manualCommissionUsd);
     }
   }, [manualCommissionUsd]);
@@ -71,14 +74,16 @@ export function CommissionCalculator({
   }, [formula, purchasePrice, salePrice, quantity, exchangeRate]);
 
   useEffect(() => {
-    const manualValue = (manualCommission !== "" && manualCommission !== null) ? parseFloat(manualCommission) : null;
-    const isManualValid = manualValue !== null && !isNaN(manualValue);
-    
-    // Priority: 1. Manual valid value, 2. Calculated formula value
-    const finalUsd = isManualValid ? manualValue : calculatedValue;
-    const finalRub = finalUsd !== null ? finalUsd * exchangeRate : null;
-    
     if (onCommissionCalculated) {
+      const manualValue = (manualCommission !== "" && manualCommission !== null) ? parseFloat(manualCommission) : null;
+      const isManualValid = manualValue !== null && !isNaN(manualValue);
+      
+      // Priority: 1. Manual valid value, 2. Calculated formula value
+      const finalUsd = isManualValid ? manualValue : calculatedValue;
+      const finalRub = finalUsd !== null ? finalUsd * exchangeRate : null;
+      
+      // Store what we emit to prevent feedback loops in next effects
+      lastEmittedUsd.current = finalUsd;
       onCommissionCalculated(finalUsd, finalRub);
     }
   }, [calculatedValue, manualCommission, exchangeRate, onCommissionCalculated]);
