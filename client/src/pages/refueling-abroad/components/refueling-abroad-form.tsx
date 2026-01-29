@@ -147,6 +147,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
     saleExchangeRate,
     commissionFormula: "",
     manualCommissionUsd: totalIntermediaryCommissionUsd.toString(),
+    manualCommissionRub: totalIntermediaryCommissionRub.toString(),
   });
   
   const createMutation = useMutation({
@@ -716,7 +717,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Комиссия посредников (USD)</Label>
-                <div className="font-medium">{formatCurrency(totalIntermediaryCommissionUsd, "USD")}</div>
+                <div className="font-medium" data-testid="text-intermediary-commission-usd">{formatCurrency(totalIntermediaryCommissionUsd, "USD")}</div>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Прибыль (USD)</Label>
@@ -737,7 +738,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Комиссия посредников (RUB)</Label>
-                <div className="font-medium">{formatCurrency(totalIntermediaryCommissionRub, "RUB")}</div>
+                <div className="font-medium" data-testid="text-intermediary-commission-rub">{formatCurrency(totalIntermediaryCommissionRub, "RUB")}</div>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Прибыль (RUB)</Label>

@@ -228,7 +228,7 @@ export function IntermediariesSection({
                 <div className="flex justify-between items-center">
                   <span className="font-medium">Итого комиссия посредников:</span>
                   <div className="text-right">
-                    <div className="font-medium">
+                    <div className="font-medium" data-testid="text-total-commission">
                       {formatCurrency(totalCommissionUsd, "USD")} / {formatCurrency(totalCommissionRub, "RUB")}
                     </div>
                   </div>
