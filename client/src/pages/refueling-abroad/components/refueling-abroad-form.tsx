@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -433,29 +434,6 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                 </FormItem>
               )}
             />
-            
-            <FormField
-              control={form.control}
-              name="isApproxVolume"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center space-x-3 space-y-0 p-4">
-                  <FormControl>
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                      checked={field.value}
-                      onChange={field.onChange}
-                      data-testid="checkbox-is-approx-volume"
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>
-                      Примерный объем (требует уточнения)
-                    </FormLabel>
-                  </div>
-                </FormItem>
-              )}
-            />
           </CardContent>
         </Card>
         
@@ -771,23 +749,44 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
           </CardContent>
         </Card>
         
-        <FormField
-          control={form.control}
-          name="notes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Примечания</FormLabel>
-              <FormControl>
-                <Textarea 
-                  {...field} 
-                  value={field.value || ""} 
-                  placeholder="Дополнительная информация..." 
-                  data-testid="input-notes" 
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
+        <div className="grid gap-4 md:grid-cols-2 items-end">
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Примечания</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Дополнительная информация..."
+                    data-testid="input-notes"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="isApproxVolume"
+            render={({ field }) => (
+              <FormItem className="flex items-center gap-2 space-y-0 pb-2">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    data-testid="checkbox-approx-volume"
+                  />
+                </FormControl>
+                <FormLabel className="text-sm font-normal cursor-pointer">
+                  Примерный объем (требует уточнения)
+                </FormLabel>
+              </FormItem>
+            )}
+          />
+        </div>
         
         <div className="flex justify-end gap-2">
           <Button
