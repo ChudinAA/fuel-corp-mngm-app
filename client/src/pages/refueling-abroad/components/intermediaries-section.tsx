@@ -13,6 +13,7 @@ import {
 import { Plus, Trash2, Users, GripVertical } from "lucide-react";
 import { CommissionCalculator } from "./commission-calculator";
 import { Supplier } from "@shared/schema";
+import { formatCurrency } from "../utils";
 
 interface IntermediaryItem {
   id?: string;
@@ -219,13 +220,13 @@ export function IntermediariesSection({
               </div>
             ))}
 
-            {intermediaries.length > 1 && (
+            {intermediaries.length > 0 && (
               <div className="bg-primary/10 rounded-md p-3">
                 <div className="flex justify-between items-center">
                   <span className="font-medium">Итого комиссия посредников:</span>
                   <div className="text-right">
                     <div className="font-medium">
-                      ${formatNumber(totalCommissionUsd, 4)} / ₽{formatNumber(totalCommissionRub)}
+                      {formatCurrency(totalCommissionUsd, "USD")} / {formatCurrency(totalCommissionRub, "RUB")}
                     </div>
                   </div>
                 </div>

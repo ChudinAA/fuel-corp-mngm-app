@@ -61,11 +61,13 @@ export function CommissionCalculator({
   useEffect(() => {
     if (onCommissionCalculated) {
       const manualValue = manualCommission ? parseFloat(manualCommission) : null;
-      const finalUsd = manualValue ?? calculatedValue;
+      // If manual input is active, we should use it. 
+      // The jerkiness happens because calculatedValue might still be updating.
+      const finalUsd = manualValue !== null ? manualValue : calculatedValue;
       const finalRub = finalUsd !== null ? finalUsd * exchangeRate : null;
       onCommissionCalculated(finalUsd, finalRub);
     }
-  }, [calculatedValue, manualCommission, exchangeRate, onCommissionCalculated]);
+  }, [calculatedValue, manualCommission, exchangeRate]); // Removed onCommissionCalculated from deps to avoid loops if parent isn't memoized
 
   const presetFormulas = [
     { label: "% от продажи", formula: "(salePrice - purchasePrice) * quantity * 0.05", description: "5% от маржи" },
