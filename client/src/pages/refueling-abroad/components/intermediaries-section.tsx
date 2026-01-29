@@ -98,11 +98,11 @@ export function IntermediariesSection({
   };
 
   const totalCommissionUsd = intermediaries.reduce(
-    (sum, item) => sum + (item.commissionUsd || 0),
+    (sum, item) => sum + (Number(item.commissionUsd) || 0),
     0
   );
   const totalCommissionRub = intermediaries.reduce(
-    (sum, item) => sum + (item.commissionRub || 0),
+    (sum, item) => sum + (Number(item.commissionRub) || 0),
     0
   );
 
