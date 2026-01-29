@@ -479,7 +479,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                     name="quantityLiters"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Литры</FormLabel>
+                        <FormLabel className="flex items-center gap-2">Литры</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -497,7 +497,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                     name="density"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Плотность</FormLabel>
+                        <FormLabel className="flex items-center gap-2">Плотность</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -517,7 +517,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                   name="quantityKg"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Масса (кг)</FormLabel>
+                      <FormLabel className="flex items-center gap-2">Масса (кг)</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 

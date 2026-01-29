@@ -22,7 +22,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Plus, Search, CreditCard, Package, DollarSign, Globe } from "lucide-react";
+import { Plus, Search, CreditCard, Package, Map, Globe } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -379,7 +379,7 @@ export default function StorageCardsPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Активных карт
             </CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
+            <Map className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activeCards}</div>

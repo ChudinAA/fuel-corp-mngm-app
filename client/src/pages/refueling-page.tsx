@@ -66,7 +66,7 @@ export default function RefuelingPage() {
         <TabsList>
           <TabsTrigger value="domestic" className="gap-2" data-testid="tab-domestic">
             <Plane className="h-4 w-4" />
-            Заправка ВС (внутренняя)
+            Заправка ВС
           </TabsTrigger>
           <TabsTrigger value="abroad" className="gap-2" data-testid="tab-abroad">
             <Globe className="h-4 w-4" />

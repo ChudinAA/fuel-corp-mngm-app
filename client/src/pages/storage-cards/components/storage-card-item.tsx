@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
-import { Pencil, Trash2, CreditCard, MapPin, Plane, DollarSign } from "lucide-react";
+import { Pencil, Trash2, CreditCard, MapPin, Plane, DollarSign, Globe } from "lucide-react";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -85,7 +85,7 @@ export function StorageCardItem({ card, onEdit, onViewDetails }: StorageCardItem
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <CardTitle className="text-lg flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-sky-400 shrink-0" />
+              <Globe className="h-4 w-4 text-sky-400 shrink-0" />
               <span className="truncate">{card.name}</span>
               {isInactive && <Badge variant="destructive">Неактивна</Badge>}
             </CardTitle>

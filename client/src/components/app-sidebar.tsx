@@ -97,12 +97,12 @@ const getOperationsMenuItems = (hasPermission: (p: string) => boolean) =>
       icon: ChartCandlestick,
       permission: "exchange.view",
     },
-    {
-      title: "Зарубеж",
-      url: "/abroad",
-      icon: Globe,
-      permission: "movement.view",
-    },
+    // {
+    //   title: "Зарубеж",
+    //   url: "/abroad",
+    //   icon: Globe,
+    //   permission: "movement.view",
+    // },
     {
       title: "Аренда ТЗА",
       url: "/rent",
@@ -132,6 +132,12 @@ const getDataMenuItems = (hasPermission: (p: string) => boolean) =>
       permission: "warehouses.view",
     },
     {
+      title: "Карты хранения",
+      url: "/storage-cards",
+      icon: Globe,
+      permission: "storage-cards.view",
+    },
+    {
       title: "Цены",
       url: "/prices",
       icon: DollarSign,
@@ -154,12 +160,6 @@ const getDataMenuItems = (hasPermission: (p: string) => boolean) =>
       url: "/directories",
       icon: BookOpen,
       permission: "directories.view",
-    },
-    {
-      title: "Карты хранения",
-      url: "/storage-cards",
-      icon: CreditCard,
-      permission: "storage-cards.view",
     },
   ].filter((item) => !item.permission || hasPermission(item.permission));
 
