@@ -71,17 +71,17 @@ export function CommissionCalculator({
   }, [formula, purchasePrice, salePrice, quantity, exchangeRate]);
 
   useEffect(() => {
+    const manualValue = (manualCommission !== "" && manualCommission !== null) ? parseFloat(manualCommission) : null;
+    const isManualValid = manualValue !== null && !isNaN(manualValue);
+    
+    // Priority: 1. Manual valid value, 2. Calculated formula value
+    const finalUsd = isManualValid ? manualValue : calculatedValue;
+    const finalRub = finalUsd !== null ? finalUsd * exchangeRate : null;
+    
     if (onCommissionCalculated) {
-      const manualValue = (manualCommission !== "" && manualCommission !== null) ? parseFloat(manualCommission) : null;
-      const isManualValid = manualValue !== null && !isNaN(manualValue);
-      
-      // If manual input is active, use it. Otherwise, use calculated value from formula.
-      const finalUsd = isManualValid ? manualValue : calculatedValue;
-      const finalRub = finalUsd !== null ? finalUsd * exchangeRate : null;
-      
       onCommissionCalculated(finalUsd, finalRub);
     }
-  }, [calculatedValue, manualCommission, exchangeRate]);
+  }, [calculatedValue, manualCommission, exchangeRate, onCommissionCalculated]);
 
   const presetFormulas = [
     { label: "% от продажи", formula: "(salePrice - purchasePrice) * quantity * 0.05", description: "5% от маржи" },

@@ -214,11 +214,15 @@ export function IntermediariesSection({
                     onChange(updated);
                   }}
                   onCommissionCalculated={(usd, rub) => {
-                    // Update state whenever the calculator provides new values.
-                    // Calculator component manages the logic for manual vs formula.
-                    if (intermediaries[index].commissionUsd !== usd || intermediaries[index].commissionRub !== rub) {
-                      handleUpdate(index, "commissionUsd", usd);
-                      handleUpdate(index, "commissionRub", rub);
+                    // Update the specific intermediary item directly
+                    const updated = [...intermediaries];
+                    if (updated[index].commissionUsd !== usd || updated[index].commissionRub !== rub) {
+                      updated[index] = {
+                        ...updated[index],
+                        commissionUsd: usd,
+                        commissionRub: rub
+                      };
+                      onChange(updated);
                     }
                   }}
                 />
