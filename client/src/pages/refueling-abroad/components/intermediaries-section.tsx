@@ -214,15 +214,10 @@ export function IntermediariesSection({
                     onChange(updated);
                   }}
                   onCommissionCalculated={(usd, rub) => {
-                    // Only update if current value is different to avoid state spam
-                    // And only if it's not a manual override or if the manual override matches
+                    // Always trust the calculator's result. It already handles priority (manual vs formula).
                     if (intermediaries[index].commissionUsd !== usd || intermediaries[index].commissionRub !== rub) {
-                      // If we have a formula, the formula result should be updated
-                      // If formula is empty, we don't want to overwrite manual values with nulls from calculator
-                      if (intermediaries[index].commissionFormula || usd !== null) {
-                         handleUpdate(index, "commissionUsd", usd);
-                         handleUpdate(index, "commissionRub", rub);
-                      }
+                      handleUpdate(index, "commissionUsd", usd);
+                      handleUpdate(index, "commissionRub", rub);
                     }
                   }}
                 />

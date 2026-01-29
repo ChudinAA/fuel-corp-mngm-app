@@ -91,11 +91,13 @@ export function CommissionCalculator({
     { label: "% от суммы", formula: "salePrice * quantity * 0.03", description: "3% от суммы продажи" },
   ];
 
+  const isManualActive = manualCommission !== "" && !isNaN(parseFloat(manualCommission));
+
   return (
     <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
       <div className="flex items-center justify-between">
         <Label className="text-sm font-medium flex items-center gap-2">
-          <Calculator className="h-4 w-4" />
+          <Calculator className={`h-4 w-4 ${isManualActive ? "text-muted-foreground" : ""}`} />
           Комиссия посредника
         </Label>
         <Popover>
@@ -123,13 +125,14 @@ export function CommissionCalculator({
         </Popover>
       </div>
 
-      <div className="flex flex-wrap gap-1">
+      <div className={`flex flex-wrap gap-1 transition-opacity ${isManualActive ? "opacity-40 pointer-events-none" : ""}`}>
         {presetFormulas.map((preset) => (
           <Badge
             key={preset.label}
             variant="outline"
             className="cursor-pointer hover-elevate"
             onClick={() => {
+              if (isManualActive) return;
               setFormula(preset.formula);
               onFormulaChange(preset.formula);
               // Clear manual commission when preset formula is selected
@@ -143,10 +146,11 @@ export function CommissionCalculator({
         ))}
       </div>
 
-      <div className="space-y-2">
+      <div className={`space-y-2 transition-opacity ${isManualActive ? "opacity-40" : ""}`}>
         <Input
-          placeholder="Введите формулу или оставьте пустым"
+          placeholder={isManualActive ? "Очистите ручной ввод для использования формулы" : "Введите формулу или оставьте пустым"}
           value={formula}
+          disabled={isManualActive}
           onChange={(e) => {
             setFormula(e.target.value);
             onFormulaChange(e.target.value);
@@ -178,9 +182,7 @@ export function CommissionCalculator({
         <div className="flex-1">
           <Label className="text-xs text-muted-foreground">Расчетная комиссия</Label>
           <div className="h-9 px-3 flex items-center bg-background border rounded-md text-sm font-medium">
-            {(manualCommission !== "" && !isNaN(parseFloat(manualCommission))) 
-              ? formatCurrency(parseFloat(manualCommission), "USD") 
-              : formatCurrency(calculatedValue, "USD")}
+            {formatCurrency(isManualActive ? parseFloat(manualCommission) : calculatedValue, "USD")}
           </div>
         </div>
       </div>
