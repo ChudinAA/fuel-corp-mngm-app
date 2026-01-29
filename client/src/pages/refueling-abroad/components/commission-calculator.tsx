@@ -72,7 +72,7 @@ export function CommissionCalculator({
 
   useEffect(() => {
     if (onCommissionCalculated) {
-      const manualValue = manualCommission !== "" ? parseFloat(manualCommission) : null;
+      const manualValue = (manualCommission !== "" && manualCommission !== null) ? parseFloat(manualCommission) : null;
       const isManualValid = manualValue !== null && !isNaN(manualValue);
       
       // If manual input is active, use it. Otherwise, use calculated value from formula.

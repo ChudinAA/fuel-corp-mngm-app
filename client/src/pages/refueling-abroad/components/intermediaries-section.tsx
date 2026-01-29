@@ -214,7 +214,8 @@ export function IntermediariesSection({
                     onChange(updated);
                   }}
                   onCommissionCalculated={(usd, rub) => {
-                    // Always trust the calculator's result. It already handles priority (manual vs formula).
+                    // Update state whenever the calculator provides new values.
+                    // Calculator component manages the logic for manual vs formula.
                     if (intermediaries[index].commissionUsd !== usd || intermediaries[index].commissionRub !== rub) {
                       handleUpdate(index, "commissionUsd", usd);
                       handleUpdate(index, "commissionRub", rub);
