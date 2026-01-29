@@ -204,17 +204,20 @@ export function IntermediariesSection({
                     handleUpdate(index, "commissionFormula", formula)
                   }
                   onManualCommissionChange={(usd) => {
-                    const parsed = parseFloat(usd);
-                    handleUpdate(index, "commissionUsd", isNaN(parsed) ? null : parsed);
+                    const parsed = usd === "" ? null : parseFloat(usd);
+                    handleUpdate(index, "commissionUsd", parsed);
                     handleUpdate(
                       index,
                       "commissionRub",
-                      isNaN(parsed) ? null : parsed * exchangeRate
+                      parsed === null ? null : parsed * exchangeRate
                     );
                   }}
                   onCommissionCalculated={(usd, rub) => {
-                    handleUpdate(index, "commissionUsd", usd);
-                    handleUpdate(index, "commissionRub", rub);
+                    // Only update if current value is different to avoid state spam
+                    if (intermediaries[index].commissionUsd !== usd || intermediaries[index].commissionRub !== rub) {
+                      handleUpdate(index, "commissionUsd", usd);
+                      handleUpdate(index, "commissionRub", rub);
+                    }
                   }}
                 />
               </div>

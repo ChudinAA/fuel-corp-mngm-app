@@ -30,10 +30,19 @@ export function CommissionCalculator({
   onManualCommissionChange,
   onCommissionCalculated,
 }: CommissionCalculatorProps) {
-  const formula = commissionFormula;
-  const manualCommission = manualCommissionUsd;
+  const [formula, setFormula] = useState(commissionFormula);
+  const [manualCommission, setManualCommission] = useState(manualCommissionUsd);
   const [isFormulaValid, setIsFormulaValid] = useState(true);
   const [calculatedValue, setCalculatedValue] = useState<number | null>(null);
+
+  // Sync internal state with props only when they change from outside
+  useEffect(() => {
+    setFormula(commissionFormula);
+  }, [commissionFormula]);
+
+  useEffect(() => {
+    setManualCommission(manualCommissionUsd);
+  }, [manualCommissionUsd]);
 
   useEffect(() => {
     if (formula.trim() === "") {
@@ -61,17 +70,17 @@ export function CommissionCalculator({
   useEffect(() => {
     if (onCommissionCalculated) {
       const manualValue = manualCommission ? parseFloat(manualCommission) : null;
-      // If manual input is active, we should use it. 
-      // The jerkiness happens because calculatedValue might still be updating.
-      const finalUsd = manualValue !== null ? manualValue : calculatedValue;
+      // If manual input is active (not empty), we should use it. 
+      const finalUsd = (manualCommission !== "" && !isNaN(manualValue as number)) ? manualValue : calculatedValue;
       const finalRub = finalUsd !== null ? finalUsd * exchangeRate : null;
       onCommissionCalculated(finalUsd, finalRub);
     }
-  }, [calculatedValue, manualCommission, exchangeRate]); // Removed onCommissionCalculated from deps to avoid loops if parent isn't memoized
+  }, [calculatedValue, manualCommission, exchangeRate]);
 
   const presetFormulas = [
     { label: "% от продажи", formula: "(salePrice - purchasePrice) * quantity * 0.05", description: "5% от маржи" },
     { label: "Фикс за кг", formula: "quantity * 0.02", description: "$0.02 за кг" },
+    { label: "Фикс за кг (0.01)", formula: "quantity * 0.01", description: "$0.01 за кг" },
     { label: "% от суммы", formula: "salePrice * quantity * 0.03", description: "3% от суммы продажи" },
   ];
 
@@ -113,7 +122,13 @@ export function CommissionCalculator({
             key={preset.label}
             variant="outline"
             className="cursor-pointer hover-elevate"
-            onClick={() => onFormulaChange(preset.formula)}
+            onClick={() => {
+              setFormula(preset.formula);
+              onFormulaChange(preset.formula);
+              // Clear manual commission when preset formula is selected
+              setManualCommission("");
+              onManualCommissionChange?.("");
+            }}
             data-testid={`preset-formula-${preset.label}`}
           >
             {preset.label}
@@ -125,7 +140,10 @@ export function CommissionCalculator({
         <Input
           placeholder="Введите формулу или оставьте пустым"
           value={formula}
-          onChange={(e) => onFormulaChange(e.target.value)}
+          onChange={(e) => {
+            setFormula(e.target.value);
+            onFormulaChange(e.target.value);
+          }}
           className={!isFormulaValid ? "border-destructive" : ""}
           data-testid="input-commission-formula"
         />
@@ -143,8 +161,9 @@ export function CommissionCalculator({
             placeholder="0.00"
             value={manualCommission}
             onChange={(e) => {
-              // Ensure we pass the raw value for the input to remain responsive
-              onManualCommissionChange?.(e.target.value);
+              const val = e.target.value;
+              setManualCommission(val);
+              onManualCommissionChange?.(val);
             }}
             data-testid="input-manual-commission"
           />
@@ -152,7 +171,9 @@ export function CommissionCalculator({
         <div className="flex-1">
           <Label className="text-xs text-muted-foreground">Расчетная комиссия</Label>
           <div className="h-9 px-3 flex items-center bg-background border rounded-md text-sm font-medium">
-            {manualCommission ? formatCurrency(parseFloat(manualCommission), "USD") : formatCurrency(calculatedValue, "USD")}
+            {(manualCommission !== "" && !isNaN(parseFloat(manualCommission))) 
+              ? formatCurrency(parseFloat(manualCommission), "USD") 
+              : formatCurrency(calculatedValue, "USD")}
           </div>
         </div>
       </div>
