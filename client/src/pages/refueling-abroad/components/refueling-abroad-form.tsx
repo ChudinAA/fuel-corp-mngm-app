@@ -229,21 +229,22 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
     },
   });
   
-  const onSubmit = (data: RefuelingAbroadFormData) => {
-    createMutation.mutate(data);
+  const onSubmit = (data: RefuelingAbroadFormData, isDraftOverride?: boolean) => {
+    const isDraft = isDraftOverride !== undefined ? isDraftOverride : data.isDraft;
+    createMutation.mutate({ ...data, isDraft });
   };
 
   const handleCreateDeal = () => {
-    form.setValue("isDraft", false);
-    form.handleSubmit(onSubmit)();
+    // We override isDraft to false explicitly for deal creation
+    form.handleSubmit((data) => onSubmit(data, false))();
   };
 
   const isDraft = editData?.isDraft;
-  const isEditing = !!editData && !!editData.id
+  const isEditing = !!editData && !!editData.id;
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit((data) => onSubmit(data))} className="space-y-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
