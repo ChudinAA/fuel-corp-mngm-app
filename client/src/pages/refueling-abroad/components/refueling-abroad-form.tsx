@@ -237,6 +237,8 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
   
   const onSubmit = (data: RefuelingAbroadFormData, isDraftOverride?: boolean) => {
     const finalIsDraft = isDraftOverride ?? data.isDraft;
+    // Update the form state directly so validation pass or fail based on current state
+    form.setValue("isDraft", finalIsDraft);
     createMutation.mutate({ ...data, isDraft: finalIsDraft });
   };
 
