@@ -2,6 +2,16 @@ export function formatNumber(value: number | string | null | undefined): string 
   if (value === null || value === undefined || value === "") return "—";
   const num = typeof value === "string" ? parseFloat(value) : value;
   if (isNaN(num)) return "—";
+  
+  // Add 'k' suffix for numbers >= 1000
+  if (Math.abs(num) >= 1000) {
+    const kValue = num / 1000;
+    return kValue.toLocaleString("ru-RU", { 
+      minimumFractionDigits: 1, 
+      maximumFractionDigits: 1 
+    }) + "k";
+  }
+  
   return num.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 

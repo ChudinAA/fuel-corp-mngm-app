@@ -233,7 +233,15 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
   const onSubmit = (data: RefuelingAbroadFormData) => {
     createMutation.mutate(data);
   };
-  
+
+  const handleCreateDeal = () => {
+    form.setValue("isDraft", false);
+    form.handleSubmit(onSubmit)();
+  };
+
+  const isDraft = editData?.isDraft;
+  const isEditing = !!editData && !editData.id.startsWith("new-copy-"); // Adjust based on how copy is handled, but usually id is "" for copy
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
