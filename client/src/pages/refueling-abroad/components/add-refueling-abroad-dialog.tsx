@@ -24,7 +24,7 @@ export function AddRefuelingAbroadDialog({
         <ScrollArea className="max-h-[calc(90vh-80px)] pr-4">
           <RefuelingAbroadForm
             onSuccess={onClose}
-            editData={isCopy ? { ...editRefueling!, id: "" } : editRefueling}
+            editData={isCopy ? { ...editRefueling!, id: "", originalId: editRefueling?.id } : editRefueling}
           />
         </ScrollArea>
       </DialogContent>

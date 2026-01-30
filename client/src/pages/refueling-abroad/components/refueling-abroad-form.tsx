@@ -39,32 +39,34 @@ interface IntermediaryItem {
 export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadFormProps) {
   const { toast } = useToast();
   const [intermediariesList, setIntermediariesList] = useState<IntermediaryItem[]>([]);
-  
+  const isCopy = !!editData && !editData.id;
+  const originalId = isCopy ? (editData as any).originalId : editData?.id;
+
   const { data: suppliers = [] } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
   });
-  
+
   const { data: customers = [] } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
   });
-  
+
   const { data: exchangeRates = [] } = useQuery<ExchangeRate[]>({
     queryKey: ["/api/exchange-rates"],
   });
-  
+
   const { data: storageCards = [] } = useQuery<StorageCard[]>({
     queryKey: ["/api/storage-cards"],
   });
-  
+
   const { data: existingIntermediaries = [] } = useQuery<IntermediaryItem[]>({
-    queryKey: ["/api/refueling-abroad", editData?.id, "intermediaries"],
+    queryKey: ["/api/refueling-abroad", originalId, "intermediaries"],
     queryFn: async () => {
-      if (!editData?.id) return [];
-      const res = await fetch(`/api/refueling-abroad/${editData.id}/intermediaries`);
+      if (!originalId) return [];
+      const res = await fetch(`/api/refueling-abroad/${originalId}/intermediaries`);
       if (!res.ok) return [];
       return res.json();
     },
-    enabled: !!editData?.id,
+    enabled: !!originalId,
   });
   
   useEffect(() => {
@@ -190,7 +192,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
       
       let refuelingId: string;
       
-      if (editData) {
+      if (editData && editData.id) {
         const response = await apiRequest("PATCH", `/api/refueling-abroad/${editData.id}`, payload);
         const result = await response.json();
         refuelingId = editData.id;
