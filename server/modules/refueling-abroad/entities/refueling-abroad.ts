@@ -12,11 +12,12 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
-import { suppliers } from "@shared/schema";
-import { customers } from "@shared/schema";
+import { suppliers } from "../../suppliers/entities/suppliers";
+import { customers } from "../../customers/entities/customers";
 import { prices } from "../../prices/entities/prices";
 import { storageCards } from "../../storage-cards/entities/storage-cards";
 import { exchangeRates } from "../../exchange-rates/entities/exchange-rates";
+import { refuelingAbroadIntermediaries } from "./refueling-abroad-intermediaries";
 
 export const refuelingAbroad = pgTable(
   "refueling_abroad",
@@ -101,7 +102,7 @@ export const refuelingAbroad = pgTable(
 
 export const refuelingAbroadRelations = relations(
   refuelingAbroad,
-  ({ one }) => ({
+  ({ one, many }) => ({
     supplier: one(suppliers, {
       fields: [refuelingAbroad.supplierId],
       references: [suppliers.id],
@@ -139,6 +140,7 @@ export const refuelingAbroadRelations = relations(
       fields: [refuelingAbroad.updatedById],
       references: [users.id],
     }),
+    intermediaries: many(refuelingAbroadIntermediaries),
   }),
 );
 

@@ -1,6 +1,7 @@
 import { db } from "server/db";
 import { eq, and, isNull, desc, asc, gte, lte, or, sql } from "drizzle-orm";
 import { refuelingAbroad, InsertRefuelingAbroad, RefuelingAbroad } from "../entities/refueling-abroad";
+import { refuelingAbroadIntermediaries } from "../entities/refueling-abroad-intermediaries";
 
 export interface IRefuelingAbroadStorage {
   getAll(): Promise<RefuelingAbroad[]>;
@@ -21,19 +22,38 @@ export interface IRefuelingAbroadStorage {
 
 export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
   async getAll(): Promise<RefuelingAbroad[]> {
-    return db
-      .select()
-      .from(refuelingAbroad)
-      .where(isNull(refuelingAbroad.deletedAt))
-      .orderBy(desc(refuelingAbroad.refuelingDate), desc(refuelingAbroad.createdAt));
+    return db.query.refuelingAbroad.findMany({
+      where: isNull(refuelingAbroad.deletedAt),
+      orderBy: [desc(refuelingAbroad.refuelingDate), desc(refuelingAbroad.createdAt)],
+      with: {
+        supplier: true,
+        buyer: true,
+        storageCard: true,
+        intermediaries: {
+          with: {
+            intermediary: true
+          },
+          orderBy: [asc(refuelingAbroadIntermediaries.orderIndex)]
+        }
+      }
+    }) as any;
   }
 
   async getById(id: string): Promise<RefuelingAbroad | undefined> {
-    const [result] = await db
-      .select()
-      .from(refuelingAbroad)
-      .where(and(eq(refuelingAbroad.id, id), isNull(refuelingAbroad.deletedAt)));
-    return result;
+    return db.query.refuelingAbroad.findFirst({
+      where: and(eq(refuelingAbroad.id, id), isNull(refuelingAbroad.deletedAt)),
+      with: {
+        supplier: true,
+        buyer: true,
+        storageCard: true,
+        intermediaries: {
+          with: {
+            intermediary: true
+          },
+          orderBy: [asc(refuelingAbroadIntermediaries.orderIndex)]
+        }
+      }
+    }) as any;
   }
 
   async getByIdIncludingDeleted(id: string): Promise<RefuelingAbroad | undefined> {

@@ -34,10 +34,13 @@ import {
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
+import { getProductLabel } from "../../refueling/utils";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 interface RefuelingAbroadTableProps {
-  onEdit: (item: RefuelingAbroad) => void;
-  onCopy: (item: RefuelingAbroad) => void;
+  onEdit: (item: any) => void;
+  onCopy: (item: any) => void;
 }
 
 export function RefuelingAbroadTable({
@@ -47,16 +50,8 @@ export function RefuelingAbroadTable({
   const { toast } = useToast();
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const { data: items = [], isLoading } = useQuery<RefuelingAbroad[]>({
+  const { data: items = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/refueling-abroad"],
-  });
-
-  const { data: suppliers = [] } = useQuery<Supplier[]>({
-    queryKey: ["/api/suppliers"],
-  });
-
-  const { data: customers = [] } = useQuery<Customer[]>({
-    queryKey: ["/api/customers"],
   });
 
   const deleteMutation = useMutation({
@@ -76,11 +71,6 @@ export function RefuelingAbroadTable({
       });
     },
   });
-
-  const getSupplierName = (id: string) =>
-    suppliers.find((s) => s.id === id)?.name || "—";
-  const getCustomerName = (id: string) =>
-    customers.find((c) => c.id === id)?.name || "—";
 
   const formatDate = (dateStr: string) => {
     return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
@@ -108,13 +98,21 @@ export function RefuelingAbroadTable({
         <TableHeader>
           <TableRow>
             <TableHead>Дата</TableHead>
+            <TableHead>Продукт</TableHead>
             <TableHead>Аэропорт</TableHead>
             <TableHead>Борт</TableHead>
             <TableHead>Поставщик</TableHead>
             <TableHead>Покупатель</TableHead>
-            <TableHead className="text-right">Объем (кг)</TableHead>
-            <TableHead className="text-right">Сумма (USD)</TableHead>
-            <TableHead className="text-right">Прибыль (USD)</TableHead>
+            <TableHead>Посредники</TableHead>
+            <TableHead className="text-right">Литры</TableHead>
+            <TableHead className="text-right">Плотн.</TableHead>
+            <TableHead className="text-right">КГ</TableHead>
+            <TableHead className="text-right">Цена пок.</TableHead>
+            <TableHead className="text-right">Покупка</TableHead>
+            <TableHead className="text-right">Цена прод.</TableHead>
+            <TableHead className="text-right">Продажа</TableHead>
+            <TableHead className="text-right">Комиссии</TableHead>
+            <TableHead className="text-right">Прибыль</TableHead>
             <TableHead className="w-10"></TableHead>
           </TableRow>
         </TableHeader>
@@ -140,15 +138,61 @@ export function RefuelingAbroadTable({
                   )}
                 </div>
               </TableCell>
+              <TableCell>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "whitespace-nowrap inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold",
+                    item.productType === PRODUCT_TYPE.KEROSENE
+                      ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"
+                      : item.productType === PRODUCT_TYPE.PVKJ
+                        ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30"
+                        : "",
+                  )}
+                >
+                  {getProductLabel(item.productType)}
+                </Badge>
+              </TableCell>
               <TableCell className="font-mono">{item.airport || "—"}</TableCell>
               <TableCell>{item.aircraftNumber || "—"}</TableCell>
-              <TableCell>{getSupplierName(item.supplierId)}</TableCell>
-              <TableCell>{getCustomerName(item.buyerId)}</TableCell>
+              <TableCell>{item.supplier?.name || "—"}</TableCell>
+              <TableCell>{item.buyer?.name || "—"}</TableCell>
+              <TableCell>
+                <div className="flex flex-col gap-1">
+                  {item.intermediaries?.map((rel: any) => (
+                    <div key={rel.id} className="text-[10px] whitespace-nowrap">
+                      <span className="font-medium">{rel.intermediary?.name}</span>
+                      <span className="text-muted-foreground ml-1">
+                        ({formatCurrency(rel.commissionUsd, "USD")})
+                      </span>
+                    </div>
+                  ))}
+                  {(!item.intermediaries || item.intermediaries.length === 0) && "—"}
+                </div>
+              </TableCell>
+              <TableCell className="text-right font-mono">
+                {formatNumber(item.quantityLiters)}
+              </TableCell>
+              <TableCell className="text-right font-mono">
+                {item.density || "—"}
+              </TableCell>
               <TableCell className="text-right font-mono">
                 {formatNumber(item.quantityKg)}
               </TableCell>
               <TableCell className="text-right font-mono">
+                {formatNumber(item.purchasePriceUsd)}
+              </TableCell>
+              <TableCell className="text-right font-mono">
+                {formatCurrency(item.purchaseAmountUsd, "USD")}
+              </TableCell>
+              <TableCell className="text-right font-mono">
+                {formatNumber(item.salePriceUsd)}
+              </TableCell>
+              <TableCell className="text-right font-mono">
                 {formatCurrency(item.saleAmountUsd, "USD")}
+              </TableCell>
+              <TableCell className="text-right font-mono">
+                {formatCurrency(item.intermediaryCommissionUsd, "USD")}
               </TableCell>
               <TableCell className="text-right font-mono">
                 <span
@@ -162,41 +206,37 @@ export function RefuelingAbroadTable({
                 </span>
               </TableCell>
               <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      data-testid={`button-actions-${item.id}`}
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => onEdit(item)}
-                      data-testid={`button-edit-${item.id}`}
-                    >
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Редактировать
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => onCopy(item)}
-                      data-testid={`button-copy-${item.id}`}
-                    >
-                      <Copy className="mr-2 h-4 w-4" />
-                      Копировать
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="text-destructive"
-                      onClick={() => setDeleteId(item.id)}
-                      data-testid={`button-delete-${item.id}`}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Удалить
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <EntityActionsMenu
+                  actions={[
+                    {
+                      id: "copy",
+                      label: "Копировать",
+                      icon: Copy,
+                      onClick: () => onCopy(item),
+                      permission: { module: "refueling", action: "create" },
+                    },
+                    {
+                      id: "edit",
+                      label: "Редактировать",
+                      icon: Pencil,
+                      onClick: () => onEdit(item),
+                      permission: { module: "refueling", action: "edit" },
+                    },
+                    {
+                      id: "delete",
+                      label: "Удалить",
+                      icon: Trash2,
+                      onClick: () => setDeleteId(item.id),
+                      variant: "destructive",
+                      permission: { module: "refueling", action: "delete" },
+                    },
+                  ]}
+                  audit={{
+                    entityType: "aircraft_refueling_abroad",
+                    entityId: item.id,
+                    entityName: `Заправка за рубежом от ${formatDate(item.refuelingDate)}`,
+                  }}
+                />
               </TableCell>
             </TableRow>
           ))}
