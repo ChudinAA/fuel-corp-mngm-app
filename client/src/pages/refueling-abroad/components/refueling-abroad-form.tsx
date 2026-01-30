@@ -233,10 +233,11 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
   });
 
   const isEditing = !!editData && !!editData.id;
+  const isDraft = form.watch("isDraft");
   
   const onSubmit = (data: RefuelingAbroadFormData, isDraftOverride?: boolean) => {
-    const isDraft = isDraftOverride ?? data.isDraft;
-    createMutation.mutate({ ...data, isDraft });
+    const finalIsDraft = isDraftOverride ?? data.isDraft;
+    createMutation.mutate({ ...data, isDraft: finalIsDraft });
   };
 
   return (
@@ -805,7 +806,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
               }
               onClick={() => {
                 form.clearErrors();
-                form.handleSubmit((data) => onSubmit(data, true))();
+                onSubmit(form.getValues(), true);
               }}
             >
               {createMutation.isPending ? (
@@ -816,10 +817,13 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
           ) : null}
 
           <Button
-            type="submit"
+            type="button"
             disabled={
               createMutation.isPending
             }
+            onClick={() => {
+              form.handleSubmit((data) => onSubmit(data, false))();
+            }}
             data-testid="button-submit-refueling"
           >
             {createMutation.isPending ? (
