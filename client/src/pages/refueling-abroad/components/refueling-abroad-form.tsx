@@ -228,19 +228,13 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
       });
     },
   });
+
+  const isEditing = !!editData && !!editData.id;
   
   const onSubmit = (data: RefuelingAbroadFormData, isDraftOverride?: boolean) => {
-    const isDraft = isDraftOverride !== undefined ? isDraftOverride : data.isDraft;
+    const isDraft = isDraftOverride ?? data.isDraft;
     createMutation.mutate({ ...data, isDraft });
   };
-
-  const handleCreateDeal = () => {
-    // We override isDraft to false explicitly for deal creation
-    form.handleSubmit((data) => onSubmit(data, false))();
-  };
-
-  const isDraft = editData?.isDraft;
-  const isEditing = !!editData && !!editData.id;
 
   return (
     <Form {...form}>
@@ -807,9 +801,8 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                 createMutation.isPending
               }
               onClick={() => {
-                form.setValue("isDraft", true);
                 form.clearErrors();
-                form.handleSubmit(onSubmit)();
+                form.handleSubmit((data) => onSubmit(data, true))();
               }}
             >
               {createMutation.isPending ? (
