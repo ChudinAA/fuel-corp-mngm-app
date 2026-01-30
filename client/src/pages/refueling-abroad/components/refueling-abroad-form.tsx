@@ -72,7 +72,8 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
   useEffect(() => {
     if (existingIntermediaries.length > 0) {
       setIntermediariesList(existingIntermediaries.map(item => ({
-        id: item.id,
+        // We omit the id when it's a copy so the server creates new intermediary records
+        id: isCopy ? undefined : item.id,
         intermediaryId: item.intermediaryId,
         orderIndex: item.orderIndex,
         commissionFormula: item.commissionFormula || "",
@@ -81,7 +82,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
         notes: item.notes || "",
       })));
     }
-  }, [existingIntermediaries]);
+  }, [existingIntermediaries, isCopy]);
   
   const foreignSuppliers = suppliers.filter(s => s.isForeign || s.isIntermediary);
   
