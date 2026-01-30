@@ -94,154 +94,158 @@ export function RefuelingAbroadTable({
 
   return (
     <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Дата</TableHead>
-            <TableHead>Продукт</TableHead>
-            <TableHead>Аэроп.</TableHead>
-            <TableHead>Борт</TableHead>
-            <TableHead>Поставщ.</TableHead>
-            <TableHead>Покупат.</TableHead>
-            <TableHead>Посредники</TableHead>
-            <TableHead className="text-right">Литр.</TableHead>
-            <TableHead className="text-right">Плотн.</TableHead>
-            <TableHead className="text-center">КГ</TableHead>
-            <TableHead className="text-right">Цена пок.</TableHead>
-            <TableHead className="text-right">Покупка</TableHead>
-            <TableHead className="text-right">Цена прод.</TableHead>
-            <TableHead className="text-right">Продажа</TableHead>
-            <TableHead className="text-right">Комиссии</TableHead>
-            <TableHead className="text-right">Прибыль</TableHead>
-            <TableHead className="w-10"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.map((item) => (
-            <TableRow
-              key={item.id}
-              className={cn(
-                item.isDraft &&
-                  "bg-muted/70 opacity-60 border-2 border-orange-200",
-              )}
-            >
-              <TableCell className="text-[10px] md:text-xs p-1 md:p-4">
-                <div className="flex flex-col gap-0.5">
-                  <span>{formatDate(item.refuelingDate)}</span>
-                  {item.isDraft && (
+      <div className="border rounded-lg overflow-hidden">
+        <Table>
+          <TableHeader className="bg-muted/50">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="text-[11px] font-semibold p-2 w-[85px]">Дата / Продукт</TableHead>
+              <TableHead className="text-[11px] font-semibold p-2">Аэропорт / Борт</TableHead>
+              <TableHead className="text-[11px] font-semibold p-2">Поставщик / Покупатель</TableHead>
+              <TableHead className="text-[11px] font-semibold p-2">Посредники</TableHead>
+              <TableHead className="text-right text-[11px] font-semibold p-2 w-[90px]">Объем (Л / Пл / КГ)</TableHead>
+              <TableHead className="text-right text-[11px] font-semibold p-2 w-[110px]">Закупка (Цена / Сумма)</TableHead>
+              <TableHead className="text-right text-[11px] font-semibold p-2 w-[110px]">Продажа (Цена / Сумма)</TableHead>
+              <TableHead className="text-right text-[11px] font-semibold p-2 w-[100px]">Комиссия / Прибыль</TableHead>
+              <TableHead className="w-8 p-1"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((item) => (
+              <TableRow
+                key={item.id}
+                className={cn(
+                  "text-[11px] hover:bg-muted/30 transition-colors",
+                  item.isDraft && "bg-amber-50/30 opacity-80 border-l-4 border-l-amber-400",
+                )}
+              >
+                <TableCell className="p-2">
+                  <div className="flex flex-col gap-1">
+                    <span className="font-medium">{formatDate(item.refuelingDate)}</span>
                     <Badge
                       variant="outline"
-                      className="rounded-full bg-amber-100 px-1 py-0 text-[11px] text-amber-800 w-fit"
+                      className={cn(
+                        "w-fit px-1 py-0 text-[10px] h-4 leading-none",
+                        item.productType === PRODUCT_TYPE.KEROSENE
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                          : item.productType === PRODUCT_TYPE.PVKJ
+                            ? "bg-purple-50 text-purple-700 border-purple-200"
+                            : "bg-gray-50 text-gray-700 border-gray-200",
+                      )}
                     >
-                      Черновик
+                      {getProductLabel(item.productType)}
                     </Badge>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "whitespace-nowrap inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold",
-                    item.productType === PRODUCT_TYPE.KEROSENE
-                      ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"
-                      : item.productType === PRODUCT_TYPE.PVKJ
-                        ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30"
-                        : "",
-                  )}
-                >
-                  {getProductLabel(item.productType)}
-                </Badge>
-              </TableCell>
-              <TableCell className="font-mono">{item.airport || "—"}</TableCell>
-              <TableCell>{item.aircraftNumber || "—"}</TableCell>
-              <TableCell>{item.supplier?.name || "—"}</TableCell>
-              <TableCell>{item.buyer?.name || "—"}</TableCell>
-              <TableCell>
-                <div className="flex flex-col gap-1">
-                  {item.intermediaries?.map((rel: any) => (
-                    <div key={rel.id} className="text-[10px] whitespace-nowrap">
-                      <span className="font-medium">{rel.intermediary?.name}</span>
-                      <span className="text-muted-foreground ml-1">
-                        ({formatCurrency(rel.commissionUsd, "USD")})
+                  </div>
+                </TableCell>
+                <TableCell className="p-2">
+                  <div className="flex flex-col">
+                    <span className="font-mono text-primary">{item.airport || "—"}</span>
+                    <span className="text-muted-foreground">{item.aircraftNumber || "—"}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="p-2">
+                  <div className="flex flex-col max-w-[150px]">
+                    <span className="truncate font-medium" title={item.supplier?.name}>
+                      {item.supplier?.name || "—"}
+                    </span>
+                    <span className="truncate text-muted-foreground" title={item.buyer?.name}>
+                      {item.buyer?.name || "—"}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="p-2">
+                  <div className="flex flex-col gap-0.5 max-w-[120px]">
+                    {item.intermediaries?.slice(0, 2).map((rel: any) => (
+                      <div key={rel.id} className="text-[10px] truncate leading-tight">
+                        <span className="font-medium text-blue-600">{rel.intermediary?.name}</span>
+                        <span className="ml-1 text-muted-foreground">
+                          {formatCurrency(rel.commissionUsd, "USD")}
+                        </span>
+                      </div>
+                    ))}
+                    {item.intermediaries?.length > 2 && (
+                      <span className="text-[9px] text-muted-foreground italic">
+                        Еще {item.intermediaries.length - 2}...
                       </span>
-                    </div>
-                  ))}
-                  {(!item.intermediaries || item.intermediaries.length === 0) && "—"}
-                </div>
-              </TableCell>
-              <TableCell className="text-right font-mono">
-                {formatNumber(item.quantityLiters)}
-              </TableCell>
-              <TableCell className="text-right font-mono">
-                {item.density || "—"}
-              </TableCell>
-              <TableCell className="text-right font-mono">
-                {formatNumber(item.quantityKg)}
-              </TableCell>
-              <TableCell className="text-right font-mono">
-                {formatNumber(item.purchasePriceUsd)}
-              </TableCell>
-              <TableCell className="text-right font-mono">
-                {formatCurrency(item.purchaseAmountUsd, "USD")}
-              </TableCell>
-              <TableCell className="text-right font-mono">
-                {formatNumber(item.salePriceUsd)}
-              </TableCell>
-              <TableCell className="text-right font-mono">
-                {formatCurrency(item.saleAmountUsd, "USD")}
-              </TableCell>
-              <TableCell className="text-right font-mono">
-                {formatCurrency(item.intermediaryCommissionUsd, "USD")}
-              </TableCell>
-              <TableCell className="text-right font-mono">
-                <span
-                  className={
-                    parseFloat(item.profitUsd || "0") < 0
-                      ? "text-destructive"
-                      : "text-green-600"
-                  }
-                >
-                  {formatCurrency(item.profitUsd, "USD")}
-                </span>
-              </TableCell>
-              <TableCell>
-                <EntityActionsMenu
-                  actions={[
-                    {
-                      id: "copy",
-                      label: "Копировать",
-                      icon: Copy,
-                      onClick: () => onCopy(item),
-                      permission: { module: "refueling", action: "create" },
-                    },
-                    {
-                      id: "edit",
-                      label: "Редактировать",
-                      icon: Pencil,
-                      onClick: () => onEdit(item),
-                      permission: { module: "refueling", action: "edit" },
-                    },
-                    {
-                      id: "delete",
-                      label: "Удалить",
-                      icon: Trash2,
-                      onClick: () => setDeleteId(item.id),
-                      variant: "destructive",
-                      permission: { module: "refueling", action: "delete" },
-                    },
-                  ]}
-                  audit={{
-                    entityType: "aircraft_refueling_abroad",
-                    entityId: item.id,
-                    entityName: `Заправка за рубежом от ${formatDate(item.refuelingDate)}`,
-                  }}
-                />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                    )}
+                    {(!item.intermediaries || item.intermediaries.length === 0) && "—"}
+                  </div>
+                </TableCell>
+                <TableCell className="p-2 text-right">
+                  <div className="flex flex-col font-mono">
+                    <span className="text-muted-foreground">{formatNumber(item.quantityLiters)} л</span>
+                    <span className="text-[9px] text-muted-foreground/70">ρ: {item.density || "—"}</span>
+                    <span className="font-semibold">{formatNumber(item.quantityKg)} кг</span>
+                  </div>
+                </TableCell>
+                <TableCell className="p-2 text-right">
+                  <div className="flex flex-col font-mono">
+                    <span className="text-muted-foreground">{formatNumber(item.purchasePriceUsd)}</span>
+                    <span className="font-medium text-orange-600">
+                      {formatCurrency(item.purchaseAmountUsd, "USD")}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="p-2 text-right">
+                  <div className="flex flex-col font-mono">
+                    <span className="text-muted-foreground">{formatNumber(item.salePriceUsd)}</span>
+                    <span className="font-medium text-green-600">
+                      {formatCurrency(item.saleAmountUsd, "USD")}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="p-2 text-right">
+                  <div className="flex flex-col font-mono">
+                    <span className="text-blue-600">{formatCurrency(item.intermediaryCommissionUsd, "USD")}</span>
+                    <span
+                      className={cn(
+                        "font-bold",
+                        parseFloat(item.profitUsd || "0") < 0
+                          ? "text-destructive"
+                          : "text-green-700"
+                      )}
+                    >
+                      {formatCurrency(item.profitUsd, "USD")}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="p-1">
+                  <EntityActionsMenu
+                    actions={[
+                      {
+                        id: "copy",
+                        label: "Копировать",
+                        icon: Copy,
+                        onClick: () => onCopy(item),
+                        permission: { module: "refueling", action: "create" },
+                      },
+                      {
+                        id: "edit",
+                        label: "Редактировать",
+                        icon: Pencil,
+                        onClick: () => onEdit(item),
+                        permission: { module: "refueling", action: "edit" },
+                      },
+                      {
+                        id: "delete",
+                        label: "Удалить",
+                        icon: Trash2,
+                        onClick: () => setDeleteId(item.id),
+                        variant: "destructive",
+                        permission: { module: "refueling", action: "delete" },
+                      },
+                    ]}
+                    audit={{
+                      entityType: "aircraft_refueling_abroad",
+                      entityId: item.id,
+                      entityName: `Заправка за рубежом от ${formatDate(item.refuelingDate)}`,
+                    }}
+                  />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
