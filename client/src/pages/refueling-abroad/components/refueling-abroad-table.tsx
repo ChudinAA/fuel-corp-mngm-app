@@ -1,38 +1,64 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Pencil, Copy, Trash2, Loader2 } from "lucide-react";
 import { formatCurrency, formatNumber } from "../utils";
-import type { RefuelingAbroadExtended } from "../types";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { RefuelingAbroad, Supplier, Customer } from "@shared/schema";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface RefuelingAbroadTableProps {
   onEdit: (item: RefuelingAbroad) => void;
   onCopy: (item: RefuelingAbroad) => void;
 }
 
-export function RefuelingAbroadTable({ onEdit, onCopy }: RefuelingAbroadTableProps) {
+export function RefuelingAbroadTable({
+  onEdit,
+  onCopy,
+}: RefuelingAbroadTableProps) {
   const { toast } = useToast();
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  
+
   const { data: items = [], isLoading } = useQuery<RefuelingAbroad[]>({
     queryKey: ["/api/refueling-abroad"],
   });
-  
+
   const { data: suppliers = [] } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
   });
-  
+
   const { data: customers = [] } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
   });
-  
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       return apiRequest("DELETE", `/api/refueling-abroad/${id}`);
@@ -50,10 +76,16 @@ export function RefuelingAbroadTable({ onEdit, onCopy }: RefuelingAbroadTablePro
       });
     },
   });
-  
-  const getSupplierName = (id: string) => suppliers.find(s => s.id === id)?.name || "—";
-  const getCustomerName = (id: string) => customers.find(c => c.id === id)?.name || "—";
-  
+
+  const getSupplierName = (id: string) =>
+    suppliers.find((s) => s.id === id)?.name || "—";
+  const getCustomerName = (id: string) =>
+    customers.find((c) => c.id === id)?.name || "—";
+
+  const formatDate = (dateStr: string) => {
+    return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-48">
@@ -61,7 +93,7 @@ export function RefuelingAbroadTable({ onEdit, onCopy }: RefuelingAbroadTablePro
       </div>
     );
   }
-  
+
   if (items.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -69,7 +101,7 @@ export function RefuelingAbroadTable({ onEdit, onCopy }: RefuelingAbroadTablePro
       </div>
     );
   }
-  
+
   return (
     <>
       <Table>
@@ -83,15 +115,30 @@ export function RefuelingAbroadTable({ onEdit, onCopy }: RefuelingAbroadTablePro
             <TableHead className="text-right">Объем (кг)</TableHead>
             <TableHead className="text-right">Сумма (USD)</TableHead>
             <TableHead className="text-right">Прибыль (USD)</TableHead>
-            <TableHead>Статус</TableHead>
             <TableHead className="w-10"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.map((item) => (
-            <TableRow key={item.id} data-testid={`row-refueling-abroad-${item.id}`}>
-              <TableCell>
-                {new Date(item.refuelingDate).toLocaleDateString("ru-RU")}
+            <TableRow
+              key={item.id}
+              className={cn(
+                item.isDraft &&
+                  "bg-muted/70 opacity-60 border-2 border-orange-200",
+              )}
+            >
+              <TableCell className="text-[10px] md:text-xs p-1 md:p-4">
+                <div className="flex flex-col gap-0.5">
+                  <span>{formatDate(item.refuelingDate)}</span>
+                  {item.isDraft && (
+                    <Badge
+                      variant="outline"
+                      className="rounded-full bg-amber-100 px-1 py-0 text-[11px] text-amber-800 w-fit"
+                    >
+                      Черновик
+                    </Badge>
+                  )}
+                </div>
               </TableCell>
               <TableCell className="font-mono">{item.airport || "—"}</TableCell>
               <TableCell>{item.aircraftNumber || "—"}</TableCell>
@@ -104,30 +151,39 @@ export function RefuelingAbroadTable({ onEdit, onCopy }: RefuelingAbroadTablePro
                 {formatCurrency(item.saleAmountUsd, "USD")}
               </TableCell>
               <TableCell className="text-right font-mono">
-                <span className={parseFloat(item.profitUsd || "0") < 0 ? "text-destructive" : "text-green-600"}>
+                <span
+                  className={
+                    parseFloat(item.profitUsd || "0") < 0
+                      ? "text-destructive"
+                      : "text-green-600"
+                  }
+                >
                   {formatCurrency(item.profitUsd, "USD")}
                 </span>
               </TableCell>
               <TableCell>
-                {item.isDraft ? (
-                  <Badge variant="secondary">Черновик</Badge>
-                ) : (
-                  <Badge variant="default">Проведен</Badge>
-                )}
-              </TableCell>
-              <TableCell>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" data-testid={`button-actions-${item.id}`}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      data-testid={`button-actions-${item.id}`}
+                    >
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onEdit(item)} data-testid={`button-edit-${item.id}`}>
+                    <DropdownMenuItem
+                      onClick={() => onEdit(item)}
+                      data-testid={`button-edit-${item.id}`}
+                    >
                       <Pencil className="mr-2 h-4 w-4" />
                       Редактировать
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onCopy(item)} data-testid={`button-copy-${item.id}`}>
+                    <DropdownMenuItem
+                      onClick={() => onCopy(item)}
+                      data-testid={`button-copy-${item.id}`}
+                    >
                       <Copy className="mr-2 h-4 w-4" />
                       Копировать
                     </DropdownMenuItem>
@@ -146,7 +202,7 @@ export function RefuelingAbroadTable({ onEdit, onCopy }: RefuelingAbroadTablePro
           ))}
         </TableBody>
       </Table>
-      
+
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
