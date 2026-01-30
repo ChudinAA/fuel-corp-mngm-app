@@ -99,14 +99,14 @@ export function RefuelingAbroadTable({
           <TableRow>
             <TableHead>Дата</TableHead>
             <TableHead>Продукт</TableHead>
-            <TableHead>Аэропорт</TableHead>
+            <TableHead>Аэроп.</TableHead>
             <TableHead>Борт</TableHead>
-            <TableHead>Поставщик</TableHead>
-            <TableHead>Покупатель</TableHead>
+            <TableHead>Поставщ.</TableHead>
+            <TableHead>Покупат.</TableHead>
             <TableHead>Посредники</TableHead>
-            <TableHead className="text-right">Литры</TableHead>
+            <TableHead className="text-right">Литр.</TableHead>
             <TableHead className="text-right">Плотн.</TableHead>
-            <TableHead className="text-right">КГ</TableHead>
+            <TableHead className="text-center">КГ</TableHead>
             <TableHead className="text-right">Цена пок.</TableHead>
             <TableHead className="text-right">Покупка</TableHead>
             <TableHead className="text-right">Цена прод.</TableHead>
