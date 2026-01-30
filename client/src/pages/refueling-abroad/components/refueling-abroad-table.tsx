@@ -98,14 +98,16 @@ export function RefuelingAbroadTable({
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow className="hover:bg-transparent">
-              <TableHead className="text-[11px] font-semibold p-2 w-[85px]">Дата / Продукт</TableHead>
-              <TableHead className="text-[11px] font-semibold p-2">Аэропорт / Борт</TableHead>
-              <TableHead className="text-[11px] font-semibold p-2">Поставщик / Покупатель</TableHead>
-              <TableHead className="text-[11px] font-semibold p-2">Посредники</TableHead>
-              <TableHead className="text-right text-[11px] font-semibold p-2 w-[90px]">Объем (Л / Пл / КГ)</TableHead>
-              <TableHead className="text-right text-[11px] font-semibold p-2 w-[110px]">Закупка (Цена / Сумма)</TableHead>
-              <TableHead className="text-right text-[11px] font-semibold p-2 w-[110px]">Продажа (Цена / Сумма)</TableHead>
-              <TableHead className="text-right text-[11px] font-semibold p-2 w-[100px]">Комиссия / Прибыль</TableHead>
+              <TableHead className="text-[13px] font-semibold p-2 w-[80px]">Дата</TableHead>
+              <TableHead className="text-[13px] font-semibold p-2 w-[80px]">Продукт</TableHead>
+              <TableHead className="text-[13px] font-semibold p-2">Аэроп. / Борт</TableHead>
+              <TableHead className="text-[13px] font-semibold p-2">Поставщик</TableHead>
+              <TableHead className="text-[13px] font-semibold p-2">Покупатель</TableHead>
+              <TableHead className="text-center text-[13px] font-semibold p-2">Посредники</TableHead>
+              <TableHead className="text-right text-[13px] font-semibold p-2 w-[100px]">Объем (Л / Пл / КГ)</TableHead>
+              <TableHead className="text-right text-[13px] font-semibold p-2 w-[130px]">Закупка (Цена / Сумма)</TableHead>
+              <TableHead className="text-right text-[13px] font-semibold p-2 w-[130px]">Продажа (Цена / Сумма)</TableHead>
+              <TableHead className="text-right text-[13px] font-semibold p-2 w-[120px]">Комиссия / Прибыль</TableHead>
               <TableHead className="w-8 p-1"></TableHead>
             </TableRow>
           </TableHeader>
@@ -114,72 +116,81 @@ export function RefuelingAbroadTable({
               <TableRow
                 key={item.id}
                 className={cn(
-                  "text-[11px] hover:bg-muted/30 transition-colors",
-                  item.isDraft && "bg-amber-50/30 opacity-80 border-l-4 border-l-amber-400",
+                  item.isDraft &&
+                    "bg-muted/70 opacity-60 border-2 border-orange-200",
                 )}
               >
-                <TableCell className="p-2">
-                  <div className="flex flex-col gap-1">
-                    <span className="font-medium">{formatDate(item.refuelingDate)}</span>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "w-fit px-1 py-0 text-[10px] h-4 leading-none",
-                        item.productType === PRODUCT_TYPE.KEROSENE
-                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                          : item.productType === PRODUCT_TYPE.PVKJ
-                            ? "bg-purple-50 text-purple-700 border-purple-200"
-                            : "bg-gray-50 text-gray-700 border-gray-200",
-                      )}
-                    >
-                      {getProductLabel(item.productType)}
-                    </Badge>
+                <TableCell className="text-[10px] md:text-xs p-1 md:p-3">
+                  <div className="flex flex-col gap-0.5">
+                    <span>{formatDate(item.refuelingDate)}</span>
+                    {item.isDraft && (
+                      <Badge
+                        variant="outline"
+                        className="rounded-full bg-amber-100 px-1 py-0 text-[11px] text-amber-800 w-fit"
+                      >
+                        Черновик
+                      </Badge>
+                    )}
                   </div>
+                </TableCell>
+                <TableCell className="text-[11px] md:text-sm p-1 md:p-2">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "whitespace-nowrap inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold",
+                      item.productType === PRODUCT_TYPE.KEROSENE
+                        ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"
+                        : item.productType === PRODUCT_TYPE.PVKJ
+                          ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30"
+                          : "",
+                    )}
+                  >
+                    {getProductLabel(item.productType)}
+                  </Badge>
                 </TableCell>
                 <TableCell className="p-2">
                   <div className="flex flex-col">
-                    <span className="font-mono text-primary">{item.airport || "—"}</span>
+                    <span className="font-mono">{item.airport || "—"}</span>
                     <span className="text-muted-foreground">{item.aircraftNumber || "—"}</span>
                   </div>
                 </TableCell>
                 <TableCell className="p-2">
-                  <div className="flex flex-col max-w-[150px]">
+                  <div className="flex flex-col max-w-[120px]">
                     <span className="truncate font-medium" title={item.supplier?.name}>
                       {item.supplier?.name || "—"}
                     </span>
-                    <span className="truncate text-muted-foreground" title={item.buyer?.name}>
+                  </div>
+                </TableCell>
+                <TableCell className="p-2">
+                  <div className="flex flex-col max-w-[120px]">
+                    <span className="truncate font-medium" title={item.buyer?.name}>
                       {item.buyer?.name || "—"}
                     </span>
                   </div>
                 </TableCell>
                 <TableCell className="p-2">
-                  <div className="flex flex-col gap-0.5 max-w-[120px]">
-                    {item.intermediaries?.slice(0, 2).map((rel: any) => (
-                      <div key={rel.id} className="text-[10px] truncate leading-tight">
-                        <span className="font-medium text-blue-600">{rel.intermediary?.name}</span>
-                        <span className="ml-1 text-muted-foreground">
+                  <div className="flex flex-col gap-0.5 max-w-[180px]">
+                    {item.intermediaries?.map((rel: any) => (
+                      <div key={rel.id} className="text-[13px] leading-tight">
+                        <span className="font-medium">{rel.intermediary?.name}</span>
+                        <span className="ml-1 text-blue-500">
                           {formatCurrency(rel.commissionUsd, "USD")}
                         </span>
                       </div>
                     ))}
-                    {item.intermediaries?.length > 2 && (
-                      <span className="text-[9px] text-muted-foreground italic">
-                        Еще {item.intermediaries.length - 2}...
-                      </span>
-                    )}
                     {(!item.intermediaries || item.intermediaries.length === 0) && "—"}
                   </div>
                 </TableCell>
                 <TableCell className="p-2 text-right">
                   <div className="flex flex-col font-mono">
                     <span className="text-muted-foreground">{formatNumber(item.quantityLiters)} л</span>
-                    <span className="text-[9px] text-muted-foreground/70">ρ: {item.density || "—"}</span>
+                    <span className="text-[10px] text-muted-foreground">ρ: {item.density || "—"}</span>
                     <span className="font-semibold">{formatNumber(item.quantityKg)} кг</span>
                   </div>
                 </TableCell>
                 <TableCell className="p-2 text-right">
                   <div className="flex flex-col font-mono">
-                    <span className="text-muted-foreground">{formatNumber(item.purchasePriceUsd)}</span>
+                    <span>${formatNumber(item.purchasePriceUsd)}</span>
                     <span className="font-medium text-orange-600">
                       {formatCurrency(item.purchaseAmountUsd, "USD")}
                     </span>
@@ -187,15 +198,15 @@ export function RefuelingAbroadTable({
                 </TableCell>
                 <TableCell className="p-2 text-right">
                   <div className="flex flex-col font-mono">
-                    <span className="text-muted-foreground">{formatNumber(item.salePriceUsd)}</span>
-                    <span className="font-medium text-green-600">
+                    <span>${formatNumber(item.salePriceUsd)}</span>
+                    <span className="font-medium text-orange-600">
                       {formatCurrency(item.saleAmountUsd, "USD")}
                     </span>
                   </div>
                 </TableCell>
                 <TableCell className="p-2 text-right">
                   <div className="flex flex-col font-mono">
-                    <span className="text-blue-600">{formatCurrency(item.intermediaryCommissionUsd, "USD")}</span>
+                    <span className="text-blue-500">{formatCurrency(item.intermediaryCommissionUsd, "USD")}</span>
                     <span
                       className={cn(
                         "font-bold",
