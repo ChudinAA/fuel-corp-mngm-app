@@ -9,7 +9,7 @@ export function formatNumber(value: number | string | null | undefined): string 
     return kValue.toLocaleString("ru-RU", { 
       minimumFractionDigits: 1, 
       maximumFractionDigits: 1 
-    }) + "k";
+    }) + "к";
   }
   
   return num.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -20,7 +20,7 @@ export function formatCurrency(value: number | string | null | undefined, curren
   const num = typeof value === "string" ? parseFloat(value) : value;
   if (isNaN(num)) return "—";
   const symbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "₽";
-  return `${symbol}${num.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `${symbol}${formatNumber(num)}`;
 }
 
 export function evaluateCommissionFormula(

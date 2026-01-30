@@ -239,7 +239,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
   };
 
   const isDraft = editData?.isDraft;
-  const isEditing = !!editData && !editData.id.startsWith("new-copy-"); // Adjust based on how copy is handled, but usually id is "" for copy
+  const isEditing = !!editData && !!editData.id
 
   return (
     <Form {...form}>
@@ -798,56 +798,46 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
         </div>
         
         <div className="flex justify-end gap-3 pt-4 border-t">
-          {isDraft ? (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={form.handleSubmit(onSubmit)}
-                disabled={createMutation.isPending}
-                data-testid="button-save-draft"
-              >
-                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Сохранить черновик
-              </Button>
-              <Button
-                type="button"
-                onClick={handleCreateDeal}
-                disabled={createMutation.isPending}
-                className="bg-green-600 hover:bg-green-700 text-white"
-                data-testid="button-create-deal"
-              >
-                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Создать сделку
-              </Button>
-            </>
-          ) : (
-            <>
-              {!editData && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    form.setValue("isDraft", true);
-                    form.handleSubmit(onSubmit)();
-                  }}
-                  disabled={createMutation.isPending}
-                  data-testid="button-save-new-draft"
-                >
-                  {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Сохранить черновик
-                </Button>
-              )}
-              <Button
-                type="submit"
-                disabled={createMutation.isPending}
-                data-testid="button-submit-form"
-              >
-                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {editData ? "Сохранить изменения" : "Создать заправку"}
-              </Button>
-            </>
-          )}
+          {!isEditing || (editData && editData.isDraft) ? (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={
+                createMutation.isPending
+              }
+              onClick={() => {
+                form.setValue("isDraft", true);
+                form.clearErrors();
+                form.handleSubmit(onSubmit)();
+              }}
+            >
+              {createMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Сохранить черновик
+            </Button>
+          ) : null}
+
+          <Button
+            type="submit"
+            disabled={
+              createMutation.isPending
+            }
+            data-testid="button-submit-refueling"
+          >
+            {createMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {isEditing ? "Сохранение..." : "Создание..."}
+              </>
+            ) : (
+              <>
+                {isEditing && !editData.isDraft
+                  ? "Сохранить изменения"
+                  : "Создать сделку"}
+              </>
+            )}
+          </Button>
         </div>
       </form>
     </Form>
