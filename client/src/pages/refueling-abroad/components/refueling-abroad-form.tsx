@@ -147,7 +147,6 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
     saleExchangeRate,
     commissionFormula: "",
     manualCommissionUsd: totalIntermediaryCommissionUsd.toString(),
-    manualCommissionRub: totalIntermediaryCommissionRub.toString(),
   });
   
   const createMutation = useMutation({
@@ -770,6 +769,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                     placeholder="Дополнительная информация..."
                     data-testid="input-notes"
                     {...field}
+                    value={field.value || ""}
                   />
                 </FormControl>
                 <FormMessage />
@@ -797,23 +797,57 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
           />
         </div>
         
-        <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              form.setValue("isDraft", true);
-              form.handleSubmit(onSubmit)();
-            }}
-            disabled={createMutation.isPending}
-            data-testid="button-save-draft"
-          >
-            Сохранить как черновик
-          </Button>
-          <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit">
-            {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {editData ? "Обновить" : "Создать"}
-          </Button>
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          {isDraft ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={form.handleSubmit(onSubmit)}
+                disabled={createMutation.isPending}
+                data-testid="button-save-draft"
+              >
+                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Сохранить черновик
+              </Button>
+              <Button
+                type="button"
+                onClick={handleCreateDeal}
+                disabled={createMutation.isPending}
+                className="bg-green-600 hover:bg-green-700 text-white"
+                data-testid="button-create-deal"
+              >
+                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Создать сделку
+              </Button>
+            </>
+          ) : (
+            <>
+              {!editData && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    form.setValue("isDraft", true);
+                    form.handleSubmit(onSubmit)();
+                  }}
+                  disabled={createMutation.isPending}
+                  data-testid="button-save-new-draft"
+                >
+                  {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Сохранить черновик
+                </Button>
+              )}
+              <Button
+                type="submit"
+                disabled={createMutation.isPending}
+                data-testid="button-submit-form"
+              >
+                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {editData ? "Сохранить изменения" : "Создать заправку"}
+              </Button>
+            </>
+          )}
         </div>
       </form>
     </Form>
