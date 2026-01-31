@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { useMutation } from "@tanstack/react-query";
 import {
   Table,
   TableBody,
@@ -10,9 +9,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Copy, Trash2, Loader2, Search, Filter } from "lucide-react";
+import { Pencil, Copy, Trash2, Loader2, Search, Filter, History } from "lucide-react";
 import { formatCurrency, formatNumber } from "../utils";
-import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -34,6 +32,8 @@ import { useRefuelingAbroadTable } from "../hooks/use-refueling-abroad-table";
 import { TableColumnFilter } from "@/components/ui/table-column-filter";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AuditPanel } from "@/components/audit-panel";
+import { ExportButton } from "@/components/export/export-button";
 
 interface RefuelingAbroadTableProps {
   onEdit: (item: any) => void;
@@ -60,6 +60,7 @@ export function RefuelingAbroadTable({
     handleDelete,
   } = useRefuelingAbroadTable();
 
+  const [deletedDealsAuditOpen, setDeletedDealsAuditOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -145,11 +146,20 @@ export function RefuelingAbroadTable({
         >
           <Filter className="h-4 w-4" />
         </Button>
+        <Button
+          variant="outline"
+          onClick={() => setDeletedDealsAuditOpen(true)}
+          title="Аудит всех заправок"
+        >
+          <History className="h-4 w-4 mr-2" />
+          История изменений
+        </Button>
+        <ExportButton module="refueling-abroad" />
       </div>
 
       <div className="border rounded-lg overflow-hidden">
         <Table>
-          <TableHeader className="bg-muted/50">
+          <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="text-[13px] font-semibold p-2 w-[100px]">
                 <div className="flex items-center justify-between gap-1">
@@ -408,6 +418,14 @@ export function RefuelingAbroadTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AuditPanel
+        open={deletedDealsAuditOpen}
+        onOpenChange={setDeletedDealsAuditOpen}
+        entityType="aircraft_refueling_abroad"
+        entityId=""
+        entityName="Все заправки ВС Зарубеж (включая удаленные)"
+      />
     </div>
   );
 }

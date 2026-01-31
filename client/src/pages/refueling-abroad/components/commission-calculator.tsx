@@ -90,8 +90,7 @@ export function CommissionCalculator({
 
   const presetFormulas = [
     { label: "% от продажи", formula: "(salePrice - purchasePrice) * quantity * 0.05", description: "5% от маржи" },
-    { label: "Фикс за кг", formula: "quantity * 0.02", description: "$0.02 за кг" },
-    { label: "Фикс за кг (0.01)", formula: "quantity * 0.01", description: "$0.01 за кг" },
+    { label: "Фикс за кг / л", formula: "quantity * 0.02", description: "$0.02 за кг" },
     { label: "% от суммы", formula: "salePrice * quantity * 0.03", description: "3% от суммы продажи" },
   ];
 
