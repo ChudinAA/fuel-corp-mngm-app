@@ -36,6 +36,7 @@ export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
         or(
           ilike(refuelingAbroad.aircraftNumber, `%${search}%`),
           ilike(refuelingAbroad.airport, `%${search}%`),
+          ilike(refuelingAbroad.country, `%${search}%`),
           sql`EXISTS (
             SELECT 1 FROM ${suppliers} 
             WHERE ${suppliers.id} = ${refuelingAbroad.supplierId} 
