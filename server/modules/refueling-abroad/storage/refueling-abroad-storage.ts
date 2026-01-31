@@ -25,7 +25,7 @@ export interface IRefuelingAbroadStorage {
 export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
   async getAll(
     offset: number = 0,
-    limit: number = 50,
+    limit: number = 20,
     search?: string,
     columnFilters?: Record<string, string[]>,
   ): Promise<{ data: RefuelingAbroad[]; total: number }> {

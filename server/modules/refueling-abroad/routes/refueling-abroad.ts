@@ -16,7 +16,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
     async (req, res) => {
       try {
         const offset = parseInt(req.query.offset as string) || 0;
-        const limit = parseInt(req.query.pageSize as string) || 50;
+        const limit = parseInt(req.query.pageSize as string) || 20;
         const search = req.query.search as string;
 
         // Parse column filters
