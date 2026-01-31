@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +8,6 @@ import { Plus, Search, Warehouse, History, Globe } from "lucide-react";
 import { ExportButton } from "@/components/export/export-button";
 import { AuditPanel } from "@/components/audit-panel";
 import type { Warehouse as WarehouseType } from "@shared/schema";
-import { WarehouseStatsCards } from "./warehouses/components/warehouse-stats-cards";
 import { WarehouseCard } from "./warehouses/components/warehouse-card";
 import { AddWarehouseDialog } from "./warehouses/components/add-warehouse-dialog";
 import { WarehouseDetailsDialog } from "./warehouses/components/warehouse-details-dialog";
@@ -39,55 +37,6 @@ export default function WarehousesPage() {
       const matchesSearch = w.name.toLowerCase().includes(search.toLowerCase());
       return matchesSearch;
     }) || [];
-
-  const totalBalance =
-    warehouses?.reduce(
-      (sum, w) => sum + parseFloat(w.currentBalance || "0"),
-      0,
-    ) || 0;
-
-  // Средняя себестоимость - только склады с остатками
-  const warehousesWithBalance =
-    warehouses?.filter(
-      (w) =>
-        parseFloat(w.currentBalance || "0") > 0 &&
-        parseFloat(w.averageCost || "0") > 0,
-    ) || [];
-  const averageCost =
-    warehousesWithBalance.length > 0
-      ? warehousesWithBalance.reduce(
-          (sum, w) => sum + parseFloat(w.averageCost || "0"),
-          0,
-        ) / warehousesWithBalance.length
-      : 0;
-
-  const totalPvkjBalance =
-    warehouses?.reduce((sum, w) => sum + parseFloat(w.pvkjBalance || "0"), 0) ||
-    0;
-
-  // Средняя себестоимость ПВКЖ - только склады с остатками
-  const warehousesWithPvkjBalance =
-    warehouses?.filter(
-      (w) =>
-        parseFloat(w.pvkjBalance || "0") > 0 &&
-        parseFloat(w.pvkjAverageCost || "0") > 0,
-    ) || [];
-  const averagePvkjCost =
-    warehousesWithPvkjBalance.length > 0
-      ? warehousesWithPvkjBalance.reduce(
-          (sum, w) => sum + parseFloat(w.pvkjAverageCost || "0"),
-          0,
-        ) / warehousesWithPvkjBalance.length
-      : 0;
-
-  const formatNumber = (value: number) =>
-    new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(value);
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("ru-RU", {
-      style: "currency",
-      currency: "RUB",
-      maximumFractionDigits: 2,
-    }).format(value);
 
   const handleSave = () => {
     setEditingWarehouse(null);
@@ -140,16 +89,6 @@ export default function WarehousesPage() {
               </Button>
             )}
           </div>
-
-          <WarehouseStatsCards
-            warehousesCount={filteredWarehouses.length}
-            totalBalance={totalBalance}
-            averageCost={averageCost}
-            totalPvkjBalance={totalPvkjBalance}
-            averagePvkjCost={averagePvkjCost}
-            formatNumber={formatNumber}
-            formatCurrency={formatCurrency}
-          />
 
           <div className="flex items-center gap-4">
             <div className="relative flex-1 max-w-sm">

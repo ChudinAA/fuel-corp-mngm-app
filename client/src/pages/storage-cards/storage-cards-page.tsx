@@ -22,11 +22,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Plus, Search, CreditCard, Package, Map, Globe } from "lucide-react";
+import { Plus, Search, CreditCard, History } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { StorageCardItem } from "./components/storage-card-item";
+import { AuditPanel } from "@/components/audit-panel";
+import { ExportButton } from "@/components/export/export-button";
 
 interface StorageCard {
   id: string;
@@ -287,6 +289,7 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<StorageCard | null>(null);
   const [viewingCard, setViewingCard] = useState<StorageCard | null>(null);
+  const [auditPanelOpen, setAuditPanelOpen] = useState(false);
 
   const { data: storageCards, isLoading } = useQuery<StorageCard[]>({
     queryKey: ["/api/storage-cards"],
@@ -302,15 +305,6 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
       card.airportCode?.toLowerCase().includes(query)
     );
   });
-
-  const totalBalance = storageCards?.reduce(
-    (sum, c) => sum + parseFloat(c.currentBalance || "0"),
-    0
-  ) || 0;
-
-  const activeCards = storageCards?.filter((c) => c.isActive !== false).length || 0;
-
-  const countries = new Set(storageCards?.map((c) => c.country) || []).size;
 
   const formatNumber = (value: number) =>
     new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(value);
@@ -390,42 +384,6 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Общий баланс
-            </CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(totalBalance)} кг</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Активных карт
-            </CardTitle>
-            <Map className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeCards}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Стран
-            </CardTitle>
-            <Globe className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{countries}</div>
-          </CardContent>
-        </Card>
-      </div>
-
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -437,6 +395,15 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
             data-testid="input-search"
           />
         </div>
+        <Button
+          variant="outline"
+          onClick={() => setAuditPanelOpen(true)}
+          title="Аудит всех складов"
+        >
+          <History className="h-4 w-4 mr-2" />
+          История изменений
+        </Button>
+        <ExportButton moduleName="storage-cards" />
       </div>
 
       {isLoading ? (
@@ -527,6 +494,14 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
           )}
         </DialogContent>
       </Dialog>
+
+      <AuditPanel
+        open={auditPanelOpen}
+        onOpenChange={setAuditPanelOpen}
+        entityType="storage_cards"
+        entityId=""
+        entityName="Все Карты хранения (включая удаленные)"
+      />
     </div>
   );
 }
