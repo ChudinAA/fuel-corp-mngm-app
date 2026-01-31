@@ -37,16 +37,8 @@ export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
           ilike(refuelingAbroad.aircraftNumber, `%${search}%`),
           ilike(refuelingAbroad.airport, `%${search}%`),
           ilike(refuelingAbroad.country, `%${search}%`),
-          sql`EXISTS (
-            SELECT 1 FROM ${suppliers} 
-            WHERE ${suppliers.id} = ${refuelingAbroad.supplierId} 
-            AND ${suppliers.name} ILIKE ${`%${search}%`}
-          )`,
-          sql`EXISTS (
-            SELECT 1 FROM ${customers} 
-            WHERE ${customers.id} = ${refuelingAbroad.buyerId} 
-            AND ${customers.name} ILIKE ${`%${search}%`}
-          )`
+          ilike(suppliers.name, `%${search}%`),
+          ilike(customers.name, `%${search}%`)
         ) as any,
       );
     }
@@ -89,28 +81,33 @@ export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
     const [totalResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(refuelingAbroad)
+      .leftJoin(suppliers, eq(refuelingAbroad.supplierId, suppliers.id))
+      .leftJoin(customers, eq(refuelingAbroad.buyerId, customers.id))
       .where(where);
 
-    const data = await db.query.refuelingAbroad.findMany({
-      where,
-      limit,
-      offset,
-      orderBy: [desc(refuelingAbroad.refuelingDate), desc(refuelingAbroad.createdAt)],
-      with: {
-        supplier: true,
-        buyer: true,
-        storageCard: true,
-        intermediaries: {
-          with: {
-            intermediary: true,
-          },
-          orderBy: [asc(refuelingAbroadIntermediaries.orderIndex)],
-        },
-      },
-    });
+    const data = await db
+      .select({
+        refuelingAbroad: refuelingAbroad,
+        supplier: suppliers,
+        buyer: customers,
+      })
+      .from(refuelingAbroad)
+      .leftJoin(suppliers, eq(refuelingAbroad.supplierId, suppliers.id))
+      .leftJoin(customers, eq(refuelingAbroad.buyerId, customers.id))
+      .where(where)
+      .limit(limit)
+      .offset(offset)
+      .orderBy(desc(refuelingAbroad.refuelingDate), desc(refuelingAbroad.createdAt));
+
+    // Map the flat joined results back to the expected structure
+    const mappedData = data.map((row) => ({
+      ...row.refuelingAbroad,
+      supplier: row.supplier,
+      buyer: row.buyer,
+    }));
 
     return {
-      data: data as any,
+      data: mappedData as any,
       total: Number(totalResult?.count || 0),
     };
   }
