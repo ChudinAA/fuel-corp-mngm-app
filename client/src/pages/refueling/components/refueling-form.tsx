@@ -47,28 +47,29 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   const [initialQuantityKg, setInitialQuantityKg] = useState<number>(0);
   const [initialWarehouseBalance, setInitialWarehouseBalance] =
     useState<number>(0); // State for initial balance
+  const [isDataInitialized, setIsDataInitialized] = useState(false);
   const isEditing = !!editData && !!editData.id;
 
   const form = useForm<RefuelingFormData>({
     resolver: zodResolver(refuelingFormSchema),
     defaultValues: {
       refuelingDate: editData ? new Date(editData.refuelingDate) : new Date(),
-      productType: PRODUCT_TYPE.KEROSENE,
-      aircraftNumber: "",
-      orderNumber: "",
+      productType: editData?.productType || PRODUCT_TYPE.KEROSENE,
+      aircraftNumber: editData?.aircraftNumber || "",
+      orderNumber: editData?.orderNumber || "",
       supplierId: "",
       buyerId: "",
       warehouseId: "",
-      inputMode: "liters",
-      quantityLiters: "",
-      density: "",
-      quantityKg: "",
-      notes: "",
-      isApproxVolume: false,
+      inputMode: editData?.quantityLiters ? "liters" : "kg",
+      quantityLiters: editData?.quantityLiters || "",
+      density: editData?.density || "",
+      quantityKg: editData?.quantityKg || "",
+      notes: editData?.notes || "",
+      isApproxVolume: editData?.isApproxVolume || false,
       isDraft: editData?.isDraft || false,
       selectedPurchasePriceId: "",
       selectedSalePriceId: "",
-      basis: "",
+      basis: editData?.basis || "",
     },
   });
 
@@ -208,7 +209,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   });
 
   useEffect(() => {
-    if (editData && suppliers && customers && allBases && warehouses) {
+    if (editData && suppliers && customers && allBases && warehouses && !isDataInitialized) {
       // Added warehouses dependency
       const supplier = suppliers.find(
         (s) => s.name === editData.supplierId || s.id === editData.supplierId,
@@ -277,6 +278,8 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       if (editData.quantityLiters) {
         setInputMode("liters");
       }
+      
+      setIsDataInitialized(true);
     }
   }, [
     editData,
@@ -286,6 +289,8 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     warehouses,
     form,
     watchProductType,
+    isDataInitialized,
+    isEditing,
   ]); // Added watchProductType dependency
 
   const createMutation = useMutation({
