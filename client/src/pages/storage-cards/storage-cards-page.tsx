@@ -280,7 +280,7 @@ function StorageCardForm({
   );
 }
 
-export default function StorageCardsPage() {
+export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: boolean }) {
   const { hasPermission } = useAuth();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
@@ -331,14 +331,42 @@ export default function StorageCardsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold">Карты хранения</h1>
-          <p className="text-muted-foreground">
-            Управление картами хранения топлива на зарубежных аэропортах
-          </p>
+      {!hideHeader && (
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-semibold">Карты хранения</h1>
+            <p className="text-muted-foreground">
+              Управление картами хранения топлива на зарубежных аэропортах
+            </p>
+          </div>
+          {hasPermission("storage-cards", "create") && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-add-card">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Добавить карту
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingCard ? "Редактировать карту" : "Новая карта хранения"}
+                  </DialogTitle>
+                </DialogHeader>
+                <StorageCardForm
+                  editCard={editingCard}
+                  onSuccess={handleDialogClose}
+                  onCancel={handleDialogClose}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
-        {hasPermission("storage-cards", "create") && (
+      )}
+
+      {hideHeader && hasPermission("storage-cards", "create") && (
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-medium">Карты хранения</h2>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-card">
@@ -359,8 +387,8 @@ export default function StorageCardsPage() {
               />
             </DialogContent>
           </Dialog>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

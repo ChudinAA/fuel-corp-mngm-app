@@ -132,12 +132,6 @@ const getDataMenuItems = (hasPermission: (p: string) => boolean) =>
       permission: "warehouses.view",
     },
     {
-      title: "Карты хранения",
-      url: "/storage-cards",
-      icon: Globe,
-      permission: "storage-cards.view",
-    },
-    {
       title: "Цены",
       url: "/prices",
       icon: DollarSign,
