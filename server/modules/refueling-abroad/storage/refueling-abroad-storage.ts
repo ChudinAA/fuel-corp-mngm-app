@@ -1,10 +1,12 @@
 import { db } from "server/db";
-import { eq, and, isNull, desc, asc, gte, lte, or, sql } from "drizzle-orm";
+import { eq, and, isNull, desc, asc, gte, lte, or, sql, ilike } from "drizzle-orm";
 import { refuelingAbroad, InsertRefuelingAbroad, RefuelingAbroad } from "../entities/refueling-abroad";
 import { refuelingAbroadIntermediaries } from "../entities/refueling-abroad-intermediaries";
+import { suppliers } from "../../suppliers/entities/suppliers";
+import { customers } from "../../customers/entities/customers";
 
 export interface IRefuelingAbroadStorage {
-  getAll(): Promise<RefuelingAbroad[]>;
+  getAll(offset?: number, limit?: number, search?: string, columnFilters?: Record<string, string[]>): Promise<{ data: RefuelingAbroad[]; total: number }>;
   getById(id: string): Promise<RefuelingAbroad | undefined>;
   getByIdIncludingDeleted(id: string): Promise<RefuelingAbroad | undefined>;
   getByDateRange(from: Date, to: Date): Promise<RefuelingAbroad[]>;
@@ -21,9 +23,77 @@ export interface IRefuelingAbroadStorage {
 }
 
 export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
-  async getAll(): Promise<RefuelingAbroad[]> {
-    return db.query.refuelingAbroad.findMany({
-      where: isNull(refuelingAbroad.deletedAt),
+  async getAll(
+    offset: number = 0,
+    limit: number = 50,
+    search?: string,
+    columnFilters?: Record<string, string[]>,
+  ): Promise<{ data: RefuelingAbroad[]; total: number }> {
+    const conditions = [isNull(refuelingAbroad.deletedAt)];
+
+    if (search) {
+      conditions.push(
+        or(
+          ilike(refuelingAbroad.aircraftNumber, `%${search}%`),
+          ilike(refuelingAbroad.airport, `%${search}%`),
+          sql`EXISTS (
+            SELECT 1 FROM ${suppliers} 
+            WHERE ${suppliers.id} = ${refuelingAbroad.supplierId} 
+            AND ${suppliers.name} ILIKE ${`%${search}%`}
+          )`,
+          sql`EXISTS (
+            SELECT 1 FROM ${customers} 
+            WHERE ${customers.id} = ${refuelingAbroad.buyerId} 
+            AND ${customers.name} ILIKE ${`%${search}%`}
+          )`
+        ) as any,
+      );
+    }
+
+    if (columnFilters) {
+      Object.entries(columnFilters).forEach(([columnId, values]) => {
+        if (!values || values.length === 0) return;
+
+        if (columnId === "date") {
+          const dateConditions = values.map((v) => {
+            const [day, month, year] = v.split(".");
+            const dateStr = `${year}-${month}-${day}`;
+            return sql`DATE(${refuelingAbroad.refuelingDate}) = ${dateStr}`;
+          });
+          conditions.push(or(...dateConditions) as any);
+        } else if (columnId === "productType") {
+          conditions.push(sql`${refuelingAbroad.productType} IN ${values}`);
+        } else if (columnId === "supplier") {
+          conditions.push(
+            sql`EXISTS (
+              SELECT 1 FROM ${suppliers} 
+              WHERE ${suppliers.id} = ${refuelingAbroad.supplierId} 
+              AND ${suppliers.name} IN ${values}
+            )`,
+          );
+        } else if (columnId === "buyer") {
+          conditions.push(
+            sql`EXISTS (
+              SELECT 1 FROM ${customers} 
+              WHERE ${customers.id} = ${refuelingAbroad.buyerId} 
+              AND ${customers.name} IN ${values}
+            )`,
+          );
+        }
+      });
+    }
+
+    const where = and(...conditions);
+
+    const [totalResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(refuelingAbroad)
+      .where(where);
+
+    const data = await db.query.refuelingAbroad.findMany({
+      where,
+      limit,
+      offset,
       orderBy: [desc(refuelingAbroad.refuelingDate), desc(refuelingAbroad.createdAt)],
       with: {
         supplier: true,
@@ -31,12 +101,17 @@ export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
         storageCard: true,
         intermediaries: {
           with: {
-            intermediary: true
+            intermediary: true,
           },
-          orderBy: [asc(refuelingAbroadIntermediaries.orderIndex)]
-        }
-      }
-    }) as any;
+          orderBy: [asc(refuelingAbroadIntermediaries.orderIndex)],
+        },
+      },
+    });
+
+    return {
+      data: data as any,
+      total: Number(totalResult?.count || 0),
+    };
   }
 
   async getById(id: string): Promise<RefuelingAbroad | undefined> {
