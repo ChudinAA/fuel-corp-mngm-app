@@ -15,8 +15,21 @@ export function registerRefuelingAbroadRoutes(app: Express) {
     requirePermission("refueling", "view"),
     async (req, res) => {
       try {
-        const items = await refuelingAbroadStorage.getAll();
-        res.json(items);
+        const offset = parseInt(req.query.offset as string) || 0;
+        const limit = parseInt(req.query.pageSize as string) || 50;
+        const search = req.query.search as string;
+
+        // Parse column filters
+        const columnFilters: Record<string, string[]> = {};
+        Object.keys(req.query).forEach(key => {
+          if (key.startsWith('filter_')) {
+            const columnId = key.replace('filter_', '');
+            columnFilters[columnId] = (req.query[key] as string).split(',');
+          }
+        });
+
+        const result = await refuelingAbroadStorage.getAll(offset, limit, search, columnFilters);
+        res.json(result);
       } catch (error: any) {
         console.error("Error fetching refueling abroad records:", error);
         res.status(500).json({ message: "Ошибка получения записей заправки зарубеж" });
