@@ -178,7 +178,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         form.setValue("warehouseId", "");
       }
 
-      // Автоматически выбираем первый базис при выборе поставщика
+      // Автоматически выбираем первый базис при выборе поставщика только для новых сделок
       if (supplier?.baseIds && supplier.baseIds.length >= 1 && !editData) {
         const refuelingBases = allBases.filter(
           (b) =>

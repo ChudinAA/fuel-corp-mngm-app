@@ -206,8 +206,8 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         form.setValue("warehouseId", "");
       }
 
-      // Автоматически выбираем первый базис только при СОЗДАНИИ новой сделки
-      if (!isEditing && supplier?.baseIds && supplier.baseIds.length > 0) {
+      // Автоматически выбираем первый базис только при СОЗДАНИИ новой сделки (не при копировании/редактировании)
+      if (!editData && supplier?.baseIds && supplier.baseIds.length > 0) {
         const baseId = supplier.baseIds[0];
         const base = allBases.find(
           (b) => b.id === baseId && b.baseType === BASE_TYPE.WHOLESALE,
