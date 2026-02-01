@@ -60,7 +60,7 @@ export function registerCurrenciesRoutes(app: Express) {
         const validatedData = insertCurrencySchema.parse(req.body);
         const data = {
           ...validatedData,
-          createdById: req.session.userId,
+          createdById: req.session.userId ? String(req.session.userId) : undefined,
         };
 
         const item = await storage.currencies.createCurrency(data);
@@ -90,7 +90,7 @@ export function registerCurrenciesRoutes(app: Express) {
         const id = req.params.id;
         const updateData = {
           ...req.body,
-          updatedById: req.session.userId,
+          updatedById: req.session.userId ? String(req.session.userId) : undefined,
         };
 
         const item = await storage.currencies.updateCurrency(id, updateData);
@@ -116,7 +116,7 @@ export function registerCurrenciesRoutes(app: Express) {
       try {
         const success = await storage.currencies.deleteCurrency(
           req.params.id,
-          req.session.userId
+          req.session.userId ? String(req.session.userId) : undefined
         );
         if (!success) {
           return res.status(404).json({ message: "Валюта не найдена" });

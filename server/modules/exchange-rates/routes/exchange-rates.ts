@@ -114,7 +114,7 @@ export function registerExchangeRatesRoutes(app: Express) {
         
         const data = {
           ...validatedData,
-          createdById: req.session.userId,
+          createdById: req.session.userId ? String(req.session.userId) : undefined,
         };
 
         const item = await storage.exchangeRates.createExchangeRate(data);
@@ -185,7 +185,7 @@ export function registerExchangeRatesRoutes(app: Express) {
       try {
         const success = await storage.exchangeRates.deleteExchangeRate(
           req.params.id,
-          req.session.userId
+          req.session.userId ? String(req.session.userId) : undefined
         );
         if (!success) {
           return res.status(404).json({ message: "Курс не найден" });
