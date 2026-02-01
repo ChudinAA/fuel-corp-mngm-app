@@ -323,10 +323,10 @@ export function RefuelingAbroadTable({
                       <span className="text-blue-500">{formatCurrency(item.intermediaryCommissionUsd, "USD")}</span>
                       <span
                         className={cn(
-                          "font-bold",
+                          "font-semibold",
                           parseFloat(item.profitUsd || "0") < 0
                             ? "text-destructive"
-                            : "text-green-700"
+                            : "text-green-600"
                         )}
                       >
                         {formatCurrency(item.profitUsd, "USD")}

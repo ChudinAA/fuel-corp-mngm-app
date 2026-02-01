@@ -183,7 +183,7 @@ function Router() {
 
       <Route path="/exchange">
         <AppLayout>
-          <ProtectedRoute component={ExchangePage} />
+          <ProtectedRoute component={InDevelopmentPage} />
         </AppLayout>
       </Route>
 
