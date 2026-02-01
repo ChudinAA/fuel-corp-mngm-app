@@ -99,12 +99,25 @@ export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
       .offset(offset)
       .orderBy(desc(refuelingAbroad.refuelingDate), desc(refuelingAbroad.createdAt));
 
-    // Map the flat joined results back to the expected structure
-    const mappedData = data.map((row) => ({
-      ...row.refuelingAbroad,
-      supplier: row.supplier,
-      buyer: row.buyer,
-    }));
+    // Get intermediaries for each deal
+    const mappedData = await Promise.all(
+      data.map(async (row) => {
+        const intermediaries = await db.query.refuelingAbroadIntermediaries.findMany({
+          where: eq(refuelingAbroadIntermediaries.refuelingAbroadId, row.refuelingAbroad.id),
+          with: {
+            intermediary: true,
+          },
+          orderBy: [asc(refuelingAbroadIntermediaries.orderIndex)],
+        });
+
+        return {
+          ...row.refuelingAbroad,
+          supplier: row.supplier,
+          buyer: row.buyer,
+          intermediaries,
+        };
+      })
+    );
 
     return {
       data: mappedData as any,
