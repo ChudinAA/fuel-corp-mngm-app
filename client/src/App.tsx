@@ -159,13 +159,13 @@ function Router() {
 
       <Route path="/">
         <AppLayout>
-          <ProtectedRoute component={CustomizableDashboard} />
+          <ProtectedRoute component={InDevelopmentPage} />
         </AppLayout>
       </Route>
 
       <Route path="/dashboard">
         <AppLayout>
-          <ProtectedRoute component={CustomizableDashboard} />
+          <ProtectedRoute component={InDevelopmentPage} />
         </AppLayout>
       </Route>
 
