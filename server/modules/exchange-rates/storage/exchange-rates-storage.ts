@@ -30,6 +30,20 @@ export class ExchangeRatesStorage {
     });
   }
 
+  async getLatestRateByCurrencyPair(
+    currency: string,
+    targetCurrency: string
+  ): Promise<ExchangeRate | undefined> {
+    return await db.query.exchangeRates.findFirst({
+      where: and(
+        eq(exchangeRates.currency, currency),
+        eq(exchangeRates.targetCurrency, targetCurrency),
+        isNull(exchangeRates.deletedAt)
+      ),
+      orderBy: [desc(exchangeRates.rateDate)],
+    });
+  }
+
   async getRateByDateAndCurrency(
     currency: string,
     date: string
@@ -44,23 +58,43 @@ export class ExchangeRatesStorage {
     });
   }
 
+  async getRateByDateAndCurrencyPair(
+    currency: string,
+    targetCurrency: string,
+    date: string
+  ): Promise<ExchangeRate | undefined> {
+    return await db.query.exchangeRates.findFirst({
+      where: and(
+        eq(exchangeRates.currency, currency),
+        eq(exchangeRates.targetCurrency, targetCurrency),
+        lte(exchangeRates.rateDate, date),
+        isNull(exchangeRates.deletedAt)
+      ),
+      orderBy: [desc(exchangeRates.rateDate)],
+    });
+  }
+
   async createExchangeRate(data: InsertExchangeRate): Promise<ExchangeRate> {
+    const targetCurrency = data.targetCurrency || "RUB";
+    
     const existing = await db.query.exchangeRates.findFirst({
       where: and(
         eq(exchangeRates.currency, data.currency),
+        eq(exchangeRates.targetCurrency, targetCurrency),
         eq(exchangeRates.rateDate, data.rateDate),
         isNull(exchangeRates.deletedAt)
       ),
     });
 
     if (existing) {
-      throw new Error("Курс для этой валюты на указанную дату уже существует");
+      throw new Error("Курс для этой валютной пары на указанную дату уже существует");
     }
 
     const [created] = await db
       .insert(exchangeRates)
       .values({
         ...data,
+        targetCurrency,
         rate: String(data.rate),
       })
       .returning();

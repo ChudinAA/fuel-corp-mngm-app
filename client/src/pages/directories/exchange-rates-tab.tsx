@@ -44,11 +44,12 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, CalendarIcon, DollarSign, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, CalendarIcon, DollarSign, Loader2, ArrowRight } from "lucide-react";
 
 interface ExchangeRate {
   id: string;
   currency: string;
+  targetCurrency: string;
   rate: string;
   rateDate: string;
   source: string | null;
@@ -56,37 +57,50 @@ interface ExchangeRate {
   createdAt: string;
 }
 
-const CURRENCIES = [
-  { value: "USD", label: "Доллар США ($)" },
-  { value: "EUR", label: "Евро" },
-  { value: "CNY", label: "Юань" },
-  { value: "AED", label: "Дирхам ОАЭ" },
-  { value: "TRY", label: "Турецкая лира" },
-];
+interface Currency {
+  id: string;
+  code: string;
+  name: string;
+  symbol: string | null;
+  isActive: boolean;
+}
 
 export function ExchangeRatesTab() {
   const { toast } = useToast();
   const { hasPermission } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [addCurrencyDialogOpen, setAddCurrencyDialogOpen] = useState(false);
   const [editingRate, setEditingRate] = useState<ExchangeRate | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     currency: "USD",
+    targetCurrency: "RUB",
     rate: "",
     rateDate: new Date(),
     source: "",
+  });
+
+  const [newCurrency, setNewCurrency] = useState({
+    code: "",
+    name: "",
+    symbol: "",
   });
 
   const { data: rates = [], isLoading } = useQuery<ExchangeRate[]>({
     queryKey: ["/api/exchange-rates"],
   });
 
+  const { data: currencies = [] } = useQuery<Currency[]>({
+    queryKey: ["/api/currencies"],
+  });
+
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const payload = {
         currency: data.currency,
+        targetCurrency: data.targetCurrency,
         rate: parseFloat(data.rate),
         rateDate: format(data.rateDate, "yyyy-MM-dd"),
         source: data.source || null,
@@ -101,6 +115,21 @@ export function ExchangeRatesTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/exchange-rates"] });
       toast({ title: editingRate ? "Курс обновлен" : "Курс добавлен" });
       resetForm();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const createCurrencyMutation = useMutation({
+    mutationFn: async (data: typeof newCurrency) => {
+      return apiRequest("POST", "/api/currencies", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/currencies"] });
+      toast({ title: "Валюта добавлена" });
+      setNewCurrency({ code: "", name: "", symbol: "" });
+      setAddCurrencyDialogOpen(false);
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
@@ -123,7 +152,7 @@ export function ExchangeRatesTab() {
   });
 
   const resetForm = () => {
-    setFormData({ currency: "USD", rate: "", rateDate: new Date(), source: "" });
+    setFormData({ currency: "USD", targetCurrency: "RUB", rate: "", rateDate: new Date(), source: "" });
     setEditingRate(null);
     setDialogOpen(false);
   };
@@ -132,6 +161,7 @@ export function ExchangeRatesTab() {
     setEditingRate(rate);
     setFormData({
       currency: rate.currency,
+      targetCurrency: rate.targetCurrency || "RUB",
       rate: rate.rate,
       rateDate: new Date(rate.rateDate),
       source: rate.source || "",
@@ -150,7 +180,20 @@ export function ExchangeRatesTab() {
       toast({ title: "Ошибка", description: "Укажите корректный курс", variant: "destructive" });
       return;
     }
+    if (formData.currency === formData.targetCurrency) {
+      toast({ title: "Ошибка", description: "Валюты должны отличаться", variant: "destructive" });
+      return;
+    }
     createMutation.mutate(formData);
+  };
+
+  const handleAddCurrency = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCurrency.code || !newCurrency.name) {
+      toast({ title: "Ошибка", description: "Заполните код и название валюты", variant: "destructive" });
+      return;
+    }
+    createCurrencyMutation.mutate(newCurrency);
   };
 
   const sortedRates = [...rates].sort((a, b) => {
@@ -158,6 +201,14 @@ export function ExchangeRatesTab() {
     if (dateCompare !== 0) return dateCompare;
     return a.currency.localeCompare(b.currency);
   });
+
+  const getCurrencyLabel = (code: string) => {
+    const currency = currencies.find(c => c.code === code);
+    if (currency) {
+      return currency.symbol ? `${currency.name} (${currency.symbol})` : currency.name;
+    }
+    return code;
+  };
 
   const canCreate = hasPermission("directories", "create");
   const canEdit = hasPermission("directories", "edit");
@@ -176,95 +227,174 @@ export function ExchangeRatesTab() {
           </p>
         </div>
         {canCreate && (
-          <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) resetForm(); else setDialogOpen(true); }}>
-            <DialogTrigger asChild>
-              <Button size="sm" data-testid="button-add-exchange-rate">
-                <Plus className="h-4 w-4 mr-1" />
-                Добавить курс
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingRate ? "Редактировать курс" : "Добавить курс"}</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Валюта</Label>
-                  <Select
-                    value={formData.currency}
-                    onValueChange={(val) => setFormData({ ...formData, currency: val })}
-                  >
-                    <SelectTrigger data-testid="select-currency">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CURRENCIES.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>
-                          {c.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          <div className="flex gap-2">
+            <Dialog open={addCurrencyDialogOpen} onOpenChange={setAddCurrencyDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline" data-testid="button-add-currency">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Новая валюта
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Добавить валюту</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleAddCurrency} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Код валюты</Label>
+                    <Input
+                      value={newCurrency.code}
+                      onChange={(e) => setNewCurrency({ ...newCurrency, code: e.target.value.toUpperCase() })}
+                      placeholder="Например: KZT"
+                      maxLength={10}
+                      data-testid="input-currency-code"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Название</Label>
+                    <Input
+                      value={newCurrency.name}
+                      onChange={(e) => setNewCurrency({ ...newCurrency, name: e.target.value })}
+                      placeholder="Например: Казахстанский тенге"
+                      data-testid="input-currency-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Символ (опционально)</Label>
+                    <Input
+                      value={newCurrency.symbol}
+                      onChange={(e) => setNewCurrency({ ...newCurrency, symbol: e.target.value })}
+                      placeholder="Например: ₸"
+                      maxLength={5}
+                      data-testid="input-currency-symbol"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setAddCurrencyDialogOpen(false)}>
+                      Отмена
+                    </Button>
+                    <Button type="submit" disabled={createCurrencyMutation.isPending} data-testid="button-save-currency">
+                      {createCurrencyMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                      Добавить
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
 
-                <div className="space-y-2">
-                  <Label>Курс к RUB</Label>
-                  <Input
-                    type="number"
-                    step="0.000001"
-                    value={formData.rate}
-                    onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
-                    placeholder="Например: 92.50"
-                    data-testid="input-rate"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Дата курса</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                        data-testid="input-rate-date"
+            <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) resetForm(); else setDialogOpen(true); }}>
+              <DialogTrigger asChild>
+                <Button size="sm" data-testid="button-add-exchange-rate">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Добавить курс
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{editingRate ? "Редактировать курс" : "Добавить курс"}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
+                    <div className="space-y-2">
+                      <Label>Из валюты</Label>
+                      <Select
+                        value={formData.currency}
+                        onValueChange={(val) => setFormData({ ...formData, currency: val })}
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {format(formData.rateDate, "dd.MM.yyyy", { locale: ru })}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={formData.rateDate}
-                        onSelect={(date) => date && setFormData({ ...formData, rateDate: date })}
-                        locale={ru}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                        <SelectTrigger data-testid="select-base-currency">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {currencies.map((c) => (
+                            <SelectItem key={c.id} value={c.code}>
+                              {c.code} - {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="pb-2">
+                      <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>В валюту</Label>
+                      <Select
+                        value={formData.targetCurrency}
+                        onValueChange={(val) => setFormData({ ...formData, targetCurrency: val })}
+                      >
+                        <SelectTrigger data-testid="select-target-currency">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {currencies.map((c) => (
+                            <SelectItem key={c.id} value={c.code}>
+                              {c.code} - {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label>Источник (опционально)</Label>
-                  <Input
-                    value={formData.source}
-                    onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                    placeholder="ЦБ РФ, Банк и т.д."
-                    data-testid="input-source"
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label>Курс (сколько {formData.targetCurrency} за 1 {formData.currency})</Label>
+                    <Input
+                      type="number"
+                      step="0.000001"
+                      value={formData.rate}
+                      onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
+                      placeholder="Например: 92.50"
+                      data-testid="input-rate"
+                    />
+                  </div>
 
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Отмена
-                  </Button>
-                  <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-rate">
-                    {createMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-                    {editingRate ? "Сохранить" : "Добавить"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <div className="space-y-2">
+                    <Label>Дата курса</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                          data-testid="input-rate-date"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {format(formData.rateDate, "dd.MM.yyyy", { locale: ru })}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={formData.rateDate}
+                          onSelect={(date) => date && setFormData({ ...formData, rateDate: date })}
+                          locale={ru}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Источник (опционально)</Label>
+                    <Input
+                      value={formData.source}
+                      onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                      placeholder="ЦБ РФ, Банк и т.д."
+                      data-testid="input-source"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={resetForm}>
+                      Отмена
+                    </Button>
+                    <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-rate">
+                      {createMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                      {editingRate ? "Сохранить" : "Добавить"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         )}
       </CardHeader>
       <CardContent>
@@ -280,8 +410,8 @@ export function ExchangeRatesTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Валюта</TableHead>
-                <TableHead>Курс к RUB</TableHead>
+                <TableHead>Валютная пара</TableHead>
+                <TableHead>Курс</TableHead>
                 <TableHead>Дата</TableHead>
                 <TableHead>Источник</TableHead>
                 <TableHead className="w-[100px]">Действия</TableHead>
@@ -291,7 +421,11 @@ export function ExchangeRatesTab() {
               {sortedRates.map((rate) => (
                 <TableRow key={rate.id} data-testid={`row-exchange-rate-${rate.id}`}>
                   <TableCell>
-                    <Badge variant="outline">{rate.currency}</Badge>
+                    <div className="flex items-center gap-1">
+                      <Badge variant="outline">{rate.currency}</Badge>
+                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                      <Badge variant="outline">{rate.targetCurrency || "RUB"}</Badge>
+                    </div>
                   </TableCell>
                   <TableCell className="font-medium">{parseFloat(rate.rate).toFixed(4)}</TableCell>
                   <TableCell>{format(new Date(rate.rateDate), "dd.MM.yyyy", { locale: ru })}</TableCell>

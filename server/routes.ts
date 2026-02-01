@@ -31,6 +31,7 @@ import { registerExportRoutes } from "./modules/export/routes/export";
 import { registerExchangeRatesRoutes } from "./modules/exchange-rates/routes/exchange-rates";
 import { registerStorageCardsRoutes } from "./modules/storage-cards/routes/storage-cards";
 import { registerRefuelingAbroadRoutes } from "./modules/refueling-abroad/routes/refueling-abroad";
+import { registerCurrenciesRoutes } from "./modules/currencies/routes/currencies";
 import { SSEService } from "./services/sse-service";
 
 export async function registerRoutes(
@@ -85,6 +86,7 @@ export async function registerRoutes(
   registerExchangeRatesRoutes(app);
   registerStorageCardsRoutes(app);
   registerRefuelingAbroadRoutes(app);
+  registerCurrenciesRoutes(app);
 
   return httpServer;
 }

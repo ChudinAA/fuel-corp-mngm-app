@@ -28,7 +28,8 @@ export function registerExchangeRatesRoutes(app: Express) {
     async (req, res) => {
       try {
         const { currency } = req.params;
-        const rate = await storage.exchangeRates.getLatestRateByCurrency(currency);
+        const targetCurrency = String(req.query.targetCurrency || "RUB");
+        const rate = await storage.exchangeRates.getLatestRateByCurrencyPair(currency, targetCurrency);
         if (!rate) {
           return res.status(404).json({ message: "Курс не найден" });
         }
@@ -45,12 +46,14 @@ export function registerExchangeRatesRoutes(app: Express) {
     requireAuth,
     async (req, res) => {
       try {
-        const { currency, date } = req.query;
+        const { currency, date, targetCurrency } = req.query;
         if (!currency || !date) {
           return res.status(400).json({ message: "Требуется указать валюту и дату" });
         }
-        const rate = await storage.exchangeRates.getRateByDateAndCurrency(
+        const target = String(targetCurrency || "RUB");
+        const rate = await storage.exchangeRates.getRateByDateAndCurrencyPair(
           String(currency),
+          target,
           String(date)
         );
         if (!rate) {
@@ -94,6 +97,21 @@ export function registerExchangeRatesRoutes(app: Express) {
     async (req, res) => {
       try {
         const validatedData = insertExchangeRateSchema.parse(req.body);
+        
+        const baseCurrency = await storage.currencies.getCurrencyByCode(validatedData.currency);
+        if (!baseCurrency) {
+          return res.status(400).json({ message: `Валюта ${validatedData.currency} не найдена в справочнике` });
+        }
+        
+        const targetCurrency = await storage.currencies.getCurrencyByCode(validatedData.targetCurrency);
+        if (!targetCurrency) {
+          return res.status(400).json({ message: `Валюта ${validatedData.targetCurrency} не найдена в справочнике` });
+        }
+
+        if (validatedData.currency === validatedData.targetCurrency) {
+          return res.status(400).json({ message: "Базовая и целевая валюты должны отличаться" });
+        }
+        
         const data = {
           ...validatedData,
           createdById: req.session.userId,

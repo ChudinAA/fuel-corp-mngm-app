@@ -18,6 +18,7 @@ export const exchangeRates = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     currency: text("currency").notNull(),
+    targetCurrency: text("target_currency").notNull().default("RUB"),
     rate: decimal("rate", { precision: 15, scale: 6 }).notNull(),
     rateDate: date("rate_date").notNull(),
     source: text("source"),
@@ -35,6 +36,10 @@ export const exchangeRates = pgTable(
     currencyDateIdx: index("exchange_rates_currency_date_idx").on(
       table.currency,
       table.rateDate
+    ),
+    currencyPairIdx: index("exchange_rates_currency_pair_idx").on(
+      table.currency,
+      table.targetCurrency
     ),
     isActiveIdx: index("exchange_rates_is_active_idx").on(table.isActive),
   })
@@ -58,16 +63,9 @@ export const insertExchangeRateSchema = createInsertSchema(exchangeRates)
   .extend({
     rate: z.number().positive("Курс должен быть положительным"),
     rateDate: z.string(),
-    currency: z.string().min(1, "Валюта обязательна"),
+    currency: z.string().min(1, "Базовая валюта обязательна"),
+    targetCurrency: z.string().min(1, "Целевая валюта обязательна"),
   });
 
 export type ExchangeRate = typeof exchangeRates.$inferSelect;
 export type InsertExchangeRate = z.infer<typeof insertExchangeRateSchema>;
-
-export const CURRENCIES = [
-  { value: "USD", label: "Доллар США ($)" },
-  { value: "EUR", label: "Евро (€)" },
-  { value: "CNY", label: "Юань (¥)" },
-  { value: "AED", label: "Дирхам ОАЭ" },
-  { value: "TRY", label: "Турецкая лира" },
-] as const;
