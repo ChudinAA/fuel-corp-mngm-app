@@ -1,4 +1,3 @@
-
 import { z } from "zod";
 
 export const refuelingFormSchema = z.object({
@@ -6,6 +5,7 @@ export const refuelingFormSchema = z.object({
   productType: z.string().min(1, "Выберите продукт"),
   aircraftNumber: z.string().optional().nullable(),
   orderNumber: z.string().optional().nullable(),
+  flightNumber: z.string().optional().nullable(),
   supplierId: z.string().min(1, "Выберите поставщика"),
   buyerId: z.string().min(1, "Выберите покупателя"),
   warehouseId: z.string().optional().nullable(),

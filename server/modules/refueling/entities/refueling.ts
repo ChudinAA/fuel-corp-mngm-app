@@ -32,6 +32,7 @@ export const aircraftRefueling = pgTable(
     productType: text("product_type").notNull(),
     aircraftNumber: text("aircraft_number"),
     orderNumber: text("order_number"),
+    flightNumber: text("flight_number"),
     supplierId: uuid("supplier_id")
       .notNull()
       .references(() => suppliers.id),
@@ -124,7 +125,10 @@ export const aircraftRefuelingRelations = relations(
       fields: [aircraftRefueling.salePriceId],
       references: [prices.id],
     }),
-    basis: one(bases, { fields: [aircraftRefueling.basisId], references: [bases.id] }),
+    basis: one(bases, {
+      fields: [aircraftRefueling.basisId],
+      references: [bases.id],
+    }),
     customerBasis: one(bases, {
       fields: [aircraftRefueling.customerBasisId],
       references: [bases.id],

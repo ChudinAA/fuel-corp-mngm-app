@@ -4,27 +4,58 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Loader2, Plane, DollarSign, ArrowRightLeft, CalendarIcon } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Loader2,
+  Plane,
+  DollarSign,
+  ArrowRightLeft,
+  CalendarIcon,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { refuelingAbroadFormSchema, type RefuelingAbroadFormData } from "../schemas";
+import {
+  refuelingAbroadFormSchema,
+  type RefuelingAbroadFormData,
+} from "../schemas";
 import type { RefuelingAbroadFormProps } from "../types";
 import { useRefuelingAbroadCalculations } from "../hooks/use-refueling-abroad-calculations";
 import { IntermediariesSection } from "./intermediaries-section";
 import { formatCurrency, formatNumber } from "../utils";
 import { PRODUCT_TYPES_ABROAD } from "../constants";
-import type { Supplier, Customer, ExchangeRate, StorageCard } from "@shared/schema";
+import type {
+  Supplier,
+  Customer,
+  ExchangeRate,
+  StorageCard,
+} from "@shared/schema";
 
 interface IntermediaryItem {
   id?: string;
@@ -36,9 +67,14 @@ interface IntermediaryItem {
   notes: string;
 }
 
-export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadFormProps) {
+export function RefuelingAbroadForm({
+  onSuccess,
+  editData,
+}: RefuelingAbroadFormProps) {
   const { toast } = useToast();
-  const [intermediariesList, setIntermediariesList] = useState<IntermediaryItem[]>([]);
+  const [intermediariesList, setIntermediariesList] = useState<
+    IntermediaryItem[]
+  >([]);
   const isCopy = !!editData && !editData.id;
   const originalId = isCopy ? (editData as any).originalId : editData?.id;
 
@@ -62,41 +98,55 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
     queryKey: ["/api/refueling-abroad", originalId, "intermediaries"],
     queryFn: async () => {
       if (!originalId) return [];
-      const res = await fetch(`/api/refueling-abroad/${originalId}/intermediaries`);
+      const res = await fetch(
+        `/api/refueling-abroad/${originalId}/intermediaries`,
+      );
       if (!res.ok) return [];
       return res.json();
     },
     enabled: !!originalId,
   });
-  
+
   useEffect(() => {
     if (existingIntermediaries.length > 0) {
-      setIntermediariesList(existingIntermediaries.map(item => ({
-        // We omit the id when it's a copy so the server creates new intermediary records
-        id: isCopy ? undefined : item.id,
-        intermediaryId: item.intermediaryId,
-        orderIndex: item.orderIndex,
-        commissionFormula: item.commissionFormula || "",
-        commissionUsd: item.commissionUsd ? parseFloat(String(item.commissionUsd)) : null,
-        commissionRub: item.commissionRub ? parseFloat(String(item.commissionRub)) : null,
-        notes: item.notes || "",
-      })));
+      setIntermediariesList(
+        existingIntermediaries.map((item) => ({
+          // We omit the id when it's a copy so the server creates new intermediary records
+          id: isCopy ? undefined : item.id,
+          intermediaryId: item.intermediaryId,
+          orderIndex: item.orderIndex,
+          commissionFormula: item.commissionFormula || "",
+          commissionUsd: item.commissionUsd
+            ? parseFloat(String(item.commissionUsd))
+            : null,
+          commissionRub: item.commissionRub
+            ? parseFloat(String(item.commissionRub))
+            : null,
+          notes: item.notes || "",
+        })),
+      );
     }
   }, [existingIntermediaries, isCopy]);
-  
-  const foreignSuppliers = suppliers.filter(s => s.isForeign || s.isIntermediary);
-  
+
+  const foreignSuppliers = suppliers.filter(
+    (s) => s.isForeign || s.isIntermediary,
+  );
+
   const latestUsdRate = exchangeRates
-    .filter(r => r.currency === "USD" && r.isActive)
-    .sort((a, b) => new Date(b.rateDate).getTime() - new Date(a.rateDate).getTime())[0];
-  
+    .filter((r) => r.currency === "USD" && r.isActive)
+    .sort(
+      (a, b) => new Date(b.rateDate).getTime() - new Date(a.rateDate).getTime(),
+    )[0];
+
   const form = useForm<RefuelingAbroadFormData>({
     resolver: zodResolver(refuelingAbroadFormSchema),
     defaultValues: {
-      refuelingDate: editData?.refuelingDate ? new Date(editData.refuelingDate) : new Date(),
+      refuelingDate: editData?.refuelingDate
+        ? new Date(editData.refuelingDate)
+        : new Date(),
       productType: editData?.productType || PRODUCT_TYPES_ABROAD[0].value,
       aircraftNumber: editData?.aircraftNumber || "",
-      flightNumber: editData?.orderNumber || "",
+      flightNumber: editData?.flightNumber || "",
       airportCode: editData?.airport || "",
       supplierId: editData?.supplierId || "",
       buyerId: editData?.buyerId || "",
@@ -108,37 +158,48 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
       quantityKg: editData?.quantityKg?.toString() || "",
       purchasePriceUsd: editData?.purchasePriceUsd || "",
       salePriceUsd: editData?.salePriceUsd || "",
-      purchaseExchangeRateId: editData?.purchaseExchangeRateId || latestUsdRate?.id || "",
-      manualPurchaseExchangeRate: editData?.purchaseExchangeRateValue?.toString() || "",
-      saleExchangeRateId: editData?.saleExchangeRateId || latestUsdRate?.id || "",
+      purchaseExchangeRateId:
+        editData?.purchaseExchangeRateId || latestUsdRate?.id || "",
+      manualPurchaseExchangeRate:
+        editData?.purchaseExchangeRateValue?.toString() || "",
+      saleExchangeRateId:
+        editData?.saleExchangeRateId || latestUsdRate?.id || "",
       manualSaleExchangeRate: editData?.saleExchangeRateValue?.toString() || "",
       notes: editData?.notes || "",
       isApproxVolume: editData?.isApproxVolume || false,
       isDraft: editData?.isDraft || false,
     },
   });
-  
+
   const watchedValues = form.watch();
-  
-  const selectedPurchaseExchangeRate = exchangeRates.find(r => r.id === watchedValues.purchaseExchangeRateId);
-  const purchaseExchangeRate = watchedValues.manualPurchaseExchangeRate 
-    ? parseFloat(watchedValues.manualPurchaseExchangeRate) 
-    : (selectedPurchaseExchangeRate ? parseFloat(selectedPurchaseExchangeRate.rate) : 0);
-  
-  const selectedSaleExchangeRate = exchangeRates.find(r => r.id === watchedValues.saleExchangeRateId);
-  const saleExchangeRate = watchedValues.manualSaleExchangeRate 
-    ? parseFloat(watchedValues.manualSaleExchangeRate) 
-    : (selectedSaleExchangeRate ? parseFloat(selectedSaleExchangeRate.rate) : 0);
-  
+
+  const selectedPurchaseExchangeRate = exchangeRates.find(
+    (r) => r.id === watchedValues.purchaseExchangeRateId,
+  );
+  const purchaseExchangeRate = watchedValues.manualPurchaseExchangeRate
+    ? parseFloat(watchedValues.manualPurchaseExchangeRate)
+    : selectedPurchaseExchangeRate
+      ? parseFloat(selectedPurchaseExchangeRate.rate)
+      : 0;
+
+  const selectedSaleExchangeRate = exchangeRates.find(
+    (r) => r.id === watchedValues.saleExchangeRateId,
+  );
+  const saleExchangeRate = watchedValues.manualSaleExchangeRate
+    ? parseFloat(watchedValues.manualSaleExchangeRate)
+    : selectedSaleExchangeRate
+      ? parseFloat(selectedSaleExchangeRate.rate)
+      : 0;
+
   const totalIntermediaryCommissionUsd = intermediariesList.reduce(
     (sum, item) => sum + (item.commissionUsd || 0),
-    0
+    0,
   );
   const totalIntermediaryCommissionRub = intermediariesList.reduce(
     (sum, item) => sum + (item.commissionRub || 0),
-    0
+    0,
   );
-  
+
   const calculations = useRefuelingAbroadCalculations({
     inputMode: watchedValues.inputMode,
     quantityLiters: watchedValues.quantityLiters || "",
@@ -151,24 +212,34 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
     commissionFormula: "",
     manualCommissionUsd: totalIntermediaryCommissionUsd.toString(),
   });
-  
+
   const createMutation = useMutation({
     mutationFn: async (data: RefuelingAbroadFormData) => {
       const payload = {
-        refuelingDate: data.refuelingDate ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
+        refuelingDate: data.refuelingDate
+          ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss")
+          : null,
         productType: data.productType || null,
         aircraftNumber: data.aircraftNumber || null,
-        orderNumber: data.flightNumber || null,
+        flightNumber: data.flightNumber || null,
         airport: data.airportCode || null,
         country: null,
-        supplierId: (data.supplierId && data.supplierId !== "none") ? data.supplierId : null,
-        buyerId: (data.buyerId && data.buyerId !== "none") ? data.buyerId : null,
+        supplierId:
+          data.supplierId && data.supplierId !== "none"
+            ? data.supplierId
+            : null,
+        buyerId: data.buyerId && data.buyerId !== "none" ? data.buyerId : null,
         intermediaryId: null,
-        storageCardId: (data.storageCardId && data.storageCardId !== "none") ? data.storageCardId : null,
+        storageCardId:
+          data.storageCardId && data.storageCardId !== "none"
+            ? data.storageCardId
+            : null,
         intermediaryCommissionFormula: null,
         intermediaryCommissionUsd: totalIntermediaryCommissionUsd || null,
         intermediaryCommissionRub: totalIntermediaryCommissionRub || null,
-        quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
+        quantityLiters: data.quantityLiters
+          ? parseFloat(data.quantityLiters)
+          : null,
         density: data.density ? parseFloat(data.density) : null,
         quantityKg: calculations.finalKg || 0,
         currency: "USD",
@@ -177,9 +248,15 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
         saleExchangeRateId: data.saleExchangeRateId || null,
         saleExchangeRateValue: saleExchangeRate || null,
         purchasePriceUsd: calculations.purchasePrice || null,
-        purchasePriceRub: calculations.purchasePrice && purchaseExchangeRate ? calculations.purchasePrice * purchaseExchangeRate : null,
+        purchasePriceRub:
+          calculations.purchasePrice && purchaseExchangeRate
+            ? calculations.purchasePrice * purchaseExchangeRate
+            : null,
         salePriceUsd: calculations.salePrice || null,
-        salePriceRub: calculations.salePrice && saleExchangeRate ? calculations.salePrice * saleExchangeRate : null,
+        salePriceRub:
+          calculations.salePrice && saleExchangeRate
+            ? calculations.salePrice * saleExchangeRate
+            : null,
         purchaseAmountUsd: calculations.purchaseAmountUsd || null,
         saleAmountUsd: calculations.saleAmountUsd || null,
         purchaseAmountRub: calculations.purchaseAmountRub || null,
@@ -190,21 +267,29 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
         isApproxVolume: data.isApproxVolume || false,
         isDraft: data.isDraft,
       };
-      
+
       let refuelingId: string;
-      
+
       if (editData && editData.id) {
-        const response = await apiRequest("PATCH", `/api/refueling-abroad/${editData.id}`, payload);
+        const response = await apiRequest(
+          "PATCH",
+          `/api/refueling-abroad/${editData.id}`,
+          payload,
+        );
         const result = await response.json();
         refuelingId = editData.id;
       } else {
-        const response = await apiRequest("POST", "/api/refueling-abroad", payload);
+        const response = await apiRequest(
+          "POST",
+          "/api/refueling-abroad",
+          payload,
+        );
         const result = await response.json();
         refuelingId = result.id;
       }
-      
+
       const intermediariesPayload = intermediariesList
-        .filter(item => item.intermediaryId && item.intermediaryId !== "none")
+        .filter((item) => item.intermediaryId && item.intermediaryId !== "none")
         .map((item, index) => ({
           intermediaryId: item.intermediaryId,
           orderIndex: index,
@@ -213,9 +298,13 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
           commissionRub: item.commissionRub ?? null,
           notes: item.notes || null,
         }));
-      
-      await apiRequest("PUT", `/api/refueling-abroad/${refuelingId}/intermediaries`, intermediariesPayload);
-      
+
+      await apiRequest(
+        "PUT",
+        `/api/refueling-abroad/${refuelingId}/intermediaries`,
+        intermediariesPayload,
+      );
+
       return { id: refuelingId };
     },
     onSuccess: () => {
@@ -234,8 +323,11 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
 
   const isEditing = !!editData && !!editData.id;
   const isDraft = form.watch("isDraft");
-  
-  const onSubmit = (data: RefuelingAbroadFormData, isDraftOverride?: boolean) => {
+
+  const onSubmit = (
+    data: RefuelingAbroadFormData,
+    isDraftOverride?: boolean,
+  ) => {
     const finalIsDraft = isDraftOverride ?? data.isDraft;
     // Update the form state directly so validation pass or fail based on current state
     form.setValue("isDraft", finalIsDraft);
@@ -244,7 +336,10 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit((data) => onSubmit(data))} className="space-y-4">
+      <form
+        onSubmit={form.handleSubmit((data) => onSubmit(data))}
+        className="space-y-4"
+      >
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -288,7 +383,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="airportCode"
@@ -296,13 +391,18 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                 <FormItem>
                   <FormLabel>Код аэропорта</FormLabel>
                   <FormControl>
-                    <Input placeholder="JFK" {...field} value={field.value || ""} data-testid="input-airport-code" />
+                    <Input
+                      placeholder="JFK"
+                      {...field}
+                      value={field.value || ""}
+                      data-testid="input-airport-code"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="aircraftNumber"
@@ -310,12 +410,17 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                 <FormItem>
                   <FormLabel>Борт</FormLabel>
                   <FormControl>
-                    <Input placeholder="RA-12345" {...field} value={field.value || ""} data-testid="input-aircraft-number" />
+                    <Input
+                      placeholder="RA-12345"
+                      {...field}
+                      value={field.value || ""}
+                      data-testid="input-aircraft-number"
+                    />
                   </FormControl>
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="flightNumber"
@@ -323,19 +428,27 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                 <FormItem>
                   <FormLabel>Номер рейса</FormLabel>
                   <FormControl>
-                    <Input placeholder="SU-123" {...field} value={field.value || ""} data-testid="input-flight-number" />
+                    <Input
+                      placeholder="SU-123"
+                      {...field}
+                      value={field.value || ""}
+                      data-testid="input-flight-number"
+                    />
                   </FormControl>
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="productType"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Продукт</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value || ""}
+                  >
                     <FormControl>
                       <SelectTrigger data-testid="select-product-type">
                         <SelectValue placeholder="Выберите" />
@@ -353,14 +466,17 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="storageCardId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Карта хранения</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value || ""}
+                  >
                     <FormControl>
                       <SelectTrigger data-testid="select-storage-card">
                         <SelectValue placeholder="Не выбрано" />
@@ -380,7 +496,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
             />
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Контрагенты</CardTitle>
@@ -400,7 +516,9 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                     </FormControl>
                     <SelectContent>
                       {foreignSuppliers.length === 0 ? (
-                        <SelectItem value="none" disabled>Нет иностранных поставщиков</SelectItem>
+                        <SelectItem value="none" disabled>
+                          Нет иностранных поставщиков
+                        </SelectItem>
                       ) : (
                         foreignSuppliers.map((s) => (
                           <SelectItem key={s.id} value={s.id}>
@@ -414,7 +532,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="buyerId"
@@ -429,7 +547,9 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                     </FormControl>
                     <SelectContent>
                       {customers.length === 0 ? (
-                        <SelectItem value="none" disabled>Нет покупателей</SelectItem>
+                        <SelectItem value="none" disabled>
+                          Нет покупателей
+                        </SelectItem>
                       ) : (
                         customers.map((c) => (
                           <SelectItem key={c.id} value={c.id}>
@@ -445,7 +565,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
             />
           </CardContent>
         </Card>
-        
+
         <IntermediariesSection
           intermediaries={intermediariesList}
           onChange={setIntermediariesList}
@@ -454,7 +574,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
           quantity={calculations.finalKg}
           exchangeRate={saleExchangeRate}
         />
-        
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Объем топлива</CardTitle>
@@ -484,7 +604,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                 </FormItem>
               )}
             />
-            
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {watchedValues.inputMode === "liters" ? (
                 <>
@@ -493,14 +613,16 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                     name="quantityLiters"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2">Литры</FormLabel>
+                        <FormLabel className="flex items-center gap-2">
+                          Литры
+                        </FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            {...field} 
-                            value={field.value || ""} 
-                            data-testid="input-quantity-liters" 
+                          <Input
+                            type="number"
+                            step="0.01"
+                            {...field}
+                            value={field.value || ""}
+                            data-testid="input-quantity-liters"
                           />
                         </FormControl>
                       </FormItem>
@@ -511,14 +633,16 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                     name="density"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2">Плотность</FormLabel>
+                        <FormLabel className="flex items-center gap-2">
+                          Плотность
+                        </FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.001" 
-                            {...field} 
-                            value={field.value || ""} 
-                            data-testid="input-density" 
+                          <Input
+                            type="number"
+                            step="0.001"
+                            {...field}
+                            value={field.value || ""}
+                            data-testid="input-density"
                           />
                         </FormControl>
                       </FormItem>
@@ -531,21 +655,23 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                   name="quantityKg"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2">Масса (кг)</FormLabel>
+                      <FormLabel className="flex items-center gap-2">
+                        Масса (кг)
+                      </FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          step="0.01" 
-                          {...field} 
-                          value={field.value || ""} 
-                          data-testid="input-quantity-kg" 
+                        <Input
+                          type="number"
+                          step="0.01"
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-quantity-kg"
                         />
                       </FormControl>
                     </FormItem>
                   )}
                 />
               )}
-              
+
               <div>
                 <Label className="text-muted-foreground">Итого (кг)</Label>
                 <div className="h-9 px-3 flex items-center bg-muted rounded-md text-sm font-medium">
@@ -555,7 +681,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -572,19 +698,19 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                   <FormItem>
                     <FormLabel>Цена закупки ($/кг)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        step="0.0001" 
-                        {...field} 
+                      <Input
+                        type="number"
+                        step="0.0001"
+                        {...field}
                         value={field.value || ""}
-                        data-testid="input-purchase-price-usd" 
+                        data-testid="input-purchase-price-usd"
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="salePriceUsd"
@@ -592,44 +718,54 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                   <FormItem>
                     <FormLabel>Цена продажи ($/кг)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        step="0.0001" 
-                        {...field} 
+                      <Input
+                        type="number"
+                        step="0.0001"
+                        {...field}
                         value={field.value || ""}
-                        data-testid="input-sale-price-usd" 
+                        data-testid="input-sale-price-usd"
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
-              </div>
-            
+            </div>
+
             <div className="border-t pt-4 mt-4">
               <h4 className="text-sm font-medium mb-3">Курсы USD/RUB</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3">
-                  <h5 className="text-xs text-muted-foreground font-medium">Для закупки</h5>
+                  <h5 className="text-xs text-muted-foreground font-medium">
+                    Для закупки
+                  </h5>
                   <FormField
                     control={form.control}
                     name="purchaseExchangeRateId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Курс из справочника</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || ""}
+                        >
                           <FormControl>
                             <SelectTrigger data-testid="select-purchase-exchange-rate">
                               <SelectValue placeholder="Выберите курс" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {exchangeRates.filter(r => r.currency === "USD").map((rate) => (
-                              <SelectItem key={rate.id} value={rate.id}>
-                                {rate.rate} ({new Date(rate.rateDate).toLocaleDateString("ru-RU")})
-                              </SelectItem>
-                            ))}
+                            {exchangeRates
+                              .filter((r) => r.currency === "USD")
+                              .map((rate) => (
+                                <SelectItem key={rate.id} value={rate.id}>
+                                  {rate.rate} (
+                                  {new Date(rate.rateDate).toLocaleDateString(
+                                    "ru-RU",
+                                  )}
+                                  )
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                       </FormItem>
@@ -642,40 +778,53 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                       <FormItem>
                         <FormLabel>Или вручную</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            placeholder={selectedPurchaseExchangeRate?.rate || "90.00"} 
-                            {...field} 
-                            value={field.value || ""} 
-                            data-testid="input-manual-purchase-exchange-rate" 
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder={
+                              selectedPurchaseExchangeRate?.rate || "90.00"
+                            }
+                            {...field}
+                            value={field.value || ""}
+                            data-testid="input-manual-purchase-exchange-rate"
                           />
                         </FormControl>
                       </FormItem>
                     )}
                   />
                 </div>
-                
+
                 <div className="space-y-3">
-                  <h5 className="text-xs text-muted-foreground font-medium">Для продажи</h5>
+                  <h5 className="text-xs text-muted-foreground font-medium">
+                    Для продажи
+                  </h5>
                   <FormField
                     control={form.control}
                     name="saleExchangeRateId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Курс из справочника</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || ""}
+                        >
                           <FormControl>
                             <SelectTrigger data-testid="select-sale-exchange-rate">
                               <SelectValue placeholder="Выберите курс" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {exchangeRates.filter(r => r.currency === "USD").map((rate) => (
-                              <SelectItem key={rate.id} value={rate.id}>
-                                {rate.rate} ({new Date(rate.rateDate).toLocaleDateString("ru-RU")})
-                              </SelectItem>
-                            ))}
+                            {exchangeRates
+                              .filter((r) => r.currency === "USD")
+                              .map((rate) => (
+                                <SelectItem key={rate.id} value={rate.id}>
+                                  {rate.rate} (
+                                  {new Date(rate.rateDate).toLocaleDateString(
+                                    "ru-RU",
+                                  )}
+                                  )
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                       </FormItem>
@@ -688,13 +837,15 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
                       <FormItem>
                         <FormLabel>Или вручную</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.01" 
-                            placeholder={selectedSaleExchangeRate?.rate || "90.00"} 
-                            {...field} 
-                            value={field.value || ""} 
-                            data-testid="input-manual-sale-exchange-rate" 
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder={
+                              selectedSaleExchangeRate?.rate || "90.00"
+                            }
+                            {...field}
+                            value={field.value || ""}
+                            data-testid="input-manual-sale-exchange-rate"
                           />
                         </FormControl>
                       </FormItem>
@@ -705,7 +856,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -716,48 +867,86 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Закупка (USD)</Label>
-                <div className="font-medium">{formatCurrency(calculations.purchaseAmountUsd, "USD")}</div>
+                <Label className="text-xs text-muted-foreground">
+                  Закупка (USD)
+                </Label>
+                <div className="font-medium">
+                  {formatCurrency(calculations.purchaseAmountUsd, "USD")}
+                </div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Продажа (USD)</Label>
-                <div className="font-medium">{formatCurrency(calculations.saleAmountUsd, "USD")}</div>
+                <Label className="text-xs text-muted-foreground">
+                  Продажа (USD)
+                </Label>
+                <div className="font-medium">
+                  {formatCurrency(calculations.saleAmountUsd, "USD")}
+                </div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Комиссия посредников (USD)</Label>
-                <div className="font-medium" data-testid="text-intermediary-commission-usd">{formatCurrency(totalIntermediaryCommissionUsd, "USD")}</div>
+                <Label className="text-xs text-muted-foreground">
+                  Комиссия посредников (USD)
+                </Label>
+                <div
+                  className="font-medium"
+                  data-testid="text-intermediary-commission-usd"
+                >
+                  {formatCurrency(totalIntermediaryCommissionUsd, "USD")}
+                </div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Прибыль (USD)</Label>
-                <div className={`font-medium ${(calculations.profitUsd || 0) < 0 ? "text-destructive" : "text-green-600"}`}>
+                <Label className="text-xs text-muted-foreground">
+                  Прибыль (USD)
+                </Label>
+                <div
+                  className={`font-medium ${(calculations.profitUsd || 0) < 0 ? "text-destructive" : "text-green-600"}`}
+                >
                   {formatCurrency(calculations.profitUsd, "USD")}
                 </div>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Закупка (RUB)</Label>
-                <div className="font-medium">{formatCurrency(calculations.purchaseAmountRub, "RUB")}</div>
+                <Label className="text-xs text-muted-foreground">
+                  Закупка (RUB)
+                </Label>
+                <div className="font-medium">
+                  {formatCurrency(calculations.purchaseAmountRub, "RUB")}
+                </div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Продажа (RUB)</Label>
-                <div className="font-medium">{formatCurrency(calculations.saleAmountRub, "RUB")}</div>
+                <Label className="text-xs text-muted-foreground">
+                  Продажа (RUB)
+                </Label>
+                <div className="font-medium">
+                  {formatCurrency(calculations.saleAmountRub, "RUB")}
+                </div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Комиссия посредников (RUB)</Label>
-                <div className="font-medium" data-testid="text-intermediary-commission-rub">{formatCurrency(totalIntermediaryCommissionRub, "RUB")}</div>
+                <Label className="text-xs text-muted-foreground">
+                  Комиссия посредников (RUB)
+                </Label>
+                <div
+                  className="font-medium"
+                  data-testid="text-intermediary-commission-rub"
+                >
+                  {formatCurrency(totalIntermediaryCommissionRub, "RUB")}
+                </div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Прибыль (RUB)</Label>
-                <div className={`font-medium ${(calculations.profitRub || 0) < 0 ? "text-destructive" : "text-green-600"}`}>
+                <Label className="text-xs text-muted-foreground">
+                  Прибыль (RUB)
+                </Label>
+                <div
+                  className={`font-medium ${(calculations.profitRub || 0) < 0 ? "text-destructive" : "text-green-600"}`}
+                >
                   {formatCurrency(calculations.profitRub, "RUB")}
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
-        
+
         <div className="grid gap-4 md:grid-cols-2 items-end">
           <FormField
             control={form.control}
@@ -797,15 +986,13 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
             )}
           />
         </div>
-        
+
         <div className="flex justify-end gap-3 pt-4 border-t">
           {!isEditing || (editData && editData.isDraft) ? (
             <Button
               type="button"
               variant="secondary"
-              disabled={
-                createMutation.isPending
-              }
+              disabled={createMutation.isPending}
               onClick={() => {
                 form.clearErrors();
                 onSubmit(form.getValues(), true);
@@ -820,9 +1007,7 @@ export function RefuelingAbroadForm({ onSuccess, editData }: RefuelingAbroadForm
 
           <Button
             type="button"
-            disabled={
-              createMutation.isPending
-            }
+            disabled={createMutation.isPending}
             onClick={() => {
               form.handleSubmit((data) => onSubmit(data, false))();
             }}
