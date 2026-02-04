@@ -18,6 +18,7 @@ import { z } from "zod";
 import { users } from "../../users/entities/users";
 import { opt } from "../../opt/entities/opt";
 import { aircraftRefueling } from "../../refueling/entities/refueling";
+import { bases } from "@shared/schema";
 
 export const prices = pgTable("prices", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -26,6 +27,7 @@ export const prices = pgTable("prices", {
   counterpartyType: text("counterparty_type").notNull(),
   counterpartyRole: text("counterparty_role").notNull(),
   basis: text("basis").notNull(),
+  basisId: uuid("basis_id").references(() => bases.id),
   priceValues: text("price_values").array(),
   volume: decimal("volume", { precision: 15, scale: 2 }),
   dateFrom: date("date_from").notNull(),
@@ -62,6 +64,7 @@ export const pricesRelations = relations(prices, ({ many, one }) => ({
     relationName: "purchasePrice",
   }),
   refuelingSales: many(aircraftRefueling, { relationName: "salePrice" }),
+  basis: one(bases, { fields: [prices.basisId], references: [bases.id] }),
   createdBy: one(users, {
     fields: [prices.createdById],
     references: [users.id],

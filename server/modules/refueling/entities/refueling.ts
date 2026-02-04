@@ -16,7 +16,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
-import { suppliers } from "@shared/schema";
+import { bases, suppliers } from "@shared/schema";
 import { customers } from "@shared/schema";
 import {
   warehouses,
@@ -36,6 +36,9 @@ export const aircraftRefueling = pgTable(
       .notNull()
       .references(() => suppliers.id),
     basis: text("basis"),
+    customerBasis: text("customer_basis"),
+    basisId: uuid("basis_id").references(() => bases.id),
+    customerBasisId: uuid("customer_basis_id").references(() => bases.id),
     buyerId: uuid("buyer_id")
       .notNull()
       .references(() => customers.id),
@@ -120,6 +123,11 @@ export const aircraftRefuelingRelations = relations(
     salePrice: one(prices, {
       fields: [aircraftRefueling.salePriceId],
       references: [prices.id],
+    }),
+    basis: one(bases, { fields: [aircraftRefueling.basisId], references: [bases.id] }),
+    customerBasis: one(bases, {
+      fields: [aircraftRefueling.customerBasisId],
+      references: [bases.id],
     }),
     createdBy: one(users, {
       fields: [aircraftRefueling.createdById],
