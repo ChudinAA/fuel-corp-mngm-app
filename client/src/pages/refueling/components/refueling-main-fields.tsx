@@ -255,7 +255,11 @@ export function RefuelingMainFields({
                       value={field.value || selectedBasis}
                       onValueChange={(value) => {
                         field.onChange(value);
-                        setSelectedBasis(value);
+                        const base = allBases?.find((b) => b.name === value);
+                        if (base) {
+                          setSelectedBasis(value);
+                          form.setValue("basisId", base.id);
+                        }
                       }}
                       placeholder="Выберите базис"
                       dataTestId="select-basis"
@@ -352,7 +356,11 @@ export function RefuelingMainFields({
                       value={field.value || customerBasis}
                       onValueChange={(value) => {
                         field.onChange(value);
-                        setCustomerBasis(value);
+                        const base = allBases?.find((b) => b.name === value);
+                        if (base) {
+                          setCustomerBasis(value);
+                          form.setValue("customerBasisId", base.id);
+                        }
                       }}
                       placeholder="Выберите базис"
                       dataTestId="select-buyer-basis"

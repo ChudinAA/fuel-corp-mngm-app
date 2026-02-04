@@ -169,7 +169,10 @@ export function OptMainFields({
                       const base = wholesaleBases?.find(
                         (b) => b.name === value,
                       );
-                      if (base) setSelectedBasis(base.name);
+                      if (base) {
+                        setSelectedBasis(base.name);
+                        form.setValue("basisId", base.id);
+                      }
                     }}
                     placeholder="Выберите базис"
                     dataTestId="select-basis"
@@ -265,7 +268,13 @@ export function OptMainFields({
                     value={field.value || customerBasis}
                     onValueChange={(value) => {
                       field.onChange(value);
-                      setCustomerBasis(value);
+                      const base = wholesaleBases?.find(
+                        (b) => b.name === value,
+                      );
+                      if (base) {
+                        setCustomerBasis(value);
+                        form.setValue("customerBasisId", base.id);
+                      }
                     }}
                     placeholder="Выберите базис"
                     dataTestId="select-buyer-basis"

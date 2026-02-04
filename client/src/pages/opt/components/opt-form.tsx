@@ -288,7 +288,9 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         notes: editData.notes || "",
         isApproxVolume: editData.isApproxVolume || false,
         basis: editData.basis || "",
+        basisId: editData.basisId || "",
         customerBasis: editData.customerBasis || "",
+        customerBasisId: editData.customerBasisId || "",
         selectedPurchasePriceId: purchasePriceCompositeId,
         selectedSalePriceId: salePriceCompositeId,
       });
@@ -331,8 +333,10 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id
             : null,
-        basis: selectedBasis || null,
-        customerBasis: customerBasis || null,
+        basis: data.basis || null,
+        basisId: data.basisId || null,
+        customerBasis: data.customerBasis || null,
+        customerBasisId: data.customerBasisId || null,
         carrierId: data.carrierId || null,
         deliveryLocationId: data.deliveryLocationId || null,
         dealDate: data.dealDate
@@ -427,8 +431,10 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id
             : null,
-        basis: selectedBasis || null,
-        customerBasis: customerBasis || null,
+        basis: data.basis || null,
+        basisId: data.basisId || null,
+        customerBasis: data.customerBasis || null,
+        customerBasisId: data.customerBasisId || null,
         carrierId: data.carrierId || null,
         deliveryLocationId: data.deliveryLocationId || null,
         dealDate: data.dealDate

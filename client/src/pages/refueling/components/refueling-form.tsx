@@ -278,19 +278,18 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
           : 0,
       );
 
-      // Set basis from editData
-      if (editData.basis) {
-        setSelectedBasis(editData.basis);
-      }
-
       if (editData.customerBasis) {
         setCustomerBasis(editData.customerBasis);
+      }
+
+      if (editData.basis) {
+        setSelectedBasis(editData.basis);
       }
 
       if (editData.quantityLiters) {
         setInputMode("liters");
       }
-      
+
       setIsDataInitialized(true);
     }
   }, [
@@ -330,7 +329,9 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
             ? supplierWarehouse.id
             : null,
         basis: selectedBasis || null, // Use selectedBasis
+        basisId: data.basisId || null,
         customerBasis: customerBasis || null,
+        customerBasisId: data.customerBasisId || null,
         refuelingDate: data.refuelingDate
           ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss")
           : null,
@@ -412,7 +413,9 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
             ? supplierWarehouse.id
             : null,
         basis: selectedBasis || null, // Use selectedBasis
+        basisId: data.basisId || null,
         customerBasis: customerBasis || null,
+        customerBasisId: data.customerBasisId || null,
         refuelingDate: data.refuelingDate
           ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss")
           : null,
