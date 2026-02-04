@@ -130,6 +130,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     buyerId: watchBuyerId,
     dealDate: watchDealDate,
     selectedBasis,
+    customerBasis,
     carrierId: watchCarrierId,
     deliveryLocationId: watchDeliveryLocationId,
     suppliers,

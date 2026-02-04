@@ -22,6 +22,7 @@ interface UseOptFiltersProps {
   buyerId: string;
   dealDate: Date;
   selectedBasis: string;
+  customerBasis: string;
   carrierId: string;
   deliveryLocationId: string;
   suppliers: Supplier[] | undefined;
@@ -37,6 +38,7 @@ export function useOptFilters({
   buyerId,
   dealDate,
   selectedBasis,
+  customerBasis,
   carrierId,
   deliveryLocationId,
   suppliers,
@@ -87,6 +89,14 @@ export function useOptFilters({
 
         if (!buyerId || !dealDate) return true;
 
+        // Фильтрация по выбранному базису покупателя
+        if (customerBasis) {
+          const locBase = allBases?.find((b) => b.id === location.baseId);
+          if (locBase && locBase.name !== customerBasis) {
+            return false;
+          }
+        }
+
         const buyerSalePrices = locationAvailableSaleLookup.data || [];
         if (buyerSalePrices.length > 0) {
           const activeSaleBasises = new Set(
@@ -103,7 +113,7 @@ export function useOptFilters({
         return true;
       }) || []
     );
-  }, [buyerId, dealDate, allBases, locationAvailableSaleLookup.data, deliveryLocationId, deliveryLocations]);
+  }, [buyerId, dealDate, allBases, locationAvailableSaleLookup.data, deliveryLocationId, deliveryLocations, customerBasis]);
 
   const purchaseLookup = usePriceLookup({
     counterpartyId: supplierId,
@@ -138,10 +148,10 @@ export function useOptFilters({
     counterpartyId: buyerId,
     counterpartyRole: COUNTERPARTY_ROLE.BUYER,
     counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
-    basis: saleBasisName,
+    basis: customerBasis || saleBasisName,
     productType: PRODUCT_TYPE.KEROSENE,
     date: dealDate,
-    enabled: !!buyerId && !!saleBasisName && !!dealDate,
+    enabled: !!buyerId && (!!customerBasis || !!saleBasisName) && !!dealDate,
   });
 
   // Фильтрация цен покупки

@@ -44,7 +44,6 @@ export const opt = pgTable(
     ),
     dealDate: timestamp("deal_date", { mode: "string" }).notNull(),
     basis: text("basis"),
-    buyerBasis: text("buyer_basis"),
     customerBasis: text("customer_basis"),
     basisId: uuid("basis_id").references(() => bases.id),
     customerBasisId: uuid("customer_basis_id").references(() => bases.id),
