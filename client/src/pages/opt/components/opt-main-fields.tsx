@@ -31,6 +31,10 @@ interface OptMainFieldsProps {
   customers: Customer[] | undefined;
   selectedSupplier: Supplier | undefined;
   selectedBuyer: Customer | undefined;
+  selectedBasis: string;
+  setSelectedBasis: (value: string) => void;
+  customerBasis: string;
+  setCustomerBasis: (value: string) => void;
   wholesaleBases: any[];
 }
 
@@ -40,6 +44,10 @@ export function OptMainFields({
   customers,
   selectedSupplier,
   selectedBuyer,
+  selectedBasis,
+  setSelectedBasis,
+  customerBasis,
+  setCustomerBasis,
   wholesaleBases,
 }: OptMainFieldsProps) {
   const { hasPermission } = useAuth();
@@ -163,6 +171,7 @@ export function OptMainFields({
                       );
                       if (base) {
                         form.setValue("basis", base.name);
+                        setSelectedBasis(base.name);
                       }
                     }}
                     placeholder="Выберите базис"
@@ -181,7 +190,7 @@ export function OptMainFields({
             Базис Поставщика
           </label>
           <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md text-sm overflow-hidden truncate">
-            {form.watch("basis") || "—"}
+            {selectedBasis || "—"}
           </div>
         </div>
       )}
@@ -264,6 +273,7 @@ export function OptMainFields({
                       );
                       if (base) {
                         form.setValue("customerBasis", base.name);
+                        setCustomerBasis(base.name);
                       }
                     }}
                     placeholder="Выберите базис"
@@ -282,7 +292,7 @@ export function OptMainFields({
             Базис Покупателя
           </label>
           <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md text-sm overflow-hidden truncate">
-            {form.watch("customerBasis") || "—"}
+            {customerBasis || "—"}
           </div>
         </div>
       )}

@@ -19,9 +19,9 @@ export const optFormSchema = z.object({
   salePriceIndex: z.number().optional().nullable(),
   isDraft: z.boolean().default(false),
   basis: z.string().optional().nullable(),
-  basisId: z.string().uuid("Выберите базис"),
+  basisId: z.string().uuid().optional().nullable(),
   customerBasis: z.string().optional().nullable(),
-  customerBasisId: z.string().uuid("Выберите базис покупателя"),
+  customerBasisId: z.string().uuid().optional().nullable(),
 });
 
 export type OptFormData = z.infer<typeof optFormSchema>;
