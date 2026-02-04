@@ -110,6 +110,9 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
   const watchCarrierId = form.watch("carrierId");
   const watchDeliveryLocationId = form.watch("deliveryLocationId");
 
+  const watchBasisId = form.watch("basisId");
+  const watchCustomerBasisId = form.watch("customerBasisId");
+
   const selectedSupplier = suppliers?.find((s) => s.id === watchSupplierId);
   const selectedBuyer = customers?.find((c) => c.id === watchBuyerId);
   const isWarehouseSupplier = selectedSupplier?.isWarehouse || false;
@@ -129,8 +132,8 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     supplierId: watchSupplierId,
     buyerId: watchBuyerId,
     dealDate: watchDealDate,
-    selectedBasis,
-    customerBasis,
+    basisId: watchBasisId || "",
+    customerBasisId: watchCustomerBasisId || "",
     carrierId: watchCarrierId,
     deliveryLocationId: watchDeliveryLocationId,
     suppliers,
@@ -164,7 +167,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     quantityKg: watchKg,
     isWarehouseSupplier,
     supplierWarehouse,
-    selectedBasis,
+    basisId: watchBasisId || "",
     purchasePrices,
     salePrices,
     selectedPurchasePriceId,
@@ -219,6 +222,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         );
         if (base) {
           form.setValue("basis", base.name);
+          form.setValue("basisId", base.id);
           setSelectedBasis(base.name);
         }
       }
@@ -248,12 +252,16 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         (c) => c.name === editData.buyerId || c.id === editData.buyerId,
       );
 
-      if (editData.basis) {
-        setSelectedBasis(editData.basis);
+      if (editData.basisId) {
+        // Find basis name by ID
+        const base = allBases.find(b => b.id === editData.basisId);
+        if (base) setSelectedBasis(base.name);
       }
 
-      if (editData.customerBasis) {
-        setCustomerBasis(editData.customerBasis);
+      if (editData.customerBasisId) {
+        // Find basis name by ID
+        const base = allBases.find(b => b.id === editData.customerBasisId);
+        if (base) setCustomerBasis(base.name);
       }
 
       const purchasePriceCompositeId =
@@ -395,6 +403,10 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         isApproxVolume: false,
         selectedPurchasePriceId: "",
         selectedSalePriceId: "",
+        basis: "",
+        basisId: "",
+        customerBasis: "",
+        customerBasisId: "",
       });
       onSuccess?.();
     },
@@ -493,6 +505,10 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         isApproxVolume: false,
         selectedPurchasePriceId: "",
         selectedSalePriceId: "",
+        basis: "",
+        basisId: "",
+        customerBasis: "",
+        customerBasisId: "",
       });
       onSuccess?.();
     },

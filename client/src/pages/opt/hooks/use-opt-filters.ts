@@ -21,8 +21,8 @@ interface UseOptFiltersProps {
   supplierId: string;
   buyerId: string;
   dealDate: Date;
-  selectedBasis: string;
-  customerBasis: string;
+  basisId: string;
+  customerBasisId: string;
   carrierId: string;
   deliveryLocationId: string;
   suppliers: Supplier[] | undefined;
@@ -37,8 +37,8 @@ export function useOptFilters({
   supplierId,
   buyerId,
   dealDate,
-  selectedBasis,
-  customerBasis,
+  basisId,
+  customerBasisId,
   carrierId,
   deliveryLocationId,
   suppliers,
@@ -73,20 +73,20 @@ export function useOptFilters({
     counterpartyId: supplierId,
     counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
     counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
-    basis: selectedBasis,
+    basisId: basisId,
     productType: PRODUCT_TYPE.KEROSENE,
     date: dealDate,
-    enabled: !!supplierId && !!selectedBasis && !!dealDate,
+    enabled: !!supplierId && !!basisId && !!dealDate,
   });
 
   const saleLookup = usePriceLookup({
     counterpartyId: buyerId,
     counterpartyRole: COUNTERPARTY_ROLE.BUYER,
     counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
-    basis: customerBasis,
+    basisId: customerBasisId,
     productType: PRODUCT_TYPE.KEROSENE,
     date: dealDate,
-    enabled: !!buyerId && !!customerBasis && !!dealDate,
+    enabled: !!buyerId && !!customerBasisId && !!dealDate,
   });
 
   // Фильтрация цен покупки
@@ -109,9 +109,8 @@ export function useOptFilters({
         if (!buyerId || !dealDate) return true;
 
         // Фильтрация по выбранному базису покупателя
-        if (customerBasis) {
-          const locBase = allBases?.find((b) => b.id === location.baseId);
-          if (locBase && locBase.name !== customerBasis) {
+        if (customerBasisId) {
+          if (location.baseId !== customerBasisId) {
             return false;
           }
         }
@@ -119,7 +118,7 @@ export function useOptFilters({
         return true;
       }) || []
     );
-  }, [buyerId, dealDate, allBases, deliveryLocationId, deliveryLocations, customerBasis]);
+  }, [buyerId, dealDate, allBases, deliveryLocationId, deliveryLocations, customerBasisId]);
   
   // Фильтрация доступных перевозчиков
   const availableCarriers = useMemo(() => {
@@ -130,21 +129,21 @@ export function useOptFilters({
         
         if (!deliveryCosts) return true;
 
-        const base = wholesaleBases?.find((b) => b.name === selectedBasis);
+        const baseId = basisId;
         const warehouse = supplierWarehouse;
 
         const hasTariffFromSource = deliveryCosts.some(
           (dc) =>
             dc.carrierId === carrier.id &&
-            ((base &&
+            ((baseId &&
               dc.fromEntityType === DELIVERY_ENTITY_TYPE.BASE &&
-              dc.fromEntityId === base.id) ||
+              dc.fromEntityId === baseId) ||
               (warehouse &&
                 dc.fromEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE &&
                 dc.fromEntityId === warehouse.id)),
         );
 
-        if (!hasTariffFromSource && (base || warehouse)) return false;
+        if (!hasTariffFromSource && (baseId || warehouse)) return false;
 
         if (deliveryLocationId) {
           const hasTariffToDestination = deliveryCosts.some(
@@ -152,9 +151,9 @@ export function useOptFilters({
               dc.carrierId === carrier.id &&
               dc.toEntityType === DELIVERY_ENTITY_TYPE.DELIVERY_LOCATION &&
               dc.toEntityId === deliveryLocationId &&
-              ((base &&
+              ((baseId &&
                 dc.fromEntityType === DELIVERY_ENTITY_TYPE.BASE &&
-                dc.fromEntityId === base.id) ||
+                dc.fromEntityId === baseId) ||
                 (warehouse &&
                   dc.fromEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE &&
                   dc.fromEntityId === warehouse.id)),
@@ -167,7 +166,7 @@ export function useOptFilters({
     );
   }, [
     carriers,
-    selectedBasis,
+    basisId,
     deliveryCosts,
     wholesaleBases,
     supplierWarehouse,

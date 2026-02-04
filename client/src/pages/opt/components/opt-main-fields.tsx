@@ -144,7 +144,7 @@ export function OptMainFields({
       selectedSupplier.baseIds.length > 0 ? (
         <FormField
           control={form.control}
-          name="basis"
+          name="basisId"
           render={({ field }) => (
             <FormItem className="col-span-1 min-w-0">
               <FormLabel>Базис Поставщика</FormLabel>
@@ -158,20 +158,20 @@ export function OptMainFields({
                             (b) => b.id === baseId,
                           );
                           return base
-                            ? { value: base.name, label: base.name }
+                            ? { value: base.id, label: base.name }
                             : null;
                         })
                         .filter(Boolean) as any
                     }
-                    value={field.value || selectedBasis}
+                    value={field.value}
                     onValueChange={(value) => {
                       field.onChange(value);
                       const base = wholesaleBases?.find(
-                        (b) => b.name === value,
+                        (b) => b.id === value,
                       );
                       if (base) {
+                        form.setValue("basis", base.name);
                         setSelectedBasis(base.name);
-                        form.setValue("basisId", base.id);
                       }
                     }}
                     placeholder="Выберите базис"
@@ -241,7 +241,7 @@ export function OptMainFields({
       {selectedBuyer ? (
         <FormField
           control={form.control}
-          name="customerBasis"
+          name="customerBasisId"
           render={({ field }) => (
             <FormItem className="col-span-1 min-w-0">
               <FormLabel>Базис Покупателя</FormLabel>
@@ -256,24 +256,24 @@ export function OptMainFields({
                                 (b) => b.id === baseId,
                               );
                               return base
-                                ? { value: base.name, label: base.name }
+                                ? { value: base.id, label: base.name }
                                 : null;
                             })
                             .filter(Boolean) as any)
                         : (wholesaleBases || []).map((b) => ({
-                            value: b.name,
+                            value: b.id,
                             label: b.name,
                           }))
                     }
-                    value={field.value || customerBasis}
+                    value={field.value}
                     onValueChange={(value) => {
                       field.onChange(value);
                       const base = wholesaleBases?.find(
-                        (b) => b.name === value,
+                        (b) => b.id === value,
                       );
                       if (base) {
-                        setCustomerBasis(value);
-                        form.setValue("customerBasisId", base.id);
+                        form.setValue("customerBasis", base.name);
+                        setCustomerBasis(base.name);
                       }
                     }}
                     placeholder="Выберите базис"
