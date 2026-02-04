@@ -134,36 +134,31 @@ export function AddPriceDialog({
       : customers || [];
 
   // Фильтруем базисы для поставщика
-  const availableBases =
-    watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER && watchCounterpartyId
-      ? (() => {
-          const supplier = suppliers?.find((s) => s.id === watchCounterpartyId);
-          if (supplier && supplier.baseIds && supplier.baseIds.length > 0) {
-            return allBases.filter((b) => supplier.baseIds.includes(b.id));
-          }
-          return [];
-        })()
-      : allBases;
+  const availableBases = (() => {
+    const contractor = contractors?.find((s) => s.id === watchCounterpartyId);
+    if (contractor && contractor.baseIds && contractor.baseIds.length > 0) {
+      return allBases.filter((b) => contractor.baseIds.includes(b.id));
+    }
+    return allBases;
+  })();
 
   // Автоматически выбираем первый базис для поставщика
   useEffect(() => {
     if (
-      watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER &&
       watchCounterpartyId &&
       !editPrice
     ) {
-      const supplier = suppliers?.find((s) => s.id === watchCounterpartyId);
-      if (supplier && supplier.baseIds && supplier.baseIds.length > 0) {
-        const firstBase = allBases.find((b) => b.id === supplier.baseIds[0]);
+      const contractor = contractors?.find((s) => s.id === watchCounterpartyId);
+      if (contractor && contractor.baseIds && contractor.baseIds.length > 0) {
+        const firstBase = allBases.find((b) => b.id === contractor.baseIds[0]);
         if (firstBase && !watchBasis) {
           form.setValue("basis", firstBase.name);
         }
       }
     }
   }, [
-    watchCounterpartyRole,
     watchCounterpartyId,
-    suppliers,
+    contractors,
     allBases,
     form,
     watchBasis,

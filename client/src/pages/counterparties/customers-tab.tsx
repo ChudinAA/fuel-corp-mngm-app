@@ -29,6 +29,7 @@ import { AddCustomerDialog } from "./customers-dialog";
 import type { Base, Customer } from "@shared/schema";
 import { CUSTOMER_MODULE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
+import { BaseTypeBadge } from "@/components/base-type-badge";
 
 export function CustomersTab() {
   const [search, setSearch] = useState("");
@@ -129,9 +130,7 @@ export function CustomersTab() {
                   <TableRow>
                     <TableHead>Название</TableHead>
                     <TableHead>Модуль</TableHead>
-                    <TableHead>Контактное лицо</TableHead>
-                    <TableHead>Телефон</TableHead>
-                    <TableHead>Email</TableHead>
+                    <TableHead>Базисы</TableHead>
                     <TableHead>Статус</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
@@ -165,14 +164,29 @@ export function CustomersTab() {
                                 : "Общий"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {item.contactPerson || "—"}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {item.phone || "—"}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {item.email || "—"}
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1.5">
+                            {item.baseIds && item.baseIds.length > 0 ? (
+                              item.baseIds.map((baseId) => {
+                                const base = bases.find((b) => b.id === baseId);
+                                if (!base) return null;
+                                return (
+                                  <div
+                                    key={baseId}
+                                    className="flex items-center gap-1"
+                                  >
+                                    <span className="text-sm">{base.name}</span>
+                                    <BaseTypeBadge
+                                      type={base.baseType}
+                                      short={true}
+                                    />
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <span>—</span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           {item.isActive ? (
