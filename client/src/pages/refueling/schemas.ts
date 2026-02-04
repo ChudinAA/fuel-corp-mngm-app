@@ -10,6 +10,7 @@ export const refuelingFormSchema = z.object({
   buyerId: z.string().min(1, "Выберите покупателя"),
   warehouseId: z.string().optional().nullable(),
   basis: z.string().min(1, "Выберите базис"),
+  customerBasis: z.string().optional().nullable(),
   inputMode: z.enum(["liters", "kg"]),
   quantityLiters: z.string().optional().nullable(),
   density: z.string().optional().nullable(),

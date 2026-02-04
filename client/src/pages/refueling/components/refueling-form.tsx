@@ -41,6 +41,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
   const [selectedBasis, setSelectedBasis] = useState<string>("");
+  const [customerBasis, setCustomerBasis] = useState<string>("");
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
     useState<string>("");
   const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
@@ -70,6 +71,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       selectedPurchasePriceId: "",
       selectedSalePriceId: "",
       basis: editData?.basis || "",
+      customerBasis: editData?.customerBasis || "",
     },
   });
 
@@ -98,18 +100,24 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   const watchProductType = form.watch("productType");
 
   const selectedSupplier = suppliers?.find((s) => s.id === watchSupplierId);
+  const selectedBuyer = customers?.find((c) => c.id === watchBuyerId);
   const isWarehouseSupplier = selectedSupplier?.isWarehouse || false;
   const supplierWarehouse = warehouses?.find(
     (w) => w.supplierId === watchSupplierId,
   );
 
   // Use filtering hook
-  const { refuelingSuppliers, availableBases, purchasePrices, salePrices } =
-    useRefuelingFilters({
+  const { 
+    refuelingSuppliers, 
+    availableBases, 
+    purchasePrices, 
+    salePrices 
+  } = useRefuelingFilters({
       supplierId: watchSupplierId,
       buyerId: watchBuyerId,
       refuelingDate: watchRefuelingDate,
       selectedBasis,
+      customerBasis,
       productType: watchProductType,
       suppliers,
       allBases,
@@ -275,6 +283,10 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         setSelectedBasis(editData.basis);
       }
 
+      if (editData.customerBasis) {
+        setCustomerBasis(editData.customerBasis);
+      }
+
       if (editData.quantityLiters) {
         setInputMode("liters");
       }
@@ -318,6 +330,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
             ? supplierWarehouse.id
             : null,
         basis: selectedBasis || null, // Use selectedBasis
+        customerBasis: customerBasis || null,
         refuelingDate: data.refuelingDate
           ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss")
           : null,
@@ -362,6 +375,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
       setSelectedBasis("");
+      setCustomerBasis("");
       onSuccess?.();
     },
     onError: (error: Error) => {
@@ -398,6 +412,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
             ? supplierWarehouse.id
             : null,
         basis: selectedBasis || null, // Use selectedBasis
+        customerBasis: customerBasis || null,
         refuelingDate: data.refuelingDate
           ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss")
           : null,
@@ -446,6 +461,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
       setSelectedBasis("");
+      setCustomerBasis("");
       onSuccess?.();
     },
     onError: (error: Error) => {
@@ -567,8 +583,11 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
             refuelingSuppliers={refuelingSuppliers}
             customers={customers}
             selectedSupplier={selectedSupplier}
+            selectedBuyer={selectedBuyer}
             selectedBasis={selectedBasis}
             setSelectedBasis={setSelectedBasis}
+            customerBasis={customerBasis}
+            setCustomerBasis={setCustomerBasis}
             availableBases={availableBases}
             allBases={allBases}
           />
