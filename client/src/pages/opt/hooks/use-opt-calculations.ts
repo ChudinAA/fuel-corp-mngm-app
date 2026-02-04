@@ -14,7 +14,7 @@ interface UseOptCalculationsProps {
   quantityKg: string;
   isWarehouseSupplier: boolean;
   supplierWarehouse: Warehouse | undefined;
-  selectedBasis: string;
+  basisId: string;
   purchasePrices: Price[];
   salePrices: Price[];
   selectedPurchasePriceId: string;
@@ -35,7 +35,7 @@ export function useOptCalculations({
   quantityKg,
   isWarehouseSupplier,
   supplierWarehouse,
-  selectedBasis,
+  basisId,
   purchasePrices,
   salePrices,
   selectedPurchasePriceId,
@@ -64,7 +64,7 @@ export function useOptCalculations({
     dealDate,
     isEditing,
     editQuantityKg: initialQuantityKg.toString(),
-    initialCurrentBalance: supplierWarehouse?.currentBalance,
+    initialCurrentBalance: supplierWarehouse?.currentBalance ?? "0",
   });
 
   const { purchasePrice: extractedPurchasePrice, salePrice: extractedSalePrice } = usePriceExtraction({
@@ -97,7 +97,7 @@ export function useOptCalculations({
       return null;
     }
 
-    const base = bases?.find((b) => b.name === selectedBasis);
+    const baseId = basisId;
     const warehouse = supplierWarehouse;
 
     const cost = deliveryCosts.find((dc) => {
@@ -114,9 +114,9 @@ export function useOptCalculations({
       ) {
         matchesSource = true;
       } else if (
-        base &&
+        baseId &&
         dc.fromEntityType === DELIVERY_ENTITY_TYPE.BASE &&
-        dc.fromEntityId === base.id
+        dc.fromEntityId === baseId
       ) {
         matchesSource = true;
       }
@@ -137,7 +137,7 @@ export function useOptCalculations({
     deliveryCosts,
     finalKg,
     bases,
-    selectedBasis,
+    basisId,
     supplierWarehouse,
   ]);
 
