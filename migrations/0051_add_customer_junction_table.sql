@@ -1,7 +1,11 @@
 -- Add basis_id to prices
 ALTER TABLE "prices" ADD COLUMN IF NOT EXISTS "basis_id" uuid REFERENCES "bases"("id");
 
--- Add fields to aircraft_refueling
+-- Add flight_number fields to refueling 
+ALTER TABLE "aircraft_refueling" ADD COLUMN IF NOT EXISTS "flight_number" text;
+ALTER TABLE "refueling_abroad" ADD COLUMN IF NOT EXISTS "flight_number" text;
+
+-- Add fields to aircraft_refueling flight_number
 ALTER TABLE "aircraft_refueling" ADD COLUMN IF NOT EXISTS "customer_basis" text;
 ALTER TABLE "aircraft_refueling" ADD COLUMN IF NOT EXISTS "basis_id" uuid REFERENCES "bases"("id");
 ALTER TABLE "aircraft_refueling" ADD COLUMN IF NOT EXISTS "customer_basis_id" uuid REFERENCES "bases"("id");
