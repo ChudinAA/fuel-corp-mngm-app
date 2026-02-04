@@ -235,47 +235,58 @@ export function OptMainFields({
         )}
       />
 
-      <FormField
-        control={form.control}
-        name="customerBasis"
-        render={({ field }) => (
-          <FormItem className="col-span-1 min-w-0">
-            <FormLabel>Базис Покупателя</FormLabel>
-            <FormControl>
-              <div className="w-full">
-                <Combobox
-                  options={
-                    selectedBuyer?.baseIds && selectedBuyer.baseIds.length > 0
-                      ? (selectedBuyer.baseIds
-                          .map((baseId) => {
-                            const base = wholesaleBases?.find(
-                              (b) => b.id === baseId,
-                            );
-                            return base
-                              ? { value: base.name, label: base.name }
-                              : null;
-                          })
-                          .filter(Boolean) as any)
-                      : (wholesaleBases || []).map((b) => ({
-                          value: b.name,
-                          label: b.name,
-                        }))
-                  }
-                  value={field.value || customerBasis}
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    setCustomerBasis(value);
-                  }}
-                  placeholder="Выберите базис"
-                  dataTestId="select-buyer-basis"
-                  className="w-full"
-                />
-              </div>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {selectedBuyer ? (
+        <FormField
+          control={form.control}
+          name="customerBasis"
+          render={({ field }) => (
+            <FormItem className="col-span-1 min-w-0">
+              <FormLabel>Базис Покупателя</FormLabel>
+              <FormControl>
+                <div className="w-full">
+                  <Combobox
+                    options={
+                      selectedBuyer?.baseIds && selectedBuyer.baseIds.length > 0
+                        ? (selectedBuyer.baseIds
+                            .map((baseId) => {
+                              const base = wholesaleBases?.find(
+                                (b) => b.id === baseId,
+                              );
+                              return base
+                                ? { value: base.name, label: base.name }
+                                : null;
+                            })
+                            .filter(Boolean) as any)
+                        : (wholesaleBases || []).map((b) => ({
+                            value: b.name,
+                            label: b.name,
+                          }))
+                    }
+                    value={field.value || customerBasis}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      setCustomerBasis(value);
+                    }}
+                    placeholder="Выберите базис"
+                    dataTestId="select-buyer-basis"
+                    className="w-full"
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      ) : (
+        <div className="space-y-2 col-span-1 min-w-0">
+          <label className="text-sm font-medium flex items-center h-6">
+            Базис Покупателя
+          </label>
+          <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md text-sm overflow-hidden truncate">
+            {customerBasis || "—"}
+          </div>
+        </div>
+      )}
 
       <AddSupplierDialog
         bases={wholesaleBases}

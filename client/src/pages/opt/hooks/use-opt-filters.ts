@@ -69,16 +69,35 @@ export function useOptFilters({
     return allBases?.filter((b) => b.baseType === BASE_TYPE.WHOLESALE) || [];
   }, [allBases]);
 
-  // Все возможные цены на текущую дату для выбранного Покупателя
-  const locationAvailableSaleLookup = usePriceLookup({
+  const purchaseLookup = usePriceLookup({
+    counterpartyId: supplierId,
+    counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
+    counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
+    basis: selectedBasis,
+    productType: PRODUCT_TYPE.KEROSENE,
+    date: dealDate,
+    enabled: !!supplierId && !!selectedBasis && !!dealDate,
+  });
+
+  const saleLookup = usePriceLookup({
     counterpartyId: buyerId,
     counterpartyRole: COUNTERPARTY_ROLE.BUYER,
     counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
-    basis: null,
+    basis: customerBasis,
     productType: PRODUCT_TYPE.KEROSENE,
     date: dealDate,
-    enabled: !!buyerId && !!dealDate,
+    enabled: !!buyerId && !!customerBasis && !!dealDate,
   });
+
+  // Фильтрация цен покупки
+  const purchasePrices = useMemo(() => {
+    return purchaseLookup.data || [];
+  }, [purchaseLookup.data]);
+
+  // Фильтрация цен продажи
+  const salePrices = useMemo(() => {
+    return saleLookup.data || [];
+  }, [saleLookup.data]);
 
   // Фильтрация доступных мест доставки
   const availableLocations = useMemo(() => {
@@ -97,73 +116,11 @@ export function useOptFilters({
           }
         }
 
-        const buyerSalePrices = locationAvailableSaleLookup.data || [];
-        if (buyerSalePrices.length > 0) {
-          const activeSaleBasises = new Set(
-            buyerSalePrices.map((p) => p.basis),
-          );
-          if (location.baseId) {
-            const locBase = allBases?.find((b) => b.id === location.baseId);
-            if (locBase && !activeSaleBasises.has(locBase.name)) {
-              return false;
-            }
-          }
-        }
-
         return true;
       }) || []
     );
-  }, [buyerId, dealDate, allBases, locationAvailableSaleLookup.data, deliveryLocationId, deliveryLocations, customerBasis]);
-
-  const purchaseLookup = usePriceLookup({
-    counterpartyId: supplierId,
-    counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
-    counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
-    basis: selectedBasis,
-    productType: PRODUCT_TYPE.KEROSENE,
-    date: dealDate,
-    enabled: !!supplierId && !!selectedBasis && !!dealDate,
-  });
-
-  // Определяем базис для фильтрации цен продажи
-  const saleBasisName = useMemo(() => {
-    let name = selectedBasis;
-    if (deliveryLocationId && deliveryLocations && allBases) {
-      const selectedLocation = deliveryLocations.find(
-        (loc) => loc.id === deliveryLocationId,
-      );
-      if (selectedLocation?.baseId) {
-        const locationBase = allBases.find(
-          (b) => b.id === selectedLocation.baseId,
-        );
-        if (locationBase) {
-          name = locationBase.name;
-        }
-      }
-    }
-    return name;
-  }, [selectedBasis, deliveryLocationId, deliveryLocations, allBases]);
-
-  const saleLookup = usePriceLookup({
-    counterpartyId: buyerId,
-    counterpartyRole: COUNTERPARTY_ROLE.BUYER,
-    counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
-    basis: customerBasis || saleBasisName,
-    productType: PRODUCT_TYPE.KEROSENE,
-    date: dealDate,
-    enabled: !!buyerId && (!!customerBasis || !!saleBasisName) && !!dealDate,
-  });
-
-  // Фильтрация цен покупки
-  const purchasePrices = useMemo(() => {
-    return purchaseLookup.data || [];
-  }, [purchaseLookup.data]);
-
-  // Фильтрация цен продажи
-  const salePrices = useMemo(() => {
-    return saleLookup.data || [];
-  }, [saleLookup.data]);
-
+  }, [buyerId, dealDate, allBases, deliveryLocationId, deliveryLocations, customerBasis]);
+  
   // Фильтрация доступных перевозчиков
   const availableCarriers = useMemo(() => {
     return (
