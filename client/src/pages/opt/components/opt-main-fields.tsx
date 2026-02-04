@@ -30,8 +30,11 @@ interface OptMainFieldsProps {
   wholesaleSuppliers: Supplier[];
   customers: Customer[] | undefined;
   selectedSupplier: Supplier | undefined;
+  selectedBuyer: Customer | undefined;
   selectedBasis: string;
   setSelectedBasis: (value: string) => void;
+  buyerBasis: string;
+  setBuyerBasis: (value: string) => void;
   wholesaleBases: any[];
 }
 
@@ -40,8 +43,11 @@ export function OptMainFields({
   wholesaleSuppliers,
   customers,
   selectedSupplier,
+  selectedBuyer,
   selectedBasis,
   setSelectedBasis,
+  buyerBasis,
+  setBuyerBasis,
   wholesaleBases,
 }: OptMainFieldsProps) {
   const { hasPermission } = useAuth();
@@ -229,14 +235,47 @@ export function OptMainFields({
         )}
       />
 
-      <div className="space-y-2 col-span-1 min-w-0">
-        <label className="text-sm font-medium flex items-center h-6">
-          Базис Покупателя
-        </label>
-        <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md text-sm overflow-hidden truncate">
-          {selectedBasis || "—"}
-        </div>
-      </div>
+      <FormField
+        control={form.control}
+        name="buyerBasis"
+        render={({ field }) => (
+          <FormItem className="col-span-1 min-w-0">
+            <FormLabel>Базис Покупателя</FormLabel>
+            <FormControl>
+              <div className="w-full">
+                <Combobox
+                  options={
+                    selectedBuyer?.baseIds && selectedBuyer.baseIds.length > 0
+                      ? (selectedBuyer.baseIds
+                          .map((baseId) => {
+                            const base = wholesaleBases?.find(
+                              (b) => b.id === baseId,
+                            );
+                            return base
+                              ? { value: base.name, label: base.name }
+                              : null;
+                          })
+                          .filter(Boolean) as any)
+                      : (wholesaleBases || []).map((b) => ({
+                          value: b.name,
+                          label: b.name,
+                        }))
+                  }
+                  value={field.value || buyerBasis}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    setBuyerBasis(value);
+                  }}
+                  placeholder="Выберите базис"
+                  dataTestId="select-buyer-basis"
+                  className="w-full"
+                />
+              </div>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
       <AddSupplierDialog
         bases={wholesaleBases}
