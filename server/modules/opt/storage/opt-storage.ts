@@ -63,6 +63,7 @@ export class OptStorage {
             sql`${suppliers.name} ILIKE ${searchPattern}`,
             sql`${customers.name} ILIKE ${searchPattern}`,
             sql`${opt.basis}::text ILIKE ${searchPattern}`,
+            sql`${opt.customerBasis}::text ILIKE ${searchPattern}`,
             sql`${opt.notes}::text ILIKE ${searchPattern}`,
             sql`${logisticsCarriers.name}::text ILIKE ${searchPattern}`,
             sql`${logisticsDeliveryLocations.name}::text ILIKE ${searchPattern}`,
@@ -319,7 +320,7 @@ export class OptStorage {
     dealDate: string;
     supplierId: string;
     buyerId: string;
-    basis?: string | null;
+    basisId?: string | null;
     deliveryLocationId?: string | null;
     quantityKg: number;
   }): Promise<boolean> {
@@ -328,7 +329,7 @@ export class OptStorage {
         sql`DATE(${opt.dealDate}) = DATE(${data.dealDate})`,
         eq(opt.supplierId, data.supplierId),
         eq(opt.buyerId, data.buyerId),
-        data.basis ? eq(opt.basis, data.basis) : isNull(opt.basis),
+        data.basisId ? eq(opt.basisId, data.basisId) : isNull(opt.basisId),
         data.deliveryLocationId
           ? eq(opt.deliveryLocationId, data.deliveryLocationId)
           : isNull(opt.deliveryLocationId),

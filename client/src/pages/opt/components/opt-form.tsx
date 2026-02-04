@@ -43,8 +43,6 @@ import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-di
 export function OptForm({ onSuccess, editData }: OptFormProps) {
   const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
-  const [selectedBasis, setSelectedBasis] = useState<string>("");
-  const [customerBasis, setCustomerBasis] = useState<string>("");
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
     useState<string>("");
   const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
@@ -194,7 +192,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       date: watchDealDate,
       supplierId: watchSupplierId,
       buyerId: watchBuyerId,
-      basis: selectedBasis,
+      basis: form.getValues("basis"),
       deliveryLocationId: watchDeliveryLocationId,
       quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
     }),
@@ -223,7 +221,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         if (base) {
           form.setValue("basis", base.name);
           form.setValue("basisId", base.id);
-          setSelectedBasis(base.name);
         }
       }
     }
@@ -255,13 +252,11 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       if (editData.basisId) {
         // Find basis name by ID
         const base = allBases.find(b => b.id === editData.basisId);
-        if (base) setSelectedBasis(base.name);
       }
 
       if (editData.customerBasisId) {
         // Find basis name by ID
         const base = allBases.find(b => b.id === editData.customerBasisId);
-        if (base) setCustomerBasis(base.name);
       }
 
       const purchasePriceCompositeId =
@@ -387,8 +382,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       });
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
-      setSelectedBasis("");
-      setCustomerBasis("");
       form.reset({
         dealDate: new Date(),
         supplierId: "",
@@ -489,8 +482,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       });
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
-      setSelectedBasis("");
-      setCustomerBasis("");
       form.reset({
         dealDate: new Date(),
         supplierId: "",
@@ -640,10 +631,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
             customers={customers}
             selectedSupplier={selectedSupplier}
             selectedBuyer={selectedBuyer}
-            selectedBasis={selectedBasis}
-            setSelectedBasis={setSelectedBasis}
-            customerBasis={customerBasis}
-            setCustomerBasis={setCustomerBasis}
             wholesaleBases={wholesaleBases}
           />
 
