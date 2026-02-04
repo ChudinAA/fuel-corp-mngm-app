@@ -73,7 +73,7 @@ export function RefuelingMainFields({
 
   return (
     <>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <FormField
           control={form.control}
           name="refuelingDate"
@@ -169,9 +169,27 @@ export function RefuelingMainFields({
             </FormItem>
           )}
         />
+
+        <FormField
+          control={form.control}
+          name="flightNumber"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Номер рейса</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="SU-123"
+                  data-testid="input-order-number"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <FormField
           control={form.control}
           name="supplierId"
@@ -182,7 +200,10 @@ export function RefuelingMainFields({
                 <FormControl>
                   <div className="flex-1 min-w-0">
                     <Combobox
-                      options={refuelingSuppliers.map(s => ({ value: s.id, label: s.name }))}
+                      options={refuelingSuppliers.map((s) => ({
+                        value: s.id,
+                        label: s.name,
+                      }))}
                       value={field.value}
                       onValueChange={field.onChange}
                       placeholder="Выберите поставщика"
@@ -209,6 +230,48 @@ export function RefuelingMainFields({
           )}
         />
 
+        {selectedSupplier &&
+        selectedSupplier.baseIds &&
+        selectedSupplier.baseIds.length > 0 ? (
+          <FormField
+            control={form.control}
+            name="basis"
+            render={({ field }) => (
+              <FormItem className="col-span-1 min-w-0">
+                <FormLabel>Базис Поставщика</FormLabel>
+                <FormControl>
+                  <div className="w-full">
+                    <Combobox
+                      options={availableBases.map((base) => ({
+                        value: base.name,
+                        label: base.name,
+                      }))}
+                      value={field.value || selectedBasis}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        setSelectedBasis(value);
+                      }}
+                      placeholder="Выберите базис"
+                      dataTestId="select-basis"
+                      className="w-full"
+                    />
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : (
+          <div className="space-y-2 col-span-1 min-w-0">
+            <label className="text-sm font-medium flex items-center h-6">
+              Базис Поставщика
+            </label>
+            <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md text-sm overflow-hidden truncate">
+              {selectedBasis || "—"}
+            </div>
+          </div>
+        )}
+
         <FormField
           control={form.control}
           name="buyerId"
@@ -225,7 +288,7 @@ export function RefuelingMainFields({
                             c.module === CUSTOMER_MODULE.REFUELING ||
                             c.module === CUSTOMER_MODULE.BOTH,
                         )
-                        .map(c => ({ value: c.id, label: c.name }))}
+                        .map((c) => ({ value: c.id, label: c.name }))}
                       value={field.value}
                       onValueChange={field.onChange}
                       placeholder="Выберите покупателя"
@@ -252,47 +315,14 @@ export function RefuelingMainFields({
           )}
         />
 
-        {selectedSupplier &&
-        selectedSupplier.baseIds &&
-        selectedSupplier.baseIds.length > 0 ? (
-          <FormField
-            control={form.control}
-            name="basis"
-            render={({ field }) => (
-              <FormItem className="col-span-1 min-w-0">
-                <FormLabel>Базис</FormLabel>
-                <FormControl>
-                  <div className="w-full">
-                    <Combobox
-                      options={availableBases.map((base) => ({
-                        value: base.name,
-                        label: base.name
-                      }))}
-                      value={field.value || selectedBasis}
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        setSelectedBasis(value);
-                      }}
-                      placeholder="Выберите базис"
-                      dataTestId="select-basis"
-                      className="w-full"
-                    />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        ) : (
-          <div className="space-y-2 col-span-1 min-w-0">
-            <label className="text-sm font-medium flex items-center h-6">
-              Базис
-            </label>
-            <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md text-sm overflow-hidden truncate">
-              {selectedBasis || "—"}
-            </div>
+        <div className="space-y-2 col-span-1 min-w-0">
+          <label className="text-sm font-medium flex items-center h-6">
+            Базис Покупателя
+          </label>
+          <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md text-sm overflow-hidden truncate">
+            {selectedBasis || "—"}
           </div>
-        )}
+        </div>
       </div>
 
       <AddSupplierDialog

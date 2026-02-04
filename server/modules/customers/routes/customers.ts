@@ -15,7 +15,7 @@ export function registerCustomersRoutes(app: Express) {
       const module = req.query.module as string | undefined;
       const data = await storage.customers.getAllCustomers(module);
       res.json(data);
-    }
+    },
   );
 
   app.get(
@@ -29,7 +29,7 @@ export function registerCustomersRoutes(app: Express) {
         return res.status(404).json({ message: "Покупатель не найден" });
       }
       res.json(customer);
-    }
+    },
   );
 
   app.post(
@@ -43,11 +43,19 @@ export function registerCustomersRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
+        const { baseIds, ...restData } = req.body;
+
+        // Ensure baseIds is an array
+        const normalizedBaseIds = Array.isArray(baseIds) ? baseIds : [];
+
         const data = insertCustomerSchema.parse({
-          ...req.body,
+          ...restData,
           createdById: req.session.userId,
         });
-        const item = await storage.customers.createCustomer(data);
+        const item = await storage.customers.createCustomer({
+          ...data,
+          baseIds: normalizedBaseIds,
+        });
         res.status(201).json(item);
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -58,7 +66,7 @@ export function registerCustomersRoutes(app: Express) {
         }
         res.status(500).json({ message: "Ошибка создания покупателя" });
       }
-    }
+    },
   );
 
   app.patch(
@@ -76,10 +84,19 @@ export function registerCustomersRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        const item = await storage.customers.updateCustomer(id, {
-          ...req.body,
+        const { baseIds, ...restData } = req.body;
+
+        const updateData: any = {
+          ...restData,
           updatedById: req.session.userId,
-        });
+        };
+
+        // Include baseIds if provided
+        if (baseIds !== undefined) {
+          updateData.baseIds = Array.isArray(baseIds) ? baseIds : [];
+        }
+
+        const item = await storage.customers.updateCustomer(id, updateData);
         if (!item) {
           return res.status(404).json({ message: "Покупатель не найден" });
         }
@@ -87,7 +104,7 @@ export function registerCustomersRoutes(app: Express) {
       } catch (error) {
         res.status(500).json({ message: "Ошибка обновления покупателя" });
       }
-    }
+    },
   );
 
   app.delete(
@@ -109,6 +126,6 @@ export function registerCustomersRoutes(app: Express) {
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления покупателя" });
       }
-    }
+    },
   );
 }

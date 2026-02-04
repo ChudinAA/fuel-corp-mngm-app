@@ -2,18 +2,31 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
 import { Pencil, Trash2, Search, Users, History } from "lucide-react";
 import { AddCustomerDialog } from "./customers-dialog";
-import type { Customer } from "@shared/schema";
+import type { Base, Customer } from "@shared/schema";
 import { CUSTOMER_MODULE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -21,13 +34,19 @@ export function CustomersTab() {
   const [search, setSearch] = useState("");
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(
+    null,
+  );
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
   const { hasPermission } = useAuth();
 
   const { data: customers, isLoading } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
+  });
+
+  const { data: bases = [] } = useQuery<Base[]>({
+    queryKey: ["/api/bases"],
   });
 
   const deleteMutation = useMutation({
@@ -37,16 +56,24 @@ export function CustomersTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      toast({ title: "Покупатель удален", description: "Покупатель успешно удален из справочника" });
+      toast({
+        title: "Покупатель удален",
+        description: "Покупатель успешно удален из справочника",
+      });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
-  const filteredItems = customers?.filter(item => 
-    item.name.toLowerCase().includes(search.toLowerCase())
-  ) || [];
+  const filteredItems =
+    customers?.filter((item) =>
+      item.name.toLowerCase().includes(search.toLowerCase()),
+    ) || [];
 
   return (
     <Card>
@@ -55,23 +82,29 @@ export function CustomersTab() {
           <Users className="h-5 w-5" />
           Справочник Покупатели
         </CardTitle>
-        <CardDescription>Единый справочник покупателей для ОПТ и Заправки ВС</CardDescription>
+        <CardDescription>
+          Единый справочник покупателей для ОПТ и Заправки ВС
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Поиск..." 
-                value={search} 
-                onChange={(e) => setSearch(e.target.value)} 
-                className="pl-9" 
-                data-testid="input-search-customers" 
+              <Input
+                placeholder="Поиск..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+                data-testid="input-search-customers"
               />
             </div>
             {hasPermission("directories", "create") && (
-              <AddCustomerDialog editCustomer={editingCustomer} onEditComplete={() => setEditingCustomer(null)} />
+              <AddCustomerDialog
+                bases={bases}
+                editCustomer={editingCustomer}
+                onEditComplete={() => setEditingCustomer(null)}
+              />
             )}
             <Button
               variant="outline"
@@ -85,7 +118,9 @@ export function CustomersTab() {
 
           {isLoading ? (
             <div className="space-y-2">
-              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
             </div>
           ) : (
             <div className="border rounded-lg">
@@ -104,28 +139,56 @@ export function CustomersTab() {
                 <TableBody>
                   {filteredItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell
+                        colSpan={7}
+                        className="text-center py-8 text-muted-foreground"
+                      >
                         <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
                         Нет данных
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredItems.map((item) => (
-                      <TableRow key={item.id} data-testid={`row-customer-${item.id}`}>
-                        <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableRow
+                        key={item.id}
+                        data-testid={`row-customer-${item.id}`}
+                      >
+                        <TableCell className="font-medium">
+                          {item.name}
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {item.module === CUSTOMER_MODULE.WHOLESALE ? "ОПТ" : item.module === CUSTOMER_MODULE.REFUELING ? "Заправка" : "Общий"}
+                            {item.module === CUSTOMER_MODULE.WHOLESALE
+                              ? "ОПТ"
+                              : item.module === CUSTOMER_MODULE.REFUELING
+                                ? "Заправка"
+                                : "Общий"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">{item.contactPerson || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{item.phone || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{item.email || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {item.contactPerson || "—"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {item.phone || "—"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {item.email || "—"}
+                        </TableCell>
                         <TableCell>
                           {item.isActive ? (
-                            <Badge variant="outline" className="text-green-600 border-green-600">Активен</Badge>
+                            <Badge
+                              variant="outline"
+                              className="text-green-600 border-green-600"
+                            >
+                              Активен
+                            </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-muted-foreground">Неактивен</Badge>
+                            <Badge
+                              variant="outline"
+                              className="text-muted-foreground"
+                            >
+                              Неактивен
+                            </Badge>
                           )}
                         </TableCell>
                         <TableCell>
@@ -136,7 +199,10 @@ export function CustomersTab() {
                                 label: "Редактировать",
                                 icon: Pencil,
                                 onClick: () => setEditingCustomer(item),
-                                permission: { module: "directories", action: "edit" },
+                                permission: {
+                                  module: "directories",
+                                  action: "edit",
+                                },
                               },
                               {
                                 id: "delete",
@@ -147,7 +213,10 @@ export function CustomersTab() {
                                   setDeleteDialogOpen(true);
                                 },
                                 variant: "destructive" as const,
-                                permission: { module: "directories", action: "delete" },
+                                permission: {
+                                  module: "directories",
+                                  action: "delete",
+                                },
                                 separatorAfter: true,
                               },
                             ]}
@@ -167,11 +236,11 @@ export function CustomersTab() {
           )}
         </div>
 
-        <AuditPanel 
-          open={auditPanelOpen} 
-          onOpenChange={setAuditPanelOpen} 
-          entityType="customers" 
-          entityId="" 
+        <AuditPanel
+          open={auditPanelOpen}
+          onOpenChange={setAuditPanelOpen}
+          entityType="customers"
+          entityId=""
         />
       </CardContent>
 

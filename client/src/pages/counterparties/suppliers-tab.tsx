@@ -54,17 +54,6 @@ export function SuppliersTab() {
     s.name.toLowerCase().includes(search.toLowerCase())
   ) || [];
 
-  const getBaseNames = (baseIds: string[] | null | undefined) => {
-    if (!baseIds || baseIds.length === 0) return "—";
-    return baseIds
-      .map(id => {
-        const base = bases.find(b => b.id === id);
-        return base ? `${base.name} (${base.baseType === BASE_TYPE.WHOLESALE ? 'ОПТ' : 'Заправка'})` : null;
-      })
-      .filter(Boolean)
-      .join(", ");
-  };
-
   return (
     <Card>
       <CardHeader>

@@ -18,10 +18,7 @@ import { CalendarIcon, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { UseFormReturn } from "react-hook-form";
-import type {
-  Supplier,
-  Customer,
-} from "@shared/schema";
+import type { Supplier, Customer } from "@shared/schema";
 import type { OptFormData } from "../schemas";
 import { CUSTOMER_MODULE } from "@shared/constants";
 import { AddCustomerDialog } from "@/pages/counterparties/customers-dialog";
@@ -60,7 +57,7 @@ export function OptMainFields({
   };
 
   return (
-    <div className="grid gap-2 md:grid-cols-4">
+    <div className="grid gap-2 md:grid-cols-5">
       <FormField
         control={form.control}
         name="dealDate"
@@ -106,7 +103,10 @@ export function OptMainFields({
               <FormControl>
                 <div className="flex-1 min-w-0">
                   <Combobox
-                    options={wholesaleSuppliers.map(s => ({ value: s.id, label: s.name }))}
+                    options={wholesaleSuppliers.map((s) => ({
+                      value: s.id,
+                      label: s.name,
+                    }))}
                     value={field.value}
                     onValueChange={field.onChange}
                     placeholder="Выберите поставщика"
@@ -141,18 +141,28 @@ export function OptMainFields({
           name="basis"
           render={({ field }) => (
             <FormItem className="col-span-1 min-w-0">
-              <FormLabel>Базис</FormLabel>
+              <FormLabel>Базис Поставщика</FormLabel>
               <FormControl>
                 <div className="w-full">
                   <Combobox
-                    options={selectedSupplier.baseIds.map((baseId) => {
-                      const base = wholesaleBases?.find((b) => b.id === baseId);
-                      return base ? { value: base.name, label: base.name } : null;
-                    }).filter(Boolean) as any}
+                    options={
+                      selectedSupplier.baseIds
+                        .map((baseId) => {
+                          const base = wholesaleBases?.find(
+                            (b) => b.id === baseId,
+                          );
+                          return base
+                            ? { value: base.name, label: base.name }
+                            : null;
+                        })
+                        .filter(Boolean) as any
+                    }
                     value={field.value || selectedBasis}
                     onValueChange={(value) => {
                       field.onChange(value);
-                      const base = wholesaleBases?.find((b) => b.name === value);
+                      const base = wholesaleBases?.find(
+                        (b) => b.name === value,
+                      );
                       if (base) setSelectedBasis(base.name);
                     }}
                     placeholder="Выберите базис"
@@ -167,7 +177,9 @@ export function OptMainFields({
         />
       ) : (
         <div className="space-y-2 col-span-1 min-w-0">
-          <label className="text-sm font-medium flex items-center h-6">Базис</label>
+          <label className="text-sm font-medium flex items-center h-6">
+            Базис Поставщика
+          </label>
           <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md text-sm overflow-hidden truncate">
             {selectedBasis || "—"}
           </div>
@@ -190,7 +202,7 @@ export function OptMainFields({
                           c.module === CUSTOMER_MODULE.WHOLESALE ||
                           c.module === CUSTOMER_MODULE.BOTH,
                       )
-                      .map(c => ({ value: c.id, label: c.name }))}
+                      .map((c) => ({ value: c.id, label: c.name }))}
                     value={field.value}
                     onValueChange={field.onChange}
                     placeholder="Выберите покупателя"
@@ -216,6 +228,15 @@ export function OptMainFields({
           </FormItem>
         )}
       />
+
+      <div className="space-y-2 col-span-1 min-w-0">
+        <label className="text-sm font-medium flex items-center h-6">
+          Базис Покупателя
+        </label>
+        <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md text-sm overflow-hidden truncate">
+          {selectedBasis || "—"}
+        </div>
+      </div>
 
       <AddSupplierDialog
         bases={wholesaleBases}
