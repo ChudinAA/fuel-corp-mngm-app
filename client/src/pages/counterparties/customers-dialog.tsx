@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, X } from "lucide-react";
 import type { Base, Customer } from "@shared/schema";
 import { Combobox } from "@/components/ui/combobox";
 import { BaseTypeBadge } from "@/components/base-type-badge";

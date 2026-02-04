@@ -44,7 +44,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
   const { toast } = useToast();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
   const [selectedBasis, setSelectedBasis] = useState<string>("");
-  const [buyerBasis, setBuyerBasis] = useState<string>("");
+  const [customerBasis, setCustomerBasis] = useState<string>("");
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
     useState<string>("");
   const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
@@ -69,7 +69,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       selectedPurchasePriceId: "",
       selectedSalePriceId: "",
       basis: "",
-      buyerBasis: "",
+      customerBasis: "",
     },
   });
 
@@ -251,8 +251,8 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         setSelectedBasis(editData.basis);
       }
 
-      if (editData.buyerBasis) {
-        setBuyerBasis(editData.buyerBasis);
+      if (editData.customerBasis) {
+        setCustomerBasis(editData.customerBasis);
       }
 
       const purchasePriceCompositeId =
@@ -287,7 +287,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         notes: editData.notes || "",
         isApproxVolume: editData.isApproxVolume || false,
         basis: editData.basis || "",
-        buyerBasis: editData.buyerBasis || "",
+        customerBasis: editData.customerBasis || "",
         selectedPurchasePriceId: purchasePriceCompositeId,
         selectedSalePriceId: salePriceCompositeId,
       });
@@ -331,7 +331,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
             ? supplierWarehouse.id
             : null,
         basis: selectedBasis || null,
-        buyerBasis: buyerBasis || null,
+        customerBasis: customerBasis || null,
         carrierId: data.carrierId || null,
         deliveryLocationId: data.deliveryLocationId || null,
         dealDate: data.dealDate
@@ -375,7 +375,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
       setSelectedBasis("");
-      setBuyerBasis("");
+      setCustomerBasis("");
       form.reset({
         dealDate: new Date(),
         supplierId: "",
@@ -427,7 +427,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
             ? supplierWarehouse.id
             : null,
         basis: selectedBasis || null,
-        buyerBasis: buyerBasis || null,
+        customerBasis: customerBasis || null,
         carrierId: data.carrierId || null,
         deliveryLocationId: data.deliveryLocationId || null,
         dealDate: data.dealDate
@@ -471,7 +471,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
       setSelectedBasis("");
-      setBuyerBasis("");
+      setCustomerBasis("");
       form.reset({
         dealDate: new Date(),
         supplierId: "",
@@ -619,8 +619,8 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
             selectedBuyer={selectedBuyer}
             selectedBasis={selectedBasis}
             setSelectedBasis={setSelectedBasis}
-            buyerBasis={buyerBasis}
-            setBuyerBasis={setBuyerBasis}
+            customerBasis={customerBasis}
+            setCustomerBasis={setCustomerBasis}
             wholesaleBases={wholesaleBases}
           />
 

@@ -33,8 +33,8 @@ interface OptMainFieldsProps {
   selectedBuyer: Customer | undefined;
   selectedBasis: string;
   setSelectedBasis: (value: string) => void;
-  buyerBasis: string;
-  setBuyerBasis: (value: string) => void;
+  customerBasis: string;
+  setCustomerBasis: (value: string) => void;
   wholesaleBases: any[];
 }
 
@@ -46,8 +46,8 @@ export function OptMainFields({
   selectedBuyer,
   selectedBasis,
   setSelectedBasis,
-  buyerBasis,
-  setBuyerBasis,
+  customerBasis,
+  setCustomerBasis,
   wholesaleBases,
 }: OptMainFieldsProps) {
   const { hasPermission } = useAuth();
@@ -237,7 +237,7 @@ export function OptMainFields({
 
       <FormField
         control={form.control}
-        name="buyerBasis"
+        name="customerBasis"
         render={({ field }) => (
           <FormItem className="col-span-1 min-w-0">
             <FormLabel>Базис Покупателя</FormLabel>
@@ -261,10 +261,10 @@ export function OptMainFields({
                           label: b.name,
                         }))
                   }
-                  value={field.value || buyerBasis}
+                  value={field.value || customerBasis}
                   onValueChange={(value) => {
                     field.onChange(value);
-                    setBuyerBasis(value);
+                    setCustomerBasis(value);
                   }}
                   placeholder="Выберите базис"
                   dataTestId="select-buyer-basis"
