@@ -18,6 +18,7 @@ export function useDateCheck() {
       counterpartyType: string;
       counterpartyRole: string;
       basis: string;
+      basisId?: string;
       dateFrom: Date | string;
       dateTo: Date | string;
       productType: string;
@@ -32,6 +33,7 @@ export function useDateCheck() {
         dateFrom: typeof params.dateFrom === "string" ? params.dateFrom : format(params.dateFrom, "yyyy-MM-dd"),
         dateTo: typeof params.dateTo === "string" ? params.dateTo : format(params.dateTo, "yyyy-MM-dd"),
         ...(params.excludeId && { excludeId: params.excludeId }),
+        ...(params.basisId && { basisId: params.basisId }),
       });
       const res = await apiRequest("GET", `/api/prices/check-date-overlaps?${queryParams}`);
       return res.json();

@@ -56,6 +56,7 @@ export function AddPriceDialog({
       counterpartyId: "",
       productType: PRODUCT_TYPE.KEROSENE,
       basis: "",
+      basisId: undefined,
       volume: "",
       priceValues: [{ price: "" }],
       contractNumber: "",
@@ -108,6 +109,7 @@ export function AddPriceDialog({
   const watchDateFrom = form.watch("dateFrom");
   const watchDateTo = form.watch("dateTo");
   const watchBasis = form.watch("basis");
+  const watchBasisId = form.watch("basisId");
   const watchProductType = form.watch("productType");
 
   // Сбрасывать проверку дат при изменении критических полей
@@ -116,6 +118,7 @@ export function AddPriceDialog({
     dateCheck.setResult(null);
   }, [
     watchCounterpartyId,
+    watchBasisId,
     watchBasis,
     watchProductType,
     watchDateFrom,
@@ -182,6 +185,7 @@ export function AddPriceDialog({
       counterpartyType: watchCounterpartyType,
       counterpartyRole: watchCounterpartyRole,
       basis: watchBasis,
+      basisId: watchBasisId,
       productType: watchProductType,
       dateFrom: watchDateFrom,
       dateTo: watchDateTo,
@@ -252,6 +256,7 @@ export function AddPriceDialog({
         counterpartyId: "",
         productType: PRODUCT_TYPE.KEROSENE,
         basis: "",
+        basisId: undefined,
         volume: "",
         priceValues: [{ price: "" }],
         contractNumber: "",
@@ -309,6 +314,7 @@ export function AddPriceDialog({
         counterpartyType: watchCounterpartyType,
         counterpartyRole: watchCounterpartyRole,
         basis: watchBasis,
+        basisId: watchBasisId,
         productType: watchProductType,
         dateFrom: watchDateFrom,
         dateTo: watchDateTo,
@@ -353,6 +359,7 @@ export function AddPriceDialog({
             counterpartyId: "",
             productType: PRODUCT_TYPE.KEROSENE,
             basis: "",
+            basisId: undefined,
             volume: "",
             priceValues: [{ price: "" }],
             contractNumber: "",
