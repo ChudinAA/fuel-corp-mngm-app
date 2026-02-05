@@ -27,6 +27,7 @@ import {
   logisticsDeliveryLocations,
 } from "../../logistics/entities/logistics";
 import { prices } from "../../prices/entities/prices";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 export const opt = pgTable(
   "opt",
@@ -47,6 +48,7 @@ export const opt = pgTable(
     customerBasis: text("customer_basis"),
     basisId: uuid("basis_id").references(() => bases.id),
     customerBasisId: uuid("customer_basis_id").references(() => bases.id),
+    productType: text("product_type").default(PRODUCT_TYPE.KEROSENE),
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
     quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
@@ -142,6 +144,7 @@ export const insertOptSchema = z
     basisId: z.string().nullable().optional(),
     customerBasisId: z.string().nullable().optional(),
     dealDate: z.string().nullable().optional(),
+    productType: z.string().nullable().optional(),
     quantityLiters: z.number().nullable().optional(),
     density: z.number().nullable().optional(),
     quantityKg: z.number().nullable().optional(),

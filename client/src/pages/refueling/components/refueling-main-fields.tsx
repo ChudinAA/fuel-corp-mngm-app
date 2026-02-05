@@ -259,9 +259,6 @@ export function RefuelingMainFields({
                         if (base) {
                           setSelectedBasis(base.name);
                           form.setValue("basis", base.name);
-                        } else {
-                          setSelectedBasis("");
-                          form.setValue("basis", "");
                         }
                       }}
                       placeholder="Выберите базис"
@@ -363,9 +360,6 @@ export function RefuelingMainFields({
                         if (base) {
                           setCustomerBasis(base.name);
                           form.setValue("customerBasis", base.name);
-                        } else {
-                          setCustomerBasis("");
-                          form.setValue("customerBasis", "");
                         }
                       }}
                       placeholder="Выберите базис"

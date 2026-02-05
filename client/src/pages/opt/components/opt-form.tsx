@@ -34,7 +34,7 @@ import { optFormSchema, type OptFormData } from "../schemas";
 import type { OptFormProps } from "../types";
 import { useOptCalculations } from "../hooks/use-opt-calculations";
 import { useOptFilters } from "../hooks/use-opt-filters";
-import { BASE_TYPE } from "@shared/constants";
+import { BASE_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useAutoPriceSelection } from "../../shared/hooks/use-auto-price-selection";
 import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
@@ -195,7 +195,9 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       date: watchDealDate,
       supplierId: watchSupplierId,
       buyerId: watchBuyerId,
-      basis: selectedBasis,
+      productType: PRODUCT_TYPE.KEROSENE,
+      basisId: watchBasisId,
+      customerBasisId: watchCustomerBasisId,
       deliveryLocationId: watchDeliveryLocationId,
       quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
     }),

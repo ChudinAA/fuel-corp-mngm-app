@@ -8,7 +8,9 @@ export interface DuplicateCheckConfig {
     date: Date;
     supplierId: string;
     buyerId: string;
-    basis?: string | null;
+    productType: string;
+    basisId?: string | null;
+    customerBasisId?: string | null;
     deliveryLocationId?: string | null;
     quantityKg: number;
   };
@@ -26,7 +28,9 @@ export function useDuplicateCheck({ type, getFields }: DuplicateCheckConfig) {
     const payload: any = {
       supplierId: fields.supplierId,
       buyerId: fields.buyerId,
-      basis: fields.basis,
+      productType: fields.productType,
+      basisId: fields.basisId,
+      customerBasisId: fields.customerBasisId,
       quantityKg: fields.quantityKg,
     };
 

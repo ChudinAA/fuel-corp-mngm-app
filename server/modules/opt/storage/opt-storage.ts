@@ -319,7 +319,9 @@ export class OptStorage {
     dealDate: string;
     supplierId: string;
     buyerId: string;
-    basis?: string | null;
+    productType: string;
+    basisId?: string | null;
+    customerBasisId?: string | null;
     deliveryLocationId?: string | null;
     quantityKg: number;
   }): Promise<boolean> {
@@ -328,7 +330,11 @@ export class OptStorage {
         sql`DATE(${opt.dealDate}) = DATE(${data.dealDate})`,
         eq(opt.supplierId, data.supplierId),
         eq(opt.buyerId, data.buyerId),
-        data.basis ? eq(opt.basis, data.basis) : isNull(opt.basis),
+        eq(opt.productType, data.productType),
+        data.basisId ? eq(opt.basisId, data.basisId) : isNull(opt.basisId),
+        data.customerBasisId
+          ? eq(opt.customerBasisId, data.customerBasisId)
+          : isNull(opt.customerBasisId),
         data.deliveryLocationId
           ? eq(opt.deliveryLocationId, data.deliveryLocationId)
           : isNull(opt.deliveryLocationId),

@@ -13,7 +13,7 @@ import { IAircraftRefuelingStorage } from "./types";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 import { WarehouseTransactionService } from "server/modules/warehouses/services/warehouse-transaction-service";
 
-export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
+export class AircraftRefuelingStorage {
   async getRefueling(id: string): Promise<AircraftRefueling | undefined> {
     return db.query.aircraftRefueling.findFirst({
       where: and(
@@ -304,7 +304,9 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
     refuelingDate: string;
     supplierId: string;
     buyerId: string;
-    basis: string;
+    productType: string;
+    basisId?: string | null;
+    customerBasisId?: string | null;
     quantityKg: number;
   }): Promise<boolean> {
     const existing = await db.query.aircraftRefueling.findFirst({
@@ -312,7 +314,13 @@ export class AircraftRefuelingStorage implements IAircraftRefuelingStorage {
         sql`DATE(${aircraftRefueling.refuelingDate}) = DATE(${data.refuelingDate})`,
         eq(aircraftRefueling.supplierId, data.supplierId),
         eq(aircraftRefueling.buyerId, data.buyerId),
-        eq(aircraftRefueling.basis, data.basis),
+        eq(aircraftRefueling.productType, data.productType),
+        data.basisId
+          ? eq(aircraftRefueling.basisId, data.basisId)
+          : isNull(aircraftRefueling.basisId),
+        data.customerBasisId
+          ? eq(aircraftRefueling.customerBasisId, data.customerBasisId)
+          : isNull(aircraftRefueling.customerBasisId),
         eq(aircraftRefueling.quantityKg, data.quantityKg.toString()),
         isNull(aircraftRefueling.deletedAt),
         eq(aircraftRefueling.isDraft, false),
