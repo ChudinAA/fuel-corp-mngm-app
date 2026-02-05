@@ -6,7 +6,7 @@ import { PRODUCT_TYPE } from "@shared/constants";
 export const formatNumber = (value: string | number | null) => {
   if (value === null) return "—";
   const num = typeof value === "string" ? parseFloat(value) : value;
-  return new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(num);
+  return new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 5 }).format(num);
 };
 
 export const formatNumberForTable = (value: string | number | null | undefined): string => {
