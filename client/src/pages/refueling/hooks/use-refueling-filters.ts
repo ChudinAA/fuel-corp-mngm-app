@@ -15,7 +15,9 @@ interface UseRefuelingFiltersProps {
   buyerId: string;
   refuelingDate: Date;
   selectedBasis: string;
+  basisId?: string;
   customerBasis: string;
+  customerBasisId?: string;
   productType: string;
   suppliers: Supplier[] | undefined;
   allBases: Base[] | undefined;
@@ -26,7 +28,9 @@ export function useRefuelingFilters({
   buyerId,
   refuelingDate,
   selectedBasis,
+  basisId,
   customerBasis,
+  customerBasisId,
   productType,
   suppliers,
   allBases,
@@ -61,9 +65,10 @@ export function useRefuelingFilters({
     counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
     counterpartyType: COUNTERPARTY_TYPE.REFUELING,
     basis: selectedBasis,
+    basisId: basisId,
     productType: productType,
     date: refuelingDate,
-    enabled: !!supplierId && !!selectedBasis && !!refuelingDate,
+    enabled: !!supplierId && (!!basisId || !!selectedBasis) && !!refuelingDate,
   });
 
   const saleLookup = usePriceLookup({
@@ -71,9 +76,10 @@ export function useRefuelingFilters({
     counterpartyRole: COUNTERPARTY_ROLE.BUYER,
     counterpartyType: COUNTERPARTY_TYPE.REFUELING,
     basis: customerBasis,
+    basisId: customerBasisId,
     productType: productType,
     date: refuelingDate,
-    enabled: !!buyerId && !!customerBasis && !!refuelingDate,
+    enabled: !!buyerId && (!!customerBasisId || !!customerBasis) && !!refuelingDate,
   });
 
   // Фильтрация цен покупки

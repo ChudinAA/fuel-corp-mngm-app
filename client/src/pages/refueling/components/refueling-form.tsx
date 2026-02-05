@@ -106,6 +106,9 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     (w) => w.supplierId === watchSupplierId,
   );
 
+  const watchBasisId = form.watch("basisId");
+  const watchCustomerBasisId = form.watch("customerBasisId");
+
   // Use filtering hook
   const { 
     refuelingSuppliers, 
@@ -117,7 +120,9 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       buyerId: watchBuyerId,
       refuelingDate: watchRefuelingDate,
       selectedBasis,
+      basisId: watchBasisId || undefined,
       customerBasis,
+      customerBasisId: watchCustomerBasisId || undefined,
       productType: watchProductType,
       suppliers,
       allBases,
@@ -196,6 +201,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         );
         if (refuelingBases.length > 0) {
           const firstBase = refuelingBases[0];
+          form.setValue("basisId", firstBase.id);
           form.setValue("basis", firstBase.name);
           setSelectedBasis(firstBase.name);
         }
@@ -268,6 +274,9 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         selectedPurchasePriceId: purchasePriceCompositeId,
         selectedSalePriceId: salePriceCompositeId,
         basis: editData.basis || "",
+        basisId: editData.basisId || "",
+        customerBasis: editData.customerBasis || "",
+        customerBasisId: editData.customerBasisId || "",
       });
 
       setSelectedPurchasePriceId(purchasePriceCompositeId);
@@ -278,11 +287,17 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
           : 0,
       );
 
-      if (editData.customerBasis) {
+      if (editData.customerBasisId) {
+        const base = allBases.find(b => b.id === editData.customerBasisId);
+        if (base) setCustomerBasis(base.name);
+      } else if (editData.customerBasis) {
         setCustomerBasis(editData.customerBasis);
       }
 
-      if (editData.basis) {
+      if (editData.basisId) {
+        const base = allBases.find(b => b.id === editData.basisId);
+        if (base) setSelectedBasis(base.name);
+      } else if (editData.basis) {
         setSelectedBasis(editData.basis);
       }
 

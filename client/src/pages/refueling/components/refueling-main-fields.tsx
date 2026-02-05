@@ -241,7 +241,7 @@ export function RefuelingMainFields({
         selectedSupplier.baseIds.length > 0 ? (
           <FormField
             control={form.control}
-            name="basis"
+            name="basisId"
             render={({ field }) => (
               <FormItem className="col-span-1 min-w-0">
                 <FormLabel>Базис Поставщика</FormLabel>
@@ -249,16 +249,19 @@ export function RefuelingMainFields({
                   <div className="w-full">
                     <Combobox
                       options={availableBases.map((base) => ({
-                        value: base.name,
+                        value: base.id,
                         label: base.name,
                       }))}
-                      value={field.value || selectedBasis}
+                      value={field.value || ""}
                       onValueChange={(value) => {
                         field.onChange(value);
-                        const base = allBases?.find((b) => b.name === value);
+                        const base = allBases?.find((b) => b.id === value);
                         if (base) {
-                          setSelectedBasis(value);
-                          form.setValue("basisId", base.id);
+                          setSelectedBasis(base.name);
+                          form.setValue("basis", base.name);
+                        } else {
+                          setSelectedBasis("");
+                          form.setValue("basis", "");
                         }
                       }}
                       placeholder="Выберите базис"
@@ -328,7 +331,7 @@ export function RefuelingMainFields({
         {selectedBuyer ? (
           <FormField
             control={form.control}
-            name="customerBasis"
+            name="customerBasisId"
             render={({ field }) => (
               <FormItem className="col-span-1 min-w-0">
                 <FormLabel>Базис Покупателя</FormLabel>
@@ -344,22 +347,25 @@ export function RefuelingMainFields({
                                   (b) => b.id === baseId,
                                 );
                                 return base
-                                  ? { value: base.name, label: base.name }
+                                  ? { value: base.id, label: base.name }
                                   : null;
                               })
                               .filter(Boolean) as any)
                           : refuelingBases.map((b) => ({
-                              value: b.name,
+                              value: b.id,
                               label: b.name,
                             }))
                       }
-                      value={field.value || customerBasis}
+                      value={field.value || ""}
                       onValueChange={(value) => {
                         field.onChange(value);
-                        const base = allBases?.find((b) => b.name === value);
+                        const base = allBases?.find((b) => b.id === value);
                         if (base) {
-                          setCustomerBasis(value);
-                          form.setValue("customerBasisId", base.id);
+                          setCustomerBasis(base.name);
+                          form.setValue("customerBasis", base.name);
+                        } else {
+                          setCustomerBasis("");
+                          form.setValue("customerBasis", "");
                         }
                       }}
                       placeholder="Выберите базис"
