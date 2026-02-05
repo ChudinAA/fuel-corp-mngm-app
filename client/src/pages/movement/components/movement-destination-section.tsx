@@ -6,13 +6,6 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { CalculatedField } from "./calculated-field";
 import { MOVEMENT_TYPE } from "@shared/constants";
 import type { UseFormReturn } from "react-hook-form";

@@ -6,13 +6,6 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { MOVEMENT_TYPE } from "@shared/constants";
 import type { UseFormReturn } from "react-hook-form";
 import type { MovementFormData } from "../schemas";
@@ -32,13 +25,6 @@ export function MovementSourceSection({
   suppliers,
   warehouses,
 }: MovementSourceSectionProps) {
-  const watchSupplierId = form.watch("supplierId");
-  const selectedSupplier = suppliers?.find((w) => w.id === watchSupplierId);
-
-  const watchFromWarehouseId = form.watch("fromWarehouseId");
-  const selectedWarehouse = warehouses?.find(
-    (w) => w.id === watchFromWarehouseId,
-  );
 
   if (watchMovementType === MOVEMENT_TYPE.SUPPLY) {
     return (
