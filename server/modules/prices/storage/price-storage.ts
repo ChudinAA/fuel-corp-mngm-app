@@ -260,16 +260,21 @@ export class PriceStorage {
     dateFrom: string,
     dateTo: string,
     excludeId?: string,
+    basisId?: string,
   ): Promise<{
     status: string;
     message: string;
     overlaps?: { id: string; dateFrom: string; dateTo: string }[];
   }> {
+    const basisCondition = basisId 
+      ? eq(prices.basisId, basisId)
+      : eq(prices.basis, basis);
+
     const conditions = [
       eq(prices.counterpartyId, counterpartyId),
       eq(prices.counterpartyType, counterpartyType),
       eq(prices.counterpartyRole, counterpartyRole),
-      eq(prices.basis, basis),
+      basisCondition,
       eq(prices.productType, productType),
       eq(prices.isActive, true),
       sql`${prices.dateFrom} <= ${dateTo}`,

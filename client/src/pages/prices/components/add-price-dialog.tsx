@@ -91,6 +91,7 @@ export function AddPriceDialog({
         counterpartyId: editPrice.counterpartyId,
         productType: editPrice.productType,
         basis: editPrice.basis || "",
+        basisId: editPrice.basisId || undefined,
         volume: editPrice.volume || "",
         priceValues: parsedPriceValues,
         contractNumber: editPrice.contractNumber || "",
@@ -153,6 +154,7 @@ export function AddPriceDialog({
         const firstBase = allBases.find((b) => b.id === contractor.baseIds[0]);
         if (firstBase && !watchBasis) {
           form.setValue("basis", firstBase.name);
+          form.setValue("basisId", firstBase.id);
         }
       }
     }
@@ -210,6 +212,7 @@ export function AddPriceDialog({
         counterpartyType: data.counterpartyType,
         counterpartyRole: data.counterpartyRole,
         basis: data.basis,
+        basisId: data.basisId || null,
         volume: data.volume || null,
         priceValues: data.priceValues,
         dateFrom: format(data.dateFrom, "yyyy-MM-dd"),

@@ -275,7 +275,7 @@ export function PriceFormFields({
       <div className="grid grid-cols-2 gap-4">
         <FormField
           control={control}
-          name="basis"
+          name="basisId"
           render={({ field }) => (
             <FormItem className="col-span-1 min-w-0">
               <FormLabel>Базис (место поставки/заправки)</FormLabel>
@@ -284,7 +284,7 @@ export function PriceFormFields({
                   <div className="flex-1 min-w-0">
                     <Combobox
                       options={availableBases?.map((b) => ({
-                        value: b.name,
+                        value: b.id,
                         label: b.name,
                         render: (
                           <div className="flex items-center gap-2">
@@ -294,7 +294,13 @@ export function PriceFormFields({
                         )
                       })) || []}
                       value={field.value}
-                      onValueChange={field.onChange}
+                      onValueChange={(val) => {
+                        field.onChange(val);
+                        const selectedBase = availableBases.find(b => b.id === val);
+                        if (selectedBase) {
+                          control._formValues.basis = selectedBase.name;
+                        }
+                      }}
                       placeholder="Выберите базис"
                       className="w-full"
                       dataTestId="select-basis"

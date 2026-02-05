@@ -14,6 +14,7 @@ export interface PriceFormData {
   counterpartyId: string;
   productType: ProductType;
   basis: string;
+  basisId?: string;
   volume?: string;
   priceValues: Array<{ price: string }>;
   contractNumber?: string;
