@@ -219,7 +219,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     editData,
     setSelectedPurchasePriceId,
     setSelectedSalePriceId,
-    formSetValue: form.setValue,
+    formSetValue: form.setValue as any,
   });
 
   useEffect(() => {
