@@ -72,6 +72,7 @@ export function MovementDialog({
       productType: PRODUCT_TYPE.KEROSENE,
       supplierId: "",
       basis: "",
+      basisId: "",
       fromWarehouseId: "",
       toWarehouseId: "",
       inputMode: "kg",
