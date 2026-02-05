@@ -22,7 +22,6 @@ interface UseMovementCalculationsProps {
   watchMovementType: string;
   watchProductType: string;
   watchSupplierId: string;
-  watchBasis?: string;
   watchBasisId?: string;
   watchFromWarehouseId: string;
   watchToWarehouseId: string;
@@ -35,8 +34,6 @@ interface UseMovementCalculationsProps {
   warehouses: any[];
   suppliers: AllSupplier[];
   deliveryCosts: any[];
-  allBases?: any[];
-  isEditing: boolean;
   selectedPurchasePriceId: string;
   setSelectedPurchasePriceId: (id: string) => void;
   initialQuantityKg: number;
@@ -47,7 +44,6 @@ export function useMovementCalculations({
   watchMovementType,
   watchProductType,
   watchSupplierId,
-  watchBasis,
   watchBasisId,
   watchFromWarehouseId,
   watchToWarehouseId,
@@ -60,8 +56,6 @@ export function useMovementCalculations({
   warehouses,
   suppliers,
   deliveryCosts,
-  allBases,
-  isEditing,
   selectedPurchasePriceId,
   setSelectedPurchasePriceId,
   initialQuantityKg,
@@ -81,24 +75,16 @@ export function useMovementCalculations({
   }, [inputMode, watchLiters, watchDensity, watchKg]);
 
   const kgNum = calculatedKg || 0;
-
-  const supplier = suppliers.find((s) => s.id === watchSupplierId);
-  
-  let baseName = watchBasis;
-  if (!baseName && supplier && supplier.baseIds && supplier.baseIds.length > 0) {
-    const firstBase = allBases?.find((b) => b.id === supplier.baseIds[0]);
-    if (firstBase) baseName = firstBase.name;
-  }
   
   // Find matching prices for supplier
   const purchaseLookup = usePriceLookup({
     counterpartyId: watchSupplierId,
     counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
     counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
-    basis: baseName,
+    basisId: watchBasisId,
     productType: watchProductType,
     date: watchMovementDate,
-    enabled: !!watchSupplierId && !!baseName && !!watchMovementDate,
+    enabled: !!watchSupplierId && !!watchBasisId && !!watchMovementDate,
   });
 
   const availablePurchasePrices = useMemo(() => {
@@ -135,7 +121,6 @@ export function useMovementCalculations({
   }, [
     watchMovementType,
     watchSupplierId,
-    watchBasis,
     watchProductType,
     watchMovementDate,
     availablePurchasePrices.length,
