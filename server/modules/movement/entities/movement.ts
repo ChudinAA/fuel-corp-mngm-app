@@ -16,7 +16,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
-import { prices, suppliers } from "@shared/schema";
+import { bases, prices, suppliers } from "@shared/schema";
 import {
   warehouses,
   warehouseTransactions,
@@ -48,6 +48,7 @@ export const movement = pgTable(
     costPerKg: decimal("cost_per_kg", { precision: 12, scale: 4 }),
     carrierId: uuid("carrier_id").references(() => logisticsCarriers.id),
     basis: text("basis"),
+    basisId: uuid("basis_id").references(() => bases.id),
     vehicleNumber: text("vehicle_number"),
     trailerNumber: text("trailer_number"),
     driverName: text("driver_name"),
@@ -110,6 +111,7 @@ export const movementRelations = relations(movement, ({ one }) => ({
     references: [warehouseTransactions.id],
     relationName: "sourceTransaction",
   }),
+  basis: one(bases, { fields: [movement.basisId], references: [bases.id] }),
   createdBy: one(users, {
     fields: [movement.createdById],
     references: [users.id],
@@ -142,6 +144,7 @@ export const insertMovementSchema = z.object({
   costPerKg: z.number().nullable().optional(),
   carrierId: z.string().nullable().optional(),
   basis: z.string().nullable().optional(),
+  basisId: z.string().nullable().optional(),
   vehicleNumber: z.string().nullable().optional(),
   trailerNumber: z.string().nullable().optional(),
   driverName: z.string().nullable().optional(),
