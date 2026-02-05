@@ -6,6 +6,7 @@ export const movementFormSchema = z.object({
   productType: z.string().min(1, "Выберите тип продукта"),
   supplierId: z.string().optional(),
   basis: z.string().optional(),
+  basisId: z.string().optional(),
   supplierBaseId: z.string().optional(),
   fromWarehouseId: z.string().optional(),
   toWarehouseId: z.string().min(1, "Выберите склад назначения"),

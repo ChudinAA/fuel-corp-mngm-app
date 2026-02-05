@@ -110,6 +110,7 @@ export function MovementDialog({
         productType: editMovement.productType,
         supplierId: editMovement.supplierId || "",
         basis: editMovement.basis || "",
+        basisId: editMovement.basisId || "",
         fromWarehouseId: editMovement.fromWarehouseId || "",
         toWarehouseId: editMovement.toWarehouseId,
         inputMode: "kg",
@@ -150,6 +151,7 @@ export function MovementDialog({
         productType: PRODUCT_TYPE.KEROSENE,
         supplierId: "",
         basis: "",
+        basisId: "",
         fromWarehouseId: "",
         toWarehouseId: "",
         inputMode: "kg",
@@ -172,6 +174,7 @@ export function MovementDialog({
   const watchProductType = form.watch("productType");
   const watchSupplierId = form.watch("supplierId");
   const watchBasis = form.watch("basis");
+  const watchBasisId = form.watch("basisId");
   const watchFromWarehouseId = form.watch("fromWarehouseId");
   const watchToWarehouseId = form.watch("toWarehouseId");
   const watchCarrierId = form.watch("carrierId");
@@ -200,6 +203,7 @@ export function MovementDialog({
     watchProductType,
     watchSupplierId,
     watchBasis,
+    watchBasisId,
     watchFromWarehouseId,
     watchToWarehouseId,
     watchCarrierId,
@@ -276,6 +280,7 @@ export function MovementDialog({
         productType: data.productType,
         supplierId: data.supplierId || null,
         basis: data.basis || null,
+        basisId: data.basisId || null,
         fromWarehouseId: data.fromWarehouseId || null,
         toWarehouseId: data.toWarehouseId,
         carrierId: data.carrierId || null,

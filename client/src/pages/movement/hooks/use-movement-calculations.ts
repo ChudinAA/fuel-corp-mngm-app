@@ -23,6 +23,7 @@ interface UseMovementCalculationsProps {
   watchProductType: string;
   watchSupplierId: string;
   watchBasis?: string;
+  watchBasisId?: string;
   watchFromWarehouseId: string;
   watchToWarehouseId: string;
   watchCarrierId: string;
@@ -47,6 +48,7 @@ export function useMovementCalculations({
   watchProductType,
   watchSupplierId,
   watchBasis,
+  watchBasisId,
   watchFromWarehouseId,
   watchToWarehouseId,
   watchCarrierId,

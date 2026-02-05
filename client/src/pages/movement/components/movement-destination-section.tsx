@@ -150,7 +150,7 @@ export function MovementDestinationSection({
       {watchMovementType === MOVEMENT_TYPE.SUPPLY ? (
         <FormField
           control={form.control}
-          name="basis"
+          name="basisId"
           render={({ field }) => (
             <FormItem className="col-span-1 min-w-0">
               <FormLabel className="flex items-center gap-2">
@@ -160,11 +160,17 @@ export function MovementDestinationSection({
                 <div className="w-full">
                   <Combobox
                     options={selectedSupplierBases.map((b: any) => ({
-                      value: b.name,
+                      value: b.id,
                       label: b.name
                     }))}
-                    value={field.value}
-                    onValueChange={field.onChange}
+                    value={field.value || ""}
+                    onValueChange={(val) => {
+                      field.onChange(val);
+                      const base = selectedSupplierBases.find((b: any) => b.id === val);
+                      if (base) {
+                        form.setValue("basis", base.name);
+                      }
+                    }}
                     placeholder="Выберите базис"
                     className="w-full"
                     dataTestId="select-movement-basis"
@@ -178,7 +184,7 @@ export function MovementDestinationSection({
       ) : (
       <FormField
         control={form.control}
-        name="basis"
+        name="basisId"
         render={({ field }) => (
           <FormItem className="col-span-1 min-w-0">
             <FormLabel className="flex items-center gap-2">Базис Склада</FormLabel>
@@ -186,11 +192,17 @@ export function MovementDestinationSection({
               <div className="w-full">
                 <Combobox
                   options={selectedWarehouseBases.map((b: any) => ({
-                    value: b.name,
+                    value: b.id,
                     label: b.name
                   }))}
-                  value={field.value}
-                  onValueChange={field.onChange}
+                  value={field.value || ""}
+                  onValueChange={(val) => {
+                    field.onChange(val);
+                    const base = selectedWarehouseBases.find((b: any) => b.id === val);
+                    if (base) {
+                      form.setValue("basis", base.name);
+                    }
+                  }}
                   placeholder="Выберите базис"
                   className="w-full"
                   dataTestId="select-movement-basis"
