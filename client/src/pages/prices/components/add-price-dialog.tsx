@@ -125,16 +125,24 @@ export function AddPriceDialog({
     watchDateTo,
   ]);
 
-  const { data: bases } = useQuery({ queryKey: ["/api/bases"] });
-  const { data: suppliers } = useQuery({ queryKey: ["/api/suppliers"] });
+  const { data: bases } = useQuery<Base[]>({ queryKey: ["/api/bases"] });
+  const { data: suppliers } = useQuery<Supplier[]>({
+    queryKey: ["/api/suppliers"],
+  });
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
   });
 
-  const allBases = bases || [];
+  const allBases =
+    bases?.filter((b) => b.baseType === watchCounterpartyType) || [];
+  
+  const availableSuppliers =
+    suppliers?.filter((s) => allBases.find((b) => s.baseIds?.includes(b.id))) ||
+    [];
+
   const contractors =
     watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER
-      ? suppliers || []
+      ? availableSuppliers
       : customers || [];
 
   // Фильтруем базисы для поставщика
@@ -148,10 +156,7 @@ export function AddPriceDialog({
 
   // Автоматически выбираем первый базис для поставщика
   useEffect(() => {
-    if (
-      watchCounterpartyId &&
-      !editPrice
-    ) {
+    if (watchCounterpartyId && !editPrice) {
       const contractor = contractors?.find((s) => s.id === watchCounterpartyId);
       if (contractor && contractor.baseIds && contractor.baseIds.length > 0) {
         const firstBase = allBases.find((b) => b.id === contractor.baseIds[0]);
@@ -161,14 +166,7 @@ export function AddPriceDialog({
         }
       }
     }
-  }, [
-    watchCounterpartyId,
-    contractors,
-    allBases,
-    form,
-    watchBasis,
-    editPrice,
-  ]);
+  }, [watchCounterpartyId, contractors, allBases, form, watchBasis, editPrice]);
 
   const handleCheckDates = () => {
     if (!watchCounterpartyId || !watchBasis || !watchDateFrom || !watchDateTo) {
