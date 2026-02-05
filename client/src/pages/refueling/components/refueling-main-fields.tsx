@@ -33,6 +33,7 @@ import { useState } from "react";
 import { AddSupplierDialog } from "@/pages/counterparties/suppliers-dialog";
 import { AddCustomerDialog } from "@/pages/counterparties/customers-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { BaseTypeBadge } from "@/components/base-type-badge";
 
 interface RefuelingMainFieldsProps {
   form: UseFormReturn<RefuelingFormData>;
@@ -251,6 +252,12 @@ export function RefuelingMainFields({
                       options={availableBases.map((base) => ({
                         value: base.id,
                         label: base.name,
+                        render: (
+                          <div className="flex items-center gap-2">
+                            {base.name}
+                            <BaseTypeBadge type={base.baseType} short={true} />
+                          </div>
+                        ),
                       }))}
                       value={field.value || ""}
                       onValueChange={(value) => {
@@ -344,13 +351,34 @@ export function RefuelingMainFields({
                                   (b) => b.id === baseId,
                                 );
                                 return base
-                                  ? { value: base.id, label: base.name }
+                                  ? {
+                                      value: base.id,
+                                      label: base.name,
+                                      render: (
+                                        <div className="flex items-center gap-2">
+                                          {base.name}
+                                          <BaseTypeBadge
+                                            type={base.baseType}
+                                            short={true}
+                                          />
+                                        </div>
+                                      ),
+                                    }
                                   : null;
                               })
                               .filter(Boolean) as any)
                           : refuelingBases.map((b) => ({
                               value: b.id,
                               label: b.name,
+                              render: (
+                                <div className="flex items-center gap-2">
+                                  {b.name}
+                                  <BaseTypeBadge
+                                    type={b.baseType}
+                                    short={true}
+                                  />
+                                </div>
+                              ),
                             }))
                       }
                       value={field.value || ""}

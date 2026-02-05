@@ -16,6 +16,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddDeliveryCostDialog } from "@/pages/delivery/components/delivery-cost-dialog";
 import { AllSupplier } from "../types";
+import { BaseTypeBadge } from "@/components/base-type-badge";
 
 interface MovementDestinationSectionProps {
   form: UseFormReturn<MovementFormData>;
@@ -76,7 +77,10 @@ export function MovementDestinationSection({
             <FormControl>
               <div className="w-full">
                 <Combobox
-                  options={warehouses?.map((w) => ({ value: w.id, label: w.name })) || []}
+                  options={
+                    warehouses?.map((w) => ({ value: w.id, label: w.name })) ||
+                    []
+                  }
                   value={field.value}
                   onValueChange={field.onChange}
                   placeholder="Выберите склад"
@@ -102,7 +106,10 @@ export function MovementDestinationSection({
               <FormControl>
                 <div className="flex-1 min-w-0">
                   <Combobox
-                    options={availableCarriers.map((c) => ({ value: c.id, label: c.name }))}
+                    options={availableCarriers.map((c) => ({
+                      value: c.id,
+                      label: c.name,
+                    }))}
                     value={field.value || ""}
                     onValueChange={field.onChange}
                     placeholder="Выберите перевозчика"
@@ -161,12 +168,20 @@ export function MovementDestinationSection({
                   <Combobox
                     options={selectedSupplierBases.map((b: any) => ({
                       value: b.id,
-                      label: b.name
+                      label: b.name,
+                      render: (
+                        <div className="flex items-center gap-2">
+                          {b.name}
+                          <BaseTypeBadge type={b.baseType} short={true} />
+                        </div>
+                      ),
                     }))}
                     value={field.value || ""}
                     onValueChange={(val) => {
                       field.onChange(val);
-                      const base = selectedSupplierBases.find((b: any) => b.id === val);
+                      const base = selectedSupplierBases.find(
+                        (b: any) => b.id === val,
+                      );
                       if (base) {
                         form.setValue("basis", base.name);
                       }
@@ -182,37 +197,47 @@ export function MovementDestinationSection({
           )}
         />
       ) : (
-      <FormField
-        control={form.control}
-        name="basisId"
-        render={({ field }) => (
-          <FormItem className="col-span-1 min-w-0">
-            <FormLabel className="flex items-center gap-2">Базис Склада</FormLabel>
-            <FormControl>
-              <div className="w-full">
-                <Combobox
-                  options={selectedWarehouseBases.map((b: any) => ({
-                    value: b.id,
-                    label: b.name
-                  }))}
-                  value={field.value || ""}
-                  onValueChange={(val) => {
-                    field.onChange(val);
-                    const base = selectedWarehouseBases.find((b: any) => b.id === val);
-                    if (base) {
-                      form.setValue("basis", base.name);
-                    }
-                  }}
-                  placeholder="Выберите базис"
-                  className="w-full"
-                  dataTestId="select-movement-basis"
-                />
-              </div>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        <FormField
+          control={form.control}
+          name="basisId"
+          render={({ field }) => (
+            <FormItem className="col-span-1 min-w-0">
+              <FormLabel className="flex items-center gap-2">
+                Базис Склада
+              </FormLabel>
+              <FormControl>
+                <div className="w-full">
+                  <Combobox
+                    options={selectedWarehouseBases.map((b: any) => ({
+                      value: b.id,
+                      label: b.name,
+                      render: (
+                        <div className="flex items-center gap-2">
+                          {b.name}
+                          <BaseTypeBadge type={b.baseType} short={true} />
+                        </div>
+                      ),
+                    }))}
+                    value={field.value || ""}
+                    onValueChange={(val) => {
+                      field.onChange(val);
+                      const base = selectedWarehouseBases.find(
+                        (b: any) => b.id === val,
+                      );
+                      if (base) {
+                        form.setValue("basis", base.name);
+                      }
+                    }}
+                    placeholder="Выберите базис"
+                    className="w-full"
+                    dataTestId="select-movement-basis"
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       )}
 
       <AddDeliveryCostDialog

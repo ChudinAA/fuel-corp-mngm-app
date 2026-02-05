@@ -24,6 +24,7 @@ import { CUSTOMER_MODULE } from "@shared/constants";
 import { AddCustomerDialog } from "@/pages/counterparties/customers-dialog";
 import { AddSupplierDialog } from "@/pages/counterparties/suppliers-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { BaseTypeBadge } from "@/components/base-type-badge";
 
 interface OptMainFieldsProps {
   form: UseFormReturn<OptFormData>;
@@ -158,7 +159,19 @@ export function OptMainFields({
                             (b) => b.id === baseId,
                           );
                           return base
-                            ? { value: base.id, label: base.name }
+                            ? {
+                                value: base.id,
+                                label: base.name,
+                                render: (
+                                  <div className="flex items-center gap-2">
+                                    {base.name}
+                                    <BaseTypeBadge
+                                      type={base.baseType}
+                                      short={true}
+                                    />
+                                  </div>
+                                ),
+                              }
                             : null;
                         })
                         .filter(Boolean) as any
@@ -166,9 +179,7 @@ export function OptMainFields({
                     value={field.value}
                     onValueChange={(value) => {
                       field.onChange(value);
-                      const base = wholesaleBases?.find(
-                        (b) => b.id === value,
-                      );
+                      const base = wholesaleBases?.find((b) => b.id === value);
                       if (base) {
                         form.setValue("basis", base.name);
                         setSelectedBasis(base.name);
@@ -256,21 +267,40 @@ export function OptMainFields({
                                 (b) => b.id === baseId,
                               );
                               return base
-                                ? { value: base.id, label: base.name }
+                                ? {
+                                    value: base.id,
+                                    label: base.name,
+                                    render: (
+                                      <div className="flex items-center gap-2">
+                                        {base.name}
+                                        <BaseTypeBadge
+                                          type={base.baseType}
+                                          short={true}
+                                        />
+                                      </div>
+                                    ),
+                                  }
                                 : null;
                             })
                             .filter(Boolean) as any)
                         : (wholesaleBases || []).map((b) => ({
                             value: b.id,
                             label: b.name,
+                            render: (
+                              <div className="flex items-center gap-2">
+                                {b.name}
+                                <BaseTypeBadge
+                                  type={b.baseType}
+                                  short={true}
+                                />
+                              </div>
+                            ),
                           }))
                     }
                     value={field.value}
                     onValueChange={(value) => {
                       field.onChange(value);
-                      const base = wholesaleBases?.find(
-                        (b) => b.id === value,
-                      );
+                      const base = wholesaleBases?.find((b) => b.id === value);
                       if (base) {
                         form.setValue("customerBasis", base.name);
                         setCustomerBasis(base.name);
