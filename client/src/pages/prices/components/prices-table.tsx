@@ -412,8 +412,11 @@ export function PricesTable({
               </TableRow>
             ) : (
               filteredPrices.map((price) => {
-                const isExpired =
-                  price.dateTo && new Date(price.dateTo) < new Date();
+                const dateTo = price.dateTo ? new Date(price.dateTo) : null;
+                if (dateTo) {
+                  dateTo.setHours(23, 59, 59, 999);
+                }
+                const isExpired = dateTo && dateTo < new Date();
                 return (
                   <TableRow
                     key={price.id}
