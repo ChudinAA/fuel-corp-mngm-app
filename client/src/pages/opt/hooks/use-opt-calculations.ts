@@ -22,7 +22,6 @@ interface UseOptCalculationsProps {
   deliveryCosts: DeliveryCost[] | undefined;
   carrierId: string;
   deliveryLocationId: string;
-  bases: Base[] | undefined;
   isEditing: boolean;
   initialQuantityKg?: number;
   dealDate?: Date;
@@ -43,7 +42,6 @@ export function useOptCalculations({
   deliveryCosts,
   carrierId,
   deliveryLocationId,
-  bases,
   isEditing,
   initialQuantityKg = 0,
   dealDate,
@@ -136,7 +134,6 @@ export function useOptCalculations({
     carrierId,
     deliveryCosts,
     finalKg,
-    bases,
     basisId,
     supplierWarehouse,
   ]);

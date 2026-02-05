@@ -70,6 +70,8 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       selectedSalePriceId: "",
       basis: "",
       customerBasis: "",
+      basisId: "",
+      customerBasisId: "",
     },
   });
 
@@ -175,7 +177,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     deliveryCosts,
     carrierId: watchCarrierId,
     deliveryLocationId: watchDeliveryLocationId,
-    bases: wholesaleBases,
     isEditing: isEditing,
     initialQuantityKg: initialQuantityKg,
     dealDate: watchDealDate,

@@ -139,6 +139,8 @@ export const insertOptSchema = z
     warehouseId: z.string().nullable().optional(),
     basis: z.string().nullable().optional(),
     customerBasis: z.string().nullable().optional(),
+    basisId: z.string().nullable().optional(),
+    customerBasisId: z.string().nullable().optional(),
     dealDate: z.string().nullable().optional(),
     quantityLiters: z.number().nullable().optional(),
     density: z.number().nullable().optional(),

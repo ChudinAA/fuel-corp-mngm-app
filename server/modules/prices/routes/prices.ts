@@ -90,7 +90,7 @@ export function registerPricesRoutes(app: Express) {
           counterpartyId,
           counterpartyRole,
           counterpartyType,
-          basis,
+          basisId,
           productType,
           date,
         } = req.query;
@@ -110,7 +110,7 @@ export function registerPricesRoutes(app: Express) {
           counterpartyId: counterpartyId as string,
           counterpartyRole: counterpartyRole as string,
           counterpartyType: counterpartyType as string,
-          basis: basis as string,
+          basisId: basisId as string,
           productType: productType as string,
           date: date as string,
         });

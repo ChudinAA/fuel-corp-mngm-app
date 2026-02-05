@@ -17,7 +17,7 @@ export class PriceStorage {
     counterpartyId: string;
     counterpartyRole: string;
     counterpartyType: string;
-    basis?: string;
+    basisId?: string;
     productType?: string;
     date: string;
   }): Promise<Price[]> {
@@ -31,8 +31,8 @@ export class PriceStorage {
       sql`${prices.dateTo} >= ${filters.date}`,
     ];
 
-    if (filters.basis) {
-      conditions.push(eq(prices.basis, filters.basis));
+    if (filters.basisId) {
+      conditions.push(eq(prices.basisId, filters.basisId));
     }
     if (filters.productType) {
       conditions.push(eq(prices.productType, filters.productType));
