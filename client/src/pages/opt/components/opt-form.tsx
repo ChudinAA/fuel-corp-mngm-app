@@ -320,6 +320,8 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         setInputMode("liters");
       } else if (editData.inputMode) {
         setInputMode(editData.inputMode as "liters" | "kg");
+      } else {
+        setInputMode("kg");
       }
     }
   }, [editData, suppliers, customers, allBases, warehouses, form]);

@@ -61,10 +61,10 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       supplierId: "",
       buyerId: "",
       warehouseId: "",
-      inputMode: editData?.quantityLiters ? "liters" : "kg",
-      quantityLiters: editData?.quantityLiters || "",
-      density: editData?.density || "",
-      quantityKg: editData?.quantityKg || "",
+      inputMode: editData?.inputMode as "liters" | "kg" || "liters",
+      quantityLiters: editData?.quantityLiters?.toString() || "",
+      density: editData?.density?.toString() || "",
+      quantityKg: editData?.quantityKg?.toString() || "",
       notes: editData?.notes || "",
       isApproxVolume: editData?.isApproxVolume || false,
       isDraft: editData?.isDraft || false,
@@ -305,6 +305,8 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         setInputMode("liters");
       } else if (editData.inputMode) {
         setInputMode(editData.inputMode as "liters" | "kg");
+      } else {
+        setInputMode("liters");
       }
 
       setIsDataInitialized(true);
