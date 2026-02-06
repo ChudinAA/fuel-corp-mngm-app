@@ -345,14 +345,14 @@ export default function WidgetsAdminPage() {
                 Оставьте пустым для виджета без ограничений доступа
               </p>
             </div>
-            <div className="flex items-center space-x-2">
+            {/* <div className="flex items-center space-x-2">
               <Switch
                 id="isActive"
                 checked={formData.isActive}
                 onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
               />
               <Label htmlFor="isActive">Виджет активен</Label>
-            </div>
+            </div> */}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={handleCloseDialog}>

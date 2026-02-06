@@ -248,7 +248,7 @@ function AddUserDialog({
                 </FormItem>
               )}
             />
-            <FormField
+            {/* <FormField
               control={form.control}
               name="isActive"
               render={({ field }) => (
@@ -259,7 +259,7 @@ function AddUserDialog({
                   <FormLabel className="font-normal cursor-pointer">Активен</FormLabel>
                 </FormItem>
               )}
-            />
+            /> */}
             <div className="flex justify-end gap-4 pt-4">
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Отмена</Button>
               <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-save-user">

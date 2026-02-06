@@ -236,7 +236,7 @@ export function AddBaseDialog({
               )}
             />
 
-            <FormField
+            {/* <FormField
               control={form.control}
               name="isActive"
               render={({ field }) => (
@@ -253,7 +253,7 @@ export function AddBaseDialog({
                   </FormLabel>
                 </FormItem>
               )}
-            />
+            /> */}
 
             <div className="flex justify-end gap-4 pt-4">
               <Button
