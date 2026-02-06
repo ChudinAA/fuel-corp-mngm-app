@@ -24,6 +24,8 @@ export const customers = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     name: text("name").notNull(),
+    fullName: text("full_name"),
+    iata: text("iata"),
     description: text("description"),
     inn: text("inn"),
     contractNumber: text("contract_number"),
@@ -33,6 +35,7 @@ export const customers = pgTable(
     module: text("module").notNull(), // "wholesale", "refueling", "both"
     isIntermediary: boolean("is_intermediary").default(false),
     isForeign: boolean("is_foreign").default(false),
+    withVAT: boolean("with_vat").default(false),
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),

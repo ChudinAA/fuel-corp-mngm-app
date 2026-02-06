@@ -25,6 +25,9 @@ import { opt } from "@shared/schema";
 export const suppliers = pgTable("suppliers", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
+  fullName: text("full_name"),
+  supplyNomenclature: text("supply_nomenclature"),
+  iata: text("iata"),
   description: text("description"),
   servicePrice: decimal("service_price", { precision: 12, scale: 2 }),
   pvkjPrice: decimal("pvkj_price", { precision: 12, scale: 2 }),
@@ -34,6 +37,7 @@ export const suppliers = pgTable("suppliers", {
   storageCost: decimal("storage_cost", { precision: 12, scale: 2 }),
   isIntermediary: boolean("is_intermediary").default(false),
   isForeign: boolean("is_foreign").default(false),
+  withVAT: boolean("with_vat").default(false),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
