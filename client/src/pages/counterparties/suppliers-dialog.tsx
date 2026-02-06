@@ -34,6 +34,9 @@ import { AddBaseDialog } from "../directories/bases-dialog";
 
 const supplierFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
+  fullName: z.string().optional(),
+  iata: z.string().optional(),
+  supplyNomenclature: z.string().optional(),
   description: z.string().optional(),
   baseIds: z
     .array(z.string().min(1, "Выберите базис"))
@@ -45,6 +48,7 @@ const supplierFormSchema = z.object({
   storageCost: z.coerce.number().optional(),
   isIntermediary: z.boolean().default(false),
   isForeign: z.boolean().default(false),
+  withVAT: z.boolean().default(false),
   isActive: z.boolean().default(true),
 });
 
@@ -81,6 +85,9 @@ export function AddSupplierDialog({
     resolver: zodResolver(supplierFormSchema),
     defaultValues: {
       name: "",
+      fullName: "",
+      iata: "",
+      supplyNomenclature: "",
       description: "",
       baseIds: [""],
       servicePrice: undefined,
@@ -90,6 +97,7 @@ export function AddSupplierDialog({
       storageCost: undefined,
       isIntermediary: false,
       isForeign: false,
+      withVAT: false,
       isActive: true,
     },
   });
@@ -107,6 +115,7 @@ export function AddSupplierDialog({
   }, [fields.length, append]);
 
   const isWarehouse = form.watch("isWarehouse");
+  const isForeign = form.watch("isForeign");
 
   const createMutation = useMutation({
     mutationFn: async (data: SupplierFormData) => {
@@ -118,6 +127,9 @@ export function AddSupplierDialog({
       );
       const payload = {
         name: data.name,
+        fullName: data.fullName || null,
+        iata: data.iata || null,
+        supplyNomenclature: data.supplyNomenclature || null,
         description: data.description,
         baseIds: filteredBaseIds.length > 0 ? filteredBaseIds : null,
         servicePrice: data.servicePrice ? String(data.servicePrice) : null,
@@ -130,6 +142,7 @@ export function AddSupplierDialog({
             : null,
         isIntermediary: data.isIntermediary,
         isForeign: data.isForeign,
+        withVAT: data.isForeign ? data.withVAT : false,
         isActive: data.isActive,
       };
 
@@ -151,6 +164,9 @@ export function AddSupplierDialog({
       });
       form.reset({
         name: "",
+        fullName: "",
+        iata: "",
+        supplyNomenclature: "",
         description: "",
         baseIds: [""],
         servicePrice: undefined,
@@ -160,6 +176,7 @@ export function AddSupplierDialog({
         storageCost: undefined,
         isIntermediary: false,
         isForeign: false,
+        withVAT: false,
         isActive: true,
       });
       setOpen(false);
@@ -188,6 +205,9 @@ export function AddSupplierDialog({
           : [""];
       form.reset({
         name: editItem.name,
+        fullName: editItem.fullName || "",
+        iata: editItem.iata || "",
+        supplyNomenclature: editItem.supplyNomenclature || "",
         description: editItem.description || "",
         baseIds: baseIdsArray,
         servicePrice: editItem.servicePrice
@@ -203,6 +223,7 @@ export function AddSupplierDialog({
           : undefined,
         isIntermediary: editItem.isIntermediary || false,
         isForeign: editItem.isForeign || false,
+        withVAT: editItem.withVAT || false,
         isActive: editItem.isActive,
       });
     }
@@ -213,6 +234,9 @@ export function AddSupplierDialog({
     if (!isOpen) {
       form.reset({
         name: "",
+        fullName: "",
+        iata: "",
+        supplyNomenclature: "",
         description: "",
         baseIds: [""],
         servicePrice: undefined,
@@ -222,6 +246,7 @@ export function AddSupplierDialog({
         storageCost: undefined,
         isIntermediary: false,
         isForeign: false,
+        withVAT: false,
         isActive: true,
       });
       if (onEditComplete) {
@@ -260,16 +285,75 @@ export function AddSupplierDialog({
             }}
             className="space-y-4"
           >
+            <div className="flex gap-3">
+              <div className="flex-[3]">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Название</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Название"
+                          data-testid="input-supplier-name"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="flex-1">
+                <FormField
+                  control={form.control}
+                  name="iata"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Код IATA</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="IATA"
+                          data-testid="input-supplier-iata"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
             <FormField
               control={form.control}
-              name="name"
+              name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Название</FormLabel>
+                  <FormLabel>Полное название</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Название"
-                      data-testid="input-supplier-name"
+                      placeholder="Полное название"
+                      data-testid="input-supplier-fullname"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="supplyNomenclature"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Номенклатура поставки</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Номенклатура поставки"
+                      data-testid="input-supplier-nomenclature"
                       {...field}
                     />
                   </FormControl>
@@ -410,7 +494,7 @@ export function AddSupplierDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="flex gap-4 items-center">
               <FormField
                 control={form.control}
                 name="isIntermediary"
@@ -447,6 +531,26 @@ export function AddSupplierDialog({
                   </FormItem>
                 )}
               />
+              {isForeign && (
+                <FormField
+                  control={form.control}
+                  name="withVAT"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 space-y-0">
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-with-vat"
+                        />
+                      </FormControl>
+                      <FormLabel className="font-normal cursor-pointer text-sm">
+                        с НДС/без НДС
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             <FormField

@@ -43,13 +43,15 @@ import { AddBaseDialog } from "../directories/bases-dialog";
 
 const customerFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
+  fullName: z.string().optional(),
+  iata: z.string().optional(),
   module: z.enum([
     CUSTOMER_MODULE.WHOLESALE,
     CUSTOMER_MODULE.REFUELING,
     CUSTOMER_MODULE.BOTH,
   ]),
   description: z.string().optional(),
-  baseIds: z.array(z.string().optional()),
+  baseIds: z.array(z.string().min(1, "Выберите базис")),
   contactPerson: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email("Неверный формат email").optional().or(z.literal("")),
@@ -57,6 +59,7 @@ const customerFormSchema = z.object({
   contractNumber: z.string().optional(),
   isIntermediary: z.boolean().default(false),
   isForeign: z.boolean().default(false),
+  withVAT: z.boolean().default(false),
   isActive: z.boolean().default(true),
 });
 
@@ -93,6 +96,8 @@ export function AddCustomerDialog({
     resolver: zodResolver(customerFormSchema),
     defaultValues: {
       name: "",
+      fullName: "",
+      iata: "",
       module: CUSTOMER_MODULE.BOTH,
       description: "",
       baseIds: [""],
@@ -103,6 +108,7 @@ export function AddCustomerDialog({
       contractNumber: "",
       isIntermediary: false,
       isForeign: false,
+      withVAT: false,
       isActive: true,
     },
   });
@@ -119,6 +125,8 @@ export function AddCustomerDialog({
     }
   }, [fields.length, append]);
 
+  const isForeign = form.watch("isForeign");
+
   useEffect(() => {
     if (editCustomer) {
       setOpen(true);
@@ -128,6 +136,8 @@ export function AddCustomerDialog({
           : [""];
       form.reset({
         name: editCustomer.name,
+        fullName: editCustomer.fullName || "",
+        iata: editCustomer.iata || "",
         module: editCustomer.module as CustomerModule,
         description: editCustomer.description || "",
         baseIds: baseIdsArray,
@@ -138,6 +148,7 @@ export function AddCustomerDialog({
         contractNumber: editCustomer.contractNumber || "",
         isIntermediary: editCustomer.isIntermediary || false,
         isForeign: editCustomer.isForeign || false,
+        withVAT: editCustomer.withVAT || false,
         isActive: editCustomer.isActive,
       });
     }
@@ -150,6 +161,8 @@ export function AddCustomerDialog({
       );
       const payload = {
         name: data.name,
+        fullName: data.fullName || null,
+        iata: data.iata || null,
         module: data.module,
         description: data.description,
         baseIds: filteredBaseIds.length > 0 ? filteredBaseIds : null,
@@ -160,6 +173,7 @@ export function AddCustomerDialog({
         contractNumber: data.contractNumber,
         isIntermediary: data.isIntermediary,
         isForeign: data.isForeign,
+        withVAT: data.isForeign ? data.withVAT : false,
         isActive: data.isActive,
       };
 
@@ -185,6 +199,8 @@ export function AddCustomerDialog({
       });
       form.reset({
         name: "",
+        fullName: "",
+        iata: "",
         module: CUSTOMER_MODULE.BOTH,
         description: "",
         baseIds: [""],
@@ -195,6 +211,7 @@ export function AddCustomerDialog({
         contractNumber: "",
         isIntermediary: false,
         isForeign: false,
+        withVAT: false,
         isActive: true,
       });
       setOpen(false);
@@ -219,6 +236,8 @@ export function AddCustomerDialog({
     if (!isOpen) {
       form.reset({
         name: "",
+        fullName: "",
+        iata: "",
         module: CUSTOMER_MODULE.BOTH,
         description: "",
         baseIds: [""],
@@ -229,6 +248,7 @@ export function AddCustomerDialog({
         contractNumber: "",
         isIntermediary: false,
         isForeign: false,
+        withVAT: false,
         isActive: true,
       });
       if (onEditComplete) {
@@ -247,7 +267,7 @@ export function AddCustomerDialog({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {editCustomer ? "Редактирование покупателя" : "Новый покупатель"}
@@ -267,45 +287,57 @@ export function AddCustomerDialog({
             }}
             className="space-y-4"
           >
-            {/* <FormField
-              control={form.control}
-              name="module"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Модуль</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-customer-module">
-                        <SelectValue placeholder="Выберите модуль" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value={CUSTOMER_MODULE.BOTH}>
-                        Общий (ОПТ и Заправка)
-                      </SelectItem>
-                      <SelectItem value={CUSTOMER_MODULE.WHOLESALE}>
-                        Только ОПТ
-                      </SelectItem>
-                      <SelectItem value={CUSTOMER_MODULE.REFUELING}>
-                        Только Заправка ВС
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            /> */}
+            <div className="flex gap-3">
+              <div className="flex-[3]">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Название</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Название покупателя"
+                          data-testid="input-customer-name"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="flex-1">
+                <FormField
+                  control={form.control}
+                  name="iata"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Код IATA</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="IATA"
+                          data-testid="input-customer-iata"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
 
             <FormField
               control={form.control}
-              name="name"
+              name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Название</FormLabel>
+                  <FormLabel>Полное название</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Название покупателя"
-                      data-testid="input-customer-name"
+                      placeholder="Полное название"
+                      data-testid="input-customer-fullname"
                       {...field}
                     />
                   </FormControl>
@@ -362,6 +394,11 @@ export function AddCustomerDialog({
                       className="w-full"
                       dataTestId={`select-base-${index}`}
                     />
+                    {form.formState.errors.baseIds?.[index] && (
+                      <p className="text-sm text-destructive mt-1">
+                        {form.formState.errors.baseIds[index]?.message}
+                      </p>
+                    )}
                   </div>
                   {fields.length > 1 && (
                     <Button
@@ -378,7 +415,7 @@ export function AddCustomerDialog({
               ))}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="flex gap-4 items-center">
               <FormField
                 control={form.control}
                 name="isIntermediary"
@@ -415,79 +452,27 @@ export function AddCustomerDialog({
                   </FormItem>
                 )}
               />
-            </div>
-
-            {/* <FormField
-              control={form.control}
-              name="contactPerson"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Контактное лицо</FormLabel>
-                  <FormControl>
-                    <Input placeholder="ФИО контактного лица" data-testid="input-customer-contact" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+              {isForeign && (
+                <FormField
+                  control={form.control}
+                  name="withVAT"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 space-y-0">
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-customer-with-vat"
+                        />
+                      </FormControl>
+                      <FormLabel className="font-normal cursor-pointer text-sm">
+                        с НДС/без НДС
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
               )}
-            /> */}
-
-            {/* <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Телефон</FormLabel>
-                    <FormControl>
-                      <Input placeholder="+7 (XXX) XXX-XX-XX" data-testid="input-customer-phone" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="email@example.com" type="email" data-testid="input-customer-email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="inn"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>ИНН</FormLabel>
-                    <FormControl>
-                      <Input placeholder="ИНН" data-testid="input-customer-inn" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="contractNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Номер договора</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Номер договора" data-testid="input-customer-contract" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div> */}
 
             <FormField
               control={form.control}
@@ -507,25 +492,6 @@ export function AddCustomerDialog({
                 </FormItem>
               )}
             />
-
-            {/* <FormField
-              control={form.control}
-              name="isActive"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2 space-y-0">
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="switch-customer-active"
-                    />
-                  </FormControl>
-                  <FormLabel className="font-normal cursor-pointer">
-                    Активен
-                  </FormLabel>
-                </FormItem>
-              )}
-            /> */}
 
             <div className="flex justify-end gap-4 pt-4">
               <Button
