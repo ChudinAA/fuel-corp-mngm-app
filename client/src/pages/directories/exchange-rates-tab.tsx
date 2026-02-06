@@ -72,7 +72,9 @@ export function ExchangeRatesTab() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addCurrencyDialogOpen, setAddCurrencyDialogOpen] = useState(false);
   const [editingRate, setEditingRate] = useState<ExchangeRate | null>(null);
+  const [editingCurrency, setEditingCurrency] = useState<Currency | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingCurrencyId, setDeletingCurrencyId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     currency: "USD",
@@ -123,16 +125,32 @@ export function ExchangeRatesTab() {
 
   const createCurrencyMutation = useMutation({
     mutationFn: async (data: typeof newCurrency) => {
+      if (editingCurrency) {
+        return apiRequest("PATCH", `/api/currencies/${editingCurrency.id}`, data);
+      }
       return apiRequest("POST", "/api/currencies", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/currencies"] });
-      toast({ title: "Валюта добавлена" });
-      setNewCurrency({ code: "", name: "", symbol: "" });
-      setAddCurrencyDialogOpen(false);
+      toast({ title: editingCurrency ? "Валюта обновлена" : "Валюта добавлена" });
+      resetCurrencyForm();
     },
     onError: (error: Error) => {
       toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteCurrencyMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/currencies/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/currencies"] });
+      toast({ title: "Валюта удалена" });
+      setDeletingCurrencyId(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка удаления", description: error.message, variant: "destructive" });
     },
   });
 
@@ -157,6 +175,12 @@ export function ExchangeRatesTab() {
     setDialogOpen(false);
   };
 
+  const resetCurrencyForm = () => {
+    setNewCurrency({ code: "", name: "", symbol: "" });
+    setEditingCurrency(null);
+    setAddCurrencyDialogOpen(false);
+  };
+
   const handleEdit = (rate: ExchangeRate) => {
     setEditingRate(rate);
     setFormData({
@@ -169,9 +193,23 @@ export function ExchangeRatesTab() {
     setDialogOpen(true);
   };
 
+  const handleEditCurrency = (currency: Currency) => {
+    setEditingCurrency(currency);
+    setNewCurrency({
+      code: currency.code,
+      name: currency.name,
+      symbol: currency.symbol || "",
+    });
+    setAddCurrencyDialogOpen(true);
+  };
+
   const handleDelete = (id: string) => {
     setDeletingId(id);
     setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteCurrency = (id: string) => {
+    setDeletingCurrencyId(id);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -215,73 +253,19 @@ export function ExchangeRatesTab() {
   const canDelete = hasPermission("directories", "delete");
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Курсы валют
-          </CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            Управление курсами валют для расчетов
-          </p>
-        </div>
-        {canCreate && (
-          <div className="flex gap-2">
-            <Dialog open={addCurrencyDialogOpen} onOpenChange={setAddCurrencyDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline" data-testid="button-add-currency">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Новая валюта
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Добавить валюту</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleAddCurrency} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Код валюты</Label>
-                    <Input
-                      value={newCurrency.code}
-                      onChange={(e) => setNewCurrency({ ...newCurrency, code: e.target.value.toUpperCase() })}
-                      placeholder="Например: KZT"
-                      maxLength={10}
-                      data-testid="input-currency-code"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Название</Label>
-                    <Input
-                      value={newCurrency.name}
-                      onChange={(e) => setNewCurrency({ ...newCurrency, name: e.target.value })}
-                      placeholder="Например: Казахстанский тенге"
-                      data-testid="input-currency-name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Символ (опционально)</Label>
-                    <Input
-                      value={newCurrency.symbol}
-                      onChange={(e) => setNewCurrency({ ...newCurrency, symbol: e.target.value })}
-                      placeholder="Например: ₸"
-                      maxLength={5}
-                      data-testid="input-currency-symbol"
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={() => setAddCurrencyDialogOpen(false)}>
-                      Отмена
-                    </Button>
-                    <Button type="submit" disabled={createCurrencyMutation.isPending} data-testid="button-save-currency">
-                      {createCurrencyMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-                      Добавить
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Курсы валют
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Управление курсами валют
+            </p>
+          </div>
+          {canCreate && (
             <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) resetForm(); else setDialogOpen(true); }}>
               <DialogTrigger asChild>
                 <Button size="sm" data-testid="button-add-exchange-rate">
@@ -394,50 +378,164 @@ export function ExchangeRatesTab() {
                 </form>
               </DialogContent>
             </Dialog>
+          )}
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : rates.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Курсы валют пока не добавлены
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Валютная пара</TableHead>
+                  <TableHead>Курс</TableHead>
+                  <TableHead>Дата</TableHead>
+                  <TableHead className="w-[80px]">Действия</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedRates.map((rate) => (
+                  <TableRow key={rate.id} data-testid={`row-exchange-rate-${rate.id}`}>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Badge variant="outline">{rate.currency}</Badge>
+                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                        <Badge variant="outline">{rate.targetCurrency || "RUB"}</Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">{parseFloat(rate.rate).toFixed(4)}</TableCell>
+                    <TableCell>{format(new Date(rate.rateDate), "dd.MM.yyyy", { locale: ru })}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {canEdit && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(rate)}
+                            data-testid={`button-edit-rate-${rate.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(rate.id)}
+                            data-testid={`button-delete-rate-${rate.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Валюты
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Список используемых валют
+            </p>
           </div>
-        )}
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : rates.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            Курсы валют пока не добавлены
-          </div>
-        ) : (
+          {canCreate && (
+            <Dialog open={addCurrencyDialogOpen} onOpenChange={(open) => { if (!open) resetCurrencyForm(); else setAddCurrencyDialogOpen(true); }}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline" data-testid="button-add-currency">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Новая валюта
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{editingCurrency ? "Редактировать валюту" : "Добавить валюту"}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleAddCurrency} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Код валюты</Label>
+                    <Input
+                      value={newCurrency.code}
+                      onChange={(e) => setNewCurrency({ ...newCurrency, code: e.target.value.toUpperCase() })}
+                      placeholder="Например: KZT"
+                      maxLength={10}
+                      data-testid="input-currency-code"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Название</Label>
+                    <Input
+                      value={newCurrency.name}
+                      onChange={(e) => setNewCurrency({ ...newCurrency, name: e.target.value })}
+                      placeholder="Например: Казахстанский тенге"
+                      data-testid="input-currency-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Символ (опционально)</Label>
+                    <Input
+                      value={newCurrency.symbol}
+                      onChange={(e) => setNewCurrency({ ...newCurrency, symbol: e.target.value })}
+                      placeholder="Например: ₸"
+                      maxLength={5}
+                      data-testid="input-currency-symbol"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={resetCurrencyForm}>
+                      Отмена
+                    </Button>
+                    <Button type="submit" disabled={createCurrencyMutation.isPending} data-testid="button-save-currency">
+                      {createCurrencyMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                      {editingCurrency ? "Сохранить" : "Добавить"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
+        </CardHeader>
+        <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Валютная пара</TableHead>
-                <TableHead>Курс</TableHead>
-                <TableHead>Дата</TableHead>
-                <TableHead>Источник</TableHead>
-                <TableHead className="w-[100px]">Действия</TableHead>
+                <TableHead>Код</TableHead>
+                <TableHead>Название</TableHead>
+                <TableHead className="w-[80px]">Действия</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedRates.map((rate) => (
-                <TableRow key={rate.id} data-testid={`row-exchange-rate-${rate.id}`}>
+              {currencies.map((currency) => (
+                <TableRow key={currency.id} data-testid={`row-currency-${currency.id}`}>
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Badge variant="outline">{rate.currency}</Badge>
-                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                      <Badge variant="outline">{rate.targetCurrency || "RUB"}</Badge>
-                    </div>
+                    <Badge variant="secondary">{currency.code}</Badge>
                   </TableCell>
-                  <TableCell className="font-medium">{parseFloat(rate.rate).toFixed(4)}</TableCell>
-                  <TableCell>{format(new Date(rate.rateDate), "dd.MM.yyyy", { locale: ru })}</TableCell>
-                  <TableCell className="text-muted-foreground">{rate.source || "—"}</TableCell>
+                  <TableCell>
+                    {currency.name} {currency.symbol && `(${currency.symbol})`}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       {canEdit && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleEdit(rate)}
-                          data-testid={`button-edit-rate-${rate.id}`}
+                          onClick={() => handleEditCurrency(currency)}
+                          data-testid={`button-edit-currency-${currency.id}`}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -446,8 +544,8 @@ export function ExchangeRatesTab() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(rate.id)}
-                          data-testid={`button-delete-rate-${rate.id}`}
+                          onClick={() => handleDeleteCurrency(currency.id)}
+                          data-testid={`button-delete-currency-${currency.id}`}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -458,8 +556,8 @@ export function ExchangeRatesTab() {
               ))}
             </TableBody>
           </Table>
-        )}
-      </CardContent>
+        </CardContent>
+      </Card>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
@@ -480,6 +578,26 @@ export function ExchangeRatesTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+
+      <AlertDialog open={!!deletingCurrencyId} onOpenChange={(open) => !open && setDeletingCurrencyId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить валюту?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие нельзя отменить. Убедитесь, что нет курсов, привязанных к этой валюте.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingCurrencyId && deleteCurrencyMutation.mutate(deletingCurrencyId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteCurrencyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Удалить"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
