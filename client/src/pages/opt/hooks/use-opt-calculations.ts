@@ -65,7 +65,7 @@ export function useOptCalculations({
     dealDate,
     isEditing,
     editQuantityKg: initialQuantityKg.toString(),
-    initialCurrentBalance: productType === "pvkj" ? supplierWarehouse?.pvkjBalance : supplierWarehouse?.currentBalance,
+    initialCurrentBalance: productType === "pvkj" ? (supplierWarehouse as any)?.pvkjBalance : supplierWarehouse?.currentBalance,
   });
 
   const { purchasePrice: extractedPurchasePrice, salePrice: extractedSalePrice } = usePriceExtraction({
