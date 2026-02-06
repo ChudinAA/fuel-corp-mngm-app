@@ -40,6 +40,9 @@ export class OptStorage {
         if (filters.buyer?.length) {
           conditions.push(sql`${customers.name} IN ${filters.buyer}`);
         }
+        if (filters.productType?.length) {
+          conditions.push(sql`${opt.productType} IN ${filters.productType}`);
+        }
         if (filters.deliveryLocation?.length) {
           conditions.push(
             sql`${logisticsDeliveryLocations.name} IN ${filters.deliveryLocation}`,
@@ -151,13 +154,19 @@ export class OptStorage {
       const [created] = await tx.insert(opt).values(data).returning();
 
       // Обновляем остаток на складе только если это склад-поставщик и НЕ черновик
-      if (!created.isDraft && created.warehouseId && created.quantityKg) {
+      if (
+        !created.isDraft &&
+        created.warehouseId &&
+        created.quantityKg &&
+        (created.productType === PRODUCT_TYPE.KEROSENE ||
+          created.productType === PRODUCT_TYPE.PVKJ)
+      ) {
         const { transaction } =
           await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
             tx,
             created.warehouseId,
             TRANSACTION_TYPE.SALE,
-            PRODUCT_TYPE.KEROSENE,
+            created.productType || PRODUCT_TYPE.KEROSENE,
             SOURCE_TYPE.OPT,
             created.id,
             parseFloat(created.quantityKg),
@@ -187,20 +196,28 @@ export class OptStorage {
         where: eq(opt.id, id),
       });
 
-      if (!currentOpt) return undefined;
+      if (!currentOpt) {
+        throw new Error("Deal not found");
+      }
 
       // Логика перехода из черновика в готовую сделку
       const transitioningFromDraft =
         currentOpt.isDraft && data.isDraft === false;
 
       // Если сделка становится не черновиком, создаем транзакцию
-      if (transitioningFromDraft && data.warehouseId && data.quantityKg) {
+      if (
+        transitioningFromDraft &&
+        data.warehouseId &&
+        data.quantityKg &&
+        (data.productType === PRODUCT_TYPE.KEROSENE ||
+          data.productType === PRODUCT_TYPE.PVKJ)
+      ) {
         const { transaction } =
           await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
             tx,
             data.warehouseId,
             TRANSACTION_TYPE.SALE,
-            PRODUCT_TYPE.KEROSENE,
+            data.productType || PRODUCT_TYPE.KEROSENE,
             SOURCE_TYPE.OPT,
             currentOpt.id,
             data.quantityKg,
@@ -216,8 +233,16 @@ export class OptStorage {
         !currentOpt.isDraft &&
         data.quantityKg &&
         currentOpt.transactionId &&
-        currentOpt.warehouseId
+        currentOpt.warehouseId &&
+        (currentOpt.productType === PRODUCT_TYPE.KEROSENE ||
+          currentOpt.productType === PRODUCT_TYPE.PVKJ)
       ) {
+        if (data.productType !== currentOpt.productType) {
+          throw new Error(
+            "Нельзя поменять тип продукта для существующей сделки",
+          );
+        }
+
         if (data.warehouseId !== currentOpt.warehouseId) {
           throw new Error(
             "Нельзя поменять склад-источник для существующей сделки",
@@ -238,7 +263,7 @@ export class OptStorage {
             oldTotalCost,
             newQuantityKg,
             newTotalCost,
-            PRODUCT_TYPE.KEROSENE,
+            currentOpt.productType || PRODUCT_TYPE.KEROSENE,
             data.updatedById,
             data.dealDate,
           );
@@ -266,7 +291,12 @@ export class OptStorage {
         where: eq(opt.id, id),
       });
 
-      if (currentOpt && currentOpt.transactionId) {
+      if (
+        currentOpt &&
+        currentOpt.transactionId &&
+        (currentOpt.productType === PRODUCT_TYPE.KEROSENE ||
+         currentOpt.productType === PRODUCT_TYPE.PVKJ)
+      ) {
         await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
           tx,
           currentOpt.transactionId,
