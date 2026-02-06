@@ -40,7 +40,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { formatNumberForTable, formatCurrencyForTable } from "../utils";
+import { formatNumberForTable, formatCurrencyForTable, getProductLabel } from "../utils";
 import { useOptTable } from "../hooks/use-opt-table";
 import {
   EntityActionsMenu,
@@ -50,6 +50,7 @@ import { AuditPanel } from "@/components/audit-panel";
 import { ExportButton } from "@/components/export/export-button";
 import { Badge } from "@/components/ui/badge";
 import { TableColumnFilter } from "@/components/ui/table-column-filter";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 interface OptTableProps {
   onEdit: (opt: any) => void;
@@ -192,23 +193,27 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
 
   // Генерируем опции для фильтров на основе данных
   const getUniqueOptions = (key: string) => {
-    const values = new Set<string>();
+    const values = new Map<string, string>();
     deals.forEach((deal: any) => {
-      let val;
       if (key === "dealDate") {
-        val = formatDate(deal.dealDate);
+        const val = formatDate(deal.dealDate);
+        values.set(val, val);
+      } else if (key === "productType") {
+        const label = getProductLabel(deal.productType);
+        values.set(label, deal.productType);
       } else if (key.includes(".")) {
-        val = key.split(".").reduce((obj, k) => obj?.[k], deal);
+        const val = key.split(".").reduce((obj, k) => obj?.[k], deal);
+        const label = typeof val === "object" ? val?.name : val;
+        if (label) values.set(label, label);
       } else {
-        val = deal[key];
+        const val = deal[key];
+        const label = typeof val === "object" ? val?.name : val;
+        if (label) values.set(label, label);
       }
-
-      const label = typeof val === "object" ? val?.name : val;
-      if (label) values.add(label);
     });
-    return Array.from(values)
-      .sort()
-      .map((v) => ({ label: v, value: v }));
+    return Array.from(values.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([label, value]) => ({ label, value }));
   };
 
   const handleFilterUpdate = (columnId: string, values: string[]) => {
@@ -284,12 +289,11 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   <span>Продукт</span>
                   <TableColumnFilter
                     title="Продукт"
-                    options={[
-                      { label: "Керосин", value: "kerosene" },
-                      { label: "ПВКЖ", value: "pvkj" },
-                    ]}
+                    options={getUniqueOptions("productType")}
                     selectedValues={columnFilters["productType"] || []}
-                    onUpdate={(values) => handleFilterUpdate("productType", values)}
+                    onUpdate={(values) =>
+                      handleFilterUpdate("productType", values)
+                    }
                     dataTestId="filter-product"
                   />
                 </div>
@@ -411,7 +415,19 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                     </div>
                   </TableCell>
                   <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
-                    {deal.productType === "pvkj" ? "ПВКЖ" : "Керосин"}
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "whitespace-nowrap inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold",
+                        deal.productType === PRODUCT_TYPE.KEROSENE
+                          ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"
+                          : deal.productType === PRODUCT_TYPE.PVKJ
+                            ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30"
+                            : "",
+                      )}
+                    >
+                      {getProductLabel(deal.productType)}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
                     <TooltipProvider>
