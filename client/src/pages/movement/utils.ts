@@ -20,7 +20,7 @@ export const formatDate = (dateStr: string) =>
 
 export const calculateKgFromLiters = (liters: number | null, density: number | null): number | null => {
   if (!liters || !density) return null;
-  return parseFloat((liters * density).toFixed(2));
+  return parseFloat((liters * density).toFixed(0));
 };
 
 export const calculateValues = (

@@ -31,7 +31,7 @@ export function useRefuelingAbroadCalculations({
     const liters = parseFloat(quantityLiters || "0");
     const d = parseFloat(density || "0.8");
     if (isNaN(liters) || isNaN(d) || d <= 0) return null;
-    return liters * d;
+    return (liters * d).toFixed(0);
   }, [inputMode, quantityLiters, density]);
 
   const finalKg = useMemo(() => {

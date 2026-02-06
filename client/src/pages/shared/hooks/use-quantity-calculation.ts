@@ -16,7 +16,7 @@ export function useQuantityCalculation({
 }: UseQuantityCalculationProps) {
   const calculatedKg = useMemo(() => {
     if (inputMode === "liters" && quantityLiters && density) {
-      return (parseFloat(quantityLiters) * parseFloat(density)).toFixed(2);
+      return (parseFloat(quantityLiters) * parseFloat(density)).toFixed(0);
     }
     return quantityKg || "0";
   }, [inputMode, quantityLiters, density, quantityKg]);
