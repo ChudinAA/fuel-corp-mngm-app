@@ -51,7 +51,7 @@ const customerFormSchema = z.object({
     CUSTOMER_MODULE.BOTH,
   ]),
   description: z.string().optional(),
-  baseIds: z.array(z.string().min(1, "Выберите базис")),
+  baseIds: z.array(z.string().optional()),
   contactPerson: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email("Неверный формат email").optional().or(z.literal("")),
@@ -297,7 +297,7 @@ export function AddCustomerDialog({
                       <FormLabel>Название</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Название покупателя"
+                          placeholder="Сокращенное название"
                           data-testid="input-customer-name"
                           {...field}
                         />
@@ -394,11 +394,6 @@ export function AddCustomerDialog({
                       className="w-full"
                       dataTestId={`select-base-${index}`}
                     />
-                    {form.formState.errors.baseIds?.[index] && (
-                      <p className="text-sm text-destructive mt-1">
-                        {form.formState.errors.baseIds[index]?.message}
-                      </p>
-                    )}
                   </div>
                   {fields.length > 1 && (
                     <Button
@@ -466,7 +461,7 @@ export function AddCustomerDialog({
                         />
                       </FormControl>
                       <FormLabel className="font-normal cursor-pointer text-sm">
-                        с НДС/без НДС
+                        с/без НДС
                       </FormLabel>
                     </FormItem>
                   )}

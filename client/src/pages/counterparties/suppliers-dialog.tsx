@@ -295,7 +295,7 @@ export function AddSupplierDialog({
                       <FormLabel>Название</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Название"
+                          placeholder="Сокращенное название"
                           data-testid="input-supplier-name"
                           {...field}
                         />
@@ -545,7 +545,7 @@ export function AddSupplierDialog({
                         />
                       </FormControl>
                       <FormLabel className="font-normal cursor-pointer text-sm">
-                        с НДС/без НДС
+                        с/без НДС
                       </FormLabel>
                     </FormItem>
                   )}
