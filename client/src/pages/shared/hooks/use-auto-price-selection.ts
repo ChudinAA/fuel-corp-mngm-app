@@ -27,15 +27,6 @@ export function useAutoPriceSelection({
   setSelectedSalePriceId,
   formSetValue,
 }: UseAutoPriceSelectionProps) {
-  // Сброс цен при изменении типа продукта
-  useEffect(() => {
-    if (!editData) {
-      setSelectedPurchasePriceId("");
-      formSetValue("selectedPurchasePriceId", "");
-      setSelectedSalePriceId("");
-      formSetValue("selectedSalePriceId", "");
-    }
-  }, [productType, editData, setSelectedPurchasePriceId, setSelectedSalePriceId, formSetValue]);
 
   // Автоматический выбор первой цены покупки при выборе поставщика
   useEffect(() => {
