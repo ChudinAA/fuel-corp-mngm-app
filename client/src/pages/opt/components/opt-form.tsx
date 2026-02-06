@@ -113,7 +113,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
   const watchKg = form.watch("quantityKg");
   const watchCarrierId = form.watch("carrierId");
   const watchDeliveryLocationId = form.watch("deliveryLocationId");
-
+  const watchProductType = form.watch("productType");
   const watchBasisId = form.watch("basisId");
   const watchCustomerBasisId = form.watch("customerBasisId");
 
@@ -140,7 +140,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     customerBasisId: watchCustomerBasisId || "",
     carrierId: watchCarrierId,
     deliveryLocationId: watchDeliveryLocationId,
-    productType: form.watch("productType") || PRODUCT_TYPE.KEROSENE,
+    productType: watchProductType || PRODUCT_TYPE.KEROSENE,
     suppliers,
     allBases,
     carriers,
@@ -183,6 +183,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     isEditing: isEditing,
     initialQuantityKg: initialQuantityKg,
     dealDate: watchDealDate,
+    productType: watchProductType || PRODUCT_TYPE.KEROSENE,
   });
 
   const {
@@ -198,7 +199,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       date: watchDealDate,
       supplierId: watchSupplierId,
       buyerId: watchBuyerId,
-      productType: form.getValues("productType"),
+      productType: watchProductType,
       basisId: watchBasisId,
       customerBasisId: watchCustomerBasisId,
       deliveryLocationId: watchDeliveryLocationId,
@@ -242,6 +243,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     purchasePrices,
     salePrices,
     isWarehouseSupplier,
+    productType: form.watch("productType") || PRODUCT_TYPE.KEROSENE,
     editData,
     setSelectedPurchasePriceId,
     setSelectedSalePriceId,

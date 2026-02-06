@@ -3,6 +3,7 @@ import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
 import { PRODUCT_TYPE } from "@shared/constants";
 
 interface UseOptWarehouseBalanceProps {
+  productType: string;
   warehouseId?: string;
   dealDate?: Date;
   isEditing?: boolean;
@@ -11,6 +12,7 @@ interface UseOptWarehouseBalanceProps {
 }
 
 export function useOptWarehouseBalance({
+  productType,
   warehouseId,
   dealDate,
   isEditing,
@@ -31,11 +33,11 @@ export function useOptWarehouseBalance({
     useWarehouseBalance(
       isBackdated ? warehouseId : undefined,
       dealDate,
-      PRODUCT_TYPE.KEROSENE,
+      productType,
     );
 
   const { data: currentData, isLoading: isCurrentLoading } =
-    useWarehouseBalance(warehouseId, new Date(), PRODUCT_TYPE.KEROSENE);
+    useWarehouseBalance(warehouseId, new Date(), productType);
 
   const availableBalance = useMemo(() => {
     if (!warehouseId) return null;

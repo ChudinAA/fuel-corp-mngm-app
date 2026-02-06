@@ -25,6 +25,7 @@ interface UseOptCalculationsProps {
   isEditing: boolean;
   initialQuantityKg?: number;
   dealDate?: Date;
+  productType: string;
 }
 
 export function useOptCalculations({
@@ -45,6 +46,7 @@ export function useOptCalculations({
   isEditing,
   initialQuantityKg = 0,
   dealDate,
+  productType,
 }: UseOptCalculationsProps) {
   const { calculatedKg, finalKg } = useQuantityCalculation({
     inputMode,
@@ -58,6 +60,7 @@ export function useOptCalculations({
     warehousePrice: warehousePriceAtDate,
     isLoading: isWarehouseBalanceLoading 
   } = useOptWarehouseBalance({
+    productType,
     warehouseId: isWarehouseSupplier ? supplierWarehouse?.id : undefined,
     dealDate,
     isEditing,

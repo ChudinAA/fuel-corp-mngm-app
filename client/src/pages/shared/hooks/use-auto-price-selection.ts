@@ -8,6 +8,7 @@ interface UseAutoPriceSelectionProps {
   purchasePrices: Price[];
   salePrices: Price[];
   isWarehouseSupplier: boolean;
+  productType: string;
   editData: any;
   setSelectedPurchasePriceId: (id: string) => void;
   setSelectedSalePriceId: (id: string) => void;
@@ -20,11 +21,22 @@ export function useAutoPriceSelection({
   purchasePrices,
   salePrices,
   isWarehouseSupplier,
+  productType,
   editData,
   setSelectedPurchasePriceId,
   setSelectedSalePriceId,
   formSetValue,
 }: UseAutoPriceSelectionProps) {
+  // Сброс цен при изменении типа продукта
+  useEffect(() => {
+    if (!editData) {
+      setSelectedPurchasePriceId("");
+      formSetValue("selectedPurchasePriceId", "");
+      setSelectedSalePriceId("");
+      formSetValue("selectedSalePriceId", "");
+    }
+  }, [productType, editData, setSelectedPurchasePriceId, setSelectedSalePriceId, formSetValue]);
+
   // Автоматический выбор первой цены покупки при выборе поставщика
   useEffect(() => {
     if (supplierId && purchasePrices.length > 0 && !isWarehouseSupplier && !editData) {

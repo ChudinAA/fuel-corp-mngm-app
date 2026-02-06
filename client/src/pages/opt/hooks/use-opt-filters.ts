@@ -86,7 +86,7 @@ export function useOptFilters({
     counterpartyRole: COUNTERPARTY_ROLE.BUYER,
     counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
     basisId: customerBasisId,
-    productType: PRODUCT_TYPE.KEROSENE,
+    productType: productType || PRODUCT_TYPE.KEROSENE,
     date: dealDate,
     enabled: !!buyerId && !!customerBasisId && !!dealDate,
   });
