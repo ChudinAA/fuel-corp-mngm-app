@@ -17,6 +17,8 @@ import type { Warehouse } from "@shared/schema";
 import { newWarehouseFormSchema } from "../schemas";
 import type { NewWarehouseFormValues } from "../types";
 import { BaseTypeBadge } from "@/components/base-type-badge";
+import { useAuth } from "@/hooks/use-auth";
+import { AddBaseDialog } from "@/pages/directories/bases-dialog";
 
 interface AddWarehouseDialogProps {
   warehouseToEdit: Warehouse | null;
@@ -31,8 +33,12 @@ export function AddWarehouseDialog({
   open: externalOpen, 
   onOpenChange: externalOnOpenChange 
 }: AddWarehouseDialogProps) {
+
+  const { hasPermission } = useAuth();
   const { toast } = useToast();
   const [internalOpen, setInternalOpen] = useState(false);
+  const [addBaseOpen, setAddBaseOpen] = useState(false);
+
 
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = externalOnOpenChange || setInternalOpen;
@@ -148,20 +154,34 @@ export function AddWarehouseDialog({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <FormLabel>Базисы поставки</FormLabel>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const lastField = fields[fields.length - 1];
-                    if (lastField && !form.watch(`bases.${fields.length - 1}.baseId`)) {
-                      return;
-                    }
-                    append({ baseId: "" });
-                  }}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  {hasPermission("directories", "create") && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setAddBaseOpen(true)}
+                      data-testid="button-add-base-inline"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Создать новый
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const lastField = fields[fields.length - 1];
+                      if (lastField && !form.watch(`bases.${fields.length - 1}.baseId`)) {
+                        return;
+                      }
+                      append({ baseId: "" });
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               {fields.map((field, index) => (
                 <div key={field.id} className="flex gap-2 items-center">
@@ -262,6 +282,12 @@ export function AddWarehouseDialog({
             </div>
           </form>
         </Form>
+
+        <AddBaseDialog
+          isInline
+          inlineOpen={addBaseOpen}
+          onInlineOpenChange={setAddBaseOpen}
+        />
       </DialogContent>
     </Dialog>
   );

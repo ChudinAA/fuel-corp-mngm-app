@@ -45,6 +45,8 @@ import {
 } from "lucide-react";
 import type { LogisticsCarrier, Base } from "@shared/schema";
 import { BaseTypeBadge } from "@/components/base-type-badge";
+import { AddBaseDialog } from "./bases-dialog";
+import { useAuth } from "@/hooks/use-auth";
 
 export const LOGISTICS_TYPES = [
   { value: "carrier", label: "Перевозчик", icon: Truck },
@@ -120,8 +122,11 @@ export function AddLogisticsDialog({
   onCreated,
   defaultType,
 }: AddLogisticsDialogProps) {
+
+  const { hasPermission } = useAuth();
   const { toast } = useToast();
   const [localOpen, setLocalOpen] = useState(false);
+  const [addBaseOpen, setAddBaseOpen] = useState(false);
 
   const open = isInline ? inlineOpen : localOpen;
   const setOpen = isInline ? onInlineOpenChange || setLocalOpen : setLocalOpen;
@@ -528,7 +533,21 @@ export function AddLogisticsDialog({
                   name="baseId"
                   render={({ field }) => (
                     <FormItem className="col-span-1 min-w-0">
-                      <FormLabel>Базис</FormLabel>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Базисы</FormLabel>
+                        {hasPermission("directories", "create") && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setAddBaseOpen(true)}
+                            data-testid="button-add-base-inline"
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Создать новый
+                          </Button>
+                        )}
+                      </div>
                       <FormControl>
                         <div className="w-full">
                           <Combobox
@@ -813,6 +832,12 @@ export function AddLogisticsDialog({
             </div>
           </form>
         </Form>
+
+        <AddBaseDialog
+          isInline
+          inlineOpen={addBaseOpen}
+          onInlineOpenChange={setAddBaseOpen}
+        />
       </DialogContent>
     </Dialog>
   );

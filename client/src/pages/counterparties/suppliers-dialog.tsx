@@ -29,6 +29,8 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Loader2, X } from "lucide-react";
 import type { Supplier, Base } from "@shared/schema";
 import { BaseTypeBadge } from "@/components/base-type-badge";
+import { useAuth } from "@/hooks/use-auth";
+import { AddBaseDialog } from "../directories/bases-dialog";
 
 const supplierFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
@@ -67,8 +69,10 @@ export function AddSupplierDialog({
   onInlineOpenChange,
   onCreated,
 }: AddSupplierDialogProps) {
+  const { hasPermission } = useAuth();
   const { toast } = useToast();
   const [localOpen, setLocalOpen] = useState(false);
+  const [addBaseOpen, setAddBaseOpen] = useState(false);
 
   const open = isInline ? inlineOpen : localOpen;
   const setOpen = isInline ? onInlineOpenChange || setLocalOpen : setLocalOpen;
@@ -277,14 +281,28 @@ export function AddSupplierDialog({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <FormLabel>Базисы</FormLabel>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => append("")}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  {hasPermission("directories", "create") && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setAddBaseOpen(true)}
+                      data-testid="button-add-base-inline"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Создать новый
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => append("")}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               {fields.map((field, index) => (
                 <div key={field.id} className="flex gap-2 items-center">
@@ -298,7 +316,7 @@ export function AddSupplierDialog({
                             {b.name}
                             <BaseTypeBadge type={b.baseType} />
                           </div>
-                        )
+                        ),
                       }))}
                       value={form.watch(`baseIds.${index}`) || ""}
                       onValueChange={(value) =>
@@ -392,6 +410,45 @@ export function AddSupplierDialog({
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="isIntermediary"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-2 space-y-0">
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="switch-is-intermediary"
+                      />
+                    </FormControl>
+                    <FormLabel className="font-normal cursor-pointer text-sm">
+                      Посредник
+                    </FormLabel>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="isForeign"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-2 space-y-0">
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="switch-is-foreign"
+                      />
+                    </FormControl>
+                    <FormLabel className="font-normal cursor-pointer text-sm">
+                      Зарубеж
+                    </FormLabel>
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
               name="isWarehouse"
@@ -452,46 +509,7 @@ export function AddSupplierDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="isIntermediary"
-                render={({ field }) => (
-                  <FormItem className="flex items-center gap-2 space-y-0">
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="switch-is-intermediary"
-                      />
-                    </FormControl>
-                    <FormLabel className="font-normal cursor-pointer text-sm">
-                      Посредник
-                    </FormLabel>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="isForeign"
-                render={({ field }) => (
-                  <FormItem className="flex items-center gap-2 space-y-0">
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="switch-is-foreign"
-                      />
-                    </FormControl>
-                    <FormLabel className="font-normal cursor-pointer text-sm">
-                      Зарубеж
-                    </FormLabel>
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
+            {/* <FormField
               control={form.control}
               name="isActive"
               render={({ field }) => (
@@ -508,7 +526,7 @@ export function AddSupplierDialog({
                   </FormLabel>
                 </FormItem>
               )}
-            />
+            /> */}
 
             <div className="flex justify-end gap-4 pt-4">
               <Button
@@ -538,6 +556,12 @@ export function AddSupplierDialog({
             </div>
           </form>
         </Form>
+
+        <AddBaseDialog
+          isInline
+          inlineOpen={addBaseOpen}
+          onInlineOpenChange={setAddBaseOpen}
+        />
       </DialogContent>
     </Dialog>
   );
