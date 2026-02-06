@@ -66,7 +66,7 @@ const customerFormSchema = z.object({
 type CustomerFormData = z.infer<typeof customerFormSchema>;
 
 interface AddCustomerDialogProps {
-  bases: Base[];
+  bases?: Base[];
   editCustomer?: Customer | null;
   onEditComplete?: () => void;
   isInline?: boolean;
@@ -76,7 +76,7 @@ interface AddCustomerDialogProps {
 }
 
 export function AddCustomerDialog({
-  bases,
+  bases = [],
   editCustomer,
   onEditComplete,
   isInline = false,

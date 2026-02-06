@@ -421,6 +421,7 @@ export function RefuelingMainFields({
       />
 
       <AddCustomerDialog
+        bases={allBases}
         isInline
         inlineOpen={addCustomerOpen}
         onInlineOpenChange={setAddCustomerOpen}

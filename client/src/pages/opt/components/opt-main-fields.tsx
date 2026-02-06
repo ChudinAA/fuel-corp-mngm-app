@@ -336,6 +336,7 @@ export function OptMainFields({
       />
 
       <AddCustomerDialog
+        bases={wholesaleBases}
         isInline
         inlineOpen={addCustomerOpen}
         onInlineOpenChange={setAddCustomerOpen}
