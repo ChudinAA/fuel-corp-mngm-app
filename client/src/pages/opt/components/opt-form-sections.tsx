@@ -44,13 +44,11 @@ interface VolumeInputSectionProps {
 
 export function VolumeInputSection({
   form,
-  inputMode,
   setInputMode,
   calculatedKg,
 }: VolumeInputSectionProps) {
   const watchLiters = form.watch("quantityLiters");
   const watchDensity = form.watch("density");
-
   const inputMode = form.watch("inputMode");
 
   return (

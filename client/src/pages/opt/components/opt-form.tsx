@@ -662,7 +662,6 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
           <VolumeInputSection
             form={form}
-            inputMode={inputMode}
             setInputMode={setInputMode}
             calculatedKg={calculatedKg}
           />

@@ -616,7 +616,6 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
 
           <VolumeInputSection
             form={form}
-            inputMode={inputMode}
             setInputMode={setInputMode}
             calculatedKg={calculatedKg}
           />

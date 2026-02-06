@@ -23,31 +23,39 @@ interface VolumeInputSectionProps {
 
 export function VolumeInputSection({
   form,
-  inputMode,
   setInputMode,
   calculatedKg,
 }: VolumeInputSectionProps) {
   const watchLiters = form.watch("quantityLiters");
   const watchDensity = form.watch("density");
+  const inputMode = form.watch("inputMode");
 
   return (
     <Card>
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between gap-4">
           <CardTitle className="text-lg">Объем топлива</CardTitle>
-          <div className="flex items-center gap-2">
-            <Label className="text-sm text-muted-foreground">
-              Литры/Плотность
-            </Label>
-            <Switch
-              checked={inputMode === "kg"}
-              onCheckedChange={(checked) =>
-                setInputMode(checked ? "kg" : "liters")
-              }
-              data-testid="switch-input-mode"
-            />
-            <Label className="text-sm text-muted-foreground">КГ</Label>
-          </div>
+          <FormField
+            control={form.control}
+            name="inputMode"
+            render={({ field }) => (
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground">
+                  Литры/Плотность
+                </Label>
+                <Switch
+                  checked={field.value === "kg"}
+                  onCheckedChange={(checked) => {
+                    const mode = checked ? "kg" : "liters";
+                    field.onChange(mode);
+                    setInputMode(mode);
+                  }}
+                  data-testid="switch-input-mode"
+                />
+                <Label className="text-sm text-muted-foreground">КГ</Label>
+              </div>
+            )}
+          />
         </div>
       </CardHeader>
       <CardContent>
