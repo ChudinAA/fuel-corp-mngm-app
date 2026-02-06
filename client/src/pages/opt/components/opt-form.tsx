@@ -72,6 +72,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       customerBasis: "",
       basisId: "",
       customerBasisId: "",
+      inputMode: "kg",
     },
   });
 
@@ -146,6 +147,8 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     supplierWarehouse,
   });
 
+  const watchInputMode = form.watch("inputMode");
+
   // Use calculations hook
   const {
     calculatedKg,
@@ -163,7 +166,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     isWarehouseBalanceLoading,
     warehousePriceAtDate,
   } = useOptCalculations({
-    inputMode,
+    inputMode: watchInputMode,
     quantityLiters: watchLiters,
     density: watchDensity,
     quantityKg: watchKg,
@@ -316,12 +319,10 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
           : 0,
       );
 
-      if (editData.quantityLiters && !editData.inputMode) {
-        setInputMode("liters");
-      } else if (editData.inputMode) {
+      if (editData.inputMode) {
         setInputMode(editData.inputMode as "liters" | "kg");
-      } else {
-        setInputMode("kg");
+      } else if (editData.quantityLiters) {
+        setInputMode("liters");
       }
     }
   }, [editData, suppliers, customers, allBases, warehouses, form]);
@@ -664,6 +665,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
           <VolumeInputSection
             form={form}
+            inputMode={inputMode}
             setInputMode={setInputMode}
             calculatedKg={calculatedKg}
           />

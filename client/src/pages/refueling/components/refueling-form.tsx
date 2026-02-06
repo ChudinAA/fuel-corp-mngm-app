@@ -61,7 +61,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       supplierId: "",
       buyerId: "",
       warehouseId: "",
-      inputMode: editData?.inputMode as "liters" | "kg" || "liters",
+      inputMode: "liters",
       quantityLiters: editData?.quantityLiters?.toString() || "",
       density: editData?.density?.toString() || "",
       quantityKg: editData?.quantityKg?.toString() || "",
@@ -618,6 +618,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
 
           <VolumeInputSection
             form={form}
+            inputMode={inputMode}
             setInputMode={setInputMode}
             calculatedKg={calculatedKg}
           />

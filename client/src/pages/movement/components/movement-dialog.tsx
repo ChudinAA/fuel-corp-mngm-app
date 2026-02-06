@@ -380,6 +380,7 @@ export function MovementDialog({
 
             <VolumeInputSection
               form={form}
+              inputMode={inputMode}
               setInputMode={setInputMode}
               calculatedKg={calculatedKg?.toString() || "0"}
             />
