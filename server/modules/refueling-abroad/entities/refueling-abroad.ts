@@ -30,7 +30,6 @@ export const refuelingAbroad = pgTable(
     flightNumber: text("flight_number"),
     airport: text("airport"),
     country: text("country"),
-
     supplierId: uuid("supplier_id")
       .notNull()
       .references(() => suppliers.id),
@@ -38,7 +37,6 @@ export const refuelingAbroad = pgTable(
       .notNull()
       .references(() => customers.id),
     storageCardId: uuid("storage_card_id").references(() => storageCards.id),
-
     intermediaryId: uuid("intermediary_id").references(() => suppliers.id),
     intermediaryCommissionFormula: text("intermediary_commission_formula"),
     intermediaryCommissionUsd: decimal("intermediary_commission_usd", {
@@ -49,11 +47,10 @@ export const refuelingAbroad = pgTable(
       precision: 15,
       scale: 2,
     }),
-
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
     quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
-
+    inputMode: text("input_mode"),
     currency: text("currency").default("USD").notNull(),
     exchangeRateId: uuid("exchange_rate_id").references(() => exchangeRates.id),
     exchangeRateValue: decimal("exchange_rate_value", {
@@ -75,7 +72,6 @@ export const refuelingAbroad = pgTable(
       precision: 15,
       scale: 4,
     }),
-
     purchasePriceUsd: decimal("purchase_price_usd", {
       precision: 12,
       scale: 4,
@@ -86,12 +82,10 @@ export const refuelingAbroad = pgTable(
     }),
     purchasePriceId: uuid("purchase_price_id").references(() => prices.id),
     purchasePriceIndex: integer("purchase_price_index").default(0),
-
     salePriceUsd: decimal("sale_price_usd", { precision: 12, scale: 4 }),
     salePriceRub: decimal("sale_price_rub", { precision: 12, scale: 4 }),
     salePriceId: uuid("sale_price_id").references(() => prices.id),
     salePriceIndex: integer("sale_price_index").default(0),
-
     purchaseAmountUsd: decimal("purchase_amount_usd", {
       precision: 15,
       scale: 2,
@@ -102,15 +96,12 @@ export const refuelingAbroad = pgTable(
     }),
     saleAmountUsd: decimal("sale_amount_usd", { precision: 15, scale: 2 }),
     saleAmountRub: decimal("sale_amount_rub", { precision: 15, scale: 2 }),
-
     profitUsd: decimal("profit_usd", { precision: 15, scale: 2 }),
     profitRub: decimal("profit_rub", { precision: 15, scale: 2 }),
-
     contractNumber: text("contract_number"),
     notes: text("notes"),
     isApproxVolume: boolean("is_approx_volume").default(false),
     purchasePriceModified: boolean("purchase_price_modified").default(false),
-
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
     createdById: uuid("created_by_id").references(() => users.id),
@@ -199,6 +190,7 @@ export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
     quantityLiters: z.number().nullable().optional(),
     density: z.number().nullable().optional(),
     quantityKg: z.number().nullable().optional(),
+    inputMode: z.string().nullable().optional(),
     currency: z.string().default("USD"),
     exchangeRateId: z.string().nullable().optional(),
     exchangeRateValue: z.number().nullable().optional(),
