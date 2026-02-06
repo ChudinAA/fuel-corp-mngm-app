@@ -152,7 +152,7 @@ export function RefuelingAbroadForm({
       buyerId: editData?.buyerId || "",
       storageCardId: editData?.storageCardId || "",
       intermediaries: [],
-      inputMode: "kg",
+      inputMode: editData?.inputMode as "liters" | "kg" || (editData?.quantityLiters ? "liters" : "kg"),
       quantityLiters: "",
       density: "0.8",
       quantityKg: editData?.quantityKg?.toString() || "",
@@ -265,6 +265,7 @@ export function RefuelingAbroadForm({
         profitRub: calculations.profitRub ?? null,
         notes: data.notes || null,
         isApproxVolume: data.isApproxVolume || false,
+        inputMode: data.inputMode,
         isDraft: data.isDraft,
       };
 

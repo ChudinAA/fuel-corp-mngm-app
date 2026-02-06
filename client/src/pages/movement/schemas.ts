@@ -10,7 +10,7 @@ export const movementFormSchema = z.object({
   supplierBaseId: z.string().optional(),
   fromWarehouseId: z.string().optional(),
   toWarehouseId: z.string().min(1, "Выберите склад назначения"),
-  inputMode: z.enum(["liters", "kg"]),
+  inputMode: z.enum(["liters", "kg"]).default("kg"),
   quantityLiters: z.string().optional(),
   density: z.string().optional(),
   quantityKg: z.string().optional(),

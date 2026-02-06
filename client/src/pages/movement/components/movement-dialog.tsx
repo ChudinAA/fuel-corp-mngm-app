@@ -114,7 +114,7 @@ export function MovementDialog({
         basisId: editMovement.basisId || "",
         fromWarehouseId: editMovement.fromWarehouseId || "",
         toWarehouseId: editMovement.toWarehouseId,
-        inputMode: "kg",
+        inputMode: editMovement.inputMode as "liters" | "kg" || (editMovement.quantityLiters ? "liters" : "kg"),
         quantityLiters: editMovement.quantityLiters
           ? String(editMovement.quantityLiters)
           : undefined,
@@ -141,6 +141,12 @@ export function MovementDialog({
           ? `${editMovement.purchasePriceId}-${editMovement.purchasePriceIndex || 0}`
           : "",
       );
+
+      if (editMovement.inputMode) {
+        setInputMode(editMovement.inputMode as "liters" | "kg");
+      } else if (editMovement.quantityLiters) {
+        setInputMode("liters");
+      }
 
       setInitialQuantityKg(
         isEditing ? parseFloat(editMovement.quantityKg || "0") : 0,
@@ -287,6 +293,7 @@ export function MovementDialog({
           : null,
         density: data.density ? parseFloat(data.density) : null,
         quantityKg: calculatedKg,
+        inputMode: data.inputMode,
         purchasePrice: purchasePrice,
         purchasePriceId: extractedPriceId || null,
         purchasePriceIndex: extractedPriceIndex ?? 0,

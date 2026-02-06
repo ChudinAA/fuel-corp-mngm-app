@@ -301,8 +301,10 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         setSelectedBasis(editData.basis);
       }
 
-      if (editData.quantityLiters) {
+      if (editData.quantityLiters && !editData.inputMode) {
         setInputMode("liters");
+      } else if (editData.inputMode) {
+        setInputMode(editData.inputMode as "liters" | "kg");
       }
 
       setIsDataInitialized(true);
@@ -339,6 +341,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         supplierId: data.supplierId || null,
         buyerId: data.buyerId || null,
         isDraft: data.isDraft || false,
+        inputMode: data.inputMode || inputMode,
         warehouseId:
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id
@@ -423,6 +426,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         supplierId: data.supplierId || null,
         buyerId: data.buyerId || null,
         isDraft: data.isDraft || false,
+        inputMode: data.inputMode || inputMode,
         warehouseId:
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id

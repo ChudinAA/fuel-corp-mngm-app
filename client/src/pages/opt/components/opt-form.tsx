@@ -299,6 +299,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         deliveryLocationId: editData.deliveryLocationId || "",
         notes: editData.notes || "",
         isApproxVolume: editData.isApproxVolume || false,
+        inputMode: editData.inputMode as "liters" | "kg" || "kg",
         basis: editData.basis || "",
         basisId: editData.basisId || "",
         customerBasis: editData.customerBasis || "",
@@ -315,8 +316,10 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
           : 0,
       );
 
-      if (editData.quantityLiters) {
+      if (editData.quantityLiters && !editData.inputMode) {
         setInputMode("liters");
+      } else if (editData.inputMode) {
+        setInputMode(editData.inputMode as "liters" | "kg");
       }
     }
   }, [editData, suppliers, customers, allBases, warehouses, form]);
@@ -341,6 +344,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         supplierId: data.supplierId || null,
         buyerId: data.buyerId || null,
         isDraft: data.isDraft || false,
+        inputMode: data.inputMode || inputMode,
         warehouseId:
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id
@@ -445,6 +449,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         supplierId: data.supplierId || null,
         buyerId: data.buyerId || null,
         isDraft: data.isDraft || false,
+        inputMode: data.inputMode || inputMode,
         warehouseId:
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id

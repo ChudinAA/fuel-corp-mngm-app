@@ -18,6 +18,7 @@ export const optFormSchema = z.object({
   purchasePriceIndex: z.number().optional().nullable(),
   salePriceIndex: z.number().optional().nullable(),
   isDraft: z.boolean().default(false),
+  inputMode: z.enum(["liters", "kg"]).default("kg"),
   basis: z.string().optional().nullable(),
   basisId: z.string().uuid().optional().nullable(),
   customerBasis: z.string().optional().nullable(),
