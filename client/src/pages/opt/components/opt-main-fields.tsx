@@ -187,30 +187,33 @@ export function OptMainFields({
                   <div className="w-full">
                     <Combobox
                       options={
-                        selectedSupplier.baseIds
-                          .map((baseId) => {
-                            const base = wholesaleBases?.find(
-                              (b) => b.id === baseId,
-                            );
-                            return base
-                              ? {
-                                  value: base.id,
-                                  label: base.name,
-                                  render: (
-                                    <div className="flex items-center gap-2">
-                                      {base.name}
-                                      <BaseTypeBadge
-                                        type={base.baseType}
-                                        short={true}
-                                      />
-                                    </div>
-                                  ),
-                                }
-                              : null;
-                          })
-                          .filter(Boolean) as any
+                        selectedSupplier?.baseIds &&
+                        selectedSupplier.baseIds.length > 0
+                          ? (selectedSupplier.baseIds
+                              .map((baseId) => {
+                                const base = wholesaleBases?.find(
+                                  (b) => b.id === baseId,
+                                );
+                                return base
+                                  ? {
+                                      value: base.id,
+                                      label: base.name,
+                                      render: (
+                                        <div className="flex items-center gap-2">
+                                          {base.name}
+                                          <BaseTypeBadge
+                                            type={base.baseType}
+                                            short={true}
+                                          />
+                                        </div>
+                                      ),
+                                    }
+                                  : null;
+                              })
+                              .filter(Boolean) as any)
+                          : []
                       }
-                      value={field.value}
+                      value={field.value || ""}
                       onValueChange={(value) => {
                         field.onChange(value);
                         const base = wholesaleBases?.find(
@@ -334,7 +337,7 @@ export function OptMainFields({
                               ),
                             }))
                       }
-                      value={field.value}
+                      value={field.value || ""}
                       onValueChange={(value) => {
                         field.onChange(value);
                         const base = wholesaleBases?.find(

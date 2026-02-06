@@ -140,7 +140,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     customerBasisId: watchCustomerBasisId || "",
     carrierId: watchCarrierId,
     deliveryLocationId: watchDeliveryLocationId,
-    productType: form.watch("productType"),
+    productType: form.watch("productType") || PRODUCT_TYPE.KEROSENE,
     suppliers,
     allBases,
     carriers,
@@ -545,7 +545,8 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     // Если это не черновик, выполняем полную валидацию
     if (!isDraft) {
       // Проверяем наличие количества
-      if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
+      const calculatedKgValue = calculatedKg ? parseFloat(calculatedKg) : 0;
+      if (calculatedKgValue <= 0) {
         toast({
           title: "Ошибка: отсутствует объем",
           description:
@@ -599,7 +600,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
 
       if (contractVolumeStatus.status === "error") {
         toast({
-          title: "Ошибк: недостаточно объема по договору Покупателя",
+          title: "Ошибка: недостаточно объема по договору Покупателя",
           description: contractVolumeStatus.message,
           variant: "destructive",
         });
@@ -611,7 +612,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         supplierContractVolumeStatus.status === "error"
       ) {
         toast({
-          title: "Ошибк: недостаточно объема по договору Поставщика",
+          title: "Ошибка: недостаточно объема по договору Поставщика",
           description: supplierContractVolumeStatus.message,
           variant: "destructive",
         });

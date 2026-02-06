@@ -25,6 +25,7 @@ interface UseOptFiltersProps {
   customerBasisId: string;
   carrierId: string;
   deliveryLocationId: string;
+  productType: string;
   suppliers: Supplier[] | undefined;
   allBases: Base[] | undefined;
   carriers: LogisticsCarrier[] | undefined;
