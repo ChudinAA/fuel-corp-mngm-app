@@ -112,6 +112,13 @@ export function AddCustomerDialog({
     name: "baseIds",
   });
 
+  // Ensure there is at least one empty field for bases if the list is empty
+  useEffect(() => {
+    if (fields.length === 0) {
+      append("");
+    }
+  }, [fields.length, append]);
+
   useEffect(() => {
     if (editCustomer) {
       setOpen(true);
