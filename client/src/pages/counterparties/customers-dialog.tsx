@@ -267,7 +267,7 @@ export function AddCustomerDialog({
             }}
             className="space-y-4"
           >
-            <FormField
+            {/* <FormField
               control={form.control}
               name="module"
               render={({ field }) => (
@@ -294,7 +294,7 @@ export function AddCustomerDialog({
                   <FormMessage />
                 </FormItem>
               )}
-            />
+            /> */}
 
             <FormField
               control={form.control}
