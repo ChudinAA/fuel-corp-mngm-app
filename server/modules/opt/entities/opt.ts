@@ -186,6 +186,13 @@ export const insertOptSchema = z
           path: ["buyerId"],
         });
       }
+      if (!data.productType) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Тип продукта обязателен",
+          path: ["productType"],
+        });
+      }
       if (!data.dealDate) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

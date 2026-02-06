@@ -41,6 +41,7 @@ export function useOptFilters({
   customerBasisId,
   carrierId,
   deliveryLocationId,
+  productType,
   suppliers,
   allBases,
   carriers,
@@ -74,7 +75,7 @@ export function useOptFilters({
     counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
     counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
     basisId: basisId,
-    productType: PRODUCT_TYPE.KEROSENE,
+    productType: productType || PRODUCT_TYPE.KEROSENE,
     date: dealDate,
     enabled: !!supplierId && !!basisId && !!dealDate,
   });

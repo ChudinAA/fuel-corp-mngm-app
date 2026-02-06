@@ -66,6 +66,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       notes: "",
       isApproxVolume: false,
       isDraft: editData?.isDraft || false,
+      productType: editData?.productType || PRODUCT_TYPE.KEROSENE,
       selectedPurchasePriceId: "",
       selectedSalePriceId: "",
       basis: "",
@@ -139,6 +140,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
     customerBasisId: watchCustomerBasisId || "",
     carrierId: watchCarrierId,
     deliveryLocationId: watchDeliveryLocationId,
+    productType: form.watch("productType"),
     suppliers,
     allBases,
     carriers,
@@ -196,7 +198,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       date: watchDealDate,
       supplierId: watchSupplierId,
       buyerId: watchBuyerId,
-      productType: PRODUCT_TYPE.KEROSENE,
+      productType: form.getValues("productType"),
       basisId: watchBasisId,
       customerBasisId: watchCustomerBasisId,
       deliveryLocationId: watchDeliveryLocationId,
@@ -292,7 +294,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
         supplierId: supplier?.id || "",
         buyerId: buyer?.id || "",
         warehouseId: editData.warehouseId || "",
-        productType: PRODUCT_TYPE.KEROSENE,
+        productType: editData.productType || PRODUCT_TYPE.KEROSENE,
         quantityLiters: editData.quantityLiters || "",
         density: editData.density || "",
         quantityKg: editData.quantityKg || "",
@@ -352,7 +354,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id
             : null,
-        productType: PRODUCT_TYPE.KEROSENE,
+        productType: data.productType || PRODUCT_TYPE.KEROSENE,
         basis: data.basis || null,
         basisId: data.basisId || null,
         customerBasis: data.customerBasis || null,
@@ -457,7 +459,7 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
           isWarehouseSupplier && supplierWarehouse
             ? supplierWarehouse.id
             : null,
-        productType: PRODUCT_TYPE.KEROSENE,
+        productType: data.productType || PRODUCT_TYPE.KEROSENE,
         basis: data.basis || null,
         basisId: data.basisId || null,
         customerBasis: data.customerBasis || null,

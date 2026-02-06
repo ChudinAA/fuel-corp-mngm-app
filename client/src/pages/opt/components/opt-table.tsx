@@ -281,6 +281,21 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
               </TableHead>
               <TableHead className="text-sm font-semibold p-1 md:p-2">
                 <div className="flex items-center justify-between gap-1">
+                  <span>Продукт</span>
+                  <TableColumnFilter
+                    title="Продукт"
+                    options={[
+                      { label: "Керосин", value: "kerosene" },
+                      { label: "ПВКЖ", value: "pvkj" },
+                    ]}
+                    selectedValues={columnFilters["productType"] || []}
+                    onUpdate={(values) => handleFilterUpdate("productType", values)}
+                    dataTestId="filter-product"
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="text-sm font-semibold p-1 md:p-2">
+                <div className="flex items-center justify-between gap-1">
                   <span className="truncate max-w-[80px] md:max-w-none">
                     Поставщик
                   </span>
@@ -394,6 +409,9 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                         </Badge>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
+                    {deal.productType === "pvkj" ? "ПВКЖ" : "Керосин"}
                   </TableCell>
                   <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
                     <TooltipProvider>
