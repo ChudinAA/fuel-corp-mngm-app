@@ -65,7 +65,7 @@ export function useOptCalculations({
     dealDate,
     isEditing,
     editQuantityKg: initialQuantityKg.toString(),
-    initialCurrentBalance: supplierWarehouse?.currentBalance ?? "0",
+    initialCurrentBalance: productType === "pvkj" ? supplierWarehouse?.pvkjBalance : supplierWarehouse?.currentBalance,
   });
 
   const { purchasePrice: extractedPurchasePrice, salePrice: extractedSalePrice } = usePriceExtraction({
@@ -75,6 +75,7 @@ export function useOptCalculations({
     selectedSalePriceId,
     isWarehouseSupplier,
     supplierWarehouse,
+    productType,
   });
 
   const purchasePrice = useMemo(() => {
