@@ -219,7 +219,6 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     purchasePrices,
     salePrices,
     isWarehouseSupplier,
-    productType: watchProductType,
     editData,
     setSelectedPurchasePriceId,
     setSelectedSalePriceId,

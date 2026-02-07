@@ -9,7 +9,6 @@ interface CalculatedFieldProps {
   status?: "ok" | "error" | "warning";
   suffix?: string;
   isLoading?: boolean;
-  description?: string;
 }
 
 export function CalculatedField({ 
@@ -17,8 +16,7 @@ export function CalculatedField({
   value, 
   status,
   suffix = "",
-  isLoading = false,
-  description
+  isLoading = false
 }: CalculatedFieldProps) {
   const statusColors = {
     ok: "text-green-600 dark:text-green-400",
@@ -38,7 +36,7 @@ export function CalculatedField({
         <Calculator className="h-3 w-3" />
         {label}
       </Label>
-      <div className="flex items-center gap-2 h-10 px-3 bg-muted rounded-md relative group/calc">
+      <div className="flex items-center gap-2 h-10 px-3 bg-muted rounded-md">
         {isLoading ? (
           <Skeleton className="h-5 w-20" />
         ) : status ? (
@@ -52,13 +50,6 @@ export function CalculatedField({
           <span className="text-sm font-medium">
             {value !== null ? `${value}${suffix}` : "—"}
           </span>
-        )}
-        {description && (
-          <div className="absolute bottom-full left-0 mb-2 hidden group-hover/calc:block z-50">
-            <div className="bg-popover text-popover-foreground text-[10px] px-2 py-1 rounded border shadow-sm whitespace-nowrap">
-              {description}
-            </div>
-          </div>
         )}
       </div>
     </div>
