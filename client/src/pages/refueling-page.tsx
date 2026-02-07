@@ -60,59 +60,81 @@ export default function RefuelingPage() {
             Учет заправок воздушных судов
           </p>
         </div>
-        {hasPermission("refueling", "create") && (
-          <Button onClick={handleOpenDialog} data-testid="button-add-refueling">
-            <Plus className="mr-2 h-4 w-4" />
-            Новая заправка
-          </Button>
-        )}
       </div>
 
-      <AddRefuelingDialog
-        isOpen={isDialogOpen}
-        onClose={handleCloseDialog}
-        editRefueling={editingRefueling}
-        isCopy={isCopy}
-      />
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="domestic" className="gap-2" data-testid="tab-domestic">
+            <Plane className="h-4 w-4" />
+            Заправка ВС
+          </TabsTrigger>
+          <TabsTrigger value="abroad" className="gap-2" data-testid="tab-abroad">
+            <Globe className="h-4 w-4" />
+            Заправка ВС Зарубеж
+          </TabsTrigger>
+        </TabsList>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
-          <div>
-            <CardTitle>Список заправок</CardTitle>
+        <TabsContent value="domestic" className="space-y-4">
+          <div className="flex justify-end">
+            {hasPermission("refueling", "create") && (
+              <Button onClick={handleOpenDialog} data-testid="button-add-refueling">
+                <Plus className="mr-2 h-4 w-4" />
+                Новая заправка
+              </Button>
+            )}
           </div>
-          <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={() => setIsFullScreen(true)}
-            >
-              <Maximize2 className="h-4 w-4" />
-            </Button>
-            <DialogContent className="max-w-[95vw] h-[90vh]">
-              <DialogHeader>
-                <DialogTitle>Все заправки ВС</DialogTitle>
-                <DialogDescription>
-                  Полный список заправок с фильтрацией и поиском
-                </DialogDescription>
-              </DialogHeader>
-              <ScrollArea className="flex-1">
-                <RefuelingTable 
-                  onEdit={handleEditRefueling}
-                  onCopy={handleCopyRefueling}
-                  onDelete={handleRefuelingDeleted}
-                />
-              </ScrollArea>
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          <RefuelingTable 
-            onEdit={handleEditRefueling}
-            onCopy={handleCopyRefueling}
-            onDelete={handleRefuelingDeleted}
+
+          <AddRefuelingDialog
+            isOpen={isDialogOpen}
+            onClose={handleCloseDialog}
+            editRefueling={editingRefueling}
+            isCopy={isCopy}
           />
-        </CardContent>
-      </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+              <div>
+                <CardTitle>Список заправок</CardTitle>
+              </div>
+              <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => setIsFullScreen(true)}
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
+                <DialogContent className="max-w-[95vw] h-[90vh]">
+                  <DialogHeader>
+                    <DialogTitle>Все заправки ВС</DialogTitle>
+                    <DialogDescription>
+                      Полный список заправок с фильтрацией и поиском
+                    </DialogDescription>
+                  </DialogHeader>
+                  <ScrollArea className="flex-1">
+                    <RefuelingTable 
+                      onEdit={handleEditRefueling}
+                      onCopy={handleCopyRefueling}
+                      onDelete={handleRefuelingDeleted}
+                    />
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              <RefuelingTable 
+                onEdit={handleEditRefueling}
+                onCopy={handleCopyRefueling}
+                onDelete={handleRefuelingDeleted}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="abroad">
+          <RefuelingAbroadContent />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

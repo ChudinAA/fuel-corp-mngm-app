@@ -143,8 +143,6 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-import RefuelingAbroadPage from "@/pages/refueling-abroad/index";
-
 function Router() {
   const [, setLocation] = useLocation();
 
@@ -312,18 +310,6 @@ function Router() {
       <Route path="/admin/settings">
         <AppLayout>
           <ProtectedRoute component={SettingsPage} />
-        </AppLayout>
-      </Route>
-
-      <Route path="/abroad/refueling">
-        <AppLayout>
-          <ProtectedRoute component={RefuelingAbroadPage} />
-        </AppLayout>
-      </Route>
-
-      <Route path="/abroad/storage-cards">
-        <AppLayout>
-          <ProtectedRoute component={StorageCardsPage} />
         </AppLayout>
       </Route>
 
