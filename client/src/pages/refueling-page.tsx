@@ -9,7 +9,7 @@ import { Plus, Maximize2, Plane, Globe } from "lucide-react";
 import type { AircraftRefueling } from "@shared/schema";
 import { AddRefuelingDialog } from "./refueling/components/add-refueling-dialog";
 import { RefuelingTable } from "./refueling/components/refueling-table";
-import { RefuelingAbroadContent } from "./refueling-abroad";
+import { RefuelingAbroadPage } from "./refueling-abroad";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function RefuelingPage() {
@@ -132,7 +132,7 @@ export default function RefuelingPage() {
         </TabsContent>
 
         <TabsContent value="abroad">
-          <RefuelingAbroadContent />
+          <RefuelingAbroadPage />
         </TabsContent>
       </Tabs>
     </div>

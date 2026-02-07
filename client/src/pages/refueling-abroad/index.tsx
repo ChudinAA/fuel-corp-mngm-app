@@ -9,7 +9,7 @@ import type { RefuelingAbroad } from "@shared/schema";
 import { RefuelingAbroadTable } from "./components/refueling-abroad-table";
 import { AddRefuelingAbroadDialog } from "./components/add-refueling-abroad-dialog";
 
-export function RefuelingAbroadContent() {
+export default function RefuelingAbroadPage() {
   const [editingRefueling, setEditingRefueling] = useState<RefuelingAbroad | null>(null);
   const [isCopy, setIsCopy] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);

@@ -50,6 +50,7 @@ import BudgetPage from "@/pages/reports/budget-page";
 import ManagementReportPage from "@/pages/reports/management-report-page";
 import NotFound from "@/pages/not-found";
 import StorageCardsPage from "@/pages/storage-cards/storage-cards-page";
+import RefuelingAbroadPage from "@/pages/refueling-abroad";
 
 import InDevelopmentPage from "@/pages/shared/in-development";
 
@@ -77,7 +78,7 @@ function ProtectedRoute({
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
-  
+
   useWarehouseSSE(!!user);
 
   if (isLoading) {
@@ -223,6 +224,12 @@ function Router() {
         </AppLayout>
       </Route>
 
+      <Route path="/refueling-abroad">
+        <AppLayout>
+          <ProtectedRoute component={RefuelingAbroadPage} />
+        </AppLayout>
+      </Route>
+
       <Route path="/storage-cards">
         <AppLayout>
           <ProtectedRoute component={StorageCardsPage} />
@@ -336,7 +343,7 @@ function Router() {
           <ProtectedRoute component={InDevelopmentPage} />
         </AppLayout>
       </Route>
-      
+
       <Route>
         <AppLayout>
           <NotFound />

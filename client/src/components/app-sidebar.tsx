@@ -122,7 +122,7 @@ const gеtAbroadMenuItems = (hasPermission: (p: string) => boolean) =>
   [
     {
       title: "Заправка ВС Зарубеж",
-      url: "/abroad",
+      url: "/refueling-abroad",
       icon: Plane,
       permission: "refueling.view",
     },
