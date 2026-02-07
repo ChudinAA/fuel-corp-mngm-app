@@ -85,14 +85,14 @@ export function RefuelingPricingSection({
   return (
     <>
       {productType === PRODUCT_TYPE.SERVICE && (
-        <div className="mb-4 flex items-center justify-between rounded-md border p-3 bg-accent/5">
+        <div className="mb-4 flex flex-col gap-3 rounded-md border p-3 bg-accent/5">
           <div className="flex items-center gap-4">
             {selectedSupplier?.servicePrice && (
-              <div className="flex flex-col">
-                <span className="text-xs text-muted-foreground leading-none mb-1">
+              <div className="flex flex-col bg-background/50 px-3 py-1.5 rounded border border-accent/20">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground leading-none mb-1">
                   Цена, установленная поставщиком
                 </span>
-                <span className="text-sm font-medium">
+                <span className="text-sm font-semibold text-primary">
                   {formatNumber(selectedSupplier.servicePrice)} ₽/кг
                 </span>
               </div>
@@ -101,7 +101,7 @@ export function RefuelingPricingSection({
               control={form.control}
               name="isPriceRecharge"
               render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                   <FormControl>
                     <Checkbox
                       checked={field.value}
@@ -110,7 +110,7 @@ export function RefuelingPricingSection({
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
-                    <FormLabel>Перевыставить услугу</FormLabel>
+                    <FormLabel className="text-sm font-medium cursor-pointer">Перевыставить услугу</FormLabel>
                   </div>
                 </FormItem>
               )}
@@ -223,7 +223,7 @@ export function RefuelingPricingSection({
             status={purchasePrice !== null ? "ok" : "error"}
             description={
               productType === PRODUCT_TYPE.SERVICE && selectedSupplier?.servicePrice
-                ? "Цена из карточки поставщика"
+                ? `Цена ${formatNumber(selectedSupplier.servicePrice)} ₽/кг взята из карточки поставщика`
                 : undefined
             }
           />

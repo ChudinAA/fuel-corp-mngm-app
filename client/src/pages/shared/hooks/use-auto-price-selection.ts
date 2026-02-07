@@ -30,12 +30,12 @@ export function useAutoPriceSelection({
 
   // Автоматический выбор первой цены покупки при выборе поставщика
   useEffect(() => {
-    if (supplierId && purchasePrices.length > 0 && !isWarehouseSupplier && !editData) {
+    if (supplierId && purchasePrices.length > 0 && !isWarehouseSupplier && !editData && productType !== "service") {
       const firstPurchasePriceId = `${purchasePrices[0].id}-0`;
       setSelectedPurchasePriceId(firstPurchasePriceId);
       formSetValue("selectedPurchasePriceId", firstPurchasePriceId);
     }
-  }, [supplierId, purchasePrices, editData, isWarehouseSupplier, setSelectedPurchasePriceId, formSetValue]);
+  }, [supplierId, purchasePrices, editData, isWarehouseSupplier, setSelectedPurchasePriceId, formSetValue, productType]);
 
   // Автоматический выбор первой цены продажи при выборе покупателя или изменении цен (например, при смене точки поставки)
   useEffect(() => {
