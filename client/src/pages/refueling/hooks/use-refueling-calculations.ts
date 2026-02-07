@@ -104,11 +104,14 @@ export function useRefuelingCalculations({
   });
 
   const purchasePrice = useMemo(() => {
+    if (productType === PRODUCT_TYPE.SERVICE && selectedSupplier?.servicePrice) {
+      return parseFloat(selectedSupplier.servicePrice);
+    }
     if (isWarehouseSupplier && productType !== PRODUCT_TYPE.SERVICE) {
       return warehousePriceAtDate !== null ? warehousePriceAtDate : extractedPurchasePrice;
     }
     return extractedPurchasePrice;
-  }, [isWarehouseSupplier, productType, warehousePriceAtDate, extractedPurchasePrice]);
+  }, [isWarehouseSupplier, productType, warehousePriceAtDate, extractedPurchasePrice, selectedSupplier]);
 
   const salePrice = useMemo(() => {
     if (isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) {

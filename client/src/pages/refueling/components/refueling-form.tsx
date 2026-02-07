@@ -503,6 +503,12 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     },
   });
 
+  useEffect(() => {
+    if (watchProductType !== PRODUCT_TYPE.SERVICE) {
+      form.setValue("isPriceRecharge", false);
+    }
+  }, [watchProductType, form]);
+
   const onSubmit = async (data: RefuelingFormData, isDraftSubmit?: boolean) => {
     const productType = watchProductType;
     const isDraft = isDraftSubmit ?? data.isDraft;
