@@ -63,6 +63,7 @@ export const aircraftRefueling = pgTable(
     profit: decimal("profit", { precision: 15, scale: 2 }),
     contractNumber: text("contract_number"),
     notes: text("notes"),
+    isPriceRecharge: boolean("is_price_recharge").default(false),
     isApproxVolume: boolean("is_approx_volume").default(false),
     purchasePriceModified: boolean("purchase_price_modified").default(false),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),

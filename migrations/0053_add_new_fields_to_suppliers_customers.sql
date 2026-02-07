@@ -19,3 +19,8 @@ UPDATE "opt" SET input_mode = 'kg';
 UPDATE "aircraft_refueling" SET input_mode = 'kg';
 UPDATE "refueling_abroad" SET input_mode = 'kg';
 UPDATE "movement" SET input_mode = 'kg';
+
+-- Add is_price_recharge field to aircraft_refueling
+ALTER TABLE "aircraft_refueling" ADD COLUMN IF NOT EXISTS "is_price_recharge" boolean DEFAULT false;
+-- Seed is_price_recharge = false for all existing records
+UPDATE "aircraft_refueling" SET is_price_recharge = false;
