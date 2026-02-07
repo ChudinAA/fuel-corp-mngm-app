@@ -26,6 +26,7 @@ interface UseRefuelingCalculationsProps {
   initialQuantityKg?: number;
   initialWarehouseBalance: number;
   refuelingDate?: Date;
+  isPriceRecharge?: boolean;
 }
 
 export function useRefuelingCalculations({
@@ -46,6 +47,7 @@ export function useRefuelingCalculations({
   initialQuantityKg = 0,
   initialWarehouseBalance,
   refuelingDate,
+  isPriceRecharge = false,
 }: UseRefuelingCalculationsProps) {
   const { calculatedKg, finalKg } = useQuantityCalculation({
     inputMode,
@@ -90,7 +92,7 @@ export function useRefuelingCalculations({
 
   const isBalanceLoading = isHistoricalLoading || isCurrentLoading;
 
-  const { purchasePrice: extractedPurchasePrice, salePrice } = usePriceExtraction({
+  const { purchasePrice: extractedPurchasePrice, salePrice: extractedSalePrice } = usePriceExtraction({
     purchasePrices,
     salePrices,
     selectedPurchasePriceId,
@@ -108,6 +110,13 @@ export function useRefuelingCalculations({
     return extractedPurchasePrice;
   }, [isWarehouseSupplier, productType, warehousePriceAtDate, extractedPurchasePrice]);
 
+  const salePrice = useMemo(() => {
+    if (isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) {
+      return purchasePrice;
+    }
+    return extractedSalePrice;
+  }, [isPriceRecharge, productType, purchasePrice, extractedSalePrice]);
+
   const purchaseAmount =
     purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
   const saleAmount =
@@ -119,7 +128,7 @@ export function useRefuelingCalculations({
 
   const profit =
     purchaseAmount !== null && saleAmount !== null
-      ? saleAmount - purchaseAmount - agentFee
+      ? (isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) ? 0 : saleAmount - purchaseAmount - agentFee
       : null;
 
   const getWarehouseStatus = (): {

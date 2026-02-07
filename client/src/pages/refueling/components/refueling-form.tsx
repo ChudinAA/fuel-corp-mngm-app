@@ -67,6 +67,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       quantityKg: editData?.quantityKg?.toString() || "",
       notes: editData?.notes || "",
       isApproxVolume: editData?.isApproxVolume || false,
+      isPriceRecharge: editData?.isPriceRecharge || false,
       isDraft: editData?.isDraft || false,
       selectedPurchasePriceId: "",
       selectedSalePriceId: "",
@@ -98,6 +99,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   const watchDensity = form.watch("density");
   const watchKg = form.watch("quantityKg");
   const watchProductType = form.watch("productType");
+  const watchIsPriceRecharge = form.watch("isPriceRecharge");
 
   const selectedSupplier = suppliers?.find((s) => s.id === watchSupplierId);
   const selectedBuyer = customers?.find((c) => c.id === watchBuyerId);
@@ -157,6 +159,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     initialQuantityKg,
     initialWarehouseBalance,
     refuelingDate: watchRefuelingDate,
+    isPriceRecharge: watchIsPriceRecharge,
   });
 
   const {
@@ -271,6 +274,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         quantityKg: editData.quantityKg || "",
         notes: editData.notes || "",
         isApproxVolume: editData.isApproxVolume || false,
+        isPriceRecharge: editData.isPriceRecharge || false,
         selectedPurchasePriceId: purchasePriceCompositeId,
         selectedSalePriceId: salePriceCompositeId,
         basis: editData.basis || "",
@@ -343,6 +347,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         supplierId: data.supplierId || null,
         buyerId: data.buyerId || null,
         isDraft: data.isDraft || false,
+        isPriceRecharge: data.isPriceRecharge || false,
         inputMode: data.inputMode || inputMode,
         warehouseId:
           isWarehouseSupplier && supplierWarehouse
@@ -428,6 +433,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
         supplierId: data.supplierId || null,
         buyerId: data.buyerId || null,
         isDraft: data.isDraft || false,
+        isPriceRecharge: data.isPriceRecharge || false,
         inputMode: data.inputMode || inputMode,
         warehouseId:
           isWarehouseSupplier && supplierWarehouse

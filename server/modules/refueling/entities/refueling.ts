@@ -173,6 +173,7 @@ export const insertAircraftRefuelingSchema = createInsertSchema(
     profit: z.number().nullable().optional(),
     contractNumber: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
+    isPriceRecharge: z.boolean().optional(),
     isApproxVolume: z.boolean().optional(),
     isDraft: z.boolean().default(false),
   })

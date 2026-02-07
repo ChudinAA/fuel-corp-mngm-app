@@ -24,6 +24,7 @@ export const refuelingFormSchema = z.object({
   purchasePriceIndex: z.number().optional().nullable(),
   salePriceIndex: z.number().optional().nullable(),
   isDraft: z.boolean().default(false),
+  isPriceRecharge: z.boolean().default(false),
 });
 
 export type RefuelingFormData = z.infer<typeof refuelingFormSchema>;

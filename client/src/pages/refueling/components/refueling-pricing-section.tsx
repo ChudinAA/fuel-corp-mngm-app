@@ -25,6 +25,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 
+import { Checkbox } from "@/components/ui/checkbox";
+
 interface RefuelingPricingSectionProps {
   form: UseFormReturn<RefuelingFormData>;
   isWarehouseSupplier: boolean;
@@ -80,6 +82,28 @@ export function RefuelingPricingSection({
 
   return (
     <>
+      {productType === PRODUCT_TYPE.SERVICE && (
+        <div className="mb-4 flex items-center space-x-2 rounded-md border p-3 bg-accent/5">
+          <FormField
+            control={form.control}
+            name="isPriceRecharge"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    data-testid="checkbox-reprice-service"
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Перевыставить услугу</FormLabel>
+                </div>
+              </FormItem>
+            )}
+          />
+        </div>
+      )}
       <div className="grid gap-3 md:grid-cols-4">
         {!isWarehouseSupplier && purchasePrices.length > 0 ? (
           <FormField
@@ -191,7 +215,7 @@ export function RefuelingPricingSection({
           value={purchaseAmount !== null ? formatCurrency(purchaseAmount) : "—"}
           status={purchaseAmount !== null ? "ok" : "error"}
         />
-        {salePrices.length > 0 ? (
+        {salePrices.length > 0 && !form.watch("isPriceRecharge") ? (
           <FormField
             control={form.control}
             name="selectedSalePriceId"
@@ -267,6 +291,15 @@ export function RefuelingPricingSection({
                 </FormItem>
               );
             }}
+          />
+        ) : form.watch("isPriceRecharge") && productType === PRODUCT_TYPE.SERVICE ? (
+          <CalculatedField
+            label="Продажа"
+            value={
+              purchasePrice !== null ? formatNumber(purchasePrice) : "—"
+            }
+            suffix={purchasePrice !== null ? " ₽/кг" : ""}
+            status="ok"
           />
         ) : (
           <div className="flex items-end gap-1">
