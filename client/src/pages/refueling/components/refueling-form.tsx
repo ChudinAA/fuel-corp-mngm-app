@@ -653,6 +653,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
             contractVolumeStatus={contractVolumeStatus}
             supplierContractVolumeStatus={supplierContractVolumeStatus}
             productType={watchProductType}
+            selectedSupplier={selectedSupplier}
           />
 
           <div className="grid gap-4 md:grid-cols-2 items-end">

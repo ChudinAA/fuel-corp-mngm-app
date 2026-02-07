@@ -1,6 +1,7 @@
 
 import { useMemo } from "react";
 import type { Price, Supplier, Warehouse } from "@shared/schema";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 interface UsePriceExtractionProps {
   purchasePrices: Price[];
@@ -25,19 +26,19 @@ export function usePriceExtraction({
 }: UsePriceExtractionProps) {
   const purchasePrice = useMemo((): number | null => {
     // Для услуги заправки - сначала проверяем service_price у поставщика
-    if (productType === "service") {
+    if (productType === PRODUCT_TYPE.SERVICE) {
       if (selectedSupplier?.servicePrice) {
         return parseFloat(selectedSupplier.servicePrice);
       }
     }
 
     // Для ПВКЖ со склада
-    if (productType === "pvkj" && isWarehouseSupplier && supplierWarehouse) {
+    if (productType === PRODUCT_TYPE.PVKJ && isWarehouseSupplier && supplierWarehouse) {
       return parseFloat(supplierWarehouse.pvkjAverageCost || "0");
     }
 
     // Для керосина со склада
-    if (isWarehouseSupplier && supplierWarehouse && productType !== "service") {
+    if (isWarehouseSupplier && supplierWarehouse && productType !== PRODUCT_TYPE.SERVICE) {
       return parseFloat(supplierWarehouse.averageCost || "0");
     }
 
