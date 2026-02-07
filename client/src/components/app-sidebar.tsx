@@ -139,6 +139,138 @@ const getAbroadMenuItems = (hasPermission: (p: string) => boolean) =>
     },
   ].filter((item) => !item.permission || hasPermission(item.permission));
 
+const getDataMenuItems = (hasPermission: (p: string) => boolean) =>
+  [
+    {
+      title: "Склады",
+      url: "/warehouses",
+      icon: Warehouse,
+      permission: "warehouses.view",
+    },
+    {
+      title: "Цены",
+      url: "/prices",
+      icon: DollarSign,
+      permission: "prices.view",
+    },
+    {
+      title: "Контрагенты",
+      url: "/counterparties",
+      icon: Users,
+      permission: "directories.view",
+    },
+    {
+      title: "Доставка",
+      url: "/delivery",
+      icon: Truck,
+      permission: "delivery.view",
+    },
+    {
+      title: "Справочники",
+      url: "/directories",
+      icon: BookOpen,
+      permission: "directories.view",
+    },
+  ].filter((item) => !item.permission || hasPermission(item.permission));
+
+const getFinanceMenuItems = (hasPermission: (p: string) => boolean) =>
+  [
+    {
+      title: "Кешфлоу",
+      url: "/finance/cashflow",
+      icon: TrendingUp,
+      permission: "finance.view",
+    },
+    {
+      title: "Платежный календарь",
+      url: "/finance/payment-calendar",
+      icon: CalendarPlus,
+      permission: "finance.view",
+    },
+    {
+      title: "Расчет цены",
+      url: "/finance/price-calculation",
+      icon: Calculator,
+      permission: "finance.view",
+    },
+  ].filter((item) => !item.permission || hasPermission(item.permission));
+
+const getReportsMenuItems = (hasPermission: (p: string) => boolean) =>
+  [
+    {
+      title: "Текущие отчеты",
+      url: "/reports/current",
+      icon: FileText,
+      permission: "reports.view",
+    },
+    {
+      title: "Аналитические отчеты",
+      url: "/reports/analytics",
+      icon: FileCheck,
+      permission: "reports.view",
+    },
+    {
+      title: "Реестры",
+      url: "/reports/registries",
+      icon: Table2,
+      permission: "reports.view",
+    },
+    {
+      title: "Госконтракты",
+      url: "/reports/gov-contracts",
+      icon: Briefcase,
+      permission: "reports.view",
+    },
+    {
+      title: "Управленческий отчет",
+      url: "/reports/management",
+      icon: ChartSpline,
+      permission: "reports.view",
+    },
+  ].filter((item) => !item.permission || hasPermission(item.permission));
+
+const getPlanningMenuItems = (hasPermission: (p: string) => boolean) =>
+  [
+    {
+      title: "Ежемесячный план",
+      url: "/reports/monthly-plan",
+      icon: Calendar1,
+      permission: "reports.view",
+    },
+    {
+      title: "БДР",
+      url: "/reports/budget",
+      icon: Wallet,
+      permission: "reports.view",
+    },
+  ].filter((item) => !item.permission || hasPermission(item.permission));
+
+const getAdminMenuItems = (hasPermission: (p: string) => boolean) =>
+  [
+    {
+      title: "Пользователи",
+      url: "/admin/users",
+      icon: Users,
+      permission: "users.view",
+    },
+    {
+      title: "Роли",
+      url: "/admin/roles",
+      icon: Shield,
+      permission: "roles.view",
+    },
+    {
+      title: "Виджеты",
+      url: "/admin/widgets",
+      icon: Fullscreen,
+    },
+    {
+      title: "Настройки",
+      url: "/admin/settings",
+      icon: Settings,
+    },
+  ].filter((item) => !item.permission || hasPermission(item.permission));
+
 interface SidebarSectionProps {
   title: string;
   icon: any;

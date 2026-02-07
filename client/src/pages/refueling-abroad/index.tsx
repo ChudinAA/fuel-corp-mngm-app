@@ -9,6 +9,22 @@ import type { RefuelingAbroad } from "@shared/schema";
 import { RefuelingAbroadTable } from "./components/refueling-abroad-table";
 import { AddRefuelingAbroadDialog } from "./components/add-refueling-abroad-dialog";
 
+export default function RefuelingAbroadPage() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Заправка ВС Зарубеж</h1>
+          <p className="text-muted-foreground">
+            Учет заправок воздушных судов в иностранных аэропортах
+          </p>
+        </div>
+      </div>
+      <RefuelingAbroadContent />
+    </div>
+  );
+}
+
 export function RefuelingAbroadContent() {
   const [editingRefueling, setEditingRefueling] = useState<RefuelingAbroad | null>(null);
   const [isCopy, setIsCopy] = useState(false);
