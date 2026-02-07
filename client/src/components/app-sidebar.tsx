@@ -97,12 +97,6 @@ const getOperationsMenuItems = (hasPermission: (p: string) => boolean) =>
       icon: ChartCandlestick,
       permission: "exchange.view",
     },
-    // {
-    //   title: "Зарубеж",
-    //   url: "/abroad",
-    //   icon: Globe,
-    //   permission: "movement.view",
-    // },
     {
       title: "Аренда ТЗА",
       url: "/rent",
@@ -119,6 +113,16 @@ const getOperationsMenuItems = (hasPermission: (p: string) => boolean) =>
       title: "ЛИК",
       url: "/lik",
       icon: Building2,
+      permission: "movement.view",
+    },
+  ].filter((item) => !item.permission || hasPermission(item.permission));
+
+const gеtAbroadMenuItems = (hasPermission: (p: string) => boolean) =>
+  [
+    {
+      title: "Зарубеж",
+      url: "/abroad",
+      icon: Globe,
       permission: "movement.view",
     },
   ].filter((item) => !item.permission || hasPermission(item.permission));
@@ -277,6 +281,7 @@ export function AppSidebar() {
   };
 
   const operationsMenuItems = getOperationsMenuItems(hasPerm as any);
+  const abroadMenuItems = gеtAbroadMenuItems(hasPerm as any);
   const dataMenuItems = getDataMenuItems(hasPerm as any);
   const financeMenuItems = getFinanceMenuItems(hasPerm as any);
   const reportsMenuItems = getReportsMenuItems(hasPerm as any);
@@ -351,6 +356,44 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
+        {abroadMenuItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <Collapsible asChild defaultOpen className="group/collapsible">
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton tooltip="Зарубеж">
+                        <Database className="h-4 w-4" />
+                        <span>Зарубеж</span>
+                        <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {abroadMenuItems.map((item) => (
+                          <SidebarMenuSubItem key={item.title}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={isActive(item.url)}
+                              data-testid={`nav-${item.url.replace(/\//g, "-").slice(1)}`}
+                            >
+                              <Link href={item.url}>
+                                <item.icon className="h-4 w-4" />
+                                <span>{item.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+        
         {dataMenuItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupContent>
