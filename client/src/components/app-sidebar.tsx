@@ -118,7 +118,7 @@ const getOperationsMenuItems = (hasPermission: (p: string) => boolean) =>
     },
   ].filter((item) => !item.permission || hasPermission(item.permission));
 
-const gеtAbroadMenuItems = (hasPermission: (p: string) => boolean) =>
+const getAbroadMenuItems = (hasPermission: (p: string) => boolean) =>
   [
     {
       title: "Заправка ВС Зарубеж",
@@ -288,7 +288,7 @@ export function AppSidebar() {
   };
 
   const operationsMenuItems = getOperationsMenuItems(hasPerm as any);
-  const abroadMenuItems = gеtAbroadMenuItems(hasPerm as any);
+  const abroadMenuItems = getAbroadMenuItems(hasPerm as any);
   const dataMenuItems = getDataMenuItems(hasPerm as any);
   const financeMenuItems = getFinanceMenuItems(hasPerm as any);
   const reportsMenuItems = getReportsMenuItems(hasPerm as any);
