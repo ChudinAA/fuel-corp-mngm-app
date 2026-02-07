@@ -117,149 +117,77 @@ const getOperationsMenuItems = (hasPermission: (p: string) => boolean) =>
     },
   ].filter((item) => !item.permission || hasPermission(item.permission));
 
-const gеtAbroadMenuItems = (hasPermission: (p: string) => boolean) =>
+const getAbroadMenuItems = (hasPermission: (p: string) => boolean) =>
   [
     {
-      title: "Зарубеж",
-      url: "/abroad",
+      title: "Заправки ВС Зарубеж",
+      url: "/abroad/refueling",
+      icon: Plane,
+      permission: "refueling.view",
+    },
+    {
+      title: "Карты хранения",
+      url: "/abroad/storage-cards",
       icon: Globe,
+      permission: "warehouses.view",
+    },
+    {
+      title: "Обзор Зарубеж",
+      url: "/abroad",
+      icon: Database,
       permission: "movement.view",
     },
   ].filter((item) => !item.permission || hasPermission(item.permission));
 
-const getDataMenuItems = (hasPermission: (p: string) => boolean) =>
-  [
-    {
-      title: "Склады",
-      url: "/warehouses",
-      icon: Warehouse,
-      permission: "warehouses.view",
-    },
-    {
-      title: "Цены",
-      url: "/prices",
-      icon: DollarSign,
-      permission: "prices.view",
-    },
-    {
-      title: "Контрагенты",
-      url: "/counterparties",
-      icon: Users,
-      permission: "directories.view",
-    },
-    {
-      title: "Доставка",
-      url: "/delivery",
-      icon: Truck,
-      permission: "delivery.view",
-    },
-    {
-      title: "Справочники",
-      url: "/directories",
-      icon: BookOpen,
-      permission: "directories.view",
-    },
-  ].filter((item) => !item.permission || hasPermission(item.permission));
+interface SidebarSectionProps {
+  title: string;
+  icon: any;
+  items: any[];
+  isActive: (url: string) => boolean;
+  tooltip?: string;
+}
 
-const getFinanceMenuItems = (hasPermission: (p: string) => boolean) =>
-  [
-    {
-      title: "Кешфлоу",
-      url: "/finance/cashflow",
-      icon: TrendingUp,
-      permission: "finance.view",
-    },
-    {
-      title: "Платежный календарь",
-      url: "/finance/payment-calendar",
-      icon: CalendarPlus,
-      permission: "finance.view",
-    },
-    {
-      title: "Расчет цены",
-      url: "/finance/price-calculation",
-      icon: Calculator,
-      permission: "finance.view",
-    },
-  ].filter((item) => !item.permission || hasPermission(item.permission));
+function SidebarSection({ title, icon: Icon, items, isActive, tooltip }: SidebarSectionProps) {
+  if (items.length === 0) return null;
 
-// New function to get reports menu items
-const getReportsMenuItems = (hasPermission: (p: string) => boolean) =>
-  [
-    {
-      title: "Текущие отчеты",
-      url: "/reports/current",
-      icon: FileText,
-      permission: "reports.view",
-    },
-    {
-      title: "Аналитические отчеты",
-      url: "/reports/analytics",
-      icon: FileCheck,
-      permission: "reports.view",
-    },
-    {
-      title: "Реестры",
-      url: "/reports/registries",
-      icon: Table2,
-      permission: "reports.view",
-    },
-    {
-      title: "Госконтракты",
-      url: "/reports/gov-contracts",
-      icon: Briefcase,
-      permission: "reports.view",
-    },
-    {
-      title: "Управленческий отчет",
-      url: "/reports/management",
-      icon: ChartSpline,
-      permission: "reports.view",
-    },
-  ].filter((item) => !item.permission || hasPermission(item.permission));
-
-// New function to get planning menu items
-const getPlanningMenuItems = (hasPermission: (p: string) => boolean) =>
-  [
-    {
-      title: "Ежемесячный план",
-      url: "/reports/monthly-plan",
-      icon: Calendar1,
-      permission: "reports.view",
-    },
-    {
-      title: "БДР",
-      url: "/reports/budget",
-      icon: Wallet,
-      permission: "reports.view",
-    },
-  ].filter((item) => !item.permission || hasPermission(item.permission));
-
-const getAdminMenuItems = (hasPermission: (p: string) => boolean) =>
-  [
-    {
-      title: "Пользователи",
-      url: "/admin/users",
-      icon: Users,
-      permission: "users.view",
-    },
-    {
-      title: "Роли",
-      url: "/admin/roles",
-      icon: Shield,
-      permission: "roles.view",
-    },
-    {
-      title: "Виджеты",
-      url: "/admin/widgets",
-      icon: Fullscreen,
-    },
-    {
-      title: "Настройки",
-      url: "/admin/settings",
-      icon: Settings,
-    },
-  ].filter((item) => !item.permission || hasPermission(item.permission));
+  return (
+    <SidebarGroup>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          <Collapsible asChild defaultOpen className="group/collapsible">
+            <SidebarMenuItem>
+              <CollapsibleTrigger asChild>
+                <SidebarMenuButton tooltip={tooltip || title}>
+                  <Icon className="h-4 w-4" />
+                  <span>{title}</span>
+                  <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                </SidebarMenuButton>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <SidebarMenuSub>
+                  {items.map((item) => (
+                    <SidebarMenuSubItem key={item.title}>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={isActive(item.url)}
+                        data-testid={`nav-${item.url.replace(/\//g, "-").slice(1)}`}
+                      >
+                        <Link href={item.url}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  ))}
+                </SidebarMenuSub>
+              </CollapsibleContent>
+            </SidebarMenuItem>
+          </Collapsible>
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
 
 export function AppSidebar() {
   const [location] = useLocation();
@@ -281,7 +209,7 @@ export function AppSidebar() {
   };
 
   const operationsMenuItems = getOperationsMenuItems(hasPerm as any);
-  const abroadMenuItems = gеtAbroadMenuItems(hasPerm as any);
+  const abroadMenuItems = getAbroadMenuItems(hasPerm as any);
   const dataMenuItems = getDataMenuItems(hasPerm as any);
   const financeMenuItems = getFinanceMenuItems(hasPerm as any);
   const reportsMenuItems = getReportsMenuItems(hasPerm as any);
@@ -318,273 +246,54 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {operationsMenuItems.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <Collapsible asChild defaultOpen className="group/collapsible">
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip="Операции">
-                        <Layers className="h-4 w-4" />
-                        <span>Операции</span>
-                        <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {operationsMenuItems.map((item) => (
-                          <SidebarMenuSubItem key={item.title}>
-                            <SidebarMenuSubButton
-                              asChild
-                              isActive={isActive(item.url)}
-                              data-testid={`nav-${item.url.replace(/\//g, "-").slice(1)}`}
-                            >
-                              <Link href={item.url}>
-                                <item.icon className="h-4 w-4" />
-                                <span>{item.title}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+        <SidebarSection
+          title="Операции"
+          icon={Layers}
+          items={operationsMenuItems}
+          isActive={isActive}
+        />
 
-        {abroadMenuItems.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <Collapsible asChild defaultOpen className="group/collapsible">
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip="Зарубеж">
-                        <Database className="h-4 w-4" />
-                        <span>Зарубеж</span>
-                        <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {abroadMenuItems.map((item) => (
-                          <SidebarMenuSubItem key={item.title}>
-                            <SidebarMenuSubButton
-                              asChild
-                              isActive={isActive(item.url)}
-                              data-testid={`nav-${item.url.replace(/\//g, "-").slice(1)}`}
-                            >
-                              <Link href={item.url}>
-                                <item.icon className="h-4 w-4" />
-                                <span>{item.title}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-        
-        {dataMenuItems.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <Collapsible asChild defaultOpen className="group/collapsible">
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip="Данные">
-                        <Database className="h-4 w-4" />
-                        <span>Данные</span>
-                        <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {dataMenuItems.map((item) => (
-                          <SidebarMenuSubItem key={item.title}>
-                            <SidebarMenuSubButton
-                              asChild
-                              isActive={isActive(item.url)}
-                              data-testid={`nav-${item.url.replace(/\//g, "-").slice(1)}`}
-                            >
-                              <Link href={item.url}>
-                                <item.icon className="h-4 w-4" />
-                                <span>{item.title}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+        <SidebarSection
+          title="Зарубеж"
+          icon={Globe}
+          items={abroadMenuItems}
+          isActive={isActive}
+        />
 
-        {financeMenuItems.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <Collapsible asChild defaultOpen className="group/collapsible">
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip="Финансы">
-                        <Coins className="h-4 w-4" />
-                        <span>Финансы</span>
-                        <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {financeMenuItems.map((item) => (
-                          <SidebarMenuSubItem key={item.title}>
-                            <SidebarMenuSubButton
-                              asChild
-                              isActive={isActive(item.url)}
-                              data-testid={`nav-${item.url.replace(/\//g, "-").slice(1)}`}
-                            >
-                              <Link href={item.url}>
-                                <item.icon className="h-4 w-4" />
-                                <span>{item.title}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+        <SidebarSection
+          title="Данные"
+          icon={Database}
+          items={dataMenuItems}
+          isActive={isActive}
+        />
 
-        {/* Reports section */}
-        {reportsMenuItems.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <Collapsible asChild defaultOpen className="group/collapsible">
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip="Отчеты">
-                        <BarChart3 className="h-4 w-4" />
-                        <span>Отчеты</span>
-                        <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {reportsMenuItems.map((item) => (
-                          <SidebarMenuSubItem key={item.title}>
-                            <SidebarMenuSubButton
-                              asChild
-                              isActive={isActive(item.url)}
-                              data-testid={`nav-${item.url.replace(/\//g, "-").slice(1)}`}
-                            >
-                              <Link href={item.url}>
-                                <item.icon className="h-4 w-4" />
-                                <span>{item.title}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+        <SidebarSection
+          title="Финансы"
+          icon={Coins}
+          items={financeMenuItems}
+          isActive={isActive}
+        />
 
-        {/* Planning section */}
-        {planningMenuItems.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <Collapsible asChild defaultOpen className="group/collapsible">
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip="Планирование">
-                        <Calendar className="h-4 w-4" />
-                        <span>Планирование</span>
-                        <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {planningMenuItems.map((item) => (
-                          <SidebarMenuSubItem key={item.title}>
-                            <SidebarMenuSubButton
-                              asChild
-                              isActive={isActive(item.url)}
-                              data-testid={`nav-${item.url.replace(/\//g, "-").slice(1)}`}
-                            >
-                              <Link href={item.url}>
-                                <item.icon className="h-4 w-4" />
-                                <span>{item.title}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+        <SidebarSection
+          title="Отчеты"
+          icon={BarChart3}
+          items={reportsMenuItems}
+          isActive={isActive}
+        />
 
-        {adminMenuItems.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <Collapsible asChild defaultOpen className="group/collapsible">
-                  <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip="Администрирование">
-                        <UserCog className="h-4 w-4" />
-                        <span>Администрирование</span>
-                        <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                      </SidebarMenuButton>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <SidebarMenuSub>
-                        {adminMenuItems.map((item) => (
-                          <SidebarMenuSubItem key={item.title}>
-                            <SidebarMenuSubButton
-                              asChild
-                              isActive={isActive(item.url)}
-                              data-testid={`nav-${item.url.replace(/\//g, "-").slice(1)}`}
-                            >
-                              <Link href={item.url}>
-                                <item.icon className="h-4 w-4" />
-                                <span>{item.title}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
-                      </SidebarMenuSub>
-                    </CollapsibleContent>
-                  </SidebarMenuItem>
-                </Collapsible>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+        <SidebarSection
+          title="Планирование"
+          icon={Calendar}
+          items={planningMenuItems}
+          isActive={isActive}
+        />
+
+        <SidebarSection
+          title="Администрирование"
+          icon={UserCog}
+          items={adminMenuItems}
+          isActive={isActive}
+        />
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">
