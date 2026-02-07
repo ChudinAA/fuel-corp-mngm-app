@@ -1,15 +1,13 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Maximize2, Plane, Globe } from "lucide-react";
+import { Plus, Maximize2 } from "lucide-react";
 import type { AircraftRefueling } from "@shared/schema";
 import { AddRefuelingDialog } from "./refueling/components/add-refueling-dialog";
 import { RefuelingTable } from "./refueling/components/refueling-table";
-import { RefuelingAbroadPage } from "./refueling-abroad";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function RefuelingPage() {
@@ -115,7 +113,7 @@ export default function RefuelingPage() {
               onDelete={handleRefuelingDeleted}
             />
           </CardContent>
- Card>
+        </Card>
       </div>
     </div>
   );
