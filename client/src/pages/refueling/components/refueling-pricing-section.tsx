@@ -15,7 +15,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Plus } from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
-import type { Price } from "@shared/schema";
+import type { Price, Supplier } from "@shared/schema";
 import type { RefuelingFormData } from "../schemas";
 import { CalculatedField } from "../calculated-field";
 import { formatNumber, formatCurrency } from "../utils";
@@ -46,6 +46,7 @@ interface RefuelingPricingSectionProps {
   contractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
   supplierContractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
   productType: string;
+  selectedSupplier: Supplier | undefined;
 }
 
 export function RefuelingPricingSection({
@@ -67,6 +68,7 @@ export function RefuelingPricingSection({
   contractVolumeStatus,
   supplierContractVolumeStatus,
   productType,
+  selectedSupplier,
 }: RefuelingPricingSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -83,25 +85,37 @@ export function RefuelingPricingSection({
   return (
     <>
       {productType === PRODUCT_TYPE.SERVICE && (
-        <div className="mb-4 flex items-center space-x-2 rounded-md border p-3 bg-accent/5">
-          <FormField
-            control={form.control}
-            name="isPriceRecharge"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    data-testid="checkbox-reprice-service"
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel>Перевыставить услугу</FormLabel>
-                </div>
-              </FormItem>
+        <div className="mb-4 flex items-center justify-between rounded-md border p-3 bg-accent/5">
+          <div className="flex items-center gap-4">
+            {selectedSupplier?.servicePrice && (
+              <div className="flex flex-col">
+                <span className="text-xs text-muted-foreground leading-none mb-1">
+                  Цена, установленная поставщиком
+                </span>
+                <span className="text-sm font-medium">
+                  {formatNumber(selectedSupplier.servicePrice)} ₽/кг
+                </span>
+              </div>
             )}
-          />
+            <FormField
+              control={form.control}
+              name="isPriceRecharge"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="checkbox-reprice-service"
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Перевыставить услугу</FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
       )}
       <div className="grid gap-3 md:grid-cols-4">
@@ -207,6 +221,11 @@ export function RefuelingPricingSection({
             }
             suffix={purchasePrice !== null ? " ₽/кг" : ""}
             status={purchasePrice !== null ? "ok" : "error"}
+            description={
+              productType === PRODUCT_TYPE.SERVICE && selectedSupplier?.servicePrice
+                ? "Цена из карточки поставщика"
+                : undefined
+            }
           />
         )}
 
