@@ -224,7 +224,7 @@ function Router() {
         </AppLayout>
       </Route>
 
-      <Route path="/refueling-abroad">
+      <Route path="/abroad">
         <AppLayout>
           <ProtectedRoute component={RefuelingAbroadPage} />
         </AppLayout>

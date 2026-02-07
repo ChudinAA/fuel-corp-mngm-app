@@ -41,8 +41,14 @@ export default function RefuelingAbroadPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Заправка ВС Зарубеж</h1>
+          <p className="text-muted-foreground">
+            Учет зурубежных заправок воздушных судов
+          </p>
+        </div>
         {hasPermission("refueling", "create") && (
           <Button onClick={handleOpenDialog} data-testid="button-add-refueling-abroad">
             <Plus className="mr-2 h-4 w-4" />
@@ -60,7 +66,7 @@ export default function RefuelingAbroadPage() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
-          <CardTitle>Список заправок за рубежом</CardTitle>
+          <CardTitle>Список сделок</CardTitle>
           <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
             <Button
               variant="outline"

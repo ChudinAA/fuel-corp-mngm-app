@@ -61,22 +61,18 @@ export default function WarehousesPage() {
             Управление складами и остатками топлива
           </p>
         </div>
+        {hasPermission("warehouses", "create") && (
+          <Button
+            onClick={() => setIsDialogOpen(true)}
+            data-testid="button-add-warehouse"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Добавить склад
+          </Button>
+        )}
       </div>
 
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">Список складов</h2>
-          {hasPermission("warehouses", "create") && (
-            <Button
-              onClick={() => setIsDialogOpen(true)}
-              data-testid="button-add-warehouse"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Добавить склад
-            </Button>
-          )}
-        </div>
-
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

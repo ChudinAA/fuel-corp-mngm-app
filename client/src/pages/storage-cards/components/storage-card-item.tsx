@@ -85,7 +85,7 @@ export function StorageCardItem({ card, onEdit, onViewDetails }: StorageCardItem
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Globe className="h-4 w-4 text-sky-400 shrink-0" />
+              <CreditCard className="h-4 w-4 text-sky-400 shrink-0" />
               <span className="truncate">{card.name}</span>
               {isInactive && <Badge variant="destructive">Неактивна</Badge>}
             </CardTitle>

@@ -328,9 +328,9 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
       {!hideHeader && (
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl font-semibold">Карты хранения</h1>
+            <h1 className="text-2xl font-semibold">Авансы поставщикам</h1>
             <p className="text-muted-foreground">
-              Управление картами хранения топлива на зарубежных аэропортах
+              Управление авансами на зарубежных аэропортах
             </p>
           </div>
           {hasPermission("storage-cards", "create") && (

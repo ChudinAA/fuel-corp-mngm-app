@@ -57,18 +57,15 @@ export default function RefuelingPage() {
             Учет заправок воздушных судов
           </p>
         </div>
+        {hasPermission("refueling", "create") && (
+          <Button onClick={handleOpenDialog} data-testid="button-add-refueling">
+            <Plus className="mr-2 h-4 w-4" />
+            Новая заправка
+          </Button>
+        )}
       </div>
 
       <div className="space-y-4">
-        <div className="flex justify-end">
-          {hasPermission("refueling", "create") && (
-            <Button onClick={handleOpenDialog} data-testid="button-add-refueling">
-              <Plus className="mr-2 h-4 w-4" />
-              Новая заправка
-            </Button>
-          )}
-        </div>
-
         <AddRefuelingDialog
           isOpen={isDialogOpen}
           onClose={handleCloseDialog}
@@ -79,7 +76,7 @@ export default function RefuelingPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
             <div>
-              <CardTitle>Список заправок</CardTitle>
+              <CardTitle>Список сделок</CardTitle>
             </div>
             <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
               <Button 

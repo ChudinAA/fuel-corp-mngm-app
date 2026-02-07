@@ -118,16 +118,16 @@ const getOperationsMenuItems = (hasPermission: (p: string) => boolean) =>
     },
   ].filter((item) => !item.permission || hasPermission(item.permission));
 
-const getAbroadMenuItems = (hasPermission: (p: string) => boolean) =>
+const gеtAbroadMenuItems = (hasPermission: (p: string) => boolean) =>
   [
     {
       title: "Заправка ВС Зарубеж",
-      url: "/refueling-abroad",
+      url: "/abroad",
       icon: Plane,
       permission: "refueling.view",
     },
     {
-      title: "Карты хранения",
+      title: "Авансы поставщикам",
       url: "/storage-cards",
       icon: WalletCards,
       permission: "storage-cards.view",
@@ -288,7 +288,7 @@ export function AppSidebar() {
   };
 
   const operationsMenuItems = getOperationsMenuItems(hasPerm as any);
-  const abroadMenuItems = getAbroadMenuItems(hasPerm as any);
+  const abroadMenuItems = gеtAbroadMenuItems(hasPerm as any);
   const dataMenuItems = getDataMenuItems(hasPerm as any);
   const financeMenuItems = getFinanceMenuItems(hasPerm as any);
   const reportsMenuItems = getReportsMenuItems(hasPerm as any);
