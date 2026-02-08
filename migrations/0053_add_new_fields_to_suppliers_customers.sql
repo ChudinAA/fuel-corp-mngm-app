@@ -24,3 +24,6 @@ UPDATE "movement" SET input_mode = 'kg';
 ALTER TABLE "aircraft_refueling" ADD COLUMN IF NOT EXISTS "is_price_recharge" boolean DEFAULT false;
 -- Seed is_price_recharge = false for all existing records
 UPDATE "aircraft_refueling" SET is_price_recharge = false;
+
+-- Add basis_id to refueling_abroad
+ALTER TABLE "refueling_abroad" ADD COLUMN IF NOT EXISTS "basis_id" uuid REFERENCES "bases"("id");

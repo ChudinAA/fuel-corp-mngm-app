@@ -18,6 +18,7 @@ import { prices } from "../../prices/entities/prices";
 import { storageCards } from "../../storage-cards/entities/storage-cards";
 import { exchangeRates } from "../../exchange-rates/entities/exchange-rates";
 import { refuelingAbroadIntermediaries } from "./refueling-abroad-intermediaries";
+import { bases } from "@shared/schema";
 
 export const refuelingAbroad = pgTable(
   "refueling_abroad",
@@ -36,6 +37,7 @@ export const refuelingAbroad = pgTable(
     buyerId: uuid("buyer_id")
       .notNull()
       .references(() => customers.id),
+    basisId: uuid("basis_id").references(() => bases.id),
     storageCardId: uuid("storage_card_id").references(() => storageCards.id),
     intermediaryId: uuid("intermediary_id").references(() => suppliers.id),
     intermediaryCommissionFormula: text("intermediary_commission_formula"),
@@ -117,6 +119,7 @@ export const refuelingAbroad = pgTable(
     createdAtIdx: index("refueling_abroad_created_at_idx").on(table.createdAt),
     supplierIdx: index("refueling_abroad_supplier_idx").on(table.supplierId),
     buyerIdx: index("refueling_abroad_buyer_idx").on(table.buyerId),
+    basisIdx: index("refueling_abroad_basis_idx").on(table.basisId),
     productTypeIdx: index("refueling_abroad_product_type_idx").on(
       table.productType,
     ),
@@ -141,6 +144,10 @@ export const refuelingAbroadRelations = relations(
     buyer: one(customers, {
       fields: [refuelingAbroad.buyerId],
       references: [customers.id],
+    }),
+    basis: one(bases, {
+      fields: [refuelingAbroad.basisId],
+      references: [bases.id],
     }),
     storageCard: one(storageCards, {
       fields: [refuelingAbroad.storageCardId],
@@ -182,6 +189,7 @@ export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
     productType: z.string().nullable().optional(),
     supplierId: z.string().nullable().optional(),
     buyerId: z.string().nullable().optional(),
+    basisId: z.string().nullable().optional(),
     storageCardId: z.string().nullable().optional(),
     intermediaryId: z.string().nullable().optional(),
     intermediaryCommissionFormula: z.string().nullable().optional(),
