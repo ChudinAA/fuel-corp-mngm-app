@@ -328,6 +328,10 @@ export function PricesTable({
                         label: "Заправка ВС",
                         value: COUNTERPARTY_TYPE.REFUELING,
                       },
+                      {
+                        label: "Заправка ВС Зарубеж",
+                        value: COUNTERPARTY_TYPE.REFUELING_ABROAD,
+                      },
                     ]}
                     selectedValues={columnFilters["counterpartyType"] || []}
                     onUpdate={(values) =>
@@ -394,7 +398,7 @@ export function PricesTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-right">Цена (₽/кг)</TableHead>
+              <TableHead className="text-right">Цена за кг</TableHead>
               <TableHead className="text-center">Объем (кг)</TableHead>
               <TableHead className="text-center">Выборка (кг)</TableHead>
               <TableHead className="w-[10px]"></TableHead>
@@ -492,11 +496,7 @@ export function PricesTable({
                               ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30"
                               : price.productType === PRODUCT_TYPE.SERVICE
                                 ? "bg-green-50/50 dark:bg-green-950/20 border-green-200/30 dark:border-green-800/30"
-                                : price.productType === PRODUCT_TYPE.AGENT
-                                  ? "bg-orange-50/50 dark:bg-orange-950/20 border-orange-200/30 dark:border-orange-800/30"
-                                  : price.productType === PRODUCT_TYPE.STORAGE
-                                    ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/30 dark:border-amber-800/30"
-                                    : ""
+                                : ""
                         }
                       >
                         {getProductTypeLabel(price.productType)}

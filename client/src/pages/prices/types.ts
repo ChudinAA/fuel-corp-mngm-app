@@ -21,7 +21,6 @@ export interface PriceFormData {
   notes?: string;
   currency?: string;
   currencyId?: string;
-  targetCurrencyId?: string;
 }
 
 export interface PriceDialogProps {
@@ -34,7 +33,7 @@ export interface PriceDialogProps {
 }
 
 export interface PricesTableProps {
-  dealTypeFilter: "all" | "wholesale" | "refueling" | "refueling_abroad";
+  dealTypeFilter: "all" | "wholesale" | "refueling" | "abroad";
   roleFilter: "all" | "supplier" | "buyer";
   productTypeFilter: string;
   onEdit: (price: Price) => void;

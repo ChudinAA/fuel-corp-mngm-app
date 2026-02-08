@@ -64,10 +64,10 @@ export function PriceFormFields({
 }: PriceFormFieldsProps) {
   const { hasPermission } = useAuth();
   const [addBaseOpen, setAddBaseOpen] = useState(false);
-  
+
   const counterpartyType = useWatch({ control, name: "counterpartyType" });
-  const { data: currencies } = useQuery<Currency[]>({ 
-    queryKey: ["/api/currencies"] 
+  const { data: currencies } = useQuery<Currency[]>({
+    queryKey: ["/api/currencies"],
   });
 
   return (
@@ -199,33 +199,40 @@ export function PriceFormFields({
           )}
         />
 
-        <FormField
-          control={control}
-          name="currencyId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Валюта</FormLabel>
-              <FormControl>
-                <Combobox
-                  options={currencies?.map(c => ({ value: c.id, label: c.code })) || []}
-                  value={field.value}
-                  onValueChange={(val) => {
-                    field.onChange(val);
-                    const selected = currencies?.find(c => c.id === val);
-                    if (selected) {
-                      // @ts-ignore - backward compatibility
-                      control._formValues.currency = selected.code;
+        {counterpartyType === COUNTERPARTY_TYPE.REFUELING_ABROAD && (
+          <FormField
+            control={control}
+            name="currencyId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Валюта</FormLabel>
+                <FormControl>
+                  <Combobox
+                    options={
+                      currencies?.map((c) => ({
+                        value: c.id,
+                        label: c.code,
+                      })) || []
                     }
-                  }}
-                  placeholder="Выберите валюту"
-                  className="w-full"
-                  dataTestId="select-currency"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                    value={field.value}
+                    onValueChange={(val) => {
+                      field.onChange(val);
+                      const selected = currencies?.find((c) => c.id === val);
+                      if (selected) {
+                        // @ts-ignore - backward compatibility
+                        control._formValues.currency = selected.code;
+                      }
+                    }}
+                    placeholder="Выберите валюту"
+                    className="w-full"
+                    dataTestId="select-currency"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -238,7 +245,12 @@ export function PriceFormFields({
               <FormControl>
                 <div className="w-full">
                   <Combobox
-                    options={contractors?.map((c) => ({ value: c.id, label: c.name })) || []}
+                    options={
+                      contractors?.map((c) => ({
+                        value: c.id,
+                        label: c.name,
+                      })) || []
+                    }
                     value={field.value}
                     onValueChange={field.onChange}
                     placeholder="Выберите контрагента"
@@ -287,20 +299,24 @@ export function PriceFormFields({
                 <FormControl>
                   <div className="flex-1 min-w-0">
                     <Combobox
-                      options={availableBases?.map((b) => ({
-                        value: b.id,
-                        label: b.name,
-                        render: (
-                          <div className="flex items-center gap-2">
-                            {b.name}
-                            <BaseTypeBadge type={b.baseType} short={true} />
-                          </div>
-                        )
-                      })) || []}
+                      options={
+                        availableBases?.map((b) => ({
+                          value: b.id,
+                          label: b.name,
+                          render: (
+                            <div className="flex items-center gap-2">
+                              {b.name}
+                              <BaseTypeBadge type={b.baseType} short={true} />
+                            </div>
+                          ),
+                        })) || []
+                      }
                       value={field.value}
                       onValueChange={(val) => {
                         field.onChange(val);
-                        const selectedBase = availableBases.find(b => b.id === val);
+                        const selectedBase = availableBases.find(
+                          (b) => b.id === val,
+                        );
                         if (selectedBase) {
                           control._formValues.basis = selectedBase.name;
                         }
@@ -365,7 +381,7 @@ export function PriceFormFields({
                       type="number"
                       step="0.00001"
                       min="0"
-                      placeholder="Цена за кг (₽)"
+                      placeholder="Цена за кг"
                       data-testid={`input-price-${index}`}
                       {...field}
                     />

@@ -41,5 +41,4 @@ export const priceFormSchema = z.object({
   notes: z.string().optional(),
   currency: z.string().optional().default("RUB"),
   currencyId: z.string().optional(),
-  targetCurrencyId: z.string().optional(),
 });
