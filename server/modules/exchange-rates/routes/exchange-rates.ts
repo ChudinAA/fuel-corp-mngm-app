@@ -114,6 +114,8 @@ export function registerExchangeRatesRoutes(app: Express) {
         
         const data = {
           ...validatedData,
+          currencyId: baseCurrency.id,
+          targetCurrencyId: targetCurrency.id,
           createdById: req.session.userId ? String(req.session.userId) : undefined,
         };
 
@@ -150,10 +152,25 @@ export function registerExchangeRatesRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        const updateData = {
+        let updateData = {
           ...req.body,
           updatedById: req.session.userId,
         };
+
+        // If currency codes are provided, update their IDs too
+        if (req.body.currency) {
+          const baseCurrency = await storage.currencies.getCurrencyByCode(req.body.currency);
+          if (baseCurrency) {
+            updateData.currencyId = baseCurrency.id;
+          }
+        }
+
+        if (req.body.targetCurrency) {
+          const targetCurrency = await storage.currencies.getCurrencyByCode(req.body.targetCurrency);
+          if (targetCurrency) {
+            updateData.targetCurrencyId = targetCurrency.id;
+          }
+        }
 
         const item = await storage.exchangeRates.updateExchangeRate(id, updateData);
         if (!item) {
