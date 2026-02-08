@@ -261,6 +261,8 @@ export function AddPriceDialog({
         productType: PRODUCT_TYPE.KEROSENE,
         basis: "",
         basisId: undefined,
+        currency: "RUB",
+        currencyId: undefined,
         volume: "",
         priceValues: [{ price: "" }],
         contractNumber: "",
