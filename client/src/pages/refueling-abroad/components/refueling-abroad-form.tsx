@@ -3,7 +3,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
 import {
   Form,
   FormControl,
@@ -12,33 +11,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Loader2,
-  Plane,
-  DollarSign,
-  ArrowRightLeft,
-  CalendarIcon,
-} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
@@ -48,7 +21,6 @@ import {
 import type { RefuelingAbroadFormProps } from "../types";
 import { useRefuelingAbroadCalculations } from "../hooks/use-refueling-abroad-calculations";
 import { IntermediariesSection } from "./intermediaries-section";
-import { formatCurrency, formatNumber } from "../utils";
 import { PRODUCT_TYPES_ABROAD } from "../constants";
 import type {
   Supplier,
@@ -56,6 +28,14 @@ import type {
   ExchangeRate,
   StorageCard,
 } from "@shared/schema";
+
+// Import new sections
+import { FlightInfoSection } from "./sections/FlightInfoSection";
+import { CounterpartiesSection } from "./sections/CounterpartiesSection";
+import { FuelVolumeSection } from "./sections/FuelVolumeSection";
+import { PriceAndRatesSection } from "./sections/PriceAndRatesSection";
+import { CalculationSummarySection } from "./sections/CalculationSummarySection";
+import { FormActions } from "./sections/FormActions";
 
 interface IntermediaryItem {
   id?: string;
@@ -111,7 +91,6 @@ export function RefuelingAbroadForm({
     if (existingIntermediaries.length > 0) {
       setIntermediariesList(
         existingIntermediaries.map((item) => ({
-          // We omit the id when it's a copy so the server creates new intermediary records
           id: isCopy ? undefined : item.id,
           intermediaryId: item.intermediaryId,
           orderIndex: item.orderIndex,
@@ -127,10 +106,6 @@ export function RefuelingAbroadForm({
       );
     }
   }, [existingIntermediaries, isCopy]);
-
-  const foreignSuppliers = suppliers.filter(
-    (s) => s.isForeign || s.isIntermediary,
-  );
 
   const latestUsdRate = exchangeRates
     .filter((r) => r.currency === "USD" && r.isActive)
@@ -152,7 +127,7 @@ export function RefuelingAbroadForm({
       buyerId: editData?.buyerId || "",
       storageCardId: editData?.storageCardId || "",
       intermediaries: [],
-      inputMode: editData?.inputMode as "liters" | "kg" || (editData?.quantityLiters ? "liters" : "kg"),
+      inputMode: (editData?.inputMode as "liters" | "kg") || (editData?.quantityLiters ? "liters" : "kg"),
       quantityLiters: editData?.quantityLiters?.toString() || "",
       density: editData?.density?.toString() || "0.8",
       quantityKg: editData?.quantityKg?.toString() || "",
@@ -272,12 +247,11 @@ export function RefuelingAbroadForm({
       let refuelingId: string;
 
       if (editData && editData.id) {
-        const response = await apiRequest(
+        await apiRequest(
           "PATCH",
           `/api/refueling-abroad/${editData.id}`,
           payload,
         );
-        const result = await response.json();
         refuelingId = editData.id;
       } else {
         const response = await apiRequest(
@@ -323,14 +297,13 @@ export function RefuelingAbroadForm({
   });
 
   const isEditing = !!editData && !!editData.id;
-  const isDraft = form.watch("isDraft");
+  const isDraft = watchedValues.isDraft;
 
   const onSubmit = (
     data: RefuelingAbroadFormData,
     isDraftOverride?: boolean,
   ) => {
     const finalIsDraft = isDraftOverride ?? data.isDraft;
-    // Update the form state directly so validation pass or fail based on current state
     form.setValue("isDraft", finalIsDraft);
     createMutation.mutate({ ...data, isDraft: finalIsDraft });
   };
@@ -341,231 +314,8 @@ export function RefuelingAbroadForm({
         onSubmit={form.handleSubmit((data) => onSubmit(data))}
         className="space-y-4"
       >
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Plane className="h-4 w-4" />
-              Информация о рейсе
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <FormField
-              control={form.control}
-              name="refuelingDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Дата заправки</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal"
-                          data-testid="input-refueling-date"
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {field.value
-                            ? format(field.value, "dd.MM.yyyy", { locale: ru })
-                            : "Выберите дату"}
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value || undefined}
-                        onSelect={field.onChange}
-                        locale={ru}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="airportCode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Код аэропорта</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="JFK"
-                      {...field}
-                      value={field.value || ""}
-                      data-testid="input-airport-code"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="aircraftNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Борт</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="RA-12345"
-                      {...field}
-                      value={field.value || ""}
-                      data-testid="input-aircraft-number"
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="flightNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Номер рейса</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="SU-123"
-                      {...field}
-                      value={field.value || ""}
-                      data-testid="input-flight-number"
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="productType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Продукт</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value || ""}
-                  >
-                    <FormControl>
-                      <SelectTrigger data-testid="select-product-type">
-                        <SelectValue placeholder="Выберите" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {PRODUCT_TYPES_ABROAD.map((pt) => (
-                        <SelectItem key={pt.value} value={pt.value}>
-                          {pt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="storageCardId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Карта хранения</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value || ""}
-                  >
-                    <FormControl>
-                      <SelectTrigger data-testid="select-storage-card">
-                        <SelectValue placeholder="Не выбрано" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">Без карты</SelectItem>
-                      {storageCards.map((card) => (
-                        <SelectItem key={card.id} value={card.id}>
-                          {card.name} ({card.airportCode})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Контрагенты</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="supplierId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Поставщик</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-supplier">
-                        <SelectValue placeholder="Выберите" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {foreignSuppliers.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          Нет иностранных поставщиков
-                        </SelectItem>
-                      ) : (
-                        foreignSuppliers.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name} {s.isIntermediary ? "(посредник)" : ""}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="buyerId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Покупатель</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-buyer">
-                        <SelectValue placeholder="Выберите" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {customers.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          Нет покупателей
-                        </SelectItem>
-                      ) : (
-                        customers.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name} {c.isForeign ? "(иностранный)" : ""}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
+        <FlightInfoSection storageCards={storageCards} />
+        <CounterpartiesSection suppliers={suppliers} customers={customers} />
 
         <IntermediariesSection
           intermediaries={intermediariesList}
@@ -576,458 +326,42 @@ export function RefuelingAbroadForm({
           exchangeRate={saleExchangeRate}
         />
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Объем топлива</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="inputMode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <RadioGroup
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      className="flex gap-4"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="kg" id="mode-kg" />
-                        <Label htmlFor="mode-kg">Ввод в кг</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="liters" id="mode-liters" />
-                        <Label htmlFor="mode-liters">Ввод в литрах</Label>
-                      </div>
-                    </RadioGroup>
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+        <FuelVolumeSection />
+        <PriceAndRatesSection exchangeRates={exchangeRates} />
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {watchedValues.inputMode === "liters" ? (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="quantityLiters"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          Литры
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            {...field}
-                            value={field.value || ""}
-                            data-testid="input-quantity-liters"
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="density"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          Плотность
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.001"
-                            {...field}
-                            value={field.value || ""}
-                            data-testid="input-density"
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </>
-              ) : (
-                <FormField
-                  control={form.control}
-                  name="quantityKg"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        Масса (кг)
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          {...field}
-                          value={field.value || ""}
-                          data-testid="input-quantity-kg"
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
+        <CalculationSummarySection
+          calculations={calculations}
+          purchaseExchangeRate={purchaseExchangeRate}
+          saleExchangeRate={saleExchangeRate}
+          totalIntermediaryCommissionUsd={totalIntermediaryCommissionUsd}
+          totalIntermediaryCommissionRub={totalIntermediaryCommissionRub}
+        />
+
+        <FormField
+          control={form.control}
+          name="notes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Примечания</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Дополнительная информация..."
+                  {...field}
+                  value={field.value || ""}
+                  data-testid="input-notes"
                 />
-              )}
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-              <div>
-                <Label className="text-muted-foreground">Итого (кг)</Label>
-                <div className="h-9 px-3 flex items-center bg-muted rounded-md text-sm font-medium">
-                  {formatNumber(calculations.finalKg)}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              Ценообразование (USD)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <FormField
-                control={form.control}
-                name="purchasePriceUsd"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Цена закупки ($/кг)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.0001"
-                        {...field}
-                        value={field.value || ""}
-                        data-testid="input-purchase-price-usd"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="salePriceUsd"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Цена продажи ($/кг)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.0001"
-                        {...field}
-                        value={field.value || ""}
-                        data-testid="input-sale-price-usd"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="border-t pt-4 mt-4">
-              <h4 className="text-sm font-medium mb-3">Курсы USD/RUB</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <h5 className="text-xs text-muted-foreground font-medium">
-                    Для закупки у Поставщика
-                  </h5>
-                  <FormField
-                    control={form.control}
-                    name="purchaseExchangeRateId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Курс из справочника</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value || ""}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-purchase-exchange-rate">
-                              <SelectValue placeholder="Выберите курс" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {exchangeRates
-                              .filter((r) => r.currency === "USD")
-                              .map((rate) => (
-                                <SelectItem key={rate.id} value={rate.id}>
-                                  {rate.rate} (
-                                  {new Date(rate.rateDate).toLocaleDateString(
-                                    "ru-RU",
-                                  )}
-                                  )
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="manualPurchaseExchangeRate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Или вручную</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder={
-                              selectedPurchaseExchangeRate?.rate || "90.00"
-                            }
-                            {...field}
-                            value={field.value || ""}
-                            data-testid="input-manual-purchase-exchange-rate"
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <h5 className="text-xs text-muted-foreground font-medium">
-                    Для продажи Покупателю
-                  </h5>
-                  <FormField
-                    control={form.control}
-                    name="saleExchangeRateId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Курс из справочника</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value || ""}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-sale-exchange-rate">
-                              <SelectValue placeholder="Выберите курс" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {exchangeRates
-                              .filter((r) => r.currency === "USD")
-                              .map((rate) => (
-                                <SelectItem key={rate.id} value={rate.id}>
-                                  {rate.rate} (
-                                  {new Date(rate.rateDate).toLocaleDateString(
-                                    "ru-RU",
-                                  )}
-                                  )
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="manualSaleExchangeRate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Или вручную</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder={
-                              selectedSaleExchangeRate?.rate || "90.00"
-                            }
-                            {...field}
-                            value={field.value || ""}
-                            data-testid="input-manual-sale-exchange-rate"
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <ArrowRightLeft className="h-4 w-4" />
-              Расчетные значения
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Закупка (USD)
-                </Label>
-                <div className="font-medium">
-                  {formatCurrency(calculations.purchaseAmountUsd, "USD")}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Продажа (USD)
-                </Label>
-                <div className="font-medium">
-                  {formatCurrency(calculations.saleAmountUsd, "USD")}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Комиссия посредников (USD)
-                </Label>
-                <div
-                  className="font-medium"
-                  data-testid="text-intermediary-commission-usd"
-                >
-                  {formatCurrency(totalIntermediaryCommissionUsd, "USD")}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Прибыль (USD)
-                </Label>
-                <div
-                  className={`font-medium ${(calculations.profitUsd || 0) < 0 ? "text-destructive" : "text-green-600"}`}
-                >
-                  {formatCurrency(calculations.profitUsd, "USD")}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Закупка (RUB)
-                </Label>
-                <div className="font-medium">
-                  {formatCurrency(calculations.purchaseAmountRub, "RUB")}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Продажа (RUB)
-                </Label>
-                <div className="font-medium">
-                  {formatCurrency(calculations.saleAmountRub, "RUB")}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Комиссия посредников (RUB)
-                </Label>
-                <div
-                  className="font-medium"
-                  data-testid="text-intermediary-commission-rub"
-                >
-                  {formatCurrency(totalIntermediaryCommissionRub, "RUB")}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Прибыль (RUB)
-                </Label>
-                <div
-                  className={`font-medium ${(calculations.profitRub || 0) < 0 ? "text-destructive" : "text-green-600"}`}
-                >
-                  {formatCurrency(calculations.profitRub, "RUB")}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid gap-4 md:grid-cols-2 items-end">
-          <FormField
-            control={form.control}
-            name="notes"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Примечания</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Дополнительная информация..."
-                    data-testid="input-notes"
-                    {...field}
-                    value={field.value || ""}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="isApproxVolume"
-            render={({ field }) => (
-              <FormItem className="flex items-center gap-2 space-y-0 pb-2">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    data-testid="checkbox-approx-volume"
-                  />
-                </FormControl>
-                <FormLabel className="text-sm font-normal cursor-pointer">
-                  Примерный объем (требует уточнения)
-                </FormLabel>
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          {!isEditing || (editData && editData.isDraft) ? (
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={createMutation.isPending}
-              onClick={() => {
-                form.clearErrors();
-                onSubmit(form.getValues(), true);
-              }}
-            >
-              {createMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Сохранить черновик
-            </Button>
-          ) : null}
-
-          <Button
-            type="button"
-            disabled={createMutation.isPending}
-            onClick={() => {
-              form.handleSubmit((data) => onSubmit(data, false))();
-            }}
-            data-testid="button-submit-refueling"
-          >
-            {createMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isEditing ? "Сохранение..." : "Создание..."}
-              </>
-            ) : (
-              <>
-                {isEditing && !editData.isDraft
-                  ? "Сохранить изменения"
-                  : "Создать сделку"}
-              </>
-            )}
-          </Button>
-        </div>
+        <FormActions
+          isEditing={isEditing}
+          isPending={createMutation.isPending}
+          isDraft={isDraft}
+          onDraftSubmit={() => onSubmit(form.getValues(), true)}
+        />
       </form>
     </Form>
   );
