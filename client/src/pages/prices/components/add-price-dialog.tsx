@@ -173,6 +173,25 @@ export function AddPriceDialog({
     }
   }, [watchCounterpartyId, contractors, allBases, form, watchBasis, editPrice]);
 
+  // Установка валюты по умолчанию при смене типа сделки
+  useEffect(() => {
+    if (!editPrice && currencies) {
+      if (watchCounterpartyType === COUNTERPARTY_TYPE.REFUELING_ABROAD) {
+        const usd = currencies.find(c => c.code === "USD");
+        if (usd) {
+          form.setValue("currencyId", usd.id);
+          form.setValue("currency", "USD");
+        }
+      } else {
+        const rub = currencies.find(c => c.code === "RUB");
+        if (rub) {
+          form.setValue("currencyId", rub.id);
+          form.setValue("currency", "RUB");
+        }
+      }
+    }
+  }, [watchCounterpartyType, currencies, form, editPrice]);
+
   const handleCheckDates = () => {
     if (!watchCounterpartyId || !watchBasis || !watchDateFrom || !watchDateTo) {
       toast({

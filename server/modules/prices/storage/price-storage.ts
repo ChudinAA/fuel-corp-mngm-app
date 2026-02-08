@@ -7,6 +7,7 @@ import {
   type Price,
   type InsertPrice,
   movement,
+  currencies,
 } from "@shared/schema";
 import {
   COUNTERPARTY_TYPE,
@@ -77,8 +78,12 @@ export class PriceStorage {
     }
 
     const data = await db
-      .select()
+      .select({
+        price: prices,
+        currencySymbol: currencies.symbol,
+      })
       .from(prices)
+      .leftJoin(currencies, eq(prices.currencyId, currencies.id))
       .where(and(...conditions))
       .orderBy(desc(prices.dateTo))
       .limit(pageSize)
@@ -89,7 +94,13 @@ export class PriceStorage {
       .from(prices)
       .where(and(...conditions));
 
-    return { data, total: Number(countResult?.count || 0) };
+    return {
+      data: data.map((row) => ({
+        ...row.price,
+        currencySymbol: row.currencySymbol || (row.price.currency === "USD" ? "$" : row.price.currency === "EUR" ? "€" : "₽"),
+      })),
+      total: Number(countResult?.count || 0),
+    };
   }
 
   async getPrice(id: string): Promise<Price | undefined> {
