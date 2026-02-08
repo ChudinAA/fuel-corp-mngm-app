@@ -38,7 +38,7 @@ export function useRefuelingFilters({
         return allBases?.some(
           (base) =>
             supplier.baseIds.includes(base.id) &&
-            base.baseType === BASE_TYPE.REFUELING,
+            (base.baseType === BASE_TYPE.REFUELING || base.baseType === BASE_TYPE.ABROAD),
         );
       }) || []
     );
@@ -52,7 +52,8 @@ export function useRefuelingFilters({
 
     return allBases.filter(
       (b) =>
-        b.baseType === BASE_TYPE.REFUELING && supplier.baseIds.includes(b.id),
+        (b.baseType === BASE_TYPE.REFUELING || b.baseType === BASE_TYPE.ABROAD) && 
+        supplier.baseIds.includes(b.id),
     );
   }, [supplierId, suppliers, allBases]);
 

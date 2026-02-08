@@ -51,7 +51,7 @@ export function useOptFilters({
   supplierWarehouse,
 }: UseOptFiltersProps) {
 
-  // Фильтрация поставщиков с wholesale базисами
+  // Фильтрация поставщиков с wholesale или abroad базисами
   const wholesaleSuppliers = useMemo(() => {
     return (
       suppliers?.filter((supplier) => {
@@ -60,15 +60,15 @@ export function useOptFilters({
           (base) =>
             supplier.baseIds &&
             supplier.baseIds.includes(base.id) &&
-            base.baseType === BASE_TYPE.WHOLESALE,
+            (base.baseType === BASE_TYPE.WHOLESALE || base.baseType === BASE_TYPE.ABROAD),
         );
       }) || []
     );
   }, [suppliers, allBases]);
 
-  // Фильтрация базисов типа wholesale
+  // Фильтрация базисов типа wholesale или abroad
   const wholesaleBases = useMemo(() => {
-    return allBases?.filter((b) => b.baseType === BASE_TYPE.WHOLESALE) || [];
+    return allBases?.filter((b) => b.baseType === BASE_TYPE.WHOLESALE || b.baseType === BASE_TYPE.ABROAD) || [];
   }, [allBases]);
 
   const purchaseLookup = usePriceLookup({

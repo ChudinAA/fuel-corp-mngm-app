@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { BASE_TYPE } from "@shared/constants";
-import { Droplets, Fuel } from "lucide-react";
+import { Droplets, Fuel, Globe } from "lucide-react";
 
 interface BaseTypeBadgeProps {
   type: string | null | undefined;
@@ -17,10 +17,15 @@ export function BaseTypeBadge({ type, short = false }: BaseTypeBadgeProps) {
           <Droplets className="h-3.5 w-3.5 text-orange-400" />
           {!short && <span>ОПТ</span>}
         </>
-      ) : (
+      ) : type === BASE_TYPE.REFUELING ? (
         <>
           <Fuel className="h-3.5 w-3.5 text-green-400" />
           {!short && <span>Заправка</span>}
+        </>
+      ) : (
+        <>
+          <Globe className="h-3.5 w-3.5 text-blue-400" />
+          {!short && <span>Зарубеж</span>}
         </>
       )}
     </Badge>
