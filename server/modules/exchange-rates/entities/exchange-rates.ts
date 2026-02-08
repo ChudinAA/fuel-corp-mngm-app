@@ -12,6 +12,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
+import { currencies } from "@shared/schema";
 
 export const exchangeRates = pgTable(
   "exchange_rates",
@@ -19,6 +20,8 @@ export const exchangeRates = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     currency: text("currency").notNull(),
     targetCurrency: text("target_currency").notNull().default("RUB"),
+    currencyId: uuid("currency_id").references(() => currencies.id),
+    targetCurrencyId: uuid("target_currency_id").references(() => currencies.id),
     rate: decimal("rate", { precision: 15, scale: 6 }).notNull(),
     rateDate: date("rate_date").notNull(),
     source: text("source"),
@@ -46,6 +49,14 @@ export const exchangeRates = pgTable(
 );
 
 export const exchangeRatesRelations = relations(exchangeRates, ({ one }) => ({
+  currency: one(currencies, {
+    fields: [exchangeRates.currencyId],
+    references: [currencies.id],
+  }),
+  targetCurrency: one(currencies, {
+    fields: [exchangeRates.targetCurrencyId],
+    references: [currencies.id],
+  }),
   createdBy: one(users, {
     fields: [exchangeRates.createdById],
     references: [users.id],
@@ -65,6 +76,8 @@ export const insertExchangeRateSchema = createInsertSchema(exchangeRates)
     rateDate: z.string(),
     currency: z.string().min(1, "Базовая валюта обязательна"),
     targetCurrency: z.string().min(1, "Целевая валюта обязательна"),
+    currencyId: z.string(),
+    targetCurrencyId: z.string(),
   });
 
 export type ExchangeRate = typeof exchangeRates.$inferSelect;

@@ -27,3 +27,13 @@ UPDATE "aircraft_refueling" SET is_price_recharge = false;
 
 -- Add basis_id to refueling_abroad
 ALTER TABLE "refueling_abroad" ADD COLUMN IF NOT EXISTS "basis_id" uuid REFERENCES "bases"("id");
+
+-- Add currency_id to prices, exchange_rates target_currency_id
+ALTER TABLE "prices" ADD COLUMN IF NOT EXISTS "currency_id" uuid REFERENCES "currencies"("id");
+ALTER TABLE "exchange_rates" ADD COLUMN IF NOT EXISTS "currency_id" uuid REFERENCES "currencies"("id");
+ALTER TABLE "exchange_rates" ADD COLUMN IF NOT EXISTS "target_currency_id" uuid REFERENCES "currencies"("id");
+
+-- Seed currency_id matching currency name field for all existing records
+UPDATE "prices" SET currency_id = (SELECT id FROM currencies WHERE code = prices.currency);
+UPDATE "exchange_rates" SET currency_id = (SELECT id FROM currencies WHERE code = exchange_rates.currency);
+UPDATE "exchange_rates" SET target_currency_id = (SELECT id FROM currencies WHERE code = exchange_rates.target_currency);
