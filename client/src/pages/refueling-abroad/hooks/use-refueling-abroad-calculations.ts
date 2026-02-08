@@ -1,5 +1,9 @@
 import { useMemo } from "react";
 import { evaluateCommissionFormula } from "../utils";
+import { usePriceExtraction } from "../../shared/hooks/use-price-extraction";
+import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
+import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
+import type { Price, Supplier } from "@shared/schema";
 
 interface UseRefuelingAbroadCalculationsProps {
   inputMode: "liters" | "kg";
@@ -12,6 +16,12 @@ interface UseRefuelingAbroadCalculationsProps {
   saleExchangeRate: number;
   commissionFormula: string;
   manualCommissionUsd: string;
+  purchasePrices: Price[];
+  salePrices: Price[];
+  selectedPurchasePriceId: string;
+  selectedSalePriceId: string;
+  selectedSupplier: Supplier | undefined;
+  initialQuantityKg?: number;
 }
 
 export function useRefuelingAbroadCalculations({
@@ -25,6 +35,12 @@ export function useRefuelingAbroadCalculations({
   saleExchangeRate,
   commissionFormula,
   manualCommissionUsd,
+  purchasePrices,
+  salePrices,
+  selectedPurchasePriceId,
+  selectedSalePriceId,
+  selectedSupplier,
+  initialQuantityKg = 0,
 }: UseRefuelingAbroadCalculationsProps) {
   const calculatedKg = useMemo(() => {
     if (inputMode === "kg") return null;
@@ -39,18 +55,30 @@ export function useRefuelingAbroadCalculations({
       const kg = parseFloat(quantityKg || "0");
       return isNaN(kg) ? 0 : kg;
     }
-    return calculatedKg || 0;
+    return calculatedKg ? parseFloat(calculatedKg) : 0;
   }, [inputMode, quantityKg, calculatedKg]);
 
+  const { purchasePrice: extractedPurchasePrice, salePrice: extractedSalePrice } = usePriceExtraction({
+    purchasePrices,
+    salePrices,
+    selectedPurchasePriceId,
+    selectedSalePriceId,
+    isWarehouseSupplier: false,
+    selectedSupplier,
+    productType: "kerosene", // Default for abroad
+  });
+
   const purchasePrice = useMemo(() => {
+    if (extractedPurchasePrice !== null) return extractedPurchasePrice;
     const price = parseFloat(purchasePriceUsd || "0");
     return isNaN(price) ? 0 : price;
-  }, [purchasePriceUsd]);
+  }, [purchasePriceUsd, extractedPurchasePrice]);
 
   const salePrice = useMemo(() => {
+    if (extractedSalePrice !== null) return extractedSalePrice;
     const price = parseFloat(salePriceUsd || "0");
     return isNaN(price) ? 0 : price;
-  }, [salePriceUsd]);
+  }, [salePriceUsd, extractedSalePrice]);
 
   const purchaseAmountUsd = useMemo(() => {
     return purchasePrice > 0 && finalKg > 0 ? purchasePrice * finalKg : null;
@@ -102,6 +130,20 @@ export function useRefuelingAbroadCalculations({
     return saleAmountRub - purchaseAmountRub - commissionRubVal;
   }, [purchaseAmountRub, saleAmountRub, commissionRub]);
 
+  const contractVolumeStatus = useContractVolume({
+    priceId: parsePriceCompositeId(selectedSalePriceId).priceId,
+    currentQuantityKg: finalKg,
+    initialQuantityKg: initialQuantityKg,
+    mode: "refueling",
+  });
+
+  const supplierContractVolumeStatus = useContractVolume({
+    priceId: parsePriceCompositeId(selectedPurchasePriceId).priceId,
+    currentQuantityKg: finalKg,
+    initialQuantityKg: initialQuantityKg,
+    mode: "refueling",
+  });
+
   return {
     calculatedKg,
     finalKg,
@@ -115,5 +157,7 @@ export function useRefuelingAbroadCalculations({
     commissionRub,
     profitUsd,
     profitRub,
+    contractVolumeStatus,
+    supplierContractVolumeStatus,
   };
 }
