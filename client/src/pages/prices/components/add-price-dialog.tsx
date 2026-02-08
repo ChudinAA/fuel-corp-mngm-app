@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
 import { Plus, Loader2 } from "lucide-react";
-import type { Base, Supplier, Customer } from "@shared/schema";
+import type { Base, Supplier, Customer, Currency } from "@shared/schema";
 import {
   COUNTERPARTY_ROLE,
   COUNTERPARTY_TYPE,
@@ -134,7 +134,10 @@ export function AddPriceDialog({
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
   });
-
+  const { data: currencies } = useQuery<Currency[]>({
+    queryKey: ["/api/currencies"],
+  });
+  
   const allBases =
     bases?.filter((b) => b.baseType === watchCounterpartyType) || [];
 
@@ -429,6 +432,7 @@ export function AddPriceDialog({
               control={form.control}
               contractors={contractors}
               availableBases={availableBases}
+              currencies={currencies}
               fields={fields}
               remove={remove}
               append={append}

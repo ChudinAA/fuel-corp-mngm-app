@@ -27,7 +27,7 @@ export const formatDate = (dateStr: string | null) => {
   return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
 };
 
-export const getPriceDisplay = (priceValues: string[] | null) => {
+export const getPriceDisplay = (priceValues: string[] | null, symbol: string) => {
   if (!priceValues || priceValues.length === 0) return "—";
   try {
     const prices = priceValues.map(pv => {
@@ -35,9 +35,9 @@ export const getPriceDisplay = (priceValues: string[] | null) => {
       return parsed.price;
     });
     if (prices.length === 1) {
-      return `${formatNumber(prices[0])} ₽`;
+      return `${formatNumber(prices[0])} ${symbol}`;
     }
-    return prices.map(p => `${formatNumber(p)} ₽`).join(", ");
+    return prices.map(p => `${formatNumber(p)} ${symbol}`).join(", ");
   } catch {
     return "—";
   }

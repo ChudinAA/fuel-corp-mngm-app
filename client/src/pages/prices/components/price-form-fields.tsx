@@ -49,6 +49,7 @@ interface PriceFormFieldsProps {
   control: Control<PriceFormData>;
   contractors: Array<Supplier | Customer>;
   availableBases: Base[];
+  currencies: Currency[];
   fields: FieldArrayWithId<PriceFormData, "priceValues", "id">[];
   remove: UseFieldArrayRemove;
   append: UseFieldArrayAppend<PriceFormData, "priceValues">;
@@ -58,6 +59,7 @@ export function PriceFormFields({
   control,
   contractors,
   availableBases,
+  currencies,
   fields,
   remove,
   append,
@@ -66,9 +68,6 @@ export function PriceFormFields({
   const [addBaseOpen, setAddBaseOpen] = useState(false);
 
   const counterpartyType = useWatch({ control, name: "counterpartyType" });
-  const { data: currencies } = useQuery<Currency[]>({
-    queryKey: ["/api/currencies"],
-  });
 
   return (
     <>

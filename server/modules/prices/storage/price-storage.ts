@@ -97,7 +97,7 @@ export class PriceStorage {
     return {
       data: data.map((row) => ({
         ...row.price,
-        currencySymbol: row.currencySymbol || (row.price.currency === "USD" ? "$" : row.price.currency === "EUR" ? "€" : "₽"),
+        currencySymbol: row.currencySymbol || (row.price.currency === "USD" ? "$" : "₽"),
       })),
       total: Number(countResult?.count || 0),
     };

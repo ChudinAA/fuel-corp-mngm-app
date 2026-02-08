@@ -503,7 +503,7 @@ export function PricesTable({
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {getPriceDisplay(price.priceValues)} {price.currencySymbol || "₽"}
+                      {getPriceDisplay(price.priceValues, price.currencySymbol || "₽")}
                     </TableCell>
                     <TableCell className="text-right">
                       {price.volume
