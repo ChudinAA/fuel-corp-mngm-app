@@ -239,8 +239,8 @@ export function registerPricesRoutes(app: Express) {
       entityType: ENTITY_TYPES.PRICE,
       operation: AUDIT_OPERATIONS.UPDATE,
       getOldData: async (req) => {
-        const prices = await storage.prices.getAllPrices();
-        return prices.find((p) => p.id === req.params.id);
+        const pricesData = await storage.prices.getAllPrices();
+        return pricesData.data.find((p) => p.id === req.params.id);
       },
       getNewData: (req) => req.body,
     }),
@@ -307,14 +307,14 @@ export function registerPricesRoutes(app: Express) {
       entityType: ENTITY_TYPES.PRICE,
       operation: AUDIT_OPERATIONS.DELETE,
       getOldData: async (req) => {
-        const prices = await storage.prices.getAllPrices();
-        return prices.find((p) => p.id === req.params.id);
+        const pricesData = await storage.prices.getAllPrices();
+        return pricesData.data.find((p) => p.id === req.params.id);
       },
     }),
     async (req, res) => {
       try {
         const id = req.params.id;
-        await storage.prices.deletePrice(id, req.session.userId);
+        await storage.prices.deletePrice(id, String(req.session.userId));
         res.json({ message: "Цена удалена" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления цены" });

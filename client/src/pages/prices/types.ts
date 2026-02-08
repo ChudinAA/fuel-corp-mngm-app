@@ -19,7 +19,9 @@ export interface PriceFormData {
   priceValues: Array<{ price: string }>;
   contractNumber?: string;
   notes?: string;
-  currency?: Currency;
+  currency?: string;
+  currencyId?: string;
+  targetCurrencyId?: string;
 }
 
 export interface PriceDialogProps {

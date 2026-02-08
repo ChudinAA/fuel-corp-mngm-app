@@ -143,17 +143,17 @@ export function AddPriceDialog({
     [];
 
   const contractors =
-    watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER
+    (watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER
       ? availableSuppliers
       : watchCounterpartyType === COUNTERPARTY_TYPE.REFUELING_ABROAD
-        ? customers?.filter((c) => c.isForeign)
-        : customers || [];
+        ? (customers?.filter((c) => c.isForeign) || [])
+        : (customers || [])) as (Supplier | Customer)[];
 
   // Фильтруем базисы для поставщика
   const availableBases = (() => {
     const contractor = contractors?.find((s) => s.id === watchCounterpartyId);
     if (contractor && contractor.baseIds && contractor.baseIds.length > 0) {
-      return allBases.filter((b) => contractor.baseIds.includes(b.id));
+      return allBases.filter((b) => contractor.baseIds?.includes(b.id));
     }
     return allBases;
   })();
@@ -163,7 +163,8 @@ export function AddPriceDialog({
     if (watchCounterpartyId && !editPrice) {
       const contractor = contractors?.find((s) => s.id === watchCounterpartyId);
       if (contractor && contractor.baseIds && contractor.baseIds.length > 0) {
-        const firstBase = allBases.find((b) => b.id === contractor.baseIds[0]);
+        const firstBaseId = contractor.baseIds[0];
+        const firstBase = allBases.find((b) => b.id === firstBaseId);
         if (firstBase && !watchBasis) {
           form.setValue("basis", firstBase.name);
           form.setValue("basisId", firstBase.id);

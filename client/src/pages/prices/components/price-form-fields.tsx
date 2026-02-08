@@ -213,6 +213,7 @@ export function PriceFormFields({
                     field.onChange(val);
                     const selected = currencies?.find(c => c.id === val);
                     if (selected) {
+                      // @ts-ignore - backward compatibility
                       control._formValues.currency = selected.code;
                     }
                   }}
