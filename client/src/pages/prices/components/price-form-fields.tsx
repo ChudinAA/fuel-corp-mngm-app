@@ -32,13 +32,13 @@ import type {
   UseFieldArrayAppend,
 } from "react-hook-form";
 import { useWatch } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 import type { PriceFormData } from "../types";
-import type { Base, Supplier, Customer } from "@shared/schema";
+import type { Base, Supplier, Customer, Currency } from "@shared/schema";
 import {
   PRODUCT_TYPE,
   COUNTERPARTY_TYPE,
   COUNTERPARTY_ROLE,
-  CURRENCY,
 } from "@shared/constants";
 import { AddBaseDialog } from "@/pages/directories/bases-dialog";
 import { useState } from "react";
@@ -66,6 +66,9 @@ export function PriceFormFields({
   const [addBaseOpen, setAddBaseOpen] = useState(false);
   
   const counterpartyType = useWatch({ control, name: "counterpartyType" });
+  const { data: currencies } = useQuery<Currency[]>({ 
+    queryKey: ["/api/currencies"] 
+  });
 
   return (
     <>
@@ -196,30 +199,32 @@ export function PriceFormFields({
           )}
         />
 
-        {counterpartyType === COUNTERPARTY_TYPE.REFUELING_ABROAD && (
-          <FormField
-            control={control}
-            name="currency"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Валюта</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value || CURRENCY.USD}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-currency">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value={CURRENCY.USD}>USD</SelectItem>
-                    <SelectItem value={CURRENCY.EUR}>EUR</SelectItem>
-                    <SelectItem value={CURRENCY.RUB}>RUB</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
+        <FormField
+          control={control}
+          name="currencyId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Валюта</FormLabel>
+              <FormControl>
+                <Combobox
+                  options={currencies?.map(c => ({ value: c.id, label: c.code })) || []}
+                  value={field.value}
+                  onValueChange={(val) => {
+                    field.onChange(val);
+                    const selected = currencies?.find(c => c.id === val);
+                    if (selected) {
+                      control._formValues.currency = selected.code;
+                    }
+                  }}
+                  placeholder="Выберите валюту"
+                  className="w-full"
+                  dataTestId="select-currency"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
