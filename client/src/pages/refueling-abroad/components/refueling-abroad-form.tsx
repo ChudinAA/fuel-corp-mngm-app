@@ -508,7 +508,7 @@ export function RefuelingAbroadForm({
               name="supplierId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Поставщик (иностранный)</FormLabel>
+                  <FormLabel>Поставщик</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-supplier">
@@ -738,7 +738,7 @@ export function RefuelingAbroadForm({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3">
                   <h5 className="text-xs text-muted-foreground font-medium">
-                    Для закупки
+                    Для закупки у Поставщика
                   </h5>
                   <FormField
                     control={form.control}
@@ -797,7 +797,7 @@ export function RefuelingAbroadForm({
 
                 <div className="space-y-3">
                   <h5 className="text-xs text-muted-foreground font-medium">
-                    Для продажи
+                    Для продажи Покупателю
                   </h5>
                   <FormField
                     control={form.control}
