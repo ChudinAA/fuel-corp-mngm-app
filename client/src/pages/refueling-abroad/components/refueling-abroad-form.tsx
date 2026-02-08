@@ -322,7 +322,7 @@ export function RefuelingAbroadForm({
           onChange={setIntermediariesList}
           purchasePrice={calculations.purchasePrice}
           salePrice={calculations.salePrice}
-          quantity={calculations.finalKg}
+          quantity={Number(calculations.finalKg)}
           exchangeRate={saleExchangeRate}
         />
 
