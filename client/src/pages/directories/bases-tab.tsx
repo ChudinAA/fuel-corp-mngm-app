@@ -131,6 +131,7 @@ export function BasesTab() {
                 <SelectItem value="all">Все типы</SelectItem>
                 <SelectItem value={BASE_TYPE.WHOLESALE}>ОПТ</SelectItem>
                 <SelectItem value={BASE_TYPE.REFUELING}>Заправка</SelectItem>
+                <SelectItem value={BASE_TYPE.ABROAD}>Зарубеж</SelectItem>
               </SelectContent>
             </Select>
             {hasPermission("directories", "create") && (

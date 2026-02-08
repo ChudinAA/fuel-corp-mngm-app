@@ -153,10 +153,6 @@ export function RefuelingAbroadForm({
     }
   }, [existingIntermediaries, isCopy]);
 
-  const foreignSuppliers = suppliers.filter(
-    (s) => s.isForeign || s.isIntermediary,
-  );
-
   const latestUsdRate = exchangeRates
     .filter((r) => r.currency === "USD" && r.isActive)
     .sort(
@@ -200,14 +196,17 @@ export function RefuelingAbroadForm({
   });
 
   const watchedValues = form.watch();
+  const foreignSuppliers = suppliers.filter((s) => s.isForeign);
+  const foreignCustomers = customers.filter((c) => c.isForeign);
+  const foreignBases =
+    allBases?.filter((b) => b.baseType === BASE_TYPE.ABROAD) || [];
 
-  const selectedSupplier = suppliers?.find(
+  const selectedSupplier = foreignSuppliers?.find(
     (s) => s.id === watchedValues.supplierId,
   );
-  const selectedBasis = allBases?.find((b) => b.id === watchedValues.basisId);
-
-  const abroadBases =
-    allBases?.filter((b) => b.baseType === BASE_TYPE.REFUELING) || [];
+  const selectedBasis = foreignBases?.find(
+    (b) => b.id === watchedValues.basisId,
+  );
 
   const selectedPurchaseExchangeRate = exchangeRates.find(
     (r) => r.id === watchedValues.purchaseExchangeRateId,
@@ -592,7 +591,7 @@ export function RefuelingAbroadForm({
                     <FormControl>
                       <div className="w-full">
                         <Combobox
-                          options={abroadBases.map((base) => ({
+                          options={foreignBases.map((base) => ({
                             value: base.id,
                             label: base.name,
                             render: (
@@ -638,13 +637,10 @@ export function RefuelingAbroadForm({
                     <FormControl>
                       <div className="flex-1 min-w-0">
                         <Combobox
-                          options={(customers || [])
-                            ?.filter(
-                              (c) =>
-                                c.module === CUSTOMER_MODULE.REFUELING ||
-                                c.module === CUSTOMER_MODULE.BOTH,
-                            )
-                            .map((c) => ({ value: c.id, label: c.name }))}
+                          options={(foreignCustomers || [])?.map((c) => ({
+                            value: c.id,
+                            label: c.name,
+                          }))}
                           value={field.value}
                           onValueChange={field.onChange}
                           placeholder="Выберите покупателя"
@@ -1137,7 +1133,7 @@ export function RefuelingAbroadForm({
       </form>
 
       <AddSupplierDialog
-        bases={abroadBases}
+        bases={foreignBases}
         isInline
         inlineOpen={addSupplierOpen}
         onInlineOpenChange={setAddSupplierOpen}
@@ -1145,7 +1141,7 @@ export function RefuelingAbroadForm({
       />
 
       <AddCustomerDialog
-        bases={abroadBases}
+        bases={foreignBases}
         isInline
         inlineOpen={addCustomerOpen}
         onInlineOpenChange={setAddCustomerOpen}

@@ -48,7 +48,7 @@ export const DELIVERY_ENTITY_TYPE = {
 export const COUNTERPARTY_TYPE = {
   WHOLESALE: 'wholesale',
   REFUELING: 'refueling',
-  REFUELING_ABROAD: 'refueling_abroad',
+  REFUELING_ABROAD: 'abroad',
 } as const;
 
 // Counterparty roles

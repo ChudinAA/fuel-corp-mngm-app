@@ -262,8 +262,6 @@ export function PriceFormFields({
                   <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
                   <SelectItem value={PRODUCT_TYPE.SERVICE}>Услуга</SelectItem>
                   <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
-                  <SelectItem value={PRODUCT_TYPE.AGENT}>Агентские</SelectItem>
-                  <SelectItem value={PRODUCT_TYPE.STORAGE}>Хранение</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

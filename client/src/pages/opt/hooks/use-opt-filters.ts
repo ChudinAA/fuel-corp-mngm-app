@@ -50,8 +50,7 @@ export function useOptFilters({
   deliveryCosts,
   supplierWarehouse,
 }: UseOptFiltersProps) {
-
-  // Фильтрация поставщиков с wholesale или abroad базисами
+  // Фильтрация поставщиков с wholesale базисами
   const wholesaleSuppliers = useMemo(() => {
     return (
       suppliers?.filter((supplier) => {
@@ -60,7 +59,7 @@ export function useOptFilters({
           (base) =>
             supplier.baseIds &&
             supplier.baseIds.includes(base.id) &&
-            (base.baseType === BASE_TYPE.WHOLESALE || base.baseType === BASE_TYPE.ABROAD),
+            base.baseType === BASE_TYPE.WHOLESALE,
         );
       }) || []
     );
@@ -68,7 +67,7 @@ export function useOptFilters({
 
   // Фильтрация базисов типа wholesale или abroad
   const wholesaleBases = useMemo(() => {
-    return allBases?.filter((b) => b.baseType === BASE_TYPE.WHOLESALE || b.baseType === BASE_TYPE.ABROAD) || [];
+    return allBases?.filter((b) => b.baseType === BASE_TYPE.WHOLESALE) || [];
   }, [allBases]);
 
   const purchaseLookup = usePriceLookup({
@@ -120,15 +119,22 @@ export function useOptFilters({
         return true;
       }) || []
     );
-  }, [buyerId, dealDate, allBases, deliveryLocationId, deliveryLocations, customerBasisId]);
-  
+  }, [
+    buyerId,
+    dealDate,
+    allBases,
+    deliveryLocationId,
+    deliveryLocations,
+    customerBasisId,
+  ]);
+
   // Фильтрация доступных перевозчиков
   const availableCarriers = useMemo(() => {
     return (
       carriers?.filter((carrier) => {
         // Если это превозчик, которую мы только что выбрали/создали, всегда показываем её
         if (carrier.id === carrierId) return true;
-        
+
         if (!deliveryCosts) return true;
 
         const baseId = basisId;

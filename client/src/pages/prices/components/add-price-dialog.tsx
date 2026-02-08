@@ -135,7 +135,7 @@ export function AddPriceDialog({
 
   const allBases =
     bases?.filter((b) => b.baseType === watchCounterpartyType) || [];
-  
+
   const availableSuppliers =
     suppliers?.filter((s) => allBases.find((b) => s.baseIds?.includes(b.id))) ||
     [];
@@ -143,7 +143,9 @@ export function AddPriceDialog({
   const contractors =
     watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER
       ? availableSuppliers
-      : customers || [];
+      : watchCounterpartyType === COUNTERPARTY_TYPE.REFUELING_ABROAD
+        ? customers?.filter((c) => c.isForeign)
+        : customers || [];
 
   // Фильтруем базисы для поставщика
   const availableBases = (() => {
