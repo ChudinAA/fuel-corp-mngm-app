@@ -19,6 +19,7 @@ export const refuelingAbroadFormSchema = z.object({
   
   supplierId: z.string().min(1, "Выберите поставщика"),
   buyerId: z.string().min(1, "Выберите покупателя"),
+  basisId: z.string().min(1, "Выберите базис"),
   storageCardId: z.string().optional().nullable(),
   
   intermediaries: z.array(intermediaryItemSchema).default([]),

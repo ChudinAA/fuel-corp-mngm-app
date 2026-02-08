@@ -38,6 +38,7 @@ import {
   DollarSign,
   ArrowRightLeft,
   CalendarIcon,
+  Plus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -55,7 +56,14 @@ import type {
   Customer,
   ExchangeRate,
   StorageCard,
+  Base,
 } from "@shared/schema";
+import { Combobox } from "@/components/ui/combobox";
+import { BaseTypeBadge } from "@/components/base-type-badge";
+import { BASE_TYPE, CUSTOMER_MODULE } from "@shared/constants";
+import { useAuth } from "@/hooks/use-auth";
+import { AddCustomerDialog } from "@/pages/counterparties/customers-dialog";
+import { AddSupplierDialog } from "@/pages/counterparties/suppliers-dialog";
 
 interface IntermediaryItem {
   id?: string;
@@ -71,7 +79,20 @@ export function RefuelingAbroadForm({
   onSuccess,
   editData,
 }: RefuelingAbroadFormProps) {
+  const { hasPermission } = useAuth();
   const { toast } = useToast();
+
+  const [addCustomerOpen, setAddCustomerOpen] = useState(false);
+  const [addSupplierOpen, setAddSupplierOpen] = useState(false);
+
+  const handleCustomerCreated = (id: string) => {
+    form.setValue("buyerId", id);
+  };
+
+  const handleSupplierCreated = (id: string) => {
+    form.setValue("supplierId", id);
+  };
+
   const [intermediariesList, setIntermediariesList] = useState<
     IntermediaryItem[]
   >([]);
@@ -84,6 +105,10 @@ export function RefuelingAbroadForm({
 
   const { data: customers = [] } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
+  });
+
+  const { data: allBases } = useQuery<Base[]>({
+    queryKey: ["/api/bases"],
   });
 
   const { data: exchangeRates = [] } = useQuery<ExchangeRate[]>({
@@ -150,9 +175,12 @@ export function RefuelingAbroadForm({
       airportCode: editData?.airport || "",
       supplierId: editData?.supplierId || "",
       buyerId: editData?.buyerId || "",
+      basisId: editData?.basisId || "",
       storageCardId: editData?.storageCardId || "",
       intermediaries: [],
-      inputMode: editData?.inputMode as "liters" | "kg" || (editData?.quantityLiters ? "liters" : "kg"),
+      inputMode:
+        (editData?.inputMode as "liters" | "kg") ||
+        (editData?.quantityLiters ? "liters" : "kg"),
       quantityLiters: editData?.quantityLiters?.toString() || "",
       density: editData?.density?.toString() || "0.8",
       quantityKg: editData?.quantityKg?.toString() || "",
@@ -172,6 +200,14 @@ export function RefuelingAbroadForm({
   });
 
   const watchedValues = form.watch();
+
+  const selectedSupplier = suppliers?.find(
+    (s) => s.id === watchedValues.supplierId,
+  );
+  const selectedBasis = allBases?.find((b) => b.id === watchedValues.basisId);
+
+  const abroadBases =
+    allBases?.filter((b) => b.baseType === BASE_TYPE.REFUELING) || [];
 
   const selectedPurchaseExchangeRate = exchangeRates.find(
     (r) => r.id === watchedValues.purchaseExchangeRateId,
@@ -229,6 +265,7 @@ export function RefuelingAbroadForm({
             ? data.supplierId
             : null,
         buyerId: data.buyerId && data.buyerId !== "none" ? data.buyerId : null,
+        basisId: data.basisId && data.basisId !== "none" ? data.basisId : null,
         intermediaryId: null,
         storageCardId:
           data.storageCardId && data.storageCardId !== "none"
@@ -323,7 +360,7 @@ export function RefuelingAbroadForm({
   });
 
   const isEditing = !!editData && !!editData.id;
-  const isDraft = form.watch("isDraft");
+  const isDraft = watchedValues.isDraft;
 
   const onSubmit = (
     data: RefuelingAbroadFormData,
@@ -502,64 +539,133 @@ export function RefuelingAbroadForm({
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Контрагенты</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField
               control={form.control}
               name="supplierId"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="col-span-1 min-w-0">
                   <FormLabel>Поставщик</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <div className="flex gap-1 items-center w-full">
                     <FormControl>
-                      <SelectTrigger data-testid="select-supplier">
-                        <SelectValue placeholder="Выберите" />
-                      </SelectTrigger>
+                      <div className="flex-1 min-w-0">
+                        <Combobox
+                          options={foreignSuppliers.map((s) => ({
+                            value: s.id,
+                            label: s.name,
+                          }))}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="Выберите поставщика"
+                          className="w-full"
+                          dataTestId="select-supplier"
+                        />
+                      </div>
                     </FormControl>
-                    <SelectContent>
-                      {foreignSuppliers.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          Нет иностранных поставщиков
-                        </SelectItem>
-                      ) : (
-                        foreignSuppliers.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name} {s.isIntermediary ? "(посредник)" : ""}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                    {hasPermission("directories", "create") && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        onClick={() => setAddSupplierOpen(true)}
+                        data-testid="button-add-supplier-inline"
+                        className="shrink-0 h-9 w-9"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
+            {selectedSupplier &&
+            selectedSupplier.baseIds &&
+            selectedSupplier.baseIds.length > 0 ? (
+              <FormField
+                control={form.control}
+                name="basisId"
+                render={({ field }) => (
+                  <FormItem className="col-span-1 min-w-0">
+                    <FormLabel>Базис</FormLabel>
+                    <FormControl>
+                      <div className="w-full">
+                        <Combobox
+                          options={abroadBases.map((base) => ({
+                            value: base.id,
+                            label: base.name,
+                            render: (
+                              <div className="flex items-center gap-2">
+                                {base.name}
+                                <BaseTypeBadge
+                                  type={base.baseType}
+                                  short={true}
+                                />
+                              </div>
+                            ),
+                          }))}
+                          value={field.value || ""}
+                          onValueChange={field.onChange}
+                          placeholder="Выберите базис"
+                          dataTestId="select-basis"
+                          className="w-full"
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : (
+              <div className="space-y-2 col-span-1 min-w-0">
+                <label className="text-sm font-medium flex items-center h-6">
+                  Базис
+                </label>
+                <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md text-sm overflow-hidden truncate">
+                  {selectedBasis?.name || "—"}
+                </div>
+              </div>
+            )}
+
             <FormField
               control={form.control}
               name="buyerId"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="col-span-1 min-w-0">
                   <FormLabel>Покупатель</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <div className="flex gap-1 items-center w-full">
                     <FormControl>
-                      <SelectTrigger data-testid="select-buyer">
-                        <SelectValue placeholder="Выберите" />
-                      </SelectTrigger>
+                      <div className="flex-1 min-w-0">
+                        <Combobox
+                          options={(customers || [])
+                            ?.filter(
+                              (c) =>
+                                c.module === CUSTOMER_MODULE.REFUELING ||
+                                c.module === CUSTOMER_MODULE.BOTH,
+                            )
+                            .map((c) => ({ value: c.id, label: c.name }))}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="Выберите покупателя"
+                          className="w-full"
+                          dataTestId="select-buyer"
+                        />
+                      </div>
                     </FormControl>
-                    <SelectContent>
-                      {customers.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          Нет покупателей
-                        </SelectItem>
-                      ) : (
-                        customers.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name} {c.isForeign ? "(иностранный)" : ""}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                    {hasPermission("directories", "create") && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        onClick={() => setAddCustomerOpen(true)}
+                        data-testid="button-add-customer-inline"
+                        className="shrink-0 h-9 w-9"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -1029,6 +1135,22 @@ export function RefuelingAbroadForm({
           </Button>
         </div>
       </form>
+
+      <AddSupplierDialog
+        bases={abroadBases}
+        isInline
+        inlineOpen={addSupplierOpen}
+        onInlineOpenChange={setAddSupplierOpen}
+        onCreated={handleSupplierCreated}
+      />
+
+      <AddCustomerDialog
+        bases={abroadBases}
+        isInline
+        inlineOpen={addCustomerOpen}
+        onInlineOpenChange={setAddCustomerOpen}
+        onCreated={handleCustomerCreated}
+      />
     </Form>
   );
 }
