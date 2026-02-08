@@ -38,7 +38,7 @@ import { BASE_TYPE, BaseType } from "@shared/constants";
 
 const baseFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
-  baseType: z.enum([BASE_TYPE.WHOLESALE, BASE_TYPE.REFUELING], {
+  baseType: z.enum([BASE_TYPE.WHOLESALE, BASE_TYPE.REFUELING, BASE_TYPE.ABROAD], {
     required_error: "Выберите тип базиса",
   }),
   location: z.string().optional(),
@@ -203,7 +203,8 @@ export function AddBaseDialog({
                       <Combobox
                         options={[
                           { value: BASE_TYPE.WHOLESALE, label: "ОПТ" },
-                          { value: BASE_TYPE.REFUELING, label: "Заправка" }
+                          { value: BASE_TYPE.REFUELING, label: "Заправка" },
+                          { value: BASE_TYPE.ABROAD, label: "Зарубеж" }
                         ]}
                         value={field.value}
                         onValueChange={field.onChange}
