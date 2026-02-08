@@ -367,7 +367,7 @@ export function RefuelingMainFields({
                                   : null;
                               })
                               .filter(Boolean) as any)
-                          : refuelingBases.map((b) => ({
+                          : availableBases.map((b) => ({
                               value: b.id,
                               label: b.name,
                               render: (

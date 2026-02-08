@@ -212,6 +212,15 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     }
   }, [watchSupplierId, suppliers, allBases, warehouses, form, editData]);
 
+  useEffect(() => {
+    if (watchBuyerId && watchBasisId && selectedBasis) {
+      // Автоматически устанавливаем покупателю базис поставщика
+      form.setValue("customerBasisId", watchBasisId);
+      form.setValue("customerBasis", selectedBasis);
+      setCustomerBasis(selectedBasis);
+    }
+  }, [watchBuyerId, watchBasisId, selectedBasis]);
+  
   // Используем общий хук для автоматического выбора цен
   useAutoPriceSelection({
     supplierId: watchSupplierId,
