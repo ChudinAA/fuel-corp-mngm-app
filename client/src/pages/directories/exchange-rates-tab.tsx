@@ -50,6 +50,8 @@ interface ExchangeRate {
   id: string;
   currency: string;
   targetCurrency: string;
+  currencyId: string;
+  targetCurrencyId: string;
   rate: string;
   rateDate: string;
   source: string | null;
@@ -108,7 +110,7 @@ export function ExchangeRatesTab() {
         currencyId: data.currencyId || currencies.find(c => c.code === data.currency)?.id,
         targetCurrencyId: data.targetCurrencyId || currencies.find(c => c.code === data.targetCurrency)?.id,
         rate: parseFloat(data.rate),
-        rateDate: format(data.rateDate, "yyyy-MM-dd"),
+        rateDate: format(data.rateDate, "yyyy-MM-dd'T'HH:mm:ss"),
         source: data.source || null,
       };
       
@@ -253,14 +255,6 @@ export function ExchangeRatesTab() {
     if (dateCompare !== 0) return dateCompare;
     return a.currency.localeCompare(b.currency);
   });
-
-  const getCurrencyLabel = (code: string) => {
-    const currency = currencies.find(c => c.code === code);
-    if (currency) {
-      return currency.symbol ? `${currency.name} (${currency.symbol})` : currency.name;
-    }
-    return code;
-  };
 
   const canCreate = hasPermission("directories", "create");
   const canEdit = hasPermission("directories", "edit");
