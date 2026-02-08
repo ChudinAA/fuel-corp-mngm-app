@@ -23,7 +23,7 @@ import { logisticsDeliveryLocations } from "../../logistics/entities/logistics";
 export const bases = pgTable("bases", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
-  baseType: text("base_type").notNull(), // 'wholesale' or 'refueling'
+  baseType: text("base_type").notNull(), // 'wholesale', 'refueling' or 'abroad'
   location: text("location"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),

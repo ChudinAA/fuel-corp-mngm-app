@@ -118,6 +118,11 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
     isSystem: "Системная роль",
     isDefault: "Роль по умолчанию",
   },
+  base_types: {
+    wholesale: "Опт",
+    refueling: "Заправки",
+    abroad: "Зарубеж",
+  },
   // Finance entities
   cashflow_transactions: {
     transactionDate: 'Дата транзакции',

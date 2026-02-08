@@ -61,6 +61,7 @@ export const COUNTERPARTY_ROLE = {
 export const BASE_TYPE = {
   WHOLESALE: 'wholesale',
   REFUELING: 'refueling',
+  ABROAD: 'abroad',
 } as const;
 
 // Customer modules
