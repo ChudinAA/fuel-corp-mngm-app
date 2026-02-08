@@ -79,6 +79,8 @@ export function ExchangeRatesTab() {
   const [formData, setFormData] = useState({
     currency: "USD",
     targetCurrency: "RUB",
+    currencyId: "",
+    targetCurrencyId: "",
     rate: "",
     rateDate: new Date(),
     source: "",
@@ -103,6 +105,8 @@ export function ExchangeRatesTab() {
       const payload = {
         currency: data.currency,
         targetCurrency: data.targetCurrency,
+        currencyId: data.currencyId || currencies.find(c => c.code === data.currency)?.id,
+        targetCurrencyId: data.targetCurrencyId || currencies.find(c => c.code === data.targetCurrency)?.id,
         rate: parseFloat(data.rate),
         rateDate: format(data.rateDate, "yyyy-MM-dd"),
         source: data.source || null,
@@ -170,7 +174,15 @@ export function ExchangeRatesTab() {
   });
 
   const resetForm = () => {
-    setFormData({ currency: "USD", targetCurrency: "RUB", rate: "", rateDate: new Date(), source: "" });
+    setFormData({ 
+      currency: "USD", 
+      targetCurrency: "RUB", 
+      currencyId: "",
+      targetCurrencyId: "",
+      rate: "", 
+      rateDate: new Date(), 
+      source: "" 
+    });
     setEditingRate(null);
     setDialogOpen(false);
   };
@@ -181,11 +193,13 @@ export function ExchangeRatesTab() {
     setAddCurrencyDialogOpen(false);
   };
 
-  const handleEdit = (rate: ExchangeRate) => {
+  const handleEdit = (rate: any) => {
     setEditingRate(rate);
     setFormData({
       currency: rate.currency,
       targetCurrency: rate.targetCurrency || "RUB",
+      currencyId: rate.currencyId || "",
+      targetCurrencyId: rate.targetCurrencyId || "",
       rate: rate.rate,
       rateDate: new Date(rate.rateDate),
       source: rate.source || "",
@@ -283,7 +297,10 @@ export function ExchangeRatesTab() {
                       <Label>Из валюты</Label>
                       <Select
                         value={formData.currency}
-                        onValueChange={(val) => setFormData({ ...formData, currency: val })}
+                        onValueChange={(val) => {
+                          const curr = currencies.find(c => c.code === val);
+                          setFormData({ ...formData, currency: val, currencyId: curr?.id || "" });
+                        }}
                       >
                         <SelectTrigger data-testid="select-base-currency">
                           <SelectValue />
@@ -304,7 +321,10 @@ export function ExchangeRatesTab() {
                       <Label>В валюту</Label>
                       <Select
                         value={formData.targetCurrency}
-                        onValueChange={(val) => setFormData({ ...formData, targetCurrency: val })}
+                        onValueChange={(val) => {
+                          const curr = currencies.find(c => c.code === val);
+                          setFormData({ ...formData, targetCurrency: val, targetCurrencyId: curr?.id || "" });
+                        }}
                       >
                         <SelectTrigger data-testid="select-target-currency">
                           <SelectValue />
