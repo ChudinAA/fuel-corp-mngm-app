@@ -1,25 +1,17 @@
 import { useMemo } from "react";
 import { evaluateCommissionFormula } from "../utils";
-import { usePriceLookup } from "../../shared/hooks/use-price-lookup";
-import { usePriceExtraction } from "../../shared/hooks/use-price-extraction";
-import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 
 interface UseRefuelingAbroadCalculationsProps {
   inputMode: "liters" | "kg";
   quantityLiters: string;
   density: string;
   quantityKg: string;
-  selectedPurchasePriceId: string;
-  selectedSalePriceId: string;
+  purchasePriceUsd: string;
+  salePriceUsd: string;
   purchaseExchangeRate: number;
   saleExchangeRate: number;
   commissionFormula: string;
   manualCommissionUsd: string;
-  supplierId: string;
-  buyerId: string;
-  basisId: string;
-  productType: string;
-  refuelingDate: Date | null;
 }
 
 export function useRefuelingAbroadCalculations({
@@ -27,47 +19,13 @@ export function useRefuelingAbroadCalculations({
   quantityLiters,
   density,
   quantityKg,
-  selectedPurchasePriceId,
-  selectedSalePriceId,
+  purchasePriceUsd,
+  salePriceUsd,
   purchaseExchangeRate,
   saleExchangeRate,
   commissionFormula,
   manualCommissionUsd,
-  supplierId,
-  buyerId,
-  basisId,
-  productType,
-  refuelingDate,
 }: UseRefuelingAbroadCalculationsProps) {
-  const { data: purchasePrices = [] } = usePriceLookup({
-    counterpartyId: supplierId,
-    counterpartyRole: "supplier",
-    counterpartyType: "foreign",
-    basisId,
-    productType,
-    date: refuelingDate,
-    enabled: !!supplierId && !!basisId,
-  });
-
-  const { data: salePrices = [] } = usePriceLookup({
-    counterpartyId: buyerId,
-    counterpartyRole: "customer",
-    counterpartyType: "foreign",
-    basisId,
-    productType,
-    date: refuelingDate,
-    enabled: !!buyerId && !!basisId,
-  });
-
-  const { purchasePrice: extractedPurchasePrice, salePrice: extractedSalePrice } = usePriceExtraction({
-    purchasePrices,
-    salePrices,
-    selectedPurchasePriceId,
-    selectedSalePriceId,
-    isWarehouseSupplier: false,
-    productType,
-  });
-
   const calculatedKg = useMemo(() => {
     if (inputMode === "kg") return null;
     const liters = parseFloat(quantityLiters || "0");
@@ -84,8 +42,15 @@ export function useRefuelingAbroadCalculations({
     return calculatedKg || 0;
   }, [inputMode, quantityKg, calculatedKg]);
 
-  const purchasePrice = extractedPurchasePrice || 0;
-  const salePrice = extractedSalePrice || 0;
+  const purchasePrice = useMemo(() => {
+    const price = parseFloat(purchasePriceUsd || "0");
+    return isNaN(price) ? 0 : price;
+  }, [purchasePriceUsd]);
+
+  const salePrice = useMemo(() => {
+    const price = parseFloat(salePriceUsd || "0");
+    return isNaN(price) ? 0 : price;
+  }, [salePriceUsd]);
 
   const purchaseAmountUsd = useMemo(() => {
     return purchasePrice > 0 && finalKg > 0 ? purchasePrice * finalKg : null;
@@ -150,7 +115,5 @@ export function useRefuelingAbroadCalculations({
     commissionRub,
     profitUsd,
     profitRub,
-    purchasePrices,
-    salePrices,
   };
 }

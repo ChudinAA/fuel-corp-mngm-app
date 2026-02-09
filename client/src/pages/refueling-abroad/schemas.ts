@@ -7,8 +7,6 @@ export const intermediaryItemSchema = z.object({
   commissionFormula: z.string().optional().nullable(),
   commissionUsd: z.number().optional().nullable(),
   commissionRub: z.number().optional().nullable(),
-  selectedPurchasePriceId: z.string().optional().nullable(),
-  selectedSalePriceId: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
 });
 
@@ -39,8 +37,6 @@ export const refuelingAbroadFormSchema = z.object({
   saleExchangeRateId: z.string().optional().nullable(),
   manualSaleExchangeRate: z.string().optional().nullable(),
   
-  selectedPurchasePriceId: z.string().optional().nullable(),
-  selectedSalePriceId: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   isApproxVolume: z.boolean().default(false),
   isDraft: z.boolean().default(false),
