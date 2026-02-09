@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PRODUCT_TYPE, BASE_TYPE } from "@shared/constants";
+import { PRODUCT_TYPE, BASE_TYPE, COUNTERPARTY_TYPE } from "@shared/constants";
 import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -61,7 +61,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       supplierId: "",
       buyerId: "",
       warehouseId: "",
-      inputMode: editData?.inputMode as "liters" | "kg" || "liters",
+      inputMode: (editData?.inputMode as "liters" | "kg") || "liters",
       quantityLiters: editData?.quantityLiters?.toString() || "",
       density: editData?.density?.toString() || "",
       quantityKg: editData?.quantityKg?.toString() || "",
@@ -112,20 +112,18 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   const watchCustomerBasisId = form.watch("customerBasisId");
 
   // Use filtering hook
-  const { 
-    refuelingSuppliers, 
-    availableBases, 
-    purchasePrices, 
-    salePrices 
-  } = useRefuelingFilters({
+  const { refuelingSuppliers, availableBases, purchasePrices, salePrices } =
+    useRefuelingFilters({
       supplierId: watchSupplierId,
       buyerId: watchBuyerId,
       refuelingDate: watchRefuelingDate,
       basisId: watchBasisId || undefined,
       customerBasisId: watchCustomerBasisId || undefined,
       productType: watchProductType,
-      suppliers,
-      allBases,
+      baseType: BASE_TYPE.REFUELING,
+      counterpartyType: COUNTERPARTY_TYPE.REFUELING,
+      suppliers: suppliers ?? [],
+      allBases: allBases ?? [],
     });
 
   // Use calculations hook
@@ -143,9 +141,9 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
     supplierContractVolumeStatus,
   } = useRefuelingCalculations({
     inputMode,
-    quantityLiters: watchLiters,
-    density: watchDensity,
-    quantityKg: watchKg,
+    quantityLiters: watchLiters || "",
+    density: watchDensity || "0.8",
+    quantityKg: watchKg || "",
     isWarehouseSupplier,
     supplierWarehouse,
     selectedBasis,
@@ -220,7 +218,7 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       setCustomerBasis(selectedBasis);
     }
   }, [watchBuyerId, watchBasisId, selectedBasis]);
-  
+
   // Используем общий хук для автоматического выбора цен
   useAutoPriceSelection({
     supplierId: watchSupplierId,
@@ -235,7 +233,14 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
   });
 
   useEffect(() => {
-    if (editData && suppliers && customers && allBases && warehouses && !isDataInitialized) {
+    if (
+      editData &&
+      suppliers &&
+      customers &&
+      allBases &&
+      warehouses &&
+      !isDataInitialized
+    ) {
       // Added warehouses dependency
       const supplier = suppliers.find(
         (s) => s.name === editData.supplierId || s.id === editData.supplierId,
@@ -301,14 +306,14 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       );
 
       if (editData.customerBasisId) {
-        const base = allBases.find(b => b.id === editData.customerBasisId);
+        const base = allBases.find((b) => b.id === editData.customerBasisId);
         if (base) setCustomerBasis(base.name);
       } else if (editData.customerBasis) {
         setCustomerBasis(editData.customerBasis);
       }
 
       if (editData.basisId) {
-        const base = allBases.find(b => b.id === editData.basisId);
+        const base = allBases.find((b) => b.id === editData.basisId);
         if (base) setSelectedBasis(base.name);
       } else if (editData.basis) {
         setSelectedBasis(editData.basis);

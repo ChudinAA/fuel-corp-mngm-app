@@ -5,7 +5,7 @@ interface UseContractVolumeProps {
   priceId: string | null;
   currentQuantityKg: number;
   initialQuantityKg: number;
-  mode: "opt" | "refueling";
+  mode: "opt" | "refueling" | "refueling-abroad";
 }
 
 export function useContractVolume({

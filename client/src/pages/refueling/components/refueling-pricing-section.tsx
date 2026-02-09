@@ -207,7 +207,7 @@ export function RefuelingPricingSection({
         ) : selectedSupplier?.servicePrice &&
           productType === PRODUCT_TYPE.SERVICE ? (
           <CalculatedField
-            label="Продажа"
+            label="Покупка"
             value={purchasePrice !== null ? formatNumber(purchasePrice) : "—"}
             suffix={purchasePrice !== null ? " ₽/кг" : ""}
             status="ok"

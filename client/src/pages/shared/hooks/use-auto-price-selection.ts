@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import type { Price } from "@shared/schema";
 
@@ -8,7 +7,6 @@ interface UseAutoPriceSelectionProps {
   purchasePrices: Price[];
   salePrices: Price[];
   isWarehouseSupplier: boolean;
-  productType: string;
   editData: any;
   setSelectedPurchasePriceId: (id: string) => void;
   setSelectedSalePriceId: (id: string) => void;
@@ -21,21 +19,31 @@ export function useAutoPriceSelection({
   purchasePrices,
   salePrices,
   isWarehouseSupplier,
-  productType,
   editData,
   setSelectedPurchasePriceId,
   setSelectedSalePriceId,
   formSetValue,
 }: UseAutoPriceSelectionProps) {
-
   // Автоматический выбор первой цены покупки при выборе поставщика
   useEffect(() => {
-    if (supplierId && purchasePrices.length > 0 && !isWarehouseSupplier && !editData) {
+    if (
+      supplierId &&
+      purchasePrices.length > 0 &&
+      !isWarehouseSupplier &&
+      !editData
+    ) {
       const firstPurchasePriceId = `${purchasePrices[0].id}-0`;
       setSelectedPurchasePriceId(firstPurchasePriceId);
       formSetValue("selectedPurchasePriceId", firstPurchasePriceId);
     }
-  }, [supplierId, purchasePrices, editData, isWarehouseSupplier, setSelectedPurchasePriceId, formSetValue]);
+  }, [
+    supplierId,
+    purchasePrices,
+    editData,
+    isWarehouseSupplier,
+    setSelectedPurchasePriceId,
+    formSetValue,
+  ]);
 
   // Автоматический выбор первой цены продажи при выборе покупателя или изменении цен (например, при смене точки поставки)
   useEffect(() => {

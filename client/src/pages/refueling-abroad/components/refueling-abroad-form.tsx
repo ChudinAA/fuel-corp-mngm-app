@@ -22,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,10 +59,15 @@ import type {
 } from "@shared/schema";
 import { Combobox } from "@/components/ui/combobox";
 import { BaseTypeBadge } from "@/components/base-type-badge";
-import { BASE_TYPE, CUSTOMER_MODULE } from "@shared/constants";
+import { BASE_TYPE, COUNTERPARTY_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 import { AddCustomerDialog } from "@/pages/counterparties/customers-dialog";
 import { AddSupplierDialog } from "@/pages/counterparties/suppliers-dialog";
+import { useRefuelingFilters } from "@/pages/refueling/hooks/use-refueling-filters";
+import { useAutoPriceSelection } from "@/pages/shared/hooks/use-auto-price-selection";
+import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
+import { CalculatedField } from "@/pages/refueling/calculated-field";
+import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 
 interface IntermediaryItem {
   id?: string;
@@ -82,8 +86,22 @@ export function RefuelingAbroadForm({
   const { hasPermission } = useAuth();
   const { toast } = useToast();
 
+  const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
+  const handlePurchasePriceCreated = (id: string) => {
+    form.setValue("selectedPurchasePriceId", id);
+  };
+
+  const [addSalePriceOpen, setAddSalePriceOpen] = useState(false);
+  const handleSalePriceCreated = (id: string) => {
+    form.setValue("selectedSalePriceId", id);
+  };
+
   const [addCustomerOpen, setAddCustomerOpen] = useState(false);
   const [addSupplierOpen, setAddSupplierOpen] = useState(false);
+
+  const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
+    useState<string>("");
+  const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
 
   const handleCustomerCreated = (id: string) => {
     form.setValue("buyerId", id);
@@ -96,6 +114,7 @@ export function RefuelingAbroadForm({
   const [intermediariesList, setIntermediariesList] = useState<
     IntermediaryItem[]
   >([]);
+
   const isCopy = !!editData && !editData.id;
   const originalId = isCopy ? (editData as any).originalId : editData?.id;
 
@@ -133,6 +152,21 @@ export function RefuelingAbroadForm({
   });
 
   useEffect(() => {
+    if (editData) {
+      // Construct composite price IDs with indices
+      const purchasePriceCompositeId =
+        editData.purchasePriceId && editData.purchasePriceIndex !== undefined
+          ? `${editData.purchasePriceId}-${editData.purchasePriceIndex}`
+          : editData.purchasePriceId || "";
+
+      const salePriceCompositeId =
+        editData.salePriceId && editData.salePriceIndex !== undefined
+          ? `${editData.salePriceId}-${editData.salePriceIndex}`
+          : editData.salePriceId || "";
+
+      setSelectedPurchasePriceId(purchasePriceCompositeId);
+      setSelectedSalePriceId(salePriceCompositeId);
+    }
     if (existingIntermediaries.length > 0) {
       setIntermediariesList(
         existingIntermediaries.map((item) => ({
@@ -165,7 +199,7 @@ export function RefuelingAbroadForm({
       refuelingDate: editData?.refuelingDate
         ? new Date(editData.refuelingDate)
         : new Date(),
-      productType: editData?.productType || PRODUCT_TYPES_ABROAD[0].value,
+      productType: editData?.productType || PRODUCT_TYPE.KEROSENE,
       aircraftNumber: editData?.aircraftNumber || "",
       flightNumber: editData?.flightNumber || "",
       airportCode: editData?.airport || "",
@@ -180,6 +214,8 @@ export function RefuelingAbroadForm({
       quantityLiters: editData?.quantityLiters?.toString() || "",
       density: editData?.density?.toString() || "0.8",
       quantityKg: editData?.quantityKg?.toString() || "",
+      selectedPurchasePriceId: "",
+      selectedSalePriceId: "",
       purchasePriceUsd: editData?.purchasePriceUsd || "",
       salePriceUsd: editData?.salePriceUsd || "",
       purchaseExchangeRateId:
@@ -235,6 +271,21 @@ export function RefuelingAbroadForm({
     0,
   );
 
+  // Use filtering hook
+  const { refuelingSuppliers, availableBases, purchasePrices, salePrices } =
+    useRefuelingFilters({
+      supplierId: watchedValues.supplierId,
+      buyerId: watchedValues.buyerId,
+      refuelingDate: watchedValues.refuelingDate ?? new Date(),
+      basisId: watchedValues.basisId,
+      customerBasisId: watchedValues.basisId,
+      productType: watchedValues.productType ?? PRODUCT_TYPE.KEROSENE,
+      baseType: BASE_TYPE.ABROAD,
+      counterpartyType: COUNTERPARTY_TYPE.REFUELING_ABROAD,
+      suppliers: foreignSuppliers,
+      allBases: foreignBases,
+    });
+
   const calculations = useRefuelingAbroadCalculations({
     inputMode: watchedValues.inputMode,
     quantityLiters: watchedValues.quantityLiters || "",
@@ -246,10 +297,41 @@ export function RefuelingAbroadForm({
     saleExchangeRate,
     commissionFormula: "",
     manualCommissionUsd: totalIntermediaryCommissionUsd.toString(),
+    purchasePrices,
+    salePrices,
+    selectedPurchasePriceId,
+    selectedSalePriceId,
+    productType: watchedValues.productType || "",
+    initialQuantityKg,
+  });
+
+  // Используем общий хук для автоматического выбора цен
+  useAutoPriceSelection({
+    supplierId: watchedValues.supplierId,
+    buyerId: watchedValues.buyerId,
+    purchasePrices,
+    salePrices,
+    isWarehouseSupplier: false,
+    editData,
+    setSelectedPurchasePriceId,
+    setSelectedSalePriceId,
+    formSetValue: form.setValue as any,
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: RefuelingAbroadFormData) => {
+      const {
+        purchasePriceId,
+        purchasePriceIndex,
+        salePriceId,
+        salePriceIndex,
+      } = extractPriceIdsForSubmit(
+        selectedPurchasePriceId,
+        selectedSalePriceId,
+        purchasePrices,
+        salePrices,
+        false,
+      );
       const payload = {
         refuelingDate: data.refuelingDate
           ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss")
@@ -278,6 +360,11 @@ export function RefuelingAbroadForm({
           : null,
         density: data.density ? parseFloat(data.density) : null,
         quantityKg: calculations.finalKg || 0,
+        purchasePriceId: purchasePriceId || null,
+        purchasePriceIndex:
+          purchasePriceIndex !== undefined ? purchasePriceIndex : null,
+        salePriceId: salePriceId || null,
+        salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
         currency: "USD",
         purchaseExchangeRateId: data.purchaseExchangeRateId || null,
         purchaseExchangeRateValue: purchaseExchangeRate || null,
@@ -345,8 +432,13 @@ export function RefuelingAbroadForm({
       return { id: refuelingId };
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/refueling-abroad/contract-used"],
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/refueling-abroad"] });
       toast({ title: editData ? "Запись обновлена" : "Запись создана" });
+      setSelectedPurchasePriceId("");
+      setSelectedSalePriceId("");
       onSuccess?.();
     },
     onError: (error: any) => {
@@ -368,6 +460,25 @@ export function RefuelingAbroadForm({
     const finalIsDraft = isDraftOverride ?? data.isDraft;
     // Update the form state directly so validation pass or fail based on current state
     form.setValue("isDraft", finalIsDraft);
+
+    if (calculations.contractVolumeStatus.status === "error") {
+      toast({
+        title: "Ошибка: недостаточно объема по договору Поставщика",
+        description: calculations.contractVolumeStatus.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (calculations.supplierContractVolumeStatus.status === "error") {
+      toast({
+        title: "Ошибка: недостаточно объема по договору Поставщика",
+        description: calculations.supplierContractVolumeStatus.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     createMutation.mutate({ ...data, isDraft: finalIsDraft });
   };
 
@@ -401,7 +512,9 @@ export function RefuelingAbroadForm({
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
                           {field.value
-                            ? format(field.value, "dd.MM.yyyy", { locale: ru })
+                            ? format(field.value, "yyyy-MM-dd'T'HH:mm:ss", {
+                                locale: ru,
+                              })
                             : "Выберите дату"}
                         </Button>
                       </FormControl>
@@ -591,7 +704,7 @@ export function RefuelingAbroadForm({
                     <FormControl>
                       <div className="w-full">
                         <Combobox
-                          options={foreignBases.map((base) => ({
+                          options={availableBases.map((base) => ({
                             value: base.id,
                             label: base.name,
                             render: (
@@ -672,8 +785,8 @@ export function RefuelingAbroadForm({
         <IntermediariesSection
           intermediaries={intermediariesList}
           onChange={setIntermediariesList}
-          purchasePrice={calculations.purchasePrice}
-          salePrice={calculations.salePrice}
+          purchasePrice={calculations.purchasePrice ?? 0}
+          salePrice={calculations.salePrice ?? 0}
           quantity={calculations.finalKg}
           exchangeRate={saleExchangeRate}
         />
@@ -708,7 +821,7 @@ export function RefuelingAbroadForm({
               )}
             />
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {watchedValues.inputMode === "liters" ? (
                 <>
                   <FormField
@@ -781,6 +894,18 @@ export function RefuelingAbroadForm({
                   {formatNumber(calculations.finalKg)}
                 </div>
               </div>
+
+              <CalculatedField
+                label="Доступн. об-м Поставщика"
+                value={calculations.supplierContractVolumeStatus.message}
+                status={calculations.supplierContractVolumeStatus.status}
+              />
+
+              <CalculatedField
+                label="Доступн. об-м Покупателя"
+                value={calculations.contractVolumeStatus.message}
+                status={calculations.contractVolumeStatus.status}
+              />
             </div>
           </CardContent>
         </Card>
@@ -794,12 +919,116 @@ export function RefuelingAbroadForm({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {purchasePrices.length > 0 ? (
+                <FormField
+                  control={form.control}
+                  name="selectedPurchasePriceId"
+                  render={({ field }) => {
+                    const firstPriceId =
+                      purchasePrices.length > 0
+                        ? `${purchasePrices[0].id}-0`
+                        : undefined;
+                    const effectiveValue =
+                      selectedPurchasePriceId || field.value || firstPriceId;
+
+                    if (
+                      !selectedPurchasePriceId &&
+                      !field.value &&
+                      firstPriceId
+                    ) {
+                      setSelectedPurchasePriceId(firstPriceId);
+                      field.onChange(firstPriceId);
+                    }
+
+                    return (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          Покупка
+                        </FormLabel>
+                        <div className="flex gap-1">
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              setSelectedPurchasePriceId(value);
+                            }}
+                            value={effectiveValue}
+                          >
+                            <FormControl>
+                              <SelectTrigger
+                                data-testid="select-purchase-price"
+                                className="flex-1"
+                              >
+                                <SelectValue placeholder="Выберите цену" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {purchasePrices.map((price) => {
+                                const priceValues = price.priceValues || [];
+                                if (priceValues.length === 0) return null;
+
+                                return priceValues.map((priceValueStr, idx) => {
+                                  try {
+                                    const parsed = JSON.parse(priceValueStr);
+                                    const priceVal = parsed.price || "0";
+                                    return (
+                                      <SelectItem
+                                        key={`${price.id}-${idx}`}
+                                        value={`${price.id}-${idx}`}
+                                      >
+                                        {formatNumber(priceVal)} $/кг
+                                      </SelectItem>
+                                    );
+                                  } catch {
+                                    return null;
+                                  }
+                                });
+                              })}
+                            </SelectContent>
+                          </Select>
+                          {hasPermission("prices", "create") && (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="outline"
+                              onClick={() => setAddPurchasePriceOpen(true)}
+                              data-testid="button-add-purchase-price-inline"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+              ) : (
+                <div className="flex items-end gap-1">
+                  <CalculatedField
+                    label="Покупка"
+                    value="Нет цены!"
+                    status="error"
+                  />
+                  {hasPermission("prices", "create") && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddPurchasePriceOpen(true)}
+                      data-testid="button-add-purchase-price-inline"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+
               <FormField
                 control={form.control}
                 name="purchasePriceUsd"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Цена закупки ($/кг)</FormLabel>
+                    <FormLabel>Цена закупки вручную ($/кг)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -814,12 +1043,112 @@ export function RefuelingAbroadForm({
                 )}
               />
 
+              {salePrices.length > 0 ? (
+                <FormField
+                  control={form.control}
+                  name="selectedSalePriceId"
+                  render={({ field }) => {
+                    const firstPriceId =
+                      salePrices.length > 0
+                        ? `${salePrices[0].id}-0`
+                        : undefined;
+                    const effectiveValue =
+                      selectedSalePriceId || field.value || firstPriceId;
+
+                    if (!selectedSalePriceId && !field.value && firstPriceId) {
+                      setSelectedSalePriceId(firstPriceId);
+                      field.onChange(firstPriceId);
+                    }
+
+                    return (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          Продажа
+                        </FormLabel>
+                        <div className="flex gap-1">
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              setSelectedSalePriceId(value);
+                            }}
+                            value={effectiveValue}
+                          >
+                            <FormControl>
+                              <SelectTrigger
+                                data-testid="select-sale-price"
+                                className="flex-1"
+                              >
+                                <SelectValue placeholder="Выберите цену" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {salePrices.map((price) => {
+                                const priceValues = price.priceValues || [];
+                                if (priceValues.length === 0) return null;
+
+                                return priceValues.map((priceValueStr, idx) => {
+                                  try {
+                                    const parsed = JSON.parse(priceValueStr);
+                                    const priceVal = parsed.price || "0";
+                                    return (
+                                      <SelectItem
+                                        key={`${price.id}-${idx}`}
+                                        value={`${price.id}-${idx}`}
+                                      >
+                                        {formatNumber(priceVal)} $/кг
+                                      </SelectItem>
+                                    );
+                                  } catch {
+                                    return null;
+                                  }
+                                });
+                              })}
+                            </SelectContent>
+                          </Select>
+                          {hasPermission("prices", "create") && (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="outline"
+                              onClick={() => setAddSalePriceOpen(true)}
+                              data-testid="button-add-sale-price-inline"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+              ) : (
+                <div className="flex items-end gap-1">
+                  <CalculatedField
+                    label="Продажа"
+                    value="Нет цены!"
+                    status="error"
+                  />
+                  {hasPermission("prices", "create") && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddSalePriceOpen(true)}
+                      data-testid="button-add-sale-price-inline"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+
               <FormField
                 control={form.control}
                 name="salePriceUsd"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Цена продажи ($/кг)</FormLabel>
+                    <FormLabel>Цена продажи вручную ($/кг)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -1131,6 +1460,20 @@ export function RefuelingAbroadForm({
           </Button>
         </div>
       </form>
+
+      <AddPriceDialog
+        isInline
+        inlineOpen={addPurchasePriceOpen}
+        onInlineOpenChange={setAddPurchasePriceOpen}
+        onCreated={handlePurchasePriceCreated}
+      />
+
+      <AddPriceDialog
+        isInline
+        inlineOpen={addSalePriceOpen}
+        onInlineOpenChange={setAddSalePriceOpen}
+        onCreated={handleSalePriceCreated}
+      />
 
       <AddSupplierDialog
         bases={foreignBases}

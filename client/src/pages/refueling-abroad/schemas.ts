@@ -10,74 +10,81 @@ export const intermediaryItemSchema = z.object({
   notes: z.string().optional().nullable(),
 });
 
-export const refuelingAbroadFormSchema = z.object({
-  refuelingDate: z.date().optional().nullable(),
-  productType: z.string().optional().nullable(),
-  aircraftNumber: z.string().optional().nullable(),
-  flightNumber: z.string().optional().nullable(),
-  airportCode: z.string().optional().nullable(),
-  
-  supplierId: z.string().min(1, "Выберите поставщика"),
-  buyerId: z.string().min(1, "Выберите покупателя"),
-  basisId: z.string().min(1, "Выберите базис"),
-  storageCardId: z.string().optional().nullable(),
-  
-  intermediaries: z.array(intermediaryItemSchema).default([]),
-  
-  inputMode: z.enum(["liters", "kg"]).default("kg"),
-  quantityLiters: z.string().optional().nullable(),
-  density: z.string().optional().nullable(),
-  quantityKg: z.string().optional().nullable(),
-  
-  purchasePriceUsd: z.string().optional().nullable(),
-  salePriceUsd: z.string().optional().nullable(),
-  
-  purchaseExchangeRateId: z.string().optional().nullable(),
-  manualPurchaseExchangeRate: z.string().optional().nullable(),
-  saleExchangeRateId: z.string().optional().nullable(),
-  manualSaleExchangeRate: z.string().optional().nullable(),
-  
-  notes: z.string().optional().nullable(),
-  isApproxVolume: z.boolean().default(false),
-  isDraft: z.boolean().default(false),
-}).superRefine((data, ctx) => {
-  if (!data.isDraft) {
-    if (!data.refuelingDate) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Укажите дату заправки",
-        path: ["refuelingDate"],
-      });
+export const refuelingAbroadFormSchema = z
+  .object({
+    refuelingDate: z.date().optional().nullable(),
+    productType: z.string().optional().nullable(),
+    aircraftNumber: z.string().optional().nullable(),
+    flightNumber: z.string().optional().nullable(),
+    airportCode: z.string().optional().nullable(),
+
+    supplierId: z.string().min(1, "Выберите поставщика"),
+    buyerId: z.string().min(1, "Выберите покупателя"),
+    basisId: z.string().min(1, "Выберите базис"),
+    storageCardId: z.string().optional().nullable(),
+
+    intermediaries: z.array(intermediaryItemSchema).default([]),
+
+    inputMode: z.enum(["liters", "kg"]).default("kg"),
+    quantityLiters: z.string().optional().nullable(),
+    density: z.string().optional().nullable(),
+    quantityKg: z.string().optional().nullable(),
+
+    selectedPurchasePriceId: z.string().optional().nullable(),
+    selectedSalePriceId: z.string().optional().nullable(),
+    purchasePriceIndex: z.number().optional().nullable(),
+    salePriceIndex: z.number().optional().nullable(),
+
+    purchasePriceUsd: z.string().optional().nullable(),
+    salePriceUsd: z.string().optional().nullable(),
+
+    purchaseExchangeRateId: z.string().optional().nullable(),
+    manualPurchaseExchangeRate: z.string().optional().nullable(),
+    saleExchangeRateId: z.string().optional().nullable(),
+    manualSaleExchangeRate: z.string().optional().nullable(),
+
+    notes: z.string().optional().nullable(),
+    isApproxVolume: z.boolean().default(false),
+    isDraft: z.boolean().default(false),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.isDraft) {
+      if (!data.refuelingDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Укажите дату заправки",
+          path: ["refuelingDate"],
+        });
+      }
+      if (!data.productType) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Выберите продукт",
+          path: ["productType"],
+        });
+      }
+      if (!data.airportCode) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Укажите код аэропорта",
+          path: ["airportCode"],
+        });
+      }
+      if (!data.purchasePriceUsd) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Укажите цену закупки в USD",
+          path: ["purchasePriceUsd"],
+        });
+      }
+      if (!data.salePriceUsd) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Укажите цену продажи в USD",
+          path: ["salePriceUsd"],
+        });
+      }
     }
-    if (!data.productType) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Выберите продукт",
-        path: ["productType"],
-      });
-    }
-    if (!data.airportCode) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Укажите код аэропорта",
-        path: ["airportCode"],
-      });
-    }
-    if (!data.purchasePriceUsd) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Укажите цену закупки в USD",
-        path: ["purchasePriceUsd"],
-      });
-    }
-    if (!data.salePriceUsd) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Укажите цену продажи в USD",
-        path: ["salePriceUsd"],
-      });
-    }
-  }
-});
+  });
 
 export type RefuelingAbroadFormData = z.infer<typeof refuelingAbroadFormSchema>;

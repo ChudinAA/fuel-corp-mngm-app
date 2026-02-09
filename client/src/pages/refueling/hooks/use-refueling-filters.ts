@@ -1,13 +1,6 @@
 import { useMemo } from "react";
-import { format } from "date-fns";
-import type { Supplier, Base, Price } from "@shared/schema";
-import {
-  BASE_TYPE,
-  COUNTERPARTY_TYPE,
-  COUNTERPARTY_ROLE,
-  PRODUCT_TYPE,
-  ProductType,
-} from "@shared/constants";
+import type { Supplier, Base } from "@shared/schema";
+import { COUNTERPARTY_ROLE } from "@shared/constants";
 import { usePriceLookup } from "@/pages/shared/hooks/use-price-lookup";
 
 interface UseRefuelingFiltersProps {
@@ -17,8 +10,10 @@ interface UseRefuelingFiltersProps {
   basisId?: string;
   customerBasisId?: string;
   productType: string;
-  suppliers: Supplier[] | undefined;
-  allBases: Base[] | undefined;
+  baseType: string;
+  counterpartyType: string;
+  suppliers: Supplier[];
+  allBases: Base[];
 }
 
 export function useRefuelingFilters({
@@ -28,6 +23,8 @@ export function useRefuelingFilters({
   basisId,
   customerBasisId,
   productType,
+  baseType,
+  counterpartyType,
   suppliers,
   allBases,
 }: UseRefuelingFiltersProps) {
@@ -37,8 +34,7 @@ export function useRefuelingFilters({
         if (!supplier.baseIds || supplier.baseIds.length === 0) return false;
         return allBases?.some(
           (base) =>
-            supplier.baseIds.includes(base.id) &&
-            base.baseType === BASE_TYPE.REFUELING,
+            supplier.baseIds?.includes(base.id) && base.baseType === baseType,
         );
       }) || []
     );
@@ -51,15 +47,14 @@ export function useRefuelingFilters({
     if (!supplier?.baseIds) return [];
 
     return allBases.filter(
-      (b) =>
-        b.baseType === BASE_TYPE.REFUELING && supplier.baseIds.includes(b.id),
+      (b) => b.baseType === baseType && supplier.baseIds?.includes(b.id),
     );
   }, [supplierId, suppliers, allBases]);
 
   const purchaseLookup = usePriceLookup({
     counterpartyId: supplierId,
     counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
-    counterpartyType: COUNTERPARTY_TYPE.REFUELING,
+    counterpartyType: counterpartyType,
     basisId: basisId,
     productType: productType,
     date: refuelingDate,
@@ -69,7 +64,7 @@ export function useRefuelingFilters({
   const saleLookup = usePriceLookup({
     counterpartyId: buyerId,
     counterpartyRole: COUNTERPARTY_ROLE.BUYER,
-    counterpartyType: COUNTERPARTY_TYPE.REFUELING,
+    counterpartyType: counterpartyType,
     basisId: customerBasisId,
     productType: productType,
     date: refuelingDate,
