@@ -63,7 +63,8 @@ import { BaseTypeBadge } from "@/components/base-type-badge";
 import { BASE_TYPE, CUSTOMER_MODULE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 import { AddCustomerDialog } from "@/pages/counterparties/customers-dialog";
-import { AddSupplierDialog } from "@/pages/counterparties/suppliers-dialog";
+import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
+import { CalculatedField } from "../calculated-field";
 
 interface IntermediaryItem {
   id?: string;
@@ -189,6 +190,8 @@ export function RefuelingAbroadForm({
       saleExchangeRateId:
         editData?.saleExchangeRateId || latestUsdRate?.id || "",
       manualSaleExchangeRate: editData?.saleExchangeRateValue?.toString() || "",
+      selectedPurchasePriceId: editData?.selectedPurchasePriceId || "",
+      selectedSalePriceId: editData?.selectedSalePriceId || "",
       notes: editData?.notes || "",
       isApproxVolume: editData?.isApproxVolume || false,
       isDraft: editData?.isDraft || false,
@@ -240,13 +243,30 @@ export function RefuelingAbroadForm({
     quantityLiters: watchedValues.quantityLiters || "",
     density: watchedValues.density || "0.8",
     quantityKg: watchedValues.quantityKg || "",
-    purchasePriceUsd: watchedValues.purchasePriceUsd || "",
-    salePriceUsd: watchedValues.salePriceUsd || "",
+    selectedPurchasePriceId: watchedValues.selectedPurchasePriceId || "",
+    selectedSalePriceId: watchedValues.selectedSalePriceId || "",
     purchaseExchangeRate,
     saleExchangeRate,
     commissionFormula: "",
     manualCommissionUsd: totalIntermediaryCommissionUsd.toString(),
+    supplierId: watchedValues.supplierId,
+    buyerId: watchedValues.buyerId,
+    basisId: watchedValues.basisId,
+    productType: watchedValues.productType,
+    refuelingDate: watchedValues.refuelingDate,
   });
+
+  const { purchasePrices, salePrices } = calculations;
+
+  const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
+  const handlePurchasePriceCreated = (id: string) => {
+    form.setValue("selectedPurchasePriceId", id);
+  };
+
+  const [addSalePriceOpen, setAddSalePriceOpen] = useState(false);
+  const handleSalePriceCreated = (id: string) => {
+    form.setValue("selectedSalePriceId", id);
+  };
 
   const createMutation = useMutation({
     mutationFn: async (data: RefuelingAbroadFormData) => {
@@ -284,6 +304,8 @@ export function RefuelingAbroadForm({
         saleExchangeRateId: data.saleExchangeRateId || null,
         saleExchangeRateValue: saleExchangeRate || null,
         purchasePriceUsd: calculations.purchasePrice || null,
+        selectedPurchasePriceId: data.selectedPurchasePriceId || null,
+        selectedSalePriceId: data.selectedSalePriceId || null,
         purchasePriceRub:
           calculations.purchasePrice && purchaseExchangeRate
             ? calculations.purchasePrice * purchaseExchangeRate
