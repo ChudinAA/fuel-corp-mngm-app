@@ -119,6 +119,9 @@ export class RefuelingAbroadIntermediariesStorage implements IRefuelingAbroadInt
   private transformData(data: Partial<InsertRefuelingAbroadIntermediary>): any {
     const result: any = { ...data };
     
+    if (data.commissionFormula !== undefined) {
+      result.commissionFormula = data.commissionFormula;
+    }
     if (data.commissionUsd !== undefined) {
       result.commissionUsd = data.commissionUsd !== null ? String(data.commissionUsd) : null;
     }
