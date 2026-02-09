@@ -302,7 +302,7 @@ export function RefuelingAbroadForm({
     selectedPurchasePriceId,
     selectedSalePriceId,
     productType: watchedValues.productType || "",
-    initialQuantityKg,
+    initialQuantityKg: parseFloat(editData?.quantityKg || "0"),
   });
 
   // Используем общий хук для автоматического выбора цен
