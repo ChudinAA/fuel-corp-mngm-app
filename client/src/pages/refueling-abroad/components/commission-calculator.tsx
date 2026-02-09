@@ -93,13 +93,17 @@ export function CommissionCalculator({
       // Calculate cross conversion cost
       let crossConversionCost = 0;
       if (buyExchangeRate && sellExchangeRate && buyExchangeRate > 0 && sellExchangeRate > 0) {
-        // If intermediary buys in one currency and sells in another, 
-        // there might be a cost associated with the spread or conversion.
-        // Simplified logic: cost = volume * (buyRate - sellRate) if they are in same target currency
-        // or more complex if they cross USD.
-        // For now, let's assume we just store the rates and a placeholder calculation
-        // actual logic should be provided by user or business requirements
-        crossConversionCost = Math.abs(buyExchangeRate - sellExchangeRate) * quantity;
+        // Логика: если посредник закупает валюту по курсу buyExchangeRate 
+        // и продает по курсу sellExchangeRate (например, закупает Тенге за Рубли, 
+        // а потом Доллары за Тенге), то разница курсов на объеме - это его затраты
+        // Пример: купил 1000 KZT по 5 RUB, продал 1000 KZT по 4.8 RUB. Потеря = 0.2 RUB на единицу.
+        // Приводим к USD для экономики сделки: (Loss in local currency) / exchangeRateToUsd
+        
+        const rateDifference = Math.abs(buyExchangeRate - sellExchangeRate);
+        const totalLossInLocalCurrency = rateDifference * quantity;
+        
+        // Переводим потери из локальной валюты в USD (используя курс продажи из сделки как ориентир)
+        crossConversionCost = exchangeRate > 0 ? totalLossInLocalCurrency / exchangeRate : 0;
       }
 
       // Store what we emit to prevent feedback loops in next effects

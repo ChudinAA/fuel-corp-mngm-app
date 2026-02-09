@@ -295,6 +295,11 @@ export function RefuelingAbroadForm({
       allBases: foreignBases,
     });
 
+  const totalCrossConversionCostUsd = intermediariesList.reduce(
+    (sum, item) => sum + (item.crossConversionCost || 0),
+    0,
+  );
+
   const calculations = useRefuelingAbroadCalculations({
     inputMode: watchedValues.inputMode,
     quantityLiters: watchedValues.quantityLiters || "",
@@ -305,7 +310,7 @@ export function RefuelingAbroadForm({
     purchaseExchangeRate,
     saleExchangeRate,
     commissionFormula: "",
-    manualCommissionUsd: totalIntermediaryCommissionUsd.toString(),
+    manualCommissionUsd: (totalIntermediaryCommissionUsd + totalCrossConversionCostUsd).toString(),
     purchasePrices,
     salePrices,
     selectedPurchasePriceId,
@@ -1310,6 +1315,17 @@ export function RefuelingAbroadForm({
                   data-testid="text-intermediary-commission-usd"
                 >
                   {formatCurrency(totalIntermediaryCommissionUsd, "USD")}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">
+                  Потери на кросс-курсах (USD)
+                </Label>
+                <div
+                  className="font-medium text-destructive"
+                  data-testid="text-cross-conversion-loss-usd"
+                >
+                  {formatCurrency(totalCrossConversionCostUsd, "USD")}
                 </div>
               </div>
               <div className="space-y-1">

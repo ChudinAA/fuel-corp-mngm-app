@@ -1,52 +1,6 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Plus, Trash2, Users, GripVertical } from "lucide-react";
-import { CommissionCalculator } from "./commission-calculator";
-import { Supplier } from "@shared/schema";
-import { formatCurrency } from "../utils";
+import { Plus, Trash2, Users, GripVertical, ArrowRight } from "lucide-react";
 
-interface IntermediaryItem {
-  id?: string;
-  intermediaryId: string;
-  orderIndex: number;
-  commissionFormula: string;
-  commissionUsd: number | null;
-  commissionRub: number | null;
-  buyCurrencyId?: string;
-  sellCurrencyId?: string;
-  buyExchangeRate?: number;
-  sellExchangeRate?: number;
-  crossConversionCost?: number;
-  notes: string;
-}
-
-interface IntermediariesSectionProps {
-  intermediaries: IntermediaryItem[];
-  onChange: (intermediaries: IntermediaryItem[]) => void;
-  purchasePrice: number;
-  salePrice: number;
-  quantity: number;
-  exchangeRate: number;
-  currencies: any[];
-}
-
-const formatNumber = (value: number | null | undefined, decimals = 2) => {
-  if (value === null || value === undefined) return "-";
-  return value.toLocaleString("ru-RU", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
-};
+// ... existing code ...
 
 export function IntermediariesSection({
   intermediaries,
@@ -62,6 +16,11 @@ export function IntermediariesSection({
   });
 
   const intermediarySuppliers = suppliers.filter((s) => s.isIntermediary);
+
+  const totalConversionLoss = intermediaries.reduce(
+    (sum, item) => sum + (Number(item.crossConversionCost) || 0),
+    0
+  );
 
   const handleAdd = () => {
     const newItem: IntermediaryItem = {
@@ -134,6 +93,48 @@ export function IntermediariesSection({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Conversion Flow Visualization */}
+        {intermediaries.length > 0 && (
+          <div className="bg-muted/20 p-4 rounded-lg border border-dashed border-primary/30 mb-4">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+              <ArrowRight className="h-3 w-3" />
+              Цепочка конвертации (Путь денег)
+            </h4>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="bg-background border rounded px-2 py-1 text-xs font-medium whitespace-nowrap">Покупатель (RUB)</div>
+              
+              {[...intermediaries].reverse().map((item, idx) => {
+                const buyCurr = currencies.find(c => c.id === item.buyCurrencyId)?.code || "?";
+                const sellCurr = currencies.find(c => c.id === item.sellCurrencyId)?.code || "?";
+                const intermediaryName = intermediarySuppliers.find(s => s.id === item.intermediaryId)?.name || `Посредник ${idx + 1}`;
+                
+                return (
+                  <div key={idx} className="flex items-center gap-2">
+                    <ArrowRight className="h-4 w-4 text-primary animate-pulse" />
+                    <div className="flex flex-col bg-primary/5 border border-primary/20 rounded px-2 py-1 min-w-[80px]">
+                      <span className="text-[10px] text-muted-foreground leading-tight truncate max-w-[100px]">{intermediaryName}</span>
+                      <span className="text-xs font-bold">{buyCurr} → {sellCurr}</span>
+                      {item.buyExchangeRate && item.sellExchangeRate ? (
+                        <span className="text-[10px] text-primary/70">курс: {item.buyExchangeRate} / {item.sellExchangeRate}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+              
+              <ArrowRight className="h-4 w-4 text-primary" />
+              <div className="bg-background border rounded px-2 py-1 text-xs font-medium whitespace-nowrap">Поставщик (USD)</div>
+            </div>
+            
+            {totalConversionLoss > 0 && (
+              <div className="mt-3 pt-2 border-t border-dashed border-primary/20 flex justify-between items-center">
+                <span className="text-xs text-muted-foreground">Потери на кросс-курсах:</span>
+                <span className="text-xs font-bold text-destructive">-{formatCurrency(totalConversionLoss, "USD")}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {intermediaries.length === 0 ? (
           <div className="text-center py-4 text-muted-foreground">
             Нет посредников. Нажмите "Добавить" для добавления.
