@@ -37,7 +37,6 @@ import { useAuth } from "@/hooks/use-auth";
 
 interface VolumeInputSectionProps {
   form: UseFormReturn<OptFormData>;
-  inputMode: "liters" | "kg";
   setInputMode: (mode: "liters" | "kg") => void;
   calculatedKg: string;
 }
