@@ -440,7 +440,7 @@ export function RefuelingAbroadForm({
         .map((item, index) => ({
           intermediaryId: item.intermediaryId,
           orderIndex: index,
-          commissionFormula: item.commissionFormula || null,
+          commissionFormula: item.commissionFormula !== undefined ? item.commissionFormula : null,
           commissionUsd: item.commissionUsd ?? null,
           commissionRub: item.commissionRub ?? null,
           buyCurrencyId: item.buyCurrencyId || null,

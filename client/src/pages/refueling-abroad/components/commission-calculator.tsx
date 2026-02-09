@@ -43,6 +43,7 @@ export function CommissionCalculator({
   const [isFormulaValid, setIsFormulaValid] = useState(true);
   const [calculatedValue, setCalculatedValue] = useState<number | null>(null);
   const lastEmittedUsd = useRef<number | null>(null);
+  const lastEmittedFormula = useRef<string | null>(null);
 
   // Sync internal state with props only when they change from outside (e.g. initial load or reset)
   useEffect(() => {
@@ -86,8 +87,6 @@ export function CommissionCalculator({
       const manualValue = (manualCommission !== "" && manualCommission !== null) ? parseFloat(manualCommission) : null;
       const isManualValid = manualValue !== null && !isNaN(manualValue);
       
-      // If manual is active, it overrides calculated.
-      // BUT if we have a formula and manual is empty, we must keep the formula.
       const finalUsd = isManualValid ? manualValue : calculatedValue;
       const finalRub = finalUsd !== null ? finalUsd * exchangeRate : null;
       
@@ -95,25 +94,21 @@ export function CommissionCalculator({
       let crossConversionCost = 0;
       let crossConversionCostRub = 0;
       if (buyExchangeRate && sellExchangeRate && buyExchangeRate > 0 && sellExchangeRate > 0) {
-        // Логика: если посредник закупает валюту по курсу buyExchangeRate 
-        // и продает по курсу sellExchangeRate (например, закупает Тенге за Рубли, 
-        // а потом Доллары за Тенге), то разница курсов на объеме - это его затраты
-        // Пример: купил 1000 KZT по 5 RUB, продал 1000 KZT по 4.8 RUB. Потеря = 0.2 RUB на единицу.
-        // Приводим к USD для экономики сделки: (Loss in local currency) / exchangeRateToUsd
-        
         const rateDifference = Math.abs(buyExchangeRate - sellExchangeRate);
         const totalLossInLocalCurrency = rateDifference * quantity;
-        
-        // Переводим потери из локальной валюты в USD (используя курс продажи из сделки как ориентир)
         crossConversionCost = exchangeRate > 0 ? totalLossInLocalCurrency / exchangeRate : 0;
         crossConversionCostRub = totalLossInLocalCurrency;
       }
 
       // Store what we emit to prevent feedback loops in next effects
-      lastEmittedUsd.current = finalUsd;
-      onCommissionCalculated(finalUsd, finalRub, crossConversionCost, crossConversionCostRub);
+      if (lastEmittedUsd.current !== finalUsd || 
+          lastEmittedFormula.current !== formula) {
+        lastEmittedUsd.current = finalUsd;
+        lastEmittedFormula.current = formula;
+        onCommissionCalculated(finalUsd, finalRub, crossConversionCost, crossConversionCostRub);
+      }
     }
-  }, [calculatedValue, manualCommission, exchangeRate, buyExchangeRate, sellExchangeRate, quantity, onCommissionCalculated]);
+  }, [calculatedValue, manualCommission, exchangeRate, buyExchangeRate, sellExchangeRate, quantity, formula, onCommissionCalculated]);
 
   const presetFormulas = [
     { label: "% от продажи", formula: "(salePrice - purchasePrice) * quantity * 0.05", description: "5% от маржи" },
