@@ -16,7 +16,6 @@ import type { RefuelingFormData } from "../schemas";
 
 interface VolumeInputSectionProps {
   form: UseFormReturn<RefuelingFormData>;
-  inputMode: "liters" | "kg";
   setInputMode: (mode: "liters" | "kg") => void;
   calculatedKg: string;
 }

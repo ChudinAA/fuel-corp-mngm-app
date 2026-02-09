@@ -188,7 +188,7 @@ export function RefuelingAbroadForm({
   }, [existingIntermediaries, isCopy]);
 
   const latestUsdRate = exchangeRates
-    .filter((r) => r.currency === "USD" && r.isActive)
+    .filter((r) => r.currency === "USD" && r.targetCurrency === "RUB")
     .sort(
       (a, b) => new Date(b.rateDate).getTime() - new Date(a.rateDate).getTime(),
     )[0];
@@ -1131,118 +1131,130 @@ export function RefuelingAbroadForm({
                   <h5 className="text-xs text-muted-foreground font-medium">
                     Для закупки у Поставщика
                   </h5>
-                  <FormField
-                    control={form.control}
-                    name="purchaseExchangeRateId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Курс из справочника</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value || ""}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-purchase-exchange-rate">
-                              <SelectValue placeholder="Выберите курс" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {exchangeRates
-                              .filter((r) => r.currency === "USD")
-                              .map((rate) => (
-                                <SelectItem key={rate.id} value={rate.id}>
-                                  {rate.rate} (
-                                  {new Date(rate.rateDate).toLocaleDateString(
-                                    "ru-RU",
-                                  )}
-                                  )
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="manualPurchaseExchangeRate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Или вручную</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder={
-                              selectedPurchaseExchangeRate?.rate || "90.00"
-                            }
-                            {...field}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="purchaseExchangeRateId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Курс из справочника</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
                             value={field.value || ""}
-                            data-testid="input-manual-purchase-exchange-rate"
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                          >
+                            <FormControl>
+                              <SelectTrigger data-testid="select-purchase-exchange-rate">
+                                <SelectValue placeholder="Выберите курс" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {exchangeRates
+                                .filter(
+                                  (r) =>
+                                    r.currency === "USD" &&
+                                    r.targetCurrency === "RUB",
+                                )
+                                .map((rate) => (
+                                  <SelectItem key={rate.id} value={rate.id}>
+                                    {rate.rate} (
+                                    {new Date(rate.rateDate).toLocaleDateString(
+                                      "ru-RU",
+                                    )}
+                                    )
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="manualPurchaseExchangeRate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Или вручную</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder={
+                                selectedPurchaseExchangeRate?.rate || "90.00"
+                              }
+                              {...field}
+                              value={field.value || ""}
+                              data-testid="input-manual-purchase-exchange-rate"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-3">
                   <h5 className="text-xs text-muted-foreground font-medium">
                     Для продажи Покупателю
                   </h5>
-                  <FormField
-                    control={form.control}
-                    name="saleExchangeRateId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Курс из справочника</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value || ""}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-sale-exchange-rate">
-                              <SelectValue placeholder="Выберите курс" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {exchangeRates
-                              .filter((r) => r.currency === "USD")
-                              .map((rate) => (
-                                <SelectItem key={rate.id} value={rate.id}>
-                                  {rate.rate} (
-                                  {new Date(rate.rateDate).toLocaleDateString(
-                                    "ru-RU",
-                                  )}
-                                  )
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="manualSaleExchangeRate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Или вручную</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder={
-                              selectedSaleExchangeRate?.rate || "90.00"
-                            }
-                            {...field}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="saleExchangeRateId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Курс из справочника</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
                             value={field.value || ""}
-                            data-testid="input-manual-sale-exchange-rate"
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                          >
+                            <FormControl>
+                              <SelectTrigger data-testid="select-sale-exchange-rate">
+                                <SelectValue placeholder="Выберите курс" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {exchangeRates
+                                .filter(
+                                  (r) =>
+                                    r.currency === "USD" &&
+                                    r.targetCurrency === "RUB",
+                                )
+                                .map((rate) => (
+                                  <SelectItem key={rate.id} value={rate.id}>
+                                    {rate.rate} (
+                                    {new Date(rate.rateDate).toLocaleDateString(
+                                      "ru-RU",
+                                    )}
+                                    )
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="manualSaleExchangeRate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Или вручную</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder={
+                                selectedSaleExchangeRate?.rate || "90.00"
+                              }
+                              {...field}
+                              value={field.value || ""}
+                              data-testid="input-manual-sale-exchange-rate"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
