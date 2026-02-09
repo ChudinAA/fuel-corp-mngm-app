@@ -86,7 +86,8 @@ export function CommissionCalculator({
       const manualValue = (manualCommission !== "" && manualCommission !== null) ? parseFloat(manualCommission) : null;
       const isManualValid = manualValue !== null && !isNaN(manualValue);
       
-      // Priority: 1. Manual valid value, 2. Calculated formula value
+      // If manual is active, it overrides calculated.
+      // BUT if we have a formula and manual is empty, we must keep the formula.
       const finalUsd = isManualValid ? manualValue : calculatedValue;
       const finalRub = finalUsd !== null ? finalUsd * exchangeRate : null;
       
@@ -181,8 +182,9 @@ export function CommissionCalculator({
           value={formula}
           disabled={isManualActive}
           onChange={(e) => {
-            setFormula(e.target.value);
-            onFormulaChange(e.target.value);
+            const val = e.target.value;
+            setFormula(val);
+            onFormulaChange(val);
           }}
           className={!isFormulaValid ? "border-destructive" : ""}
           data-testid="input-commission-formula"

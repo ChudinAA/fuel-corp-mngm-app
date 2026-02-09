@@ -437,7 +437,7 @@ export function RefuelingAbroadForm({
 
       const intermediariesPayload = intermediariesList
         .filter((item) => item.intermediaryId && item.intermediaryId !== "none")
-        .map((item: any, index) => ({
+        .map((item, index) => ({
           intermediaryId: item.intermediaryId,
           orderIndex: index,
           commissionFormula: item.commissionFormula || null,

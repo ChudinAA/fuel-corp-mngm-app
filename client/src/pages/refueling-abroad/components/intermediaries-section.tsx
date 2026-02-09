@@ -94,8 +94,11 @@ export function IntermediariesSection({
     value: any,
   ) => {
     const updated = [...intermediaries];
-    updated[index] = { ...updated[index], [field]: value };
-    onChange(updated);
+    const current = updated[index];
+    if (current[field] !== value) {
+      updated[index] = { ...current, [field]: value };
+      onChange(updated);
+    }
   };
 
   const handleCommissionChange = (
@@ -405,14 +408,18 @@ export function IntermediariesSection({
                   onCommissionCalculated={(usd, rub, crossCost, crossCostRub) => {
                     // Update the specific intermediary item directly
                     const updated = [...intermediaries];
+                    
+                    // CRITICAL: Check if we are actually changing values to avoid infinite loops
+                    // BUT we must allow updating commissionUsd/Rub even if formula is present
+                    const current = updated[index];
                     if (
-                      updated[index].commissionUsd !== usd ||
-                      updated[index].commissionRub !== rub ||
-                      updated[index].crossConversionCost !== crossCost ||
-                      updated[index].crossConversionCostRub !== crossCostRub
+                      current.commissionUsd !== usd ||
+                      current.commissionRub !== rub ||
+                      current.crossConversionCost !== crossCost ||
+                      current.crossConversionCostRub !== crossCostRub
                     ) {
                       updated[index] = {
-                        ...updated[index],
+                        ...current,
                         commissionUsd: usd,
                         commissionRub: rub,
                         crossConversionCost: crossCost || 0,
