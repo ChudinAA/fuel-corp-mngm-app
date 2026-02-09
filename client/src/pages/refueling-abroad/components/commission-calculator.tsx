@@ -14,9 +14,13 @@ interface CommissionCalculatorProps {
   exchangeRate: number;
   commissionFormula?: string;
   manualCommissionUsd?: string;
+  buyCurrencyId?: string;
+  sellCurrencyId?: string;
+  buyExchangeRate?: number;
+  sellExchangeRate?: number;
   onFormulaChange: (formula: string) => void;
   onManualCommissionChange?: (value: string) => void;
-  onCommissionCalculated?: (usd: number | null, rub: number | null) => void;
+  onCommissionCalculated?: (usd: number | null, rub: number | null, crossConversionCost: number | null) => void;
 }
 
 export function CommissionCalculator({
@@ -26,6 +30,10 @@ export function CommissionCalculator({
   exchangeRate,
   commissionFormula = "",
   manualCommissionUsd = "",
+  buyCurrencyId,
+  sellCurrencyId,
+  buyExchangeRate,
+  sellExchangeRate,
   onFormulaChange,
   onManualCommissionChange,
   onCommissionCalculated,
@@ -82,11 +90,23 @@ export function CommissionCalculator({
       const finalUsd = isManualValid ? manualValue : calculatedValue;
       const finalRub = finalUsd !== null ? finalUsd * exchangeRate : null;
       
+      // Calculate cross conversion cost
+      let crossConversionCost = 0;
+      if (buyExchangeRate && sellExchangeRate && buyExchangeRate > 0 && sellExchangeRate > 0) {
+        // If intermediary buys in one currency and sells in another, 
+        // there might be a cost associated with the spread or conversion.
+        // Simplified logic: cost = volume * (buyRate - sellRate) if they are in same target currency
+        // or more complex if they cross USD.
+        // For now, let's assume we just store the rates and a placeholder calculation
+        // actual logic should be provided by user or business requirements
+        crossConversionCost = Math.abs(buyExchangeRate - sellExchangeRate) * quantity;
+      }
+
       // Store what we emit to prevent feedback loops in next effects
       lastEmittedUsd.current = finalUsd;
-      onCommissionCalculated(finalUsd, finalRub);
+      onCommissionCalculated(finalUsd, finalRub, crossConversionCost);
     }
-  }, [calculatedValue, manualCommission, exchangeRate, onCommissionCalculated]);
+  }, [calculatedValue, manualCommission, exchangeRate, buyExchangeRate, sellExchangeRate, quantity, onCommissionCalculated]);
 
   const presetFormulas = [
     { label: "% от продажи", formula: "(salePrice - purchasePrice) * quantity * 0.05", description: "5% от маржи" },

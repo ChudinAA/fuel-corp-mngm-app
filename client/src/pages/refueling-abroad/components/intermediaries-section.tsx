@@ -22,6 +22,11 @@ interface IntermediaryItem {
   commissionFormula: string;
   commissionUsd: number | null;
   commissionRub: number | null;
+  buyCurrencyId?: string;
+  sellCurrencyId?: string;
+  buyExchangeRate?: number;
+  sellExchangeRate?: number;
+  crossConversionCost?: number;
   notes: string;
 }
 
@@ -32,6 +37,7 @@ interface IntermediariesSectionProps {
   salePrice: number;
   quantity: number;
   exchangeRate: number;
+  currencies: any[];
 }
 
 const formatNumber = (value: number | null | undefined, decimals = 2) => {
@@ -49,6 +55,7 @@ export function IntermediariesSection({
   salePrice,
   quantity,
   exchangeRate,
+  currencies,
 }: IntermediariesSectionProps) {
   const { data: suppliers = [] } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
@@ -193,6 +200,63 @@ export function IntermediariesSection({
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-muted/50 p-3 rounded-md">
+                  <div>
+                    <label className="text-xs font-medium mb-1 block">Валюта закупа</label>
+                    <Select
+                      value={item.buyCurrencyId || "none"}
+                      onValueChange={(val) => handleUpdate(index, "buyCurrencyId", val === "none" ? undefined : val)}
+                    >
+                      <SelectTrigger size="sm">
+                        <SelectValue placeholder="Валюта" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Не выбрана</SelectItem>
+                        {currencies.map(c => (
+                          <SelectItem key={c.id} value={c.id}>{c.code}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium mb-1 block">Курс закупа</label>
+                    <Input
+                      type="number"
+                      size="sm"
+                      step="0.0001"
+                      value={item.buyExchangeRate || ""}
+                      onChange={(e) => handleUpdate(index, "buyExchangeRate", parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium mb-1 block">Валюта продажи</label>
+                    <Select
+                      value={item.sellCurrencyId || "none"}
+                      onValueChange={(val) => handleUpdate(index, "sellCurrencyId", val === "none" ? undefined : val)}
+                    >
+                      <SelectTrigger size="sm">
+                        <SelectValue placeholder="Валюта" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Не выбрана</SelectItem>
+                        {currencies.map(c => (
+                          <SelectItem key={c.id} value={c.id}>{c.code}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium mb-1 block">Курс продажи</label>
+                    <Input
+                      type="number"
+                      size="sm"
+                      step="0.0001"
+                      value={item.sellExchangeRate || ""}
+                      onChange={(e) => handleUpdate(index, "sellExchangeRate", parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                </div>
+
                 <CommissionCalculator
                   purchasePrice={purchasePrice}
                   salePrice={salePrice}
@@ -200,6 +264,10 @@ export function IntermediariesSection({
                   exchangeRate={exchangeRate}
                   commissionFormula={item.commissionFormula || ""}
                   manualCommissionUsd={item.commissionUsd !== null && item.commissionUsd !== undefined ? item.commissionUsd.toString() : ""}
+                  buyCurrencyId={item.buyCurrencyId}
+                  sellCurrencyId={item.sellCurrencyId}
+                  buyExchangeRate={item.buyExchangeRate}
+                  sellExchangeRate={item.sellExchangeRate}
                   onFormulaChange={(formula) =>
                     handleUpdate(index, "commissionFormula", formula)
                   }
@@ -213,14 +281,19 @@ export function IntermediariesSection({
                     };
                     onChange(updated);
                   }}
-                  onCommissionCalculated={(usd, rub) => {
+                  onCommissionCalculated={(usd, rub, crossCost) => {
                     // Update the specific intermediary item directly
                     const updated = [...intermediaries];
-                    if (updated[index].commissionUsd !== usd || updated[index].commissionRub !== rub) {
+                    if (
+                      updated[index].commissionUsd !== usd || 
+                      updated[index].commissionRub !== rub ||
+                      updated[index].crossConversionCost !== crossCost
+                    ) {
                       updated[index] = {
                         ...updated[index],
                         commissionUsd: usd,
-                        commissionRub: rub
+                        commissionRub: rub,
+                        crossConversionCost: crossCost || 0
                       };
                       onChange(updated);
                     }

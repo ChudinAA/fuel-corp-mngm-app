@@ -138,6 +138,10 @@ export function RefuelingAbroadForm({
     queryKey: ["/api/storage-cards"],
   });
 
+  const { data: currencies = [] } = useQuery<any[]>({
+    queryKey: ["/api/currencies"],
+  });
+
   const { data: existingIntermediaries = [] } = useQuery<IntermediaryItem[]>({
     queryKey: ["/api/refueling-abroad", originalId, "intermediaries"],
     queryFn: async () => {
@@ -169,7 +173,7 @@ export function RefuelingAbroadForm({
     }
     if (existingIntermediaries.length > 0) {
       setIntermediariesList(
-        existingIntermediaries.map((item) => ({
+        existingIntermediaries.map((item: any) => ({
           // We omit the id when it's a copy so the server creates new intermediary records
           id: isCopy ? undefined : item.id,
           intermediaryId: item.intermediaryId,
@@ -181,6 +185,11 @@ export function RefuelingAbroadForm({
           commissionRub: item.commissionRub
             ? parseFloat(String(item.commissionRub))
             : null,
+          buyCurrencyId: item.buyCurrencyId,
+          sellCurrencyId: item.sellCurrencyId,
+          buyExchangeRate: item.buyExchangeRate ? parseFloat(String(item.buyExchangeRate)) : undefined,
+          sellExchangeRate: item.sellExchangeRate ? parseFloat(String(item.sellExchangeRate)) : undefined,
+          crossConversionCost: item.crossConversionCost ? parseFloat(String(item.crossConversionCost)) : 0,
           notes: item.notes || "",
         })),
       );
@@ -414,12 +423,17 @@ export function RefuelingAbroadForm({
 
       const intermediariesPayload = intermediariesList
         .filter((item) => item.intermediaryId && item.intermediaryId !== "none")
-        .map((item, index) => ({
+        .map((item: any, index) => ({
           intermediaryId: item.intermediaryId,
           orderIndex: index,
           commissionFormula: item.commissionFormula || null,
           commissionUsd: item.commissionUsd ?? null,
           commissionRub: item.commissionRub ?? null,
+          buyCurrencyId: item.buyCurrencyId || null,
+          sellCurrencyId: item.sellCurrencyId || null,
+          buyExchangeRate: item.buyExchangeRate ?? null,
+          sellExchangeRate: item.sellExchangeRate ?? null,
+          crossConversionCost: item.crossConversionCost ?? 0,
           notes: item.notes || null,
         }));
 

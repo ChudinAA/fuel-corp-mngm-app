@@ -98,6 +98,11 @@ export const insertRefuelingAbroadIntermediarySchema = createInsertSchema(
     commissionFormula: z.string().nullable().optional(),
     commissionUsd: z.number().nullable().optional(),
     commissionRub: z.number().nullable().optional(),
+    buyCurrencyId: z.string().uuid().nullable().optional(),
+    sellCurrencyId: z.string().uuid().nullable().optional(),
+    buyExchangeRate: z.number().nullable().optional(),
+    sellExchangeRate: z.number().nullable().optional(),
+    crossConversionCost: z.number().nullable().optional(),
     notes: z.string().nullable().optional(),
   });
 

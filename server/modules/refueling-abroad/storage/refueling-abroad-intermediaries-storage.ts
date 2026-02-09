@@ -37,6 +37,11 @@ export class RefuelingAbroadIntermediariesStorage implements IRefuelingAbroadInt
         commissionFormula: refuelingAbroadIntermediaries.commissionFormula,
         commissionUsd: refuelingAbroadIntermediaries.commissionUsd,
         commissionRub: refuelingAbroadIntermediaries.commissionRub,
+        buyCurrencyId: refuelingAbroadIntermediaries.buyCurrencyId,
+        sellCurrencyId: refuelingAbroadIntermediaries.sellCurrencyId,
+        buyExchangeRate: refuelingAbroadIntermediaries.buyExchangeRate,
+        sellExchangeRate: refuelingAbroadIntermediaries.sellExchangeRate,
+        crossConversionCost: refuelingAbroadIntermediaries.crossConversionCost,
         notes: refuelingAbroadIntermediaries.notes,
         intermediary: {
           id: suppliers.id,
@@ -119,6 +124,15 @@ export class RefuelingAbroadIntermediariesStorage implements IRefuelingAbroadInt
     }
     if (data.commissionRub !== undefined) {
       result.commissionRub = data.commissionRub !== null ? String(data.commissionRub) : null;
+    }
+    if (data.buyExchangeRate !== undefined) {
+      result.buyExchangeRate = data.buyExchangeRate !== null ? String(data.buyExchangeRate) : null;
+    }
+    if (data.sellExchangeRate !== undefined) {
+      result.sellExchangeRate = data.sellExchangeRate !== null ? String(data.sellExchangeRate) : null;
+    }
+    if (data.crossConversionCost !== undefined) {
+      result.crossConversionCost = data.crossConversionCost !== null ? String(data.crossConversionCost) : null;
     }
     
     return result;
