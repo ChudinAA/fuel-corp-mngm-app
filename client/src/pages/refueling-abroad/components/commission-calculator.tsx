@@ -20,7 +20,7 @@ interface CommissionCalculatorProps {
   sellExchangeRate?: number;
   onFormulaChange: (formula: string) => void;
   onManualCommissionChange?: (value: string) => void;
-  onCommissionCalculated?: (usd: number | null, rub: number | null, crossConversionCost: number | null, crossConversionCostRub: number | null) => void;
+  onCommissionCalculated?: (usd: number | null, rub: number | null, crossConversionCost: number | null, crossConversionCostRub: number | null, formula: string) => void;
 }
 
 export function CommissionCalculator({
@@ -44,6 +44,7 @@ export function CommissionCalculator({
   const [calculatedValue, setCalculatedValue] = useState<number | null>(null);
   const lastEmittedUsd = useRef<number | null>(null);
   const lastEmittedFormula = useRef<string | null>(null);
+  const lastEmittedCrossCost = useRef<number | null>(null);
 
   // Sync internal state with props only when they change from outside (e.g. initial load or reset)
   useEffect(() => {
@@ -102,10 +103,12 @@ export function CommissionCalculator({
 
       // Store what we emit to prevent feedback loops in next effects
       if (lastEmittedUsd.current !== finalUsd || 
-          lastEmittedFormula.current !== formula) {
+          lastEmittedFormula.current !== formula ||
+          lastEmittedCrossCost.current !== crossConversionCost) {
         lastEmittedUsd.current = finalUsd;
         lastEmittedFormula.current = formula;
-        onCommissionCalculated(finalUsd, finalRub, crossConversionCost, crossConversionCostRub);
+        lastEmittedCrossCost.current = crossConversionCost;
+        onCommissionCalculated(finalUsd, finalRub, crossConversionCost, crossConversionCostRub, formula);
       }
     }
   }, [calculatedValue, manualCommission, exchangeRate, buyExchangeRate, sellExchangeRate, quantity, formula, onCommissionCalculated]);

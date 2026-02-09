@@ -196,7 +196,7 @@ export function RefuelingAbroadForm({
         })),
       );
     }
-  }, [existingIntermediaries, isCopy]);
+  }, [existingIntermediaries, isCopy, editData]);
 
   const latestUsdRate = exchangeRates
     .filter((r) => r.currency === "USD" && r.targetCurrency === "RUB")
