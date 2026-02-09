@@ -299,7 +299,7 @@ export function IntermediariesSection({
                         )
                       }
                     >
-                      <SelectTrigger size="default">
+                      <SelectTrigger>
                         <SelectValue placeholder="Валюта" />
                       </SelectTrigger>
                       <SelectContent>
@@ -343,7 +343,7 @@ export function IntermediariesSection({
                         )
                       }
                     >
-                      <SelectTrigger size="default">
+                      <SelectTrigger>
                         <SelectValue placeholder="Валюта" />
                       </SelectTrigger>
                       <SelectContent>
