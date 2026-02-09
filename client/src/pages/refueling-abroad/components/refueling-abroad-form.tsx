@@ -821,7 +821,7 @@ export function RefuelingAbroadForm({
               )}
             />
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {watchedValues.inputMode === "liters" ? (
                 <>
                   <FormField
@@ -894,18 +894,6 @@ export function RefuelingAbroadForm({
                   {formatNumber(calculations.finalKg)}
                 </div>
               </div>
-
-              <CalculatedField
-                label="Доступн. об-м Поставщика"
-                value={calculations.supplierContractVolumeStatus.message}
-                status={calculations.supplierContractVolumeStatus.status}
-              />
-
-              <CalculatedField
-                label="Доступн. об-м Покупателя"
-                value={calculations.contractVolumeStatus.message}
-                status={calculations.contractVolumeStatus.status}
-              />
             </div>
           </CardContent>
         </Card>
@@ -1023,26 +1011,6 @@ export function RefuelingAbroadForm({
                 </div>
               )}
 
-              <FormField
-                control={form.control}
-                name="purchasePriceUsd"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Цена закупки вручную ($/кг)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.0001"
-                        {...field}
-                        value={field.value || ""}
-                        data-testid="input-purchase-price-usd"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               {salePrices.length > 0 ? (
                 <FormField
                   control={form.control}
@@ -1143,24 +1111,16 @@ export function RefuelingAbroadForm({
                 </div>
               )}
 
-              <FormField
-                control={form.control}
-                name="salePriceUsd"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Цена продажи вручную ($/кг)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.0001"
-                        {...field}
-                        value={field.value || ""}
-                        data-testid="input-sale-price-usd"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+              <CalculatedField
+                label="Доступн. об-м Поставщика"
+                value={calculations.supplierContractVolumeStatus.message}
+                status={calculations.supplierContractVolumeStatus.status}
+              />
+
+              <CalculatedField
+                label="Доступн. об-м Покупателя"
+                value={calculations.contractVolumeStatus.message}
+                status={calculations.contractVolumeStatus.status}
               />
             </div>
 
