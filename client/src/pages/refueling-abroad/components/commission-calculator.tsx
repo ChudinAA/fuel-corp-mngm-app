@@ -88,10 +88,7 @@ export function CommissionCalculator({
       const manualValue = (manualCommission !== "" && manualCommission !== null) ? parseFloat(manualCommission) : null;
       const isManualValid = manualValue !== null && !isNaN(manualValue);
       
-      // For backend storage: only send value if it's manual. 
-      // Calculated values from formula are re-calculated on backend if needed, 
-      // or we just store them for reference but keep formula as primary.
-      const finalUsd = isManualValid ? manualValue : null;
+      const finalUsd = isManualValid ? manualValue : calculatedValue;
       const finalRub = finalUsd !== null ? finalUsd * exchangeRate : null;
       
       // Calculate cross conversion cost

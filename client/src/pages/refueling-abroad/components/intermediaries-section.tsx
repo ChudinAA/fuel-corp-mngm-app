@@ -41,14 +41,6 @@ interface IntermediariesSectionProps {
   currencies: any[];
 }
 
-const formatNumber = (value: number | null | undefined, decimals = 2) => {
-  if (value === null || value === undefined) return "-";
-  return value.toLocaleString("ru-RU", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
-};
-
 export function IntermediariesSection({
   intermediaries,
   onChange,
@@ -99,22 +91,6 @@ export function IntermediariesSection({
       updated[index] = { ...current, [field]: value };
       onChange(updated);
     }
-  };
-
-  const handleCommissionChange = (
-    index: number,
-    commissionUsd: number | null,
-    commissionRub: number | null,
-    formula: string,
-  ) => {
-    const updated = [...intermediaries];
-    updated[index] = {
-      ...updated[index],
-      commissionFormula: formula,
-      commissionUsd,
-      commissionRub,
-    };
-    onChange(updated);
   };
 
   const totalCommissionUsd = intermediaries.reduce(

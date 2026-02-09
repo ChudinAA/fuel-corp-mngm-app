@@ -376,8 +376,8 @@ export function RefuelingAbroadForm({
             ? data.storageCardId
             : null,
         intermediaryCommissionFormula: null,
-        intermediaryCommissionUsd: intermediariesList.some(i => i.commissionFormula) ? null : totalIntermediaryCommissionUsd || null,
-        intermediaryCommissionRub: intermediariesList.some(i => i.commissionFormula) ? null : totalIntermediaryCommissionRub || null,
+        intermediaryCommissionUsd: totalIntermediaryCommissionUsd || null,
+        intermediaryCommissionRub: totalIntermediaryCommissionRub || null,
         quantityLiters: data.quantityLiters
           ? parseFloat(data.quantityLiters)
           : null,
@@ -441,8 +441,8 @@ export function RefuelingAbroadForm({
           intermediaryId: item.intermediaryId,
           orderIndex: index,
           commissionFormula: item.commissionFormula !== undefined ? item.commissionFormula : null,
-          commissionUsd: item.commissionFormula ? null : (item.commissionUsd ?? null),
-          commissionRub: item.commissionFormula ? null : (item.commissionRub ?? null),
+          commissionUsd: item.commissionUsd ?? null,
+          commissionRub: item.commissionRub ?? null,
           buyCurrencyId: item.buyCurrencyId || null,
           sellCurrencyId: item.sellCurrencyId || null,
           buyExchangeRate: item.buyExchangeRate ?? null,
