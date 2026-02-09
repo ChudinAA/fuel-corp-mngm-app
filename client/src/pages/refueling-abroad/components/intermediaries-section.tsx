@@ -207,7 +207,7 @@ export function IntermediariesSection({
                       value={item.buyCurrencyId || "none"}
                       onValueChange={(val) => handleUpdate(index, "buyCurrencyId", val === "none" ? undefined : val)}
                     >
-                      <SelectTrigger size="sm">
+                      <SelectTrigger size="default">
                         <SelectValue placeholder="Валюта" />
                       </SelectTrigger>
                       <SelectContent>
@@ -222,7 +222,6 @@ export function IntermediariesSection({
                     <label className="text-xs font-medium mb-1 block">Курс закупа</label>
                     <Input
                       type="number"
-                      size="sm"
                       step="0.0001"
                       value={item.buyExchangeRate || ""}
                       onChange={(e) => handleUpdate(index, "buyExchangeRate", parseFloat(e.target.value) || 0)}
@@ -234,7 +233,7 @@ export function IntermediariesSection({
                       value={item.sellCurrencyId || "none"}
                       onValueChange={(val) => handleUpdate(index, "sellCurrencyId", val === "none" ? undefined : val)}
                     >
-                      <SelectTrigger size="sm">
+                      <SelectTrigger size="default">
                         <SelectValue placeholder="Валюта" />
                       </SelectTrigger>
                       <SelectContent>
@@ -249,7 +248,6 @@ export function IntermediariesSection({
                     <label className="text-xs font-medium mb-1 block">Курс продажи</label>
                     <Input
                       type="number"
-                      size="sm"
                       step="0.0001"
                       value={item.sellExchangeRate || ""}
                       onChange={(e) => handleUpdate(index, "sellExchangeRate", parseFloat(e.target.value) || 0)}

@@ -803,6 +803,7 @@ export function RefuelingAbroadForm({
           salePrice={calculations.salePrice ?? 0}
           quantity={calculations.finalKg}
           exchangeRate={saleExchangeRate}
+          currencies={currencies}
         />
 
         <Card>
