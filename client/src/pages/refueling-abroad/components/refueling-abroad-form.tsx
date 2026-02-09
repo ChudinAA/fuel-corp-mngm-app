@@ -51,18 +51,12 @@ import { useRefuelingAbroadCalculations } from "../hooks/use-refueling-abroad-ca
 import { IntermediariesSection } from "./intermediaries-section";
 import { formatCurrency, formatNumber } from "../utils";
 import { PRODUCT_TYPES_ABROAD } from "../constants";
-import { useAutoPriceSelection } from "../../shared/hooks/use-auto-price-selection";
-import { useRefuelingFilters } from "../../refueling/hooks/use-refueling-filters";
-import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
-import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
-import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
 import type {
   Supplier,
   Customer,
   ExchangeRate,
   StorageCard,
   Base,
-  Price,
 } from "@shared/schema";
 import { Combobox } from "@/components/ui/combobox";
 import { BaseTypeBadge } from "@/components/base-type-badge";
@@ -102,9 +96,6 @@ export function RefuelingAbroadForm({
   const [intermediariesList, setIntermediariesList] = useState<
     IntermediaryItem[]
   >([]);
-  const [selectedPurchasePriceId, setSelectedPurchasePriceId] = useState<string>("");
-  const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
-
   const isCopy = !!editData && !editData.id;
   const originalId = isCopy ? (editData as any).originalId : editData?.id;
 
@@ -126,10 +117,6 @@ export function RefuelingAbroadForm({
 
   const { data: storageCards = [] } = useQuery<StorageCard[]>({
     queryKey: ["/api/storage-cards"],
-  });
-
-  const { data: allPrices = [] } = useQuery<Price[]>({
-    queryKey: ["/api/prices"],
   });
 
   const { data: existingIntermediaries = [] } = useQuery<IntermediaryItem[]>({
@@ -205,39 +192,10 @@ export function RefuelingAbroadForm({
       notes: editData?.notes || "",
       isApproxVolume: editData?.isApproxVolume || false,
       isDraft: editData?.isDraft || false,
-      selectedPurchasePriceId: "",
-      selectedSalePriceId: "",
     },
   });
 
   const watchedValues = form.watch();
-  const watchSupplierId = form.watch("supplierId");
-  const watchBuyerId = form.watch("buyerId");
-  const watchRefuelingDate = form.watch("refuelingDate");
-  const watchBasisId = form.watch("basisId");
-
-  const { purchasePrices, salePrices } = useRefuelingFilters({
-    supplierId: watchSupplierId,
-    buyerId: watchBuyerId,
-    refuelingDate: watchRefuelingDate || new Date(),
-    basisId: watchBasisId || undefined,
-    productType: "kerosene",
-    suppliers,
-    allBases,
-  });
-
-  useAutoPriceSelection({
-    supplierId: watchSupplierId,
-    buyerId: watchBuyerId,
-    purchasePrices,
-    salePrices,
-    isWarehouseSupplier: false,
-    editData,
-    setSelectedPurchasePriceId,
-    setSelectedSalePriceId,
-    formSetValue: form.setValue as any,
-  });
-
   const foreignSuppliers = suppliers.filter((s) => s.isForeign);
   const foreignCustomers = customers.filter((c) => c.isForeign);
   const foreignBases =
@@ -288,46 +246,10 @@ export function RefuelingAbroadForm({
     saleExchangeRate,
     commissionFormula: "",
     manualCommissionUsd: totalIntermediaryCommissionUsd.toString(),
-    purchasePrices,
-    salePrices,
-    selectedPurchasePriceId,
-    selectedSalePriceId,
-    selectedSupplier,
-    initialQuantityKg: isEditing ? parseFloat(editData?.quantityKg || "0") : 0,
-  });
-
-  const {
-    showDuplicateDialog,
-    setShowDuplicateDialog,
-    checkDuplicate,
-    isChecking,
-  } = useDuplicateCheck({
-    type: "refuelingAbroad",
-    getFields: () => ({
-      date: watchedValues.refuelingDate,
-      supplierId: watchedValues.supplierId,
-      buyerId: watchedValues.buyerId,
-      productType: watchedValues.productType,
-      airport: watchedValues.airportCode,
-      quantityKg: calculations.finalKg,
-    }),
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: RefuelingAbroadFormData) => {
-      const {
-        purchasePriceId,
-        purchasePriceIndex,
-        salePriceId,
-        salePriceIndex,
-      } = extractPriceIdsForSubmit(
-        selectedPurchasePriceId,
-        selectedSalePriceId,
-        purchasePrices,
-        salePrices,
-        false
-      );
-
       const payload = {
         refuelingDate: data.refuelingDate
           ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss")
@@ -362,15 +284,11 @@ export function RefuelingAbroadForm({
         saleExchangeRateId: data.saleExchangeRateId || null,
         saleExchangeRateValue: saleExchangeRate || null,
         purchasePriceUsd: calculations.purchasePrice || null,
-        purchasePriceId: purchasePriceId || null,
-        purchasePriceIndex: purchasePriceIndex !== undefined ? purchasePriceIndex : null,
         purchasePriceRub:
           calculations.purchasePrice && purchaseExchangeRate
             ? calculations.purchasePrice * purchaseExchangeRate
             : null,
         salePriceUsd: calculations.salePrice || null,
-        salePriceId: salePriceId || null,
-        salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
         salePriceRub:
           calculations.salePrice && saleExchangeRate
             ? calculations.salePrice * saleExchangeRate
@@ -448,45 +366,13 @@ export function RefuelingAbroadForm({
     isDraftOverride?: boolean,
   ) => {
     const finalIsDraft = isDraftOverride ?? data.isDraft;
-    
-    if (!finalIsDraft) {
-      if (calculations.contractVolumeStatus.status === "error") {
-        toast({
-          title: "Ошибка: недостаточно объема по договору",
-          description: calculations.contractVolumeStatus.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (calculations.supplierContractVolumeStatus.status === "error") {
-        toast({
-          title: "Ошибка: недостаточно объема по договору поставщика",
-          description: calculations.supplierContractVolumeStatus.message,
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
     // Update the form state directly so validation pass or fail based on current state
     form.setValue("isDraft", finalIsDraft);
-    checkDuplicate(() => createMutation.mutate({ ...data, isDraft: finalIsDraft }));
+    createMutation.mutate({ ...data, isDraft: finalIsDraft });
   };
 
   return (
     <Form {...form}>
-      {showDuplicateDialog && (
-        <DuplicateAlertDialog
-          open={showDuplicateDialog}
-          onConfirm={() => {
-            const data = form.getValues();
-            createMutation.mutate({ ...data, isDraft: data.isDraft });
-            setShowDuplicateDialog(false);
-          }}
-          onCancel={() => setShowDuplicateDialog(false)}
-        />
-      )}
       <form
         onSubmit={form.handleSubmit((data) => onSubmit(data))}
         className="space-y-4"
@@ -913,39 +799,15 @@ export function RefuelingAbroadForm({
                 name="purchasePriceUsd"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      Цена закупки ($/кг)
-                      {calculations.supplierContractVolumeStatus.status !== "ok" && (
-                        <span className={`text-[10px] px-1 rounded ${
-                          calculations.supplierContractVolumeStatus.status === "error" ? "bg-destructive text-destructive-foreground" : "bg-warning text-warning-foreground"
-                        }`}>
-                          {calculations.supplierContractVolumeStatus.message}
-                        </span>
-                      )}
-                    </FormLabel>
+                    <FormLabel>Цена закупки ($/кг)</FormLabel>
                     <FormControl>
-                      <div className="space-y-2">
-                        <Combobox
-                          options={purchasePrices.map((p, idx) => ({
-                            value: `${p.id}-${idx}`,
-                            label: `${p.price} (${p.contractName || "Без договора"})`,
-                          }))}
-                          value={selectedPurchasePriceId}
-                          onValueChange={(val) => {
-                            setSelectedPurchasePriceId(val);
-                            form.setValue("selectedPurchasePriceId", val);
-                          }}
-                          placeholder="Выберите цену из справочника"
-                          className="w-full"
-                        />
-                        <Input
-                          type="number"
-                          step="0.0001"
-                          {...field}
-                          value={field.value || ""}
-                          data-testid="input-purchase-price-usd"
-                        />
-                      </div>
+                      <Input
+                        type="number"
+                        step="0.0001"
+                        {...field}
+                        value={field.value || ""}
+                        data-testid="input-purchase-price-usd"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -957,39 +819,15 @@ export function RefuelingAbroadForm({
                 name="salePriceUsd"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      Цена продажи ($/кг)
-                      {calculations.contractVolumeStatus.status !== "ok" && (
-                        <span className={`text-[10px] px-1 rounded ${
-                          calculations.contractVolumeStatus.status === "error" ? "bg-destructive text-destructive-foreground" : "bg-warning text-warning-foreground"
-                        }`}>
-                          {calculations.contractVolumeStatus.message}
-                        </span>
-                      )}
-                    </FormLabel>
+                    <FormLabel>Цена продажи ($/кг)</FormLabel>
                     <FormControl>
-                      <div className="space-y-2">
-                        <Combobox
-                          options={salePrices.map((p, idx) => ({
-                            value: `${p.id}-${idx}`,
-                            label: `${p.price} (${p.contractName || "Без договора"})`,
-                          }))}
-                          value={selectedSalePriceId}
-                          onValueChange={(val) => {
-                            setSelectedSalePriceId(val);
-                            form.setValue("selectedSalePriceId", val);
-                          }}
-                          placeholder="Выберите цену из справочника"
-                          className="w-full"
-                        />
-                        <Input
-                          type="number"
-                          step="0.0001"
-                          {...field}
-                          value={field.value || ""}
-                          data-testid="input-sale-price-usd"
-                        />
-                      </div>
+                      <Input
+                        type="number"
+                        step="0.0001"
+                        {...field}
+                        value={field.value || ""}
+                        data-testid="input-sale-price-usd"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
