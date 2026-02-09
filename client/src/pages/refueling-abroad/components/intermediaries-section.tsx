@@ -1,6 +1,53 @@
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Trash2, Users, GripVertical, ArrowRight } from "lucide-react";
+import { CommissionCalculator } from "./commission-calculator";
+import { Supplier } from "@shared/schema";
+import { formatCurrency } from "../utils";
 
-// ... existing code ...
+export interface IntermediaryItem {
+  id?: string;
+  intermediaryId: string;
+  orderIndex: number;
+  commissionFormula: string;
+  commissionUsd: number | null;
+  commissionRub: number | null;
+  buyCurrencyId?: string;
+  sellCurrencyId?: string;
+  buyExchangeRate?: number;
+  sellExchangeRate?: number;
+  crossConversionCost?: number;
+  crossConversionCostRub?: number;
+  notes: string;
+}
+
+interface IntermediariesSectionProps {
+  intermediaries: IntermediaryItem[];
+  onChange: (intermediaries: IntermediaryItem[]) => void;
+  purchasePrice: number;
+  salePrice: number;
+  quantity: number;
+  exchangeRate: number;
+  currencies: any[];
+}
+
+const formatNumber = (value: number | null | undefined, decimals = 2) => {
+  if (value === null || value === undefined) return "-";
+  return value.toLocaleString("ru-RU", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+};
 
 export function IntermediariesSection({
   intermediaries,
@@ -19,7 +66,7 @@ export function IntermediariesSection({
 
   const totalConversionLoss = intermediaries.reduce(
     (sum, item) => sum + (Number(item.crossConversionCost) || 0),
-    0
+    0,
   );
 
   const handleAdd = () => {
@@ -41,7 +88,11 @@ export function IntermediariesSection({
     onChange(updated);
   };
 
-  const handleUpdate = (index: number, field: keyof IntermediaryItem, value: any) => {
+  const handleUpdate = (
+    index: number,
+    field: keyof IntermediaryItem,
+    value: any,
+  ) => {
     const updated = [...intermediaries];
     updated[index] = { ...updated[index], [field]: value };
     onChange(updated);
@@ -51,7 +102,7 @@ export function IntermediariesSection({
     index: number,
     commissionUsd: number | null,
     commissionRub: number | null,
-    formula: string
+    formula: string,
   ) => {
     const updated = [...intermediaries];
     updated[index] = {
@@ -65,11 +116,11 @@ export function IntermediariesSection({
 
   const totalCommissionUsd = intermediaries.reduce(
     (sum, item) => sum + (Number(item.commissionUsd) || 0),
-    0
+    0,
   );
   const totalCommissionRub = intermediaries.reduce(
     (sum, item) => sum + (Number(item.commissionRub) || 0),
-    0
+    0,
   );
 
   return (
@@ -101,35 +152,56 @@ export function IntermediariesSection({
               Цепочка конвертации (Путь денег)
             </h4>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="bg-background border rounded px-2 py-1 text-xs font-medium whitespace-nowrap">Покупатель (RUB)</div>
-              
+              <div className="bg-background border rounded px-2 py-1 text-xs font-medium whitespace-nowrap">
+                Покупатель (RUB)
+              </div>
+
               {[...intermediaries].reverse().map((item, idx) => {
-                const buyCurr = currencies.find(c => c.id === item.buyCurrencyId)?.code || "?";
-                const sellCurr = currencies.find(c => c.id === item.sellCurrencyId)?.code || "?";
-                const intermediaryName = intermediarySuppliers.find(s => s.id === item.intermediaryId)?.name || `Посредник ${idx + 1}`;
-                
+                const buyCurr =
+                  currencies.find((c) => c.id === item.buyCurrencyId)?.code ||
+                  "?";
+                const sellCurr =
+                  currencies.find((c) => c.id === item.sellCurrencyId)?.code ||
+                  "?";
+                const intermediaryName =
+                  intermediarySuppliers.find(
+                    (s) => s.id === item.intermediaryId,
+                  )?.name || `Посредник ${idx + 1}`;
+
                 return (
                   <div key={idx} className="flex items-center gap-2">
                     <ArrowRight className="h-4 w-4 text-primary animate-pulse" />
                     <div className="flex flex-col bg-primary/5 border border-primary/20 rounded px-2 py-1 min-w-[80px]">
-                      <span className="text-[10px] text-muted-foreground leading-tight truncate max-w-[100px]">{intermediaryName}</span>
-                      <span className="text-xs font-bold">{buyCurr} → {sellCurr}</span>
+                      <span className="text-[10px] text-muted-foreground leading-tight truncate max-w-[100px]">
+                        {intermediaryName}
+                      </span>
+                      <span className="text-xs font-bold">
+                        {buyCurr} → {sellCurr}
+                      </span>
                       {item.buyExchangeRate && item.sellExchangeRate ? (
-                        <span className="text-[10px] text-primary/70">курс: {item.buyExchangeRate} / {item.sellExchangeRate}</span>
+                        <span className="text-[10px] text-primary/70">
+                          курс: {item.buyExchangeRate} / {item.sellExchangeRate}
+                        </span>
                       ) : null}
                     </div>
                   </div>
                 );
               })}
-              
+
               <ArrowRight className="h-4 w-4 text-primary" />
-              <div className="bg-background border rounded px-2 py-1 text-xs font-medium whitespace-nowrap">Поставщик (USD)</div>
+              <div className="bg-background border rounded px-2 py-1 text-xs font-medium whitespace-nowrap">
+                Поставщик (USD)
+              </div>
             </div>
-            
+
             {totalConversionLoss > 0 && (
               <div className="mt-3 pt-2 border-t border-dashed border-primary/20 flex justify-between items-center">
-                <span className="text-xs text-muted-foreground">Потери на кросс-курсах:</span>
-                <span className="text-xs font-bold text-destructive">-{formatCurrency(totalConversionLoss, "USD")}</span>
+                <span className="text-xs text-muted-foreground">
+                  Потери на кросс-курсах:
+                </span>
+                <span className="text-xs font-bold text-destructive">
+                  -{formatCurrency(totalConversionLoss, "USD")}
+                </span>
               </div>
             )}
           </div>
@@ -171,10 +243,16 @@ export function IntermediariesSection({
                     <Select
                       value={item.intermediaryId || "none"}
                       onValueChange={(value) =>
-                        handleUpdate(index, "intermediaryId", value === "none" ? "" : value)
+                        handleUpdate(
+                          index,
+                          "intermediaryId",
+                          value === "none" ? "" : value,
+                        )
                       }
                     >
-                      <SelectTrigger data-testid={`select-intermediary-${index}`}>
+                      <SelectTrigger
+                        data-testid={`select-intermediary-${index}`}
+                      >
                         <SelectValue placeholder="Выберите посредника" />
                       </SelectTrigger>
                       <SelectContent>
@@ -195,7 +273,9 @@ export function IntermediariesSection({
                     <Input
                       placeholder="Заметки о посреднике"
                       value={item.notes}
-                      onChange={(e) => handleUpdate(index, "notes", e.target.value)}
+                      onChange={(e) =>
+                        handleUpdate(index, "notes", e.target.value)
+                      }
                       data-testid={`input-intermediary-notes-${index}`}
                     />
                   </div>
@@ -203,55 +283,91 @@ export function IntermediariesSection({
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-muted/50 p-3 rounded-md">
                   <div>
-                    <label className="text-xs font-medium mb-1 block">Валюта закупа</label>
+                    <label className="text-xs font-medium mb-1 block">
+                      Валюта закупа
+                    </label>
                     <Select
                       value={item.buyCurrencyId || "none"}
-                      onValueChange={(val) => handleUpdate(index, "buyCurrencyId", val === "none" ? undefined : val)}
+                      onValueChange={(val) =>
+                        handleUpdate(
+                          index,
+                          "buyCurrencyId",
+                          val === "none" ? undefined : val,
+                        )
+                      }
                     >
                       <SelectTrigger size="default">
                         <SelectValue placeholder="Валюта" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Не выбрана</SelectItem>
-                        {currencies.map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.code}</SelectItem>
+                        {currencies.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.code}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-medium mb-1 block">Курс закупа</label>
+                    <label className="text-xs font-medium mb-1 block">
+                      Курс закупа
+                    </label>
                     <Input
                       type="number"
                       step="0.0001"
                       value={item.buyExchangeRate || ""}
-                      onChange={(e) => handleUpdate(index, "buyExchangeRate", parseFloat(e.target.value) || 0)}
+                      onChange={(e) =>
+                        handleUpdate(
+                          index,
+                          "buyExchangeRate",
+                          parseFloat(e.target.value) || 0,
+                        )
+                      }
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium mb-1 block">Валюта продажи</label>
+                    <label className="text-xs font-medium mb-1 block">
+                      Валюта продажи
+                    </label>
                     <Select
                       value={item.sellCurrencyId || "none"}
-                      onValueChange={(val) => handleUpdate(index, "sellCurrencyId", val === "none" ? undefined : val)}
+                      onValueChange={(val) =>
+                        handleUpdate(
+                          index,
+                          "sellCurrencyId",
+                          val === "none" ? undefined : val,
+                        )
+                      }
                     >
                       <SelectTrigger size="default">
                         <SelectValue placeholder="Валюта" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Не выбрана</SelectItem>
-                        {currencies.map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.code}</SelectItem>
+                        {currencies.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.code}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-medium mb-1 block">Курс продажи</label>
+                    <label className="text-xs font-medium mb-1 block">
+                      Курс продажи
+                    </label>
                     <Input
                       type="number"
                       step="0.0001"
                       value={item.sellExchangeRate || ""}
-                      onChange={(e) => handleUpdate(index, "sellExchangeRate", parseFloat(e.target.value) || 0)}
+                      onChange={(e) =>
+                        handleUpdate(
+                          index,
+                          "sellExchangeRate",
+                          parseFloat(e.target.value) || 0,
+                        )
+                      }
                     />
                   </div>
                 </div>
@@ -262,7 +378,12 @@ export function IntermediariesSection({
                   quantity={quantity}
                   exchangeRate={exchangeRate}
                   commissionFormula={item.commissionFormula || ""}
-                  manualCommissionUsd={item.commissionUsd !== null && item.commissionUsd !== undefined ? item.commissionUsd.toString() : ""}
+                  manualCommissionUsd={
+                    item.commissionUsd !== null &&
+                    item.commissionUsd !== undefined
+                      ? item.commissionUsd.toString()
+                      : ""
+                  }
                   buyCurrencyId={item.buyCurrencyId}
                   sellCurrencyId={item.sellCurrencyId}
                   buyExchangeRate={item.buyExchangeRate}
@@ -276,23 +397,26 @@ export function IntermediariesSection({
                     updated[index] = {
                       ...updated[index],
                       commissionUsd: parsed,
-                      commissionRub: parsed === null ? null : parsed * exchangeRate
+                      commissionRub:
+                        parsed === null ? null : parsed * exchangeRate,
                     };
                     onChange(updated);
                   }}
-                  onCommissionCalculated={(usd, rub, crossCost) => {
+                  onCommissionCalculated={(usd, rub, crossCost, crossCostRub) => {
                     // Update the specific intermediary item directly
                     const updated = [...intermediaries];
                     if (
-                      updated[index].commissionUsd !== usd || 
+                      updated[index].commissionUsd !== usd ||
                       updated[index].commissionRub !== rub ||
-                      updated[index].crossConversionCost !== crossCost
+                      updated[index].crossConversionCost !== crossCost ||
+                      updated[index].crossConversionCostRub !== crossCostRub
                     ) {
                       updated[index] = {
                         ...updated[index],
                         commissionUsd: usd,
                         commissionRub: rub,
-                        crossConversionCost: crossCost || 0
+                        crossConversionCost: crossCost || 0,
+                        crossConversionCostRub: crossCostRub || 0,
                       };
                       onChange(updated);
                     }
@@ -304,10 +428,16 @@ export function IntermediariesSection({
             {intermediaries.length > 0 && (
               <div className="bg-primary/10 rounded-md p-3">
                 <div className="flex justify-between items-center">
-                  <span className="font-medium">Итого комиссия посредников:</span>
+                  <span className="font-medium">
+                    Итого комиссия посредников:
+                  </span>
                   <div className="text-right">
-                    <div className="font-medium" data-testid="text-total-commission">
-                      {formatCurrency(totalCommissionUsd, "USD")} / {formatCurrency(totalCommissionRub, "RUB")}
+                    <div
+                      className="font-medium"
+                      data-testid="text-total-commission"
+                    >
+                      {formatCurrency(totalCommissionUsd, "USD")} /{" "}
+                      {formatCurrency(totalCommissionRub, "RUB")}
                     </div>
                   </div>
                 </div>

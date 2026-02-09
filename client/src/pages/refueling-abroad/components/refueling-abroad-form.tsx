@@ -47,7 +47,10 @@ import {
 } from "../schemas";
 import type { RefuelingAbroadFormProps } from "../types";
 import { useRefuelingAbroadCalculations } from "../hooks/use-refueling-abroad-calculations";
-import { IntermediariesSection } from "./intermediaries-section";
+import {
+  IntermediariesSection,
+  IntermediaryItem,
+} from "./intermediaries-section";
 import { formatCurrency, formatNumber } from "../utils";
 import { PRODUCT_TYPES_ABROAD } from "../constants";
 import type {
@@ -68,16 +71,6 @@ import { useAutoPriceSelection } from "@/pages/shared/hooks/use-auto-price-selec
 import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
 import { CalculatedField } from "@/pages/refueling/calculated-field";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
-
-interface IntermediaryItem {
-  id?: string;
-  intermediaryId: string;
-  orderIndex: number;
-  commissionFormula: string;
-  commissionUsd: number | null;
-  commissionRub: number | null;
-  notes: string;
-}
 
 export function RefuelingAbroadForm({
   onSuccess,
@@ -187,9 +180,18 @@ export function RefuelingAbroadForm({
             : null,
           buyCurrencyId: item.buyCurrencyId,
           sellCurrencyId: item.sellCurrencyId,
-          buyExchangeRate: item.buyExchangeRate ? parseFloat(String(item.buyExchangeRate)) : undefined,
-          sellExchangeRate: item.sellExchangeRate ? parseFloat(String(item.sellExchangeRate)) : undefined,
-          crossConversionCost: item.crossConversionCost ? parseFloat(String(item.crossConversionCost)) : 0,
+          buyExchangeRate: item.buyExchangeRate
+            ? parseFloat(String(item.buyExchangeRate))
+            : undefined,
+          sellExchangeRate: item.sellExchangeRate
+            ? parseFloat(String(item.sellExchangeRate))
+            : undefined,
+          crossConversionCost: item.crossConversionCost
+            ? parseFloat(String(item.crossConversionCost))
+            : 0,
+          crossConversionCostRub: (item as any).crossConversionCostRub
+            ? parseFloat(String((item as any).crossConversionCostRub))
+            : 0,
           notes: item.notes || "",
         })),
       );
@@ -280,6 +282,16 @@ export function RefuelingAbroadForm({
     0,
   );
 
+  const totalCrossConversionCostUsd = intermediariesList.reduce(
+    (sum, item) => sum + (item.crossConversionCost || 0),
+    0,
+  );
+
+  const totalCrossConversionCostRub = intermediariesList.reduce(
+    (sum, item) => sum + (item.crossConversionCostRub || 0),
+    0,
+  );
+
   // Use filtering hook
   const { refuelingSuppliers, availableBases, purchasePrices, salePrices } =
     useRefuelingFilters({
@@ -295,11 +307,6 @@ export function RefuelingAbroadForm({
       allBases: foreignBases,
     });
 
-  const totalCrossConversionCostUsd = intermediariesList.reduce(
-    (sum, item) => sum + (item.crossConversionCost || 0),
-    0,
-  );
-
   const calculations = useRefuelingAbroadCalculations({
     inputMode: watchedValues.inputMode,
     quantityLiters: watchedValues.quantityLiters || "",
@@ -310,7 +317,9 @@ export function RefuelingAbroadForm({
     purchaseExchangeRate,
     saleExchangeRate,
     commissionFormula: "",
-    manualCommissionUsd: (totalIntermediaryCommissionUsd + totalCrossConversionCostUsd).toString(),
+    manualCommissionUsd: (
+      totalIntermediaryCommissionUsd + totalCrossConversionCostUsd
+    ).toString(),
     purchasePrices,
     salePrices,
     selectedPurchasePriceId,
@@ -439,6 +448,7 @@ export function RefuelingAbroadForm({
           buyExchangeRate: item.buyExchangeRate ?? null,
           sellExchangeRate: item.sellExchangeRate ?? null,
           crossConversionCost: item.crossConversionCost ?? 0,
+          crossConversionCostRub: item.crossConversionCostRub ?? 0,
           notes: item.notes || null,
         }));
 
@@ -1289,7 +1299,7 @@ export function RefuelingAbroadForm({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">
                   Закупка (USD)
@@ -1340,7 +1350,7 @@ export function RefuelingAbroadForm({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4 pt-4 border-t">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">
                   Закупка (RUB)
@@ -1366,6 +1376,17 @@ export function RefuelingAbroadForm({
                   data-testid="text-intermediary-commission-rub"
                 >
                   {formatCurrency(totalIntermediaryCommissionRub, "RUB")}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">
+                  Потери на кросс-курсах (RUB)
+                </Label>
+                <div
+                  className="font-medium text-destructive"
+                  data-testid="text-cross-conversion-loss-usd"
+                >
+                  {formatCurrency(totalCrossConversionCostRub, "RUB")}
                 </div>
               </div>
               <div className="space-y-1">

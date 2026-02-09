@@ -9,7 +9,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import { currencies, exchangeRates, suppliers } from "@shared/schema";
+import { currencies, suppliers } from "@shared/schema";
 import { refuelingAbroad } from "./refueling-abroad";
 
 export const refuelingAbroadIntermediaries = pgTable(
@@ -25,23 +25,21 @@ export const refuelingAbroadIntermediaries = pgTable(
     orderIndex: integer("order_index").default(0).notNull(),
     buyCurrencyId: uuid("buy_currency_id").references(() => currencies.id),
     sellCurrencyId: uuid("sell_currency_id").references(() => currencies.id),
-    buyExchangeRate: decimal("buy_exchange_rate", { precision: 12, scale: 4 }),
+    buyExchangeRate: decimal("buy_exchange_rate", { precision: 12, scale: 5 }),
     sellExchangeRate: decimal("sell_exchange_rate", {
       precision: 12,
-      scale: 4,
+      scale: 5,
     }),
-    buyExchangeRateId: uuid("buy_exchange_rate_id").references(
-      () => exchangeRates.id,
-    ),
-    sellExchangeRateId: uuid("sell_exchange_rate_id").references(
-      () => exchangeRates.id,
-    ),
     crossConversionCost: decimal("cross_conversion_cost", {
       precision: 12,
-      scale: 4,
+      scale: 5,
+    }),
+    crossConversionCostRub: decimal("cross_conversion_cost_rub", {
+      precision: 12,
+      scale: 5,
     }),
     commissionFormula: text("commission_formula"),
-    commissionUsd: decimal("commission_usd", { precision: 15, scale: 4 }),
+    commissionUsd: decimal("commission_usd", { precision: 15, scale: 5 }),
     commissionRub: decimal("commission_rub", { precision: 15, scale: 2 }),
     notes: text("notes"),
   },
@@ -76,14 +74,6 @@ export const refuelingAbroadIntermediariesRelations = relations(
       fields: [refuelingAbroadIntermediaries.sellCurrencyId],
       references: [currencies.id],
     }),
-    buyExchangeRate: one(exchangeRates, {
-      fields: [refuelingAbroadIntermediaries.buyExchangeRateId],
-      references: [exchangeRates.id],
-    }),
-    sellExchangeRate: one(exchangeRates, {
-      fields: [refuelingAbroadIntermediaries.sellExchangeRateId],
-      references: [exchangeRates.id],
-    }),
   }),
 );
 
@@ -103,6 +93,7 @@ export const insertRefuelingAbroadIntermediarySchema = createInsertSchema(
     buyExchangeRate: z.number().nullable().optional(),
     sellExchangeRate: z.number().nullable().optional(),
     crossConversionCost: z.number().nullable().optional(),
+    crossConversionCostRub: z.number().nullable().optional(),
     notes: z.string().nullable().optional(),
   });
 

@@ -20,7 +20,7 @@ interface CommissionCalculatorProps {
   sellExchangeRate?: number;
   onFormulaChange: (formula: string) => void;
   onManualCommissionChange?: (value: string) => void;
-  onCommissionCalculated?: (usd: number | null, rub: number | null, crossConversionCost: number | null) => void;
+  onCommissionCalculated?: (usd: number | null, rub: number | null, crossConversionCost: number | null, crossConversionCostRub: number | null) => void;
 }
 
 export function CommissionCalculator({
@@ -92,6 +92,7 @@ export function CommissionCalculator({
       
       // Calculate cross conversion cost
       let crossConversionCost = 0;
+      let crossConversionCostRub = 0;
       if (buyExchangeRate && sellExchangeRate && buyExchangeRate > 0 && sellExchangeRate > 0) {
         // Логика: если посредник закупает валюту по курсу buyExchangeRate 
         // и продает по курсу sellExchangeRate (например, закупает Тенге за Рубли, 
@@ -104,11 +105,12 @@ export function CommissionCalculator({
         
         // Переводим потери из локальной валюты в USD (используя курс продажи из сделки как ориентир)
         crossConversionCost = exchangeRate > 0 ? totalLossInLocalCurrency / exchangeRate : 0;
+        crossConversionCostRub = totalLossInLocalCurrency;
       }
 
       // Store what we emit to prevent feedback loops in next effects
       lastEmittedUsd.current = finalUsd;
-      onCommissionCalculated(finalUsd, finalRub, crossConversionCost);
+      onCommissionCalculated(finalUsd, finalRub, crossConversionCost, crossConversionCostRub);
     }
   }, [calculatedValue, manualCommission, exchangeRate, buyExchangeRate, sellExchangeRate, quantity, onCommissionCalculated]);
 

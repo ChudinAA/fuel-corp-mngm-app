@@ -134,6 +134,9 @@ export class RefuelingAbroadIntermediariesStorage implements IRefuelingAbroadInt
     if (data.crossConversionCost !== undefined) {
       result.crossConversionCost = data.crossConversionCost !== null ? String(data.crossConversionCost) : null;
     }
+    if (data.crossConversionCostRub !== undefined) {
+      result.crossConversionCostRub = data.crossConversionCostRub !== null ? String(data.crossConversionCostRub) : null;
+    }
     
     return result;
   }
