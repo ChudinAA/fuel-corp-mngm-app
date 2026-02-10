@@ -123,11 +123,6 @@ export function RefuelingAbroadForm({
     queryKey: ["/api/bases"],
   });
 
-  const foreignSuppliers = suppliers.filter((s) => s.isForeign);
-  const foreignCustomers = customers.filter((c) => c.isForeign);
-  const foreignBases =
-    allBases?.filter((b) => b.baseType === BASE_TYPE.ABROAD) || [];
-
   const { data: exchangeRates = [] } = useQuery<ExchangeRate[]>({
     queryKey: ["/api/exchange-rates"],
   });
@@ -224,7 +219,7 @@ export function RefuelingAbroadForm({
       airportCode: editData?.airport || "",
       supplierId: editData?.supplierId || "",
       buyerId: editData?.buyerId || "",
-      basisId: editData?.basisId || foreignBases[0]?.id || "",
+      basisId: editData?.basisId || "",
       storageCardId: editData?.storageCardId || "",
       intermediaries: [],
       inputMode:
@@ -250,13 +245,11 @@ export function RefuelingAbroadForm({
     },
   });
 
-  useEffect(() => {
-    if (!editData && foreignBases.length > 0 && !form.getValues("basisId")) {
-      form.setValue("basisId", foreignBases[0].id);
-    }
-  }, [foreignBases, editData]);
-
   const watchedValues = form.watch();
+  const foreignSuppliers = suppliers.filter((s) => s.isForeign);
+  const foreignCustomers = customers.filter((c) => c.isForeign);
+  const foreignBases =
+    allBases?.filter((b) => b.baseType === BASE_TYPE.ABROAD) || [];
 
   const selectedSupplier = foreignSuppliers?.find(
     (s) => s.id === watchedValues.supplierId,
@@ -322,8 +315,8 @@ export function RefuelingAbroadForm({
     quantityLiters: watchedValues.quantityLiters || "",
     density: watchedValues.density || "0.8",
     quantityKg: watchedValues.quantityKg || "",
-    purchasePriceUsd: watchedValues.purchasePriceUsd?.toString() || "",
-    salePriceUsd: watchedValues.salePriceUsd?.toString() || "",
+    purchasePriceUsd: watchedValues.purchasePriceUsd || "",
+    salePriceUsd: watchedValues.salePriceUsd || "",
     purchaseExchangeRate,
     saleExchangeRate,
     commissionFormula: "",
@@ -498,29 +491,8 @@ export function RefuelingAbroadForm({
     isDraftOverride?: boolean,
   ) => {
     const finalIsDraft = isDraftOverride ?? data.isDraft;
-    console.log("onSubmit called", { data, finalIsDraft, calculations });
-
-    // Ensure prices are up to date in the data object being processed
-    const purchasePrice = calculations.purchasePrice?.toString() || data.purchasePriceUsd?.toString() || "";
-    const salePrice = calculations.salePrice?.toString() || data.salePriceUsd?.toString() || "";
-
-    if (!finalIsDraft) {
-      if (!data.refuelingDate || !data.productType || !data.airportCode || !purchasePrice || !salePrice) {
-         console.error("Manual validation failed for non-draft submission", {
-           refuelingDate: !!data.refuelingDate,
-           productType: !!data.productType,
-           airportCode: !!data.airportCode,
-           purchasePrice: !!purchasePrice,
-           salePrice: !!salePrice
-         });
-         toast({
-           title: "Ошибка валидации",
-           description: "Пожалуйста, заполните все обязательные поля (Дата, Продукт, Аэропорт, Цены)",
-           variant: "destructive",
-         });
-         return;
-      }
-    }
+    // Update the form state directly so validation pass or fail based on current state
+    form.setValue("isDraft", finalIsDraft);
 
     if (calculations.contractVolumeStatus.status === "error") {
       toast({
@@ -540,14 +512,7 @@ export function RefuelingAbroadForm({
       return;
     }
 
-    const submissionData = {
-      ...data,
-      isDraft: finalIsDraft,
-      purchasePriceUsd: calculations.purchasePrice?.toString() || data.purchasePriceUsd?.toString() || "",
-      salePriceUsd: calculations.salePrice?.toString() || data.salePriceUsd?.toString() || "",
-    };
-
-    createMutation.mutate(submissionData);
+    createMutation.mutate({ ...data, isDraft: finalIsDraft });
   };
 
   return (
@@ -1488,16 +1453,9 @@ export function RefuelingAbroadForm({
               type="button"
               variant="secondary"
               disabled={createMutation.isPending}
-              onClick={async () => {
-                console.log("Draft button clicked");
+              onClick={() => {
                 form.clearErrors();
-                const values = form.getValues();
-                values.isDraft = true;
-                // Sync price values from calculations
-                if (calculations.purchasePrice) values.purchasePriceUsd = calculations.purchasePrice.toString();
-                if (calculations.salePrice) values.salePriceUsd = calculations.salePrice.toString();
-                
-                onSubmit(values, true);
+                onSubmit(form.getValues(), true);
               }}
             >
               {createMutation.isPending ? (
@@ -1510,26 +1468,8 @@ export function RefuelingAbroadForm({
           <Button
             type="button"
             disabled={createMutation.isPending}
-            onClick={async () => {
-              console.log("Create button clicked");
-              // Sync price values from calculations to form before validation
-              if (calculations.purchasePrice) form.setValue("purchasePriceUsd", calculations.purchasePrice.toString());
-              if (calculations.salePrice) form.setValue("salePriceUsd", calculations.salePrice.toString());
-              
-              form.handleSubmit(
-                (data) => {
-                  console.log("handleSubmit success", data);
-                  onSubmit(data, false);
-                },
-                (errors) => {
-                  console.error("handleSubmit errors", errors);
-                  toast({
-                    title: "Ошибка валидации",
-                    description: "Проверьте заполнение обязательных полей",
-                    variant: "destructive",
-                  });
-                }
-              )();
+            onClick={() => {
+              form.handleSubmit((data) => onSubmit(data, false))();
             }}
             data-testid="button-submit-refueling"
           >
