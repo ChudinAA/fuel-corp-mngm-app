@@ -123,6 +123,11 @@ export function RefuelingAbroadForm({
     queryKey: ["/api/bases"],
   });
 
+  const foreignSuppliers = suppliers.filter((s) => s.isForeign);
+  const foreignCustomers = customers.filter((c) => c.isForeign);
+  const foreignBases =
+    allBases?.filter((b) => b.baseType === BASE_TYPE.ABROAD) || [];
+
   const { data: exchangeRates = [] } = useQuery<ExchangeRate[]>({
     queryKey: ["/api/exchange-rates"],
   });
@@ -252,10 +257,6 @@ export function RefuelingAbroadForm({
   }, [foreignBases, editData]);
 
   const watchedValues = form.watch();
-  const foreignSuppliers = suppliers.filter((s) => s.isForeign);
-  const foreignCustomers = customers.filter((c) => c.isForeign);
-  const foreignBases =
-    allBases?.filter((b) => b.baseType === BASE_TYPE.ABROAD) || [];
 
   const selectedSupplier = foreignSuppliers?.find(
     (s) => s.id === watchedValues.supplierId,
@@ -498,6 +499,28 @@ export function RefuelingAbroadForm({
   ) => {
     const finalIsDraft = isDraftOverride ?? data.isDraft;
     console.log("onSubmit called", { data, finalIsDraft, calculations });
+
+    // Ensure prices are up to date in the data object being processed
+    const purchasePrice = calculations.purchasePrice?.toString() || data.purchasePriceUsd?.toString() || "";
+    const salePrice = calculations.salePrice?.toString() || data.salePriceUsd?.toString() || "";
+
+    if (!finalIsDraft) {
+      if (!data.refuelingDate || !data.productType || !data.airportCode || !purchasePrice || !salePrice) {
+         console.error("Manual validation failed for non-draft submission", {
+           refuelingDate: !!data.refuelingDate,
+           productType: !!data.productType,
+           airportCode: !!data.airportCode,
+           purchasePrice: !!purchasePrice,
+           salePrice: !!salePrice
+         });
+         toast({
+           title: "Ошибка валидации",
+           description: "Пожалуйста, заполните все обязательные поля (Дата, Продукт, Аэропорт, Цены)",
+           variant: "destructive",
+         });
+         return;
+      }
+    }
 
     if (calculations.contractVolumeStatus.status === "error") {
       toast({
