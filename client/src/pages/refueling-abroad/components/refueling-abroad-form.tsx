@@ -219,7 +219,7 @@ export function RefuelingAbroadForm({
       airportCode: editData?.airport || "",
       supplierId: editData?.supplierId || "",
       buyerId: editData?.buyerId || "",
-      basisId: editData?.basisId || "",
+      basisId: editData?.basisId || foreignBases[0]?.id || "",
       storageCardId: editData?.storageCardId || "",
       intermediaries: [],
       inputMode:
@@ -244,6 +244,12 @@ export function RefuelingAbroadForm({
       isDraft: editData?.isDraft || false,
     },
   });
+
+  useEffect(() => {
+    if (!editData && foreignBases.length > 0 && !form.getValues("basisId")) {
+      form.setValue("basisId", foreignBases[0].id);
+    }
+  }, [foreignBases, editData]);
 
   const watchedValues = form.watch();
   const foreignSuppliers = suppliers.filter((s) => s.isForeign);
