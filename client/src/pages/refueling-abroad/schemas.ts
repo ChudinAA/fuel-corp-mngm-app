@@ -64,27 +64,6 @@ export const refuelingAbroadFormSchema = z
           path: ["productType"],
         });
       }
-      if (!data.airportCode) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Укажите код аэропорта",
-          path: ["airportCode"],
-        });
-      }
-      if (!data.purchasePriceUsd) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Укажите цену закупки в USD",
-          path: ["purchasePriceUsd"],
-        });
-      }
-      if (!data.salePriceUsd) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Укажите цену продажи в USD",
-          path: ["salePriceUsd"],
-        });
-      }
     }
   });
 

@@ -11,8 +11,6 @@ interface UseRefuelingAbroadCalculationsProps {
   quantityLiters: string;
   density: string;
   quantityKg: string;
-  purchasePriceUsd: string;
-  salePriceUsd: string;
   purchaseExchangeRate: number;
   saleExchangeRate: number;
   commissionFormula: string;
@@ -30,8 +28,6 @@ export function useRefuelingAbroadCalculations({
   quantityLiters,
   density,
   quantityKg,
-  purchasePriceUsd,
-  salePriceUsd,
   purchaseExchangeRate,
   saleExchangeRate,
   commissionFormula,
@@ -67,12 +63,12 @@ export function useRefuelingAbroadCalculations({
   const purchasePrice = useMemo(() => {
     // purchasePriceUsd - legacy manual price
     return extractedPurchasePrice;
-  }, [extractedPurchasePrice, purchasePriceUsd]);
+  }, [extractedPurchasePrice]);
 
   const salePrice = useMemo(() => {
     // purchasePriceUsd - legacy manual price
     return extractedSalePrice;
-  }, [extractedSalePrice, salePriceUsd]);
+  }, [extractedSalePrice]);
 
   const purchaseAmountUsd = useMemo(() => {
     return purchasePrice !== null && finalKg > 0

@@ -315,8 +315,6 @@ export function RefuelingAbroadForm({
     quantityLiters: watchedValues.quantityLiters || "",
     density: watchedValues.density || "0.8",
     quantityKg: watchedValues.quantityKg || "",
-    purchasePriceUsd: watchedValues.purchasePriceUsd || "",
-    salePriceUsd: watchedValues.salePriceUsd || "",
     purchaseExchangeRate,
     saleExchangeRate,
     commissionFormula: "",
@@ -343,44 +341,6 @@ export function RefuelingAbroadForm({
     setSelectedSalePriceId,
     formSetValue: form.setValue as any,
   });
-
-  // Синхронизация purchasePriceUsd при выборе цены из справочника
-  useEffect(() => {
-    if (selectedPurchasePriceId) {
-      const { purchasePriceId, purchasePriceIndex } = extractPriceIdsForSubmit(
-        selectedPurchasePriceId,
-        "",
-        purchasePrices,
-        [],
-        false,
-      );
-      const selectedPrice = purchasePrices.find(
-        (p) => p.id === purchasePriceId && p.index === purchasePriceIndex,
-      );
-      if (selectedPrice) {
-        form.setValue("purchasePriceUsd", selectedPrice.price.toString());
-      }
-    }
-  }, [selectedPurchasePriceId, purchasePrices, form]);
-
-  // Синхронизация salePriceUsd при выборе цены из справочника
-  useEffect(() => {
-    if (selectedSalePriceId) {
-      const { salePriceId, salePriceIndex } = extractPriceIdsForSubmit(
-        "",
-        selectedSalePriceId,
-        [],
-        salePrices,
-        false,
-      );
-      const selectedPrice = salePrices.find(
-        (p) => p.id === salePriceId && p.index === salePriceIndex,
-      );
-      if (selectedPrice) {
-        form.setValue("salePriceUsd", selectedPrice.price.toString());
-      }
-    }
-  }, [selectedSalePriceId, salePrices, form]);
 
   const createMutation = useMutation({
     mutationFn: async (data: RefuelingAbroadFormData) => {
