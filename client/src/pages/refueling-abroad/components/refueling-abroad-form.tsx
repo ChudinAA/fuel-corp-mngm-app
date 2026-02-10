@@ -486,7 +486,7 @@ export function RefuelingAbroadForm({
   const isEditing = !!editData && !!editData.id;
   const isDraft = watchedValues.isDraft;
 
-  const onSubmit = (
+  const onSubmit = async (
     data: RefuelingAbroadFormData,
     isDraftOverride?: boolean,
   ) => {
@@ -545,7 +545,7 @@ export function RefuelingAbroadForm({
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
                           {field.value
-                            ? format(field.value, "yyyy-MM-dd'T'HH:mm:ss", {
+                            ? format(field.value, "yyyy-MM-dd", {
                                 locale: ru,
                               })
                             : "Выберите дату"}
