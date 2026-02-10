@@ -175,8 +175,8 @@ export function RefuelingAbroadForm({
           commissionUsd: item.commissionUsd
             ? parseFloat(String(item.commissionUsd))
             : null,
-          manualCommissionUsd: (item as any).manualCommissionUsd
-            ? String((item as any).manualCommissionUsd)
+          manualCommissionUsd: item.manualCommissionUsd
+            ? parseFloat(item.manualCommissionUsd)
             : null,
           commissionRub: item.commissionRub
             ? parseFloat(String(item.commissionRub))

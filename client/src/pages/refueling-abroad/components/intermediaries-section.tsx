@@ -20,7 +20,7 @@ export interface IntermediaryItem {
   intermediaryId: string;
   orderIndex: number;
   commissionFormula: string;
-  manualCommissionUsd: string | null;
+  manualCommissionUsd: number | null;
   commissionUsd: number | null;
   commissionRub: number | null;
   buyCurrencyId?: string;
@@ -359,12 +359,7 @@ export function IntermediariesSection({
                   quantity={quantity}
                   exchangeRate={exchangeRate}
                   commissionFormula={item.commissionFormula || ""}
-                  manualCommissionUsd={
-                    item.commissionUsd !== null &&
-                    item.commissionUsd !== undefined
-                      ? item.commissionUsd.toString()
-                      : ""
-                  }
+                  manualCommissionUsd={item.manualCommissionUsd?.toString() || ""}
                   buyCurrencyId={item.buyCurrencyId}
                   sellCurrencyId={item.sellCurrencyId}
                   buyExchangeRate={item.buyExchangeRate}
@@ -373,17 +368,27 @@ export function IntermediariesSection({
                     handleUpdate(index, "commissionFormula", formula)
                   }
                   onManualCommissionChange={(usd) => {
+                    const parsed = usd === "" ? null : parseFloat(usd);
                     const updated = [...intermediaries];
                     updated[index] = {
                       ...updated[index],
-                      manualCommissionUsd: usd || null,
+                      manualCommissionUsd: parsed,
+                      commissionUsd: parsed,
+                      commissionRub:
+                        parsed === null ? null : parsed * exchangeRate,
                     };
                     onChange(updated);
                   }}
-                  onCommissionCalculated={(usd, rub, crossCost, crossCostRub, formula) => {
+                  onCommissionCalculated={(
+                    usd,
+                    rub,
+                    crossCost,
+                    crossCostRub,
+                    formula,
+                  ) => {
                     // Update the specific intermediary item directly
                     const updated = [...intermediaries];
-                    
+
                     // CRITICAL: Check if we are actually changing values to avoid infinite loops
                     const current = updated[index];
                     if (
@@ -399,7 +404,7 @@ export function IntermediariesSection({
                         commissionRub: rub,
                         crossConversionCost: crossCost || 0,
                         crossConversionCostRub: crossCostRub || 0,
-                        commissionFormula: formula
+                        commissionFormula: formula,
                       };
                       onChange(updated);
                     }

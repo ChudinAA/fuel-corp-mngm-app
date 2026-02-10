@@ -35,6 +35,7 @@ export class RefuelingAbroadIntermediariesStorage implements IRefuelingAbroadInt
         intermediaryId: refuelingAbroadIntermediaries.intermediaryId,
         orderIndex: refuelingAbroadIntermediaries.orderIndex,
         commissionFormula: refuelingAbroadIntermediaries.commissionFormula,
+        manualCommissionUsd: refuelingAbroadIntermediaries.manualCommissionUsd,
         commissionUsd: refuelingAbroadIntermediaries.commissionUsd,
         commissionRub: refuelingAbroadIntermediaries.commissionRub,
         buyCurrencyId: refuelingAbroadIntermediaries.buyCurrencyId,
@@ -121,6 +122,9 @@ export class RefuelingAbroadIntermediariesStorage implements IRefuelingAbroadInt
     
     if (data.commissionFormula !== undefined) {
       result.commissionFormula = data.commissionFormula;
+    }
+    if (data.manualCommissionUsd !== undefined) {
+      result.manualCommissionUsd = data.manualCommissionUsd !== null ? String(data.manualCommissionUsd) : null;
     }
     if (data.commissionUsd !== undefined) {
       result.commissionUsd = data.commissionUsd !== null ? String(data.commissionUsd) : null;
