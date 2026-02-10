@@ -36,8 +36,8 @@ export const refuelingAbroadFormSchema = z
     purchasePriceIndex: z.number().optional().nullable(),
     salePriceIndex: z.number().optional().nullable(),
 
-    purchasePriceUsd: z.string().optional().nullable(),
-    salePriceUsd: z.string().optional().nullable(),
+    purchasePriceUsd: z.union([z.string(), z.number()]).optional().nullable(),
+    salePriceUsd: z.union([z.string(), z.number()]).optional().nullable(),
 
     purchaseExchangeRateId: z.string().optional().nullable(),
     manualPurchaseExchangeRate: z.string().optional().nullable(),

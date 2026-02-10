@@ -512,7 +512,14 @@ export function RefuelingAbroadForm({
       return;
     }
 
-    createMutation.mutate({ ...data, isDraft: finalIsDraft });
+    const submissionData = {
+      ...data,
+      isDraft: finalIsDraft,
+      purchasePriceUsd: calculations.purchasePrice?.toString() || data.purchasePriceUsd?.toString() || "",
+      salePriceUsd: calculations.salePrice?.toString() || data.salePriceUsd?.toString() || "",
+    };
+
+    createMutation.mutate(submissionData);
   };
 
   return (
