@@ -5,6 +5,7 @@ export const intermediaryItemSchema = z.object({
   intermediaryId: z.string(),
   orderIndex: z.number(),
   commissionFormula: z.string().optional().nullable(),
+  manualCommissionUsd: z.number().optional().nullable(),
   commissionUsd: z.number().optional().nullable(),
   commissionRub: z.number().optional().nullable(),
   notes: z.string().optional().nullable(),

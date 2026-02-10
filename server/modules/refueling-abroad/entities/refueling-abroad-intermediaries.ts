@@ -39,8 +39,12 @@ export const refuelingAbroadIntermediaries = pgTable(
       scale: 5,
     }),
     commissionFormula: text("commission_formula"),
-    commissionUsd: decimal("commission_usd", { precision: 15, scale: 5 }),
-    commissionRub: decimal("commission_rub", { precision: 15, scale: 2 }),
+    manualCommissionUsd: decimal("manual_commission_usd", {
+      precision: 12,
+      scale: 5,
+    }),
+    commissionUsd: decimal("commission_usd", { precision: 12, scale: 5 }),
+    commissionRub: decimal("commission_rub", { precision: 12, scale: 2 }),
     notes: text("notes"),
   },
   (table) => ({
@@ -86,6 +90,7 @@ export const insertRefuelingAbroadIntermediarySchema = createInsertSchema(
     intermediaryId: z.string(),
     orderIndex: z.number().optional().default(0),
     commissionFormula: z.string().nullable().optional(),
+    manualCommissionUsd: z.number().nullable().optional(),
     commissionUsd: z.number().nullable().optional(),
     commissionRub: z.number().nullable().optional(),
     buyCurrencyId: z.string().uuid().nullable().optional(),
