@@ -175,6 +175,9 @@ export function RefuelingAbroadForm({
           commissionUsd: item.commissionUsd
             ? parseFloat(String(item.commissionUsd))
             : null,
+          manualCommissionUsd: (item as any).manualCommissionUsd
+            ? String((item as any).manualCommissionUsd)
+            : null,
           commissionRub: item.commissionRub
             ? parseFloat(String(item.commissionRub))
             : null,
@@ -441,6 +444,7 @@ export function RefuelingAbroadForm({
           intermediaryId: item.intermediaryId,
           orderIndex: index,
           commissionFormula: item.commissionFormula !== undefined ? item.commissionFormula : null,
+          manualCommissionUsd: item.manualCommissionUsd || null,
           commissionUsd: item.commissionUsd ?? null,
           commissionRub: item.commissionRub ?? null,
           buyCurrencyId: item.buyCurrencyId || null,

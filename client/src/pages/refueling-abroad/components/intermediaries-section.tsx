@@ -20,6 +20,7 @@ export interface IntermediaryItem {
   intermediaryId: string;
   orderIndex: number;
   commissionFormula: string;
+  manualCommissionUsd: string | null;
   commissionUsd: number | null;
   commissionRub: number | null;
   buyCurrencyId?: string;
@@ -66,6 +67,7 @@ export function IntermediariesSection({
       intermediaryId: "",
       orderIndex: intermediaries.length,
       commissionFormula: "",
+      manualCommissionUsd: null,
       commissionUsd: null,
       commissionRub: null,
       notes: "",
@@ -371,13 +373,10 @@ export function IntermediariesSection({
                     handleUpdate(index, "commissionFormula", formula)
                   }
                   onManualCommissionChange={(usd) => {
-                    const parsed = usd === "" ? null : parseFloat(usd);
                     const updated = [...intermediaries];
                     updated[index] = {
                       ...updated[index],
-                      commissionUsd: parsed,
-                      commissionRub:
-                        parsed === null ? null : parsed * exchangeRate,
+                      manualCommissionUsd: usd || null,
                     };
                     onChange(updated);
                   }}

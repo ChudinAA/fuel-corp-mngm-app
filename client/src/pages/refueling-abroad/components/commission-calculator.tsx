@@ -54,9 +54,9 @@ export function CommissionCalculator({
   useEffect(() => {
     // Only update local manual state if the prop changed to something different 
     // from what we last sent up to the parent. This prevents the feedback loop.
-    const propValue = manualCommissionUsd !== "" ? parseFloat(manualCommissionUsd) : null;
-    if (propValue !== lastEmittedUsd.current) {
-      setManualCommission(manualCommissionUsd);
+    const propValue = manualCommissionUsd !== "" ? manualCommissionUsd : "";
+    if (propValue !== manualCommission) {
+      setManualCommission(manualCommissionUsd || "");
     }
   }, [manualCommissionUsd]);
 
