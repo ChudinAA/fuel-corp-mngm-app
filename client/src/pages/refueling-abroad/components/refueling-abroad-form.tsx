@@ -491,8 +491,7 @@ export function RefuelingAbroadForm({
     isDraftOverride?: boolean,
   ) => {
     const finalIsDraft = isDraftOverride ?? data.isDraft;
-    // Update the form state directly so validation pass or fail based on current state
-    form.setValue("isDraft", finalIsDraft);
+    console.log("onSubmit called", { data, finalIsDraft, calculations });
 
     if (calculations.contractVolumeStatus.status === "error") {
       toast({
@@ -1460,9 +1459,16 @@ export function RefuelingAbroadForm({
               type="button"
               variant="secondary"
               disabled={createMutation.isPending}
-              onClick={() => {
+              onClick={async () => {
+                console.log("Draft button clicked");
                 form.clearErrors();
-                onSubmit(form.getValues(), true);
+                const values = form.getValues();
+                values.isDraft = true;
+                // Sync price values from calculations
+                if (calculations.purchasePrice) values.purchasePriceUsd = calculations.purchasePrice.toString();
+                if (calculations.salePrice) values.salePriceUsd = calculations.salePrice.toString();
+                
+                onSubmit(values, true);
               }}
             >
               {createMutation.isPending ? (
@@ -1475,8 +1481,26 @@ export function RefuelingAbroadForm({
           <Button
             type="button"
             disabled={createMutation.isPending}
-            onClick={() => {
-              form.handleSubmit((data) => onSubmit(data, false))();
+            onClick={async () => {
+              console.log("Create button clicked");
+              // Sync price values from calculations to form before validation
+              if (calculations.purchasePrice) form.setValue("purchasePriceUsd", calculations.purchasePrice.toString());
+              if (calculations.salePrice) form.setValue("salePriceUsd", calculations.salePrice.toString());
+              
+              form.handleSubmit(
+                (data) => {
+                  console.log("handleSubmit success", data);
+                  onSubmit(data, false);
+                },
+                (errors) => {
+                  console.error("handleSubmit errors", errors);
+                  toast({
+                    title: "Ошибка валидации",
+                    description: "Проверьте заполнение обязательных полей",
+                    variant: "destructive",
+                  });
+                }
+              )();
             }}
             data-testid="button-submit-refueling"
           >
