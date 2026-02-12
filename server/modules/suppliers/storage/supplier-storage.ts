@@ -82,7 +82,7 @@ export class SupplierStorage implements ISupplierStorage {
       // Auto-create storage card for foreign suppliers
       if (created.isForeign) {
         const [card] = await tx.insert(storageCards).values({
-          name: `Авансы: ${created.name}`,
+          name: created.name,
           country: "Зарубеж",
           airport: "N/A",
           supplierId: created.id,

@@ -137,7 +137,7 @@ export function AddPriceDialog({
   const { data: currencies } = useQuery<Currency[]>({
     queryKey: ["/api/currencies"],
   });
-  
+
   const allBases =
     bases?.filter((b) => b.baseType === watchCounterpartyType) || [];
 
@@ -145,12 +145,13 @@ export function AddPriceDialog({
     suppliers?.filter((s) => allBases.find((b) => s.baseIds?.includes(b.id))) ||
     [];
 
-  const contractors =
-    (watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER
+  const contractors = (
+    watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER
       ? availableSuppliers
       : watchCounterpartyType === COUNTERPARTY_TYPE.REFUELING_ABROAD
-        ? (customers?.filter((c) => c.isForeign) || [])
-        : (customers || [])) as (Supplier | Customer)[];
+        ? customers?.filter((c) => c.isForeign) || []
+        : customers || []
+  ) as (Supplier | Customer)[];
 
   // Фильтруем базисы для поставщика
   const availableBases = (() => {
@@ -180,13 +181,13 @@ export function AddPriceDialog({
   useEffect(() => {
     if (!editPrice && currencies) {
       if (watchCounterpartyType === COUNTERPARTY_TYPE.REFUELING_ABROAD) {
-        const usd = currencies.find(c => c.code === "USD");
+        const usd = currencies.find((c) => c.code === "USD");
         if (usd) {
           form.setValue("currencyId", usd.id);
           form.setValue("currency", "USD");
         }
       } else {
-        const rub = currencies.find(c => c.code === "RUB");
+        const rub = currencies.find((c) => c.code === "RUB");
         if (rub) {
           form.setValue("currencyId", rub.id);
           form.setValue("currency", "RUB");
@@ -266,6 +267,9 @@ export function AddPriceDialog({
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/prices/list"] });
       queryClient.invalidateQueries({ queryKey: ["/api/prices/find-active"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/storage-cards/advances"],
+      });
       if (data.id) {
         queryClient.invalidateQueries({ queryKey: ["/api/prices", data.id] });
       }

@@ -156,6 +156,7 @@ export function AddSupplierDialog({
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/storage-cards/advances"] });
       toast({
         title: editItem ? "Поставщик обновлен" : "Поставщик добавлен",
         description: editItem
