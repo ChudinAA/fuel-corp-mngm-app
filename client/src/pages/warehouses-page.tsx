@@ -12,8 +12,6 @@ import { WarehouseCard } from "./warehouses/components/warehouse-card";
 import { AddWarehouseDialog } from "./warehouses/components/add-warehouse-dialog";
 import { WarehouseDetailsDialog } from "./warehouses/components/warehouse-details-dialog";
 import { useAuth } from "@/hooks/use-auth";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import StorageCardsPage from "./storage-cards/storage-cards-page";
 
 export default function WarehousesPage() {
   const [search, setSearch] = useState("");

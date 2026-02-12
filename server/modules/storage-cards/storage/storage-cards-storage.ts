@@ -9,7 +9,49 @@ import {
   type InsertStorageCardTransaction,
 } from "../entities/storage-cards";
 
+import { prices, suppliers, storageCards } from "@shared/schema";
+
 export class StorageCardsStorage {
+  async getAdvanceCards(): Promise<any[]> {
+    const cards = await db.query.storageCards.findMany({
+      where: and(
+        isNull(storageCards.deletedAt),
+        sql`${storageCards.supplierId} IS NOT NULL`
+      ),
+      with: {
+        supplier: true
+      }
+    });
+
+    const results = await Promise.all(cards.map(async (card) => {
+      // Get latest price for supplier
+      const latestPrice = await db.query.prices.findFirst({
+        where: and(
+          eq(prices.counterpartyId, card.supplierId!),
+          eq(prices.counterpartyRole, "supplier"),
+          isNull(prices.deletedAt)
+        ),
+        orderBy: [desc(prices.dateTo)]
+      });
+
+      const pricePerKg = latestPrice ? parseFloat(latestPrice.priceValues?.[0] || "0") : 0;
+      const balance = parseFloat(card.currentBalance || "0");
+      const kgAmount = pricePerKg > 0 ? balance / pricePerKg : 0;
+
+      return {
+        ...card,
+        latestPrice: latestPrice ? {
+          price: pricePerKg,
+          dateTo: latestPrice.dateTo,
+          isExpired: new Date(latestPrice.dateTo) < new Date()
+        } : null,
+        kgAmount
+      };
+    }));
+
+    return results;
+  }
+
   async getAllStorageCards(): Promise<StorageCard[]> {
     return await db.query.storageCards.findMany({
       where: isNull(storageCards.deletedAt),

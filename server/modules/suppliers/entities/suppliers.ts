@@ -34,7 +34,7 @@ export const suppliers = pgTable(
     servicePrice: decimal("service_price", { precision: 12, scale: 2 }),
     pvkjPrice: decimal("pvkj_price", { precision: 12, scale: 2 }),
     agentFee: decimal("agent_fee", { precision: 12, scale: 2 }),
-    storageCardId: uuid("storage_card_id").references(() => storageCards.id),
+    storageCardId: uuid("storage_card_id"),
     isWarehouse: boolean("is_warehouse").default(false),
     warehouseId: uuid("warehouse_id").references(() => warehouses.id),
     storageCost: decimal("storage_cost", { precision: 12, scale: 2 }),
