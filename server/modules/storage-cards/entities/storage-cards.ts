@@ -25,7 +25,10 @@ export const storageCards = pgTable(
       precision: 15,
       scale: 2,
     }).default("0"),
-    averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default("0"),
+    supplierId: uuid("supplier_id"),
+    averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default(
+      "0",
+    ),
     averageCostCurrency: text("average_cost_currency").default("USD"),
     storageCost: decimal("storage_cost", { precision: 12, scale: 2 }),
     notes: text("notes"),
@@ -42,7 +45,7 @@ export const storageCards = pgTable(
     countryIdx: index("storage_cards_country_idx").on(table.country),
     airportIdx: index("storage_cards_airport_idx").on(table.airport),
     isActiveIdx: index("storage_cards_is_active_idx").on(table.isActive),
-  })
+  }),
 );
 
 export const storageCardTransactions = pgTable(
@@ -80,35 +83,38 @@ export const storageCardTransactions = pgTable(
   },
   (table) => ({
     storageCardIdIdx: index("storage_card_transactions_card_id_idx").on(
-      table.storageCardId
+      table.storageCardId,
     ),
     createdAtIdx: index("storage_card_transactions_created_at_idx").on(
-      table.createdAt
+      table.createdAt,
     ),
     sourceIdx: index("storage_card_transactions_source_idx").on(
       table.sourceType,
-      table.sourceId
+      table.sourceId,
     ),
     transactionDateIdx: index("storage_card_transactions_date_idx").on(
       table.storageCardId,
-      table.transactionDate
+      table.transactionDate,
     ),
-  })
+  }),
 );
 
-export const storageCardsRelations = relations(storageCards, ({ many, one }) => ({
-  transactions: many(storageCardTransactions),
-  createdBy: one(users, {
-    fields: [storageCards.createdById],
-    references: [users.id],
-    relationName: "storageCardCreatedBy",
+export const storageCardsRelations = relations(
+  storageCards,
+  ({ many, one }) => ({
+    transactions: many(storageCardTransactions),
+    createdBy: one(users, {
+      fields: [storageCards.createdById],
+      references: [users.id],
+      relationName: "storageCardCreatedBy",
+    }),
+    updatedBy: one(users, {
+      fields: [storageCards.updatedById],
+      references: [users.id],
+      relationName: "storageCardUpdatedBy",
+    }),
   }),
-  updatedBy: one(users, {
-    fields: [storageCards.updatedById],
-    references: [users.id],
-    relationName: "storageCardUpdatedBy",
-  }),
-}));
+);
 
 export const storageCardTransactionsRelations = relations(
   storageCardTransactions,
@@ -121,7 +127,7 @@ export const storageCardTransactionsRelations = relations(
       fields: [storageCardTransactions.createdById],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const insertStorageCardSchema = createInsertSchema(storageCards)
@@ -133,7 +139,7 @@ export const insertStorageCardSchema = createInsertSchema(storageCards)
   });
 
 export const insertStorageCardTransactionSchema = createInsertSchema(
-  storageCardTransactions
+  storageCardTransactions,
 )
   .omit({ id: true, createdAt: true })
   .extend({
@@ -144,7 +150,8 @@ export const insertStorageCardTransactionSchema = createInsertSchema(
 
 export type StorageCard = typeof storageCards.$inferSelect;
 export type InsertStorageCard = z.infer<typeof insertStorageCardSchema>;
-export type StorageCardTransaction = typeof storageCardTransactions.$inferSelect;
+export type StorageCardTransaction =
+  typeof storageCardTransactions.$inferSelect;
 export type InsertStorageCardTransaction = z.infer<
   typeof insertStorageCardTransactionSchema
 >;
