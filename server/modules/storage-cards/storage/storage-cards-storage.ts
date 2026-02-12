@@ -1,7 +1,6 @@
 import { eq, desc, sql, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
 import {
-  storageCards,
   storageCardTransactions,
   type StorageCard,
   type InsertStorageCard,
