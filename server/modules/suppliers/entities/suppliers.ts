@@ -15,43 +15,50 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import { users } from "@shared/schema";
+import { storageCards, users } from "@shared/schema";
 import { warehouses } from "@shared/schema";
 import { aircraftRefueling } from "@shared/schema";
 import { movement } from "@shared/schema";
 import { bases } from "@shared/schema";
 import { opt } from "@shared/schema";
 
-export const suppliers = pgTable("suppliers", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: text("name").notNull(),
-  fullName: text("full_name"),
-  supplyNomenclature: text("supply_nomenclature"),
-  iata: text("iata"),
-  description: text("description"),
-  servicePrice: decimal("service_price", { precision: 12, scale: 2 }),
-  pvkjPrice: decimal("pvkj_price", { precision: 12, scale: 2 }),
-  agentFee: decimal("agent_fee", { precision: 12, scale: 2 }),
-  isWarehouse: boolean("is_warehouse").default(false),
-  warehouseId: uuid("warehouse_id").references(() => warehouses.id),
-  storageCost: decimal("storage_cost", { precision: 12, scale: 2 }),
-  isIntermediary: boolean("is_intermediary").default(false),
-  isForeign: boolean("is_foreign").default(false),
-  withVAT: boolean("with_vat").default(false),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: "string" }),
-  createdById: uuid("created_by_id").references(() => users.id),
-  updatedById: uuid("updated_by_id").references(() => users.id),
-  deletedAt: timestamp("deleted_at", { mode: "string" }),
-  deletedById: uuid("deleted_by_id").references(() => users.id),
-}, (table) => ({
-  nameIdx: index("suppliers_name_idx").on(table.name),
-  isActiveIdx: index("suppliers_is_active_idx").on(table.isActive),
-  isWarehouseIdx: index("suppliers_is_warehouse_idx").on(table.isWarehouse),
-  isIntermediaryIdx: index("suppliers_is_intermediary_idx").on(table.isIntermediary),
-  isForeignIdx: index("suppliers_is_foreign_idx").on(table.isForeign),
-}));
+export const suppliers = pgTable(
+  "suppliers",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull(),
+    fullName: text("full_name"),
+    supplyNomenclature: text("supply_nomenclature"),
+    iata: text("iata"),
+    description: text("description"),
+    servicePrice: decimal("service_price", { precision: 12, scale: 2 }),
+    pvkjPrice: decimal("pvkj_price", { precision: 12, scale: 2 }),
+    agentFee: decimal("agent_fee", { precision: 12, scale: 2 }),
+    storageCardId: uuid("storage_card_id").references(() => storageCards.id),
+    isWarehouse: boolean("is_warehouse").default(false),
+    warehouseId: uuid("warehouse_id").references(() => warehouses.id),
+    storageCost: decimal("storage_cost", { precision: 12, scale: 2 }),
+    isIntermediary: boolean("is_intermediary").default(false),
+    isForeign: boolean("is_foreign").default(false),
+    withVAT: boolean("with_vat").default(false),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" }),
+    createdById: uuid("created_by_id").references(() => users.id),
+    updatedById: uuid("updated_by_id").references(() => users.id),
+    deletedAt: timestamp("deleted_at", { mode: "string" }),
+    deletedById: uuid("deleted_by_id").references(() => users.id),
+  },
+  (table) => ({
+    nameIdx: index("suppliers_name_idx").on(table.name),
+    isActiveIdx: index("suppliers_is_active_idx").on(table.isActive),
+    isWarehouseIdx: index("suppliers_is_warehouse_idx").on(table.isWarehouse),
+    isIntermediaryIdx: index("suppliers_is_intermediary_idx").on(
+      table.isIntermediary,
+    ),
+    isForeignIdx: index("suppliers_is_foreign_idx").on(table.isForeign),
+  }),
+);
 
 // Junction table for supplier-base many-to-many relationship
 export const supplierBases = pgTable(
@@ -70,9 +77,9 @@ export const supplierBases = pgTable(
     // Composite unique constraint to prevent duplicate supplier-base pairs
     uniqueSupplierBase: index("unique_supplier_base_idx").on(
       table.supplierId,
-      table.baseId
+      table.baseId,
     ),
-  })
+  }),
 );
 
 // ============ RELATIONS ============
@@ -81,6 +88,10 @@ export const suppliersRelations = relations(suppliers, ({ many, one }) => ({
   warehouse: one(warehouses, {
     fields: [suppliers.warehouseId],
     references: [warehouses.id],
+  }),
+  storageCard: one(storageCards, {
+    fields: [suppliers.storageCardId],
+    references: [storageCards.id],
   }),
   supplierBases: many(supplierBases),
   optDeals: many(opt),
