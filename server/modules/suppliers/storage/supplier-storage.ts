@@ -3,6 +3,7 @@ import { db } from "server/db";
 import {
   suppliers,
   supplierBases,
+  storageCards,
   type Supplier,
   type InsertSupplier,
 } from "@shared/schema";
@@ -77,6 +78,26 @@ export class SupplierStorage implements ISupplierStorage {
     return await db.transaction(async (tx) => {
       // Create supplier
       const [created] = await tx.insert(suppliers).values(supplierData).returning();
+
+      // Auto-create storage card for foreign suppliers
+      if (created.isForeign) {
+        const [card] = await tx.insert(storageCards).values({
+          name: `Авансы: ${created.name}`,
+          country: "Зарубеж",
+          airport: "N/A",
+          supplierId: created.id,
+          currency: "USD",
+          currentBalance: "0",
+          isActive: true
+        }).returning();
+
+        // Link card to supplier
+        await tx.update(suppliers)
+          .set({ storageCardId: card.id })
+          .where(eq(suppliers.id, created.id));
+        
+        created.storageCardId = card.id;
+      }
 
       // Create supplier-base relations
       if (baseIds && baseIds.length > 0) {
