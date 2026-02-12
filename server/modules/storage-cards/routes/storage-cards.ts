@@ -8,8 +8,61 @@ import {
   insertStorageCardSchema,
   insertStorageCardTransactionSchema,
 } from "../entities/storage-cards";
+import { db } from "server/db";
+import { prices, suppliers, storageCards } from "@shared/schema";
+import { eq, and, isNull, desc, sql } from "drizzle-orm";
 
 export function registerStorageCardsRoutes(app: Express) {
+  app.get(
+    "/api/storage-cards/advances",
+    requireAuth,
+    requirePermission("storage-cards", "view"),
+    async (req, res) => {
+      try {
+        const cards = await db.query.storageCards.findMany({
+          where: and(
+            isNull(storageCards.deletedAt),
+            sql`${storageCards.supplierId} IS NOT NULL`
+          ),
+          with: {
+            supplier: true
+          }
+        });
+
+        const results = await Promise.all(cards.map(async (card) => {
+          // Get latest price for supplier
+          const latestPrice = await db.query.prices.findFirst({
+            where: and(
+              eq(prices.counterpartyId, card.supplierId!),
+              eq(prices.counterpartyRole, "supplier"),
+              isNull(prices.deletedAt)
+            ),
+            orderBy: [desc(prices.dateTo)]
+          });
+
+          const pricePerKg = latestPrice ? parseFloat(latestPrice.priceValues?.[0] || "0") : 0;
+          const balance = parseFloat(card.currentBalance || "0");
+          const kgAmount = pricePerKg > 0 ? balance / pricePerKg : 0;
+
+          return {
+            ...card,
+            latestPrice: latestPrice ? {
+              price: pricePerKg,
+              dateTo: latestPrice.dateTo,
+              isExpired: new Date(latestPrice.dateTo) < new Date()
+            } : null,
+            kgAmount
+          };
+        }));
+
+        res.json(results);
+      } catch (error: any) {
+        console.error("Error fetching advance cards:", error);
+        res.status(500).json({ message: "Ошибка получения данных авансовых карт" });
+      }
+    }
+  );
+
   app.get(
     "/api/storage-cards",
     requireAuth,
