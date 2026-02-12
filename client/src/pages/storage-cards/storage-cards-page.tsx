@@ -287,8 +287,8 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingCard, setEditingCard] = useState<StorageCard | null>(null);
-  const [viewingCard, setViewingCard] = useState<StorageCard | null>(null);
+  const [editingCard, setEditingCard] = useState<any | null>(null);
+  const [viewingCard, setViewingCard] = useState<any | null>(null);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
 
   const { data: storageCards, isLoading } = useQuery<any[]>({
@@ -305,6 +305,186 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
       card.airportCode?.toLowerCase().includes(query)
     );
   });
+
+  const formatNumber = (value: number) =>
+    new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(value);
+
+  const handleEdit = (card: any) => {
+    setEditingCard(card);
+    setDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setEditingCard(null);
+  };
+
+  return (
+    <div className="space-y-6">
+      {!hideHeader && (
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-semibold">Авансы поставщикам</h1>
+            <p className="text-muted-foreground">
+              Управление авансами на зарубежных аэропортах
+            </p>
+          </div>
+          {hasPermission("storage-cards", "create") && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-add-card">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Добавить карту
+                 </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingCard ? "Редактировать карту" : "Новая карта хранения"}
+                  </DialogTitle>
+                </DialogHeader>
+                <StorageCardForm
+                  editCard={editingCard}
+                  onSuccess={handleDialogClose}
+                  onCancel={handleDialogClose}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+      )}
+
+      {hideHeader && hasPermission("storage-cards", "create") && (
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-medium">Карты хранения</h2>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-card">
+                <Plus className="h-4 w-4 mr-2" />
+                Добавить карту
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingCard ? "Редактировать карту" : "Новая карта хранения"}
+                </DialogTitle>
+              </DialogHeader>
+              <StorageCardForm
+                editCard={editingCard}
+                onSuccess={handleDialogClose}
+                onCancel={handleDialogClose}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Поиск по названию, стране, аэропорту..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+            data-testid="input-search"
+          />
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => setAuditPanelOpen(true)}
+          title="Аудит всех складов"
+        >
+          <History className="h-4 w-4 mr-2" />
+          История изменений
+        </Button>
+        <ExportButton moduleName="storage-cards" />
+      </div>
+
+      {isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-32" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : !filteredCards?.length ? (
+        <Card>
+          <CardContent className="text-center py-8 text-muted-foreground">
+            Карты хранения не найдены
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredCards.map((card) => (
+            <Card key={card.id} className="hover-elevate">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-1">
+                <CardTitle className="text-base font-bold">{card.name}</CardTitle>
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Остаток авансов</p>
+                    <p className="text-2xl font-bold">
+                      {formatNumber(parseFloat(card.currentBalance || "0"))} $
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Цена за кг</p>
+                      <p className={card.latestPrice?.isExpired ? "text-orange-600 font-bold" : "font-medium"}>
+                        {card.latestPrice ? `${card.latestPrice.price} $` : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Актуальна до</p>
+                      <p className={card.latestPrice?.isExpired ? "text-orange-600 font-bold" : "font-medium"}>
+                        {card.latestPrice ? new Date(card.latestPrice.dateTo).toLocaleDateString("ru-RU") : "—"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-muted-foreground">Рассчитано кг</p>
+                    <p className="text-lg font-semibold text-primary">
+                      {formatNumber(card.kgAmount)} кг
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      onClick={() => setViewingCard(card)}
+                      data-testid={`button-deposit-${card.id}`}
+                    >
+                      Внести аванс
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(card)}
+                      data-testid={`button-edit-${card.id}`}
+                    >
+                      Изм.
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <Dialog open={!!viewingCard} onOpenChange={(open) => !open && setViewingCard(null)}>
         <DialogContent className="max-w-lg">
@@ -331,7 +511,7 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
                 <div>
                   <p className="text-sm text-muted-foreground">Баланс</p>
                   <p className="font-medium text-lg">
-                    {formatNumber(parseFloat(viewingCard.currentBalance || "0"))} кг
+                    {formatNumber(parseFloat(viewingCard.currentBalance || "0"))} $
                   </p>
                 </div>
                 <div>

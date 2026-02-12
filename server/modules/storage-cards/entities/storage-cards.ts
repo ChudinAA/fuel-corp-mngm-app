@@ -12,6 +12,8 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
 
+import { suppliers } from "../../suppliers/entities/suppliers";
+
 export const storageCards = pgTable(
   "storage_cards",
   {
@@ -25,7 +27,7 @@ export const storageCards = pgTable(
       precision: 15,
       scale: 2,
     }).default("0"),
-    supplierId: uuid("supplier_id"),
+    supplierId: uuid("supplier_id").references(() => suppliers.id),
     averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default(
       "0",
     ),
@@ -103,6 +105,10 @@ export const storageCardsRelations = relations(
   storageCards,
   ({ many, one }) => ({
     transactions: many(storageCardTransactions),
+    supplier: one(suppliers, {
+      fields: [storageCards.supplierId],
+      references: [suppliers.id],
+    }),
     createdBy: one(users, {
       fields: [storageCards.createdById],
       references: [users.id],
