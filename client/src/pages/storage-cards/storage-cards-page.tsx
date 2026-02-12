@@ -66,10 +66,10 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
           {hasPermission("storage-cards", "create") && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button data-testid="button-add-card">
+                {/* <Button data-testid="button-add-card">
                   <Plus className="h-4 w-4 mr-2" />
                   Добавить карту
-                 </Button>
+                 </Button> */}
               </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogHeader>
@@ -85,32 +85,6 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
               </DialogContent>
             </Dialog>
           )}
-        </div>
-      )}
-
-      {hideHeader && hasPermission("storage-cards", "create") && (
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-medium">Карты хранения</h2>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-add-card">
-                <Plus className="h-4 w-4 mr-2" />
-                Добавить карту
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingCard ? "Редактировать карту" : "Новая карта хранения"}
-                </DialogTitle>
-              </DialogHeader>
-              <StorageCardForm
-                editCard={editingCard}
-                onSuccess={handleDialogClose}
-                onCancel={handleDialogClose}
-              />
-            </DialogContent>
-          </Dialog>
         </div>
       )}
 

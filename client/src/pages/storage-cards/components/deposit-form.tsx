@@ -14,6 +14,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { format } from "date-fns";
 
 const depositFormSchema = z.object({
   amount: z.string().min(1, "Сумма обязательна"),
@@ -51,7 +52,7 @@ export function DepositForm({
           price: 0,
           sum: parseFloat(data.amount),
           notes: data.notes || "Пополнение аванса",
-          transactionDate: new Date().toISOString(),
+          transactionDate: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
         }
       );
       return response.json();
