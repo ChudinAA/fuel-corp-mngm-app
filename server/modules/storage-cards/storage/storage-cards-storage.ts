@@ -33,7 +33,18 @@ export class StorageCardsStorage {
         orderBy: [desc(prices.dateTo)]
       });
 
-      const pricePerKg = latestPrice ? parseFloat(latestPrice.priceValues?.[0] || "0") : 0;
+      let pricePerKg = 0;
+      if (latestPrice && latestPrice.priceValues && latestPrice.priceValues.length > 0) {
+        try {
+          // Parse price from JSON string like "{\"price\":71}"
+          const priceObj = JSON.parse(latestPrice.priceValues[0]);
+          pricePerKg = parseFloat(priceObj.price || "0");
+        } catch (e) {
+          console.error("Error parsing price value:", latestPrice.priceValues[0]);
+          pricePerKg = parseFloat(latestPrice.priceValues[0] || "0");
+        }
+      }
+
       const balance = parseFloat(card.currentBalance || "0");
       const kgAmount = pricePerKg > 0 ? balance / pricePerKg : 0;
 

@@ -22,7 +22,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Plus, Search, CreditCard, History } from "lucide-react";
+import { Plus, Search, CreditCard, History, Wallet } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -282,6 +282,121 @@ function StorageCardForm({
   );
 }
 
+const depositFormSchema = z.object({
+  amount: z.string().min(1, "Сумма обязательна"),
+  notes: z.string().optional(),
+});
+
+type DepositFormData = z.infer<typeof depositFormSchema>;
+
+function DepositForm({
+  card,
+  onSuccess,
+  onCancel,
+}: {
+  card: any;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const { toast } = useToast();
+  const form = useForm<DepositFormData>({
+    resolver: zodResolver(depositFormSchema),
+    defaultValues: {
+      amount: "",
+      notes: "",
+    },
+  });
+
+  const depositMutation = useMutation({
+    mutationFn: async (data: DepositFormData) => {
+      const response = await apiRequest(
+        "POST",
+        `/api/storage-cards/${card.id}/transactions`,
+        {
+          transactionType: "income",
+          quantity: parseFloat(data.amount),
+          price: 0,
+          sum: parseFloat(data.amount),
+          notes: data.notes || "Пополнение аванса",
+          transactionDate: new Date().toISOString(),
+        }
+      );
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Аванс успешно внесен" });
+      onSuccess();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit((data) => depositMutation.mutate(data))} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="amount"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Сумма ($)</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  data-testid="input-deposit-amount"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="notes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Комментарий</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="Комментарий к платежу..."
+                  data-testid="input-deposit-notes"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            data-testid="button-cancel-deposit"
+          >
+            Отмена
+          </Button>
+          <Button
+            type="submit"
+            disabled={depositMutation.isPending}
+            data-testid="button-confirm-deposit"
+          >
+            Внести
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
 export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: boolean }) {
   const { hasPermission } = useAuth();
   const { toast } = useToast();
@@ -289,6 +404,7 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<any | null>(null);
   const [viewingCard, setViewingCard] = useState<any | null>(null);
+  const [depositCard, setDepositCard] = useState<any | null>(null);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
 
   const { data: storageCards, isLoading } = useQuery<any[]>({
@@ -465,9 +581,10 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
                     <Button
                       size="sm"
                       className="w-full"
-                      onClick={() => setViewingCard(card)}
+                      onClick={() => setDepositCard(card)}
                       data-testid={`button-deposit-${card.id}`}
                     >
+                      <Plus className="h-4 w-4 mr-1" />
                       Внести аванс
                     </Button>
                     <Button
@@ -538,6 +655,27 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
                 </div>
               )}
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!depositCard} onOpenChange={(open) => !open && setDepositCard(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5" />
+              Внесение аванса: {depositCard?.name}
+            </DialogTitle>
+          </DialogHeader>
+          {depositCard && (
+            <DepositForm 
+              card={depositCard} 
+              onSuccess={() => {
+                setDepositCard(null);
+                queryClient.invalidateQueries({ queryKey: ["/api/storage-cards/advances"] });
+              }}
+              onCancel={() => setDepositCard(null)}
+            />
           )}
         </DialogContent>
       </Dialog>

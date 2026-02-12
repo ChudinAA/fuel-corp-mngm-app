@@ -3,9 +3,9 @@ ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "full_name" text;
 ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "iata" text;
 ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "supply_nomenclature" text;
 ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "with_vat" boolean DEFAULT false;
--- Add storage_card_id for suppliers and supplier_id for storage_cards without reference
-ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "storage_card_id" uuid REFERENCES "storage_cards"("id");
-ALTER TABLE "storage_cards" ADD COLUMN IF NOT EXISTS "supplier_id" uuid;
+-- Add storage_card_id for suppliers and supplier_id for storage_cards
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "storage_card_id" uuid;
+ALTER TABLE "storage_cards" ADD COLUMN IF NOT EXISTS "supplier_id" uuid REFERENCES "suppliers"("id");
 
 ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "full_name" text;
 ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "iata" text;
