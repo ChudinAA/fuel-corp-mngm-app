@@ -29,7 +29,8 @@ export function StorageCardItem({
           <div>
             <p className="text-sm text-muted-foreground">Остаток на карте</p>
             <p className="text-2xl font-bold">
-              {formatNumber(parseFloat(card.currentBalance || "0"))} $
+              {formatNumber(parseFloat(card.currentBalance || "0"))}{" "}
+              {card.currencySymbol}
             </p>
           </div>
 
@@ -43,7 +44,9 @@ export function StorageCardItem({
                     : "font-medium"
                 }
               >
-                {card.latestPrice ? `${card.latestPrice.price} $` : "—"}
+                {card.latestPrice
+                  ? `${card.latestPrice.price} ${card.currencySymbol}`
+                  : "—"}
               </p>
             </div>
             <div>

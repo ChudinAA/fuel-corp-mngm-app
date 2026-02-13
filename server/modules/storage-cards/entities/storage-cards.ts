@@ -5,6 +5,7 @@ import {
   decimal,
   boolean,
   timestamp,
+  date,
   uuid,
   index,
 } from "drizzle-orm/pg-core";
@@ -13,26 +14,24 @@ import { z } from "zod";
 import { users } from "../../users/entities/users";
 
 import { suppliers } from "../../suppliers/entities/suppliers";
+import { currencies } from "@shared/schema";
 
 export const storageCards = pgTable(
   "storage_cards",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     name: text("name").notNull(),
-    country: text("country").notNull(),
-    airport: text("airport").notNull(),
-    airportCode: text("airport_code"),
     currency: text("currency").default("USD"),
+    currencySymbol: text("currency_symbol").default("$"),
+    currencyId: uuid("currency_id").references(() => currencies.id),
     currentBalance: decimal("current_balance", {
       precision: 15,
       scale: 2,
     }).default("0"),
     supplierId: uuid("supplier_id").references(() => suppliers.id),
-    averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default(
+    averageCost: decimal("average_cost", { precision: 12, scale: 5 }).default(
       "0",
     ),
-    averageCostCurrency: text("average_cost_currency").default("USD"),
-    storageCost: decimal("storage_cost", { precision: 12, scale: 2 }),
     notes: text("notes"),
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -44,8 +43,6 @@ export const storageCards = pgTable(
   },
   (table) => ({
     nameIdx: index("storage_cards_name_idx").on(table.name),
-    countryIdx: index("storage_cards_country_idx").on(table.country),
-    airportIdx: index("storage_cards_airport_idx").on(table.airport),
     isActiveIdx: index("storage_cards_is_active_idx").on(table.isActive),
   }),
 );
@@ -61,7 +58,7 @@ export const storageCardTransactions = pgTable(
     quantity: decimal("quantity", { precision: 15, scale: 2 }).notNull(),
     price: decimal("price", { precision: 12, scale: 4 }),
     currency: text("currency").default("USD"),
-    sum: decimal("sum", { precision: 15, scale: 2 }),
+    currencySymbol: text("currency_symbol").default("$"),
     balanceBefore: decimal("balance_before", { precision: 15, scale: 2 }),
     balanceAfter: decimal("balance_after", { precision: 15, scale: 2 }),
     averageCostBefore: decimal("average_cost_before", {
@@ -109,6 +106,10 @@ export const storageCardsRelations = relations(
       fields: [storageCards.supplierId],
       references: [suppliers.id],
     }),
+    currency: one(currencies, {
+      fields: [storageCards.currencyId],
+      references: [currencies.id],
+    }),
     createdBy: one(users, {
       fields: [storageCards.createdById],
       references: [users.id],
@@ -140,8 +141,6 @@ export const insertStorageCardSchema = createInsertSchema(storageCards)
   .omit({ id: true, createdAt: true })
   .extend({
     name: z.string().min(1, "Название обязательно"),
-    country: z.string().min(1, "Страна обязательна"),
-    airport: z.string().min(1, "Аэропорт обязателен"),
   });
 
 export const insertStorageCardTransactionSchema = createInsertSchema(
@@ -151,7 +150,6 @@ export const insertStorageCardTransactionSchema = createInsertSchema(
   .extend({
     quantity: z.number(),
     price: z.number().optional(),
-    sum: z.number().optional(),
   });
 
 export type StorageCard = typeof storageCards.$inferSelect;
@@ -161,9 +159,3 @@ export type StorageCardTransaction =
 export type InsertStorageCardTransaction = z.infer<
   typeof insertStorageCardTransactionSchema
 >;
-
-export const STORAGE_CARD_TRANSACTION_TYPES = [
-  { value: "income", label: "Приход" },
-  { value: "expense", label: "Расход" },
-  { value: "adjustment", label: "Корректировка" },
-] as const;

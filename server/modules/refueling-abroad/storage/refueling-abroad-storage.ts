@@ -19,6 +19,8 @@ import {
 import { refuelingAbroadIntermediaries } from "../entities/refueling-abroad-intermediaries";
 import { suppliers } from "../../suppliers/entities/suppliers";
 import { customers } from "../../customers/entities/customers";
+import { prices, storageCards, storageCardTransactions } from "@shared/schema";
+import { SOURCE_TYPE, STORAGE_CARD_TRANSACTION_TYPE } from "@shared/constants";
 
 export interface IRefuelingAbroadStorage {
   getAll(
@@ -258,14 +260,65 @@ export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
     data: InsertRefuelingAbroad,
     userId?: string,
   ): Promise<RefuelingAbroad> {
-    const [result] = await db
-      .insert(refuelingAbroad)
-      .values({
-        ...this.transformData(data),
-        createdById: userId,
-      })
-      .returning();
-    return result;
+    return await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(refuelingAbroad)
+        .values({
+          ...this.transformData(data),
+          createdById: userId,
+        })
+        .returning();
+
+      const storageCard = await tx.query.storageCards.findFirst({
+        where: eq(storageCards.supplierId, created.supplierId),
+      });
+
+      // Для услуги заправки или черновика не создаем транзакции на складе
+      if (!created.isDraft && storageCard) {
+        const currentBalance = parseFloat(storageCard.currentBalance || "0");
+        const currentCost = storageCard.averageCost || "0";
+        const quantity = parseFloat(created.purchaseAmountUsd || "0");
+        const newBalance = Math.max(0, currentBalance - quantity);
+        const newAverageCost = parseFloat(
+          created.purchasePriceUsd || currentCost,
+        );
+
+        await tx
+          .update(storageCards)
+          .set({
+            currentBalance: newBalance.toFixed(2),
+            averageCost: newAverageCost.toFixed(4),
+            updatedAt: sql`NOW()`,
+            updatedById: userId,
+          })
+          .where(eq(storageCards.id, storageCard.id));
+
+        const [transaction] = await tx
+          .insert(storageCardTransactions)
+          .values({
+            storageCardId: storageCard.id,
+            transactionType: STORAGE_CARD_TRANSACTION_TYPE.EXPENSE,
+            quantity: String(quantity),
+            price: String(newAverageCost),
+            balanceBefore: String(currentBalance),
+            balanceAfter: String(newBalance),
+            averageCostBefore: currentCost,
+            averageCostAfter: String(newAverageCost),
+            transactionDate: data.refuelingDate,
+            sourceType: SOURCE_TYPE.REFUELING_ABROAD,
+            sourceId: created.id,
+            createdById: userId,
+          })
+          .returning();
+
+        await tx
+          .update(refuelingAbroad)
+          .set({ transactionId: transaction.id })
+          .where(eq(refuelingAbroad.id, created.id));
+      }
+
+      return created;
+    });
   }
 
   async update(
@@ -277,7 +330,7 @@ export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
       .update(refuelingAbroad)
       .set({
         ...this.transformData(data),
-        updatedAt: new Date().toISOString(),
+        updatedAt: sql`NOW()`,
         updatedById: userId,
       })
       .where(and(eq(refuelingAbroad.id, id), isNull(refuelingAbroad.deletedAt)))
@@ -289,7 +342,7 @@ export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
     const [result] = await db
       .update(refuelingAbroad)
       .set({
-        deletedAt: new Date().toISOString(),
+        deletedAt: sql`NOW()`,
         deletedById: userId,
       })
       .where(and(eq(refuelingAbroad.id, id), isNull(refuelingAbroad.deletedAt)))
@@ -306,7 +359,7 @@ export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
       .set({
         deletedAt: null,
         deletedById: null,
-        updatedAt: new Date().toISOString(),
+        updatedAt: sql`NOW()`,
         updatedById: userId,
       })
       .where(eq(refuelingAbroad.id, id))

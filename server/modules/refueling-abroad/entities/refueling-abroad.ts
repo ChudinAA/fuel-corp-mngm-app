@@ -15,7 +15,10 @@ import { users } from "../../users/entities/users";
 import { suppliers } from "../../suppliers/entities/suppliers";
 import { customers } from "../../customers/entities/customers";
 import { prices } from "../../prices/entities/prices";
-import { storageCards } from "../../storage-cards/entities/storage-cards";
+import {
+  storageCards,
+  storageCardTransactions,
+} from "../../storage-cards/entities/storage-cards";
 import { exchangeRates } from "../../exchange-rates/entities/exchange-rates";
 import { refuelingAbroadIntermediaries } from "./refueling-abroad-intermediaries";
 import { bases } from "@shared/schema";
@@ -59,7 +62,9 @@ export const refuelingAbroad = pgTable(
       precision: 15,
       scale: 4,
     }),
-
+    transactionId: uuid("transaction_id").references(
+      () => storageCardTransactions.id,
+    ),
     purchaseExchangeRateId: uuid("purchase_exchange_rate_id").references(
       () => exchangeRates.id,
     ),
@@ -152,6 +157,10 @@ export const refuelingAbroadRelations = relations(
     storageCard: one(storageCards, {
       fields: [refuelingAbroad.storageCardId],
       references: [storageCards.id],
+    }),
+    transaction: one(storageCardTransactions, {
+      fields: [refuelingAbroad.transactionId],
+      references: [storageCardTransactions.id],
     }),
     intermediary: one(suppliers, {
       fields: [refuelingAbroad.intermediaryId],

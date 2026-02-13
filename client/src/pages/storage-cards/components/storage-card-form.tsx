@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -14,14 +14,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Combobox } from "@/components/ui/combobox";
 
 const storageCardFormSchema = z.object({
   name: z.string().min(1, "Название обязательно"),
-  country: z.string().min(1, "Страна обязательна"),
-  airport: z.string().min(1, "Аэропорт обязателен"),
-  airportCode: z.string().optional(),
   currency: z.string().default("USD"),
-  storageCost: z.string().optional(),
+  currencySymbol: z.string().default("$"),
+  currencyId: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -30,17 +29,20 @@ type StorageCardFormData = z.infer<typeof storageCardFormSchema>;
 interface StorageCard {
   id: string;
   name: string;
-  country: string;
-  airport: string;
-  airportCode: string | null;
   currency: string | null;
+  currencySymbol: string | null;
+  currencyId: string | null;
   currentBalance: string | null;
   averageCost: string | null;
-  averageCostCurrency: string | null;
-  storageCost: string | null;
   notes: string | null;
   isActive: boolean | null;
-  createdAt: string | null;
+}
+
+interface Currency {
+  id: string;
+  code: string;
+  name: string;
+  symbol: string;
 }
 
 export function StorageCardForm({
@@ -58,13 +60,15 @@ export function StorageCardForm({
     resolver: zodResolver(storageCardFormSchema),
     defaultValues: {
       name: editCard?.name || "",
-      country: editCard?.country || "",
-      airport: editCard?.airport || "",
-      airportCode: editCard?.airportCode || "",
       currency: editCard?.currency || "USD",
-      storageCost: editCard?.storageCost || "",
+      currencySymbol: editCard?.currencySymbol || "$",
+      currencyId: editCard?.currencyId || "",
       notes: editCard?.notes || "",
     },
+  });
+
+  const { data: currencies = [] } = useQuery<Currency[]>({
+    queryKey: ["/api/currencies"],
   });
 
   const createMutation = useMutation({
@@ -73,7 +77,9 @@ export function StorageCardForm({
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/storage-cards/advances"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/storage-cards/advances"],
+      });
       toast({ title: "Карта хранения создана" });
       onSuccess();
     },
@@ -91,12 +97,14 @@ export function StorageCardForm({
       const response = await apiRequest(
         "PATCH",
         `/api/storage-cards/${editCard?.id}`,
-        data
+        data,
       );
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/storage-cards/advances"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/storage-cards/advances"],
+      });
       toast({ title: "Карта хранения обновлена" });
       onSuccess();
     },
@@ -140,67 +148,49 @@ export function StorageCardForm({
         <div className="grid gap-4 md:grid-cols-2">
           <FormField
             control={form.control}
-            name="country"
+            name="currencyId"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Страна</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Германия"
-                    data-testid="input-country"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="airport"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Аэропорт</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Франкфурт"
-                    data-testid="input-airport"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="airportCode"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Код аэропорта</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="FRA"
-                    data-testid="input-airport-code"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="currency"
-            render={({ field }) => (
-              <FormItem>
+              <FormItem className="col-span-1 min-w-0">
                 <FormLabel>Валюта</FormLabel>
                 <FormControl>
+                  <div className="w-full">
+                    <Combobox
+                      options={currencies.map((c) => ({
+                        value: c.id,
+                        label: c.code,
+                      }))}
+                      value={field.value}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        const currency = currencies?.find(
+                          (c) => c.id === value,
+                        );
+                        if (currency) {
+                          form.setValue("currency", currency.code);
+                          form.setValue("currencySymbol", currency.symbol);
+                        }
+                      }}
+                      placeholder="USD"
+                      className="w-full"
+                      dataTestId="select-base-type"
+                    />
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Примечания</FormLabel>
+                <FormControl>
                   <Input
-                    placeholder="USD"
-                    data-testid="input-currency"
+                    placeholder="Примечания..."
+                    data-testid="input-notes"
                     {...field}
                   />
                 </FormControl>
@@ -209,42 +199,7 @@ export function StorageCardForm({
             )}
           />
         </div>
-        <FormField
-          control={form.control}
-          name="storageCost"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Стоимость хранения</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  data-testid="input-storage-cost"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="notes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Примечания</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="Примечания..."
-                  data-testid="input-notes"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+
         <div className="flex justify-end gap-2">
           <Button
             type="button"

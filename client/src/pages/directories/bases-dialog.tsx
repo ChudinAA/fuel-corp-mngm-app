@@ -38,9 +38,12 @@ import { BASE_TYPE, BaseType } from "@shared/constants";
 
 const baseFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
-  baseType: z.enum([BASE_TYPE.WHOLESALE, BASE_TYPE.REFUELING, BASE_TYPE.ABROAD], {
-    required_error: "Выберите тип базиса",
-  }),
+  baseType: z.enum(
+    [BASE_TYPE.WHOLESALE, BASE_TYPE.REFUELING, BASE_TYPE.ABROAD],
+    {
+      required_error: "Выберите тип базиса",
+    },
+  ),
   location: z.string().optional(),
   isActive: z.boolean().default(true),
 });
@@ -204,7 +207,7 @@ export function AddBaseDialog({
                         options={[
                           { value: BASE_TYPE.WHOLESALE, label: "ОПТ" },
                           { value: BASE_TYPE.REFUELING, label: "Заправка" },
-                          { value: BASE_TYPE.ABROAD, label: "Зарубеж" }
+                          { value: BASE_TYPE.ABROAD, label: "Зарубеж" },
                         ]}
                         value={field.value}
                         onValueChange={field.onChange}
@@ -236,25 +239,6 @@ export function AddBaseDialog({
                 </FormItem>
               )}
             />
-
-            {/* <FormField
-              control={form.control}
-              name="isActive"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2 space-y-0">
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="switch-base-active"
-                    />
-                  </FormControl>
-                  <FormLabel className="font-normal cursor-pointer">
-                    Активен
-                  </FormLabel>
-                </FormItem>
-              )}
-            /> */}
 
             <div className="flex justify-end gap-4 pt-4">
               <Button

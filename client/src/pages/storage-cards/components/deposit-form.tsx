@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { format } from "date-fns";
+import { STORAGE_CARD_TRANSACTION_TYPE } from "@shared/constants";
 
 const depositFormSchema = z.object({
   amount: z.string().min(1, "Сумма обязательна"),
@@ -47,13 +48,12 @@ export function DepositForm({
         "POST",
         `/api/storage-cards/${card.id}/transactions`,
         {
-          transactionType: "income",
+          transactionType: STORAGE_CARD_TRANSACTION_TYPE.INCOME,
           quantity: parseFloat(data.amount),
-          price: 0,
-          sum: parseFloat(data.amount),
+          price: card.latestPrice.price,
           notes: data.notes || "Пополнение аванса",
           transactionDate: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
-        }
+        },
       );
       return response.json();
     },
@@ -72,7 +72,10 @@ export function DepositForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit((data) => depositMutation.mutate(data))} className="space-y-4">
+      <form
+        onSubmit={form.handleSubmit((data) => depositMutation.mutate(data))}
+        className="space-y-4"
+      >
         <FormField
           control={form.control}
           name="amount"

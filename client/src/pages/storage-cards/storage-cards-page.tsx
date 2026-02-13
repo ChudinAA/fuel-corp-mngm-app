@@ -20,7 +20,11 @@ import { AuditPanel } from "@/components/audit-panel";
 import { ExportButton } from "@/components/export/export-button";
 import { queryClient } from "@/lib/queryClient";
 
-export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: boolean }) {
+export default function StorageCardsPage({
+  hideHeader = false,
+}: {
+  hideHeader?: boolean;
+}) {
   const { hasPermission } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -35,12 +39,7 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
   const filteredCards = storageCards?.filter((card) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
-    return (
-      card.name.toLowerCase().includes(query) ||
-      card.country.toLowerCase().includes(query) ||
-      card.airport.toLowerCase().includes(query) ||
-      card.airportCode?.toLowerCase().includes(query)
-    );
+    return card.name.toLowerCase().includes(query);
   });
 
   const handleEdit = (card: any) => {
@@ -74,7 +73,9 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
               <DialogContent className="max-w-lg">
                 <DialogHeader>
                   <DialogTitle>
-                    {editingCard ? "Редактировать карту" : "Новая карта хранения"}
+                    {editingCard
+                      ? "Редактировать карту"
+                      : "Новая карта хранения"}
                   </DialogTitle>
                 </DialogHeader>
                 <StorageCardForm
@@ -141,7 +142,10 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
         </div>
       )}
 
-      <Dialog open={!!depositCard} onOpenChange={(open) => !open && setDepositCard(null)}>
+      <Dialog
+        open={!!depositCard}
+        onOpenChange={(open) => !open && setDepositCard(null)}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -150,11 +154,13 @@ export default function StorageCardsPage({ hideHeader = false }: { hideHeader?: 
             </DialogTitle>
           </DialogHeader>
           {depositCard && (
-            <DepositForm 
-              card={depositCard} 
+            <DepositForm
+              card={depositCard}
               onSuccess={() => {
                 setDepositCard(null);
-                queryClient.invalidateQueries({ queryKey: ["/api/storage-cards/advances"] });
+                queryClient.invalidateQueries({
+                  queryKey: ["/api/storage-cards/advances"],
+                });
               }}
               onCancel={() => setDepositCard(null)}
             />

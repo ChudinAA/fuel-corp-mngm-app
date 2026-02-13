@@ -9,55 +9,70 @@ import {
 } from "../entities/storage-cards";
 
 import { prices, suppliers, storageCards } from "@shared/schema";
+import {
+  COUNTERPARTY_ROLE,
+  STORAGE_CARD_TRANSACTION_TYPE,
+} from "@shared/constants";
 
 export class StorageCardsStorage {
   async getAdvanceCards(): Promise<any[]> {
     const cards = await db.query.storageCards.findMany({
       where: and(
         isNull(storageCards.deletedAt),
-        sql`${storageCards.supplierId} IS NOT NULL`
+        sql`${storageCards.supplierId} IS NOT NULL`,
       ),
       with: {
-        supplier: true
-      }
+        supplier: true,
+      },
     });
 
-    const results = await Promise.all(cards.map(async (card) => {
-      // Get latest price for supplier
-      const latestPrice = await db.query.prices.findFirst({
-        where: and(
-          eq(prices.counterpartyId, card.supplierId!),
-          eq(prices.counterpartyRole, "supplier"),
-          isNull(prices.deletedAt)
-        ),
-        orderBy: [desc(prices.dateTo)]
-      });
+    const results = await Promise.all(
+      cards.map(async (card) => {
+        // Get latest price for supplier
+        const latestPrice = await db.query.prices.findFirst({
+          where: and(
+            eq(prices.counterpartyId, card.supplierId!),
+            eq(prices.counterpartyRole, COUNTERPARTY_ROLE.SUPPLIER),
+            isNull(prices.deletedAt),
+          ),
+          orderBy: [desc(prices.dateTo)],
+        });
 
-      let pricePerKg = 0;
-      if (latestPrice && latestPrice.priceValues && latestPrice.priceValues.length > 0) {
-        try {
-          // Parse price from JSON string like "{\"price\":71}"
-          const priceObj = JSON.parse(latestPrice.priceValues[0]);
-          pricePerKg = parseFloat(priceObj.price || "0");
-        } catch (e) {
-          console.error("Error parsing price value:", latestPrice.priceValues[0]);
-          pricePerKg = parseFloat(latestPrice.priceValues[0] || "0");
+        let pricePerKg = 0;
+        if (
+          latestPrice &&
+          latestPrice.priceValues &&
+          latestPrice.priceValues.length > 0
+        ) {
+          try {
+            // Parse price from JSON string like "{\"price\":71}"
+            const priceObj = JSON.parse(latestPrice.priceValues[0]);
+            pricePerKg = parseFloat(priceObj.price || "0");
+          } catch (e) {
+            console.error(
+              "Error parsing price value:",
+              latestPrice.priceValues[0],
+            );
+            pricePerKg = parseFloat(latestPrice.priceValues[0] || "0");
+          }
         }
-      }
 
-      const balance = parseFloat(card.currentBalance || "0");
-      const kgAmount = pricePerKg > 0 ? balance / pricePerKg : 0;
+        const balance = parseFloat(card.currentBalance || "0");
+        const kgAmount = pricePerKg > 0 ? balance / pricePerKg : 0;
 
-      return {
-        ...card,
-        latestPrice: latestPrice ? {
-          price: pricePerKg,
-          dateTo: latestPrice.dateTo,
-          isExpired: new Date(latestPrice.dateTo) < new Date()
-        } : null,
-        kgAmount
-      };
-    }));
+        return {
+          ...card,
+          latestPrice: latestPrice
+            ? {
+                price: pricePerKg,
+                dateTo: latestPrice.dateTo,
+                isExpired: new Date(latestPrice.dateTo) < new Date(),
+              }
+            : null,
+          kgAmount,
+        };
+      }),
+    );
 
     return results;
   }
@@ -79,7 +94,7 @@ export class StorageCardsStorage {
     const existing = await db.query.storageCards.findFirst({
       where: and(
         eq(storageCards.name, data.name),
-        isNull(storageCards.deletedAt)
+        isNull(storageCards.deletedAt),
       ),
     });
 
@@ -87,17 +102,14 @@ export class StorageCardsStorage {
       throw new Error("Карта хранения с таким названием уже существует");
     }
 
-    const [created] = await db
-      .insert(storageCards)
-      .values(data)
-      .returning();
+    const [created] = await db.insert(storageCards).values(data).returning();
 
     return created;
   }
 
   async updateStorageCard(
     id: string,
-    data: Partial<InsertStorageCard>
+    data: Partial<InsertStorageCard>,
   ): Promise<StorageCard | undefined> {
     const [updated] = await db
       .update(storageCards)
@@ -125,19 +137,19 @@ export class StorageCardsStorage {
   }
 
   async getCardTransactions(
-    storageCardId: string
+    storageCardId: string,
   ): Promise<StorageCardTransaction[]> {
     return await db.query.storageCardTransactions.findMany({
       where: and(
         eq(storageCardTransactions.storageCardId, storageCardId),
-        isNull(storageCardTransactions.deletedAt)
+        isNull(storageCardTransactions.deletedAt),
       ),
       orderBy: [desc(storageCardTransactions.createdAt)],
     });
   }
 
   async createTransaction(
-    data: InsertStorageCardTransaction
+    data: InsertStorageCardTransaction,
   ): Promise<StorageCardTransaction> {
     const card = await this.getStorageCard(data.storageCardId);
     if (!card) {
@@ -148,21 +160,13 @@ export class StorageCardsStorage {
     const currentAvgCost = parseFloat(card.averageCost || "0");
     const quantity = data.quantity;
     const price = data.price || 0;
-    const sum = data.sum || quantity * price;
 
     let newBalance = currentBalance;
-    let newAvgCost = currentAvgCost;
 
-    if (data.transactionType === "income") {
+    if (data.transactionType === STORAGE_CARD_TRANSACTION_TYPE.INCOME) {
       newBalance = currentBalance + quantity;
-      if (newBalance > 0 && price > 0) {
-        newAvgCost =
-          (currentBalance * currentAvgCost + quantity * price) / newBalance;
-      }
-    } else if (data.transactionType === "expense") {
+    } else if (data.transactionType === STORAGE_CARD_TRANSACTION_TYPE.EXPENSE) {
       newBalance = currentBalance - quantity;
-    } else if (data.transactionType === "adjustment") {
-      newBalance = currentBalance + quantity;
     }
 
     return await db.transaction(async (tx) => {
@@ -171,12 +175,11 @@ export class StorageCardsStorage {
         .values({
           ...data,
           quantity: String(quantity),
-          price: price ? String(price) : null,
-          sum: sum ? String(sum) : null,
+          price: String(price),
           balanceBefore: String(currentBalance),
           balanceAfter: String(newBalance),
           averageCostBefore: String(currentAvgCost),
-          averageCostAfter: String(newAvgCost),
+          averageCostAfter: String(price),
         })
         .returning();
 
@@ -184,8 +187,9 @@ export class StorageCardsStorage {
         .update(storageCards)
         .set({
           currentBalance: String(newBalance),
-          averageCost: String(newAvgCost),
+          averageCost: String(price),
           updatedAt: sql`NOW()`,
+          updatedById: data.createdById,
         })
         .where(eq(storageCards.id, data.storageCardId));
 
@@ -193,10 +197,7 @@ export class StorageCardsStorage {
     });
   }
 
-  async deleteTransaction(
-    id: string,
-    deletedById?: string
-  ): Promise<boolean> {
+  async deleteTransaction(id: string, deletedById?: string): Promise<boolean> {
     const transaction = await db.query.storageCardTransactions.findFirst({
       where: eq(storageCardTransactions.id, id),
     });
@@ -210,12 +211,12 @@ export class StorageCardsStorage {
     const currentBalance = parseFloat(card.currentBalance || "0");
     let newBalance = currentBalance;
 
-    if (transaction.transactionType === "income") {
+    if (transaction.transactionType === STORAGE_CARD_TRANSACTION_TYPE.INCOME) {
       newBalance = currentBalance - quantity;
-    } else if (transaction.transactionType === "expense") {
+    } else if (
+      transaction.transactionType === STORAGE_CARD_TRANSACTION_TYPE.EXPENSE
+    ) {
       newBalance = currentBalance + quantity;
-    } else if (transaction.transactionType === "adjustment") {
-      newBalance = currentBalance - quantity;
     }
 
     return await db.transaction(async (tx) => {
