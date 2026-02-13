@@ -1159,7 +1159,7 @@ export function RefuelingAbroadForm({
                     ? "error"
                     : supplierBalanceStatus.supplierBalanceStatus.status === "warning"
                       ? "warning"
-                      : "success"
+                      : "ok"
                 }
                 data-testid="text-supplier-volume-status"
               />
