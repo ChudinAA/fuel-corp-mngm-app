@@ -21,12 +21,13 @@ ALTER TABLE "storage_cards" DROP COLUMN IF EXISTS "storage_cost";
 DROP INDEX IF EXISTS "storage_cards_country_idx";
 DROP INDEX IF EXISTS "storage_cards_airport_idx";
 
--- Remove sum from storage_card_transactions, add date_to to storage_card_transactions
-ALTER TABLE "storage_card_transactions" DROP COLUMN IF EXISTS "sum";
-
 -- Add currency_id and currency_symbol (default $) to storage_cards
 ALTER TABLE "storage_cards" ADD COLUMN IF NOT EXISTS "currency_id" uuid REFERENCES "currencies"("id");
 ALTER TABLE "storage_cards" ADD COLUMN IF NOT EXISTS "currency_symbol" text DEFAULT '$';
 
+-- Remove sum from storage_card_transactions, add date_to to storage_card_transactions
+ALTER TABLE "storage_card_transactions" DROP COLUMN IF EXISTS "sum";
+-- Add currency_symbol (default $) to storage_card_transactions
+ALTER TABLE "storage_card_transactions" ADD COLUMN IF NOT EXISTS "currency_symbol" text DEFAULT '$';
 -- Change average_cost scale to 5
 ALTER TABLE "storage_cards" ALTER COLUMN "average_cost" TYPE numeric(12,5);

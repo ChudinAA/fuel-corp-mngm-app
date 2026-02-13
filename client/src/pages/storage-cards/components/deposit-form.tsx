@@ -50,7 +50,7 @@ export function DepositForm({
         {
           transactionType: STORAGE_CARD_TRANSACTION_TYPE.INCOME,
           quantity: parseFloat(data.amount),
-          price: card.latestPrice.price,
+          price: card.latestPrice?.price || 0,
           notes: data.notes || "Пополнение аванса",
           transactionDate: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
         },
