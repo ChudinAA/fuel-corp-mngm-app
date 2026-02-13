@@ -47,6 +47,7 @@ import {
 } from "../schemas";
 import type { RefuelingAbroadFormProps } from "../types";
 import { useRefuelingAbroadCalculations } from "../hooks/use-refueling-abroad-calculations";
+import { useSupplierCardBalance } from "../hooks/use-supplier-card-balance";
 import {
   IntermediariesSection,
   IntermediaryItem,
@@ -329,6 +330,13 @@ export function RefuelingAbroadForm({
     initialQuantityKg: parseFloat(editData?.quantityKg || "0"),
   });
 
+  const supplierBalanceStatus = useSupplierCardBalance({
+    supplierId: watchedValues.supplierId,
+    storageCardId: watchedValues.storageCardId,
+    purchaseAmountUsd: calculations.purchaseAmountUsd,
+    initialPurchaseAmountUsd: parseFloat(editData?.purchaseAmountUsd || "0"),
+  });
+
   // Используем общий хук для автоматического выбора цен
   useAutoPriceSelection({
     supplierId: watchedValues.supplierId,
@@ -501,10 +509,10 @@ export function RefuelingAbroadForm({
       return;
     }
 
-    if (calculations.supplierContractVolumeStatus.status === "error") {
+    if (supplierBalanceStatus.supplierBalanceStatus.status === "error") {
       toast({
-        title: "Ошибка: недостаточно объема по договору Поставщика",
-        description: calculations.supplierContractVolumeStatus.message,
+        title: "Ошибка: недостаточно средств на карте Поставщика",
+        description: supplierBalanceStatus.supplierBalanceStatus.message,
         variant: "destructive",
       });
       return;
@@ -1145,8 +1153,15 @@ export function RefuelingAbroadForm({
 
               <CalculatedField
                 label="Доступн. об-м Поставщика"
-                value={calculations.supplierContractVolumeStatus.message}
-                status={calculations.supplierContractVolumeStatus.status}
+                value={supplierBalanceStatus.supplierBalanceStatus.message}
+                status={
+                  supplierBalanceStatus.supplierBalanceStatus.status === "error"
+                    ? "error"
+                    : supplierBalanceStatus.supplierBalanceStatus.status === "warning"
+                      ? "warning"
+                      : "success"
+                }
+                data-testid="text-supplier-volume-status"
               />
 
               <CalculatedField
