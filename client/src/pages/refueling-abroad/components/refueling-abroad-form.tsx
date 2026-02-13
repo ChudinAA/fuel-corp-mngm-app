@@ -80,6 +80,8 @@ export function RefuelingAbroadForm({
   const { hasPermission } = useAuth();
   const { toast } = useToast();
 
+  const isEditing = !!editData && !!editData.id;
+
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
   const handlePurchasePriceCreated = (id: string) => {
     form.setValue("selectedPurchasePriceId", id);
@@ -126,10 +128,6 @@ export function RefuelingAbroadForm({
 
   const { data: exchangeRates = [] } = useQuery<ExchangeRate[]>({
     queryKey: ["/api/exchange-rates"],
-  });
-
-  const { data: storageCards = [] } = useQuery<StorageCard[]>({
-    queryKey: ["/api/storage-cards"],
   });
 
   const { data: currencies = [] } = useQuery<any[]>({
@@ -221,7 +219,6 @@ export function RefuelingAbroadForm({
       supplierId: editData?.supplierId || "",
       buyerId: editData?.buyerId || "",
       basisId: editData?.basisId || "",
-      storageCardId: editData?.storageCardId || "",
       intermediaries: [],
       inputMode:
         (editData?.inputMode as "liters" | "kg") ||
@@ -327,14 +324,19 @@ export function RefuelingAbroadForm({
     selectedPurchasePriceId,
     selectedSalePriceId,
     productType: watchedValues.productType || "",
-    initialQuantityKg: parseFloat(editData?.quantityKg || "0"),
+    initialQuantityKg:
+      isEditing && !editData.isDraft
+        ? parseFloat(editData?.quantityKg || "0")
+        : 0,
   });
 
   const supplierBalanceStatus = useSupplierCardBalance({
     supplierId: watchedValues.supplierId,
-    storageCardId: watchedValues.storageCardId,
     purchaseAmountUsd: calculations.purchaseAmountUsd,
-    initialPurchaseAmountUsd: parseFloat(editData?.purchaseAmountUsd || "0"),
+    initialPurchaseAmountUsd:
+      isEditing && !editData.isDraft
+        ? parseFloat(editData?.purchaseAmountUsd || "0")
+        : 0,
   });
 
   // Используем общий хук для автоматического выбора цен
@@ -380,10 +382,6 @@ export function RefuelingAbroadForm({
         buyerId: data.buyerId && data.buyerId !== "none" ? data.buyerId : null,
         basisId: data.basisId && data.basisId !== "none" ? data.basisId : null,
         intermediaryId: null,
-        storageCardId:
-          data.storageCardId && data.storageCardId !== "none"
-            ? data.storageCardId
-            : null,
         intermediaryCommissionFormula: null,
         intermediaryCommissionUsd: totalIntermediaryCommissionUsd || null,
         intermediaryCommissionRub: totalIntermediaryCommissionRub || null,
@@ -449,7 +447,10 @@ export function RefuelingAbroadForm({
         .map((item, index) => ({
           intermediaryId: item.intermediaryId,
           orderIndex: index,
-          commissionFormula: item.commissionFormula !== undefined ? item.commissionFormula : null,
+          commissionFormula:
+            item.commissionFormula !== undefined
+              ? item.commissionFormula
+              : null,
           manualCommissionUsd: item.manualCommissionUsd || null,
           commissionUsd: item.commissionUsd ?? null,
           commissionRub: item.commissionRub ?? null,
@@ -474,7 +475,11 @@ export function RefuelingAbroadForm({
       queryClient.invalidateQueries({
         queryKey: ["/api/refueling-abroad/contract-used"],
       });
+      queryClient.invalidateQueries({ queryKey: ["/api/storage-cards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/refueling-abroad"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/storage-cards/advances"],
+      });
       toast({ title: editData ? "Запись обновлена" : "Запись создана" });
       setSelectedPurchasePriceId("");
       setSelectedSalePriceId("");
@@ -488,9 +493,6 @@ export function RefuelingAbroadForm({
       });
     },
   });
-
-  const isEditing = !!editData && !!editData.id;
-  const isDraft = watchedValues.isDraft;
 
   const onSubmit = async (
     data: RefuelingAbroadFormData,
@@ -652,34 +654,6 @@ export function RefuelingAbroadForm({
                     </SelectContent>
                   </Select>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="storageCardId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Карта хранения</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value || ""}
-                  >
-                    <FormControl>
-                      <SelectTrigger data-testid="select-storage-card">
-                        <SelectValue placeholder="Не выбрано" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">Без карты</SelectItem>
-                      {storageCards.map((card) => (
-                        <SelectItem key={card.id} value={card.id}>
-                          {card.name} ({card.airportCode})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </FormItem>
               )}
             />
@@ -1152,16 +1126,9 @@ export function RefuelingAbroadForm({
               )}
 
               <CalculatedField
-                label="Доступн. об-м Поставщика"
+                label="Остаток на карте"
                 value={supplierBalanceStatus.supplierBalanceStatus.message}
-                status={
-                  supplierBalanceStatus.supplierBalanceStatus.status === "error"
-                    ? "error"
-                    : supplierBalanceStatus.supplierBalanceStatus.status === "warning"
-                      ? "warning"
-                      : "ok"
-                }
-                data-testid="text-supplier-volume-status"
+                status={supplierBalanceStatus.supplierBalanceStatus.status}
               />
 
               <CalculatedField

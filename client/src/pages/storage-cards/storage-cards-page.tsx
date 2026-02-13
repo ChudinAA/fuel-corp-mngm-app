@@ -36,11 +36,16 @@ export default function StorageCardsPage({
     queryKey: ["/api/storage-cards/advances"],
   });
 
-  const filteredCards = storageCards?.filter((card) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return card.name.toLowerCase().includes(query);
-  });
+  const filteredCards = storageCards
+    ?.filter((card) => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      return card.name.toLowerCase().includes(query);
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
 
   const handleEdit = (card: any) => {
     setEditingCard(card);

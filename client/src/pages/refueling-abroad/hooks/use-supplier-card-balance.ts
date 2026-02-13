@@ -4,14 +4,12 @@ import { StorageCard } from "@shared/schema";
 
 interface UseSupplierCardBalanceProps {
   supplierId: string;
-  storageCardId?: string | null;
   purchaseAmountUsd: number | null;
   initialPurchaseAmountUsd?: number;
 }
 
 export function useSupplierCardBalance({
   supplierId,
-  storageCardId,
   purchaseAmountUsd,
   initialPurchaseAmountUsd = 0,
 }: UseSupplierCardBalanceProps) {
@@ -20,11 +18,8 @@ export function useSupplierCardBalance({
   });
 
   const supplierCard = useMemo(() => {
-    if (storageCardId) {
-      return storageCards.find((card) => card.id === storageCardId);
-    }
     return storageCards.find((card) => card.supplierId === supplierId);
-  }, [storageCards, supplierId, storageCardId]);
+  }, [storageCards, supplierId]);
 
   const currentBalance = useMemo(() => {
     if (!supplierCard) return 0;
@@ -32,12 +27,14 @@ export function useSupplierCardBalance({
   }, [supplierCard]);
 
   const status = useMemo(() => {
+    let status: "ok" | "error" | "warning" = "ok";
     if (!supplierId || supplierId === "none") {
-      return { status: "idle", message: "" };
+      return { status: status, message: "—" };
     }
 
     if (!supplierCard) {
-      return { status: "warning", message: "Карта хранения не привязана к поставщику" };
+      status = "warning";
+      return { status: status, message: "Карта не привязана к поставщику" };
     }
 
     const amountToSpend = purchaseAmountUsd || 0;
@@ -45,17 +42,24 @@ export function useSupplierCardBalance({
     const remainingBalance = availableBalance - amountToSpend;
 
     if (remainingBalance < 0) {
+      status = "error";
       return {
-        status: "error",
-        message: `Недостаточно средств на карте: доступно ${availableBalance.toFixed(2)} $, требуется ${amountToSpend.toFixed(2)} $`,
+        status: status,
+        message: `Недостаточно средств на карте: доступно ${availableBalance.toFixed(2)} $`,
       };
     }
 
     return {
-      status: "success",
-      message: `Доступно: ${remainingBalance.toFixed(2)} $`,
+      status: status,
+      message: `OK: ${remainingBalance.toFixed(2)} $`,
     };
-  }, [supplierId, supplierCard, currentBalance, purchaseAmountUsd, initialPurchaseAmountUsd]);
+  }, [
+    supplierId,
+    supplierCard,
+    currentBalance,
+    purchaseAmountUsd,
+    initialPurchaseAmountUsd,
+  ]);
 
   return {
     supplierCard,
