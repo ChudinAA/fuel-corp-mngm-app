@@ -536,7 +536,7 @@ export function RefuelingAbroadForm({
               Информация о рейсе
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <FormField
               control={form.control}
               name="refuelingDate"
@@ -570,6 +570,34 @@ export function RefuelingAbroadForm({
                       />
                     </PopoverContent>
                   </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="productType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Продукт</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value || ""}
+                  >
+                    <FormControl>
+                      <SelectTrigger data-testid="select-product-type">
+                        <SelectValue placeholder="Выберите" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {PRODUCT_TYPES_ABROAD.map((pt) => (
+                        <SelectItem key={pt.value} value={pt.value}>
+                          {pt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -626,34 +654,6 @@ export function RefuelingAbroadForm({
                       data-testid="input-flight-number"
                     />
                   </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="productType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Продукт</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value || ""}
-                  >
-                    <FormControl>
-                      <SelectTrigger data-testid="select-product-type">
-                        <SelectValue placeholder="Выберите" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {PRODUCT_TYPES_ABROAD.map((pt) => (
-                        <SelectItem key={pt.value} value={pt.value}>
-                          {pt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
                 </FormItem>
               )}
             />
