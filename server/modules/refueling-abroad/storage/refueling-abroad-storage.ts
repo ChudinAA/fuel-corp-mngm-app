@@ -51,7 +51,7 @@ export interface IRefuelingAbroadStorage {
   getDeleted(): Promise<RefuelingAbroad[]>;
 }
 
-export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
+export class RefuelingAbroadStorage {
   async getAll(
     offset: number = 0,
     limit: number = 20,
@@ -326,45 +326,272 @@ export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
     data: Partial<InsertRefuelingAbroad>,
     userId?: string,
   ): Promise<RefuelingAbroad | undefined> {
-    const [result] = await db
-      .update(refuelingAbroad)
-      .set({
-        ...this.transformData(data),
-        updatedAt: sql`NOW()`,
-        updatedById: userId,
-      })
-      .where(and(eq(refuelingAbroad.id, id), isNull(refuelingAbroad.deletedAt)))
-      .returning();
-    return result;
+    return await db.transaction(async (tx) => {
+      const currentRefueling = await tx.query.refuelingAbroad.findFirst({
+        where: eq(refuelingAbroad.id, id),
+      });
+
+      if (!currentRefueling) {
+        throw new Error("Deal not found");
+      }
+
+      // Логика перехода из черновика в готовую заправку
+      const transitioningFromDraft =
+        currentRefueling.isDraft && data.isDraft === false;
+
+      if (transitioningFromDraft && data.supplierId && data.purchaseAmountUsd) {
+        const storageCard = await tx.query.storageCards.findFirst({
+          where: eq(storageCards.supplierId, data.supplierId),
+        });
+
+        if (!storageCard) {
+          throw new Error(`Warehouse ${storageCard} not found`);
+        }
+
+        const currentBalance = parseFloat(storageCard.currentBalance || "0");
+        const currentCost = storageCard.averageCost || "0";
+        const quantity = data.purchaseAmountUsd;
+        const newBalance = Math.max(0, currentBalance - quantity);
+        const newAverageCost = data.purchasePriceUsd || parseFloat(currentCost);
+
+        await tx
+          .update(storageCards)
+          .set({
+            currentBalance: newBalance.toFixed(2),
+            averageCost: newAverageCost.toFixed(4),
+            updatedAt: sql`NOW()`,
+            updatedById: userId,
+          })
+          .where(eq(storageCards.id, storageCard.id));
+
+        const [transaction] = await tx
+          .insert(storageCardTransactions)
+          .values({
+            storageCardId: storageCard.id,
+            transactionType: STORAGE_CARD_TRANSACTION_TYPE.EXPENSE,
+            quantity: String(quantity),
+            price: String(newAverageCost),
+            balanceBefore: String(currentBalance),
+            balanceAfter: String(newBalance),
+            averageCostBefore: currentCost,
+            averageCostAfter: String(newAverageCost),
+            transactionDate: data.refuelingDate,
+            sourceType: SOURCE_TYPE.REFUELING_ABROAD,
+            sourceId: id,
+            createdById: userId,
+          })
+          .returning();
+
+        data.transactionId = transaction.id;
+      }
+      // Проверяем изменилось ли количество purchaseAmountUsd и есть ли привязанная транзакция (для НЕ черновиков)
+      else if (
+        !currentRefueling.isDraft &&
+        data.purchaseAmountUsd &&
+        currentRefueling.transactionId &&
+        currentRefueling.supplierId
+      ) {
+        if (data.productType !== currentRefueling.productType) {
+          throw new Error(
+            "Нельзя поменять тип продукта для существующей сделки",
+          );
+        }
+
+        if (data.supplierId !== currentRefueling.supplierId) {
+          throw new Error(
+            "Нельзя поменять зарубежного поставщика для существующей сделки",
+          );
+        }
+
+        const storageCard = await tx.query.storageCards.findFirst({
+          where: eq(storageCards.supplierId, currentRefueling.supplierId),
+        });
+
+        if (!storageCard) {
+          throw new Error(`Warehouse ${storageCard} not found`);
+        }
+
+        const oldQuantity = parseFloat(
+          currentRefueling.purchaseAmountUsd || "0",
+        );
+        const newQuantity = data.purchaseAmountUsd;
+
+        if (oldQuantity !== newQuantity) {
+          const currentBalance = parseFloat(storageCard.currentBalance || "0");
+          const currentCost = storageCard.averageCost || "0";
+          const balanceBeforeOldOperation = currentBalance + oldQuantity;
+
+          const newBalance = Math.max(
+            0,
+            balanceBeforeOldOperation - newQuantity,
+          );
+          const newCost = data.purchasePriceUsd || parseFloat(currentCost);
+
+          await tx
+            .update(storageCards)
+            .set({
+              currentBalance: newBalance.toFixed(2),
+              averageCost: newCost.toFixed(4),
+              updatedAt: sql`NOW()`,
+              updatedById: userId,
+            })
+            .where(eq(storageCards.id, storageCard.id));
+
+          await tx
+            .update(storageCardTransactions)
+            .set({
+              quantity: newQuantity.toString(),
+              price: newCost.toString(),
+              balanceAfter: newBalance.toString(),
+              averageCostAfter: newCost.toFixed(4),
+              updatedAt: sql`NOW()`,
+              updatedById: userId,
+              transactionDate: data.refuelingDate,
+            })
+            .where(
+              eq(storageCardTransactions.id, currentRefueling.transactionId),
+            );
+        }
+      }
+
+      const [updated] = await tx
+        .update(refuelingAbroad)
+        .set({
+          ...this.transformData(data),
+          updatedAt: sql`NOW()`,
+          updatedById: userId,
+        })
+        .where(
+          and(eq(refuelingAbroad.id, id), isNull(refuelingAbroad.deletedAt)),
+        )
+        .returning();
+
+      return updated;
+    });
   }
 
   async softDelete(id: string, userId?: string): Promise<boolean> {
-    const [result] = await db
-      .update(refuelingAbroad)
-      .set({
-        deletedAt: sql`NOW()`,
-        deletedById: userId,
-      })
-      .where(and(eq(refuelingAbroad.id, id), isNull(refuelingAbroad.deletedAt)))
-      .returning();
-    return !!result;
+    return await db.transaction(async (tx) => {
+      const currentRefueling = await tx.query.refuelingAbroad.findFirst({
+        where: eq(refuelingAbroad.id, id),
+      });
+
+      if (
+        currentRefueling &&
+        currentRefueling.transactionId &&
+        currentRefueling.supplierId
+      ) {
+        const storageCard = await tx.query.storageCards.findFirst({
+          where: eq(storageCards.supplierId, currentRefueling.supplierId),
+        });
+
+        if (!storageCard) {
+          throw new Error(
+            `Storage card ${currentRefueling.supplierId} not found`,
+          );
+        }
+
+        const transaction = await tx.query.storageCardTransactions.findFirst({
+          where: eq(storageCardTransactions.id, currentRefueling.transactionId),
+        });
+
+        if (!transaction) {
+          throw new Error(
+            `Transaction ${currentRefueling.transactionId} not found`,
+          );
+        }
+
+        const quantity = parseFloat(transaction.quantity);
+        const currentBalance = parseFloat(storageCard.currentBalance || "0");
+        const newBalance = currentBalance + quantity;
+
+        await tx
+          .update(storageCards)
+          .set({
+            currentBalance: newBalance.toFixed(2),
+            updatedAt: sql`NOW()`,
+            updatedById: userId,
+          })
+          .where(eq(storageCards.id, storageCard.id));
+
+        await tx
+          .update(storageCardTransactions)
+          .set({
+            deletedAt: sql`NOW()`,
+            deletedById: userId,
+          })
+          .where(eq(storageCardTransactions.id, transaction.id));
+      }
+
+      const [result] = await tx
+        .update(refuelingAbroad)
+        .set({
+          deletedAt: sql`NOW()`,
+          deletedById: userId,
+        })
+        .where(eq(refuelingAbroad.id, id))
+        .returning();
+
+      return !!result;
+    });
   }
 
   async restore(
     id: string,
     userId?: string,
   ): Promise<RefuelingAbroad | undefined> {
-    const [result] = await db
-      .update(refuelingAbroad)
-      .set({
-        deletedAt: null,
-        deletedById: null,
-        updatedAt: sql`NOW()`,
-        updatedById: userId,
-      })
-      .where(eq(refuelingAbroad.id, id))
-      .returning();
-    return result;
+    return await db.transaction(async (tx) => {
+      // Restore the aircraft refueling record
+      const [result] = await tx
+        .update(refuelingAbroad)
+        .set({
+          deletedAt: null,
+          deletedById: null,
+        })
+        .where(eq(refuelingAbroad.id, id))
+        .returning();
+
+      // Restore associated transaction if exists and not a service
+      if (result.transactionId) {
+        const storageCard = await tx.query.storageCards.findFirst({
+          where: eq(storageCards.supplierId, result.supplierId),
+        });
+
+        if (!storageCard) {
+          throw new Error(`Storage card ${result.supplierId} not found`);
+        }
+
+        const transaction = await tx.query.storageCardTransactions.findFirst({
+          where: eq(storageCardTransactions.id, result.transactionId),
+        });
+
+        if (!transaction) {
+          throw new Error(`Transaction ${result.transactionId} not found`);
+        }
+
+        const quantity = parseFloat(transaction.quantity);
+        const currentBalance = parseFloat(storageCard.currentBalance || "0");
+        const newBalance = Math.max(0, currentBalance - quantity);
+
+        await tx
+          .update(storageCards)
+          .set({
+            currentBalance: newBalance.toFixed(2),
+            updatedAt: sql`NOW()`,
+            updatedById: userId,
+          })
+          .where(eq(storageCards.id, storageCard.id));
+
+        await tx
+          .update(storageCardTransactions)
+          .set({
+            deletedAt: null,
+            deletedById: null,
+          })
+          .where(eq(storageCardTransactions.id, result.transactionId));
+      }
+      return result;
+    });
   }
 
   async getDeleted(): Promise<RefuelingAbroad[]> {
@@ -373,19 +600,6 @@ export class RefuelingAbroadStorage implements IRefuelingAbroadStorage {
       .from(refuelingAbroad)
       .where(sql`${refuelingAbroad.deletedAt} IS NOT NULL`)
       .orderBy(desc(refuelingAbroad.deletedAt));
-  }
-
-  async getDrafts(): Promise<RefuelingAbroad[]> {
-    return db
-      .select()
-      .from(refuelingAbroad)
-      .where(
-        and(
-          eq(refuelingAbroad.isDraft, true),
-          isNull(refuelingAbroad.deletedAt),
-        ),
-      )
-      .orderBy(desc(refuelingAbroad.createdAt));
   }
 
   private transformData(data: Partial<InsertRefuelingAbroad>): any {
