@@ -135,7 +135,7 @@ export function StorageCardDetailsDialog({
                   return (
                     <TableRow key={tx.id}>
                       <TableCell className="text-xs">
-                        {format(new Date(tx.createdAt), "dd.MM.yyyy HH:mm", {
+                        {format(new Date(tx.transactionDate), "dd.MM.yyyy HH:mm", {
                           locale: ru,
                         })}
                       </TableCell>

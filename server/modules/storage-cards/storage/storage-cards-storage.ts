@@ -144,7 +144,7 @@ export class StorageCardsStorage {
         eq(storageCardTransactions.storageCardId, storageCardId),
         isNull(storageCardTransactions.deletedAt),
       ),
-      orderBy: [desc(storageCardTransactions.createdAt)],
+      orderBy: [desc(storageCardTransactions.transactionDate)],
       limit: 20,
     });
   }
