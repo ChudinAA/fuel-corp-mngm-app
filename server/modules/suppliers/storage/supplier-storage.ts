@@ -89,7 +89,7 @@ export class SupplierStorage implements ISupplierStorage {
         .returning();
 
       // Auto-create storage card for foreign suppliers
-      if (created.isForeign && created.isIntermediary) {
+      if (created.isForeign && !created.isIntermediary) {
         const defaultCurrency = await tx.query.currencies.findFirst({
           where: eq(currencies.code, "USD"),
         });
@@ -138,6 +138,39 @@ export class SupplierStorage implements ISupplierStorage {
     const { baseIds, ...supplierData } = data;
 
     return await db.transaction(async (tx) => {
+      const currentSupplier = await tx.query.suppliers.findFirst({
+        where: eq(suppliers.id, id),
+      });
+
+      if (!currentSupplier) {
+        throw new Error("Такая запись не найдена");
+      }
+
+      // Auto-create storage card for foreign suppliers if its empty
+      if (
+        currentSupplier.storageCardId === null &&
+        data.isForeign &&
+        !data.isIntermediary
+      ) {
+        const defaultCurrency = await tx.query.currencies.findFirst({
+          where: eq(currencies.code, "USD"),
+        });
+
+        const [card] = await tx
+          .insert(storageCards)
+          .values({
+            name: data.name || currentSupplier.name,
+            currency: defaultCurrency?.code,
+            currencySymbol: defaultCurrency?.symbol,
+            currencyId: defaultCurrency?.id,
+            supplierId: currentSupplier.id,
+          })
+          .returning();
+
+        // Link card to supplier
+        supplierData.storageCardId = card.id;
+      }
+
       // Update supplier
       const [updated] = await tx
         .update(suppliers)
