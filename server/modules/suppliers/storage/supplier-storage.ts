@@ -207,6 +207,13 @@ export class SupplierStorage implements ISupplierStorage {
   }
 
   async deleteSupplier(id: string, userId?: string): Promise<boolean> {
+    const currentSupplier = await db.query.suppliers.findFirst({
+      where: eq(suppliers.id, id),
+    });
+
+    if (!currentSupplier) {
+      throw new Error("Такая запись не найдена");
+    }
     // Soft delete
     await db
       .update(suppliers)
@@ -215,10 +222,28 @@ export class SupplierStorage implements ISupplierStorage {
         deletedById: userId,
       })
       .where(eq(suppliers.id, id));
+
+    if (currentSupplier.storageCardId) {
+      await db
+        .update(storageCards)
+        .set({
+          deletedAt: sql`NOW()`,
+          deletedById: userId,
+        })
+        .where(eq(storageCards.id, currentSupplier.storageCardId));
+    }
+
     return true;
   }
 
   async restoreSupplier(id: string, userId?: string): Promise<boolean> {
+    const currentSupplier = await db.query.suppliers.findFirst({
+      where: eq(suppliers.id, id),
+    });
+
+    if (!currentSupplier) {
+      throw new Error("Такая запись не найдена");
+    }
     await db
       .update(suppliers)
       .set({
@@ -226,6 +251,16 @@ export class SupplierStorage implements ISupplierStorage {
         deletedById: null,
       })
       .where(eq(suppliers.id, id));
+
+    if (currentSupplier.storageCardId) {
+      await db
+        .update(storageCards)
+        .set({
+          deletedAt: null,
+          deletedById: null,
+        })
+        .where(eq(storageCards.id, currentSupplier.storageCardId));
+    }
     return true;
   }
 }

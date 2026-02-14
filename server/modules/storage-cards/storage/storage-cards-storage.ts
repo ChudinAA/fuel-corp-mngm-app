@@ -33,6 +33,7 @@ export class StorageCardsStorage {
           where: and(
             eq(prices.counterpartyId, card.supplierId!),
             eq(prices.counterpartyRole, COUNTERPARTY_ROLE.SUPPLIER),
+            eq(prices.currency, "USD"),
             isNull(prices.deletedAt),
           ),
           orderBy: [desc(prices.dateTo)],
