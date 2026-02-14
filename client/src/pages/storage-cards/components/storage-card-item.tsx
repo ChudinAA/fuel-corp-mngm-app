@@ -7,19 +7,24 @@ interface StorageCardItemProps {
   card: any;
   onEdit: (card: any) => void;
   onDeposit: (card: any) => void;
+  onViewDetails: (card: any) => void;
 }
 
 export function StorageCardItem({
   card,
   onEdit,
   onDeposit,
+  onViewDetails,
 }: StorageCardItemProps) {
   const { hasPermission } = useAuth();
   const formatNumber = (value: number) =>
     new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(value);
 
   return (
-    <Card className="hover-elevate">
+    <Card 
+      className="hover-elevate cursor-pointer"
+      onClick={() => onViewDetails(card)}
+    >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-1">
         <CardTitle className="text-base font-bold">{card.name}</CardTitle>
         <CreditCard className="h-4 w-4 text-sky-400 shrink-0" />
@@ -79,7 +84,10 @@ export function StorageCardItem({
               <Button
                 size="sm"
                 className="w-full"
-                onClick={() => onDeposit(card)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeposit(card);
+                }}
                 data-testid={`button-deposit-${card.id}`}
               >
                 <Plus className="h-4 w-4 mr-1" />
@@ -88,7 +96,10 @@ export function StorageCardItem({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => onEdit(card)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(card);
+                }}
                 data-testid={`button-edit-${card.id}`}
               >
                 Изм.

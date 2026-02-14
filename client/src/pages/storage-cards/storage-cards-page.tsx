@@ -16,6 +16,7 @@ import { Search, Plus, History, Wallet } from "lucide-react";
 import { StorageCardForm } from "./components/storage-card-form";
 import { DepositForm } from "./components/deposit-form";
 import { StorageCardItem } from "./components/storage-card-item";
+import { StorageCardDetailsDialog } from "./components/storage-card-details-dialog";
 import { AuditPanel } from "@/components/audit-panel";
 import { ExportButton } from "@/components/export/export-button";
 import { queryClient } from "@/lib/queryClient";
@@ -29,6 +30,7 @@ export default function StorageCardsPage({
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<any | null>(null);
+  const [viewingCard, setViewingCard] = useState<any | null>(null);
   const [depositCard, setDepositCard] = useState<any | null>(null);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
 
@@ -142,9 +144,18 @@ export default function StorageCardsPage({
               card={card}
               onEdit={handleEdit}
               onDeposit={(card) => setDepositCard(card)}
+              onViewDetails={(card) => setViewingCard(card)}
             />
           ))}
         </div>
+      )}
+
+      {viewingCard && (
+        <StorageCardDetailsDialog
+          card={viewingCard}
+          open={!!viewingCard}
+          onOpenChange={(open) => !open && setViewingCard(null)}
+        />
       )}
 
       <Dialog

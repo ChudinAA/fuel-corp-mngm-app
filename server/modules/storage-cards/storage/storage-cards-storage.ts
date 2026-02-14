@@ -145,6 +145,7 @@ export class StorageCardsStorage {
         isNull(storageCardTransactions.deletedAt),
       ),
       orderBy: [desc(storageCardTransactions.createdAt)],
+      limit: 20,
     });
   }
 
