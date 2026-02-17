@@ -1,11 +1,10 @@
-
 import { useState, useRef } from "react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -33,7 +32,13 @@ export function AddRefuelingDialog({
     if (!open) {
       const formState = formRef.current?.getFormState();
       // Если это создание новой заправки и введен поставщик или покупатель
-      if (!editRefueling && !isCopy && formState && (formState.supplierId || formState.buyerId)) {
+      if (
+        !editRefueling &&
+        !isCopy &&
+        formState &&
+        formState.supplierId &&
+        formState.buyerId
+      ) {
         setShowExitConfirm(true);
       } else {
         onClose();
@@ -60,20 +65,30 @@ export function AddRefuelingDialog({
         <DialogContent className="sm:max-w-[950px] h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {isCopy ? "Копирование заправки" : editRefueling ? "Редактирование заправки" : "Новая заправка ВС"}
+              {isCopy
+                ? "Копирование заправки"
+                : editRefueling
+                  ? "Редактирование заправки"
+                  : "Новая заправка ВС"}
             </DialogTitle>
             <DialogDescription>
-              {isCopy 
-                ? "Создание новой заправки на основе существующей" 
-                : editRefueling 
-                  ? "Измените данные существующей заправки" 
+              {isCopy
+                ? "Создание новой заправки на основе существующей"
+                : editRefueling
+                  ? "Измените данные существующей заправки"
                   : "Заполните данные для создания новой заправки ВС"}
             </DialogDescription>
           </DialogHeader>
-          <RefuelingForm 
+          <RefuelingForm
             ref={formRef}
-            onSuccess={onClose} 
-            editData={editRefueling ? (isCopy ? { ...editRefueling, id: undefined as any } : editRefueling) : null}
+            onSuccess={onClose}
+            editData={
+              editRefueling
+                ? isCopy
+                  ? { ...editRefueling, id: undefined as any }
+                  : editRefueling
+                : null
+            }
           />
         </DialogContent>
       </Dialog>
@@ -83,12 +98,17 @@ export function AddRefuelingDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Сохранить черновик?</AlertDialogTitle>
             <AlertDialogDescription>
-              Вы начали вводить данные. Хотите сохранить эту заправку как черновик перед закрытием?
+              Вы начали вводить данные. Хотите сохранить эту заправку как
+              черновик перед закрытием?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleDiscard}>Нет, удалить</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSaveDraft}>Да, сохранить</AlertDialogAction>
+            <AlertDialogCancel onClick={handleDiscard}>
+              Нет, удалить
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleSaveDraft}>
+              Да, сохранить
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

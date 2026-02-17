@@ -1,5 +1,10 @@
 import { useState, useRef } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,7 +15,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { RefuelingAbroadForm, type RefuelingAbroadFormHandle } from "./refueling-abroad-form";
+import {
+  RefuelingAbroadForm,
+  type RefuelingAbroadFormHandle,
+} from "./refueling-abroad-form";
 import type { AddRefuelingAbroadDialogProps } from "../types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -33,7 +41,13 @@ export function AddRefuelingAbroadDialog({
     if (!open) {
       const formState = formRef.current?.getFormState();
       // Если это создание новой заправки и введен поставщик или покупатель
-      if (!editRefueling && !isCopy && formState && (formState.supplierId || formState.buyerId)) {
+      if (
+        !editRefueling &&
+        !isCopy &&
+        formState &&
+        formState.supplierId &&
+        formState.buyerId
+      ) {
         setShowExitConfirm(true);
       } else {
         onClose();
@@ -65,7 +79,11 @@ export function AddRefuelingAbroadDialog({
             <RefuelingAbroadForm
               ref={formRef}
               onSuccess={onClose}
-              editData={isCopy ? { ...editRefueling!, id: "", originalId: editRefueling?.id } : editRefueling}
+              editData={
+                isCopy
+                  ? { ...editRefueling!, id: "", originalId: editRefueling?.id }
+                  : editRefueling
+              }
             />
           </ScrollArea>
         </DialogContent>
@@ -76,12 +94,17 @@ export function AddRefuelingAbroadDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Сохранить черновик?</AlertDialogTitle>
             <AlertDialogDescription>
-              Вы начали вводить данные. Хотите сохранить эту заправку за рубежом как черновик перед закрытием?
+              Вы начали вводить данные. Хотите сохранить эту заправку за рубежом
+              как черновик перед закрытием?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleDiscard}>Нет, удалить</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSaveDraft}>Да, сохранить</AlertDialogAction>
+            <AlertDialogCancel onClick={handleDiscard}>
+              Нет, удалить
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleSaveDraft}>
+              Да, сохранить
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
