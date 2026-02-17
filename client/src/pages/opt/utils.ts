@@ -21,9 +21,9 @@ export const formatNumberForTable = (value: string | number | null) => {
   if (value === null) return "—";
   const num = typeof value === "string" ? parseFloat(value) : value;
 
-  if (num >= 1000) {
-    return `${(num / 1000).toFixed(1)}к`;
-  }
+  // if (num >= 1000) {
+  //   return `${(num / 1000).toFixed(1)}к`;
+  // }
 
   return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(
     num,
@@ -34,9 +34,9 @@ export const formatCurrencyForTable = (value: string | number | null) => {
   if (value === null) return "—";
   const num = typeof value === "string" ? parseFloat(value) : value;
 
-  if (num >= 1000) {
-    return `${(num / 1000).toFixed(1)}к ₽`;
-  }
+  // if (num >= 1000) {
+  //   return `${(num / 1000).toFixed(1)}к ₽`;
+  // }
 
   return new Intl.NumberFormat("ru-RU", {
     style: "currency",

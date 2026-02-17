@@ -4,13 +4,14 @@ export function formatNumber(value: number | string | null | undefined): string 
   if (isNaN(num)) return "—";
   
   // Add 'k' suffix for numbers >= 1000
-  if (Math.abs(num) >= 1000) {
-    const kValue = num / 1000;
-    return kValue.toLocaleString("ru-RU", { 
-      minimumFractionDigits: 1, 
-      maximumFractionDigits: 1 
-    }) + "к";
-  }
+  // Временно убираем логику кило-форматирования
+  // if (Math.abs(num) >= 1000) {
+  //   const kValue = num / 1000;
+  //   return kValue.toLocaleString("ru-RU", { 
+  //     minimumFractionDigits: 1, 
+  //     maximumFractionDigits: 1 
+  //   }) + "к";
+  // }
   
   return num.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }

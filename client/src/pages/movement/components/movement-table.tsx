@@ -19,9 +19,9 @@ import { cn } from "@/lib/utils";
 
 const formatNumberWithK = (value: string | number) => {
   const num = typeof value === 'string' ? parseFloat(value) : value;
-  if (num >= 1000) {
-    return `${(num / 1000).toFixed(1)}к`;
-  }
+  // if (num >= 1000) {
+  //   return `${(num / 1000).toFixed(1)}к`;
+  // }
   return formatNumber(num);
 };
 
