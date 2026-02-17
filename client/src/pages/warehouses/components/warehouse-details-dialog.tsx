@@ -91,7 +91,7 @@ export function WarehouseDetailsDialog({
   });
 
   const transactions = useMemo(() => {
-    return data?.pages.flatMap((page) => page.transactions) || [];
+    return data?.pages?.flatMap((page) => page.transactions || []) || [];
   }, [data]);
 
   const dailyGroups = useMemo(() => {

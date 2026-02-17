@@ -220,7 +220,49 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           await storage.warehouses.getWarehouseTransactions(id, limit, offset);
         res.json(result);
       } catch (error) {
+        console.error("Error fetching transactions:", error);
         res.status(500).json({ message: "Ошибка получения транзакций склада" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/warehouses/:id/monthly-stats",
+    requireAuth,
+    requirePermission("warehouses", "view"),
+    async (req, res) => {
+      try {
+        const id = req.params.id;
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+        const { transactions } = await storage.warehouses.getWarehouseTransactions(id);
+        
+        let income = 0;
+        let expense = 0;
+        let pvkjIncome = 0;
+        let pvkjExpense = 0;
+
+        transactions.forEach((tx: any) => {
+          const txDate = new Date(tx.transactionDate || tx.createdAt);
+          if (txDate >= startOfMonth) {
+            const qty = parseFloat(tx.quantityKg);
+            const isPvkj = tx.productType === PRODUCT_TYPE.PVKJ;
+
+            if (qty > 0) {
+              if (isPvkj) pvkjIncome += qty;
+              else income += qty;
+            } else {
+              if (isPvkj) pvkjExpense += Math.abs(qty);
+              else expense += Math.abs(qty);
+            }
+          }
+        });
+
+        res.json({ income, expense, pvkjIncome, pvkjExpense });
+      } catch (error) {
+        console.error("Error calculating monthly stats:", error);
+        res.status(500).json({ message: "Ошибка получения статистики склада" });
       }
     },
   );

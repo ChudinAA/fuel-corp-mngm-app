@@ -64,19 +64,9 @@ export function WarehouseCard({
     queryKey: ["/api/bases"],
   });
 
-  const { data: transactionsData } = useQuery<{ transactions: WarehouseTransaction[]; hasMore: boolean }>({
-    queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
+  const { data: monthStats = { income: 0, expense: 0, pvkjIncome: 0, pvkjExpense: 0 } } = useQuery({
+    queryKey: [`/api/warehouses/${warehouse.id}/monthly-stats`],
   });
-
-  const transactions = transactionsData?.transactions || [];
-
-  const getBaseNames = (baseIds: string[] | null | undefined) => {
-    if (!baseIds || baseIds.length === 0 || !allBases) return null;
-    return baseIds
-      .map((id) => allBases.find((b: any) => b.id === id)?.name)
-      .filter(Boolean)
-      .join(", ");
-  };
 
   const getBaseIcon = (baseType: string) => {
     if (baseType === BASE_TYPE.REFUELING) {
@@ -84,49 +74,6 @@ export function WarehouseCard({
     }
     return { icon: Droplets, color: "text-orange-400", label: "ОПТ" };
   };
-
-  const getCurrentMonthStats = () => {
-    if (!transactions)
-      return { income: 0, expense: 0, pvkjIncome: 0, pvkjExpense: 0 };
-
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-
-    let income = 0;
-    let expense = 0;
-    let pvkjIncome = 0;
-    let pvkjExpense = 0;
-
-    transactions.forEach((tx) => {
-      const txDate = new Date(tx.transactionDate || tx.createdAt);
-      if (
-        txDate.getMonth() === currentMonth &&
-        txDate.getFullYear() === currentYear
-      ) {
-        const qty = parseFloat(tx.quantityKg);
-        const isPvkj = tx.productType === PRODUCT_TYPE.PVKJ;
-
-        if (qty > 0) {
-          if (isPvkj) {
-            pvkjIncome += qty;
-          } else {
-            income += qty;
-          }
-        } else {
-          if (isPvkj) {
-            pvkjExpense += Math.abs(qty);
-          } else {
-            expense += Math.abs(qty);
-          }
-        }
-      }
-    });
-
-    return { income, expense, pvkjIncome, pvkjExpense };
-  };
-
-  const monthStats = getCurrentMonthStats();
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
