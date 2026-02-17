@@ -64,7 +64,7 @@ export function WarehouseCard({
     queryKey: ["/api/bases"],
   });
 
-  const { data: monthStats = { income: 0, expense: 0, pvkjIncome: 0, pvkjExpense: 0 } } = useQuery({
+  const { data: monthStats = { income: 0, expense: 0, pvkjIncome: 0, pvkjExpense: 0 } } = useQuery<{ income: number; expense: number; pvkjIncome: number; pvkjExpense: number }>({
     queryKey: [`/api/warehouses/${warehouse.id}/monthly-stats`],
   });
 
