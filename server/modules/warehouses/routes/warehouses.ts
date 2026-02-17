@@ -236,30 +236,8 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         
-        const { transactions } = await storage.warehouses.getWarehouseTransactions(id);
-        
-        let income = 0;
-        let expense = 0;
-        let pvkjIncome = 0;
-        let pvkjExpense = 0;
-
-        transactions.forEach((tx: any) => {
-          const txDate = new Date(tx.transactionDate || tx.createdAt);
-          if (txDate >= startOfMonth) {
-            const qty = parseFloat(tx.quantityKg);
-            const isPvkj = tx.productType === PRODUCT_TYPE.PVKJ;
-
-            if (qty > 0) {
-              if (isPvkj) pvkjIncome += qty;
-              else income += qty;
-            } else {
-              if (isPvkj) pvkjExpense += Math.abs(qty);
-              else expense += Math.abs(qty);
-            }
-          }
-        });
-
-        res.json({ income, expense, pvkjIncome, pvkjExpense });
+        const stats = await storage.warehouses.getWarehouseMonthlyStats(id, startOfMonth);
+        res.json(stats);
       } catch (error) {
         console.error("Error calculating monthly stats:", error);
         res.status(500).json({ message: "Ошибка получения статистики склада" });

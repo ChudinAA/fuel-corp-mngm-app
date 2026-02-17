@@ -253,11 +253,38 @@ export class WarehouseStorage {
     };
   }
 
-  async getWarehouseBalanceAtDate(
+  async getWarehouseMonthlyStats(
     warehouseId: string,
-    date: Date,
-    productType: string,
-  ): Promise<{ balance: string; averageCost: string }> {
+    startOfMonth: Date,
+  ): Promise<{ income: number; expense: number; pvkjIncome: number; pvkjExpense: number }> {
+    const transactions = await db.query.warehouseTransactions.findMany({
+      where: and(
+        eq(warehouseTransactions.warehouseId, warehouseId),
+        isNull(warehouseTransactions.deletedAt),
+        sql`${warehouseTransactions.transactionDate} >= ${startOfMonth.toISOString()}`,
+      ),
+    });
+
+    let income = 0;
+    let expense = 0;
+    let pvkjIncome = 0;
+    let pvkjExpense = 0;
+
+    transactions.forEach((tx) => {
+      const qty = parseFloat(tx.quantity || "0");
+      const isPvkj = tx.productType === PRODUCT_TYPE.PVKJ;
+
+      if (qty > 0) {
+        if (isPvkj) pvkjIncome += qty;
+        else income += qty;
+      } else {
+        if (isPvkj) pvkjExpense += Math.abs(qty);
+        else expense += Math.abs(qty);
+      }
+    });
+
+    return { income, expense, pvkjIncome, pvkjExpense };
+  }
     const dateStr = format(date, "yyyy-MM-dd");
 
     const [lastTransaction] = await db
