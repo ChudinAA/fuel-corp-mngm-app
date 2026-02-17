@@ -64,9 +64,11 @@ export function WarehouseCard({
     queryKey: ["/api/bases"],
   });
 
-  const { data: transactions } = useQuery<WarehouseTransaction[]>({
+  const { data: transactionsData } = useQuery<{ transactions: WarehouseTransaction[]; hasMore: boolean }>({
     queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
   });
+
+  const transactions = transactionsData?.transactions || [];
 
   const getBaseNames = (baseIds: string[] | null | undefined) => {
     if (!baseIds || baseIds.length === 0 || !allBases) return null;
