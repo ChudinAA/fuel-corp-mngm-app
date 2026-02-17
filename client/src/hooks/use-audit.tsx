@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
 export interface AuditEntry {
@@ -26,13 +26,21 @@ interface UseAuditOptions {
 }
 
 export function useAudit({ entityType, entityId, limit = 50, enabled = true }: UseAuditOptions) {
-  const endpoint = entityId
-    ? `/api/audit/${entityType}/${entityId}?limit=${limit}`
-    : `/api/audit/${entityType}?limit=${limit}`;
-
-  const { data, isLoading, error, refetch } = useQuery<AuditEntry[]>({
+  const { 
+    data, 
+    isLoading, 
+    error, 
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useInfiniteQuery<{ data: AuditEntry[], total: number }>({
     queryKey: ["audit", entityType, entityId || "all", limit],
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 0 }) => {
+      const endpoint = entityId
+        ? `/api/audit/${entityType}/${entityId}?limit=${limit}&offset=${pageParam}`
+        : `/api/audit/${entityType}?limit=${limit}&offset=${pageParam}`;
+        
       const res = await apiRequest("GET", endpoint);
       if (!res.ok) {
         throw new Error("Failed to fetch audit history");
@@ -41,12 +49,20 @@ export function useAudit({ entityType, entityId, limit = 50, enabled = true }: U
     },
     enabled: enabled && !!entityType,
     staleTime: 30000, // 30 seconds
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const loadedCount = allPages.length * limit;
+      return loadedCount < lastPage.total ? loadedCount : undefined;
+    },
   });
 
   return {
-    auditHistory: data || [],
+    auditHistory: data,
     isLoading,
     error,
     refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   };
 }

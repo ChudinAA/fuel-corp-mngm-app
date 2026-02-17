@@ -21,6 +21,7 @@ router.get(
     try {
       const { entityType, entityId } = req.params;
       const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
 
       // Validate entity type
       if (!Object.values(ENTITY_TYPES).includes(entityType as any)) {
@@ -30,7 +31,8 @@ router.get(
       const history = await AuditService.getEntityHistory(
         entityType as any,
         entityId,
-        limit
+        limit,
+        offset
       );
 
       res.json(history);
@@ -52,18 +54,20 @@ router.get(
     try {
       const { entityType } = req.params;
       const limit = parseInt(req.query.limit as string) || 100;
+      const offset = parseInt(req.query.offset as string) || 0;
 
       // Validate entity type
       if (!Object.values(ENTITY_TYPES).includes(entityType as any)) {
         return res.status(400).json({ message: "Invalid entity type" });
       }
 
-      const entries = await AuditService.getRecentAuditEntries(
+      const result = await AuditService.getRecentAuditEntries(
         entityType as any,
-        limit
+        limit,
+        offset
       );
 
-      res.json(entries);
+      res.json(result);
     } catch (error: any) {
       console.error("Error fetching recent audit entries:", error);
       res.status(500).json({ message: error.message });

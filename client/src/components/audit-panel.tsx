@@ -25,6 +25,7 @@ import {
   ChevronDown,
   ChevronUp,
   Undo2,
+  Loader2,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -387,12 +388,24 @@ export function AuditPanel({
   entityId,
   entityName,
 }: AuditPanelProps) {
-  const { auditHistory, isLoading, refetch } = useAudit({
+  const { 
+    auditHistory, 
+    isLoading, 
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage 
+  } = useAudit({
     entityType,
     entityId,
     enabled: open,
   });
   const { rollback, isRollingBack } = useRollback();
+
+  const entries = useMemo(
+    () => auditHistory?.pages.flatMap((page) => page.data) || [],
+    [auditHistory],
+  );
 
   const handleRollback = (auditLogId: string) => {
     rollback(auditLogId, {
@@ -420,7 +433,7 @@ export function AuditPanel({
 
         <Separator className="my-4" />
 
-        <ScrollArea className="h-[calc(100vh-120px)] pr-4">
+        <ScrollArea className="h-[calc(100vh-160px)] pr-4">
           {isLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
@@ -430,7 +443,7 @@ export function AuditPanel({
                 </div>
               ))}
             </div>
-          ) : auditHistory.length === 0 ? (
+          ) : entries.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <History className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
               <p className="text-muted-foreground">
@@ -438,8 +451,8 @@ export function AuditPanel({
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {auditHistory.map((entry) => (
+            <div className="space-y-3 pb-20">
+              {entries.map((entry) => (
                 <AuditEntryItem
                   key={entry.id}
                   entry={entry}
@@ -447,16 +460,37 @@ export function AuditPanel({
                   onRollback={handleRollback}
                 />
               ))}
+
+              {hasNextPage && (
+                <div className="flex justify-center pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    className="w-full gap-2"
+                  >
+                    {isFetchingNextPage ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Загрузка...
+                      </>
+                    ) : (
+                      "Загрузить еще"
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </ScrollArea>
 
-        <div className="absolute bottom-4 left-6 right-6">
+        <div className="absolute bottom-4 left-6 right-6 flex flex-col gap-2">
           <Button
             variant="outline"
             className="w-full"
             onClick={() => refetch()}
-            disabled={isLoading || isRollingBack}
+            disabled={isLoading || isRollingBack || isFetchingNextPage}
           >
             {isRollingBack ? "Выполняется откат..." : "Обновить историю"}
           </Button>

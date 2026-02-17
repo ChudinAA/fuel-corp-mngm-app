@@ -135,55 +135,94 @@ export class AuditService {
   /**
    * Get audit history for a specific entity
    */
-  static async getEntityHistory(entityType: EntityType, entityId: string, limit = 50) {
-    return db.query.auditLog.findMany({
-      where: and(
-        eq(auditLog.entityType, entityType),
-        eq(auditLog.entityId, entityId)
-      ),
-      orderBy: [desc(auditLog.createdAt)],
-      limit,
-      with: {
-        user: {
-          columns: {
-            id: true,
-            username: true,
-            email: true,
+  static async getEntityHistory(entityType: EntityType, entityId: string, limit = 50, offset = 0) {
+    const where = and(
+      eq(auditLog.entityType, entityType),
+      eq(auditLog.entityId, entityId)
+    );
+
+    const [data, totalResult] = await Promise.all([
+      db.query.auditLog.findMany({
+        where,
+        orderBy: [desc(auditLog.createdAt)],
+        limit,
+        offset,
+        with: {
+          user: {
+            columns: {
+              id: true,
+              username: true,
+              email: true,
+            }
           }
         }
-      }
-    });
+      }),
+      db.select({ count: sql<number>`count(*)::int` })
+        .from(auditLog)
+        .where(where)
+    ]);
+
+    return {
+      data,
+      total: totalResult[0]?.count || 0
+    };
   }
 
   /**
    * Get recent audit entries for an entity type
    */
-  static async getRecentAuditEntries(entityType: EntityType, limit = 100) {
-    return db.query.auditLog.findMany({
-      where: eq(auditLog.entityType, entityType),
-      orderBy: [desc(auditLog.createdAt)],
-      limit,
-      with: {
-        user: {
-          columns: {
-            id: true,
-            username: true,
-            email: true,
+  static async getRecentAuditEntries(entityType: EntityType, limit = 100, offset = 0) {
+    const where = eq(auditLog.entityType, entityType);
+
+    const [data, totalResult] = await Promise.all([
+      db.query.auditLog.findMany({
+        where,
+        orderBy: [desc(auditLog.createdAt)],
+        limit,
+        offset,
+        with: {
+          user: {
+            columns: {
+              id: true,
+              username: true,
+              email: true,
+            }
           }
         }
-      }
-    });
+      }),
+      db.select({ count: sql<number>`count(*)::int` })
+        .from(auditLog)
+        .where(where)
+    ]);
+
+    return {
+      data,
+      total: totalResult[0]?.count || 0
+    };
   }
 
   /**
    * Get audit entries by user
    */
-  static async getUserAuditHistory(userId: string, limit = 100) {
-    return db.query.auditLog.findMany({
-      where: eq(auditLog.userId, userId),
-      orderBy: [desc(auditLog.createdAt)],
-      limit,
-    });
+  static async getUserAuditHistory(userId: string, limit = 100, offset = 0) {
+    const where = eq(auditLog.userId, userId);
+
+    const [data, totalResult] = await Promise.all([
+      db.query.auditLog.findMany({
+        where,
+        orderBy: [desc(auditLog.createdAt)],
+        limit,
+        offset,
+      }),
+      db.select({ count: sql<number>`count(*)::int` })
+        .from(auditLog)
+        .where(where)
+    ]);
+
+    return {
+      data,
+      total: totalResult[0]?.count || 0
+    };
   }
 
 
