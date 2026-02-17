@@ -208,7 +208,7 @@ export function WarehouseCard({
                     id: "edit",
                     label: "Редактировать",
                     icon: Pencil,
-                    onClick: (e) => {
+                    onClick: () => {
                       onEdit(warehouse);
                     },
                     permission: { module: "warehouses", action: "edit" },
