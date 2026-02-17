@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,46 +40,63 @@ import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
 
-export function OptForm({ onSuccess, editData }: OptFormProps) {
-  const { toast } = useToast();
-  const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
-  const [selectedBasis, setSelectedBasis] = useState<string>("");
-  const [customerBasis, setCustomerBasis] = useState<string>("");
-  const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
-    useState<string>("");
-  const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
-  const [initialQuantityKg, setInitialQuantityKg] = useState<number>(0);
-  const isEditing = !!editData && !!editData.id;
+export interface OptFormHandle {
+  getFormState: () => { supplierId: string; buyerId: string };
+  saveAsDraft: () => Promise<void>;
+}
 
-  const form = useForm<OptFormData>({
-    resolver: zodResolver(optFormSchema),
-    defaultValues: {
-      dealDate: editData ? new Date(editData.dealDate) : new Date(),
-      supplierId: "",
-      buyerId: "",
-      warehouseId: "",
-      quantityLiters: "",
-      density: "",
-      quantityKg: "",
-      carrierId: "",
-      deliveryLocationId: "",
-      notes: "",
-      isApproxVolume: false,
-      isDraft: editData?.isDraft || false,
-      productType: editData?.productType || PRODUCT_TYPE.KEROSENE,
-      selectedPurchasePriceId: "",
-      selectedSalePriceId: "",
-      basis: "",
-      customerBasis: "",
-      basisId: "",
-      customerBasisId: "",
-      inputMode: "kg",
-    },
-  });
+export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
+  ({ onSuccess, editData }, ref) => {
+    const { toast } = useToast();
+    const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
+    const [selectedBasis, setSelectedBasis] = useState<string>("");
+    const [customerBasis, setCustomerBasis] = useState<string>("");
+    const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
+      useState<string>("");
+    const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
+    const [initialQuantityKg, setInitialQuantityKg] = useState<number>(0);
+    const isEditing = !!editData && !!editData.id;
 
-  const { data: suppliers } = useQuery<Supplier[]>({
-    queryKey: ["/api/suppliers"],
-  });
+    const form = useForm<OptFormData>({
+      resolver: zodResolver(optFormSchema),
+      defaultValues: {
+        dealDate: editData ? new Date(editData.dealDate) : new Date(),
+        supplierId: "",
+        buyerId: "",
+        warehouseId: "",
+        quantityLiters: "",
+        density: "",
+        quantityKg: "",
+        carrierId: "",
+        deliveryLocationId: "",
+        notes: "",
+        isApproxVolume: false,
+        isDraft: editData?.isDraft || false,
+        productType: editData?.productType || PRODUCT_TYPE.KEROSENE,
+        selectedPurchasePriceId: "",
+        selectedSalePriceId: "",
+        basis: "",
+        customerBasis: "",
+        basisId: "",
+        customerBasisId: "",
+        inputMode: "kg",
+      },
+    });
+
+    useImperativeHandle(ref, () => ({
+      getFormState: () => ({
+        supplierId: form.getValues("supplierId") || "",
+        buyerId: form.getValues("buyerId") || "",
+      }),
+      saveAsDraft: async () => {
+        const values = form.getValues();
+        await createMutation.mutateAsync({ ...values, isDraft: true });
+      },
+    }));
+
+    const { data: suppliers } = useQuery<Supplier[]>({
+      queryKey: ["/api/suppliers"],
+    });
 
   const { data: allBases } = useQuery<Base[]>({
     queryKey: ["/api/bases"],
@@ -819,4 +836,4 @@ export function OptForm({ onSuccess, editData }: OptFormProps) {
       />
     </>
   );
-}
+});
