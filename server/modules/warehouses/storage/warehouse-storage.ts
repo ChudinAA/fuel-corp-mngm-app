@@ -285,6 +285,12 @@ export class WarehouseStorage {
 
     return { income, expense, pvkjIncome, pvkjExpense };
   }
+
+  async getWarehouseBalanceAtDate(
+    warehouseId: string,
+    date: Date,
+    productType: string,
+  ): Promise<{ balance: string; averageCost: string }> {
     const dateStr = format(date, "yyyy-MM-dd");
 
     const [lastTransaction] = await db
