@@ -25,22 +25,27 @@ interface UseAuditOptions {
   enabled?: boolean;
 }
 
-export function useAudit({ entityType, entityId, limit = 50, enabled = true }: UseAuditOptions) {
-  const { 
-    data, 
-    isLoading, 
-    error, 
+export function useAudit({
+  entityType,
+  entityId,
+  limit = 25,
+  enabled = true,
+}: UseAuditOptions) {
+  const {
+    data,
+    isLoading,
+    error,
     refetch,
     fetchNextPage,
     hasNextPage,
-    isFetchingNextPage
-  } = useInfiniteQuery<{ data: AuditEntry[], total: number }>({
+    isFetchingNextPage,
+  } = useInfiniteQuery<{ data: AuditEntry[]; total: number }>({
     queryKey: ["audit", entityType, entityId || "all", limit],
     queryFn: async ({ pageParam = 0 }) => {
       const endpoint = entityId
         ? `/api/audit/${entityType}/${entityId}?limit=${limit}&offset=${pageParam}`
         : `/api/audit/${entityType}?limit=${limit}&offset=${pageParam}`;
-        
+
       const res = await apiRequest("GET", endpoint);
       if (!res.ok) {
         throw new Error("Failed to fetch audit history");

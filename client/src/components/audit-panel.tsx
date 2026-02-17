@@ -451,7 +451,7 @@ export function AuditPanel({
               </p>
             </div>
           ) : (
-            <div className="space-y-3 pb-20">
+            <div className="space-y-3 pb-10">
               {entries.map((entry) => (
                 <AuditEntryItem
                   key={entry.id}
