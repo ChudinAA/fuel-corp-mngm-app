@@ -199,7 +199,7 @@ export class WarehouseStorage {
     warehouseId: string,
     limit?: number,
     offset?: number,
-  ): Promise<{ transactions: WarehouseTransaction[]; hasMore: boolean }> {
+  ): Promise<{ transactions: any[]; hasMore: boolean }> {
     const transactions = await db.query.warehouseTransactions.findMany({
       where: and(
         eq(warehouseTransactions.warehouseId, warehouseId),
