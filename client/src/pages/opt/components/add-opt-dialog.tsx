@@ -33,7 +33,7 @@ export function AddOptDialog({
     if (!open) {
       const formState = formRef.current?.getFormState();
       // Если это создание новой сделки и введен поставщик или покупатель
-      if (!editOpt && !isCopy && formState && (formState.supplierId || formState.buyerId)) {
+      if (!editOpt && !isCopy && formState && (formState.supplierId && formState.buyerId)) {
         setShowExitConfirm(true);
       } else {
         onClose();

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,46 +37,63 @@ import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
 
-export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
-  const { toast } = useToast();
-  const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
-  const [selectedBasis, setSelectedBasis] = useState<string>("");
-  const [customerBasis, setCustomerBasis] = useState<string>("");
-  const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
-    useState<string>("");
-  const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
-  const [initialQuantityKg, setInitialQuantityKg] = useState<number>(0);
-  const [initialWarehouseBalance, setInitialWarehouseBalance] =
-    useState<number>(0); // State for initial balance
-  const [isDataInitialized, setIsDataInitialized] = useState(false);
-  const isEditing = !!editData && !!editData.id;
+export interface RefuelingFormHandle {
+  getFormState: () => { supplierId: string; buyerId: string };
+  saveAsDraft: () => Promise<void>;
+}
 
-  const form = useForm<RefuelingFormData>({
-    resolver: zodResolver(refuelingFormSchema),
-    defaultValues: {
-      refuelingDate: editData ? new Date(editData.refuelingDate) : new Date(),
-      productType: editData?.productType || PRODUCT_TYPE.KEROSENE,
-      aircraftNumber: editData?.aircraftNumber || "",
-      orderNumber: editData?.orderNumber || "",
-      supplierId: "",
-      buyerId: "",
-      warehouseId: "",
-      inputMode: (editData?.inputMode as "liters" | "kg") || "liters",
-      quantityLiters: editData?.quantityLiters?.toString() || "",
-      density: editData?.density?.toString() || "",
-      quantityKg: editData?.quantityKg?.toString() || "",
-      notes: editData?.notes || "",
-      isApproxVolume: editData?.isApproxVolume || false,
-      isPriceRecharge: editData?.isPriceRecharge || false,
-      isDraft: editData?.isDraft || false,
-      selectedPurchasePriceId: "",
-      selectedSalePriceId: "",
-      basis: editData?.basis || "",
-      customerBasis: editData?.customerBasis || "",
-    },
-  });
+export const RefuelingForm = forwardRef<RefuelingFormHandle, RefuelingFormProps>(
+  ({ onSuccess, editData }, ref) => {
+    const { toast } = useToast();
+    const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
+    const [selectedBasis, setSelectedBasis] = useState<string>("");
+    const [customerBasis, setCustomerBasis] = useState<string>("");
+    const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
+      useState<string>("");
+    const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
+    const [initialQuantityKg, setInitialQuantityKg] = useState<number>(0);
+    const [initialWarehouseBalance, setInitialWarehouseBalance] =
+      useState<number>(0); // State for initial balance
+    const [isDataInitialized, setIsDataInitialized] = useState(false);
+    const isEditing = !!editData && !!editData.id;
 
-  const { data: suppliers } = useQuery<Supplier[]>({
+    const form = useForm<RefuelingFormData>({
+      resolver: zodResolver(refuelingFormSchema),
+      defaultValues: {
+        refuelingDate: editData ? new Date(editData.refuelingDate) : new Date(),
+        productType: editData?.productType || PRODUCT_TYPE.KEROSENE,
+        aircraftNumber: editData?.aircraftNumber || "",
+        orderNumber: editData?.orderNumber || "",
+        supplierId: "",
+        buyerId: "",
+        warehouseId: "",
+        inputMode: (editData?.inputMode as "liters" | "kg") || "liters",
+        quantityLiters: editData?.quantityLiters?.toString() || "",
+        density: editData?.density?.toString() || "",
+        quantityKg: editData?.quantityKg?.toString() || "",
+        notes: editData?.notes || "",
+        isApproxVolume: editData?.isApproxVolume || false,
+        isPriceRecharge: editData?.isPriceRecharge || false,
+        isDraft: editData?.isDraft || false,
+        selectedPurchasePriceId: "",
+        selectedSalePriceId: "",
+        basis: editData?.basis || "",
+        customerBasis: editData?.customerBasis || "",
+      },
+    });
+
+    useImperativeHandle(ref, () => ({
+      getFormState: () => ({
+        supplierId: form.getValues("supplierId") || "",
+        buyerId: form.getValues("buyerId") || "",
+      }),
+      saveAsDraft: async () => {
+        const values = form.getValues();
+        await createMutation.mutateAsync({ ...values, isDraft: true });
+      },
+    }));
+
+    const { data: suppliers } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
   });
 
@@ -784,4 +801,4 @@ export function RefuelingForm({ onSuccess, editData }: RefuelingFormProps) {
       />
     </>
   );
-}
+});

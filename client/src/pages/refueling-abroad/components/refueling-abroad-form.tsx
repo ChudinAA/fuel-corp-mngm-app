@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -73,14 +73,18 @@ import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
 import { CalculatedField } from "@/pages/refueling/calculated-field";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 
-export function RefuelingAbroadForm({
-  onSuccess,
-  editData,
-}: RefuelingAbroadFormProps) {
-  const { hasPermission } = useAuth();
-  const { toast } = useToast();
+export interface RefuelingAbroadFormHandle {
+  getFormState: () => { supplierId: string; buyerId: string };
+  saveAsDraft: () => Promise<void>;
+}
 
-  const isEditing = !!editData && !!editData.id;
+export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, RefuelingAbroadFormProps>(
+  ({ onSuccess, editData }, ref) => {
+    const { hasPermission } = useAuth();
+    const { toast } = useToast();
+
+    const isEditing = !!editData && !!editData.id;
+    // ... rest of component logic
 
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
   const handlePurchasePriceCreated = (id: string) => {
@@ -242,6 +246,17 @@ export function RefuelingAbroadForm({
       isDraft: editData?.isDraft || false,
     },
   });
+
+  useImperativeHandle(ref, () => ({
+    getFormState: () => ({
+      supplierId: form.getValues("supplierId") || "",
+      buyerId: form.getValues("buyerId") || "",
+    }),
+    saveAsDraft: async () => {
+      const values = form.getValues();
+      await createMutation.mutateAsync({ ...values, isDraft: true });
+    },
+  }));
 
   const watchedValues = form.watch();
   const foreignSuppliers = suppliers.filter((s) => s.isForeign);
@@ -1500,4 +1515,4 @@ export function RefuelingAbroadForm({
       />
     </Form>
   );
-}
+});
