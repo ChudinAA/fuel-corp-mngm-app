@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import React, { useState, useMemo } from "react";
@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -37,6 +38,7 @@ import {
   Fuel,
   ChevronDown,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 import type { Warehouse, Base } from "@shared/schema";
 import type { WarehouseTransaction } from "../types";
@@ -64,14 +66,36 @@ export function WarehouseDetailsDialog({
     enabled: open,
   });
 
-  const { data: transactions, isLoading } = useQuery<WarehouseTransaction[]>({
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery<{ transactions: WarehouseTransaction[]; hasMore: boolean }>({
     queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
+    queryFn: async ({ pageParam = 0 }) => {
+      const res = await fetch(
+        `/api/warehouses/${warehouse.id}/transactions?offset=${pageParam}&limit=50`,
+      );
+      if (!res.ok) throw new Error("Failed to fetch transactions");
+      return res.json();
+    },
     enabled: open,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.hasMore) return undefined;
+      return allPages.length * 50;
+    },
     refetchInterval: 5000,
   });
 
+  const transactions = useMemo(() => {
+    return data?.pages.flatMap((page) => page.transactions) || [];
+  }, [data]);
+
   const dailyGroups = useMemo(() => {
-    if (!transactions) return [];
+    if (!transactions.length) return [];
 
     const groups: Record<
       string,
@@ -358,6 +382,26 @@ export function WarehouseDetailsDialog({
                   })}
                 </TableBody>
               </Table>
+              {hasNextPage && (
+                <div className="flex justify-center py-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    className="min-w-[200px]"
+                    data-testid="button-load-more-transactions"
+                  >
+                    {isFetchingNextPage ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Загрузка...
+                      </>
+                    ) : (
+                      "Загрузить еще"
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">

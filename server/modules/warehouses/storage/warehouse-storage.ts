@@ -197,7 +197,9 @@ export class WarehouseStorage {
 
   async getWarehouseTransactions(
     warehouseId: string,
-  ): Promise<WarehouseTransaction[]> {
+    limit?: number,
+    offset?: number,
+  ): Promise<{ transactions: WarehouseTransaction[]; hasMore: boolean }> {
     const transactions = await db.query.warehouseTransactions.findMany({
       where: and(
         eq(warehouseTransactions.warehouseId, warehouseId),
@@ -207,6 +209,8 @@ export class WarehouseStorage {
         desc(warehouseTransactions.transactionDate),
         desc(warehouseTransactions.id),
       ],
+      limit: limit ? limit + 1 : undefined,
+      offset: offset,
       with: {
         warehouse: {
           columns: {
@@ -224,23 +228,29 @@ export class WarehouseStorage {
       },
     });
 
-    return transactions.map((tx) => ({
-      id: tx.id,
-      warehouseId: tx.warehouseId,
-      transactionType: tx.transactionType,
-      sourceType: tx.sourceType,
-      sourceId: tx.sourceId,
-      productType: tx.productType || PRODUCT_TYPE.KEROSENE,
-      quantityKg: tx.quantity,
-      sum: tx.sum,
-      price: tx.price,
-      transactionDate: tx.transactionDate,
-      balanceBefore: tx.balanceBefore || "0",
-      balanceAfter: tx.balanceAfter || "0",
-      averageCostBefore: tx.averageCostBefore || "0",
-      averageCostAfter: tx.averageCostAfter || "0",
-      createdAt: tx.createdAt,
-    }));
+    const hasMore = limit ? transactions.length > limit : false;
+    const items = limit ? transactions.slice(0, limit) : transactions;
+
+    return {
+      transactions: items.map((tx) => ({
+        id: tx.id,
+        warehouseId: tx.warehouseId,
+        transactionType: tx.transactionType,
+        sourceType: tx.sourceType,
+        sourceId: tx.sourceId,
+        productType: tx.productType || PRODUCT_TYPE.KEROSENE,
+        quantityKg: tx.quantity,
+        sum: tx.sum,
+        price: tx.price,
+        transactionDate: tx.transactionDate,
+        balanceBefore: tx.balanceBefore || "0",
+        balanceAfter: tx.balanceAfter || "0",
+        averageCostBefore: tx.averageCostBefore || "0",
+        averageCostAfter: tx.averageCostAfter || "0",
+        createdAt: tx.createdAt,
+      })),
+      hasMore,
+    };
   }
 
   async getWarehouseBalanceAtDate(
