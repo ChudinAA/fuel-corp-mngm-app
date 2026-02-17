@@ -257,11 +257,12 @@ export class WarehouseStorage {
     warehouseId: string,
     startOfMonth: Date,
   ): Promise<{ income: number; expense: number; pvkjIncome: number; pvkjExpense: number }> {
+    const dateStr = format(startOfMonth, "yyyy-MM-dd");
     const transactions = await db.query.warehouseTransactions.findMany({
       where: and(
         eq(warehouseTransactions.warehouseId, warehouseId),
         isNull(warehouseTransactions.deletedAt),
-        sql`${warehouseTransactions.transactionDate} >= ${startOfMonth.toISOString()}`,
+        sql`${warehouseTransactions.transactionDate} >= ${dateStr}`,
       ),
     });
 
