@@ -58,6 +58,8 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
     const [initialQuantityKg, setInitialQuantityKg] = useState<number>(0);
     const isEditing = !!editData && !!editData.id;
 
+    const initialValuesRef = useRef<OptFormData | null>(null);
+
     const form = useForm<OptFormData>({
       resolver: zodResolver(optFormSchema),
       defaultValues: {
@@ -93,7 +95,12 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         const values = form.getValues();
         await createMutation.mutateAsync({ ...values, isDraft: true });
       },
-      isDirty: () => form.formState.isDirty,
+      isDirty: () => {
+        if (!initialValuesRef.current) return form.formState.isDirty;
+        const currentValues = form.getValues();
+        // Глубокое сравнение для надежности
+        return JSON.stringify(currentValues) !== JSON.stringify(initialValuesRef.current);
+      },
     }));
 
     const { data: suppliers } = useQuery<Supplier[]>({
@@ -310,27 +317,31 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         // Логика перенесена в хук useOptWarehouseBalance
       }
 
-      form.reset({
+      const resetValues = {
         dealDate: new Date(editData.dealDate),
         supplierId: supplier?.id || "",
         buyerId: buyer?.id || "",
         warehouseId: editData.warehouseId || "",
         productType: editData.productType || PRODUCT_TYPE.KEROSENE,
-        quantityLiters: editData.quantityLiters || "",
-        density: editData.density || "",
-        quantityKg: editData.quantityKg || "",
+        quantityLiters: editData.quantityLiters?.toString() || "",
+        density: editData.density?.toString() || "",
+        quantityKg: editData.quantityKg?.toString() || "",
         carrierId: editData.carrierId || "",
         deliveryLocationId: editData.deliveryLocationId || "",
         notes: editData.notes || "",
         isApproxVolume: editData.isApproxVolume || false,
-        inputMode: editData.inputMode as "liters" | "kg" || "kg",
+        inputMode: (editData.inputMode as "liters" | "kg") || "kg",
         basis: editData.basis || "",
         basisId: editData.basisId || "",
         customerBasis: editData.customerBasis || "",
         customerBasisId: editData.customerBasisId || "",
         selectedPurchasePriceId: purchasePriceCompositeId,
         selectedSalePriceId: salePriceCompositeId,
-      }, { keepDefaultValues: false });
+        isDraft: editData.isDraft || false,
+      };
+
+      initialValuesRef.current = resetValues;
+      form.reset(resetValues, { keepDefaultValues: false });
 
       setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);

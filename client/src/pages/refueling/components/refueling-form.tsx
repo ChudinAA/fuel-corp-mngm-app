@@ -58,6 +58,8 @@ export const RefuelingForm = forwardRef<RefuelingFormHandle, RefuelingFormProps>
     const [isDataInitialized, setIsDataInitialized] = useState(false);
     const isEditing = !!editData && !!editData.id;
 
+    const initialValuesRef = useRef<RefuelingFormData | null>(null);
+
     const form = useForm<RefuelingFormData>({
       resolver: zodResolver(refuelingFormSchema),
       defaultValues: {
@@ -92,7 +94,11 @@ export const RefuelingForm = forwardRef<RefuelingFormHandle, RefuelingFormProps>
         const values = form.getValues();
         await createMutation.mutateAsync({ ...values, isDraft: true });
       },
-      isDirty: () => form.formState.isDirty,
+      isDirty: () => {
+        if (!initialValuesRef.current) return form.formState.isDirty;
+        const currentValues = form.getValues();
+        return JSON.stringify(currentValues) !== JSON.stringify(initialValuesRef.current);
+      },
     }));
 
     const { data: suppliers } = useQuery<Supplier[]>({
@@ -293,7 +299,7 @@ export const RefuelingForm = forwardRef<RefuelingFormHandle, RefuelingFormProps>
         }
       }
 
-      form.reset({
+      const resetValues = {
         refuelingDate: new Date(editData.refuelingDate),
         productType: editData.productType,
         aircraftNumber: editData.aircraftNumber || "",
@@ -301,10 +307,10 @@ export const RefuelingForm = forwardRef<RefuelingFormHandle, RefuelingFormProps>
         supplierId: supplier?.id || "",
         buyerId: buyer?.id || "",
         warehouseId: editData.warehouseId || "",
-        inputMode: editData.quantityLiters ? "liters" : "kg",
-        quantityLiters: editData.quantityLiters || "",
-        density: editData.density || "",
-        quantityKg: editData.quantityKg || "",
+        inputMode: (editData.quantityLiters ? "liters" : "kg") as "liters" | "kg",
+        quantityLiters: editData.quantityLiters?.toString() || "",
+        density: editData.density?.toString() || "",
+        quantityKg: editData.quantityKg?.toString() || "",
         notes: editData.notes || "",
         isApproxVolume: editData.isApproxVolume || false,
         isPriceRecharge: editData.isPriceRecharge || false,
@@ -314,7 +320,11 @@ export const RefuelingForm = forwardRef<RefuelingFormHandle, RefuelingFormProps>
         basisId: editData.basisId || "",
         customerBasis: editData.customerBasis || "",
         customerBasisId: editData.customerBasisId || "",
-      }, { keepDefaultValues: false });
+        isDraft: editData.isDraft || false,
+      };
+
+      initialValuesRef.current = resetValues;
+      form.reset(resetValues, { keepDefaultValues: false });
 
       setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);
