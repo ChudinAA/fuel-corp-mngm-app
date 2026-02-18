@@ -229,8 +229,17 @@ export function MovementTable({ onEdit, onDelete, onShowHistory }: Omit<Movement
                 const costPerKg = item.costPerKg ? parseFloat(item.costPerKg) : 0;
 
                 return (
-                  <TableRow key={item.id} className="hover:bg-muted/50 transition-colors">
-                    <TableCell className="text-[11px] md:text-xs py-2 px-1 md:px-2 whitespace-nowrap">{formatDate(item.movementDate)}</TableCell>
+                  <TableRow key={item.id} className={cn("hover:bg-muted/50 transition-colors", item.isDraft && "bg-yellow-50/30 dark:bg-yellow-950/10")}>
+                    <TableCell className="text-[11px] md:text-xs py-2 px-1 md:px-2 whitespace-nowrap">
+                      <div className="flex flex-col gap-1">
+                        {formatDate(item.movementDate)}
+                        {item.isDraft && (
+                          <Badge variant="secondary" className="w-fit text-[9px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200">
+                            Черновик
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="py-2 px-1 md:px-2">
                       <Badge variant="outline" className="text-[11px] md:text-xs px-2 py-0.5 h-6">
                         {item.movementType === MOVEMENT_TYPE.SUPPLY ? "Покупка" : "Внутреннее"}

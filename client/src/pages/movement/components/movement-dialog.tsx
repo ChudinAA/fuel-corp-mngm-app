@@ -261,8 +261,10 @@ export function MovementDialog({
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: MovementFormData) => {
-      validateForm();
+    mutationFn: async ({ data, isDraft }: { data: MovementFormData; isDraft?: boolean }) => {
+      if (!isDraft) {
+        validateForm();
+      }
 
       const {
         purchasePriceId: extractedPriceId,
@@ -279,14 +281,14 @@ export function MovementDialog({
       );
 
       const payload = {
-        movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),
+        movementDate: data.movementDate ? format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
         movementType: data.movementType,
         productType: data.productType,
         supplierId: data.supplierId || null,
         basis: data.basis || null,
         basisId: data.basisId || null,
         fromWarehouseId: data.fromWarehouseId || null,
-        toWarehouseId: data.toWarehouseId,
+        toWarehouseId: data.toWarehouseId || null,
         carrierId: data.carrierId || null,
         quantityLiters: data.quantityLiters
           ? parseFloat(data.quantityLiters)
@@ -304,6 +306,7 @@ export function MovementDialog({
         totalCost: totalCost,
         costPerKg: costPerKg,
         notes: data.notes || null,
+        isDraft: !!isDraft,
       };
       const res = await apiRequest(
         isEditing ? "PATCH" : "POST",
@@ -312,12 +315,14 @@ export function MovementDialog({
       );
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/movement"] });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/opt/contract-used"] });
       toast({
-        title: isEditing ? "Перемещение обновлено" : "Перемещение создано",
+        title: variables.isDraft 
+          ? "Черновик сохранен" 
+          : (isEditing ? "Перемещение обновлено" : "Перемещение создано"),
         description: "Запись успешно сохранена",
       });
       form.reset();
@@ -340,7 +345,7 @@ export function MovementDialog({
             {isCopy
               ? "Копирование перемещения"
               : isEditing
-                ? "Редактирование перемещения"
+                ? editMovement?.isDraft ? "Редактирование черновика" : "Редактирование перемещения"
                 : "Новое перемещение"}
           </DialogTitle>
           <DialogDescription>
@@ -353,7 +358,7 @@ export function MovementDialog({
         </DialogHeader>
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit((data) => createMutation.mutate(data))}
+            onSubmit={form.handleSubmit((data) => createMutation.mutate({ data, isDraft: false }))}
             className="space-y-6"
           >
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 items-end">
@@ -422,6 +427,19 @@ export function MovementDialog({
                 onClick={() => onOpenChange(false)}
               >
                 Отмена
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={createMutation.isPending}
+                onClick={() => createMutation.mutate({ data: form.getValues(), isDraft: true })}
+                data-testid="button-save-draft"
+              >
+                {createMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  "Сохранить как черновик"
+                )}
               </Button>
               <Button
                 type="submit"

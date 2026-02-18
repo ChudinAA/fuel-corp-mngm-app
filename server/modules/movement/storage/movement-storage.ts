@@ -188,6 +188,10 @@ export class MovementStorage implements IMovementStorage {
     return await db.transaction(async (tx) => {
       const [created] = await tx.insert(movement).values(data).returning();
 
+      if (data.isDraft) {
+        return created;
+      }
+
       const quantityKg = parseFloat(created.quantityKg);
       const totalCost = parseFloat(created.totalCost || "0");
 
@@ -274,7 +278,7 @@ export class MovementStorage implements IMovementStorage {
 
       const hasQuantityChanged = oldQuantityKg !== newQuantityKg;
       const hasCostChanged = oldTotalCost !== newTotalCost;
-      const needsRecalculation = hasQuantityChanged || hasCostChanged;
+      const needsRecalculation = (hasQuantityChanged || hasCostChanged) && !data.isDraft;
 
       // Обновляем склад назначения, если изменились показатели
       if (

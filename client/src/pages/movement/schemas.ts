@@ -1,15 +1,15 @@
 import { z } from "zod";
 
 export const movementFormSchema = z.object({
-  movementDate: z.date({ required_error: "Укажите дату" }),
-  movementType: z.string().min(1, "Выберите тип перемещения"),
-  productType: z.string().min(1, "Выберите тип продукта"),
+  movementDate: z.date({ required_error: "Укажите дату" }).optional().nullable(),
+  movementType: z.string().optional(),
+  productType: z.string().optional(),
   supplierId: z.string().optional(),
   basis: z.string().optional(),
   basisId: z.string().optional(),
   supplierBaseId: z.string().optional(),
   fromWarehouseId: z.string().optional(),
-  toWarehouseId: z.string().min(1, "Выберите склад назначения"),
+  toWarehouseId: z.string().optional(),
   inputMode: z.enum(["liters", "kg"]).default("kg"),
   quantityLiters: z.string().optional(),
   density: z.string().optional(),
@@ -21,6 +21,7 @@ export const movementFormSchema = z.object({
   purchasePriceIndex: z.number().optional(),
   deliveryPrice: z.string().optional(),
   notes: z.string().optional(),
+  isDraft: z.boolean().default(false),
 });
 
 export type MovementFormData = z.infer<typeof movementFormSchema>;
