@@ -40,3 +40,6 @@ ALTER TABLE "exchange_rates" ADD COLUMN IF NOT EXISTS "target_currency_id" uuid 
 UPDATE "prices" SET currency_id = (SELECT id FROM currencies WHERE code = prices.currency);
 UPDATE "exchange_rates" SET currency_id = (SELECT id FROM currencies WHERE code = exchange_rates.currency);
 UPDATE "exchange_rates" SET target_currency_id = (SELECT id FROM currencies WHERE code = exchange_rates.target_currency);
+
+-- Add is_draft to movements
+ALTER TABLE "movement" ADD COLUMN IF NOT EXISTS "is_draft" boolean DEFAULT false;

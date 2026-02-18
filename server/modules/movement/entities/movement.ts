@@ -66,6 +66,7 @@ export const movement = pgTable(
     updatedById: uuid("updated_by_id").references(() => users.id),
     deletedAt: timestamp("deleted_at", { mode: "string" }),
     deletedById: uuid("deleted_by_id").references(() => users.id),
+    isDraft: boolean("is_draft").default(false),
   },
   (table) => ({
     movementDateIdx: index("movement_date_idx").on(table.movementDate),
@@ -125,34 +126,68 @@ export const movementRelations = relations(movement, ({ one }) => ({
 
 // ============ INSERT SCHEMAS ============
 
-export const insertMovementSchema = z.object({
-  movementDate: z.string(), // timestamp as string
-  movementType: z.string(),
-  productType: z.string(),
-  supplierId: z.string().nullable().optional(),
-  fromWarehouseId: z.string().nullable().optional(),
-  toWarehouseId: z.string(),
-  quantityLiters: z.number().nullable().optional(),
-  density: z.number().nullable().optional(),
-  quantityKg: z.number(),
-  inputMode: z.string().nullable().optional(),
-  purchasePrice: z.number().nullable().optional(),
-  purchasePriceId: z.string().nullable().optional(),
-  purchasePriceIndex: z.number().nullable().optional(),
-  deliveryPrice: z.number().nullable().optional(),
-  deliveryCost: z.number().nullable().optional(),
-  storageCost: z.number().nullable().optional(),
-  totalCost: z.number().nullable().optional(),
-  costPerKg: z.number().nullable().optional(),
-  carrierId: z.string().nullable().optional(),
-  basis: z.string().nullable().optional(),
-  basisId: z.string().nullable().optional(),
-  vehicleNumber: z.string().nullable().optional(),
-  trailerNumber: z.string().nullable().optional(),
-  driverName: z.string().nullable().optional(),
-  notes: z.string().nullable().optional(),
-  createdById: z.string().nullable().optional(),
-});
+export const insertMovementSchema = z
+  .object({
+    movementDate: z.string().nullable().optional(), // timestamp as string
+    movementType: z.string().nullable().optional(),
+    productType: z.string().nullable().optional(),
+    supplierId: z.string().nullable().optional(),
+    fromWarehouseId: z.string().nullable().optional(),
+    toWarehouseId: z.string().nullable().optional(),
+    quantityLiters: z.number().nullable().optional(),
+    density: z.number().nullable().optional(),
+    quantityKg: z.number().nullable().optional(),
+    inputMode: z.string().nullable().optional(),
+    purchasePrice: z.number().nullable().optional(),
+    purchasePriceId: z.string().nullable().optional(),
+    purchasePriceIndex: z.number().nullable().optional(),
+    deliveryPrice: z.number().nullable().optional(),
+    deliveryCost: z.number().nullable().optional(),
+    storageCost: z.number().nullable().optional(),
+    totalCost: z.number().nullable().optional(),
+    costPerKg: z.number().nullable().optional(),
+    carrierId: z.string().nullable().optional(),
+    basis: z.string().nullable().optional(),
+    basisId: z.string().nullable().optional(),
+    vehicleNumber: z.string().nullable().optional(),
+    trailerNumber: z.string().nullable().optional(),
+    driverName: z.string().nullable().optional(),
+    notes: z.string().nullable().optional(),
+    isDraft: z.boolean().default(false),
+    createdById: z.string().nullable().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.isDraft) {
+      if (!data.toWarehouseId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Cклад назначения обязателен",
+          path: ["toWarehouseId"],
+        });
+      }
+      if (!data.productType) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Тип продукта обязателен",
+          path: ["productType"],
+        });
+      }
+      if (!data.movementDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Дата сделки обязательна",
+          path: ["movementDate"],
+        });
+      }
+      if (data.quantityKg === undefined || data.quantityKg === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Количество (кг) обязательно",
+          path: ["quantityKg"],
+        });
+      }
+    }
+  });
 
 // ============ TYPES ============
 
