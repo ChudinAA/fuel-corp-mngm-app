@@ -406,8 +406,8 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                       <span>{formatDate(deal.dealDate)}</span>
                       {deal.isDraft && (
                         <Badge
-                          variant="outline"
-                          className="rounded-full bg-amber-100 px-1 py-0 text-[11px] text-amber-800 w-fit"
+                          variant="secondary"
+                          className="w-fit text-[9px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200"
                         >
                           Черновик
                         </Badge>
