@@ -206,10 +206,10 @@ export const RefuelingForm = forwardRef<RefuelingFormHandle, RefuelingFormProps>
       if (supplier?.isWarehouse) {
         const warehouse = warehouses?.find((w) => w.supplierId === supplier.id);
         if (warehouse) {
-          form.setValue("warehouseId", warehouse.id);
+          form.setValue("warehouseId", warehouse.id, { shouldDirty: true });
         }
       } else {
-        form.setValue("warehouseId", "");
+        form.setValue("warehouseId", "", { shouldDirty: true });
       }
 
       // Автоматически выбираем первый базис при выборе поставщика только для новых сделок
@@ -221,8 +221,8 @@ export const RefuelingForm = forwardRef<RefuelingFormHandle, RefuelingFormProps>
         );
         if (refuelingBases.length > 0) {
           const firstBase = refuelingBases[0];
-          form.setValue("basisId", firstBase.id);
-          form.setValue("basis", firstBase.name);
+          form.setValue("basisId", firstBase.id, { shouldDirty: true });
+          form.setValue("basis", firstBase.name, { shouldDirty: true });
           setSelectedBasis(firstBase.name);
         }
       }
@@ -314,7 +314,7 @@ export const RefuelingForm = forwardRef<RefuelingFormHandle, RefuelingFormProps>
         basisId: editData.basisId || "",
         customerBasis: editData.customerBasis || "",
         customerBasisId: editData.customerBasisId || "",
-      });
+      }, { keepDefaultValues: false });
 
       setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);

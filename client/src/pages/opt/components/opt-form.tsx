@@ -234,10 +234,10 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       if (supplier?.isWarehouse) {
         const warehouse = warehouses?.find((w) => w.supplierId === supplier.id);
         if (warehouse) {
-          form.setValue("warehouseId", warehouse.id);
+          form.setValue("warehouseId", warehouse.id, { shouldDirty: true });
         }
       } else {
-        form.setValue("warehouseId", "");
+        form.setValue("warehouseId", "", { shouldDirty: true });
       }
 
       // Автоматически выбираем первый базис только при СОЗДАНИИ новой сделки (не при копировании/редактировании)
@@ -247,8 +247,8 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           (b) => b.id === baseId && b.baseType === BASE_TYPE.WHOLESALE,
         );
         if (base) {
-          form.setValue("basis", base.name);
-          form.setValue("basisId", base.id);
+          form.setValue("basis", base.name, { shouldDirty: true });
+          form.setValue("basisId", base.id, { shouldDirty: true });
           setSelectedBasis(base.name);
         }
       }
@@ -330,7 +330,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         customerBasisId: editData.customerBasisId || "",
         selectedPurchasePriceId: purchasePriceCompositeId,
         selectedSalePriceId: salePriceCompositeId,
-      });
+      }, { keepDefaultValues: false });
 
       setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);
