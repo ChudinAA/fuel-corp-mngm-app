@@ -58,7 +58,7 @@ export function registerMovementRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
-        const data = req.body.isDraft ? req.body : insertMovementSchema.parse({
+        const data = insertMovementSchema.parse({
           ...req.body,
           createdById: req.session.userId,
         });
@@ -66,7 +66,7 @@ export function registerMovementRoutes(app: Express) {
         // Преобразуем числовые поля в строки для БД
         const dbData = {
           ...data,
-          quantityKg: data.quantityKg ? data.quantityKg.toString() : null,
+          quantityKg: data.quantityKg.toString(),
           quantityLiters:
             data.quantityLiters !== null && data.quantityLiters !== undefined
               ? data.quantityLiters.toString()
@@ -95,7 +95,6 @@ export function registerMovementRoutes(app: Express) {
             data.costPerKg !== null && data.costPerKg !== undefined
               ? data.costPerKg.toString()
               : null,
-          createdById: req.session.userId,
         };
 
         const movementRecord = await storage.movement.createMovement(dbData);
@@ -104,7 +103,6 @@ export function registerMovementRoutes(app: Express) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
         }
-        console.error("Error creating movement:", error);
         res.status(500).json({ message: "Ошибка создания перемещения" });
       }
     }

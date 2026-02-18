@@ -292,8 +292,8 @@ export function MovementDialog({
         movementDate: data.movementDate
           ? format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss")
           : null,
-        movementType: data.movementType || MOVEMENT_TYPE.SUPPLY,
-        productType: data.productType || PRODUCT_TYPE.KEROSENE,
+        movementType: data.movementType,
+        productType: data.productType,
         supplierId: data.supplierId || null,
         basis: data.basis || null,
         basisId: data.basisId || null,
