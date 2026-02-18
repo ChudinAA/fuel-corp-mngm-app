@@ -198,9 +198,15 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       };
       
       initialValuesRef.current = JSON.parse(JSON.stringify(initialValues));
-      form.reset(initialValues, { keepDefaultValues: false });
+      // Ensure we don't trigger unnecessary re-renders or state changes
+      const currentValues = form.getValues();
+      if (JSON.stringify(currentValues) !== JSON.stringify(initialValues)) {
+        form.reset(initialValues, { keepDefaultValues: false });
+      }
     }
-    if (existingIntermediaries.length > 0) {
+    
+    // Process intermediaries
+    if (existingIntermediaries) {
       const intermediaries = existingIntermediaries.map((item: any) => ({
         // We omit the id when it's a copy so the server creates new intermediary records
         id: isCopy ? undefined : item.id,
@@ -233,9 +239,19 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         notes: item.notes || "",
       }));
       
-      const normalizedIntermediaries = JSON.parse(JSON.stringify(intermediaries));
-      setIntermediariesList(intermediaries);
-      initialIntermediariesRef.current = JSON.stringify(normalizedIntermediaries);
+      const serializedIntermediaries = JSON.stringify(JSON.parse(JSON.stringify(intermediaries)));
+      
+      // Only update if actually different to prevent effect loops
+      if (JSON.stringify(intermediariesList) !== JSON.stringify(intermediaries)) {
+        setIntermediariesList(intermediaries);
+      }
+      
+      if (!initialIntermediariesRef.current || initialIntermediariesRef.current === "[]") {
+        initialIntermediariesRef.current = serializedIntermediaries;
+      }
+    } else if (originalId) {
+      // If we have an ID but no intermediaries yet (loading)
+      initialIntermediariesRef.current = JSON.stringify([]);
     }
   }, [existingIntermediaries, isCopy, editData]);
 
@@ -297,7 +313,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       
       const normalizeValue = (val: any) => {
         if (val instanceof Date) return val.getTime();
-        if (val === "" || val === null || val === undefined) return null;
+        if (val === "" || val === null || val === undefined || val === "none") return null;
         if (typeof val === "number") return val;
         // Handle stringified numbers to avoid type mismatch
         if (typeof val === "string" && !isNaN(Number(val)) && val.trim() !== "") return Number(val);
@@ -307,7 +323,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       const compareValues = (obj1: any, obj2: any) => {
         const keys = Object.keys(obj1) as (keyof typeof obj1)[];
         for (const key of keys) {
-          if (key === "intermediaries") continue;
+          if (key === "intermediaries" || key === "isDraft") continue;
           const v1 = normalizeValue(obj1[key]);
           const v2 = normalizeValue(obj2[key]);
           if (v1 !== v2) {
@@ -321,9 +337,9 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         ? compareValues(currentValues, initialValuesRef.current)
         : false;
         
-      const intermediariesChanged = initialIntermediariesRef.current !== currentIntermediaries;
+      const intermediariesChanged = initialIntermediariesRef.current && initialIntermediariesRef.current !== currentIntermediaries;
       
-      return valuesChanged || intermediariesChanged;
+      return valuesChanged || !!intermediariesChanged;
     }
   }));
 
