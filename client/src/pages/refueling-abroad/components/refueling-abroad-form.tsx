@@ -76,6 +76,7 @@ import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 export interface RefuelingAbroadFormHandle {
   getFormState: () => { supplierId: string; buyerId: string };
   saveAsDraft: () => Promise<void>;
+  isDirty: () => boolean;
 }
 
 export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, RefuelingAbroadFormProps>(
@@ -84,6 +85,8 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     const { toast } = useToast();
 
     const isEditing = !!editData && !!editData.id;
+    const initialValuesRef = useRef<RefuelingAbroadFormData | null>(null);
+    const initialIntermediariesRef = useRef<string>("");
     // ... rest of component logic
 
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
@@ -166,41 +169,73 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
 
       setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);
+
+      // Initialize initial values for dirty check
+      const initialValues = {
+        refuelingDate: editData.refuelingDate ? new Date(editData.refuelingDate) : new Date(),
+        productType: editData.productType || PRODUCT_TYPE.KEROSENE,
+        aircraftNumber: editData.aircraftNumber || "",
+        flightNumber: editData.flightNumber || "",
+        airportCode: editData.airport || "",
+        supplierId: editData.supplierId || "",
+        buyerId: editData.buyerId || "",
+        basisId: editData.basisId || "",
+        intermediaries: [],
+        inputMode: (editData.inputMode as "liters" | "kg") || (editData.quantityLiters ? "liters" : "kg"),
+        quantityLiters: editData.quantityLiters?.toString() || "",
+        density: editData.density?.toString() || "0.8",
+        quantityKg: editData.quantityKg?.toString() || "",
+        selectedPurchasePriceId: purchasePriceCompositeId,
+        selectedSalePriceId: salePriceCompositeId,
+        purchasePriceUsd: editData.purchasePriceUsd || "",
+        salePriceUsd: editData.salePriceUsd || "",
+        purchaseExchangeRateId: editData.purchaseExchangeRateId || "",
+        manualPurchaseExchangeRate: editData.purchaseExchangeRateValue?.toString() || "",
+        saleExchangeRateId: editData.saleExchangeRateId || "",
+        manualSaleExchangeRate: editData.saleExchangeRateValue?.toString() || "",
+        notes: editData.notes || "",
+        isApproxVolume: editData.isApproxVolume || false,
+        isDraft: editData.isDraft || false,
+      };
+      
+      initialValuesRef.current = initialValues;
+      form.reset(initialValues, { keepDefaultValues: false });
     }
     if (existingIntermediaries.length > 0) {
-      setIntermediariesList(
-        existingIntermediaries.map((item: any) => ({
-          // We omit the id when it's a copy so the server creates new intermediary records
-          id: isCopy ? undefined : item.id,
-          intermediaryId: item.intermediaryId,
-          orderIndex: item.orderIndex,
-          commissionFormula: item.commissionFormula || "",
-          commissionUsd: item.commissionUsd
-            ? parseFloat(String(item.commissionUsd))
-            : null,
-          manualCommissionUsd: item.manualCommissionUsd
-            ? parseFloat(item.manualCommissionUsd)
-            : null,
-          commissionRub: item.commissionRub
-            ? parseFloat(String(item.commissionRub))
-            : null,
-          buyCurrencyId: item.buyCurrencyId,
-          sellCurrencyId: item.sellCurrencyId,
-          buyExchangeRate: item.buyExchangeRate
-            ? parseFloat(String(item.buyExchangeRate))
-            : undefined,
-          sellExchangeRate: item.sellExchangeRate
-            ? parseFloat(String(item.sellExchangeRate))
-            : undefined,
-          crossConversionCost: item.crossConversionCost
-            ? parseFloat(String(item.crossConversionCost))
-            : 0,
-          crossConversionCostRub: (item as any).crossConversionCostRub
-            ? parseFloat(String((item as any).crossConversionCostRub))
-            : 0,
-          notes: item.notes || "",
-        })),
-      );
+      const intermediaries = existingIntermediaries.map((item: any) => ({
+        // We omit the id when it's a copy so the server creates new intermediary records
+        id: isCopy ? undefined : item.id,
+        intermediaryId: item.intermediaryId,
+        orderIndex: item.orderIndex,
+        commissionFormula: item.commissionFormula || "",
+        commissionUsd: item.commissionUsd
+          ? parseFloat(String(item.commissionUsd))
+          : null,
+        manualCommissionUsd: item.manualCommissionUsd
+          ? parseFloat(item.manualCommissionUsd)
+          : null,
+        commissionRub: item.commissionRub
+          ? parseFloat(String(item.commissionRub))
+          : null,
+        buyCurrencyId: item.buyCurrencyId,
+        sellCurrencyId: item.sellCurrencyId,
+        buyExchangeRate: item.buyExchangeRate
+          ? parseFloat(String(item.buyExchangeRate))
+          : undefined,
+        sellExchangeRate: item.sellExchangeRate
+          ? parseFloat(String(item.sellExchangeRate))
+          : undefined,
+        crossConversionCost: item.crossConversionCost
+          ? parseFloat(String(item.crossConversionCost))
+          : 0,
+        crossConversionCostRub: (item as any).crossConversionCostRub
+          ? parseFloat(String((item as any).crossConversionCostRub))
+          : 0,
+        notes: item.notes || "",
+      }));
+      
+      setIntermediariesList(intermediaries);
+      initialIntermediariesRef.current = JSON.stringify(intermediaries);
     }
   }, [existingIntermediaries, isCopy, editData]);
 
@@ -256,6 +291,18 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       const values = form.getValues();
       await createMutation.mutateAsync({ ...values, isDraft: true });
     },
+    isDirty: () => {
+      const currentValues = form.getValues();
+      const currentIntermediaries = JSON.stringify(intermediariesList);
+      
+      const valuesChanged = initialValuesRef.current 
+        ? JSON.stringify(currentValues) !== JSON.stringify(initialValuesRef.current)
+        : false;
+        
+      const intermediariesChanged = initialIntermediariesRef.current !== currentIntermediaries;
+      
+      return valuesChanged || intermediariesChanged || form.formState.isDirty;
+    }
   }));
 
   const watchedValues = form.watch();

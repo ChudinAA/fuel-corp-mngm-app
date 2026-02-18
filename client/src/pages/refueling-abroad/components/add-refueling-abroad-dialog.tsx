@@ -40,13 +40,18 @@ export function AddRefuelingAbroadDialog({
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       const formState = formRef.current?.getFormState();
+      const isDirty = formRef.current?.isDirty();
+      const isNewRefueling = !editRefueling && !isCopy;
+      const isDraftEdit = !!editRefueling && editRefueling.isDraft;
+
       // Если это создание новой заправки и введен поставщик или покупатель
+      // ИЛИ если это редактирование существующего черновика и были изменения
       if (
-        !editRefueling &&
-        !isCopy &&
-        formState &&
-        formState.supplierId &&
-        formState.buyerId
+        (isNewRefueling &&
+          formState &&
+          formState.supplierId &&
+          formState.buyerId) ||
+        (isDraftEdit && isDirty)
       ) {
         setShowExitConfirm(true);
       } else {
