@@ -188,11 +188,11 @@ export class MovementStorage implements IMovementStorage {
     return await db.transaction(async (tx) => {
       const [created] = await tx.insert(movement).values(data).returning();
 
-      if (data.isDraft) {
+      if (data.isDraft || !created.toWarehouseId) {
         return created;
       }
 
-      const quantityKg = parseFloat(created.quantityKg);
+      const quantityKg = parseFloat(created.quantityKg || "0");
       const totalCost = parseFloat(created.totalCost || "0");
 
       // Обработка склада назначения (приход)
@@ -261,13 +261,16 @@ export class MovementStorage implements IMovementStorage {
         throw new Error("Перемещение не найдено");
       }
 
-      if (data.productType !== currentMovement.productType) {
+      // Логика перехода из черновика в готовую запись
+      const transitioningFromDraft = currentMovement.isDraft && data.isDraft === false;
+
+      if (data.productType && data.productType !== currentMovement.productType && !currentMovement.isDraft) {
         throw new Error(
           "Нельзя поменять тип продукта для существующего перемещения",
         );
       }
 
-      const oldQuantityKg = parseFloat(currentMovement.quantityKg);
+      const oldQuantityKg = parseFloat(currentMovement.quantityKg || "0");
       const oldTotalCost = parseFloat(currentMovement.totalCost || "0");
       const newQuantityKg = data.quantityKg
         ? parseFloat(data.quantityKg.toString())
@@ -278,59 +281,109 @@ export class MovementStorage implements IMovementStorage {
 
       const hasQuantityChanged = oldQuantityKg !== newQuantityKg;
       const hasCostChanged = oldTotalCost !== newTotalCost;
-      const needsRecalculation = (hasQuantityChanged || hasCostChanged) && !data.isDraft;
+      
+      // Создаем транзакции при переходе из черновика
+      if (transitioningFromDraft) {
+        const quantityKg = newQuantityKg;
+        const totalCost = newTotalCost;
 
-      // Обновляем склад назначения, если изменились показатели
-      if (
-        needsRecalculation &&
-        currentMovement.transactionId &&
-        currentMovement.toWarehouseId
-      ) {
-        if (data.toWarehouseId !== currentMovement.toWarehouseId) {
-          throw new Error(
-            "Нельзя поменять склад назначения для существующего перемещения",
+        // Обработка склада назначения (приход)
+        if (data.toWarehouseId) {
+          const { transaction } =
+            await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+              tx,
+              data.toWarehouseId,
+              data.movementType === MOVEMENT_TYPE.SUPPLY
+                ? TRANSACTION_TYPE.RECEIPT
+                : TRANSACTION_TYPE.TRANSFER_IN,
+              data.productType,
+              SOURCE_TYPE.MOVEMENT,
+              currentMovement.id,
+              quantityKg,
+              totalCost,
+              data.updatedById,
+              data.movementDate,
+            );
+          data.transactionId = transaction.id;
+        }
+
+        // Обработка склада-источника для внутреннего перемещения (расход)
+        if (
+          data.movementType === MOVEMENT_TYPE.INTERNAL &&
+          data.fromWarehouseId
+        ) {
+          const { transaction: sourceTransaction } =
+            await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+              tx,
+              data.fromWarehouseId,
+              TRANSACTION_TYPE.TRANSFER_OUT,
+              data.productType,
+              SOURCE_TYPE.MOVEMENT,
+              currentMovement.id,
+              quantityKg,
+              0,
+              data.updatedById,
+              data.movementDate,
+            );
+          data.sourceTransactionId = sourceTransaction.id;
+        }
+      } 
+      // Иначе обычная логика обновления существующих транзакций
+      else {
+        const needsRecalculation = (hasQuantityChanged || hasCostChanged) && !data.isDraft && !currentMovement.isDraft;
+
+        // Обновляем склад назначения, если изменились показатели
+        if (
+          needsRecalculation &&
+          currentMovement.transactionId &&
+          currentMovement.toWarehouseId
+        ) {
+          if (data.toWarehouseId && data.toWarehouseId !== currentMovement.toWarehouseId) {
+            throw new Error(
+              "Нельзя поменять склад назначения для существующего перемещения",
+            );
+          }
+
+          await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
+            tx,
+            currentMovement.transactionId,
+            currentMovement.toWarehouseId,
+            oldQuantityKg,
+            oldTotalCost,
+            newQuantityKg,
+            newTotalCost,
+            currentMovement.productType,
+            data.updatedById || undefined,
+            data.movementDate || undefined,
           );
         }
 
-        await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
-          tx,
-          currentMovement.transactionId,
-          currentMovement.toWarehouseId,
-          oldQuantityKg,
-          oldTotalCost,
-          newQuantityKg,
-          newTotalCost,
-          currentMovement.productType,
-          data.updatedById || undefined,
-          data.movementDate || undefined,
-        );
-      }
+        // Обновляем склад-источник для внутренних перемещений
+        if (
+          needsRecalculation &&
+          currentMovement.movementType === MOVEMENT_TYPE.INTERNAL &&
+          currentMovement.sourceTransactionId &&
+          currentMovement.fromWarehouseId
+        ) {
+          if (data.fromWarehouseId && data.fromWarehouseId !== currentMovement.fromWarehouseId) {
+            throw new Error(
+              "Нельзя поменять склад-источник для существующего перемещения",
+            );
+          }
 
-      // Обновляем склад-источник для внутренних перемещений
-      if (
-        needsRecalculation &&
-        currentMovement.movementType === MOVEMENT_TYPE.INTERNAL &&
-        currentMovement.sourceTransactionId &&
-        currentMovement.fromWarehouseId
-      ) {
-        if (data.fromWarehouseId && data.fromWarehouseId !== currentMovement.fromWarehouseId) {
-          throw new Error(
-            "Нельзя поменять склад-источник для существующего перемещения",
+          await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
+            tx,
+            currentMovement.sourceTransactionId,
+            currentMovement.fromWarehouseId,
+            oldQuantityKg,
+            0, // При расходе totalCost = 0
+            newQuantityKg,
+            0, // При расходе totalCost = 0
+            currentMovement.productType,
+            data.updatedById || undefined,
+            data.movementDate || undefined,
           );
         }
-
-        await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
-          tx,
-          currentMovement.sourceTransactionId,
-          currentMovement.fromWarehouseId,
-          oldQuantityKg,
-          0, // При расходе totalCost = 0
-          newQuantityKg,
-          0, // При расходе totalCost = 0
-          currentMovement.productType,
-          data.updatedById || undefined,
-          data.movementDate || undefined,
-        );
       }
 
       const [updated] = await tx
