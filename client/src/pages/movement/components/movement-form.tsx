@@ -190,9 +190,9 @@ export const MovementForm = forwardRef<MovementFormHandle, MovementFormProps>(
       watchToWarehouseId: watchToWarehouseId || "",
       watchCarrierId: watchCarrierId || "",
       watchMovementDate: watchMovementDate || new Date(),
-      watchLiters: watchLiters || "",
-      watchDensity: watchDensity || "",
-      watchKg: watchKg || "",
+      watchLiters: (watchLiters as string) || "",
+      watchDensity: (watchDensity as string) || "",
+      watchKg: (watchKg as string) || "",
       inputMode,
       warehouses,
       suppliers,
@@ -225,9 +225,9 @@ export const MovementForm = forwardRef<MovementFormHandle, MovementFormProps>(
     });
 
     const { validateForm } = useMovementValidation({
-      watchMovementType,
-      watchProductType,
-      watchFromWarehouseId,
+      watchMovementType: watchMovementType as any,
+      watchProductType: watchProductType as any,
+      watchFromWarehouseId: (watchFromWarehouseId as string) || "",
       calculatedKg,
       kgNum,
       purchasePrice,
