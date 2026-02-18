@@ -301,7 +301,7 @@ export function AddDeliveryCostDialog({
                       <Button
                         type="button"
                         size="sm"
-                        variant="ghost"
+                        variant="outline"
                         className="h-8 px-2"
                         onClick={() => setAddCarrierOpen(true)}
                         data-testid="button-add-carrier-inline"
