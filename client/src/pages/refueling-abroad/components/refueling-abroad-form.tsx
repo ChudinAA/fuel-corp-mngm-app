@@ -186,8 +186,8 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         quantityKg: editData.quantityKg?.toString() || "",
         selectedPurchasePriceId: purchasePriceCompositeId,
         selectedSalePriceId: salePriceCompositeId,
-        purchasePriceUsd: editData.purchasePriceUsd?.toString() || "",
-        salePriceUsd: editData.salePriceUsd?.toString() || "",
+        purchasePriceUsd: editData.purchasePriceUsd || "",
+        salePriceUsd: editData.salePriceUsd || "",
         purchaseExchangeRateId: editData.purchaseExchangeRateId || "",
         manualPurchaseExchangeRate: editData.purchaseExchangeRateValue?.toString() || "",
         saleExchangeRateId: editData.saleExchangeRateId || "",
@@ -197,16 +197,10 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         isDraft: editData.isDraft || false,
       };
       
-      initialValuesRef.current = JSON.parse(JSON.stringify(initialValues));
-      // Ensure we don't trigger unnecessary re-renders or state changes
-      const currentValues = form.getValues();
-      if (JSON.stringify(currentValues) !== JSON.stringify(initialValues)) {
-        form.reset(initialValues, { keepDefaultValues: false });
-      }
+      initialValuesRef.current = initialValues;
+      form.reset(initialValues, { keepDefaultValues: false });
     }
-    
-    // Process intermediaries
-    if (existingIntermediaries && existingIntermediaries.length > 0) {
+    if (existingIntermediaries.length > 0) {
       const intermediaries = existingIntermediaries.map((item: any) => ({
         // We omit the id when it's a copy so the server creates new intermediary records
         id: isCopy ? undefined : item.id,
@@ -239,19 +233,8 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         notes: item.notes || "",
       }));
       
-      const serializedIntermediaries = JSON.stringify(JSON.parse(JSON.stringify(intermediaries)));
-      
-      // Only update if actually different to prevent effect loops
-      if (JSON.stringify(intermediariesList) !== serializedIntermediaries) {
-        setIntermediariesList(intermediaries);
-      }
-      
-      if (!initialIntermediariesRef.current || initialIntermediariesRef.current === "[]") {
-        initialIntermediariesRef.current = serializedIntermediaries;
-      }
-    } else if (originalId && initialIntermediariesRef.current === "") {
-      // If we have an ID but no intermediaries yet (loading)
-      initialIntermediariesRef.current = "[]";
+      setIntermediariesList(intermediaries);
+      initialIntermediariesRef.current = JSON.stringify(intermediaries);
     }
   }, [existingIntermediaries, isCopy, editData]);
 
@@ -309,47 +292,15 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     },
     isDirty: () => {
       const currentValues = form.getValues();
-      const currentIntermediaries = JSON.stringify(JSON.parse(JSON.stringify(intermediariesList)));
-      
-      const normalizeValue = (val: any) => {
-        if (val instanceof Date) return val.getTime();
-        if (val === "" || val === null || val === undefined || val === "none") return null;
-        if (typeof val === "number") return val;
-        if (typeof val === "string" && !isNaN(Number(val)) && val.trim() !== "") return Number(val);
-        return val;
-      };
-
-      const compareValues = (obj1: any, obj2: any) => {
-        // Only compare fields that are in the initialValues schema
-        const trackedKeys = [
-          "refuelingDate", "productType", "aircraftNumber", "flightNumber", 
-          "airportCode", "supplierId", "buyerId", "basisId", "inputMode", 
-          "quantityLiters", "density", "quantityKg", "selectedPurchasePriceId", 
-          "selectedSalePriceId", "purchasePriceUsd", "salePriceUsd", 
-          "purchaseExchangeRateId", "manualPurchaseExchangeRate", 
-          "saleExchangeRateId", "manualSaleExchangeRate", "notes", "isApproxVolume"
-        ];
-        
-        for (const key of trackedKeys) {
-          const v1 = normalizeValue(obj1[key as keyof typeof obj1]);
-          const v2 = normalizeValue(obj2[key as keyof typeof obj2]);
-          if (v1 !== v2) {
-            console.log(`Field ${key} changed:`, v1, v2);
-            return true;
-          }
-        }
-        return false;
-      };
+      const currentIntermediaries = JSON.stringify(intermediariesList);
       
       const valuesChanged = initialValuesRef.current 
-        ? compareValues(currentValues, initialValuesRef.current)
+        ? JSON.stringify(currentValues) !== JSON.stringify(initialValuesRef.current)
         : false;
         
-      const intermediariesChanged = initialIntermediariesRef.current && 
-                                   initialIntermediariesRef.current !== "[]" && 
-                                   initialIntermediariesRef.current !== currentIntermediaries;
+      const intermediariesChanged = initialIntermediariesRef.current !== currentIntermediaries;
       
-      return valuesChanged || !!intermediariesChanged;
+      return valuesChanged || intermediariesChanged || form.formState.isDirty;
     }
   }));
 
