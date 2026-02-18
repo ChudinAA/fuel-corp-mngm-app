@@ -99,14 +99,12 @@ export function AddRefuelingAbroadDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Сохранить черновик?</AlertDialogTitle>
             <AlertDialogDescription>
-              Вы начали вводить данные. Хотите сохранить эту заправку за рубежом
-              как черновик перед закрытием?
+              Вы начали вводить данные. Хотите сохранить изменения как черновик
+              перед закрытием?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleDiscard}>
-              Нет, удалить
-            </AlertDialogCancel>
+            <AlertDialogCancel onClick={handleDiscard}>Нет</AlertDialogCancel>
             <AlertDialogAction onClick={handleSaveDraft}>
               Да, сохранить
             </AlertDialogAction>

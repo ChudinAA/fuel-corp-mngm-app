@@ -1,4 +1,4 @@
-import { useEffect, useState, forwardRef, useImperativeHandle } from "react";
+import { useEffect, useState, forwardRef, useImperativeHandle, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -87,7 +87,6 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     const isEditing = !!editData && !!editData.id;
     const initialValuesRef = useRef<RefuelingAbroadFormData | null>(null);
     const initialIntermediariesRef = useRef<string>("");
-    // ... rest of component logic
 
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
   const handlePurchasePriceCreated = (id: string) => {

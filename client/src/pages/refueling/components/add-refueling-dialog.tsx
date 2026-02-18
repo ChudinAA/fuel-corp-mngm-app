@@ -103,13 +103,13 @@ export function AddRefuelingDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Сохранить черновик?</AlertDialogTitle>
             <AlertDialogDescription>
-              Вы начали вводить данные. Хотите сохранить эту заправку как
+              Вы начали вводить данные. Хотите сохранить изменения как
               черновик перед закрытием?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleDiscard}>
-              Нет, удалить
+              Нет
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleSaveDraft}>
               Да, сохранить
