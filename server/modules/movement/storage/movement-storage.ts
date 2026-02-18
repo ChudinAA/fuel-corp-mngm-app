@@ -188,7 +188,7 @@ export class MovementStorage implements IMovementStorage {
     return await db.transaction(async (tx) => {
       const [created] = await tx.insert(movement).values(data).returning();
 
-      if (data.isDraft || !created.toWarehouseId) {
+      if (data.isDraft || !created.toWarehouseId || !created.quantityKg || !created.movementDate) {
         return created;
       }
 

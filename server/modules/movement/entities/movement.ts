@@ -27,17 +27,16 @@ export const movement = pgTable(
   "movement",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    movementDate: timestamp("movement_date", { mode: "string" }).notNull(),
+    movementDate: timestamp("movement_date", { mode: "string" }),
     movementType: text("movement_type").notNull(),
     productType: text("product_type").notNull(),
     supplierId: uuid("supplier_id").references(() => suppliers.id),
     fromWarehouseId: uuid("from_warehouse_id").references(() => warehouses.id),
     toWarehouseId: uuid("to_warehouse_id")
-      .notNull()
       .references(() => warehouses.id),
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
-    quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
+    quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }),
     inputMode: text("input_mode"),
     purchasePrice: decimal("purchase_price", { precision: 19, scale: 5 }),
     purchasePriceId: uuid("purchase_price_id").references(() => prices.id),

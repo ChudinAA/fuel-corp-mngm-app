@@ -66,7 +66,7 @@ export function registerMovementRoutes(app: Express) {
         // Преобразуем числовые поля в строки для БД
         const dbData = {
           ...data,
-          quantityKg: data.quantityKg.toString(),
+          quantityKg: data.quantityKg ? data.quantityKg.toString() : null,
           quantityLiters:
             data.quantityLiters !== null && data.quantityLiters !== undefined
               ? data.quantityLiters.toString()
