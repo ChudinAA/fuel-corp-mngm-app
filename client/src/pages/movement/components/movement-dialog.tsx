@@ -114,7 +114,9 @@ export function MovementDialog({
         basisId: editMovement.basisId || "",
         fromWarehouseId: editMovement.fromWarehouseId || "",
         toWarehouseId: editMovement.toWarehouseId,
-        inputMode: editMovement.inputMode as "liters" | "kg" || (editMovement.quantityLiters ? "liters" : "kg"),
+        inputMode:
+          (editMovement.inputMode as "liters" | "kg") ||
+          (editMovement.quantityLiters ? "liters" : "kg"),
         quantityLiters: editMovement.quantityLiters
           ? String(editMovement.quantityLiters)
           : undefined,
@@ -261,7 +263,13 @@ export function MovementDialog({
   });
 
   const createMutation = useMutation({
-    mutationFn: async ({ data, isDraft }: { data: MovementFormData; isDraft?: boolean }) => {
+    mutationFn: async ({
+      data,
+      isDraft,
+    }: {
+      data: MovementFormData;
+      isDraft?: boolean;
+    }) => {
       if (!isDraft) {
         validateForm();
       }
@@ -281,7 +289,9 @@ export function MovementDialog({
       );
 
       const payload = {
-        movementDate: data.movementDate ? format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
+        movementDate: data.movementDate
+          ? format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss")
+          : null,
         movementType: data.movementType,
         productType: data.productType,
         supplierId: data.supplierId || null,
@@ -320,9 +330,11 @@ export function MovementDialog({
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/opt/contract-used"] });
       toast({
-        title: variables.isDraft 
-          ? "Черновик сохранен" 
-          : (isEditing ? "Перемещение обновлено" : "Перемещение создано"),
+        title: variables.isDraft
+          ? "Черновик сохранен"
+          : isEditing
+            ? "Перемещение обновлено"
+            : "Перемещение создано",
         description: "Запись успешно сохранена",
       });
       form.reset();
@@ -345,7 +357,9 @@ export function MovementDialog({
             {isCopy
               ? "Копирование перемещения"
               : isEditing
-                ? editMovement?.isDraft ? "Редактирование черновика" : "Редактирование перемещения"
+                ? editMovement?.isDraft
+                  ? "Редактирование черновика"
+                  : "Редактирование перемещения"
                 : "Новое перемещение"}
           </DialogTitle>
           <DialogDescription>
@@ -358,7 +372,9 @@ export function MovementDialog({
         </DialogHeader>
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit((data) => createMutation.mutate({ data, isDraft: false }))}
+            onSubmit={form.handleSubmit((data) =>
+              createMutation.mutate({ data, isDraft: false }),
+            )}
             className="space-y-6"
           >
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 items-end">
@@ -428,19 +444,26 @@ export function MovementDialog({
               >
                 Отмена
               </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={createMutation.isPending}
-                onClick={() => createMutation.mutate({ data: form.getValues(), isDraft: true })}
-                data-testid="button-save-draft"
-              >
-                {createMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  "Сохранить как черновик"
-                )}
-              </Button>
+              {!isEditing || (editMovement && editMovement?.isDraft) ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={createMutation.isPending}
+                  onClick={() =>
+                    createMutation.mutate({
+                      data: form.getValues(),
+                      isDraft: true,
+                    })
+                  }
+                  data-testid="button-save-draft"
+                >
+                  {createMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    "Сохранить черновик"
+                  )}
+                </Button>
+              ) : null}
               <Button
                 type="submit"
                 disabled={
