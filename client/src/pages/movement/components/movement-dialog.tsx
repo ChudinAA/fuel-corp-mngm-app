@@ -480,8 +480,8 @@ export function MovementDialog({
                   </>
                 ) : (
                   <>
-                    {isEditing ? null : <Plus className="mr-2 h-4 w-4" />}
-                    {isEditing ? "Обновить" : "Создать перемещение"}
+                    {isEditing && !editMovement.isDraft ? null : <Plus className="mr-2 h-4 w-4" />}
+                    {isEditing && !editMovement.isDraft ? "Обновить" : "Создать перемещение"}
                   </>
                 )}
               </Button>
