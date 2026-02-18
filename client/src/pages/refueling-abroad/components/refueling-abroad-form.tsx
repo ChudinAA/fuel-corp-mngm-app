@@ -197,7 +197,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         isDraft: editData.isDraft || false,
       };
       
-      initialValuesRef.current = initialValues;
+      initialValuesRef.current = JSON.parse(JSON.stringify(initialValues));
       form.reset(initialValues, { keepDefaultValues: false });
     }
     if (existingIntermediaries.length > 0) {
@@ -233,8 +233,9 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         notes: item.notes || "",
       }));
       
+      const normalizedIntermediaries = JSON.parse(JSON.stringify(intermediaries));
       setIntermediariesList(intermediaries);
-      initialIntermediariesRef.current = JSON.stringify(intermediaries);
+      initialIntermediariesRef.current = JSON.stringify(normalizedIntermediaries);
     }
   }, [existingIntermediaries, isCopy, editData]);
 
@@ -292,12 +293,13 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     },
     isDirty: () => {
       const currentValues = form.getValues();
-      const currentIntermediaries = JSON.stringify(intermediariesList);
+      const currentIntermediaries = JSON.stringify(JSON.parse(JSON.stringify(intermediariesList)));
       
       const normalizeValue = (val: any) => {
         if (val instanceof Date) return val.getTime();
         if (val === "" || val === null || val === undefined) return null;
         if (typeof val === "number") return val;
+        // Handle stringified numbers to avoid type mismatch
         if (typeof val === "string" && !isNaN(Number(val)) && val.trim() !== "") return Number(val);
         return val;
       };
@@ -309,7 +311,6 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
           const v1 = normalizeValue(obj1[key]);
           const v2 = normalizeValue(obj2[key]);
           if (v1 !== v2) {
-            console.log(`Field ${String(key)} changed:`, v1, v2);
             return true;
           }
         }
@@ -321,10 +322,6 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         : false;
         
       const intermediariesChanged = initialIntermediariesRef.current !== currentIntermediaries;
-      
-      if (intermediariesChanged) {
-        console.log("Intermediaries changed");
-      }
       
       return valuesChanged || intermediariesChanged;
     }
