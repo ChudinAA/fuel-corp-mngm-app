@@ -206,7 +206,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     }
     
     // Process intermediaries
-    if (existingIntermediaries) {
+    if (existingIntermediaries && existingIntermediaries.length > 0) {
       const intermediaries = existingIntermediaries.map((item: any) => ({
         // We omit the id when it's a copy so the server creates new intermediary records
         id: isCopy ? undefined : item.id,
@@ -242,16 +242,16 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       const serializedIntermediaries = JSON.stringify(JSON.parse(JSON.stringify(intermediaries)));
       
       // Only update if actually different to prevent effect loops
-      if (JSON.stringify(intermediariesList) !== JSON.stringify(intermediaries)) {
+      if (JSON.stringify(intermediariesList) !== serializedIntermediaries) {
         setIntermediariesList(intermediaries);
       }
       
       if (!initialIntermediariesRef.current || initialIntermediariesRef.current === "[]") {
         initialIntermediariesRef.current = serializedIntermediaries;
       }
-    } else if (originalId) {
+    } else if (originalId && initialIntermediariesRef.current === "") {
       // If we have an ID but no intermediaries yet (loading)
-      initialIntermediariesRef.current = JSON.stringify([]);
+      initialIntermediariesRef.current = "[]";
     }
   }, [existingIntermediaries, isCopy, editData]);
 
@@ -315,18 +315,26 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         if (val instanceof Date) return val.getTime();
         if (val === "" || val === null || val === undefined || val === "none") return null;
         if (typeof val === "number") return val;
-        // Handle stringified numbers to avoid type mismatch
         if (typeof val === "string" && !isNaN(Number(val)) && val.trim() !== "") return Number(val);
         return val;
       };
 
       const compareValues = (obj1: any, obj2: any) => {
-        const keys = Object.keys(obj1) as (keyof typeof obj1)[];
-        for (const key of keys) {
-          if (key === "intermediaries" || key === "isDraft") continue;
-          const v1 = normalizeValue(obj1[key]);
-          const v2 = normalizeValue(obj2[key]);
+        // Only compare fields that are in the initialValues schema
+        const trackedKeys = [
+          "refuelingDate", "productType", "aircraftNumber", "flightNumber", 
+          "airportCode", "supplierId", "buyerId", "basisId", "inputMode", 
+          "quantityLiters", "density", "quantityKg", "selectedPurchasePriceId", 
+          "selectedSalePriceId", "purchasePriceUsd", "salePriceUsd", 
+          "purchaseExchangeRateId", "manualPurchaseExchangeRate", 
+          "saleExchangeRateId", "manualSaleExchangeRate", "notes", "isApproxVolume"
+        ];
+        
+        for (const key of trackedKeys) {
+          const v1 = normalizeValue(obj1[key as keyof typeof obj1]);
+          const v2 = normalizeValue(obj2[key as keyof typeof obj2]);
           if (v1 !== v2) {
+            console.log(`Field ${key} changed:`, v1, v2);
             return true;
           }
         }
@@ -337,7 +345,9 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         ? compareValues(currentValues, initialValuesRef.current)
         : false;
         
-      const intermediariesChanged = initialIntermediariesRef.current && initialIntermediariesRef.current !== currentIntermediaries;
+      const intermediariesChanged = initialIntermediariesRef.current && 
+                                   initialIntermediariesRef.current !== "[]" && 
+                                   initialIntermediariesRef.current !== currentIntermediaries;
       
       return valuesChanged || !!intermediariesChanged;
     }
