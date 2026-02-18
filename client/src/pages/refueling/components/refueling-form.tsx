@@ -40,6 +40,7 @@ import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-di
 export interface RefuelingFormHandle {
   getFormState: () => { supplierId: string; buyerId: string };
   saveAsDraft: () => Promise<void>;
+  isDirty: () => boolean;
 }
 
 export const RefuelingForm = forwardRef<RefuelingFormHandle, RefuelingFormProps>(
@@ -91,6 +92,7 @@ export const RefuelingForm = forwardRef<RefuelingFormHandle, RefuelingFormProps>
         const values = form.getValues();
         await createMutation.mutateAsync({ ...values, isDraft: true });
       },
+      isDirty: () => form.formState.isDirty,
     }));
 
     const { data: suppliers } = useQuery<Supplier[]>({

@@ -32,8 +32,16 @@ export function AddOptDialog({
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       const formState = formRef.current?.getFormState();
+      const isDirty = formRef.current?.isDirty();
+      const isNewDeal = !editOpt && !isCopy;
+      const isDraftEdit = !!editOpt && editOpt.isDraft;
+
       // Если это создание новой сделки и введен поставщик или покупатель
-      if (!editOpt && !isCopy && formState && (formState.supplierId && formState.buyerId)) {
+      // ИЛИ если это редактирование существующего черновика и были изменения
+      if (
+        (isNewDeal && formState && (formState.supplierId && formState.buyerId)) ||
+        (isDraftEdit && isDirty)
+      ) {
         setShowExitConfirm(true);
       } else {
         onClose();

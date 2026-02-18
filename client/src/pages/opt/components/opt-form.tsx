@@ -43,6 +43,7 @@ import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-di
 export interface OptFormHandle {
   getFormState: () => { supplierId: string; buyerId: string };
   saveAsDraft: () => Promise<void>;
+  isDirty: () => boolean;
 }
 
 export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
@@ -92,6 +93,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         const values = form.getValues();
         await createMutation.mutateAsync({ ...values, isDraft: true });
       },
+      isDirty: () => form.formState.isDirty,
     }));
 
     const { data: suppliers } = useQuery<Supplier[]>({
