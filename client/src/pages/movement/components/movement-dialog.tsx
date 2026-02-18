@@ -206,17 +206,17 @@ export function MovementDialog({
     supplierContractVolumeStatus,
   } = useMovementCalculations({
     form,
-    watchMovementType,
-    watchProductType,
-    watchSupplierId,
-    watchBasisId,
-    watchFromWarehouseId,
-    watchToWarehouseId,
-    watchCarrierId,
-    watchMovementDate,
-    watchLiters,
-    watchDensity,
-    watchKg,
+    watchMovementType: watchMovementType || MOVEMENT_TYPE.SUPPLY,
+    watchProductType: watchProductType || PRODUCT_TYPE.KEROSENE,
+    watchSupplierId: watchSupplierId || "",
+    watchBasisId: watchBasisId || "",
+    watchFromWarehouseId: watchFromWarehouseId || "",
+    watchToWarehouseId: watchToWarehouseId || "",
+    watchCarrierId: watchCarrierId || "",
+    watchMovementDate: watchMovementDate || new Date(),
+    watchLiters: watchLiters || "",
+    watchDensity: watchDensity || "",
+    watchKg: watchKg || "",
     inputMode,
     warehouses,
     suppliers,
@@ -227,10 +227,10 @@ export function MovementDialog({
   });
 
   const availableCarriers = useAvailableCarriers({
-    watchMovementType,
-    watchSupplierId,
-    watchFromWarehouseId,
-    watchToWarehouseId,
+    watchMovementType: watchMovementType || MOVEMENT_TYPE.SUPPLY,
+    watchSupplierId: watchSupplierId || "",
+    watchFromWarehouseId: watchFromWarehouseId || "",
+    watchToWarehouseId: watchToWarehouseId || "",
     warehouses,
     suppliers,
     carriers,
@@ -238,14 +238,14 @@ export function MovementDialog({
   });
 
   const warehouseBalance = useWarehouseBalanceMov({
-    watchMovementType,
-    watchProductType,
-    watchFromWarehouseId,
+    watchMovementType: watchMovementType || MOVEMENT_TYPE.SUPPLY,
+    watchProductType: watchProductType || PRODUCT_TYPE.KEROSENE,
+    watchFromWarehouseId: watchFromWarehouseId || "",
     kgNum,
     warehouses,
     isEditing,
     initialQuantityKg,
-    watchMovementDate,
+    watchMovementDate: watchMovementDate || new Date(),
   });
 
   const { validateForm } = useMovementValidation({
@@ -372,9 +372,9 @@ export function MovementDialog({
             </div>
 
             <MovementDestinationSection
-              form={form}
-              watchMovementType={watchMovementType}
-              watchFromWarehouseId={watchFromWarehouseId}
+              form={form as any}
+              watchMovementType={watchMovementType || MOVEMENT_TYPE.SUPPLY}
+              watchFromWarehouseId={watchFromWarehouseId || ""}
               warehouses={warehouses}
               suppliers={suppliers}
               allBases={allBases}
@@ -384,20 +384,20 @@ export function MovementDialog({
             />
 
             <VolumeInputSection
-              form={form}
+              form={form as any}
               setInputMode={setInputMode}
               calculatedKg={calculatedKg?.toString() || "0"}
             />
 
             <MovementCostSummary
-              form={form}
+              form={form as any}
               availablePrices={availablePrices}
               purchasePrice={purchasePrice}
               purchaseAmount={purchaseAmount}
               storageCost={storageCost}
               deliveryCost={deliveryCost}
               costPerKg={costPerKg}
-              watchMovementType={watchMovementType}
+              watchMovementType={watchMovementType || MOVEMENT_TYPE.SUPPLY}
               selectedPurchasePriceId={selectedPurchasePriceId}
               setSelectedPurchasePriceId={setSelectedPurchasePriceId}
             />

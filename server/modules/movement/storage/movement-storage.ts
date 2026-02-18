@@ -184,7 +184,7 @@ export class MovementStorage implements IMovementStorage {
     };
   }
 
-  async createMovement(data: InsertMovement): Promise<Movement> {
+  async createMovement(data: any): Promise<Movement> {
     return await db.transaction(async (tx) => {
       const [created] = await tx.insert(movement).values(data).returning();
 
@@ -250,7 +250,7 @@ export class MovementStorage implements IMovementStorage {
 
   async updateMovement(
     id: string,
-    data: Partial<InsertMovement>,
+    data: any,
   ): Promise<Movement | undefined> {
     return await db.transaction(async (tx) => {
       const currentMovement = await tx.query.movement.findFirst({
@@ -301,8 +301,8 @@ export class MovementStorage implements IMovementStorage {
           newQuantityKg,
           newTotalCost,
           currentMovement.productType,
-          data.updatedById,
-          data.movementDate,
+          data.updatedById || undefined,
+          data.movementDate || undefined,
         );
       }
 
@@ -313,7 +313,7 @@ export class MovementStorage implements IMovementStorage {
         currentMovement.sourceTransactionId &&
         currentMovement.fromWarehouseId
       ) {
-        if (data.fromWarehouseId !== currentMovement.fromWarehouseId) {
+        if (data.fromWarehouseId && data.fromWarehouseId !== currentMovement.fromWarehouseId) {
           throw new Error(
             "Нельзя поменять склад-источник для существующего перемещения",
           );
@@ -328,8 +328,8 @@ export class MovementStorage implements IMovementStorage {
           newQuantityKg,
           0, // При расходе totalCost = 0
           currentMovement.productType,
-          data.updatedById,
-          data.movementDate,
+          data.updatedById || undefined,
+          data.movementDate || undefined,
         );
       }
 
