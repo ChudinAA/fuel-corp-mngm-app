@@ -32,9 +32,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, UserPlus } from "lucide-react";
 import type { DeliveryCost } from "@shared/schema";
 import { BaseTypeBadge } from "@/components/base-type-badge";
+import { AddLogisticsDialog } from "@/pages/directories/logistics-dialog";
+import { useAuth } from "@/hooks/use-auth";
 import {
   deliveryCostFormSchema,
   DELIVERY_ENTITY_TYPES,
@@ -60,7 +62,9 @@ export function AddDeliveryCostDialog({
   onClose,
 }: AddDeliveryCostDialogProps) {
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
   const [localOpen, setLocalOpen] = useState(false);
+  const [addCarrierOpen, setAddCarrierOpen] = useState(false);
 
   const open = isInline ? inlineOpen : localOpen;
   const setOpen = isInline ? onInlineOpenChange || setLocalOpen : setLocalOpen;
@@ -291,7 +295,22 @@ export function AddDeliveryCostDialog({
               name="carrierId"
               render={({ field }) => (
                 <FormItem className="col-span-1 min-w-0">
-                  <FormLabel>Перевозчик</FormLabel>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Перевозчик</FormLabel>
+                    {hasPermission("directories", "create") && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2"
+                        onClick={() => setAddCarrierOpen(true)}
+                        data-testid="button-add-carrier-inline"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Добавить
+                      </Button>
+                    )}
+                  </div>
                   <FormControl>
                     <div className="w-full">
                       <Combobox
@@ -507,6 +526,17 @@ export function AddDeliveryCostDialog({
             </div>
           </form>
         </Form>
+        <AddLogisticsDialog
+          carriers={carriers || []}
+          isInline={true}
+          inlineOpen={addCarrierOpen}
+          onInlineOpenChange={setAddCarrierOpen}
+          defaultType="carrier"
+          onCreated={(id) => {
+            form.setValue("carrierId", id);
+            setAddCarrierOpen(false);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
