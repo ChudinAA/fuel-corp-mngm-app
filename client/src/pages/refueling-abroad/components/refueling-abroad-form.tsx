@@ -186,8 +186,8 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         quantityKg: editData.quantityKg?.toString() || "",
         selectedPurchasePriceId: purchasePriceCompositeId,
         selectedSalePriceId: salePriceCompositeId,
-        purchasePriceUsd: editData.purchasePriceUsd || "",
-        salePriceUsd: editData.salePriceUsd || "",
+        purchasePriceUsd: editData.purchasePriceUsd?.toString() || "",
+        salePriceUsd: editData.salePriceUsd?.toString() || "",
         purchaseExchangeRateId: editData.purchaseExchangeRateId || "",
         manualPurchaseExchangeRate: editData.purchaseExchangeRateValue?.toString() || "",
         saleExchangeRateId: editData.saleExchangeRateId || "",
@@ -294,13 +294,39 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       const currentValues = form.getValues();
       const currentIntermediaries = JSON.stringify(intermediariesList);
       
+      const normalizeValue = (val: any) => {
+        if (val instanceof Date) return val.getTime();
+        if (val === "" || val === null || val === undefined) return null;
+        if (typeof val === "number") return val;
+        if (typeof val === "string" && !isNaN(Number(val)) && val.trim() !== "") return Number(val);
+        return val;
+      };
+
+      const compareValues = (obj1: any, obj2: any) => {
+        const keys = Object.keys(obj1) as (keyof typeof obj1)[];
+        for (const key of keys) {
+          if (key === "intermediaries") continue;
+          const v1 = normalizeValue(obj1[key]);
+          const v2 = normalizeValue(obj2[key]);
+          if (v1 !== v2) {
+            console.log(`Field ${String(key)} changed:`, v1, v2);
+            return true;
+          }
+        }
+        return false;
+      };
+      
       const valuesChanged = initialValuesRef.current 
-        ? JSON.stringify(currentValues) !== JSON.stringify(initialValuesRef.current)
+        ? compareValues(currentValues, initialValuesRef.current)
         : false;
         
       const intermediariesChanged = initialIntermediariesRef.current !== currentIntermediaries;
       
-      return valuesChanged || intermediariesChanged || form.formState.isDirty;
+      if (intermediariesChanged) {
+        console.log("Intermediaries changed");
+      }
+      
+      return valuesChanged || intermediariesChanged;
     }
   }));
 
