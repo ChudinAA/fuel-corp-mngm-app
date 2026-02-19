@@ -338,6 +338,24 @@ function Router() {
         </AppLayout>
       </Route>
 
+      <Route path="/lik/refueling">
+        <AppLayout>
+          <ProtectedRoute component={InDevelopmentPage} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/lik/movement">
+        <AppLayout>
+          <ProtectedRoute component={InDevelopmentPage} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/lik/equipment">
+        <AppLayout>
+          <ProtectedRoute component={InDevelopmentPage} />
+        </AppLayout>
+      </Route>
+
       <Route path="/lik">
         <AppLayout>
           <ProtectedRoute component={InDevelopmentPage} />

@@ -110,10 +110,26 @@ const getOperationsMenuItems = (hasPermission: (p: string) => boolean) =>
       icon: TruckIcon,
       permission: "movement.view",
     },
+  ].filter((item) => !item.permission || hasPermission(item.permission));
+
+const getLikMenuItems = (hasPermission: (p: string) => boolean) =>
+  [
     {
-      title: "ЛИК",
-      url: "/lik",
-      icon: Building2,
+      title: "Заправка ВС ЛИК",
+      url: "/lik/refueling",
+      icon: Plane,
+      permission: "refueling.view",
+    },
+    {
+      title: "Перемещение ЛИК",
+      url: "/lik/movement",
+      icon: ArrowLeftRight,
+      permission: "movement.view",
+    },
+    {
+      title: "Средства Заправки",
+      url: "/lik/equipment",
+      icon: Calculator,
       permission: "movement.view",
     },
   ].filter((item) => !item.permission || hasPermission(item.permission));
@@ -288,6 +304,7 @@ export function AppSidebar() {
   };
 
   const operationsMenuItems = getOperationsMenuItems(hasPerm as any);
+  const likMenuItems = getLikMenuItems(hasPerm as any);
   const abroadMenuItems = gеtAbroadMenuItems(hasPerm as any);
   const dataMenuItems = getDataMenuItems(hasPerm as any);
   const financeMenuItems = getFinanceMenuItems(hasPerm as any);
@@ -341,6 +358,44 @@ export function AppSidebar() {
                     <CollapsibleContent>
                       <SidebarMenuSub>
                         {operationsMenuItems.map((item) => (
+                          <SidebarMenuSubItem key={item.title}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={isActive(item.url)}
+                              data-testid={`nav-${item.url.replace(/\//g, "-").slice(1)}`}
+                            >
+                              <Link href={item.url}>
+                                <item.icon className="h-4 w-4" />
+                                <span>{item.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {likMenuItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <Collapsible asChild defaultOpen className="group/collapsible">
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton tooltip="ЛИК">
+                        <Building2 className="h-4 w-4" />
+                        <span>ЛИК</span>
+                        <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {likMenuItems.map((item) => (
                           <SidebarMenuSubItem key={item.title}>
                             <SidebarMenuSubButton
                               asChild
