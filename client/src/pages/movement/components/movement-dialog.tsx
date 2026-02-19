@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,6 +40,16 @@ import {
   useMovementValidation,
 } from "../hooks";
 import { useWarehouseBalanceMov } from "../hooks/use-warehouse-balance";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function MovementDialog({
   warehouses,
@@ -59,6 +69,7 @@ export function MovementDialog({
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
     useState<string>("");
   const isEditing = !!editMovement && !isCopy;
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const { data: allBases } = useQuery<any[]>({
     queryKey: ["/api/bases"],
@@ -272,6 +283,10 @@ export function MovementDialog({
     }) => {
       if (!isDraft) {
         validateForm();
+      } else {
+        if (!watchFromWarehouseId) {
+          throw new Error("Склад-назначения не указан");
+        }
       }
 
       const {
@@ -349,146 +364,202 @@ export function MovementDialog({
     },
   });
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      const isDirty = form.formState.isDirty;
+      const values = form.getValues();
+      const isNewRecord = !isEditing;
+      const isDraftEdit = isEditing && editMovement?.isDraft;
+
+      // Если это новая запись и введены основные данные
+      // ИЛИ если это редактирование черновика и были изменения
+      if ((isNewRecord && values.toWarehouseId) || (isDraftEdit && isDirty)) {
+        setShowExitConfirm(true);
+      } else {
+        onOpenChange(false);
+      }
+    } else {
+      onOpenChange(true);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    createMutation.mutate({
+      data: form.getValues(),
+      isDraft: true,
+    });
+    setShowExitConfirm(false);
+  };
+
+  const handleDiscard = () => {
+    setShowExitConfirm(false);
+    onOpenChange(false);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[950px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {isCopy
-              ? "Копирование перемещения"
-              : isEditing
-                ? editMovement?.isDraft
-                  ? "Редактирование черновика"
-                  : "Редактирование перемещения"
-                : "Новое перемещение"}
-          </DialogTitle>
-          <DialogDescription>
-            {isCopy
-              ? "Создание нового перемещения на основе существующего"
-              : isEditing
-                ? "Изменение существующей записи"
-                : "Создание записи о поставке или внутреннем перемещении"}
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit((data) =>
-              createMutation.mutate({ data, isDraft: false }),
-            )}
-            className="space-y-6"
-          >
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 items-end">
-              <MovementFormHeader form={form} />
-              <MovementSourceSection
-                form={form}
-                watchMovementType={watchMovementType}
-                suppliers={suppliers}
-                warehouses={warehouses}
-              />
-            </div>
-
-            <MovementDestinationSection
-              form={form as any}
-              watchMovementType={watchMovementType || MOVEMENT_TYPE.SUPPLY}
-              watchFromWarehouseId={watchFromWarehouseId || ""}
-              warehouses={warehouses}
-              suppliers={suppliers}
-              allBases={allBases}
-              availableCarriers={availableCarriers}
-              warehouseBalance={warehouseBalance}
-              supplierContractVolumeStatus={supplierContractVolumeStatus}
-            />
-
-            <VolumeInputSection
-              form={form as any}
-              setInputMode={setInputMode}
-              calculatedKg={calculatedKg?.toString() || "0"}
-            />
-
-            <MovementCostSummary
-              form={form as any}
-              availablePrices={availablePrices}
-              purchasePrice={purchasePrice}
-              purchaseAmount={purchaseAmount}
-              storageCost={storageCost}
-              deliveryCost={deliveryCost}
-              costPerKg={costPerKg}
-              watchMovementType={watchMovementType || MOVEMENT_TYPE.SUPPLY}
-              selectedPurchasePriceId={selectedPurchasePriceId}
-              setSelectedPurchasePriceId={setSelectedPurchasePriceId}
-            />
-
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Примечания</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Дополнительная информация..."
-                      data-testid="input-movement-notes"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[950px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {isCopy
+                ? "Копирование перемещения"
+                : isEditing
+                  ? editMovement?.isDraft
+                    ? "Редактирование черновика"
+                    : "Редактирование перемещения"
+                  : "Новое перемещение"}
+            </DialogTitle>
+            <DialogDescription>
+              {isCopy
+                ? "Создание нового перемещения на основе существующего"
+                : isEditing
+                  ? "Изменение существующей записи"
+                  : "Создание записи о поставке или внутреннем перемещении"}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit((data) =>
+                createMutation.mutate({ data, isDraft: false }),
               )}
-            />
+              className="space-y-6"
+            >
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 items-end">
+                <MovementFormHeader form={form} />
+                <MovementSourceSection
+                  form={form}
+                  watchMovementType={watchMovementType}
+                  suppliers={suppliers}
+                  warehouses={warehouses}
+                />
+              </div>
 
-            <div className="flex justify-end gap-4 pt-4 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
-                Отмена
-              </Button>
-              {!isEditing || (editMovement && editMovement?.isDraft) ? (
+              <MovementDestinationSection
+                form={form as any}
+                watchMovementType={watchMovementType || MOVEMENT_TYPE.SUPPLY}
+                watchFromWarehouseId={watchFromWarehouseId || ""}
+                warehouses={warehouses}
+                suppliers={suppliers}
+                allBases={allBases}
+                availableCarriers={availableCarriers}
+                warehouseBalance={warehouseBalance}
+                supplierContractVolumeStatus={supplierContractVolumeStatus}
+              />
+
+              <VolumeInputSection
+                form={form as any}
+                setInputMode={setInputMode}
+                calculatedKg={calculatedKg?.toString() || "0"}
+              />
+
+              <MovementCostSummary
+                form={form as any}
+                availablePrices={availablePrices}
+                purchasePrice={purchasePrice}
+                purchaseAmount={purchaseAmount}
+                storageCost={storageCost}
+                deliveryCost={deliveryCost}
+                costPerKg={costPerKg}
+                watchMovementType={watchMovementType || MOVEMENT_TYPE.SUPPLY}
+                selectedPurchasePriceId={selectedPurchasePriceId}
+                setSelectedPurchasePriceId={setSelectedPurchasePriceId}
+              />
+
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Примечания</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Дополнительная информация..."
+                        data-testid="input-movement-notes"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end gap-4 pt-4 border-t">
                 <Button
                   type="button"
-                  variant="secondary"
-                  disabled={createMutation.isPending}
-                  onClick={() =>
-                    createMutation.mutate({
-                      data: form.getValues(),
-                      isDraft: true,
-                    })
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Отмена
+                </Button>
+                {!isEditing || (editMovement && editMovement?.isDraft) ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={createMutation.isPending}
+                    onClick={() =>
+                      createMutation.mutate({
+                        data: form.getValues(),
+                        isDraft: true,
+                      })
+                    }
+                    data-testid="button-save-draft"
+                  >
+                    {createMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      "Сохранить черновик"
+                    )}
+                  </Button>
+                ) : null}
+                <Button
+                  type="submit"
+                  disabled={
+                    createMutation.isPending ||
+                    (watchMovementType === MOVEMENT_TYPE.INTERNAL &&
+                      warehouseBalance.status === "error")
                   }
-                  data-testid="button-save-draft"
+                  data-testid="button-create-movement"
                 >
                   {createMutation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {isEditing ? "Обновление..." : "Сохранение..."}
+                    </>
                   ) : (
-                    "Сохранить черновик"
+                    <>
+                      {isEditing && !editMovement.isDraft ? null : (
+                        <Plus className="mr-2 h-4 w-4" />
+                      )}
+                      {isEditing && !editMovement.isDraft
+                        ? "Обновить"
+                        : "Создать перемещение"}
+                    </>
                   )}
                 </Button>
-              ) : null}
-              <Button
-                type="submit"
-                disabled={
-                  createMutation.isPending ||
-                  (watchMovementType === MOVEMENT_TYPE.INTERNAL &&
-                    warehouseBalance.status === "error")
-                }
-                data-testid="button-create-movement"
-              >
-                {createMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isEditing ? "Обновление..." : "Сохранение..."}
-                  </>
-                ) : (
-                  <>
-                    {isEditing && !editMovement.isDraft ? null : <Plus className="mr-2 h-4 w-4" />}
-                    {isEditing && !editMovement.isDraft ? "Обновить" : "Создать перемещение"}
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Сохранить черновик?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы начали вводить данные. Хотите сохранить изменения как черновик
+              перед закрытием?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDiscard}>Нет</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSaveDraft}>
+              Да, сохранить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
