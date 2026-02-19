@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "../../../db";
 import { equipments, equipmentTransactions, warehousesEquipment, type Equipment, type InsertEquipment, type EquipmentTransaction, type InsertEquipmentTransaction } from "../entities/equipment";
 
@@ -41,7 +41,13 @@ export class EquipmentStorage {
   }
 
   async unlinkFromWarehouse(warehouseId: string, equipmentId: string): Promise<void> {
-    await db.delete(warehousesEquipment).where(eq(warehousesEquipment.warehouseId, warehouseId)).where(eq(warehousesEquipment.equipmentId, equipmentId));
+    await db.delete(warehousesEquipment)
+      .where(
+        and(
+          eq(warehousesEquipment.warehouseId, warehouseId),
+          eq(warehousesEquipment.equipmentId, equipmentId)
+        )
+      );
   }
 }
 
