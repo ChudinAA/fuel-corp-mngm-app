@@ -152,7 +152,7 @@ export function MovementDialog({
       };
 
       initialValuesRef.current = resetValues;
-      form.reset(resetValues);
+      form.reset(resetValues, { keepDefaultValues: false });
 
       setSelectedPurchasePriceId(
         editMovement.purchasePriceId
@@ -289,7 +289,7 @@ export function MovementDialog({
       if (!isDraft) {
         validateForm();
       } else {
-        if (!watchFromWarehouseId) {
+        if (!data.toWarehouseId) {
           throw new Error("Склад-назначения не указан");
         }
       }
@@ -408,7 +408,7 @@ export function MovementDialog({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[950px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
