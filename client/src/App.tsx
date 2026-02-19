@@ -26,7 +26,8 @@ import { useEffect } from "react";
 import AuthPage from "@/pages/auth-page";
 import CustomizableDashboard from "@/pages/dashboard/index";
 import OptPage from "@/pages/opt-page";
-import RefuelingPage from "@/pages/refueling/refueling-page";
+import RefuelingPage from "@/pages/refueling-page";
+import EquipmentsPage from "@/pages/warehouses-equipment/equipment-page";
 import ExchangePage from "@/pages/exchange-page";
 import MovementPage from "@/pages/movement-page";
 import WarehousesPage from "@/pages/warehouses-page";
@@ -352,7 +353,7 @@ function Router() {
 
       <Route path="/lik/equipment">
         <AppLayout>
-          <ProtectedRoute component={InDevelopmentPage} />
+          <ProtectedRoute component={EquipmentsPage} />
         </AppLayout>
       </Route>
 

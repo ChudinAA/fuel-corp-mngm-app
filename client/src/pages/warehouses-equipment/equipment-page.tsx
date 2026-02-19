@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Truck, History } from "lucide-react";
+import { Plus, Search, Truck, History, Badge } from "lucide-react";
 import { ExportButton } from "@/components/export/export-button";
 import { AuditPanel } from "@/components/audit-panel";
 import type { Warehouse, Equipment } from "@shared/schema";
@@ -15,32 +15,43 @@ import { EquipmentDetailsDialog } from "./components/equipment-details-dialog";
 import { AddEquipmentDialog } from "./components/add-equipment-dialog";
 import { useAuth } from "@/hooks/use-auth";
 
-export default function RefuelingEquipmentsPage() {
+export default function EquipmentsPage() {
   const [search, setSearch] = useState("");
-  const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
+  const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(
+    null,
+  );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [viewingEquipment, setViewingEquipment] = useState<Equipment | null>(null);
+  const [viewingEquipment, setViewingEquipment] = useState<Equipment | null>(
+    null,
+  );
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
-  
-  const [viewingWarehouse, setViewingWarehouse] = useState<Warehouse | null>(null);
+
+  const [viewingWarehouse, setViewingWarehouse] = useState<Warehouse | null>(
+    null,
+  );
   const [isWarehouseDetailsOpen, setIsWarehouseDetailsOpen] = useState(false);
-  
+
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { hasPermission } = useAuth();
 
-  const { data: warehouses, isLoading: warehousesLoading } = useQuery<Warehouse[]>({
+  const { data: warehouses, isLoading: warehousesLoading } = useQuery<
+    Warehouse[]
+  >({
     queryKey: ["/api/warehouses"],
   });
 
-  const { data: equipments, isLoading: equipmentsLoading } = useQuery<Equipment[]>({
+  const { data: equipments, isLoading: equipmentsLoading } = useQuery<
+    Equipment[]
+  >({
     queryKey: ["/api/warehouses-equipment"],
   });
 
   // Filter for LIK mother warehouses
-  const likWarehouses = warehouses?.filter(w => w.equipmentType === "LIK") || [];
-  
-  const filteredLikWarehouses = likWarehouses.filter(w => 
-    w.name.toLowerCase().includes(search.toLowerCase())
+  const likWarehouses =
+    warehouses?.filter((w) => w.equipmentType === "LIK") || [];
+
+  const filteredLikWarehouses = likWarehouses.filter((w) =>
+    w.name.toLowerCase().includes(search.toLowerCase()),
   );
 
   const handleEdit = (equipment: Equipment) => {
@@ -92,10 +103,7 @@ export default function RefuelingEquipmentsPage() {
               data-testid="input-search-refueling"
             />
           </div>
-          <Button
-            variant="outline"
-            onClick={() => setAuditPanelOpen(true)}
-          >
+          <Button variant="outline" onClick={() => setAuditPanelOpen(true)}>
             <History className="h-4 w-4 mr-2" />
             История изменений
           </Button>
@@ -112,7 +120,9 @@ export default function RefuelingEquipmentsPage() {
           <Card>
             <CardContent className="py-12 text-center">
               <Truck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">Нет данных для отображения</p>
+              <p className="text-muted-foreground">
+                Нет данных для отображения
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -120,7 +130,9 @@ export default function RefuelingEquipmentsPage() {
             {filteredLikWarehouses.map((warehouse) => (
               <div key={warehouse.id} className="space-y-4">
                 <div className="flex items-center gap-2 px-1">
-                  <Badge variant="default" className="bg-sky-600">Материнский склад ЛИК</Badge>
+                  <Badge variant="default" className="bg-sky-600">
+                    Материнский склад ЛИК
+                  </Badge>
                 </div>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   <WarehouseCard
