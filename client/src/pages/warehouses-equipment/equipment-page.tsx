@@ -14,6 +14,7 @@ import { EquipmentCard } from "./components/equipment-card";
 import { EquipmentDetailsDialog } from "./components/equipment-details-dialog";
 import { AddEquipmentDialog } from "./components/add-equipment-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { EQUIPMENT_TYPE } from "@shared/constants";
 
 export default function EquipmentsPage() {
   const [search, setSearch] = useState("");
@@ -48,7 +49,7 @@ export default function EquipmentsPage() {
 
   // Filter for LIK mother warehouses
   const likWarehouses =
-    warehouses?.filter((w) => w.equipmentType === "LIK") || [];
+    warehouses?.filter((w) => w.equipmentType === EQUIPMENT_TYPE.LIK) || [];
 
   const filteredLikWarehouses = likWarehouses.filter((w) =>
     w.name.toLowerCase().includes(search.toLowerCase()),

@@ -17,9 +17,16 @@ export function registerEquipmentRoutes(app: Router) {
   });
 
   router.post("/", async (req, res) => {
-    const parsed = insertEquipmentSchema.safeParse(req.body);
+    const { warehouseId, ...equipmentData } = req.body;
+    const parsed = insertEquipmentSchema.safeParse(equipmentData);
     if (!parsed.success) return res.status(400).json(parsed.error);
+    
     const data = await equipmentStorage.createEquipment(parsed.data);
+    
+    if (warehouseId) {
+      await equipmentStorage.linkToWarehouse(warehouseId, data.id);
+    }
+    
     res.status(201).json(data);
   });
 
