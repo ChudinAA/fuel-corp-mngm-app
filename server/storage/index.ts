@@ -27,6 +27,8 @@ import { StorageCardsStorage } from "../modules/storage-cards/storage/storage-ca
 import { RefuelingAbroadStorage } from "../modules/refueling-abroad/storage/refueling-abroad-storage";
 import { CurrenciesStorage } from "../modules/currencies/storage/currencies-storage";
 
+import { EquipmentStorage } from "../modules/warehouses-equipment/storage/equipment-storage";
+
 export * from "./types";
 
 export class Storage {
@@ -58,6 +60,7 @@ export class Storage {
   public storageCards: StorageCardsStorage;
   public refuelingAbroad: RefuelingAbroadStorage;
   public currencies: CurrenciesStorage;
+  public equipment: EquipmentStorage;
 
   constructor() {
     this.users = new UserStorage();
@@ -88,6 +91,7 @@ export class Storage {
     this.storageCards = new StorageCardsStorage();
     this.refuelingAbroad = new RefuelingAbroadStorage();
     this.currencies = new CurrenciesStorage();
+    this.equipment = new EquipmentStorage();
   }
 }
 

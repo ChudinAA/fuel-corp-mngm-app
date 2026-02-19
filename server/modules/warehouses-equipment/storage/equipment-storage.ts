@@ -23,13 +23,49 @@ export class EquipmentStorage {
   }
 
   async deleteEquipment(id: string, deletedById: string): Promise<boolean> {
-    await db.update(equipments)
-      .set({
-        deletedAt: new Date().toISOString(),
-        deletedById
-      })
-      .where(eq(equipments.id, id));
-    return true;
+    return await db.transaction(async (tx) => {
+      // Soft delete equipment
+      await tx.update(equipments)
+        .set({
+          deletedAt: new Date().toISOString(),
+          deletedById
+        })
+        .where(eq(equipments.id, id));
+
+      // Soft delete linked relations
+      await tx.update(warehousesEquipment)
+        .set({
+          deletedAt: new Date().toISOString(),
+          deletedById
+        })
+        .where(eq(warehousesEquipment.equipmentId, id));
+
+      return true;
+    });
+  }
+
+  async restoreEquipment(id: string, restoredById: string): Promise<boolean> {
+    return await db.transaction(async (tx) => {
+      // Restore equipment
+      await tx.update(equipments)
+        .set({
+          deletedAt: null,
+          deletedById: null,
+          updatedById: restoredById,
+          updatedAt: new Date().toISOString()
+        })
+        .where(eq(equipments.id, id));
+
+      // Restore linked relations
+      await tx.update(warehousesEquipment)
+        .set({
+          deletedAt: null,
+          deletedById: null
+        })
+        .where(eq(warehousesEquipment.equipmentId, id));
+
+      return true;
+    });
   }
 
   async createTransaction(data: InsertEquipmentTransaction): Promise<EquipmentTransaction> {

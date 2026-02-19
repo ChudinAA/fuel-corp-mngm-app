@@ -71,6 +71,8 @@ export const warehousesEquipment = pgTable(
     equipmentId: uuid("equipment_id")
       .notNull()
       .references(() => equipments.id, { onDelete: "cascade" }),
+    deletedAt: timestamp("deleted_at", { mode: "string" }),
+    deletedById: uuid("deleted_by_id").references(() => users.id),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   },
   (table) => ({

@@ -62,6 +62,7 @@ export const MODULES = [
   "finance",
   "reports",
   "export",
+  "equipment",
 ] as const;
 
 export const ACTIONS = ["view", "create", "edit", "delete"] as const;
