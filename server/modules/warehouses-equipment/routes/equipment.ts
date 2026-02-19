@@ -30,7 +30,8 @@ export function registerEquipmentRoutes(app: Router) {
   });
 
   router.delete("/:id", async (req, res) => {
-    await equipmentStorage.deleteEquipment(req.params.id);
+    if (!req.user) return res.sendStatus(401);
+    await equipmentStorage.deleteEquipment(req.params.id, (req.user as any).id);
     res.status(204).end();
   });
 

@@ -27,6 +27,8 @@ export const equipments = pgTable(
     updatedAt: timestamp("updated_at", { mode: "string" }),
     createdById: uuid("created_by_id").references(() => users.id),
     updatedById: uuid("updated_by_id").references(() => users.id),
+    deletedAt: timestamp("deleted_at", { mode: "string" }),
+    deletedById: uuid("deleted_by_id").references(() => users.id),
   },
   (table) => ({
     nameIdx: index("equipments_name_idx").on(table.name),
@@ -50,6 +52,8 @@ export const equipmentTransactions = pgTable(
     sourceWarehouseId: uuid("source_warehouse_id").references(() => warehouses.id),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     createdById: uuid("created_by_id").references(() => users.id),
+    deletedAt: timestamp("deleted_at", { mode: "string" }),
+    deletedById: uuid("deleted_by_id").references(() => users.id),
   },
   (table) => ({
     equipmentIdx: index("equipment_transactions_equipment_id_idx").on(table.equipmentId),
@@ -83,6 +87,17 @@ export const equipmentsRelations = relations(equipments, ({ many, one }) => ({
   createdBy: one(users, {
     fields: [equipments.createdById],
     references: [users.id],
+    relationName: "equipmentCreatedBy",
+  }),
+  updatedBy: one(users, {
+    fields: [equipments.updatedById],
+    references: [users.id],
+    relationName: "equipmentUpdatedBy",
+  }),
+  deletedBy: one(users, {
+    fields: [equipments.deletedById],
+    references: [users.id],
+    relationName: "equipmentDeletedBy",
   }),
 }));
 
@@ -98,6 +113,12 @@ export const equipmentTransactionsRelations = relations(equipmentTransactions, (
   createdBy: one(users, {
     fields: [equipmentTransactions.createdById],
     references: [users.id],
+    relationName: "equipmentTransactionCreatedBy",
+  }),
+  deletedBy: one(users, {
+    fields: [equipmentTransactions.deletedById],
+    references: [users.id],
+    relationName: "equipmentTransactionDeletedBy",
   }),
 }));
 

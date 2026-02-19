@@ -5,39 +5,43 @@ ALTER TABLE "warehouses" ADD COLUMN "equipment_type" text DEFAULT 'common' NOT N
 
 -- 2. Create equipments table
 CREATE TABLE IF NOT EXISTS "equipments" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"name" text NOT NULL,
-	"current_balance" numeric(15, 2) DEFAULT '0',
-	"average_cost" numeric(12, 4) DEFAULT '0',
-	"is_active" text DEFAULT 'true',
-	"created_at" timestamp DEFAULT now(),
-	"updated_at" timestamp,
-	"created_by_id" uuid,
-	"updated_by_id" uuid
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        "name" text NOT NULL,
+        "current_balance" numeric(15, 2) DEFAULT '0',
+        "average_cost" numeric(12, 4) DEFAULT '0',
+        "is_active" text DEFAULT 'true',
+        "created_at" timestamp DEFAULT now(),
+        "updated_at" timestamp,
+        "created_by_id" uuid,
+        "updated_by_id" uuid,
+        "deleted_at" timestamp,
+        "deleted_by_id" uuid
 );
 
 -- 3. Create equipment_transactions table
 CREATE TABLE IF NOT EXISTS "equipment_transactions" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"equipment_id" uuid NOT NULL,
-	"transaction_type" text NOT NULL,
-	"quantity" numeric(15, 2) NOT NULL,
-	"balance_before" numeric(15, 2),
-	"balance_after" numeric(15, 2),
-	"average_cost_before" numeric(12, 4),
-	"average_cost_after" numeric(12, 4),
-	"transaction_date" timestamp,
-	"source_warehouse_id" uuid,
-	"created_at" timestamp DEFAULT now(),
-	"created_by_id" uuid
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        "equipment_id" uuid NOT NULL,
+        "transaction_type" text NOT NULL,
+        "quantity" numeric(15, 2) NOT NULL,
+        "balance_before" numeric(15, 2),
+        "balance_after" numeric(15, 2),
+        "average_cost_before" numeric(12, 4),
+        "average_cost_after" numeric(12, 4),
+        "transaction_date" timestamp,
+        "source_warehouse_id" uuid,
+        "created_at" timestamp DEFAULT now(),
+        "created_by_id" uuid,
+        "deleted_at" timestamp,
+        "deleted_by_id" uuid
 );
 
 -- 4. Create warehouses_equipment junction table
 CREATE TABLE IF NOT EXISTS "warehouses_equipment" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"warehouse_id" uuid NOT NULL,
-	"equipment_id" uuid NOT NULL,
-	"created_at" timestamp DEFAULT now()
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        "warehouse_id" uuid NOT NULL,
+        "equipment_id" uuid NOT NULL,
+        "created_at" timestamp DEFAULT now()
 );
 
 -- 5. Add Foreign Key constraints
