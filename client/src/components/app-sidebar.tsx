@@ -129,7 +129,7 @@ const getLikMenuItems = (hasPermission: (p: string) => boolean) =>
     {
       title: "Средства Заправки",
       url: "/lik/equipment",
-      icon: Calculator,
+      icon: Truck,
       permission: "movement.view",
     },
   ].filter((item) => !item.permission || hasPermission(item.permission));
