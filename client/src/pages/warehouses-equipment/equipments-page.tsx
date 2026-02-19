@@ -14,8 +14,9 @@ import { EquipmentCard } from "./components/equipment-card";
 import { EquipmentDetailsDialog } from "./components/equipment-details-dialog";
 import { AddEquipmentDialog } from "./components/add-equipment-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { Badge } from "@/components/ui/badge";
 
-export default function RefuelingEquipmentsPage() {
+export default function EquipmentsPage() {
   const [search, setSearch] = useState("");
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
