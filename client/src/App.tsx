@@ -26,7 +26,7 @@ import { useEffect } from "react";
 import AuthPage from "@/pages/auth-page";
 import CustomizableDashboard from "@/pages/dashboard/index";
 import OptPage from "@/pages/opt-page";
-import RefuelingPage from "@/pages/refueling-page";
+import RefuelingPage from "@/pages/refueling/refueling-page";
 import ExchangePage from "@/pages/exchange-page";
 import MovementPage from "@/pages/movement-page";
 import WarehousesPage from "@/pages/warehouses-page";
