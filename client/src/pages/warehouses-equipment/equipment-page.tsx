@@ -78,10 +78,10 @@ export default function EquipmentsPage() {
         <div>
           <h1 className="text-2xl font-semibold">Средства Заправки</h1>
           <p className="text-muted-foreground">
-            Управление парком ТЗК и материнскими складами ЛИК
+            Управление парком ТЗК склада ЛИК
           </p>
         </div>
-        {hasPermission("refueling", "create") && (
+        {hasPermission("equipment", "create") && (
           <Button
             onClick={() => setIsDialogOpen(true)}
             data-testid="button-add-equipment"
@@ -130,11 +130,6 @@ export default function EquipmentsPage() {
           <div className="space-y-8">
             {filteredLikWarehouses.map((warehouse) => (
               <div key={warehouse.id} className="space-y-4">
-                <div className="flex items-center gap-2 px-1">
-                  <Badge variant="default" className="bg-sky-600">
-                    Материнский склад ЛИК
-                  </Badge>
-                </div>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   <WarehouseCard
                     warehouse={warehouse}

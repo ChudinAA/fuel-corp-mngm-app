@@ -41,7 +41,9 @@ CREATE TABLE IF NOT EXISTS "warehouses_equipment" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "warehouse_id" uuid NOT NULL,
         "equipment_id" uuid NOT NULL,
-        "created_at" timestamp DEFAULT now()
+        "created_at" timestamp DEFAULT now(),
+        "deleted_at" timestamp,
+        "deleted_by_id" uuid
 );
 
 -- 5. Add Foreign Key constraints
