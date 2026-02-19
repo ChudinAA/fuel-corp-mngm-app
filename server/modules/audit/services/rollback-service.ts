@@ -362,6 +362,7 @@ export class RollbackService {
     const storageMap: Record<string, () => Promise<any>> = {
       opt: () => storage.opt.getOpt(entityId),
       aircraft_refueling: () => storage.aircraftRefueling.getRefueling(entityId),
+      aircraft_refueling_abroad: () => storage.aircraftRefueling.getRefueling(entityId),
       movement: () => storage.movement.getMovement(entityId),
       exchange: () => storage.exchange.getExchange(entityId),
       warehouses: () => storage.warehouses.getWarehouse(entityId),
@@ -403,6 +404,7 @@ export class RollbackService {
     const storageMap: Record<string, (id: string, data: any, userId?: string) => Promise<any>> = {
       opt: (id, data, userId) => storage.opt.updateOpt(id, { ...data, updatedById: userId }),
       aircraft_refueling: (id, data, userId) => storage.aircraftRefueling.updateRefueling(id, { ...data, updatedById: userId }),
+      aircraft_refueling_abroad: (id, data, userId) => storage.aircraftRefueling.updateRefueling(id, { ...data, updatedById: userId }),
       movement: (id, data, userId) => storage.movement.updateMovement(id, { ...data, updatedById: userId }),
       exchange: (id, data, userId) => storage.exchange.updateExchange(id, { ...data, updatedById: userId }),
       warehouses: (id, data, userId) => storage.warehouses.updateWarehouse(id, { ...data, updatedById: userId }),
@@ -444,6 +446,7 @@ export class RollbackService {
     const storageMap: Record<string, (id: string, userId?: string) => Promise<any>> = {
       opt: (id, userId) => storage.opt.deleteOpt(id, userId),
       aircraft_refueling: (id, userId) => storage.aircraftRefueling.deleteRefueling(id, userId),
+      aircraft_refueling_abroad: (id, userId) => storage.aircraftRefueling.deleteRefueling(id, userId),
       movement: (id, userId) => storage.movement.deleteMovement(id, userId),
       exchange: (id, userId) => storage.exchange.deleteExchange(id, userId),
       warehouses: (id, userId) => storage.warehouses.deleteWarehouse(id, userId),
@@ -487,6 +490,7 @@ export class RollbackService {
     const storageMap: Record<string, (id: string, oldData: any, userId?: string) => Promise<any>> = {
       opt: (id, oldData, userId) => storage.opt.restoreOpt(id, oldData, userId),
       aircraft_refueling: (id, oldData, userId) => storage.aircraftRefueling.restoreRefueling(id, oldData, userId),
+      aircraft_refueling_abroad: (id, oldData, userId) => storage.aircraftRefueling.restoreRefueling(id, oldData, userId),
       movement: (id, oldData, userId) => storage.movement.restoreMovement(id, oldData, userId),
       exchange: (id, oldData, userId) => storage.exchange.restoreExchange(id, userId),
       warehouses: (id, oldData, userId) => storage.warehouses.restoreWarehouse(id, userId),
