@@ -70,6 +70,12 @@ export const BASE_TYPE = {
   ABROAD: "abroad",
 } as const;
 
+// Equipment types for warehouses
+export const EQUIPMENT_TYPE = {
+  COMMON: "common",
+  LIK: "lik",
+} as const;
+
 // Customer modules
 export const CUSTOMER_MODULE = {
   WHOLESALE: "wholesale",
@@ -99,6 +105,7 @@ export type CounterpartyType =
 export type CounterpartyRole =
   (typeof COUNTERPARTY_ROLE)[keyof typeof COUNTERPARTY_ROLE];
 export type BaseType = (typeof BASE_TYPE)[keyof typeof BASE_TYPE];
+export type EquipmentType = (typeof EQUIPMENT_TYPE)[keyof typeof EQUIPMENT_TYPE];
 export type CustomerModule =
   (typeof CUSTOMER_MODULE)[keyof typeof CUSTOMER_MODULE];
 export type RecalculationStatus =

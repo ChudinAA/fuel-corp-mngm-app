@@ -36,6 +36,7 @@ export const warehouses = pgTable(
     averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default(
       "0",
     ),
+    equipmentType: text("equipment_type").default("common").notNull(),
     pvkjBalance: decimal("pvkj_balance", { precision: 15, scale: 2 }).default(
       "0",
     ),
@@ -192,6 +193,7 @@ export const warehouseTransactionsRelations = relations(
 export const insertWarehouseSchema = z.object({
   name: z.string().min(1),
   supplierId: z.string().uuid().optional().nullable(),
+  equipmentType: z.string().optional().default("common"),
   storageCost: z.string().optional().nullable(),
   pvkjBalance: z.string().optional().nullable(),
   pvkjAverageCost: z.string().optional().nullable(),
