@@ -70,6 +70,7 @@ export function MovementDialog({
     useState<string>("");
   const isEditing = !!editMovement && !isCopy;
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const initialValuesRef = useRef<MovementFormData | null>(null);
 
   const { data: allBases } = useQuery<any[]>({
     queryKey: ["/api/bases"],
@@ -116,7 +117,8 @@ export function MovementDialog({
         setInitialQuantityKg(0);
       }
 
-      form.reset({
+      // Сохранение начальных значений для проверки isDirty
+      const resetValues = {
         movementDate: new Date(editMovement.movementDate),
         movementType: editMovement.movementType,
         productType: editMovement.productType,
@@ -147,7 +149,10 @@ export function MovementDialog({
         purchasePriceIndex: editMovement.purchasePriceIndex || 0,
         carrierId: editMovement.carrierId || "",
         notes: editMovement.notes || "",
-      });
+      };
+
+      initialValuesRef.current = resetValues;
+      form.reset(resetValues);
 
       setSelectedPurchasePriceId(
         editMovement.purchasePriceId
@@ -366,14 +371,19 @@ export function MovementDialog({
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      const isDirty = form.formState.isDirty;
-      const values = form.getValues();
+      let isDirty = form.formState.isDirty;
+      const currentValues = form.getValues();
+
+      if (initialValuesRef.current) {
+        isDirty = JSON.stringify(currentValues) !== JSON.stringify(initialValuesRef.current);
+      }
+
       const isNewRecord = !isEditing;
       const isDraftEdit = isEditing && editMovement?.isDraft;
 
       // Если это новая запись и введены основные данные
       // ИЛИ если это редактирование черновика и были изменения
-      if ((isNewRecord && values.toWarehouseId) || (isDraftEdit && isDirty)) {
+      if ((isNewRecord && currentValues.toWarehouseId) || (isDraftEdit && isDirty)) {
         setShowExitConfirm(true);
       } else {
         onOpenChange(false);
