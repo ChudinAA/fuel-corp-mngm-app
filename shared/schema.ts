@@ -29,3 +29,4 @@ export * from "server/modules/refueling-abroad/entities/refueling-abroad";
 export * from "server/modules/refueling-abroad/entities/refueling-abroad-intermediaries";
 export * from "server/modules/currencies/entities/currencies";
 export * from "server/modules/warehouses-equipment/entities/equipment";
+export * from "server/modules/equipment-movement/entities/equipment-movement";
