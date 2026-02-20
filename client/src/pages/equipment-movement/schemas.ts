@@ -16,6 +16,18 @@ export const equipmentMovementFormSchema = z.object({
   basisId: z.string().optional(),
   notes: z.string().optional(),
   isDraft: z.boolean().default(false),
+}).refine(data => {
+  // Movement must be between different points or at least one equipment must be selected
+  // if warehouses are the same.
+  if (data.fromWarehouseId === data.toWarehouseId) {
+    if (data.fromEquipmentId === data.toEquipmentId) {
+      return false;
+    }
+  }
+  return true;
+}, {
+  message: "Выберите разные точки отправления и назначения",
+  path: ["toEquipmentId"]
 });
 
 export type EquipmentMovementFormData = z.infer<typeof equipmentMovementFormSchema>;

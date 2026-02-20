@@ -67,8 +67,8 @@ export function EquipmentMovementDialog({
     if (open) {
       if (editMovement) {
         form.reset({
-          movementDate: new Date(editMovement.movementDate),
-          productType: editMovement.productType,
+          movementDate: editMovement.movementDate ? new Date(editMovement.movementDate) : new Date(),
+          productType: editMovement.productType || PRODUCT_TYPE.KEROSENE,
           fromWarehouseId: editMovement.fromWarehouseId || "",
           toWarehouseId: editMovement.toWarehouseId || "",
           fromEquipmentId: editMovement.fromEquipmentId || "",
@@ -76,7 +76,7 @@ export function EquipmentMovementDialog({
           inputMode: (editMovement.inputMode as "liters" | "kg") || "kg",
           quantityLiters: editMovement.quantityLiters?.toString() || "",
           density: editMovement.density?.toString() || "",
-          quantityKg: editMovement.quantityKg.toString(),
+          quantityKg: editMovement.quantityKg?.toString() || "",
           notes: editMovement.notes || "",
           isDraft: editMovement.isDraft || false,
         });
@@ -101,22 +101,27 @@ export function EquipmentMovementDialog({
 
   const watchFromWarehouseId = form.watch("fromWarehouseId");
   const watchToWarehouseId = form.watch("toWarehouseId");
-  const watchFromEquipmentId = form.watch("fromEquipmentId");
-  const watchToEquipmentId = form.watch("toEquipmentId");
+
+  const { data: fromEquipments = [] } = useQuery<any[]>({
+    queryKey: ["/api/warehouses", watchFromWarehouseId, "equipment"],
+    enabled: !!watchFromWarehouseId,
+  });
+
+  const { data: toEquipments = [] } = useQuery<any[]>({
+    queryKey: ["/api/warehouses", watchToWarehouseId, "equipment"],
+    enabled: !!watchToWarehouseId,
+  });
 
   const likWarehouses = useMemo(() => 
     warehouses.filter(w => w.equipmentType === "lik"), 
   [warehouses]);
 
-  const availableFromEquipments = useMemo(() => {
-    if (!watchFromWarehouseId) return [];
-    return equipments.filter(e => e.warehouseId === watchFromWarehouseId);
-  }, [equipments, watchFromWarehouseId]);
-
-  const availableToEquipments = useMemo(() => {
-    if (!watchToWarehouseId) return [];
-    return equipments.filter(e => e.warehouseId === watchToWarehouseId);
-  }, [equipments, watchToWarehouseId]);
+  // Sync toWarehouseId with fromWarehouseId for local movement
+  useEffect(() => {
+    if (watchFromWarehouseId && !form.getValues("toWarehouseId")) {
+      form.setValue("toWarehouseId", watchFromWarehouseId);
+    }
+  }, [watchFromWarehouseId, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: EquipmentMovementFormData) => {
@@ -150,7 +155,7 @@ export function EquipmentMovementDialog({
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Редактирование" : "Новое перемещение ЛИК"}</DialogTitle>
-          <DialogDescription>Локальное распределение топлива</DialogDescription>
+          <DialogDescription>Локальное распределение топлива (в рамках одного склада ЛИК)</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
@@ -160,8 +165,12 @@ export function EquipmentMovementDialog({
                 name="fromWarehouseId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Склад (Откуда)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <FormLabel>Склад ЛИК (Откуда)</FormLabel>
+                    <Select onValueChange={(val) => {
+                      field.onChange(val);
+                      // Force destination to be same for local movement
+                      form.setValue("toWarehouseId", val);
+                    }} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Выберите склад" />
@@ -191,7 +200,7 @@ export function EquipmentMovementDialog({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="">Материнский склад</SelectItem>
-                        {availableFromEquipments.map(e => (
+                        {fromEquipments.map(e => (
                           <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
                         ))}
                       </SelectContent>
@@ -207,7 +216,7 @@ export function EquipmentMovementDialog({
                 name="toWarehouseId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Склад (Куда)</FormLabel>
+                    <FormLabel>Склад ЛИК (Куда)</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || ""}>
                       <FormControl>
                         <SelectTrigger>
@@ -238,7 +247,7 @@ export function EquipmentMovementDialog({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="">Материнский склад</SelectItem>
-                        {availableToEquipments.map(e => (
+                        {toEquipments.map(e => (
                           <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
                         ))}
                       </SelectContent>

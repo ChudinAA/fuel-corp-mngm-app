@@ -272,6 +272,22 @@ export function registerWarehousesOperationsRoutes(app: Express) {
   );
 
   app.get(
+    "/api/warehouses/:id/equipment",
+    requireAuth,
+    requirePermission("warehouses", "view"),
+    async (req, res) => {
+      try {
+        const id = req.params.id;
+        const equipment = await storage.equipments.getEquipmentsByWarehouse(id);
+        res.json(equipment);
+      } catch (error: any) {
+        console.error("Error fetching warehouse equipment:", error);
+        res.status(500).json({ message: "Ошибка получения оборудования склада", error: error.message });
+      }
+    },
+  );
+
+  app.get(
     "/api/warehouses/sse/events",
     requireAuth,
     (req, res) => {
