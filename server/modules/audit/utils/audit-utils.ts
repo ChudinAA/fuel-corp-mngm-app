@@ -58,7 +58,15 @@ export function normalizeAuditData(data: any): any {
     'deletedAt',
     'createdById',
     'updatedById',
-    'deletedById'
+    'deletedById',
+    'fromEquipment',
+    'toEquipment',
+    'fromWarehouse',
+    'toWarehouse',
+    'transaction',
+    'sourceTransaction',
+    'fromEquipment',
+    'toEquipment'
   ];
   
   fieldsToRemove.forEach(field => delete normalized[field]);
@@ -86,6 +94,7 @@ export function areValuesDifferent(oldValue: any, newValue: any): boolean {
 export function getChangedFields(oldData: any, newData: any): string[] {
   const changed: string[] = [];
   const allKeys = new Set([...Object.keys(oldData || {}), ...Object.keys(newData || {})]);
+  const keysArray = Array.from(allKeys);
   
   // Fields that should never be considered as changes
   const ignoredFields = [
@@ -102,7 +111,7 @@ export function getChangedFields(oldData: any, newData: any): string[] {
     'purchasePriceModified'
   ];
   
-  for (const key of allKeys) {
+  for (const key of keysArray) {
     if (ignoredFields.includes(key)) continue;
     
     const oldValue = oldData?.[key];

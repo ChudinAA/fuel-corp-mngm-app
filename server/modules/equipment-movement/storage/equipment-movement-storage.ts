@@ -23,9 +23,9 @@ export class EquipmentMovementStorage {
       .from(equipmentMovement)
       .where(isNull(equipmentMovement.deletedAt));
     
-    const total = Number(totalResult?.count || 0);
+    const totalCount = Number(totalResult?.count || 0);
 
-    return { items, total };
+    return { items, total: totalCount };
   }
 
   async getMovement(id: string): Promise<EquipmentMovement | undefined> {

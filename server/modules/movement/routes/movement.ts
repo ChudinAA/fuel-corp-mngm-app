@@ -63,10 +63,15 @@ export function registerMovementRoutes(app: Express) {
           createdById: req.session.userId,
         });
 
+        const quantityKgValue = data.quantityKg;
+        if (quantityKgValue === null || quantityKgValue === undefined) {
+          throw new Error("Количество (кг) обязательно");
+        }
+
         // Преобразуем числовые поля в строки для БД
         const dbData = {
           ...data,
-          quantityKg: data.quantityKg.toString(),
+          quantityKg: quantityKgValue.toString(),
           quantityLiters:
             data.quantityLiters !== null && data.quantityLiters !== undefined
               ? data.quantityLiters.toString()
@@ -153,7 +158,7 @@ export function registerMovementRoutes(app: Express) {
           updatedById: req.session.userId,
         };
 
-        const item = await storage.movement.updateMovement(id, dbData);
+        const item = await storage.movement.updateMovement(id, dbData as any);
         if (!item) {
           return res.status(404).json({ message: "Перемещение не найдено" });
         }
