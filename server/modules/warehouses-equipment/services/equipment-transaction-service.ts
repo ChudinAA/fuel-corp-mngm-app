@@ -12,7 +12,7 @@ export class EquipmentTransactionService {
     sum: number,
     date: string,
     userId?: string,
-    warehouseId?: string
+    warehouseId?: string,
   ) {
     const [equipment] = await tx
       .select()
@@ -75,12 +75,12 @@ export class EquipmentTransactionService {
     newQty: number,
     newSum: number,
     userId?: string,
-    date?: string
+    date?: string,
   ) {
     // Для упрощения: удаляем старую транзакцию и создаем новую
     // В полноценной системе здесь должен быть пересчет всей цепочки
     await this.deleteTransactionAndRevertEquipment(tx, transactionId, userId);
-    
+
     const [transaction] = await tx
       .select()
       .from(equipmentTransactions)
@@ -94,14 +94,14 @@ export class EquipmentTransactionService {
       newSum,
       date || transaction.transactionDate,
       userId,
-      transaction.sourceWarehouseId
+      transaction.sourceWarehouseId,
     );
   }
 
   static async deleteTransactionAndRevertEquipment(
     tx: any,
     transactionId: string,
-    userId?: string
+    userId?: string,
   ) {
     const [transaction] = await tx
       .select()
@@ -118,9 +118,12 @@ export class EquipmentTransactionService {
       .for("update");
 
     const qty = parseFloat(transaction.quantity);
-    const sum = transaction.transactionType === TRANSACTION_TYPE.RECEIPT 
-      ? qty * parseFloat(transaction.averageCostAfter) - parseFloat(transaction.balanceBefore) * parseFloat(transaction.averageCostBefore)
-      : 0;
+    const sum =
+      transaction.transactionType === TRANSACTION_TYPE.RECEIPT
+        ? qty * parseFloat(transaction.averageCostAfter) -
+          parseFloat(transaction.balanceBefore) *
+            parseFloat(transaction.averageCostBefore)
+        : 0;
 
     let newBalance = parseFloat(equipment.currentBalance);
     let newAvgCost = parseFloat(equipment.averageCost);
@@ -157,7 +160,7 @@ export class EquipmentTransactionService {
   static async restoreTransactionAndRecalculateEquipment(
     tx: any,
     transactionId: string,
-    userId?: string
+    userId?: string,
   ) {
     const [transaction] = await tx
       .select()
@@ -179,10 +182,13 @@ export class EquipmentTransactionService {
       transaction.equipmentId,
       transaction.transactionType,
       parseFloat(transaction.quantity),
-      transaction.transactionType === TRANSACTION_TYPE.RECEIPT ? parseFloat(transaction.quantity) * parseFloat(transaction.averageCostAfter) : 0,
+      transaction.transactionType === TRANSACTION_TYPE.RECEIPT
+        ? parseFloat(transaction.quantity) *
+            parseFloat(transaction.averageCostAfter)
+        : 0,
       transaction.transactionDate,
       userId,
-      transaction.sourceWarehouseId
+      transaction.sourceWarehouseId,
     );
   }
 }

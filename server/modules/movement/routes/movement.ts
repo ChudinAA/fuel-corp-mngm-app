@@ -28,9 +28,14 @@ export function registerMovementRoutes(app: Express) {
         }
       });
 
-      const result = await (storage.movement as any).getMovements(offset, pageSize, search, filters);
+      const result = await (storage.movement as any).getMovements(
+        offset,
+        pageSize,
+        search,
+        filters,
+      );
       res.json(result);
-    }
+    },
   );
 
   app.get(
@@ -44,7 +49,7 @@ export function registerMovementRoutes(app: Express) {
         return res.status(404).json({ message: "Перемещение не найдено" });
       }
       res.json(item);
-    }
+    },
   );
 
   app.post(
@@ -110,7 +115,7 @@ export function registerMovementRoutes(app: Express) {
         }
         res.status(500).json({ message: "Ошибка создания перемещения" });
       }
-    }
+    },
   );
 
   app.patch(
@@ -129,32 +134,45 @@ export function registerMovementRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        
+
         // Преобразуем числовые поля в строки для БД
         const dbData = {
           ...req.body,
-          quantityKg: req.body.quantityKg ? req.body.quantityKg.toString() : undefined,
-          quantityLiters: req.body.quantityLiters !== null && req.body.quantityLiters !== undefined
-            ? req.body.quantityLiters.toString()
-            : null,
-          density: req.body.density !== null && req.body.density !== undefined
-            ? req.body.density.toString()
-            : null,
-          purchasePrice: req.body.purchasePrice !== null && req.body.purchasePrice !== undefined
-            ? req.body.purchasePrice.toString()
-            : null,
-          deliveryPrice: req.body.deliveryPrice !== null && req.body.deliveryPrice !== undefined
-            ? req.body.deliveryPrice.toString()
-            : null,
-          deliveryCost: req.body.deliveryCost !== null && req.body.deliveryCost !== undefined
-            ? req.body.deliveryCost.toString()
-            : null,
-          totalCost: req.body.totalCost !== null && req.body.totalCost !== undefined
-            ? req.body.totalCost.toString()
-            : null,
-          costPerKg: req.body.costPerKg !== null && req.body.costPerKg !== undefined
-            ? req.body.costPerKg.toString()
-            : null,
+          quantityKg: req.body.quantityKg
+            ? req.body.quantityKg.toString()
+            : undefined,
+          quantityLiters:
+            req.body.quantityLiters !== null &&
+            req.body.quantityLiters !== undefined
+              ? req.body.quantityLiters.toString()
+              : null,
+          density:
+            req.body.density !== null && req.body.density !== undefined
+              ? req.body.density.toString()
+              : null,
+          purchasePrice:
+            req.body.purchasePrice !== null &&
+            req.body.purchasePrice !== undefined
+              ? req.body.purchasePrice.toString()
+              : null,
+          deliveryPrice:
+            req.body.deliveryPrice !== null &&
+            req.body.deliveryPrice !== undefined
+              ? req.body.deliveryPrice.toString()
+              : null,
+          deliveryCost:
+            req.body.deliveryCost !== null &&
+            req.body.deliveryCost !== undefined
+              ? req.body.deliveryCost.toString()
+              : null,
+          totalCost:
+            req.body.totalCost !== null && req.body.totalCost !== undefined
+              ? req.body.totalCost.toString()
+              : null,
+          costPerKg:
+            req.body.costPerKg !== null && req.body.costPerKg !== undefined
+              ? req.body.costPerKg.toString()
+              : null,
           updatedById: req.session.userId,
         };
 
@@ -167,7 +185,7 @@ export function registerMovementRoutes(app: Express) {
         console.error("Error updating movement:", error);
         res.status(500).json({ message: "Ошибка обновления перемещения" });
       }
-    }
+    },
   );
 
   app.delete(
@@ -190,6 +208,6 @@ export function registerMovementRoutes(app: Express) {
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления перемещения" });
       }
-    }
+    },
   );
 }

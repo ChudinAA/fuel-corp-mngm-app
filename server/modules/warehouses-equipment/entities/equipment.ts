@@ -21,7 +21,9 @@ export const equipments = pgTable(
       precision: 15,
       scale: 2,
     }).default("0"),
-    averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default("0"),
+    averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default(
+      "0",
+    ),
     isActive: text("is_active").default("true"),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -42,21 +44,31 @@ export const equipmentTransactions = pgTable(
     equipmentId: uuid("equipment_id")
       .notNull()
       .references(() => equipments.id),
-    transactionType: text("transaction_type").notNull(), // income, expense
+    transactionType: text("transaction_type").notNull(),
+    productType: text("product_type").default("kerosene"),
+    sourceType: text("source_type"),
+    sourceId: uuid("source_id"),
     quantity: decimal("quantity", { precision: 15, scale: 2 }).notNull(),
     balanceBefore: decimal("balance_before", { precision: 15, scale: 2 }),
     balanceAfter: decimal("balance_after", { precision: 15, scale: 2 }),
-    averageCostBefore: decimal("average_cost_before", { precision: 12, scale: 4 }),
-    averageCostAfter: decimal("average_cost_after", { precision: 12, scale: 4 }),
+    averageCostBefore: decimal("average_cost_before", {
+      precision: 12,
+      scale: 4,
+    }),
+    averageCostAfter: decimal("average_cost_after", {
+      precision: 12,
+      scale: 4,
+    }),
     transactionDate: timestamp("transaction_date", { mode: "string" }),
-    sourceWarehouseId: uuid("source_warehouse_id").references(() => warehouses.id),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     createdById: uuid("created_by_id").references(() => users.id),
     deletedAt: timestamp("deleted_at", { mode: "string" }),
     deletedById: uuid("deleted_by_id").references(() => users.id),
   },
   (table) => ({
-    equipmentIdx: index("equipment_transactions_equipment_id_idx").on(table.equipmentId),
+    equipmentIdx: index("equipment_transactions_equipment_id_idx").on(
+      table.equipmentId,
+    ),
     dateIdx: index("equipment_transactions_date_idx").on(table.transactionDate),
   }),
 );
@@ -103,42 +115,52 @@ export const equipmentsRelations = relations(equipments, ({ many, one }) => ({
   }),
 }));
 
-export const equipmentTransactionsRelations = relations(equipmentTransactions, ({ one }) => ({
-  equipment: one(equipments, {
-    fields: [equipmentTransactions.equipmentId],
-    references: [equipments.id],
+export const equipmentTransactionsRelations = relations(
+  equipmentTransactions,
+  ({ one }) => ({
+    equipment: one(equipments, {
+      fields: [equipmentTransactions.equipmentId],
+      references: [equipments.id],
+    }),
+    createdBy: one(users, {
+      fields: [equipmentTransactions.createdById],
+      references: [users.id],
+      relationName: "equipmentTransactionCreatedBy",
+    }),
+    deletedBy: one(users, {
+      fields: [equipmentTransactions.deletedById],
+      references: [users.id],
+      relationName: "equipmentTransactionDeletedBy",
+    }),
   }),
-  sourceWarehouse: one(warehouses, {
-    fields: [equipmentTransactions.sourceWarehouseId],
-    references: [warehouses.id],
-  }),
-  createdBy: one(users, {
-    fields: [equipmentTransactions.createdById],
-    references: [users.id],
-    relationName: "equipmentTransactionCreatedBy",
-  }),
-  deletedBy: one(users, {
-    fields: [equipmentTransactions.deletedById],
-    references: [users.id],
-    relationName: "equipmentTransactionDeletedBy",
-  }),
-}));
+);
 
-export const warehousesEquipmentRelations = relations(warehousesEquipment, ({ one }) => ({
-  warehouse: one(warehouses, {
-    fields: [warehousesEquipment.warehouseId],
-    references: [warehouses.id],
+export const warehousesEquipmentRelations = relations(
+  warehousesEquipment,
+  ({ one }) => ({
+    warehouse: one(warehouses, {
+      fields: [warehousesEquipment.warehouseId],
+      references: [warehouses.id],
+    }),
+    equipment: one(equipments, {
+      fields: [warehousesEquipment.equipmentId],
+      references: [equipments.id],
+    }),
   }),
-  equipment: one(equipments, {
-    fields: [warehousesEquipment.equipmentId],
-    references: [equipments.id],
-  }),
-}));
+);
 
-export const insertEquipmentSchema = createInsertSchema(equipments).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertEquipmentTransactionSchema = createInsertSchema(equipmentTransactions).omit({ id: true, createdAt: true });
+export const insertEquipmentSchema = createInsertSchema(equipments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertEquipmentTransactionSchema = createInsertSchema(
+  equipmentTransactions,
+).omit({ id: true, createdAt: true });
 
 export type Equipment = typeof equipments.$inferSelect;
 export type InsertEquipment = z.infer<typeof insertEquipmentSchema>;
 export type EquipmentTransaction = typeof equipmentTransactions.$inferSelect;
-export type InsertEquipmentTransaction = z.infer<typeof insertEquipmentTransactionSchema>;
+export type InsertEquipmentTransaction = z.infer<
+  typeof insertEquipmentTransactionSchema
+>;
