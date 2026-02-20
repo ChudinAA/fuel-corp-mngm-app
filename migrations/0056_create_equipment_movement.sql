@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS "equipment_movement" (
   "cost_per_kg" numeric(19, 5),
   "total_cost" numeric(15, 2),
   "basis" text,
-  "basis_id" uuid REFERENCES "basis"("id"),
+  "basis_id" uuid REFERENCES "bases"("id"),
   "transaction_id" uuid REFERENCES "equipment_transactions"("id"),
   "source_transaction_id" uuid REFERENCES "equipment_transactions"("id"),
   "is_draft" boolean DEFAULT false,
