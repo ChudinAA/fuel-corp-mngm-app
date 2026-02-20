@@ -104,11 +104,19 @@ export function EquipmentMovementDialog({
 
   const { data: fromEquipments = [] } = useQuery<any[]>({
     queryKey: ["/api/warehouses", watchFromWarehouseId, "equipment"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/warehouses/${watchFromWarehouseId}/equipment`);
+      return res.json();
+    },
     enabled: !!watchFromWarehouseId,
   });
 
   const { data: toEquipments = [] } = useQuery<any[]>({
     queryKey: ["/api/warehouses", watchToWarehouseId, "equipment"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/warehouses/${watchToWarehouseId}/equipment`);
+      return res.json();
+    },
     enabled: !!watchToWarehouseId,
   });
 

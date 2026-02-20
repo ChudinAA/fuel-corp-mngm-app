@@ -24,7 +24,13 @@ export function useEquipmentMovementTable() {
         ),
       });
       const res = await apiRequest("GET", `/api/equipment-movement?${params.toString()}`);
-      return res.json();
+      const json = await res.json();
+      return {
+        data: json.items || [],
+        total: json.total || 0,
+        hasMore: (json.items?.length || 0) === 20,
+        nextPage: pageParam + 1
+      };
     },
     getNextPageParam: (lastPage: any) => 
       lastPage.hasMore ? lastPage.nextPage : undefined,

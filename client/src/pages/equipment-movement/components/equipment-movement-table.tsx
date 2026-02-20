@@ -50,19 +50,19 @@ export function EquipmentMovementTable({
                   {item?.movementDate ? formatDate(item.movementDate) : "—"}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline">{item.productType === "pvkj" ? "ПВКЖ" : "Керосин"}</Badge>
+                  <Badge variant="outline">{(item?.productType === "pvkj" || item?.productType === "PVKJ") ? "ПВКЖ" : "Керосин"}</Badge>
                 </TableCell>
                 <TableCell>
-                  {item.fromEquipmentName || item.fromWarehouseName || "—"}
+                  {item?.fromEquipmentName || item?.fromWarehouseName || "—"}
                 </TableCell>
                 <TableCell>
-                  {item.toEquipmentName || item.toWarehouseName || "—"}
+                  {item?.toEquipmentName || item?.toWarehouseName || "—"}
                 </TableCell>
                 <TableCell className="text-right font-medium">
-                  {formatNumber(item.quantityKg)}
+                  {formatNumber(item?.quantityKg)}
                 </TableCell>
                 <TableCell className="text-right font-medium">
-                  {formatNumber(item.costPerKg)}
+                  {formatNumber(item?.costPerKg)}
                 </TableCell>
                 <TableCell>
                   <EntityActionsMenu

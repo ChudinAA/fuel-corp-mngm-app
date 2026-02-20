@@ -12,13 +12,29 @@ export class EquipmentMovementStorage {
       query = query.where(ilike(equipmentMovement.notes, `%${search}%`));
     }
 
-    const items = await db.select()
+    const items = await db.select({
+      id: equipmentMovement.id,
+      movementDate: equipmentMovement.movementDate,
+      productType: equipmentMovement.productType,
+      fromWarehouseId: equipmentMovement.fromWarehouseId,
+      toWarehouseId: equipmentMovement.toWarehouseId,
+      fromEquipmentId: equipmentMovement.fromEquipmentId,
+      toEquipmentId: equipmentMovement.toEquipmentId,
+      quantityKg: equipmentMovement.quantityKg,
+      costPerKg: equipmentMovement.costPerKg,
+      notes: equipmentMovement.notes,
+      fromWarehouseName: sql<string>`(SELECT name FROM warehouses WHERE id = ${equipmentMovement.fromWarehouseId})`,
+      toWarehouseName: sql<string>`(SELECT name FROM warehouses WHERE id = ${equipmentMovement.toWarehouseId})`,
+      fromEquipmentName: sql<string>`(SELECT name FROM equipments WHERE id = ${equipmentMovement.fromEquipmentId})`,
+      toEquipmentName: sql<string>`(SELECT name FROM equipments WHERE id = ${equipmentMovement.toEquipmentId})`,
+    })
       .from(equipmentMovement)
       .where(isNull(equipmentMovement.deletedAt))
       .limit(pageSize)
       .offset(offset)
       .orderBy(desc(equipmentMovement.movementDate));
 
+    // @ts-ignore - totalResult might be undefined but we handle it with totalCount
     const [totalResult] = await db.select({ count: sql<number>`count(*)` })
       .from(equipmentMovement)
       .where(isNull(equipmentMovement.deletedAt));
