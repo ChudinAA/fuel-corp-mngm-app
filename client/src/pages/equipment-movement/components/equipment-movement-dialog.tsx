@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Loader2, Plus } from "lucide-react";
 import { equipmentMovementFormSchema, type EquipmentMovementFormData } from "../schemas";
 import { PRODUCT_TYPE } from "@shared/constants";
@@ -174,22 +175,18 @@ export function EquipmentMovementDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Склад ЛИК (Откуда)</FormLabel>
-                    <Select onValueChange={(val) => {
-                      field.onChange(val);
-                      // Force destination to be same for local movement
-                      form.setValue("toWarehouseId", val);
-                    }} value={field.value || ""}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Выберите склад" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {likWarehouses.map(w => (
-                          <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Combobox
+                        options={likWarehouses.map(w => ({ label: w.name, value: w.id }))}
+                        value={field.value || ""}
+                        onValueChange={(val) => {
+                          field.onChange(val);
+                          // Force destination to be same for local movement
+                          form.setValue("toWarehouseId", val);
+                        }}
+                        placeholder="Выберите склад"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -200,19 +197,17 @@ export function EquipmentMovementDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>ТЗА (Откуда - опц.)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Материнский склад" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="">Материнский склад</SelectItem>
-                        {fromEquipments.map(e => (
-                          <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Combobox
+                        options={[
+                          { label: "Материнский склад", value: "parent" },
+                          ...fromEquipments.map(e => ({ label: e.name, value: e.id }))
+                        ]}
+                        value={field.value || "parent"}
+                        onValueChange={(val) => field.onChange(val === "parent" ? "" : val)}
+                        placeholder="Выберите ТЗА"
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />
@@ -225,18 +220,14 @@ export function EquipmentMovementDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Склад ЛИК (Куда)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Выберите склад" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {likWarehouses.map(w => (
-                          <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Combobox
+                        options={likWarehouses.map(w => ({ label: w.name, value: w.id }))}
+                        value={field.value || ""}
+                        onValueChange={field.onChange}
+                        placeholder="Выберите склад"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -247,19 +238,17 @@ export function EquipmentMovementDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>ТЗА (Куда - опц.)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Материнский склад" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="">Материнский склад</SelectItem>
-                        {toEquipments.map(e => (
-                          <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Combobox
+                        options={[
+                          { label: "Материнский склад", value: "parent" },
+                          ...toEquipments.map(e => ({ label: e.name, value: e.id }))
+                        ]}
+                        value={field.value || "parent"}
+                        onValueChange={(val) => field.onChange(val === "parent" ? "" : val)}
+                        placeholder="Выберите ТЗА"
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />
