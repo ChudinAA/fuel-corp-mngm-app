@@ -1,7 +1,7 @@
 import { db } from "../../../db";
 import { equipmentMovement, type EquipmentMovement, type InsertEquipmentMovement } from "../entities/equipment-movement";
 import { eq, and, isNull, desc, or, ilike, sql } from "drizzle-orm";
-import { TRANSACTION_TYPE } from "@shared/constants";
+import { TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { EquipmentTransactionService } from "../../warehouses-equipment/services/equipment-transaction-service";
 
 export class EquipmentMovementStorage {
@@ -49,12 +49,14 @@ export class EquipmentMovementStorage {
         const transaction = await EquipmentTransactionService.createTransactionAndUpdateEquipment(
           tx,
           item.toEquipmentId,
-          TRANSACTION_TYPE.RECEIPT,
+          TRANSACTION_TYPE.TRANSFER_IN,
+          item.productType,
+          SOURCE_TYPE.MOVEMENT,
+          item.id,
           quantityKg,
           totalCost,
-          item.movementDate,
           item.createdById || undefined,
-          item.toWarehouseId || undefined
+          item.movementDate
         );
 
         await tx.update(equipmentMovement)
@@ -67,12 +69,14 @@ export class EquipmentMovementStorage {
         const sourceTransaction = await EquipmentTransactionService.createTransactionAndUpdateEquipment(
           tx,
           item.fromEquipmentId,
-          TRANSACTION_TYPE.EXPENSE,
+          TRANSACTION_TYPE.TRANSFER_OUT,
+          item.productType,
+          SOURCE_TYPE.MOVEMENT,
+          item.id,
           quantityKg,
           0,
-          item.movementDate,
           item.createdById || undefined,
-          item.fromWarehouseId || undefined
+          item.movementDate
         );
 
         await tx.update(equipmentMovement)
@@ -103,12 +107,14 @@ export class EquipmentMovementStorage {
           const transaction = await EquipmentTransactionService.createTransactionAndUpdateEquipment(
             tx,
             updated.toEquipmentId,
-            TRANSACTION_TYPE.RECEIPT,
+            TRANSACTION_TYPE.TRANSFER_IN,
+            updated.productType,
+            SOURCE_TYPE.MOVEMENT,
+            updated.id,
             quantityKg,
             totalCost,
-            updated.movementDate,
             updated.updatedById || undefined,
-            updated.toWarehouseId || undefined
+            updated.movementDate
           );
           await tx.update(equipmentMovement).set({ transactionId: transaction.id }).where(eq(equipmentMovement.id, id));
         }
@@ -117,12 +123,14 @@ export class EquipmentMovementStorage {
           const sourceTransaction = await EquipmentTransactionService.createTransactionAndUpdateEquipment(
             tx,
             updated.fromEquipmentId,
-            TRANSACTION_TYPE.EXPENSE,
+            TRANSACTION_TYPE.TRANSFER_OUT,
+            updated.productType,
+            SOURCE_TYPE.MOVEMENT,
+            updated.id,
             quantityKg,
             0,
-            updated.movementDate,
             updated.updatedById || undefined,
-            updated.fromWarehouseId || undefined
+            updated.movementDate
           );
           await tx.update(equipmentMovement).set({ sourceTransactionId: sourceTransaction.id }).where(eq(equipmentMovement.id, id));
         }
@@ -143,6 +151,7 @@ export class EquipmentMovementStorage {
               oldCost,
               newQty,
               newCost,
+              updated.productType,
               updated.updatedById || undefined,
               updated.movementDate
             );
@@ -156,6 +165,7 @@ export class EquipmentMovementStorage {
               0,
               newQty,
               0,
+              updated.productType,
               updated.updatedById || undefined,
               updated.movementDate
             );

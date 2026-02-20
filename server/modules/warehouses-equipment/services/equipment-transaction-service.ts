@@ -1,4 +1,3 @@
-import { type PgTransaction } from "drizzle-orm/pg-core";
 import { eq, sql } from "drizzle-orm";
 import { equipments, equipmentTransactions } from "../entities/equipment";
 import { TRANSACTION_TYPE } from "@shared/constants";
@@ -7,12 +6,14 @@ export class EquipmentTransactionService {
   static async createTransactionAndUpdateEquipment(
     tx: any,
     equipmentId: string,
-    type: string,
+    transactionType: string,
+    productType: string,
+    sourceType: string,
+    sourceId: string,
     quantity: number,
-    sum: number,
-    date: string,
-    userId?: string,
-    warehouseId?: string,
+    totalCost: number,
+    createdById?: string,
+    dealDate?: string
   ) {
     const [equipment] = await tx
       .select()
@@ -27,13 +28,17 @@ export class EquipmentTransactionService {
     let newBalance = oldBalance;
     let newAvgCost = oldAvgCost;
 
-    if (type === TRANSACTION_TYPE.RECEIPT) {
+    const isReceipt =
+      transactionType === TRANSACTION_TYPE.RECEIPT ||
+      transactionType === TRANSACTION_TYPE.TRANSFER_IN;
+
+    if (isReceipt) {
       newBalance = oldBalance + quantity;
       if (newBalance > 0) {
-        newAvgCost = (oldBalance * oldAvgCost + sum) / newBalance;
+        newAvgCost = (oldBalance * oldAvgCost + totalCost) / newBalance;
       }
     } else {
-      newBalance = oldBalance - quantity;
+      newBalance = Math.max(0, oldBalance - quantity);
       // При расходе средняя цена не меняется
     }
 
@@ -41,25 +46,27 @@ export class EquipmentTransactionService {
       .insert(equipmentTransactions)
       .values({
         equipmentId,
-        transactionType: type,
-        quantity: quantity.toString(),
+        transactionType,
+        productType,
+        sourceType,
+        sourceId,
+        quantity: isReceipt ? quantity.toString() : (-quantity).toString(),
         balanceBefore: oldBalance.toString(),
         balanceAfter: newBalance.toString(),
         averageCostBefore: oldAvgCost.toString(),
         averageCostAfter: newAvgCost.toString(),
-        transactionDate: date,
-        sourceWarehouseId: warehouseId,
-        createdById: userId,
+        transactionDate: dealDate,
+        createdById,
       })
       .returning();
 
     await tx
       .update(equipments)
       .set({
-        currentBalance: newBalance.toString(),
-        averageCost: newAvgCost.toString(),
+        currentBalance: newBalance.toFixed(2),
+        averageCost: newAvgCost.toFixed(4),
         updatedAt: sql`NOW()`,
-        updatedById: userId,
+        updatedById: createdById,
       })
       .where(eq(equipments.id, equipmentId));
 
@@ -71,37 +78,41 @@ export class EquipmentTransactionService {
     transactionId: string,
     equipmentId: string,
     oldQty: number,
-    oldSum: number,
+    oldTotalCost: number,
     newQty: number,
-    newSum: number,
+    newTotalCost: number,
+    productType: string,
     userId?: string,
-    date?: string,
+    dealDate?: string
   ) {
-    // Для упрощения: удаляем старую транзакцию и создаем новую
-    // В полноценной системе здесь должен быть пересчет всей цепочки
-    await this.deleteTransactionAndRevertEquipment(tx, transactionId, userId);
-
     const [transaction] = await tx
       .select()
       .from(equipmentTransactions)
       .where(eq(equipmentTransactions.id, transactionId));
 
+    if (!transaction) throw new Error(`Transaction ${transactionId} not found`);
+
+    // Для упрощения: удаляем старую транзакцию и создаем новую
+    await this.deleteTransactionAndRevertEquipment(tx, transactionId, userId);
+    
     return await this.createTransactionAndUpdateEquipment(
       tx,
       equipmentId,
       transaction.transactionType,
+      productType,
+      transaction.sourceType,
+      transaction.sourceId,
       newQty,
-      newSum,
-      date || transaction.transactionDate,
+      newTotalCost,
       userId,
-      transaction.sourceWarehouseId,
+      dealDate || transaction.transactionDate
     );
   }
 
   static async deleteTransactionAndRevertEquipment(
     tx: any,
     transactionId: string,
-    userId?: string,
+    userId?: string
   ) {
     const [transaction] = await tx
       .select()
@@ -117,22 +128,21 @@ export class EquipmentTransactionService {
       .where(eq(equipments.id, transaction.equipmentId))
       .for("update");
 
-    const qty = parseFloat(transaction.quantity);
-    const sum =
-      transaction.transactionType === TRANSACTION_TYPE.RECEIPT
-        ? qty * parseFloat(transaction.averageCostAfter) -
-          parseFloat(transaction.balanceBefore) *
-            parseFloat(transaction.averageCostBefore)
-        : 0;
+    if (!equipment) throw new Error("Оборудование не найдено");
 
-    let newBalance = parseFloat(equipment.currentBalance);
-    let newAvgCost = parseFloat(equipment.averageCost);
+    const qty = Math.abs(parseFloat(transaction.quantity));
+    const isReceipt =
+      transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
+      transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
 
-    if (transaction.transactionType === TRANSACTION_TYPE.RECEIPT) {
-      newBalance -= qty;
+    let newBalance = parseFloat(equipment.currentBalance || "0");
+    let newAvgCost = parseFloat(equipment.averageCost || "0");
+
+    if (isReceipt) {
+      newBalance = Math.max(0, newBalance - qty);
       if (newBalance > 0) {
-        // Упрощенный возврат средней цены
-        newAvgCost = parseFloat(transaction.averageCostBefore);
+        // Упрощенный возврат средней цены из транзакции
+        newAvgCost = parseFloat(transaction.averageCostBefore || "0");
       }
     } else {
       newBalance += qty;
@@ -141,8 +151,8 @@ export class EquipmentTransactionService {
     await tx
       .update(equipments)
       .set({
-        currentBalance: newBalance.toString(),
-        averageCost: newAvgCost.toString(),
+        currentBalance: newBalance.toFixed(2),
+        averageCost: newAvgCost.toFixed(4),
         updatedAt: sql`NOW()`,
         updatedById: userId,
       })
@@ -160,7 +170,7 @@ export class EquipmentTransactionService {
   static async restoreTransactionAndRecalculateEquipment(
     tx: any,
     transactionId: string,
-    userId?: string,
+    userId?: string
   ) {
     const [transaction] = await tx
       .select()
@@ -177,18 +187,25 @@ export class EquipmentTransactionService {
       })
       .where(eq(equipmentTransactions.id, transactionId));
 
+    const qty = Math.abs(parseFloat(transaction.quantity));
+    const isReceipt =
+      transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
+      transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
+
+    // Рассчитываем общую стоимость для прихода
+    const totalCost = isReceipt ? (qty * parseFloat(transaction.averageCostAfter || "0") - parseFloat(transaction.balanceBefore || "0") * parseFloat(transaction.averageCostBefore || "0")) : 0;
+
     return await this.createTransactionAndUpdateEquipment(
       tx,
       transaction.equipmentId,
       transaction.transactionType,
-      parseFloat(transaction.quantity),
-      transaction.transactionType === TRANSACTION_TYPE.RECEIPT
-        ? parseFloat(transaction.quantity) *
-            parseFloat(transaction.averageCostAfter)
-        : 0,
-      transaction.transactionDate,
+      transaction.productType || "kerosene",
+      transaction.sourceType,
+      transaction.sourceId,
+      qty,
+      totalCost,
       userId,
-      transaction.sourceWarehouseId,
+      transaction.transactionDate
     );
   }
 }
