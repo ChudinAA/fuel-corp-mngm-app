@@ -7,8 +7,14 @@ export const formatNumber = (value: string | number | null) => {
   return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(num);
 };
 
-export const formatDate = (dateStr: string) => 
-  format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
+export const formatDate = (dateStr: string | null | undefined) => {
+  if (!dateStr) return "—";
+  try {
+    return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
+  } catch (e) {
+    return "—";
+  }
+};
 
 export const calculateKgFromLiters = (liters: number | null, density: number | null): number | null => {
   if (!liters || !density) return null;

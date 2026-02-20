@@ -47,7 +47,7 @@ export function EquipmentMovementTable({
             movements.map((item: any) => (
               <TableRow key={item.id}>
                 <TableCell className="whitespace-nowrap">
-                  {formatDate(item.movementDate)}
+                  {item?.movementDate ? formatDate(item.movementDate) : "—"}
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline">{item.productType === "pvkj" ? "ПВКЖ" : "Керосин"}</Badge>

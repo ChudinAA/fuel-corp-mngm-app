@@ -67,18 +67,18 @@ export function EquipmentMovementDialog({
     if (open) {
       if (editMovement) {
         form.reset({
-          movementDate: editMovement.movementDate ? new Date(editMovement.movementDate) : new Date(),
-          productType: editMovement.productType || PRODUCT_TYPE.KEROSENE,
-          fromWarehouseId: editMovement.fromWarehouseId || "",
-          toWarehouseId: editMovement.toWarehouseId || "",
-          fromEquipmentId: editMovement.fromEquipmentId || "",
-          toEquipmentId: editMovement.toEquipmentId || "",
-          inputMode: (editMovement.inputMode as "liters" | "kg") || "kg",
-          quantityLiters: editMovement.quantityLiters?.toString() || "",
-          density: editMovement.density?.toString() || "",
-          quantityKg: editMovement.quantityKg?.toString() || "",
-          notes: editMovement.notes || "",
-          isDraft: editMovement.isDraft || false,
+          movementDate: (editMovement && editMovement.movementDate) ? new Date(editMovement.movementDate) : new Date(),
+          productType: (editMovement && editMovement.productType) || PRODUCT_TYPE.KEROSENE,
+          fromWarehouseId: (editMovement && editMovement.fromWarehouseId) || "",
+          toWarehouseId: (editMovement && editMovement.toWarehouseId) || "",
+          fromEquipmentId: (editMovement && editMovement.fromEquipmentId) || "",
+          toEquipmentId: (editMovement && editMovement.toEquipmentId) || "",
+          inputMode: (editMovement && editMovement.inputMode as "liters" | "kg") || "kg",
+          quantityLiters: (editMovement && editMovement.quantityLiters)?.toString() || "",
+          density: (editMovement && editMovement.density)?.toString() || "",
+          quantityKg: (editMovement && editMovement.quantityKg)?.toString() || "",
+          notes: (editMovement && editMovement.notes) || "",
+          isDraft: (editMovement && editMovement.isDraft) || false,
         });
       } else {
         form.reset({
