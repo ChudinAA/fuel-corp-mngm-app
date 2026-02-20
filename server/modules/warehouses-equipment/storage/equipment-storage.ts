@@ -97,6 +97,27 @@ export class EquipmentStorage {
         )
       );
   }
+
+  async getEquipmentsByWarehouse(warehouseId: string): Promise<Equipment[]> {
+    const results = await db
+      .select({
+        equipment: equipments,
+      })
+      .from(equipments)
+      .innerJoin(
+        warehousesEquipment,
+        eq(equipments.id, warehousesEquipment.equipmentId)
+      )
+      .where(
+        and(
+          eq(warehousesEquipment.warehouseId, warehouseId),
+          isNull(equipments.deletedAt),
+          isNull(warehousesEquipment.deletedAt)
+        )
+      );
+    
+    return results.map(r => r.equipment);
+  }
 }
 
 export const equipmentStorage = new EquipmentStorage();

@@ -278,7 +278,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        const equipment = await storage.equipments.getEquipmentsByWarehouse(id);
+        const equipment = await storage.equipment.getEquipmentsByWarehouse(id);
         res.json(equipment);
       } catch (error: any) {
         console.error("Error fetching warehouse equipment:", error);
