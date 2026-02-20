@@ -36,7 +36,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
     requireAuth,
     requirePermission("equipment_movement", "create"),
     auditLog({
-      entityType: "EQUIPMENT_MOVEMENT" as any,
+      entityType: ENTITY_TYPES.EQUIPMENT_MOVEMENT,
       operation: AUDIT_OPERATIONS.CREATE,
       getNewData: (req) => req.body,
     }),
@@ -60,7 +60,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
     requireAuth,
     requirePermission("equipment_movement", "edit"),
     auditLog({
-      entityType: "EQUIPMENT_MOVEMENT" as any,
+      entityType: ENTITY_TYPES.EQUIPMENT_MOVEMENT,
       operation: AUDIT_OPERATIONS.UPDATE,
       getOldData: async (req) => (storage as any).equipmentMovement.getMovement(req.params.id),
       getNewData: (req) => req.body,
@@ -80,7 +80,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
     requireAuth,
     requirePermission("equipment_movement", "delete"),
     auditLog({
-      entityType: "EQUIPMENT_MOVEMENT" as any,
+      entityType: ENTITY_TYPES.EQUIPMENT_MOVEMENT,
       operation: AUDIT_OPERATIONS.DELETE,
       getOldData: async (req) => (storage as any).equipmentMovement.getMovement(req.params.id),
     }),

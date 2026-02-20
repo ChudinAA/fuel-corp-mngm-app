@@ -11,14 +11,18 @@ export class EquipmentMovementStorage {
       query = query.where(ilike(equipmentMovement.notes, `%${search}%`));
     }
 
-    const total = (await db.select({ count: sql<number>`count(*)` }).from(equipmentMovement).where(isNull(equipmentMovement.deletedAt)))[0].count;
-    
     const items = await db.select()
       .from(equipmentMovement)
       .where(isNull(equipmentMovement.deletedAt))
       .limit(pageSize)
       .offset(offset)
       .orderBy(desc(equipmentMovement.movementDate));
+
+    const [totalResult] = await db.select({ count: sql<number>`count(*)` })
+      .from(equipmentMovement)
+      .where(isNull(equipmentMovement.deletedAt));
+    
+    const total = Number(totalResult?.count || 0);
 
     return { items, total };
   }

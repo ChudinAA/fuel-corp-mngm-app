@@ -84,6 +84,7 @@ export const ENTITY_TYPES = {
   EXCHANGE_RATE: 'exchange_rates',
   STORAGE_CARD: 'storage_cards',
   EQUIPMENT: 'equipment',
+  EQUIPMENT_MOVEMENT: 'equipment_movement',
 } as const;
 
 export type EntityType = typeof ENTITY_TYPES[keyof typeof ENTITY_TYPES];
