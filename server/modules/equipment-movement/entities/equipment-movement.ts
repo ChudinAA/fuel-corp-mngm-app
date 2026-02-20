@@ -6,12 +6,14 @@ import {
   timestamp,
   uuid,
   index,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
 import { warehouses } from "../../warehouses/entities/warehouses";
-import { equipments } from "../../warehouses-equipment/entities/equipment";
+import { equipments, equipmentTransactions } from "../../warehouses-equipment/entities/equipment";
+import { bases } from "../../bases/entities/bases";
 
 export const equipmentMovement = pgTable(
   "equipment_movement",
@@ -26,6 +28,14 @@ export const equipmentMovement = pgTable(
     quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
+    inputMode: text("input_mode"),
+    costPerKg: decimal("cost_per_kg", { precision: 19, scale: 5 }),
+    totalCost: decimal("total_cost", { precision: 15, scale: 2 }),
+    basis: text("basis"),
+    basisId: uuid("basis_id").references(() => bases.id),
+    transactionId: uuid("transaction_id").references(() => equipmentTransactions.id),
+    sourceTransactionId: uuid("source_transaction_id").references(() => equipmentTransactions.id),
+    isDraft: boolean("is_draft").default(false),
     notes: text("notes"),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -63,6 +73,20 @@ export const equipmentMovementRelations = relations(equipmentMovement, ({ one })
     fields: [equipmentMovement.toEquipmentId],
     references: [equipments.id],
     relationName: "toEquipmentMovement",
+  }),
+  basis: one(bases, {
+    fields: [equipmentMovement.basisId],
+    references: [bases.id],
+  }),
+  transaction: one(equipmentTransactions, {
+    fields: [equipmentMovement.transactionId],
+    references: [equipmentTransactions.id],
+    relationName: "destinationEquipmentTransaction",
+  }),
+  sourceTransaction: one(equipmentTransactions, {
+    fields: [equipmentMovement.sourceTransactionId],
+    references: [equipmentTransactions.id],
+    relationName: "sourceEquipmentTransaction",
   }),
   createdBy: one(users, {
     fields: [equipmentMovement.createdById],
