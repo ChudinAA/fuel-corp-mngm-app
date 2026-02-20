@@ -52,6 +52,7 @@ import ManagementReportPage from "@/pages/reports/management-report-page";
 import NotFound from "@/pages/not-found";
 import StorageCardsPage from "@/pages/storage-cards/storage-cards-page";
 import RefuelingAbroadPage from "@/pages/refueling-abroad";
+import EquipmentMovementPage from "@/pages/equipment-movement/equipment-movement-page";
 
 import InDevelopmentPage from "@/pages/shared/in-development";
 
@@ -347,7 +348,7 @@ function Router() {
 
       <Route path="/lik/movement">
         <AppLayout>
-          <ProtectedRoute component={InDevelopmentPage} />
+          <ProtectedRoute component={EquipmentMovementPage} />
         </AppLayout>
       </Route>
 
