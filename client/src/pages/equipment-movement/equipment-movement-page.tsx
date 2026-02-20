@@ -89,7 +89,7 @@ export default function EquipmentMovementPage() {
         <CardContent className="p-0">
           <EquipmentMovementTable
             onEdit={handleEditClick}
-            onDelete={(id) => deleteMutation.mutate(id)}
+            onDelete={(id: string) => deleteMutation.mutate(id)}
             onShowHistory={() => setAuditPanelOpen(true)}
           />
         </CardContent>
