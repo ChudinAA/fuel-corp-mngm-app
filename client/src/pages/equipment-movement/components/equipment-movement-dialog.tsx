@@ -96,7 +96,7 @@ export function EquipmentMovementDialog({
     if (editMovement) {
       const resetValues = {
         movementDate: new Date(editMovement.movementDate),
-        movementType: editMovement.movementType || MOVEMENT_TYPE.LIK_STORAGE_TO_TZA,
+        movementType: (editMovement as any).movementType || MOVEMENT_TYPE.LIK_STORAGE_TO_TZA,
         productType: editMovement.productType || PRODUCT_TYPE.KEROSENE,
         fromWarehouseId: editMovement.fromWarehouseId || "",
         toWarehouseId: editMovement.toWarehouseId || "",
@@ -167,7 +167,7 @@ export function EquipmentMovementDialog({
       const payload = {
         ...data,
         movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),
-        quantityKg: calculatedKg,
+        quantityKg: calculatedKg?.toString() || "0",
         quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
         density: data.density ? parseFloat(data.density) : null,
         purchaseAmount,
@@ -208,8 +208,8 @@ export function EquipmentMovementDialog({
     }
   };
 
-  const likWarehouses = warehouses.filter((w) => w.equipmentType === "lik");
-  const likTzas = equipments.filter((e) => e.type === "lik");
+  const likWarehouses = warehouses.filter((w) => (w as any).equipmentType === "lik");
+  const likTzas = equipments.filter((e) => (e as any).type === "lik");
 
   return (
     <>
@@ -249,9 +249,9 @@ export function EquipmentMovementDialog({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value={MOVEMENT_TYPE.LIK_STORAGE_TO_TZA}>Склад -> ТЗА</SelectItem>
-                          <SelectItem value={MOVEMENT_TYPE.LIK_TZA_TO_STORAGE}>ТЗА -> Склад</SelectItem>
-                          <SelectItem value={MOVEMENT_TYPE.LIK_TZA_TO_TZA}>ТЗА -> ТЗА</SelectItem>
+                          <SelectItem value={MOVEMENT_TYPE.LIK_STORAGE_TO_TZA}>Склад {"->"} ТЗА</SelectItem>
+                          <SelectItem value={MOVEMENT_TYPE.LIK_TZA_TO_STORAGE}>ТЗА {"->"} Склад</SelectItem>
+                          <SelectItem value={MOVEMENT_TYPE.LIK_TZA_TO_TZA}>ТЗА {"->"} ТЗА</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -345,7 +345,7 @@ export function EquipmentMovementDialog({
                 </div>
               </div>
 
-              <VolumeInputSection form={form as any} setInputMode={setInputMode} calculatedKg={calculatedKg.toString()} />
+              <VolumeInputSection form={form as any} setInputMode={setInputMode} calculatedKg={calculatedKg?.toString() || "0"} />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
                 <div className="space-y-1">

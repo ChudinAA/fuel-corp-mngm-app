@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { insertMovementSchema, insertEquipmentSchema } from "@shared/schema";
 
 export const equipmentMovementFormSchema = z.object({
   movementDate: z.date({ required_error: "Укажите дату" }),
