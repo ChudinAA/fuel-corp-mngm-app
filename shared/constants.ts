@@ -41,6 +41,9 @@ export const CURRENCY = {
 export const MOVEMENT_TYPE = {
   SUPPLY: "supply",
   INTERNAL: "internal",
+  LIK_STORAGE_TO_TZA: "lik_storage_to_tza",
+  LIK_TZA_TO_STORAGE: "lik_tza_to_storage",
+  LIK_TZA_TO_TZA: "lik_tza_to_tza",
 } as const;
 
 // Entity types for delivery cost

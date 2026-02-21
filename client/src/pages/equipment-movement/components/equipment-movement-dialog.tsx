@@ -1,8 +1,9 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { format } from "date-fns";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -30,10 +31,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
-import { Loader2, Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { equipmentMovementFormSchema, type EquipmentMovementFormData } from "../schemas";
-import { PRODUCT_TYPE } from "@shared/constants";
 import type { EquipmentMovementDialogProps } from "../types";
+import { VolumeInputSection } from "../../opt/components/opt-form-sections";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useLikBalance } from "../hooks/use-lik-balance";
+import { useLikCalculations } from "../hooks/use-lik-calculations";
 
 export function EquipmentMovementDialog({
   warehouses,
@@ -44,12 +57,16 @@ export function EquipmentMovementDialog({
   onOpenChange,
 }: EquipmentMovementDialogProps) {
   const { toast } = useToast();
+  const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
   const isEditing = !!editMovement && !isCopy;
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const initialValuesRef = useRef<EquipmentMovementFormData | null>(null);
 
   const form = useForm<EquipmentMovementFormData>({
     resolver: zodResolver(equipmentMovementFormSchema),
     defaultValues: {
       movementDate: new Date(),
+      movementType: MOVEMENT_TYPE.LIK_STORAGE_TO_TZA,
       productType: PRODUCT_TYPE.KEROSENE,
       fromWarehouseId: "",
       toWarehouseId: "",
@@ -64,84 +81,99 @@ export function EquipmentMovementDialog({
     },
   });
 
-  useEffect(() => {
-    if (open) {
-      if (editMovement) {
-        form.reset({
-          movementDate: (editMovement && editMovement.movementDate) ? new Date(editMovement.movementDate) : new Date(),
-          productType: (editMovement && editMovement.productType) || PRODUCT_TYPE.KEROSENE,
-          fromWarehouseId: (editMovement && editMovement.fromWarehouseId) || "",
-          toWarehouseId: (editMovement && editMovement.toWarehouseId) || "",
-          fromEquipmentId: (editMovement && editMovement.fromEquipmentId) || "",
-          toEquipmentId: (editMovement && editMovement.toEquipmentId) || "",
-          inputMode: (editMovement && editMovement.inputMode as "liters" | "kg") || "kg",
-          quantityLiters: (editMovement && editMovement.quantityLiters)?.toString() || "",
-          density: (editMovement && editMovement.density)?.toString() || "",
-          quantityKg: (editMovement && editMovement.quantityKg)?.toString() || "",
-          notes: (editMovement && editMovement.notes) || "",
-          isDraft: (editMovement && editMovement.isDraft) || false,
-        });
-      } else {
-        form.reset({
-          movementDate: new Date(),
-          productType: PRODUCT_TYPE.KEROSENE,
-          fromWarehouseId: "",
-          toWarehouseId: "",
-          fromEquipmentId: "",
-          toEquipmentId: "",
-          inputMode: "kg",
-          quantityLiters: "",
-          density: "",
-          quantityKg: "",
-          notes: "",
-          isDraft: false,
-        });
-      }
-    }
-  }, [open, editMovement, form]);
-
+  const watchMovementType = form.watch("movementType");
   const watchFromWarehouseId = form.watch("fromWarehouseId");
   const watchToWarehouseId = form.watch("toWarehouseId");
+  const watchFromEquipmentId = form.watch("fromEquipmentId");
+  const watchToEquipmentId = form.watch("toEquipmentId");
+  const watchProductType = form.watch("productType");
+  const watchLiters = form.watch("quantityLiters");
+  const watchDensity = form.watch("density");
+  const watchKg = form.watch("quantityKg");
+  const watchMovementDate = form.watch("movementDate");
 
-  const { data: fromEquipments = [] } = useQuery<any[]>({
-    queryKey: ["/api/warehouses", watchFromWarehouseId, "equipment"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/warehouses/${watchFromWarehouseId}/equipment`);
-      return res.json();
-    },
-    enabled: !!watchFromWarehouseId,
-  });
-
-  const { data: toEquipments = [] } = useQuery<any[]>({
-    queryKey: ["/api/warehouses", watchToWarehouseId, "equipment"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/warehouses/${watchToWarehouseId}/equipment`);
-      return res.json();
-    },
-    enabled: !!watchToWarehouseId,
-  });
-
-  const likWarehouses = useMemo(() => 
-    warehouses.filter(w => w.equipmentType === "lik"), 
-  [warehouses]);
-
-  // Sync toWarehouseId with fromWarehouseId for local movement
   useEffect(() => {
-    if (watchFromWarehouseId && !form.getValues("toWarehouseId")) {
-      form.setValue("toWarehouseId", watchFromWarehouseId);
+    if (editMovement) {
+      const resetValues = {
+        movementDate: new Date(editMovement.movementDate),
+        movementType: editMovement.movementType || MOVEMENT_TYPE.LIK_STORAGE_TO_TZA,
+        productType: editMovement.productType || PRODUCT_TYPE.KEROSENE,
+        fromWarehouseId: editMovement.fromWarehouseId || "",
+        toWarehouseId: editMovement.toWarehouseId || "",
+        fromEquipmentId: editMovement.fromEquipmentId || "",
+        toEquipmentId: editMovement.toEquipmentId || "",
+        inputMode: (editMovement.inputMode as "liters" | "kg") || "kg",
+        quantityLiters: editMovement.quantityLiters?.toString() || "",
+        density: editMovement.density?.toString() || "",
+        quantityKg: editMovement.quantityKg?.toString() || "",
+        notes: editMovement.notes || "",
+        isDraft: editMovement.isDraft || false,
+      };
+      initialValuesRef.current = resetValues;
+      form.reset(resetValues);
+      setInputMode(resetValues.inputMode);
+    } else {
+      form.reset({
+        movementDate: new Date(),
+        movementType: MOVEMENT_TYPE.LIK_STORAGE_TO_TZA,
+        productType: PRODUCT_TYPE.KEROSENE,
+        fromWarehouseId: "",
+        toWarehouseId: "",
+        fromEquipmentId: "",
+        toEquipmentId: "",
+        inputMode: "kg",
+        quantityLiters: "",
+        density: "",
+        quantityKg: "",
+        notes: "",
+        isDraft: false,
+      });
+      setInputMode("kg");
     }
-  }, [watchFromWarehouseId, form]);
+  }, [editMovement, form, open]);
+
+  const { calculatedKg, kgNum, purchaseAmount, averageCost } = useLikCalculations({
+    form,
+    watchMovementType,
+    watchProductType,
+    watchFromWarehouseId,
+    watchToWarehouseId,
+    watchFromEquipmentId,
+    watchToEquipmentId,
+    watchMovementDate,
+    watchLiters,
+    watchDensity,
+    watchKg,
+    inputMode,
+    warehouses,
+    equipments,
+  });
+
+  const likBalance = useLikBalance({
+    watchMovementType,
+    watchProductType,
+    watchFromWarehouseId,
+    watchFromEquipmentId,
+    kgNum,
+    warehouses,
+    equipments,
+    isEditing,
+    initialQuantityKg: isEditing ? parseFloat(editMovement?.quantityKg || "0") : 0,
+    watchMovementDate,
+  });
 
   const mutation = useMutation({
-    mutationFn: async (data: EquipmentMovementFormData) => {
+    mutationFn: async ({ data, isDraft }: { data: EquipmentMovementFormData; isDraft?: boolean }) => {
       const payload = {
         ...data,
         movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),
-        quantityKg: data.quantityKg,
+        quantityKg: calculatedKg,
         quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
         density: data.density ? parseFloat(data.density) : null,
+        purchaseAmount,
+        averageCost,
+        isDraft: !!isDraft,
       };
-      
       const res = await apiRequest(
         isEditing ? "PATCH" : "POST",
         isEditing ? `/api/equipment-movement/${editMovement?.id}` : "/api/equipment-movement",
@@ -149,9 +181,13 @@ export function EquipmentMovementDialog({
       );
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment-movement"] });
-      toast({ title: isEditing ? "Запись обновлена" : "Запись создана" });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
+      toast({
+        title: variables.isDraft ? "Черновик сохранен" : isEditing ? "Обновлено" : "Создано",
+      });
       onOpenChange(false);
     },
     onError: (error: Error) => {
@@ -159,115 +195,169 @@ export function EquipmentMovementDialog({
     },
   });
 
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      const isDirty = form.formState.isDirty || JSON.stringify(form.getValues()) !== JSON.stringify(initialValuesRef.current || form.control._defaultValues);
+      if (isDirty && !mutation.isPending) {
+        setShowExitConfirm(true);
+      } else {
+        onOpenChange(false);
+      }
+    } else {
+      onOpenChange(true);
+    }
+  };
+
+  const likWarehouses = warehouses.filter((w) => w.equipmentType === "lik");
+  const likTzas = equipments.filter((e) => e.type === "lik");
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>{isEditing ? "Редактирование" : "Новое перемещение ЛИК"}</DialogTitle>
-          <DialogDescription>Локальное распределение топлива (в рамках одного склада ЛИК)</DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="fromWarehouseId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Склад ЛИК (Откуда)</FormLabel>
-                    <FormControl>
-                      <Combobox
-                        options={likWarehouses.map(w => ({ label: w.name, value: w.id }))}
-                        value={field.value || ""}
-                        onValueChange={(val) => {
-                          field.onChange(val);
-                          // Force destination to be same for local movement
-                          form.setValue("toWarehouseId", val);
-                        }}
-                        placeholder="Выберите склад"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="fromEquipmentId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>ТЗА (Откуда - опц.)</FormLabel>
-                    <FormControl>
-                      <Combobox
-                        options={[
-                          { label: "Материнский склад", value: "parent" },
-                          ...fromEquipments.map(e => ({ label: e.name, value: e.id }))
-                        ]}
-                        value={field.value || "parent"}
-                        onValueChange={(val) => field.onChange(val === "parent" ? "" : val)}
-                        placeholder="Выберите ТЗА"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
+    <>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{isEditing ? "Редактирование перемещения ЛИК" : "Новое перемещение ЛИК"}</DialogTitle>
+            <DialogDescription>Локальное распределение топлива между складом и ТЗА</DialogDescription>
+          </DialogHeader>
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="toWarehouseId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Склад ЛИК (Куда)</FormLabel>
-                    <FormControl>
-                      <Combobox
-                        options={likWarehouses.map(w => ({ label: w.name, value: w.id }))}
-                        value={field.value || ""}
-                        onValueChange={field.onChange}
-                        placeholder="Выберите склад"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="toEquipmentId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>ТЗА (Куда - опц.)</FormLabel>
-                    <FormControl>
-                      <Combobox
-                        options={[
-                          { label: "Материнский склад", value: "parent" },
-                          ...toEquipments.map(e => ({ label: e.name, value: e.id }))
-                        ]}
-                        value={field.value || "parent"}
-                        onValueChange={(val) => field.onChange(val === "parent" ? "" : val)}
-                        placeholder="Выберите ТЗА"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit((data) => mutation.mutate({ data, isDraft: false }))} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="movementDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Дата</FormLabel>
+                      <FormControl>
+                        <Input type="date" value={field.value ? format(field.value, "yyyy-MM-dd") : ""} onChange={(e) => field.onChange(new Date(e.target.value))} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="movementType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Тип перемещения</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Выберите тип" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={MOVEMENT_TYPE.LIK_STORAGE_TO_TZA}>Склад -> ТЗА</SelectItem>
+                          <SelectItem value={MOVEMENT_TYPE.LIK_TZA_TO_STORAGE}>ТЗА -> Склад</SelectItem>
+                          <SelectItem value={MOVEMENT_TYPE.LIK_TZA_TO_TZA}>ТЗА -> ТЗА</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="productType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Продукт</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Выберите продукт" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
+                          <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="quantityKg"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Количество (кг)</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4 border p-4 rounded-md">
+                  <h3 className="font-medium text-sm border-b pb-2">Откуда</h3>
+                  {watchMovementType === MOVEMENT_TYPE.LIK_STORAGE_TO_TZA ? (
+                    <FormField
+                      control={form.control}
+                      name="fromWarehouseId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Склад</FormLabel>
+                          <Combobox options={likWarehouses.map((w) => ({ label: w.name, value: w.id }))} value={field.value || ""} onValueChange={field.onChange} placeholder="Выберите склад" />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="fromEquipmentId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>ТЗА</FormLabel>
+                          <Combobox options={likTzas.map((e) => ({ label: e.name, value: e.id }))} value={field.value || ""} onValueChange={field.onChange} placeholder="Выберите ТЗА" />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                  <div className="pt-2">
+                    <p className="text-xs text-muted-foreground">Объем на {watchMovementType === MOVEMENT_TYPE.LIK_STORAGE_TO_TZA ? "складе" : "ТЗА"}:</p>
+                    <p className={`text-sm font-semibold ${likBalance.status === "error" ? "text-destructive" : "text-primary"}`}>{likBalance.message}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4 border p-4 rounded-md">
+                  <h3 className="font-medium text-sm border-b pb-2">Куда</h3>
+                  {watchMovementType === MOVEMENT_TYPE.LIK_TZA_TO_STORAGE ? (
+                    <FormField
+                      control={form.control}
+                      name="toWarehouseId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Склад</FormLabel>
+                          <Combobox options={likWarehouses.map((w) => ({ label: w.name, value: w.id }))} value={field.value || ""} onValueChange={field.onChange} placeholder="Выберите склад" />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="toEquipmentId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>ТЗА</FormLabel>
+                          <Combobox options={likTzas.map((e) => ({ label: e.name, value: e.id }))} value={field.value || ""} onValueChange={field.onChange} placeholder="Выберите ТЗА" />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+              </div>
+
+              <VolumeInputSection form={form as any} setInputMode={setInputMode} calculatedKg={calculatedKg.toString()} />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Себестоимость (за кг):</p>
+                  <p className="text-lg font-bold">{averageCost.toLocaleString()} ₽</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Сумма покупки:</p>
+                  <p className="text-lg font-bold text-primary">{purchaseAmount.toLocaleString()} ₽</p>
+                </div>
+              </div>
+
               <FormField
                 control={form.control}
                 name="notes"
@@ -275,25 +365,42 @@ export function EquipmentMovementDialog({
                   <FormItem>
                     <FormLabel>Примечания</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input placeholder="Дополнительная информация..." {...field} />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Отмена
-              </Button>
-              <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditing ? "Обновить" : "Создать"}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+              <div className="flex justify-end gap-4 pt-4 border-t">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Отмена
+                </Button>
+                <Button type="button" variant="secondary" disabled={mutation.isPending} onClick={() => mutation.mutate({ data: form.getValues(), isDraft: true })}>
+                  {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Сохранить черновик"}
+                </Button>
+                <Button type="submit" disabled={mutation.isPending || likBalance.status === "error"}>
+                  {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                  {isEditing ? "Обновить" : "Создать перемещение"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Сохранить черновик?</AlertDialogTitle>
+            <AlertDialogDescription>Вы начали вводить данные. Хотите сохранить изменения как черновик перед закрытием?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => onOpenChange(false)}>Нет</AlertDialogCancel>
+            <AlertDialogAction onClick={() => mutation.mutate({ data: form.getValues(), isDraft: true })}>Да, сохранить</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
