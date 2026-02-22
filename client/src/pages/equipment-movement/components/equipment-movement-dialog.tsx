@@ -101,18 +101,6 @@ export function EquipmentMovementDialog({
   const watchMovementDate = form.watch("movementDate");
 
   const { data: fromEquipments = [] } = useQuery<Equipment[]>({
-    queryKey: ["/api/warehouses", watchFromWarehouseId, "equipment"],
-    queryFn: async () => {
-      const res = await apiRequest(
-        "GET",
-        `/api/warehouses/${watchFromWarehouseId}/equipment`,
-      );
-      return res.json();
-    },
-    enabled: !!watchFromWarehouseId,
-  });
-
-  const { data: toEquipments = [] } = useQuery<Equipment[]>({
     queryKey: ["/api/warehouses", watchToWarehouseId, "equipment"],
     queryFn: async () => {
       const res = await apiRequest(
@@ -122,6 +110,18 @@ export function EquipmentMovementDialog({
       return res.json();
     },
     enabled: !!watchToWarehouseId,
+  });
+
+  const { data: toEquipments = [] } = useQuery<Equipment[]>({
+    queryKey: ["/api/warehouses", watchFromWarehouseId, "equipment"],
+    queryFn: async () => {
+      const res = await apiRequest(
+        "GET",
+        `/api/warehouses/${watchFromWarehouseId}/equipment`,
+      );
+      return res.json();
+    },
+    enabled: !!watchFromWarehouseId,
   });
 
   useEffect(() => {
@@ -216,13 +216,17 @@ export function EquipmentMovementDialog({
       const payload = {
         ...data,
         movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),
+        fromWarehouseId: data.fromWarehouseId || null,
+        toWarehouseId: data.toWarehouseId || null,
+        fromEquipmentId: data.fromEquipmentId || null,
+        toEquipmentId: data.toEquipmentId || null,
         quantityKg: calculatedKg?.toString() || "0",
         quantityLiters: data.quantityLiters
-          ? parseFloat(data.quantityLiters)
+          ? parseFloat(data.quantityLiters).toString()
           : null,
-        density: data.density ? parseFloat(data.density) : null,
-        totalCost: purchaseAmount,
-        costPerKg: averageCost,
+        density: data.density ? parseFloat(data.density).toString() : null,
+        totalCost: purchaseAmount.toString(),
+        costPerKg: averageCost.toString(),
         isDraft: !!isDraft,
       };
       const res = await apiRequest(
