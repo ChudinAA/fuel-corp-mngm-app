@@ -156,75 +156,68 @@ export class EquipmentMovementStorage {
         .where(eq(equipmentMovement.id, id))
         .returning();
 
-      if (transitioningFromDraft) {
-        const quantityKg = parseFloat(updated.quantityKg || "0");
-        const totalCost = parseFloat(updated.totalCost || "0");
-
-        if (updated.toEquipmentId) {
-          const transaction = await EquipmentTransactionService.createTransactionAndUpdateEquipment(
-            tx,
-            updated.toEquipmentId,
-            TRANSACTION_TYPE.TRANSFER_IN,
-            updated.productType,
-            SOURCE_TYPE.MOVEMENT,
-            updated.id,
-            quantityKg,
-            totalCost,
-            updated.updatedById || undefined,
-            updated.movementDate
-          );
-          await tx.update(equipmentMovement).set({ transactionId: transaction.id }).where(eq(equipmentMovement.id, id));
-        }
-
-        if (updated.fromEquipmentId) {
-          const sourceTransaction = await EquipmentTransactionService.createTransactionAndUpdateEquipment(
-            tx,
-            updated.fromEquipmentId,
-            TRANSACTION_TYPE.TRANSFER_OUT,
-            updated.productType,
-            SOURCE_TYPE.MOVEMENT,
-            updated.id,
-            quantityKg,
-            0,
-            updated.updatedById || undefined,
-            updated.movementDate
-          );
-          await tx.update(equipmentMovement).set({ sourceTransactionId: sourceTransaction.id }).where(eq(equipmentMovement.id, id));
-        }
-      } else if (!updated.isDraft) {
-        // Logic for updating existing transactions if quantity/cost changed
+      if (transitioningFromDraft || !updated.isDraft) {
         const oldQty = parseFloat(current.quantityKg || "0");
         const newQty = parseFloat(updated.quantityKg || "0");
         const oldCost = parseFloat(current.totalCost || "0");
         const newCost = parseFloat(updated.totalCost || "0");
 
-        if (oldQty !== newQty || oldCost !== newCost) {
-          if (updated.transactionId && updated.toEquipmentId) {
+        // Destination Equipment
+        if (updated.toEquipmentId) {
+          if (!updated.transactionId || transitioningFromDraft) {
+             const transaction = await EquipmentTransactionService.createTransactionAndUpdateEquipment(
+                tx, updated.toEquipmentId, TRANSACTION_TYPE.TRANSFER_IN, updated.productType,
+                SOURCE_TYPE.MOVEMENT, updated.id, newQty, newCost, updated.updatedById || undefined, updated.movementDate
+             );
+             await tx.update(equipmentMovement).set({ transactionId: transaction.id }).where(eq(equipmentMovement.id, id));
+          } else if (oldQty !== newQty || oldCost !== newCost) {
             await EquipmentTransactionService.updateTransactionAndRecalculateEquipment(
-              tx,
-              updated.transactionId,
-              updated.toEquipmentId,
-              oldQty,
-              oldCost,
-              newQty,
-              newCost,
-              updated.productType,
-              updated.updatedById || undefined,
-              updated.movementDate
+              tx, updated.transactionId, updated.toEquipmentId, oldQty, oldCost, newQty, newCost, updated.productType, updated.updatedById || undefined, updated.movementDate
             );
           }
-          if (updated.sourceTransactionId && updated.fromEquipmentId) {
+        }
+
+        // Source Equipment
+        if (updated.fromEquipmentId) {
+          if (!updated.sourceTransactionId || transitioningFromDraft) {
+            const sourceTransaction = await EquipmentTransactionService.createTransactionAndUpdateEquipment(
+              tx, updated.fromEquipmentId, TRANSACTION_TYPE.TRANSFER_OUT, updated.productType,
+              SOURCE_TYPE.MOVEMENT, updated.id, newQty, 0, updated.updatedById || undefined, updated.movementDate
+            );
+            await tx.update(equipmentMovement).set({ sourceTransactionId: sourceTransaction.id }).where(eq(equipmentMovement.id, id));
+          } else if (oldQty !== newQty) {
             await EquipmentTransactionService.updateTransactionAndRecalculateEquipment(
-              tx,
-              updated.sourceTransactionId,
-              updated.fromEquipmentId,
-              oldQty,
-              0,
-              newQty,
-              0,
-              updated.productType,
-              updated.updatedById || undefined,
-              updated.movementDate
+              tx, updated.sourceTransactionId, updated.fromEquipmentId, oldQty, 0, newQty, 0, updated.productType, updated.updatedById || undefined, updated.movementDate
+            );
+          }
+        }
+
+        // Source Warehouse
+        if (updated.fromWarehouseId) {
+          if (!(updated as any).sourceWarehouseTransactionId || transitioningFromDraft) {
+            const { transaction } = await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+              tx, updated.fromWarehouseId, TRANSACTION_TYPE.TRANSFER_OUT, updated.productType,
+              SOURCE_TYPE.MOVEMENT, updated.id, newQty, 0, updated.updatedById || undefined, updated.movementDate
+            );
+            await tx.update(equipmentMovement).set({ sourceWarehouseTransactionId: transaction.id } as any).where(eq(equipmentMovement.id, id));
+          } else if (oldQty !== newQty) {
+            await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
+              tx, (updated as any).sourceWarehouseTransactionId, updated.fromWarehouseId, oldQty, 0, newQty, 0, updated.productType, updated.updatedById || undefined, updated.movementDate
+            );
+          }
+        }
+
+        // Destination Warehouse
+        if (updated.toWarehouseId) {
+          if (!(updated as any).warehouseTransactionId || transitioningFromDraft) {
+            const { transaction } = await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+              tx, updated.toWarehouseId, TRANSACTION_TYPE.TRANSFER_IN, updated.productType,
+              SOURCE_TYPE.MOVEMENT, updated.id, newQty, newCost, updated.updatedById || undefined, updated.movementDate
+            );
+            await tx.update(equipmentMovement).set({ warehouseTransactionId: transaction.id } as any).where(eq(equipmentMovement.id, id));
+          } else if (oldQty !== newQty || oldCost !== newCost) {
+            await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
+              tx, (updated as any).warehouseTransactionId, updated.toWarehouseId, oldQty, oldCost, newQty, newCost, updated.productType, updated.updatedById || undefined, updated.movementDate
             );
           }
         }
@@ -244,6 +237,12 @@ export class EquipmentMovementStorage {
       }
       if (current.sourceTransactionId) {
         await EquipmentTransactionService.deleteTransactionAndRevertEquipment(tx, current.sourceTransactionId, userId);
+      }
+      if ((current as any).warehouseTransactionId) {
+        await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(tx, (current as any).warehouseTransactionId, userId);
+      }
+      if ((current as any).sourceWarehouseTransactionId) {
+        await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(tx, (current as any).sourceWarehouseTransactionId, userId);
       }
 
       await tx.update(equipmentMovement)
