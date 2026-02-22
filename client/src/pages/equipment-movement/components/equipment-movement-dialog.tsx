@@ -216,17 +216,13 @@ export function EquipmentMovementDialog({
       const payload = {
         ...data,
         movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),
-        fromWarehouseId: data.fromWarehouseId || null,
-        toWarehouseId: data.toWarehouseId || null,
-        fromEquipmentId: data.fromEquipmentId || null,
-        toEquipmentId: data.toEquipmentId || null,
         quantityKg: calculatedKg?.toString() || "0",
         quantityLiters: data.quantityLiters
-          ? parseFloat(data.quantityLiters).toString()
+          ? parseFloat(data.quantityLiters)
           : null,
-        density: data.density ? parseFloat(data.density).toString() : null,
-        totalCost: purchaseAmount.toString(),
-        costPerKg: averageCost.toString(),
+        density: data.density ? parseFloat(data.density) : null,
+        totalCost: purchaseAmount,
+        costPerKg: averageCost,
         isDraft: !!isDraft,
       };
       const res = await apiRequest(
@@ -240,8 +236,7 @@ export function EquipmentMovementDialog({
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment-movement"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses-equipment"] });
       toast({
         title: variables.isDraft
           ? "Черновик сохранен"

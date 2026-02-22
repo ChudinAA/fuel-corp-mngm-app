@@ -61,9 +61,6 @@ export default function EquipmentMovementPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Перемещение ЛИК</h1>
-          <p className="text-muted-foreground">
-            Локальное перемещение топлива (Материнский склад - ТЗА)
-          </p>
         </div>
         {hasPermission("equipment_movement", "create") && (
           <Button onClick={handleOpenDialog} data-testid="button-add-movement">

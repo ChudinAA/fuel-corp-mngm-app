@@ -12,6 +12,8 @@ import { Pencil, Trash2, History } from "lucide-react";
 import { formatNumber, formatDate } from "../utils";
 import { useEquipmentMovementTable } from "../hooks/use-equipment-movement-table";
 import type { EquipmentMovementTableProps } from "../types";
+import { useState } from "react";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 
 export function EquipmentMovementTable({
   onEdit,
@@ -19,6 +21,7 @@ export function EquipmentMovementTable({
   onShowHistory,
 }: EquipmentMovementTableProps) {
   const { movements, isLoading } = useEquipmentMovementTable();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   if (isLoading) return <div>Загрузка...</div>;
 
@@ -39,7 +42,10 @@ export function EquipmentMovementTable({
         <TableBody>
           {movements.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+              <TableCell
+                colSpan={7}
+                className="text-center py-8 text-muted-foreground"
+              >
                 Нет данных
               </TableCell>
             </TableRow>
@@ -50,7 +56,12 @@ export function EquipmentMovementTable({
                   {item?.movementDate ? formatDate(item.movementDate) : "—"}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline">{(item?.productType === "pvkj" || item?.productType === "PVKJ") ? "ПВКЖ" : "Керосин"}</Badge>
+                  <Badge variant="outline">
+                    {item?.productType === "pvkj" ||
+                    item?.productType === "PVKJ"
+                      ? "ПВКЖ"
+                      : "Керосин"}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   {item?.fromEquipmentName || item?.fromWarehouseName || "—"}
@@ -77,7 +88,7 @@ export function EquipmentMovementTable({
                         id: "delete",
                         label: "Удалить",
                         icon: Trash2,
-                        onClick: () => onDelete(item.id),
+                        onClick: () => setDeleteId(item.id),
                         variant: "destructive",
                       },
                     ]}
@@ -88,6 +99,19 @@ export function EquipmentMovementTable({
           )}
         </TableBody>
       </Table>
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={() => {
+          if (deleteId) {
+            onDelete(deleteId);
+            setDeleteId(null);
+          }
+        }}
+        title="Удалить перемещение?"
+        description="Это действие нельзя будет отменить. Данные о топливе на складах и ТЗА будут пересчитаны автоматически."
+      />
     </div>
   );
 }
