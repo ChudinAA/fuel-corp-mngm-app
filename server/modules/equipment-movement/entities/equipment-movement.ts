@@ -36,6 +36,8 @@ export const equipmentMovement = pgTable(
     basisId: uuid("basis_id").references(() => bases.id),
     transactionId: uuid("transaction_id").references(() => equipmentTransactions.id),
     sourceTransactionId: uuid("source_transaction_id").references(() => equipmentTransactions.id),
+    warehouseTransactionId: uuid("warehouse_transaction_id"),
+    sourceWarehouseTransactionId: uuid("source_warehouse_transaction_id"),
     isDraft: boolean("is_draft").default(false),
     notes: text("notes"),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),

@@ -3,6 +3,7 @@ import { equipmentMovement, type EquipmentMovement, type InsertEquipmentMovement
 import { eq, and, isNull, desc, or, ilike, sql } from "drizzle-orm";
 import { TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { EquipmentTransactionService } from "../../warehouses-equipment/services/equipment-transaction-service";
+import { WarehouseTransactionService } from "../../warehouses/services/warehouse-transaction-service";
 
 export class EquipmentMovementStorage {
   async getMovements(offset: number, pageSize: number, search?: string, filters?: Record<string, string[]>) {
@@ -77,6 +78,46 @@ export class EquipmentMovementStorage {
 
         await tx.update(equipmentMovement)
           .set({ transactionId: transaction.id })
+          .where(eq(equipmentMovement.id, item.id));
+      }
+
+      // Source warehouse (expense)
+      if (item.fromWarehouseId) {
+        const { transaction: sourceTransaction } = await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+          tx,
+          item.fromWarehouseId,
+          TRANSACTION_TYPE.TRANSFER_OUT,
+          item.productType,
+          SOURCE_TYPE.MOVEMENT,
+          item.id,
+          quantityKg,
+          0,
+          item.createdById || undefined,
+          item.movementDate
+        );
+
+        await tx.update(equipmentMovement)
+          .set({ sourceWarehouseTransactionId: sourceTransaction.id } as any)
+          .where(eq(equipmentMovement.id, item.id));
+      }
+
+      // Destination warehouse (income)
+      if (item.toWarehouseId) {
+        const { transaction } = await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+          tx,
+          item.toWarehouseId,
+          TRANSACTION_TYPE.TRANSFER_IN,
+          item.productType,
+          SOURCE_TYPE.MOVEMENT,
+          item.id,
+          quantityKg,
+          totalCost,
+          item.createdById || undefined,
+          item.movementDate
+        );
+
+        await tx.update(equipmentMovement)
+          .set({ warehouseTransactionId: transaction.id } as any)
           .where(eq(equipmentMovement.id, item.id));
       }
 

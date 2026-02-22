@@ -68,7 +68,7 @@ export function useLikBalance({
 
     const available = isEditing ? currentBalance + initialQuantityKg : currentBalance;
 
-    if (available <= 0) return { balance: available, status: "error", message: "Пусто" };
+    if (available <= 0) return { balance: available, status: "error", message: `Склад пуст. Доступно: ${available.toLocaleString()} кг` };
     if (kgNum > available) return { balance: available, status: "error", message: `Недостаточно! Доступно: ${available.toLocaleString()} кг` };
 
     return { balance: available, status: "ok", message: `${available.toLocaleString()} кг` };
