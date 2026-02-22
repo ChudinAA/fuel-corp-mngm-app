@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS "equipment_movement" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"movement_date" timestamp NOT NULL,
+	"movement_type" text NOT NULL,
 	"product_type" text NOT NULL,
 	"from_warehouse_id" uuid REFERENCES "warehouses"("id"),
 	"to_warehouse_id" uuid REFERENCES "warehouses"("id"),
@@ -27,6 +28,7 @@ CREATE TABLE IF NOT EXISTS "equipment_movement" (
 );
 
 CREATE INDEX IF NOT EXISTS "eq_movement_date_idx" ON "equipment_movement" ("movement_date");
+CREATE INDEX IF NOT EXISTS "eq_movement_type_idx" ON "equipment_movement" ("movement_type");
 CREATE INDEX IF NOT EXISTS "eq_movement_from_wh_idx" ON "equipment_movement" ("from_warehouse_id");
 CREATE INDEX IF NOT EXISTS "eq_movement_to_wh_idx" ON "equipment_movement" ("to_warehouse_id");
 CREATE INDEX IF NOT EXISTS "eq_movement_from_eq_idx" ON "equipment_movement" ("from_equipment_id");

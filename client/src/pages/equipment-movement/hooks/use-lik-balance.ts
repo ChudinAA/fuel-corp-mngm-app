@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
+import { EQUIPMENT_MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useWarehouseBalance as useBaseWarehouseBalance } from "@/hooks/use-warehouse-balance";
 
 interface UseLikBalanceProps {
@@ -38,10 +38,10 @@ export function useLikBalance({
 
   // If from TZA, we need to find its parent warehouse to check balance logic
   // but for TZA we might have its own balance in equipment table
-  const sourceId = watchMovementType === MOVEMENT_TYPE.LIK_STORAGE_TO_TZA ? watchFromWarehouseId : watchFromEquipmentId;
+  const sourceId = watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA ? watchFromWarehouseId : watchFromEquipmentId;
 
   const { data: balanceData, isLoading } = useBaseWarehouseBalance(
-    sourceId && watchMovementType === MOVEMENT_TYPE.LIK_STORAGE_TO_TZA ? sourceId : undefined,
+    sourceId && watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA ? sourceId : undefined,
     watchMovementDate,
     watchProductType
   );
@@ -53,7 +53,7 @@ export function useLikBalance({
     let currentBalance = 0;
     let name = "";
 
-    if (watchMovementType === MOVEMENT_TYPE.LIK_STORAGE_TO_TZA) {
+    if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA) {
       const wh = warehouses.find((w) => w.id === sourceId);
       name = wh?.name || "";
       currentBalance = balanceData && typeof balanceData === "object" && "balance" in balanceData 

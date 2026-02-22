@@ -13,8 +13,8 @@ export const equipmentMovementFormSchema = z.object({
   quantityLiters: z.string().optional(),
   density: z.string().optional(),
   quantityKg: z.string().min(1, "Укажите количество"),
-  purchaseAmount: z.number().optional(),
-  averageCost: z.number().optional(),
+  costPerKg: z.string().optional(),
+  totalCost: z.string().optional(),
   notes: z.string().optional(),
   isDraft: z.boolean().default(false),
 });

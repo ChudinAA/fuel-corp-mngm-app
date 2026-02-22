@@ -41,9 +41,13 @@ export const CURRENCY = {
 export const MOVEMENT_TYPE = {
   SUPPLY: "supply",
   INTERNAL: "internal",
-  LIK_STORAGE_TO_TZA: "lik_storage_to_tza",
-  LIK_TZA_TO_STORAGE: "lik_tza_to_storage",
-  LIK_TZA_TO_TZA: "lik_tza_to_tza",
+} as const;
+
+// EQUIPMENT Movement types
+export const EQUIPMENT_MOVEMENT_TYPE = {
+  STORAGE_TO_TZA: "storage_to_tza",
+  TZA_TO_STORAGE: "tza_to_storage",
+  TZA_TO_TZA: "tza_to_tza",
 } as const;
 
 // Entity types for delivery cost
@@ -108,7 +112,8 @@ export type CounterpartyType =
 export type CounterpartyRole =
   (typeof COUNTERPARTY_ROLE)[keyof typeof COUNTERPARTY_ROLE];
 export type BaseType = (typeof BASE_TYPE)[keyof typeof BASE_TYPE];
-export type EquipmentType = (typeof EQUIPMENT_TYPE)[keyof typeof EQUIPMENT_TYPE];
+export type EquipmentType =
+  (typeof EQUIPMENT_TYPE)[keyof typeof EQUIPMENT_TYPE];
 export type CustomerModule =
   (typeof CUSTOMER_MODULE)[keyof typeof CUSTOMER_MODULE];
 export type RecalculationStatus =

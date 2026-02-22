@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
+import { EQUIPMENT_MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { calculateKgFromLiters } from "../../movement/utils";
 
 interface UseLikCalculationsProps {
@@ -43,7 +43,7 @@ export function useLikCalculations({
   const averageCost = useMemo(() => {
     let sourceWarehouse = null;
 
-    if (watchMovementType === MOVEMENT_TYPE.LIK_STORAGE_TO_TZA && watchFromWarehouseId) {
+    if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA && watchFromWarehouseId) {
       sourceWarehouse = warehouses.find((w) => w.id === watchFromWarehouseId);
     } else if (watchFromEquipmentId) {
       const tza = equipments.find((e) => e.id === watchFromEquipmentId);

@@ -4,7 +4,7 @@ export type InputMode = "liters" | "kg";
 
 export interface EquipmentMovementDialogProps {
   warehouses: Warehouse[];
-  equipments: Equipment[];
+  // equipments: Equipment[];
   editMovement: EquipmentMovement | null;
   isCopy?: boolean;
   open: boolean;

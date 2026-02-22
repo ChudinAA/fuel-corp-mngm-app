@@ -2,7 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
+import {
+  EQUIPMENT_MOVEMENT_TYPE,
+  EQUIPMENT_TYPE,
+  PRODUCT_TYPE,
+} from "@shared/constants";
 import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -32,7 +36,10 @@ import {
 } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
 import { Plus, Loader2 } from "lucide-react";
-import { equipmentMovementFormSchema, type EquipmentMovementFormData } from "../schemas";
+import {
+  equipmentMovementFormSchema,
+  type EquipmentMovementFormData,
+} from "../schemas";
 import type { EquipmentMovementDialogProps } from "../types";
 import { VolumeInputSection } from "../../opt/components/opt-form-sections";
 import {
@@ -47,10 +54,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useLikBalance } from "../hooks/use-lik-balance";
 import { useLikCalculations } from "../hooks/use-lik-calculations";
+import { Equipment } from "@shared/schema";
 
 export function EquipmentMovementDialog({
   warehouses,
-  equipments,
+  // equipments,
   editMovement,
   isCopy,
   open,
@@ -66,7 +74,7 @@ export function EquipmentMovementDialog({
     resolver: zodResolver(equipmentMovementFormSchema),
     defaultValues: {
       movementDate: new Date(),
-      movementType: MOVEMENT_TYPE.LIK_STORAGE_TO_TZA,
+      movementType: EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA,
       productType: PRODUCT_TYPE.KEROSENE,
       fromWarehouseId: "",
       toWarehouseId: "",
@@ -92,11 +100,37 @@ export function EquipmentMovementDialog({
   const watchKg = form.watch("quantityKg");
   const watchMovementDate = form.watch("movementDate");
 
+  const { data: fromEquipments = [] } = useQuery<Equipment[]>({
+    queryKey: ["/api/warehouses", watchFromWarehouseId, "equipment"],
+    queryFn: async () => {
+      const res = await apiRequest(
+        "GET",
+        `/api/warehouses/${watchFromWarehouseId}/equipment`,
+      );
+      return res.json();
+    },
+    enabled: !!watchFromWarehouseId,
+  });
+
+  const { data: toEquipments = [] } = useQuery<Equipment[]>({
+    queryKey: ["/api/warehouses", watchToWarehouseId, "equipment"],
+    queryFn: async () => {
+      const res = await apiRequest(
+        "GET",
+        `/api/warehouses/${watchToWarehouseId}/equipment`,
+      );
+      return res.json();
+    },
+    enabled: !!watchToWarehouseId,
+  });
+
   useEffect(() => {
     if (editMovement) {
       const resetValues = {
         movementDate: new Date(editMovement.movementDate),
-        movementType: (editMovement as any).movementType || MOVEMENT_TYPE.LIK_STORAGE_TO_TZA,
+        movementType:
+          (editMovement as any).movementType ||
+          EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA,
         productType: editMovement.productType || PRODUCT_TYPE.KEROSENE,
         fromWarehouseId: editMovement.fromWarehouseId || "",
         toWarehouseId: editMovement.toWarehouseId || "",
@@ -115,7 +149,7 @@ export function EquipmentMovementDialog({
     } else {
       form.reset({
         movementDate: new Date(),
-        movementType: MOVEMENT_TYPE.LIK_STORAGE_TO_TZA,
+        movementType: EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA,
         productType: PRODUCT_TYPE.KEROSENE,
         fromWarehouseId: "",
         toWarehouseId: "",
@@ -132,22 +166,26 @@ export function EquipmentMovementDialog({
     }
   }, [editMovement, form, open]);
 
-  const { calculatedKg, kgNum, purchaseAmount, averageCost } = useLikCalculations({
-    form,
-    watchMovementType,
-    watchProductType,
-    watchFromWarehouseId,
-    watchToWarehouseId,
-    watchFromEquipmentId,
-    watchToEquipmentId,
-    watchMovementDate,
-    watchLiters,
-    watchDensity,
-    watchKg,
-    inputMode,
-    warehouses,
-    equipments,
-  });
+  const { calculatedKg, kgNum, purchaseAmount, averageCost } =
+    useLikCalculations({
+      form,
+      watchMovementType,
+      watchProductType,
+      watchFromWarehouseId,
+      watchToWarehouseId,
+      watchFromEquipmentId,
+      watchToEquipmentId,
+      watchMovementDate,
+      watchLiters,
+      watchDensity,
+      watchKg,
+      inputMode,
+      warehouses,
+      equipments:
+        watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA
+          ? toEquipments
+          : fromEquipments,
+    });
 
   const likBalance = useLikBalance({
     watchMovementType,
@@ -156,28 +194,43 @@ export function EquipmentMovementDialog({
     watchFromEquipmentId,
     kgNum,
     warehouses,
-    equipments,
+    equipments:
+      watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA
+        ? toEquipments
+        : fromEquipments,
     isEditing,
-    initialQuantityKg: isEditing ? parseFloat(editMovement?.quantityKg || "0") : 0,
+    initialQuantityKg: isEditing
+      ? parseFloat(editMovement?.quantityKg || "0")
+      : 0,
     watchMovementDate,
   });
 
   const mutation = useMutation({
-    mutationFn: async ({ data, isDraft }: { data: EquipmentMovementFormData; isDraft?: boolean }) => {
+    mutationFn: async ({
+      data,
+      isDraft,
+    }: {
+      data: EquipmentMovementFormData;
+      isDraft?: boolean;
+    }) => {
       const payload = {
         ...data,
         movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),
         quantityKg: calculatedKg?.toString() || "0",
-        quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
+        quantityLiters: data.quantityLiters
+          ? parseFloat(data.quantityLiters)
+          : null,
         density: data.density ? parseFloat(data.density) : null,
-        purchaseAmount,
-        averageCost,
+        totalCost: purchaseAmount,
+        costPerKg: averageCost,
         isDraft: !!isDraft,
       };
       const res = await apiRequest(
         isEditing ? "PATCH" : "POST",
-        isEditing ? `/api/equipment-movement/${editMovement?.id}` : "/api/equipment-movement",
-        payload
+        isEditing
+          ? `/api/equipment-movement/${editMovement?.id}`
+          : "/api/equipment-movement",
+        payload,
       );
       return res.json();
     },
@@ -186,18 +239,31 @@ export function EquipmentMovementDialog({
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
       toast({
-        title: variables.isDraft ? "Черновик сохранен" : isEditing ? "Обновлено" : "Создано",
+        title: variables.isDraft
+          ? "Черновик сохранен"
+          : isEditing
+            ? "Обновлено"
+            : "Создано",
       });
       onOpenChange(false);
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      const isDirty = form.formState.isDirty || JSON.stringify(form.getValues()) !== JSON.stringify(initialValuesRef.current || form.control._defaultValues);
+      const isDirty =
+        form.formState.isDirty ||
+        JSON.stringify(form.getValues()) !==
+          JSON.stringify(
+            initialValuesRef.current || form.control._defaultValues,
+          );
       if (isDirty && !mutation.isPending) {
         setShowExitConfirm(true);
       } else {
@@ -208,20 +274,32 @@ export function EquipmentMovementDialog({
     }
   };
 
-  const likWarehouses = warehouses.filter((w) => (w as any).equipmentType === "lik");
-  const likTzas = equipments.filter((e) => (e as any).type === "lik");
+  const likWarehouses = warehouses.filter(
+    (w) => w.equipmentType === EQUIPMENT_TYPE.LIK,
+  );
 
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{isEditing ? "Редактирование перемещения ЛИК" : "Новое перемещение ЛИК"}</DialogTitle>
-            <DialogDescription>Локальное распределение топлива между складом и ТЗА</DialogDescription>
+            <DialogTitle>
+              {isEditing
+                ? "Редактирование перемещения ЛИК"
+                : "Новое перемещение ЛИК"}
+            </DialogTitle>
+            <DialogDescription>
+              Локальное распределение топлива между складом и ТЗА
+            </DialogDescription>
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => mutation.mutate({ data, isDraft: false }))} className="space-y-6">
+            <form
+              onSubmit={form.handleSubmit((data) =>
+                mutation.mutate({ data, isDraft: false }),
+              )}
+              className="space-y-6"
+            >
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
@@ -230,7 +308,15 @@ export function EquipmentMovementDialog({
                     <FormItem>
                       <FormLabel>Дата</FormLabel>
                       <FormControl>
-                        <Input type="date" value={field.value ? format(field.value, "yyyy-MM-dd") : ""} onChange={(e) => field.onChange(new Date(e.target.value))} />
+                        <Input
+                          type="date"
+                          value={
+                            field.value ? format(field.value, "yyyy-MM-dd") : ""
+                          }
+                          onChange={(e) =>
+                            field.onChange(new Date(e.target.value))
+                          }
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -242,16 +328,31 @@ export function EquipmentMovementDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Тип перемещения</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Выберите тип" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value={MOVEMENT_TYPE.LIK_STORAGE_TO_TZA}>Склад {"->"} ТЗА</SelectItem>
-                          <SelectItem value={MOVEMENT_TYPE.LIK_TZA_TO_STORAGE}>ТЗА {"->"} Склад</SelectItem>
-                          <SelectItem value={MOVEMENT_TYPE.LIK_TZA_TO_TZA}>ТЗА {"->"} ТЗА</SelectItem>
+                          <SelectItem
+                            value={EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA}
+                          >
+                            Склад {"->"} ТЗА
+                          </SelectItem>
+                          <SelectItem
+                            value={EQUIPMENT_MOVEMENT_TYPE.TZA_TO_STORAGE}
+                          >
+                            ТЗА {"->"} Склад
+                          </SelectItem>
+                          <SelectItem
+                            value={EQUIPMENT_MOVEMENT_TYPE.TZA_TO_TZA}
+                          >
+                            ТЗА {"->"} ТЗА
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -264,15 +365,22 @@ export function EquipmentMovementDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Продукт</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Выберите продукт" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
-                          <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
+                          <SelectItem value={PRODUCT_TYPE.KEROSENE}>
+                            Керосин
+                          </SelectItem>
+                          <SelectItem value={PRODUCT_TYPE.PVKJ}>
+                            ПВКЖ
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -284,14 +392,23 @@ export function EquipmentMovementDialog({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4 border p-4 rounded-md">
                   <h3 className="font-medium text-sm border-b pb-2">Откуда</h3>
-                  {watchMovementType === MOVEMENT_TYPE.LIK_STORAGE_TO_TZA ? (
+                  {watchMovementType ===
+                  EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA ? (
                     <FormField
                       control={form.control}
                       name="fromWarehouseId"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Склад</FormLabel>
-                          <Combobox options={likWarehouses.map((w) => ({ label: w.name, value: w.id }))} value={field.value || ""} onValueChange={field.onChange} placeholder="Выберите склад" />
+                          <Combobox
+                            options={likWarehouses.map((w) => ({
+                              label: w.name,
+                              value: w.id,
+                            }))}
+                            value={field.value || ""}
+                            onValueChange={field.onChange}
+                            placeholder="Выберите склад"
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
@@ -303,28 +420,56 @@ export function EquipmentMovementDialog({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>ТЗА</FormLabel>
-                          <Combobox options={likTzas.map((e) => ({ label: e.name, value: e.id }))} value={field.value || ""} onValueChange={field.onChange} placeholder="Выберите ТЗА" />
+                          <Combobox
+                            options={fromEquipments.map((e) => ({
+                              label: e.name,
+                              value: e.id,
+                            }))}
+                            value={field.value || ""}
+                            onValueChange={field.onChange}
+                            placeholder="Выберите ТЗА"
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   )}
                   <div className="pt-2">
-                    <p className="text-xs text-muted-foreground">Объем на {watchMovementType === MOVEMENT_TYPE.LIK_STORAGE_TO_TZA ? "складе" : "ТЗА"}:</p>
-                    <p className={`text-sm font-semibold ${likBalance.status === "error" ? "text-destructive" : "text-primary"}`}>{likBalance.message}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Объем на{" "}
+                      {watchMovementType ===
+                      EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA
+                        ? "складе"
+                        : "ТЗА"}
+                      :
+                    </p>
+                    <p
+                      className={`text-sm font-semibold ${likBalance.status === "error" ? "text-destructive" : "text-primary"}`}
+                    >
+                      {likBalance.message}
+                    </p>
                   </div>
                 </div>
 
                 <div className="space-y-4 border p-4 rounded-md">
                   <h3 className="font-medium text-sm border-b pb-2">Куда</h3>
-                  {watchMovementType === MOVEMENT_TYPE.LIK_TZA_TO_STORAGE ? (
+                  {watchMovementType ===
+                  EQUIPMENT_MOVEMENT_TYPE.TZA_TO_STORAGE ? (
                     <FormField
                       control={form.control}
                       name="toWarehouseId"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Склад</FormLabel>
-                          <Combobox options={likWarehouses.map((w) => ({ label: w.name, value: w.id }))} value={field.value || ""} onValueChange={field.onChange} placeholder="Выберите склад" />
+                          <Combobox
+                            options={likWarehouses.map((w) => ({
+                              label: w.name,
+                              value: w.id,
+                            }))}
+                            value={field.value || ""}
+                            onValueChange={field.onChange}
+                            placeholder="Выберите склад"
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
@@ -336,7 +481,15 @@ export function EquipmentMovementDialog({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>ТЗА</FormLabel>
-                          <Combobox options={likTzas.map((e) => ({ label: e.name, value: e.id }))} value={field.value || ""} onValueChange={field.onChange} placeholder="Выберите ТЗА" />
+                          <Combobox
+                            options={toEquipments.map((e) => ({
+                              label: e.name,
+                              value: e.id,
+                            }))}
+                            value={field.value || ""}
+                            onValueChange={field.onChange}
+                            placeholder="Выберите ТЗА"
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
@@ -345,16 +498,28 @@ export function EquipmentMovementDialog({
                 </div>
               </div>
 
-              <VolumeInputSection form={form as any} setInputMode={setInputMode} calculatedKg={calculatedKg?.toString() || "0"} />
+              <VolumeInputSection
+                form={form as any}
+                setInputMode={setInputMode}
+                calculatedKg={calculatedKg?.toString() || "0"}
+              />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Себестоимость (за кг):</p>
-                  <p className="text-lg font-bold">{averageCost.toLocaleString()} ₽</p>
+                  <p className="text-xs text-muted-foreground">
+                    Себестоимость (за кг):
+                  </p>
+                  <p className="text-lg font-bold">
+                    {averageCost.toLocaleString()} ₽
+                  </p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Сумма покупки:</p>
-                  <p className="text-lg font-bold text-primary">{purchaseAmount.toLocaleString()} ₽</p>
+                  <p className="text-xs text-muted-foreground">
+                    Сумма покупки:
+                  </p>
+                  <p className="text-lg font-bold text-primary">
+                    {purchaseAmount.toLocaleString()} ₽
+                  </p>
                 </div>
               </div>
 
@@ -365,7 +530,10 @@ export function EquipmentMovementDialog({
                   <FormItem>
                     <FormLabel>Примечания</FormLabel>
                     <FormControl>
-                      <Input placeholder="Дополнительная информация..." {...field} />
+                      <Input
+                        placeholder="Дополнительная информация..."
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -373,14 +541,36 @@ export function EquipmentMovementDialog({
               />
 
               <div className="flex justify-end gap-4 pt-4 border-t">
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                >
                   Отмена
                 </Button>
-                <Button type="button" variant="secondary" disabled={mutation.isPending} onClick={() => mutation.mutate({ data: form.getValues(), isDraft: true })}>
-                  {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Сохранить черновик"}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={mutation.isPending}
+                  onClick={() =>
+                    mutation.mutate({ data: form.getValues(), isDraft: true })
+                  }
+                >
+                  {mutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    "Сохранить черновик"
+                  )}
                 </Button>
-                <Button type="submit" disabled={mutation.isPending || likBalance.status === "error"}>
-                  {mutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                <Button
+                  type="submit"
+                  disabled={mutation.isPending || likBalance.status === "error"}
+                >
+                  {mutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="mr-2 h-4 w-4" />
+                  )}
                   {isEditing ? "Обновить" : "Создать перемещение"}
                 </Button>
               </div>
@@ -393,11 +583,22 @@ export function EquipmentMovementDialog({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Сохранить черновик?</AlertDialogTitle>
-            <AlertDialogDescription>Вы начали вводить данные. Хотите сохранить изменения как черновик перед закрытием?</AlertDialogDescription>
+            <AlertDialogDescription>
+              Вы начали вводить данные. Хотите сохранить изменения как черновик
+              перед закрытием?
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => onOpenChange(false)}>Нет</AlertDialogCancel>
-            <AlertDialogAction onClick={() => mutation.mutate({ data: form.getValues(), isDraft: true })}>Да, сохранить</AlertDialogAction>
+            <AlertDialogCancel onClick={() => onOpenChange(false)}>
+              Нет
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                mutation.mutate({ data: form.getValues(), isDraft: true })
+              }
+            >
+              Да, сохранить
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

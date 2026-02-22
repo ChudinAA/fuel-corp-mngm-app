@@ -20,6 +20,7 @@ export const equipmentMovement = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     movementDate: timestamp("movement_date", { mode: "string" }).notNull(),
+    movementType: text("movement_type").notNull(),
     productType: text("product_type").notNull(),
     fromWarehouseId: uuid("from_warehouse_id").references(() => warehouses.id),
     toWarehouseId: uuid("to_warehouse_id").references(() => warehouses.id),
@@ -46,6 +47,7 @@ export const equipmentMovement = pgTable(
   },
   (table) => ({
     movementDateIdx: index("eq_movement_date_idx").on(table.movementDate),
+    movementTypeIdx: index("eq_movement_type_idx").on(table.movementType),
     fromWarehouseIdx: index("eq_movement_from_wh_idx").on(table.fromWarehouseId),
     toWarehouseIdx: index("eq_movement_to_wh_idx").on(table.toWarehouseId),
     fromEquipmentIdx: index("eq_movement_from_eq_idx").on(table.fromEquipmentId),
