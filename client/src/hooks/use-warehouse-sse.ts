@@ -78,10 +78,8 @@ export function useWarehouseSSE(isAuthenticated: boolean) {
           clearTimeout(reconnectTimeoutRef.current);
         }
 
-        if (!isAuthenticated) return;
-
-        // Exponential backoff or longer delay if authenticated
-        const delay = 30000; 
+        // Exponential backoff or longer delay if not authenticated
+        const delay = isAuthenticated ? 20000 : 50000; // TODO: reduce to 5-30sec on prod for testing
         reconnectTimeoutRef.current = setTimeout(connect, delay);
       };
 

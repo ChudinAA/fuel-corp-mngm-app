@@ -310,21 +310,16 @@ export function registerWarehousesOperationsRoutes(app: Express) {
 
   app.get("/api/warehouses/sse/events", requireAuth, (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders();
-
-    const keepAlive = setInterval(() => {
-      res.write(': keep-alive\n\n');
-    }, 30000);
 
     res.write('data: {"type":"connected"}\n\n');
 
     SSEService.register(res);
 
     req.on("close", () => {
-      clearInterval(keepAlive);
       res.end();
     });
   });
