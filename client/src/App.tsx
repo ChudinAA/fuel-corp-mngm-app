@@ -81,7 +81,8 @@ function ProtectedRoute({
 function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
 
-  useWarehouseSSE(!!user);
+  // TODO: make optimization for this hook (too much requests on back with 401 error)
+  // useWarehouseSSE(!!user);
 
   if (isLoading) {
     return (
