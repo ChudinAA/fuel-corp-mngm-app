@@ -8,10 +8,18 @@ import {
   PRODUCT_TYPE,
 } from "@shared/constants";
 import { format } from "date-fns";
+import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { CalendarIcon, Plus, Loader2 } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -100,29 +108,45 @@ export function EquipmentMovementDialog({
   const watchKg = form.watch("quantityKg");
   const watchMovementDate = form.watch("movementDate");
 
+  const likWarehouses = warehouses.filter(
+    (w) => w.equipmentType === EQUIPMENT_TYPE.LIK,
+  );
+
+  // Auto-fill logic for TZA -> Warehouse
+  useEffect(() => {
+    if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZA_TO_STORAGE) {
+      const defaultLikWarehouse = likWarehouses[0];
+      if (defaultLikWarehouse && !watchToWarehouseId) {
+        form.setValue("toWarehouseId", defaultLikWarehouse.id);
+      }
+    }
+  }, [watchMovementType, likWarehouses, watchToWarehouseId, form]);
+
   const { data: fromEquipments = [] } = useQuery<Equipment[]>({
-    queryKey: ["/api/warehouses", watchToWarehouseId, "equipment"],
+    queryKey: ["/api/warehouses", watchFromWarehouseId || watchToWarehouseId, "equipment"],
     queryFn: async () => {
+      const warehouseId = watchFromWarehouseId || watchToWarehouseId;
       const res = await apiRequest(
         "GET",
-        `/api/warehouses/${watchToWarehouseId}/equipment`,
+        `/api/warehouses/${warehouseId}/equipment`,
       );
       return res.json();
     },
-    enabled: !!watchToWarehouseId,
+    enabled: !!(watchFromWarehouseId || watchToWarehouseId),
   });
 
-  const { data: toEquipments = [] } = useQuery<Equipment[]>({
-    queryKey: ["/api/warehouses", watchFromWarehouseId, "equipment"],
-    queryFn: async () => {
-      const res = await apiRequest(
-        "GET",
-        `/api/warehouses/${watchFromWarehouseId}/equipment`,
-      );
-      return res.json();
-    },
-    enabled: !!watchFromWarehouseId,
-  });
+  // Auto-fill first available TZA for TZA -> Warehouse
+  useEffect(() => {
+    if (
+      watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZA_TO_STORAGE &&
+      fromEquipments.length > 0 &&
+      !watchFromEquipmentId
+    ) {
+      form.setValue("fromEquipmentId", fromEquipments[0].id);
+    }
+  }, [watchMovementType, fromEquipments, watchFromEquipmentId, form]);
+
+  const toEquipments = fromEquipments;
 
   useEffect(() => {
     if (editMovement) {
@@ -309,17 +333,32 @@ export function EquipmentMovementDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Дата</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          value={
-                            field.value ? format(field.value, "yyyy-MM-dd") : ""
-                          }
-                          onChange={(e) =>
-                            field.onChange(new Date(e.target.value))
-                          }
-                        />
-                      </FormControl>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className="w-full justify-start text-left font-normal"
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {field.value ? (
+                                format(field.value, "dd.MM.yyyy", { locale: ru })
+                              ) : (
+                                <span>Выберите дату</span>
+                              )}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            locale={ru}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -550,20 +589,22 @@ export function EquipmentMovementDialog({
                 >
                   Отмена
                 </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={mutation.isPending}
-                  onClick={() =>
-                    mutation.mutate({ data: form.getValues(), isDraft: true })
-                  }
-                >
-                  {mutation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    "Сохранить черновик"
-                  )}
-                </Button>
+                {(!isEditing || (editMovement && editMovement.isDraft)) && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={mutation.isPending}
+                    onClick={() =>
+                      mutation.mutate({ data: form.getValues(), isDraft: true })
+                    }
+                  >
+                    {mutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      "Сохранить черновик"
+                    )}
+                  </Button>
+                )}
                 <Button
                   type="submit"
                   disabled={mutation.isPending || likBalance.status === "error"}

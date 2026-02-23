@@ -54,9 +54,9 @@ export function useLikCalculations({
 
     if (!sourceWarehouse) return 0;
 
-    const costStr = watchProductType === PRODUCT_TYPE.PVKJ ? sourceWarehouse.pvkjAverageCost : sourceWarehouse.averageCost;
+    const costStr = watchProductType === PRODUCT_TYPE.PVKJ ? sourceWarehouse.pvkjAverageCost : sourceWarehouse.keroseneAverageCost;
     return costStr ? parseFloat(costStr) : 0;
-  }, [watchMovementType, watchFromWarehouseId, watchFromEquipmentId, watchProductType, warehouses, equipments]);
+  }, [watchMovementType, watchFromWarehouseId, watchToWarehouseId, watchFromEquipmentId, watchProductType, warehouses, equipments]);
 
   const purchaseAmount = kgNum * averageCost;
 

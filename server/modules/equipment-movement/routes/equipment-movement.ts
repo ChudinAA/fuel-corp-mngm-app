@@ -42,8 +42,21 @@ export function registerEquipmentMovementRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
+        const body = { ...req.body };
+        // Convert empty strings to null for UUID fields
+        const uuidFields = [
+          "fromWarehouseId",
+          "toWarehouseId",
+          "fromEquipmentId",
+          "toEquipmentId",
+          "basisId",
+        ];
+        uuidFields.forEach((field) => {
+          if (body[field] === "") body[field] = null;
+        });
+
         const data = insertEquipmentMovementSchema.parse({
-          ...req.body,
+          ...body,
           createdById: req.session.userId,
         });
         const record = await (storage as any).equipmentMovement.createMovement(data);
@@ -66,12 +79,30 @@ export function registerEquipmentMovementRoutes(app: Express) {
       getNewData: (req) => req.body,
     }),
     async (req, res) => {
-      const item = await (storage as any).equipmentMovement.updateMovement(req.params.id, {
-        ...req.body,
-        updatedById: req.session.userId,
-      });
-      if (!item) return res.status(404).json({ message: "Запись не найдена" });
-      res.json(item);
+      try {
+        const body = { ...req.body };
+        // Convert empty strings to null for UUID fields
+        const uuidFields = [
+          "fromWarehouseId",
+          "toWarehouseId",
+          "fromEquipmentId",
+          "toEquipmentId",
+          "basisId",
+        ];
+        uuidFields.forEach((field) => {
+          if (body[field] === "") body[field] = null;
+        });
+
+        const item = await (storage as any).equipmentMovement.updateMovement(req.params.id, {
+          ...body,
+          updatedById: req.session.userId,
+        });
+        if (!item) return res.status(404).json({ message: "Запись не найдена" });
+        res.json(item);
+      } catch (error) {
+        if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors[0].message });
+        res.status(500).json({ message: "Ошибка сервера" });
+      }
     }
   );
 
