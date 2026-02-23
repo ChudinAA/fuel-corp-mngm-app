@@ -362,18 +362,17 @@ export function EquipmentMovementDialog({
                       <Select
                         onValueChange={(val) => {
                           field.onChange(val);
-                          // Clear incompatible fields and reset errors
+                          // Clear incompatible fields to prevent stale data in DB
                           if (val === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA) {
-                            form.setValue("toWarehouseId", "", { shouldDirty: true });
-                            form.setValue("fromEquipmentId", "", { shouldDirty: true });
+                            form.setValue("toWarehouseId", "");
+                            form.setValue("fromEquipmentId", "");
                           } else if (val === EQUIPMENT_MOVEMENT_TYPE.TZA_TO_STORAGE) {
-                            form.setValue("fromWarehouseId", "", { shouldDirty: true });
-                            form.setValue("toEquipmentId", "", { shouldDirty: true });
+                            form.setValue("fromWarehouseId", "");
+                            form.setValue("toEquipmentId", "");
                           } else if (val === EQUIPMENT_MOVEMENT_TYPE.TZA_TO_TZA) {
-                            form.setValue("fromWarehouseId", "", { shouldDirty: true });
-                            form.setValue("toWarehouseId", "", { shouldDirty: true });
+                            form.setValue("fromWarehouseId", "");
+                            form.setValue("toWarehouseId", "");
                           }
-                          form.clearErrors();
                         }}
                         value={field.value}
                       >
@@ -446,17 +445,13 @@ export function EquipmentMovementDialog({
                         <FormItem key={`fromWh-${watchMovementType}`}>
                           <FormLabel>Склад</FormLabel>
                           <Combobox
-                            key={`combo-from-wh-${watchMovementType}-${field.value || "empty"}`}
+                            key={`combo-from-wh-${watchMovementType}`}
                             options={likWarehouses.map((w) => ({
                               label: w.name,
                               value: w.id,
                             }))}
                             value={field.value || ""}
-                            onValueChange={(val) => {
-                              field.onChange(val);
-                              // Trigger a small state change to force a re-render if needed
-                              form.trigger(field.name);
-                            }}
+                            onValueChange={field.onChange}
                             placeholder="Выберите склад"
                           />
                           <FormMessage />
@@ -471,17 +466,13 @@ export function EquipmentMovementDialog({
                         <FormItem key={`fromEq-${watchMovementType}`}>
                           <FormLabel>ТЗА</FormLabel>
                           <Combobox
-                            key={`combo-from-eq-${watchMovementType}-${field.value || "empty"}`}
+                            key={`combo-from-eq-${watchMovementType}`}
                             options={likEquipments.map((e) => ({
                               label: e.name,
                               value: e.id,
                             }))}
                             value={field.value || ""}
-                            onValueChange={(val) => {
-                              field.onChange(val);
-                              // Trigger a small state change to force a re-render if needed
-                              form.trigger(field.name);
-                            }}
+                            onValueChange={field.onChange}
                             placeholder="Выберите ТЗА"
                           />
                           <FormMessage />
@@ -517,17 +508,13 @@ export function EquipmentMovementDialog({
                         <FormItem key={`toWh-${watchMovementType}`}>
                           <FormLabel>Склад</FormLabel>
                           <Combobox
-                            key={`combo-to-wh-${watchMovementType}-${field.value || "empty"}`}
+                            key={`combo-to-wh-${watchMovementType}`}
                             options={likWarehouses.map((w) => ({
                               label: w.name,
                               value: w.id,
                             }))}
                             value={field.value || ""}
-                            onValueChange={(val) => {
-                              field.onChange(val);
-                              // Trigger a small state change to force a re-render if needed
-                              form.trigger(field.name);
-                            }}
+                            onValueChange={field.onChange}
                             placeholder="Выберите склад"
                           />
                           <FormMessage />
@@ -542,17 +529,13 @@ export function EquipmentMovementDialog({
                         <FormItem key={`toEq-${watchMovementType}`}>
                           <FormLabel>ТЗА</FormLabel>
                           <Combobox
-                            key={`combo-to-eq-${watchMovementType}-${field.value || "empty"}`}
+                            key={`combo-to-eq-${watchMovementType}`}
                             options={likEquipments.map((e) => ({
                               label: e.name,
                               value: e.id,
                             }))}
                             value={field.value || ""}
-                            onValueChange={(val) => {
-                              field.onChange(val);
-                              // Trigger a small state change to force a re-render if needed
-                              form.trigger(field.name);
-                            }}
+                            onValueChange={field.onChange}
                             placeholder="Выберите ТЗА"
                           />
                           <FormMessage />
