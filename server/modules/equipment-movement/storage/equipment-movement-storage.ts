@@ -41,6 +41,7 @@ export class EquipmentMovementStorage {
         toWarehouseName: sql<string>`(SELECT name FROM warehouses WHERE id = ${equipmentMovement.toWarehouseId})`,
         fromEquipmentName: sql<string>`(SELECT name FROM equipments WHERE id = ${equipmentMovement.fromEquipmentId})`,
         toEquipmentName: sql<string>`(SELECT name FROM equipments WHERE id = ${equipmentMovement.toEquipmentId})`,
+        isDraft: equipmentMovement.isDraft,
       })
       .from(equipmentMovement)
       .where(isNull(equipmentMovement.deletedAt))

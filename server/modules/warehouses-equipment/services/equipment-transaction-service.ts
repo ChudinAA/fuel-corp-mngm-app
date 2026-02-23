@@ -92,21 +92,51 @@ export class EquipmentTransactionService {
 
     if (!transaction) throw new Error(`Transaction ${transactionId} not found`);
 
-    // Для упрощения: удаляем старую транзакцию и создаем новую
-    await this.deleteTransactionAndRevertEquipment(tx, transactionId, userId);
+    const [equipment] = await tx
+      .select()
+      .from(equipments)
+      .where(eq(equipments.id, equipmentId))
+      .for("update");
 
-    return await this.createTransactionAndUpdateEquipment(
-      tx,
-      equipmentId,
-      transaction.transactionType,
-      productType,
-      transaction.sourceType,
-      transaction.sourceId,
-      newQty,
-      newTotalCost,
-      userId,
-      dealDate || transaction.transactionDate,
-    );
+    if (!equipment) throw new Error("Оборудование не найдено");
+
+    const isReceipt =
+      transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
+      transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
+
+    const currentBalance = parseFloat(equipment.currentBalance || "0");
+
+    let balanceBeforeOldOperation: number;
+    let newBalance: number;
+
+    if (isReceipt) {
+      balanceBeforeOldOperation = currentBalance - oldQty;
+      newBalance = balanceBeforeOldOperation + newQty;
+    } else {
+      balanceBeforeOldOperation = currentBalance + oldQty;
+      newBalance = Math.max(0, balanceBeforeOldOperation - newQty);
+    }
+
+    await tx
+      .update(equipmentTransactions)
+      .set({
+        quantity: isReceipt ? newQty.toString() : (-newQty).toString(),
+        balanceAfter: newBalance.toString(),
+        transactionDate: dealDate,
+        userId,
+      })
+      .where(eq(equipmentTransactions.id, transactionId));
+
+    await tx
+      .update(equipments)
+      .set({
+        currentBalance: newBalance.toFixed(2),
+        updatedAt: sql`NOW()`,
+        updatedById: userId,
+      })
+      .where(eq(equipments.id, equipmentId));
+
+    return newBalance;
   }
 
   static async deleteTransactionAndRevertEquipment(

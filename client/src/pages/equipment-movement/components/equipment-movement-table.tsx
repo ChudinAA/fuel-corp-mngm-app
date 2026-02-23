@@ -18,6 +18,7 @@ import { useState } from "react";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExportButton } from "@/components/export/export-button";
+import { cn } from "@/lib/utils";
 
 export function EquipmentMovementTable({
   onEdit,
@@ -75,7 +76,7 @@ export function EquipmentMovementTable({
           <ExportButton moduleName="equipment-movement" />
         </div>
       </div>
-      
+
       <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
@@ -101,9 +102,26 @@ export function EquipmentMovementTable({
               </TableRow>
             ) : (
               movements.map((item: any) => (
-                <TableRow key={item.id}>
-                  <TableCell className="whitespace-nowrap">
-                    {item?.movementDate ? formatDate(item.movementDate) : "—"}
+                <TableRow
+                  key={item.id}
+                  className={cn(
+                    "hover:bg-muted/50 transition-colors",
+                    item.isDraft &&
+                      "bg-muted/70 opacity-60 border-2 border-orange-200",
+                  )}
+                >
+                  <TableCell className="text-[12px] md:text-xs py-2 px-1 md:px-2 whitespace-nowrap">
+                    <div className="flex flex-col gap-1">
+                      {item?.movementDate ? formatDate(item.movementDate) : "—"}
+                      {item.isDraft && (
+                        <Badge
+                          variant="secondary"
+                          className="w-fit text-[9px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200"
+                        >
+                          Черновик
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">
