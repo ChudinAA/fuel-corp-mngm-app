@@ -30,6 +30,8 @@ export default function EquipmentMovementPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment-movement"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses-equipment"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       toast({ title: "Перемещение удалено" });
     },
     onError: (error: Error) => {
