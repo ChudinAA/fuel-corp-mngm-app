@@ -360,7 +360,20 @@ export function EquipmentMovementDialog({
                     <FormItem>
                       <FormLabel>Тип перемещения</FormLabel>
                       <Select
-                        onValueChange={field.onChange}
+                        onValueChange={(val) => {
+                          field.onChange(val);
+                          // Clear incompatible fields to prevent stale data in DB
+                          if (val === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA) {
+                            form.setValue("toWarehouseId", "");
+                            form.setValue("fromEquipmentId", "");
+                          } else if (val === EQUIPMENT_MOVEMENT_TYPE.TZA_TO_STORAGE) {
+                            form.setValue("fromWarehouseId", "");
+                            form.setValue("toEquipmentId", "");
+                          } else if (val === EQUIPMENT_MOVEMENT_TYPE.TZA_TO_TZA) {
+                            form.setValue("fromWarehouseId", "");
+                            form.setValue("toWarehouseId", "");
+                          }
+                        }}
                         value={field.value}
                       >
                         <FormControl>
@@ -432,6 +445,7 @@ export function EquipmentMovementDialog({
                         <FormItem key={`fromWh-${watchMovementType}`}>
                           <FormLabel>Склад</FormLabel>
                           <Combobox
+                            key={`combo-from-wh-${watchMovementType}`}
                             options={likWarehouses.map((w) => ({
                               label: w.name,
                               value: w.id,
@@ -452,6 +466,7 @@ export function EquipmentMovementDialog({
                         <FormItem key={`fromEq-${watchMovementType}`}>
                           <FormLabel>ТЗА</FormLabel>
                           <Combobox
+                            key={`combo-from-eq-${watchMovementType}`}
                             options={likEquipments.map((e) => ({
                               label: e.name,
                               value: e.id,
@@ -493,6 +508,7 @@ export function EquipmentMovementDialog({
                         <FormItem key={`toWh-${watchMovementType}`}>
                           <FormLabel>Склад</FormLabel>
                           <Combobox
+                            key={`combo-to-wh-${watchMovementType}`}
                             options={likWarehouses.map((w) => ({
                               label: w.name,
                               value: w.id,
@@ -513,6 +529,7 @@ export function EquipmentMovementDialog({
                         <FormItem key={`toEq-${watchMovementType}`}>
                           <FormLabel>ТЗА</FormLabel>
                           <Combobox
+                            key={`combo-to-eq-${watchMovementType}`}
                             options={likEquipments.map((e) => ({
                               label: e.name,
                               value: e.id,
