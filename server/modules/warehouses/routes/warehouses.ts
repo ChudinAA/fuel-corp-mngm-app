@@ -289,7 +289,12 @@ export function registerWarehousesOperationsRoutes(app: Express) {
 
   app.get(
     "/api/warehouses/sse/events",
-    requireAuth,
+    (req, res, next) => {
+      if (!req.isAuthenticated || !req.isAuthenticated()) {
+        return res.status(401).json({ message: "Необходима авторизация" });
+      }
+      next();
+    },
     (req, res) => {
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");

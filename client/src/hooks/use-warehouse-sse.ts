@@ -20,6 +20,8 @@ export function useWarehouseSSE(isAuthenticated: boolean) {
     }
 
     const connect = () => {
+      if (!isAuthenticated) return;
+
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
@@ -69,12 +71,16 @@ export function useWarehouseSSE(isAuthenticated: boolean) {
         }
       });
 
-      eventSource.onerror = () => {
+      eventSource.onerror = (err) => {
+        console.error("[SSE] Connection error:", err);
         eventSource.close();
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
         }
-        reconnectTimeoutRef.current = setTimeout(connect, 5000);
+        
+        // Exponential backoff or longer delay if not authenticated
+        const delay = isAuthenticated ? 5000 : 30000;
+        reconnectTimeoutRef.current = setTimeout(connect, delay);
       };
 
       eventSourceRef.current = eventSource;
