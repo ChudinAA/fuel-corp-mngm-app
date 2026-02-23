@@ -71,14 +71,18 @@ export function registerWarehousesOperationsRoutes(app: Express) {
               warehouseId: item.id,
               storageCost: data.storageCost || null,
               isActive: true,
-              createdById: req.session.userId ? String(req.session.userId) : null,
+              createdById: req.session.userId
+                ? String(req.session.userId)
+                : null,
             };
 
             const supplier =
               await storage.suppliers.createSupplier(supplierData);
             await storage.warehouses.updateWarehouse(item.id, {
               supplierId: supplier.id,
-              updatedById: req.session.userId ? String(req.session.userId) : null,
+              updatedById: req.session.userId
+                ? String(req.session.userId)
+                : null,
             } as any);
           } catch (suppError: any) {
             console.error(
@@ -196,13 +200,19 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           }
         }
 
-        await storage.warehouses.deleteWarehouse(id, req.session.userId ? String(req.session.userId) : undefined);
+        await storage.warehouses.deleteWarehouse(
+          id,
+          req.session.userId ? String(req.session.userId) : undefined,
+        );
         res.json({ message: "Склад удален" });
       } catch (error: any) {
         console.error("Warehouse deletion error:", error);
         res
           .status(500)
-          .json({ message: "Ошибка удаления склада", error: error?.message || String(error) });
+          .json({
+            message: "Ошибка удаления склада",
+            error: error?.message || String(error),
+          });
       }
     },
   );
@@ -216,8 +226,11 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         const id = req.params.id;
         const limit = parseInt(req.query.limit as string) || 50;
         const offset = parseInt(req.query.offset as string) || 0;
-        const result =
-          await storage.warehouses.getWarehouseTransactions(id, limit, offset);
+        const result = await storage.warehouses.getWarehouseTransactions(
+          id,
+          limit,
+          offset,
+        );
         res.json(result);
       } catch (error) {
         console.error("Error fetching transactions:", error);
@@ -235,8 +248,11 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         const id = req.params.id;
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        
-        const stats = await storage.warehouses.getWarehouseMonthlyStats(id, startOfMonth);
+
+        const stats = await storage.warehouses.getWarehouseMonthlyStats(
+          id,
+          startOfMonth,
+        );
         res.json(stats);
       } catch (error) {
         console.error("Error calculating monthly stats:", error);
@@ -282,33 +298,29 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         res.json(equipment);
       } catch (error: any) {
         console.error("Error fetching warehouse equipment:", error);
-        res.status(500).json({ message: "Ошибка получения оборудования склада", error: error.message });
+        res
+          .status(500)
+          .json({
+            message: "Ошибка получения оборудования склада",
+            error: error.message,
+          });
       }
     },
   );
 
-  app.get(
-    "/api/warehouses/sse/events",
-    (req, res, next) => {
-      if (!req.isAuthenticated || !req.isAuthenticated()) {
-        return res.status(401).json({ message: "Необходима авторизация" });
-      }
-      next();
-    },
-    (req, res) => {
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache");
-      res.setHeader("Connection", "keep-alive");
-      res.setHeader("X-Accel-Buffering", "no");
-      res.flushHeaders();
+  app.get("/api/warehouses/sse/events", requireAuth, (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
 
-      res.write("data: {\"type\":\"connected\"}\n\n");
+    res.write('data: {"type":"connected"}\n\n');
 
-      SSEService.register(res);
+    SSEService.register(res);
 
-      req.on("close", () => {
-        res.end();
-      });
-    },
-  );
+    req.on("close", () => {
+      res.end();
+    });
+  });
 }

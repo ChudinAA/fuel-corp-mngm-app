@@ -41,7 +41,7 @@ export function EquipmentDetailsDialog({
   const { data: transactions, isLoading } = useQuery<EquipmentTransaction[]>({
     queryKey: [`/api/warehouses-equipment/${equipment.id}/transactions`],
     enabled: open,
-    refetchInterval: 5000,
+    refetchInterval: 15000, // TODO: reduce to 5sec on prod for testing
   });
 
   const isReceipt = (type: string) =>

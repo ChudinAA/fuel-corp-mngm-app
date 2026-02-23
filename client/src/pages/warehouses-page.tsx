@@ -27,7 +27,7 @@ export default function WarehousesPage() {
 
   const { data: warehouses, isLoading } = useQuery<WarehouseType[]>({
     queryKey: ["/api/warehouses"],
-    refetchInterval: 10000,
+    refetchInterval: 20000, // TODO: reduce to 10sec on prod for testing
   });
 
   const filteredWarehouses =
