@@ -11,8 +11,14 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
-import { warehouses } from "../../warehouses/entities/warehouses";
-import { equipments, equipmentTransactions } from "../../warehouses-equipment/entities/equipment";
+import {
+  warehouses,
+  warehouseTransactions,
+} from "../../warehouses/entities/warehouses";
+import {
+  equipments,
+  equipmentTransactions,
+} from "../../warehouses-equipment/entities/equipment";
 import { bases } from "../../bases/entities/bases";
 
 export const equipmentMovement = pgTable(
@@ -34,8 +40,18 @@ export const equipmentMovement = pgTable(
     totalCost: decimal("total_cost", { precision: 15, scale: 2 }),
     basis: text("basis"),
     basisId: uuid("basis_id").references(() => bases.id),
-    transactionId: uuid("transaction_id").references(() => equipmentTransactions.id),
-    sourceTransactionId: uuid("source_transaction_id").references(() => equipmentTransactions.id),
+    transactionId: uuid("transaction_id").references(
+      () => equipmentTransactions.id,
+    ),
+    sourceTransactionId: uuid("source_transaction_id").references(
+      () => equipmentTransactions.id,
+    ),
+    warehouseTransactionId: uuid("warehouse_transaction_id").references(
+      () => warehouseTransactions.id,
+    ),
+    sourceWarehouseTransactionId: uuid(
+      "source_warehouse_transaction_id",
+    ).references(() => warehouseTransactions.id),
     isDraft: boolean("is_draft").default(false),
     notes: text("notes"),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -48,59 +64,68 @@ export const equipmentMovement = pgTable(
   (table) => ({
     movementDateIdx: index("eq_movement_date_idx").on(table.movementDate),
     movementTypeIdx: index("eq_movement_type_idx").on(table.movementType),
-    fromWarehouseIdx: index("eq_movement_from_wh_idx").on(table.fromWarehouseId),
+    fromWarehouseIdx: index("eq_movement_from_wh_idx").on(
+      table.fromWarehouseId,
+    ),
     toWarehouseIdx: index("eq_movement_to_wh_idx").on(table.toWarehouseId),
-    fromEquipmentIdx: index("eq_movement_from_eq_idx").on(table.fromEquipmentId),
+    fromEquipmentIdx: index("eq_movement_from_eq_idx").on(
+      table.fromEquipmentId,
+    ),
     toEquipmentIdx: index("eq_movement_to_eq_idx").on(table.toEquipmentId),
   }),
 );
 
-export const equipmentMovementRelations = relations(equipmentMovement, ({ one }) => ({
-  fromWarehouse: one(warehouses, {
-    fields: [equipmentMovement.fromWarehouseId],
-    references: [warehouses.id],
-    relationName: "fromWarehouseMovement",
+export const equipmentMovementRelations = relations(
+  equipmentMovement,
+  ({ one }) => ({
+    fromWarehouse: one(warehouses, {
+      fields: [equipmentMovement.fromWarehouseId],
+      references: [warehouses.id],
+      relationName: "fromWarehouseMovement",
+    }),
+    toWarehouse: one(warehouses, {
+      fields: [equipmentMovement.toWarehouseId],
+      references: [warehouses.id],
+      relationName: "toWarehouseMovement",
+    }),
+    fromEquipment: one(equipments, {
+      fields: [equipmentMovement.fromEquipmentId],
+      references: [equipments.id],
+      relationName: "fromEquipmentMovement",
+    }),
+    toEquipment: one(equipments, {
+      fields: [equipmentMovement.toEquipmentId],
+      references: [equipments.id],
+      relationName: "toEquipmentMovement",
+    }),
+    basis: one(bases, {
+      fields: [equipmentMovement.basisId],
+      references: [bases.id],
+    }),
+    transaction: one(equipmentTransactions, {
+      fields: [equipmentMovement.transactionId],
+      references: [equipmentTransactions.id],
+      relationName: "destinationEquipmentTransaction",
+    }),
+    sourceTransaction: one(equipmentTransactions, {
+      fields: [equipmentMovement.sourceTransactionId],
+      references: [equipmentTransactions.id],
+      relationName: "sourceEquipmentTransaction",
+    }),
+    createdBy: one(users, {
+      fields: [equipmentMovement.createdById],
+      references: [users.id],
+    }),
+    updatedBy: one(users, {
+      fields: [equipmentMovement.updatedById],
+      references: [users.id],
+    }),
   }),
-  toWarehouse: one(warehouses, {
-    fields: [equipmentMovement.toWarehouseId],
-    references: [warehouses.id],
-    relationName: "toWarehouseMovement",
-  }),
-  fromEquipment: one(equipments, {
-    fields: [equipmentMovement.fromEquipmentId],
-    references: [equipments.id],
-    relationName: "fromEquipmentMovement",
-  }),
-  toEquipment: one(equipments, {
-    fields: [equipmentMovement.toEquipmentId],
-    references: [equipments.id],
-    relationName: "toEquipmentMovement",
-  }),
-  basis: one(bases, {
-    fields: [equipmentMovement.basisId],
-    references: [bases.id],
-  }),
-  transaction: one(equipmentTransactions, {
-    fields: [equipmentMovement.transactionId],
-    references: [equipmentTransactions.id],
-    relationName: "destinationEquipmentTransaction",
-  }),
-  sourceTransaction: one(equipmentTransactions, {
-    fields: [equipmentMovement.sourceTransactionId],
-    references: [equipmentTransactions.id],
-    relationName: "sourceEquipmentTransaction",
-  }),
-  createdBy: one(users, {
-    fields: [equipmentMovement.createdById],
-    references: [users.id],
-  }),
-  updatedBy: one(users, {
-    fields: [equipmentMovement.updatedById],
-    references: [users.id],
-  }),
-}));
+);
 
-export const insertEquipmentMovementSchema = createInsertSchema(equipmentMovement).omit({
+export const insertEquipmentMovementSchema = createInsertSchema(
+  equipmentMovement,
+).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -109,4 +134,6 @@ export const insertEquipmentMovementSchema = createInsertSchema(equipmentMovemen
 });
 
 export type EquipmentMovement = typeof equipmentMovement.$inferSelect;
-export type InsertEquipmentMovement = z.infer<typeof insertEquipmentMovementSchema>;
+export type InsertEquipmentMovement = z.infer<
+  typeof insertEquipmentMovementSchema
+>;

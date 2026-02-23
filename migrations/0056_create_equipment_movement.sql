@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS "equipment_movement" (
   "basis_id" uuid REFERENCES "bases"("id"),
   "transaction_id" uuid REFERENCES "equipment_transactions"("id"),
   "source_transaction_id" uuid REFERENCES "equipment_transactions"("id"),
+  "warehouse_transaction_id" uuid REFERENCES "warehouse_transactions"("id"),
+  "source_warehouse_transaction_id" uuid REFERENCES "warehouse_transactions"("id"),
   "is_draft" boolean DEFAULT false,
 	"notes" text,
 	"created_at" timestamp DEFAULT now(),
