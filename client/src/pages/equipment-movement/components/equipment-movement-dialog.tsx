@@ -43,7 +43,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
-import { Plus, Loader2 } from "lucide-react";
 import {
   equipmentMovementFormSchema,
   type EquipmentMovementFormData,

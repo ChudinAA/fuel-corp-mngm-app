@@ -17,12 +17,14 @@ interface UseLikCalculationsProps {
   inputMode: "liters" | "kg";
   warehouses: any[];
   equipments: any[];
+  watchToWarehouseId?: string | null;
 }
 
 export function useLikCalculations({
   watchMovementType,
   watchProductType,
   watchFromWarehouseId,
+  watchToWarehouseId,
   watchFromEquipmentId,
   watchLiters,
   watchDensity,
