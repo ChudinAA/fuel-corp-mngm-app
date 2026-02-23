@@ -22,14 +22,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Truck,
-  ArrowUpCircle,
-  ArrowDownCircle,
-  Package,
-} from "lucide-react";
+import { Truck, ArrowUpCircle, ArrowDownCircle, Package } from "lucide-react";
 import type { Equipment, EquipmentTransaction } from "@shared/schema";
 import { formatNumber, formatCurrency } from "../../warehouses/utils";
+import { TRANSACTION_TYPE } from "@shared/constants";
 
 interface EquipmentDetailsDialogProps {
   equipment: Equipment;
@@ -45,10 +41,14 @@ export function EquipmentDetailsDialog({
   const { data: transactions, isLoading } = useQuery<EquipmentTransaction[]>({
     queryKey: [`/api/warehouses-equipment/${equipment.id}/transactions`],
     enabled: open,
+    refetchInterval: 5000,
   });
 
+  const isReceipt = (type: string) =>
+    type === TRANSACTION_TYPE.TRANSFER_IN || type === TRANSACTION_TYPE.RECEIPT;
+
   const getTransactionIcon = (type: string) => {
-    if (type === "income" || type === "receipt") {
+    if (isReceipt(type)) {
       return <ArrowUpCircle className="h-4 w-4 text-green-600" />;
     }
     return <ArrowDownCircle className="h-4 w-4 text-red-600" />;
@@ -118,27 +118,37 @@ export function EquipmentDetailsDialog({
                 {transactions.map((tx) => (
                   <TableRow key={tx.id}>
                     <TableCell>
-                      {tx.transactionDate 
-                        ? format(new Date(tx.transactionDate), "dd.MM.yyyy HH:mm", { locale: ru })
-                        : format(new Date(tx.createdAt!), "dd.MM.yyyy HH:mm", { locale: ru })}
+                      {tx.transactionDate
+                        ? format(
+                            new Date(tx.transactionDate),
+                            "dd.MM.yyyy HH:mm",
+                            { locale: ru },
+                          )
+                        : format(new Date(tx.createdAt!), "dd.MM.yyyy HH:mm", {
+                            locale: ru,
+                          })}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {getTransactionIcon(tx.transactionType)}
                         <span className="text-xs">
-                          {tx.transactionType === "income" ? "Поступление" : "Расход"}
+                          {isReceipt(tx.transactionType)
+                            ? "Поступление"
+                            : "Расход"}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className={`text-right font-medium ${tx.transactionType === "income" ? "text-green-600" : "text-red-600"}`}>
-                      {tx.transactionType === "income" ? "+" : "-"}
+                    <TableCell
+                      className={`text-right font-medium ${isReceipt(tx.transactionType) ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {isReceipt(tx.transactionType) ? "+" : "-"}
                       {formatNumber(tx.quantity)} кг
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatNumber(tx.balanceAfter)} кг
+                      {formatNumber(tx.balanceAfter || 0)} кг
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(tx.averageCostAfter)}
+                      {formatCurrency(tx.averageCostAfter || 0)}
                     </TableCell>
                   </TableRow>
                 ))}

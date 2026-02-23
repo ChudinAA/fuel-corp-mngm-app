@@ -12,7 +12,8 @@ import { EquipmentMovementTable } from "./components/equipment-movement-table";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function EquipmentMovementPage() {
-  const [editingMovement, setEditingMovement] = useState<EquipmentMovement | null>(null);
+  const [editingMovement, setEditingMovement] =
+    useState<EquipmentMovement | null>(null);
   const [isCopy, setIsCopy] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
@@ -21,10 +22,6 @@ export default function EquipmentMovementPage() {
 
   const { data: warehouses } = useQuery<Warehouse[]>({
     queryKey: ["/api/warehouses"],
-  });
-
-  const { data: equipments } = useQuery<Equipment[]>({
-    queryKey: ["/api/equipment"],
   });
 
   const deleteMutation = useMutation({
@@ -72,7 +69,6 @@ export default function EquipmentMovementPage() {
 
       <EquipmentMovementDialog
         warehouses={warehouses || []}
-        equipments={equipments || []}
         editMovement={editingMovement}
         isCopy={isCopy}
         open={isDialogOpen}

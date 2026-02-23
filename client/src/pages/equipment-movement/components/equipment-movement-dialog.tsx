@@ -236,7 +236,10 @@ export function EquipmentMovementDialog({
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment-movement"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouses-equipment"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/warehouses-equipment"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       toast({
         title: variables.isDraft
           ? "Черновик сохранен"

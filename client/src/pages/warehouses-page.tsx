@@ -12,6 +12,7 @@ import { WarehouseCard } from "./warehouses/components/warehouse-card";
 import { AddWarehouseDialog } from "./warehouses/components/add-warehouse-dialog";
 import { WarehouseDetailsDialog } from "./warehouses/components/warehouse-details-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { EQUIPMENT_TYPE } from "@shared/constants";
 
 export default function WarehousesPage() {
   const [search, setSearch] = useState("");
@@ -31,7 +32,9 @@ export default function WarehousesPage() {
 
   const filteredWarehouses =
     warehouses?.filter((w) => {
-      const matchesSearch = w.name.toLowerCase().includes(search.toLowerCase());
+      const matchesSearch =
+        w.equipmentType === EQUIPMENT_TYPE.COMMON &&
+        w.name.toLowerCase().includes(search.toLowerCase());
       return matchesSearch;
     }) || [];
 
@@ -111,7 +114,9 @@ export default function WarehousesPage() {
           <Card>
             <CardContent className="py-12 text-center">
               <Warehouse className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">Нет складов для отображения</p>
+              <p className="text-muted-foreground">
+                Нет складов для отображения
+              </p>
               <p className="text-sm text-muted-foreground mt-1">
                 Добавьте первый склад для начала работы
               </p>
