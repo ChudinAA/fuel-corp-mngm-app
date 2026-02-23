@@ -65,7 +65,6 @@ import { Equipment } from "@shared/schema";
 
 export function EquipmentMovementDialog({
   warehouses,
-  // equipments,
   editMovement,
   isCopy,
   open,
@@ -113,15 +112,19 @@ export function EquipmentMovementDialog({
 
   // Auto-fill logic for TZA -> Warehouse
   useEffect(() => {
+    const defaultLikWarehouse = likWarehouses[0];
     if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZA_TO_STORAGE) {
-      const defaultLikWarehouse = likWarehouses[0];
       if (defaultLikWarehouse && !watchToWarehouseId) {
         form.setValue("toWarehouseId", defaultLikWarehouse.id);
       }
+    } else if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA) {
+      if (defaultLikWarehouse && !watchFromWarehouseId) {
+        form.setValue("fromWarehouseId", defaultLikWarehouse.id);
+      }
     }
-  }, [watchMovementType, likWarehouses, watchToWarehouseId, form]);
+  }, [watchMovementType, likWarehouses, watchFromWarehouseId, watchToWarehouseId, form]);
 
-  const { data: fromEquipments = [] } = useQuery<Equipment[]>({
+  const { data: likEquipments = [] } = useQuery<Equipment[]>({
     queryKey: ["/api/warehouses", watchFromWarehouseId || watchToWarehouseId, "equipment"],
     queryFn: async () => {
       const warehouseId = watchFromWarehouseId || watchToWarehouseId;
@@ -138,14 +141,12 @@ export function EquipmentMovementDialog({
   useEffect(() => {
     if (
       watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZA_TO_STORAGE &&
-      fromEquipments.length > 0 &&
+      likEquipments.length > 0 &&
       !watchFromEquipmentId
     ) {
-      form.setValue("fromEquipmentId", fromEquipments[0].id);
+      form.setValue("fromEquipmentId", likEquipments[0].id);
     }
-  }, [watchMovementType, fromEquipments, watchFromEquipmentId, form]);
-
-  const toEquipments = fromEquipments;
+  }, [watchMovementType, likEquipments, watchFromEquipmentId, form]);
 
   useEffect(() => {
     if (editMovement) {
@@ -204,10 +205,7 @@ export function EquipmentMovementDialog({
       watchKg,
       inputMode,
       warehouses,
-      equipments:
-        watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA
-          ? toEquipments
-          : fromEquipments,
+      equipments: likEquipments,
     });
 
   const likBalance = useLikBalance({
@@ -217,10 +215,7 @@ export function EquipmentMovementDialog({
     watchFromEquipmentId,
     kgNum,
     warehouses,
-    equipments:
-      watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA
-        ? toEquipments
-        : fromEquipments,
+    equipments: likEquipments,
     isEditing,
     initialQuantityKg: isEditing
       ? parseFloat(editMovement?.quantityKg || "0")
@@ -298,10 +293,6 @@ export function EquipmentMovementDialog({
       onOpenChange(true);
     }
   };
-
-  const likWarehouses = warehouses.filter(
-    (w) => w.equipmentType === EQUIPMENT_TYPE.LIK,
-  );
 
   return (
     <>
@@ -438,7 +429,7 @@ export function EquipmentMovementDialog({
                       control={form.control}
                       name="fromWarehouseId"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem key={`fromWh-${watchMovementType}`}>
                           <FormLabel>Склад</FormLabel>
                           <Combobox
                             options={likWarehouses.map((w) => ({
@@ -458,10 +449,10 @@ export function EquipmentMovementDialog({
                       control={form.control}
                       name="fromEquipmentId"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem key={`fromEq-${watchMovementType}`}>
                           <FormLabel>ТЗА</FormLabel>
                           <Combobox
-                            options={fromEquipments.map((e) => ({
+                            options={likEquipments.map((e) => ({
                               label: e.name,
                               value: e.id,
                             }))}
@@ -499,7 +490,7 @@ export function EquipmentMovementDialog({
                       control={form.control}
                       name="toWarehouseId"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem key={`toWh-${watchMovementType}`}>
                           <FormLabel>Склад</FormLabel>
                           <Combobox
                             options={likWarehouses.map((w) => ({
@@ -519,10 +510,10 @@ export function EquipmentMovementDialog({
                       control={form.control}
                       name="toEquipmentId"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem key={`toEq-${watchMovementType}`}>
                           <FormLabel>ТЗА</FormLabel>
                           <Combobox
-                            options={toEquipments.map((e) => ({
+                            options={likEquipments.map((e) => ({
                               label: e.name,
                               value: e.id,
                             }))}

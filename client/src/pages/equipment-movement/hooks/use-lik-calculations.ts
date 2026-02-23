@@ -17,7 +17,6 @@ interface UseLikCalculationsProps {
   inputMode: "liters" | "kg";
   warehouses: any[];
   equipments: any[];
-  watchToWarehouseId?: string | null;
 }
 
 export function useLikCalculations({
@@ -35,7 +34,10 @@ export function useLikCalculations({
 }: UseLikCalculationsProps) {
   const calculatedKg = useMemo(() => {
     if (inputMode === "liters" && watchLiters && watchDensity) {
-      return calculateKgFromLiters(parseFloat(watchLiters), parseFloat(watchDensity));
+      return calculateKgFromLiters(
+        parseFloat(watchLiters),
+        parseFloat(watchDensity),
+      );
     }
     return watchKg ? parseFloat(watchKg) : 0;
   }, [inputMode, watchLiters, watchDensity, watchKg]);
@@ -43,22 +45,28 @@ export function useLikCalculations({
   const kgNum = calculatedKg || 0;
 
   const averageCost = useMemo(() => {
-    let sourceWarehouse = null;
-
-    if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA && watchFromWarehouseId) {
-      sourceWarehouse = warehouses.find((w) => w.id === watchFromWarehouseId);
-    } else if (watchFromEquipmentId) {
-      const tza = equipments.find((e) => e.id === watchFromEquipmentId);
-      if (tza && tza.warehouseId) {
-        sourceWarehouse = warehouses.find((w) => w.id === tza.warehouseId);
-      }
-    }
+    const warehouseId =
+      watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA
+        ? watchFromWarehouseId
+        : watchToWarehouseId;
+    const sourceWarehouse = warehouses.find((w) => w.id === warehouseId);
 
     if (!sourceWarehouse) return 0;
 
-    const costStr = watchProductType === PRODUCT_TYPE.PVKJ ? sourceWarehouse.pvkjAverageCost : sourceWarehouse.keroseneAverageCost;
+    const costStr =
+      watchProductType === PRODUCT_TYPE.PVKJ
+        ? sourceWarehouse.pvkjAverageCost
+        : sourceWarehouse.averageCost;
     return costStr ? parseFloat(costStr) : 0;
-  }, [watchMovementType, watchFromWarehouseId, watchToWarehouseId, watchFromEquipmentId, watchProductType, warehouses, equipments]);
+  }, [
+    watchMovementType,
+    watchFromWarehouseId,
+    watchToWarehouseId,
+    watchFromEquipmentId,
+    watchProductType,
+    warehouses,
+    equipments,
+  ]);
 
   const purchaseAmount = kgNum * averageCost;
 

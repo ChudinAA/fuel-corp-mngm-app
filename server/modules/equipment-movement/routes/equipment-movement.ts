@@ -57,6 +57,8 @@ export function registerEquipmentMovementRoutes(app: Express) {
 
         const data = insertEquipmentMovementSchema.parse({
           ...body,
+          totalCost: body.totalCost?.toString(),
+          costPerKg: body.costPerKg?.toString(),
           createdById: req.session.userId,
         });
         const record = await (storage as any).equipmentMovement.createMovement(data);
@@ -93,10 +95,14 @@ export function registerEquipmentMovementRoutes(app: Express) {
           if (body[field] === "") body[field] = null;
         });
 
-        const item = await (storage as any).equipmentMovement.updateMovement(req.params.id, {
+        const data = insertEquipmentMovementSchema.parse({
           ...body,
+          totalCost: body.totalCost?.toString(),
+          costPerKg: body.costPerKg?.toString(),
           updatedById: req.session.userId,
         });
+
+        const item = await (storage as any).equipmentMovement.updateMovement(req.params.id, data);
         if (!item) return res.status(404).json({ message: "Запись не найдена" });
         res.json(item);
       } catch (error) {
