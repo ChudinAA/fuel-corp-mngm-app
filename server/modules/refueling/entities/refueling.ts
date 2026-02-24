@@ -16,7 +16,12 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
-import { bases, suppliers } from "@shared/schema";
+import {
+  bases,
+  equipments,
+  equipmentTransactions,
+  suppliers,
+} from "@shared/schema";
 import { customers } from "@shared/schema";
 import {
   warehouses,
@@ -46,6 +51,10 @@ export const aircraftRefueling = pgTable(
     warehouseId: uuid("warehouse_id").references(() => warehouses.id),
     transactionId: uuid("transaction_id").references(
       () => warehouseTransactions.id,
+    ),
+    equipmentId: uuid("equipment_id").references(() => equipments.id),
+    equipmentTransactionId: uuid("equipment_transaction_id").references(
+      () => equipmentTransactions.id,
     ),
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),

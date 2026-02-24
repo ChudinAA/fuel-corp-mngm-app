@@ -35,3 +35,10 @@ CREATE INDEX IF NOT EXISTS "eq_movement_from_wh_idx" ON "equipment_movement" ("f
 CREATE INDEX IF NOT EXISTS "eq_movement_to_wh_idx" ON "equipment_movement" ("to_warehouse_id");
 CREATE INDEX IF NOT EXISTS "eq_movement_from_eq_idx" ON "equipment_movement" ("from_equipment_id");
 CREATE INDEX IF NOT EXISTS "eq_movement_to_eq_idx" ON "equipment_movement" ("to_equipment_id");
+
+-- Add equipment_id and equipment_transaction_id to aircarft_refueling
+ALTER TABLE "aircraft_refueling" ADD COLUMN IF NOT EXISTS "equipment_id" uuid REFERENCES "equipments"("id");
+ALTER TABLE "aircraft_refueling" ADD COLUMN IF NOT EXISTS "equipment_transaction_id" uuid REFERENCES "equipment_transactions"("id");
+
+-- Add equipment_type to aircraft_refueling
+ALTER TABLE "aircraft_refueling" ADD COLUMN "equipment_type" text DEFAULT 'common' NOT NULL;
