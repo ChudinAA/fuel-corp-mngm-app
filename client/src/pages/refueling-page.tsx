@@ -6,14 +6,15 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Maximize2 } from "lucide-react";
 import type { AircraftRefueling } from "@shared/schema";
-import { EquipmentType } from "@shared/constants";
+import { EQUIPMENT_TYPE, EquipmentType } from "@shared/constants";
 import { AddRefuelingDialog } from "./refueling/components/add-refueling-dialog";
+import { useAuth } from "@/hooks/use-auth";
 
 interface RefuelingPageProps {
   equipmentType?: EquipmentType;
 }
 
-export default function RefuelingPage({ equipmentType = "common" }: RefuelingPageProps) {
+export default function RefuelingPage({ equipmentType = EQUIPMENT_TYPE.COMMON }: RefuelingPageProps) {
   const [editingRefueling, setEditingRefueling] = useState<AircraftRefueling | null>(null);
   const [isCopy, setIsCopy] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -56,10 +57,10 @@ export default function RefuelingPage({ equipmentType = "common" }: RefuelingPag
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">
-            {equipmentType === "lik" ? "Заправка ВС ЛИК" : "Заправка ВС"}
+            {equipmentType === EQUIPMENT_TYPE.LIK ? "Заправка ВС ЛИК" : "Заправка ВС"}
           </h1>
           <p className="text-muted-foreground">
-            {equipmentType === "lik" ? "Учет заправок ЛИК" : "Учет заправок воздушных судов"}
+            {equipmentType === EQUIPMENT_TYPE.LIK ? "Учет заправок ЛИК" : "Учет заправок воздушных судов"}
           </p>
         </div>
         {hasPermission("refueling", "create") && (

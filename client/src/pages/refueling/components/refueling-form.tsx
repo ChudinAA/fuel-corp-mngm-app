@@ -1,8 +1,19 @@
-import { useState, useEffect, forwardRef, useImperativeHandle, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+  useRef,
+} from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PRODUCT_TYPE, BASE_TYPE, COUNTERPARTY_TYPE } from "@shared/constants";
+import {
+  PRODUCT_TYPE,
+  BASE_TYPE,
+  COUNTERPARTY_TYPE,
+  EQUIPMENT_TYPE,
+} from "@shared/constants";
 import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -43,69 +54,76 @@ export interface RefuelingFormHandle {
   isDirty: () => boolean;
 }
 
-export const RefuelingForm = forwardRef<RefuelingFormHandle, RefuelingFormProps>(
-  ({ onSuccess, editData, equipmentType = "common" }, ref) => {
-    const { toast } = useToast();
-    const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
-    const [selectedBasis, setSelectedBasis] = useState<string>("");
-    const [customerBasis, setCustomerBasis] = useState<string>("");
-    const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
-      useState<string>("");
-    const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
-    const [initialQuantityKg, setInitialQuantityKg] = useState<number>(0);
-    const [initialWarehouseBalance, setInitialWarehouseBalance] =
-      useState<number>(0); // State for initial balance
-    const [isDataInitialized, setIsDataInitialized] = useState(false);
-    
-    // Новые состояния для ЛИК
-    const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>(editData?.equipmentId || "");
-    const [equipmentBalance, setEquipmentBalance] = useState<number>(0);
-    const isEditing = !!editData && !!editData.id;
+export const RefuelingForm = forwardRef<
+  RefuelingFormHandle,
+  RefuelingFormProps
+>(({ onSuccess, editData, equipmentType = EQUIPMENT_TYPE.COMMON }, ref) => {
+  const { toast } = useToast();
+  const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
+  const [selectedBasis, setSelectedBasis] = useState<string>("");
+  const [customerBasis, setCustomerBasis] = useState<string>("");
+  const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
+    useState<string>("");
+  const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
+  const [initialQuantityKg, setInitialQuantityKg] = useState<number>(0);
+  const [initialWarehouseBalance, setInitialWarehouseBalance] =
+    useState<number>(0); // State for initial balance
+  const [isDataInitialized, setIsDataInitialized] = useState(false);
 
-    const initialValuesRef = useRef<RefuelingFormData | null>(null);
+  // Новые состояния для ЛИК
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>(
+    editData?.equipmentId || "",
+  );
+  const [equipmentBalance, setEquipmentBalance] = useState<number>(0);
+  const isEditing = !!editData && !!editData.id;
 
-    const form = useForm<RefuelingFormData>({
-      resolver: zodResolver(refuelingFormSchema),
-      defaultValues: {
-        refuelingDate: editData ? new Date(editData.refuelingDate) : new Date(),
-        productType: editData?.productType || PRODUCT_TYPE.KEROSENE,
-        aircraftNumber: editData?.aircraftNumber || "",
-        orderNumber: editData?.orderNumber || "",
-        supplierId: "",
-        buyerId: "",
-        warehouseId: "",
-        inputMode: (editData?.inputMode as "liters" | "kg") || "liters",
-        quantityLiters: editData?.quantityLiters?.toString() || "",
-        density: editData?.density?.toString() || "",
-        quantityKg: editData?.quantityKg?.toString() || "",
-        notes: editData?.notes || "",
-        isApproxVolume: editData?.isApproxVolume || false,
-        isPriceRecharge: editData?.isPriceRecharge || false,
-        isDraft: editData?.isDraft || false,
-        selectedPurchasePriceId: "",
-        selectedSalePriceId: "",
-        basis: editData?.basis || "",
-        customerBasis: editData?.customerBasis || "",
-      },
-    });
+  const initialValuesRef = useRef<RefuelingFormData | null>(null);
 
-    useImperativeHandle(ref, () => ({
-      getFormState: () => ({
-        supplierId: form.getValues("supplierId") || "",
-        buyerId: form.getValues("buyerId") || "",
-      }),
-      saveAsDraft: async () => {
-        const values = form.getValues();
-        await createMutation.mutateAsync({ ...values, isDraft: true });
-      },
-      isDirty: () => {
-        if (!initialValuesRef.current) return form.formState.isDirty;
-        const currentValues = form.getValues();
-        return JSON.stringify(currentValues) !== JSON.stringify(initialValuesRef.current);
-      },
-    }));
+  const form = useForm<RefuelingFormData>({
+    resolver: zodResolver(refuelingFormSchema),
+    defaultValues: {
+      refuelingDate: editData ? new Date(editData.refuelingDate) : new Date(),
+      productType: editData?.productType || PRODUCT_TYPE.KEROSENE,
+      aircraftNumber: editData?.aircraftNumber || "",
+      orderNumber: editData?.orderNumber || "",
+      supplierId: "",
+      buyerId: "",
+      warehouseId: "",
+      inputMode: (editData?.inputMode as "liters" | "kg") || "liters",
+      quantityLiters: editData?.quantityLiters?.toString() || "",
+      density: editData?.density?.toString() || "",
+      quantityKg: editData?.quantityKg?.toString() || "",
+      notes: editData?.notes || "",
+      isApproxVolume: editData?.isApproxVolume || false,
+      isPriceRecharge: editData?.isPriceRecharge || false,
+      isDraft: editData?.isDraft || false,
+      selectedPurchasePriceId: "",
+      selectedSalePriceId: "",
+      basis: editData?.basis || "",
+      customerBasis: editData?.customerBasis || "",
+    },
+  });
 
-    const { data: suppliers } = useQuery<Supplier[]>({
+  useImperativeHandle(ref, () => ({
+    getFormState: () => ({
+      supplierId: form.getValues("supplierId") || "",
+      buyerId: form.getValues("buyerId") || "",
+    }),
+    saveAsDraft: async () => {
+      const values = form.getValues();
+      await createMutation.mutateAsync({ ...values, isDraft: true });
+    },
+    isDirty: () => {
+      if (!initialValuesRef.current) return form.formState.isDirty;
+      const currentValues = form.getValues();
+      return (
+        JSON.stringify(currentValues) !==
+        JSON.stringify(initialValuesRef.current)
+      );
+    },
+  }));
+
+  const { data: suppliers } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
   });
 
@@ -311,7 +329,9 @@ export const RefuelingForm = forwardRef<RefuelingFormHandle, RefuelingFormProps>
         supplierId: supplier?.id || "",
         buyerId: buyer?.id || "",
         warehouseId: editData.warehouseId || "",
-        inputMode: (editData.quantityLiters ? "liters" : "kg") as "liters" | "kg",
+        inputMode: (editData.quantityLiters ? "liters" : "kg") as
+          | "liters"
+          | "kg",
         quantityLiters: editData.quantityLiters?.toString() || "",
         density: editData.density?.toString() || "",
         quantityKg: editData.quantityKg?.toString() || "",

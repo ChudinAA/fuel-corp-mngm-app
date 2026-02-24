@@ -3,8 +3,9 @@ import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { AircraftRefueling } from "@shared/schema";
+import { EQUIPMENT_TYPE } from "@shared/constants";
 
-export function useRefuelingTable({ equipmentType = "common" }: { equipmentType?: string } = {}) {
+export function useRefuelingTable({ equipmentType = EQUIPMENT_TYPE.COMMON }: { equipmentType?: string } = {}) {
   const [search, setSearch] = useState("");
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>(
     {},

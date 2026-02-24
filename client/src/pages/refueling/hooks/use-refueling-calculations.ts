@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { Supplier, Warehouse, Price } from "@shared/schema";
-import { PRODUCT_TYPE } from "@shared/constants";
+import { EQUIPMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useQuantityCalculation } from "../../shared/hooks/use-quantity-calculation";
 import { usePriceExtraction } from "../../shared/hooks/use-price-extraction";
 import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
@@ -51,7 +51,7 @@ export function useRefuelingCalculations({
   initialWarehouseBalance,
   refuelingDate,
   isPriceRecharge = false,
-  equipmentType = "common",
+  equipmentType = EQUIPMENT_TYPE.COMMON,
   selectedEquipmentId,
   equipmentBalance = 0,
 }: UseRefuelingCalculationsProps) {
@@ -166,7 +166,7 @@ export function useRefuelingCalculations({
     
     const remaining = availableBalance - finalKg;
 
-    if (equipmentType === "lik") {
+    if (equipmentType === EQUIPMENT_TYPE.LIK) {
       if (!selectedEquipmentId) {
         return { status: "error", message: "Выберите ТЗА" };
       }

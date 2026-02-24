@@ -50,7 +50,7 @@ import {
   getProductLabel,
 } from "../utils";
 import { useRefuelingTable } from "../hooks/use-refueling-table";
-import { PRODUCT_TYPE } from "@shared/constants";
+import { EQUIPMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 import { AuditPanel } from "@/components/audit-panel";
 import { ExportButton } from "@/components/export/export-button";
@@ -121,7 +121,7 @@ export function RefuelingTable({
   onEdit,
   onCopy,
   onDelete,
-  equipmentType = "common",
+  equipmentType = EQUIPMENT_TYPE.COMMON,
 }: RefuelingTableProps) {
   const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
   const { hasPermission } = useAuth();

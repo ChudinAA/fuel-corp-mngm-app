@@ -18,13 +18,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RefuelingForm, type RefuelingFormHandle } from "./refueling-form";
 import type { AddRefuelingDialogProps } from "../types";
+import { EQUIPMENT_TYPE } from "@shared/constants";
 
 export function AddRefuelingDialog({
   isOpen,
   onClose,
   editRefueling,
   isCopy,
-  equipmentType = "common",
+  equipmentType = EQUIPMENT_TYPE.COMMON,
 }: AddRefuelingDialogProps & { equipmentType?: string }) {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const formRef = useRef<RefuelingFormHandle>(null);
