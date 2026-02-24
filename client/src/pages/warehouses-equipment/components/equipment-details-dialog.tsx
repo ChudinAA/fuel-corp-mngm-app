@@ -148,7 +148,7 @@ export function EquipmentDetailsDialog({
                     <TableCell
                       className={`text-right font-medium ${isReceipt(tx.transactionType) ? "text-green-600" : "text-red-600"}`}
                     >
-                      {isReceipt(tx.transactionType) ? "+" : "-"}
+                      {isReceipt(tx.transactionType) ? "+" : ""}
                       {formatNumber(tx.quantity)} кг
                     </TableCell>
                     <TableCell className="text-right">
