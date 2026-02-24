@@ -237,7 +237,7 @@ export class EquipmentTransactionService {
     const [equipment] = await tx
       .select()
       .from(equipments)
-      .where(eq(equipment.id, transaction.equipmentId))
+      .where(eq(equipments.id, transaction.equipmentId))
       .for("update");
 
     if (!equipment) throw new Error("Оборудование не найдено");

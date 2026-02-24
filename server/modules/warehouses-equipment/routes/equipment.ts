@@ -45,7 +45,7 @@ export function registerEquipmentRoutes(app: Router) {
 
       const data = await equipmentStorage.createEquipment({
         ...parsed.data,
-        createdById: req.session.userId,
+        createdById: req.session.userId as string,
       });
 
       if (warehouseId) {
@@ -69,7 +69,7 @@ export function registerEquipmentRoutes(app: Router) {
     async (req, res) => {
       const data = await equipmentStorage.updateEquipment(req.params.id, {
         ...req.body,
-        updatedById: req.session.userId,
+        updatedById: req.session.userId as string,
       });
       if (!data) return res.status(404).json({ message: "Not found" });
       res.json(data);
@@ -86,7 +86,7 @@ export function registerEquipmentRoutes(app: Router) {
       getOldData: async (req) => equipmentStorage.getEquipment(req.params.id),
     }),
     async (req, res) => {
-      await equipmentStorage.deleteEquipment(req.params.id, req.session.userId);
+      await equipmentStorage.deleteEquipment(req.params.id, req.session.userId as string);
       res.status(204).end();
     },
   );
