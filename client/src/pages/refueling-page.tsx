@@ -6,11 +6,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Maximize2 } from "lucide-react";
 import type { AircraftRefueling } from "@shared/schema";
+import { EquipmentType } from "@shared/constants";
 import { AddRefuelingDialog } from "./refueling/components/add-refueling-dialog";
-import { RefuelingTable } from "./refueling/components/refueling-table";
-import { useAuth } from "@/hooks/use-auth";
 
-export default function RefuelingPage() {
+interface RefuelingPageProps {
+  equipmentType?: EquipmentType;
+}
+
+export default function RefuelingPage({ equipmentType = "common" }: RefuelingPageProps) {
   const [editingRefueling, setEditingRefueling] = useState<AircraftRefueling | null>(null);
   const [isCopy, setIsCopy] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -43,7 +46,7 @@ export default function RefuelingPage() {
   };
 
   const handleRefuelingDeleted = () => {
-    queryClient.invalidateQueries({ queryKey: ["/api/refueling"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/refueling", equipmentType] });
     queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
     queryClient.invalidateQueries({ queryKey: ["/api/refueling/contract-used"] });
   };
@@ -52,9 +55,11 @@ export default function RefuelingPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Заправка ВС</h1>
+          <h1 className="text-2xl font-semibold">
+            {equipmentType === "lik" ? "Заправка ВС ЛИК" : "Заправка ВС"}
+          </h1>
           <p className="text-muted-foreground">
-            Учет заправок воздушных судов
+            {equipmentType === "lik" ? "Учет заправок ЛИК" : "Учет заправок воздушных судов"}
           </p>
         </div>
         {hasPermission("refueling", "create") && (
@@ -71,6 +76,7 @@ export default function RefuelingPage() {
           onClose={handleCloseDialog}
           editRefueling={editingRefueling}
           isCopy={isCopy}
+          equipmentType={equipmentType}
         />
 
         <Card>
@@ -98,6 +104,7 @@ export default function RefuelingPage() {
                     onEdit={handleEditRefueling}
                     onCopy={handleCopyRefueling}
                     onDelete={handleRefuelingDeleted}
+                    equipmentType={equipmentType}
                   />
                 </ScrollArea>
               </DialogContent>
@@ -108,6 +115,7 @@ export default function RefuelingPage() {
               onEdit={handleEditRefueling}
               onCopy={handleCopyRefueling}
               onDelete={handleRefuelingDeleted}
+              equipmentType={equipmentType}
             />
           </CardContent>
         </Card>

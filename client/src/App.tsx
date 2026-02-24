@@ -342,7 +342,7 @@ function Router() {
 
       <Route path="/lik/refueling">
         <AppLayout>
-          <ProtectedRoute component={InDevelopmentPage} />
+          <ProtectedRoute component={() => <RefuelingPage equipmentType="lik" />} />
         </AppLayout>
       </Route>
 

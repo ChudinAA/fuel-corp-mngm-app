@@ -56,6 +56,7 @@ export const aircraftRefueling = pgTable(
     equipmentTransactionId: uuid("equipment_transaction_id").references(
       () => equipmentTransactions.id,
     ),
+    equipmentType: text("equipment_type").default("common"),
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
     quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
@@ -104,6 +105,9 @@ export const aircraftRefueling = pgTable(
     warehouseIdx: index("aircraft_refueling_warehouse_idx").on(
       table.warehouseId,
     ),
+    equipmentIdx: index("aircraft_refueling_equipment_idx").on(
+      table.equipmentId,
+    ),
   }),
 );
 
@@ -127,6 +131,14 @@ export const aircraftRefuelingRelations = relations(
     transaction: one(warehouseTransactions, {
       fields: [aircraftRefueling.transactionId],
       references: [warehouseTransactions.id],
+    }),
+    equipment: one(equipments, {
+      fields: [aircraftRefueling.equipmentId],
+      references: [equipments.id],
+    }),
+    equipmentTransaction: one(equipmentTransactions, {
+      fields: [aircraftRefueling.equipmentTransactionId],
+      references: [equipmentTransactions.id],
     }),
     purchasePrice: one(prices, {
       fields: [aircraftRefueling.purchasePriceId],
