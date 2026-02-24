@@ -114,12 +114,14 @@ interface RefuelingTableProps {
   onEdit: (refueling: any) => void;
   onCopy: (refueling: any) => void;
   onDelete?: () => void;
+  equipmentType?: string;
 }
 
 export function RefuelingTable({
   onEdit,
   onCopy,
   onDelete,
+  equipmentType = "common",
 }: RefuelingTableProps) {
   const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
   const { hasPermission } = useAuth();
@@ -135,7 +137,7 @@ export function RefuelingTable({
     setColumnFilters,
     deleteMutation,
     handleDelete,
-  } = useRefuelingTable() as any;
+  } = useRefuelingTable({ equipmentType }) as any;
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dealToDelete, setDealToDelete] = useState<any>(null);

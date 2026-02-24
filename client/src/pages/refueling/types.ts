@@ -4,6 +4,7 @@ import type { AircraftRefueling } from "@shared/schema";
 export interface RefuelingFormProps {
   onSuccess?: () => void;
   editData?: AircraftRefueling | null;
+  equipmentType?: string;
 }
 
 export interface AddRefuelingDialogProps {
@@ -11,6 +12,7 @@ export interface AddRefuelingDialogProps {
   onClose: () => void;
   editRefueling: AircraftRefueling | null;
   isCopy?: boolean;
+  equipmentType?: string;
 }
 
 export interface CalculatedFieldProps {

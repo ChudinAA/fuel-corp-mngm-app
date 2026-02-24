@@ -4,7 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { AircraftRefueling } from "@shared/schema";
 
-export function useRefuelingTable() {
+export function useRefuelingTable({ equipmentType = "common" }: { equipmentType?: string } = {}) {
   const [search, setSearch] = useState("");
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>(
     {},
@@ -19,11 +19,11 @@ export function useRefuelingTable() {
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
-      queryKey: [`/api/refueling`, { search, columnFilters }],
+      queryKey: [`/api/refueling`, { search, columnFilters, equipmentType }],
       queryFn: async ({ pageParam = 0 }) => {
         const res = await apiRequest(
           "GET",
-          `/api/refueling?offset=${pageParam}&pageSize=${pageSize}${search ? `&search=${search}` : ""}${filterParams}`,
+          `/api/refueling?offset=${pageParam}&pageSize=${pageSize}&equipmentType=${equipmentType}${search ? `&search=${search}` : ""}${filterParams}`,
         );
         return res.json();
       },

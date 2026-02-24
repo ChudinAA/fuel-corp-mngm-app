@@ -24,7 +24,8 @@ export function AddRefuelingDialog({
   onClose,
   editRefueling,
   isCopy,
-}: AddRefuelingDialogProps) {
+  equipmentType = "common",
+}: AddRefuelingDialogProps & { equipmentType?: string }) {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const formRef = useRef<RefuelingFormHandle>(null);
 
@@ -87,6 +88,7 @@ export function AddRefuelingDialog({
           <RefuelingForm
             ref={formRef}
             onSuccess={onClose}
+            equipmentType={equipmentType}
             editData={
               editRefueling
                 ? isCopy

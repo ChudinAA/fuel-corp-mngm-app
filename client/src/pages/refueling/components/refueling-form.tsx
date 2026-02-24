@@ -44,7 +44,7 @@ export interface RefuelingFormHandle {
 }
 
 export const RefuelingForm = forwardRef<RefuelingFormHandle, RefuelingFormProps>(
-  ({ onSuccess, editData }, ref) => {
+  ({ onSuccess, editData, equipmentType = "common" }, ref) => {
     const { toast } = useToast();
     const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
     const [selectedBasis, setSelectedBasis] = useState<string>("");
@@ -56,6 +56,10 @@ export const RefuelingForm = forwardRef<RefuelingFormHandle, RefuelingFormProps>
     const [initialWarehouseBalance, setInitialWarehouseBalance] =
       useState<number>(0); // State for initial balance
     const [isDataInitialized, setIsDataInitialized] = useState(false);
+    
+    // Новые состояния для ЛИК
+    const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>(editData?.equipmentId || "");
+    const [equipmentBalance, setEquipmentBalance] = useState<number>(0);
     const isEditing = !!editData && !!editData.id;
 
     const initialValuesRef = useRef<RefuelingFormData | null>(null);

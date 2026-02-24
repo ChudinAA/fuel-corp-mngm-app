@@ -27,6 +27,9 @@ interface UseRefuelingCalculationsProps {
   initialWarehouseBalance: number;
   refuelingDate?: Date;
   isPriceRecharge?: boolean;
+  equipmentType?: string;
+  selectedEquipmentId?: string;
+  equipmentBalance?: number;
 }
 
 export function useRefuelingCalculations({
@@ -48,6 +51,9 @@ export function useRefuelingCalculations({
   initialWarehouseBalance,
   refuelingDate,
   isPriceRecharge = false,
+  equipmentType = "common",
+  selectedEquipmentId,
+  equipmentBalance = 0,
 }: UseRefuelingCalculationsProps) {
   const { calculatedKg, finalKg } = useQuantityCalculation({
     inputMode,
@@ -159,6 +165,22 @@ export function useRefuelingCalculations({
     }
     
     const remaining = availableBalance - finalKg;
+
+    if (equipmentType === "lik") {
+      if (!selectedEquipmentId) {
+        return { status: "error", message: "Выберите ТЗА" };
+      }
+      const likBalance = isEditing ? equipmentBalance + initialQuantityKg : equipmentBalance;
+      const likRemaining = likBalance - finalKg;
+      if (likRemaining >= 0) {
+        return { status: "ok", message: `ОК: ${likRemaining.toFixed(2)} кг` };
+      } else {
+        return {
+          status: "error",
+          message: `Недостаточно на ТЗА! Доступно: ${likBalance.toFixed(2)} кг`,
+        };
+      }
+    }
 
     if (remaining >= 0) {
       return { status: "ok", message: `ОК: ${remaining.toFixed(2)} кг` };
