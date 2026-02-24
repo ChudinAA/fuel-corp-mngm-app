@@ -68,8 +68,14 @@ export function AddEquipmentDialog({
       const res = await apiRequest(method, url, data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses-equipment"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses/equipment-map"] });
+      if (variables.warehouseId) {
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/warehouses/${variables.warehouseId}/equipment`] 
+        });
+      }
       toast({
         title: isEditing ? "Обновлено" : "Создано",
         description: "Средство заправки успешно сохранено",

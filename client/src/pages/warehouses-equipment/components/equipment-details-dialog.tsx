@@ -71,24 +71,24 @@ export function EquipmentDetailsDialog({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Текущий остаток
+                Керосин: {formatNumber(equipment.currentBalance || "0")} кг
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-xl font-semibold">
-                {formatNumber(equipment.currentBalance || "0")} кг
+              <p className="text-sm text-muted-foreground">
+                Себест: {formatCurrency(equipment.averageCost || "0")}/кг
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Средняя стоимость
+                ПВКЖ: {formatNumber(equipment.pvkjBalance || "0")} кг
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-xl font-semibold">
-                {formatCurrency(equipment.averageCost || "0")}/кг
+              <p className="text-sm text-muted-foreground">
+                Себест: {formatCurrency(equipment.pvkjAverageCost || "0")}/кг
               </p>
             </CardContent>
           </Card>
@@ -109,6 +109,7 @@ export function EquipmentDetailsDialog({
                 <TableRow>
                   <TableHead>Дата</TableHead>
                   <TableHead>Тип</TableHead>
+                  <TableHead>Продукт</TableHead>
                   <TableHead className="text-right">Кол-во</TableHead>
                   <TableHead className="text-right">Остаток после</TableHead>
                   <TableHead className="text-right">Себест. после</TableHead>
@@ -137,6 +138,17 @@ export function EquipmentDetailsDialog({
                             : "Расход"}
                         </span>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {tx.productType === "pvkj" ? (
+                        <Badge variant="outline" className="text-[10px] border-amber-200 text-amber-700 bg-amber-50">
+                          ПВКЖ
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px]">
+                          Керосин
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell
                       className={`text-right font-medium ${isReceipt(tx.transactionType) ? "text-green-600" : "text-red-600"}`}

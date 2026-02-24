@@ -41,10 +41,24 @@ export default function EquipmentsPage() {
     queryKey: ["/api/warehouses"],
   });
 
-  const { data: equipments, isLoading: equipmentsLoading } = useQuery<
-    Equipment[]
+  const { data: equipmentsByWarehouse, isLoading: equipmentsLoading } = useQuery<
+    Record<string, Equipment[]>
   >({
-    queryKey: ["/api/warehouses-equipment"],
+    queryKey: ["/api/warehouses/equipment-map"],
+    queryFn: async () => {
+      if (!likWarehouses.length) return {};
+      const results: Record<string, Equipment[]> = {};
+      await Promise.all(
+        likWarehouses.map(async (w) => {
+          const res = await fetch(`/api/warehouses/${w.id}/equipment`);
+          if (res.ok) {
+            results[w.id] = await res.json();
+          }
+        })
+      );
+      return results;
+    },
+    enabled: likWarehouses.length > 0,
   });
 
   // Filter for LIK mother warehouses
@@ -136,13 +150,14 @@ export default function EquipmentsPage() {
                     onEdit={() => {}} // LIK editing usually from warehouses page
                     onViewDetails={handleViewWarehouseDetails}
                   />
-                  {equipments?.map((eq) => (
+                  {equipmentsByWarehouse?.[warehouse.id]?.map((eq) => (
                     <EquipmentCard
                       key={eq.id}
                       equipment={eq}
                       isLinked={true}
                       onEdit={handleEdit}
                       onViewDetails={handleViewDetails}
+                      warehouseId={warehouse.id}
                     />
                   ))}
                 </div>

@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import {
   Pencil,
@@ -27,6 +28,7 @@ interface EquipmentCardProps {
   onEdit: (equipment: Equipment) => void;
   onViewDetails: (equipment: Equipment) => void;
   isLinked?: boolean;
+  warehouseId?: string;
 }
 
 export function EquipmentCard({
@@ -34,11 +36,14 @@ export function EquipmentCard({
   onEdit,
   onViewDetails,
   isLinked = false,
+  warehouseId,
 }: EquipmentCardProps) {
   const { toast } = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const balance = parseFloat(equipment.currentBalance || "0");
   const cost = parseFloat(equipment.averageCost || "0");
+  const pvkjBalance = parseFloat(equipment.pvkjBalance || "0");
+  const pvkjCost = parseFloat(equipment.pvkjAverageCost || "0");
   const isInactive = equipment.isActive === "false";
   const { hasPermission } = useAuth();
 
@@ -49,6 +54,10 @@ export function EquipmentCard({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses-equipment"] });
+      if (warehouseId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/warehouses/${warehouseId}/equipment`] });
+        queryClient.invalidateQueries({ queryKey: ["/api/warehouses/equipment-map"] });
+      }
       toast({ title: "Оборудование удалено", description: "Запись успешно удалена" });
     },
     onError: () => {
@@ -124,6 +133,28 @@ export function EquipmentCard({
             </span>
           </div>
         </div>
+
+        {pvkjBalance > 0 && (
+          <>
+            <Separator />
+            <div className="space-y-2">
+              <div className="flex items-baseline justify-between">
+                <span className="text-2xl font-semibold">
+                  {formatNumber(pvkjBalance)} кг
+                </span>
+                <Badge variant="outline" className="text-xs border-amber-200 text-amber-700 bg-amber-50">
+                  ПВКЖ
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>
+                  Себестоимость:{" "}
+                  <span className="font-medium">{formatCurrency(pvkjCost)}/кг</span>
+                </span>
+              </div>
+            </div>
+          </>
+        )}
       </CardContent>
 
       <DeleteConfirmDialog
