@@ -6,8 +6,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Maximize2 } from "lucide-react";
 import type { AircraftRefueling } from "@shared/schema";
-import { EQUIPMENT_TYPE, EquipmentType } from "@shared/constants";
+import { EQUIPMENT_TYPE } from "@shared/constants";
+import type { EquipmentType } from "@shared/constants";
 import { AddRefuelingDialog } from "./refueling/components/add-refueling-dialog";
+import { RefuelingTable } from "./refueling/components/refueling-table";
 import { useAuth } from "@/hooks/use-auth";
 
 interface RefuelingPageProps {

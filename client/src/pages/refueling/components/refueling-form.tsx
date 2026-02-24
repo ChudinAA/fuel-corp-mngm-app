@@ -205,6 +205,9 @@ export const RefuelingForm = forwardRef<
     initialWarehouseBalance,
     refuelingDate: watchRefuelingDate,
     isPriceRecharge: watchIsPriceRecharge,
+    equipmentType,
+    selectedEquipmentId,
+    equipmentBalance,
   });
 
   const {
@@ -443,6 +446,8 @@ export const RefuelingForm = forwardRef<
         saleAmount: saleAmount !== null ? saleAmount : null,
         agentFee: agentFee !== null ? agentFee : null,
         profit: profit !== null ? profit : null,
+        equipmentType: equipmentType,
+        equipmentId: equipmentType === "lik" ? selectedEquipmentId || null : null,
       };
       const res = await apiRequest("POST", "/api/refueling", payload);
       return res.json();
@@ -529,6 +534,8 @@ export const RefuelingForm = forwardRef<
         saleAmount: saleAmount !== null ? saleAmount : null,
         agentFee: agentFee !== null ? agentFee : null,
         profit: profit !== null ? profit : null,
+        equipmentType: equipmentType,
+        equipmentId: equipmentType === "lik" ? selectedEquipmentId || null : null,
       };
       const res = await apiRequest(
         "PATCH",
@@ -693,6 +700,13 @@ export const RefuelingForm = forwardRef<
             setCustomerBasis={setCustomerBasis}
             availableBases={availableBases}
             allBases={allBases}
+            equipmentType={equipmentType}
+            selectedEquipmentId={selectedEquipmentId}
+            setSelectedEquipmentId={setSelectedEquipmentId}
+            equipmentBalance={equipmentBalance}
+            setEquipmentBalance={setEquipmentBalance}
+            supplierWarehouse={supplierWarehouse}
+            warehouses={warehouses}
           />
 
           <VolumeInputSection
@@ -721,6 +735,7 @@ export const RefuelingForm = forwardRef<
             supplierContractVolumeStatus={supplierContractVolumeStatus}
             productType={watchProductType}
             selectedSupplier={selectedSupplier}
+            equipmentType={equipmentType}
           />
 
           <div className="grid gap-4 md:grid-cols-2 items-end">

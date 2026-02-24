@@ -25,11 +25,12 @@ import { CalendarIcon, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { UseFormReturn } from "react-hook-form";
-import type { Supplier, Customer, Base } from "@shared/schema";
+import type { Supplier, Customer, Base, Warehouse, Equipment } from "@shared/schema";
 import type { RefuelingFormData } from "../schemas";
 import { PRODUCT_TYPES } from "../constants";
-import { BASE_TYPE, CUSTOMER_MODULE } from "@shared/constants";
-import { useState } from "react";
+import { BASE_TYPE, CUSTOMER_MODULE, EQUIPMENT_TYPE } from "@shared/constants";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AddSupplierDialog } from "@/pages/counterparties/suppliers-dialog";
 import { AddCustomerDialog } from "@/pages/counterparties/customers-dialog";
 import { useAuth } from "@/hooks/use-auth";
@@ -47,6 +48,13 @@ interface RefuelingMainFieldsProps {
   setCustomerBasis: (value: string) => void;
   availableBases: Base[];
   allBases: Base[] | undefined;
+  equipmentType?: string;
+  selectedEquipmentId?: string;
+  setSelectedEquipmentId?: (value: string) => void;
+  equipmentBalance?: number;
+  setEquipmentBalance?: (value: number) => void;
+  supplierWarehouse?: Warehouse;
+  warehouses?: Warehouse[];
 }
 
 export function RefuelingMainFields({
@@ -61,8 +69,16 @@ export function RefuelingMainFields({
   setCustomerBasis,
   availableBases,
   allBases,
+  equipmentType = EQUIPMENT_TYPE.COMMON,
+  selectedEquipmentId = "",
+  setSelectedEquipmentId,
+  equipmentBalance = 0,
+  setEquipmentBalance,
+  supplierWarehouse,
+  warehouses,
 }: RefuelingMainFieldsProps) {
   const { hasPermission } = useAuth();
+  const isLik = equipmentType === EQUIPMENT_TYPE.LIK;
 
   const [addCustomerOpen, setAddCustomerOpen] = useState(false);
   const [addSupplierOpen, setAddSupplierOpen] = useState(false);
@@ -77,6 +93,29 @@ export function RefuelingMainFields({
 
   const refuelingBases =
     allBases?.filter((b) => b.baseType === BASE_TYPE.REFUELING) || [];
+
+  const likWarehouse = isLik
+    ? warehouses?.find((w) => w.equipmentType === EQUIPMENT_TYPE.LIK)
+    : undefined;
+
+  const { data: likEquipmentList } = useQuery<Equipment[]>({
+    queryKey: ["/api/warehouses", likWarehouse?.id, "equipment"],
+    queryFn: async () => {
+      const res = await fetch(`/api/warehouses/${likWarehouse!.id}/equipment`);
+      if (!res.ok) throw new Error("Failed to fetch equipment");
+      return res.json();
+    },
+    enabled: isLik && !!likWarehouse?.id,
+  });
+
+  useEffect(() => {
+    if (isLik && selectedEquipmentId && likEquipmentList) {
+      const equipment = likEquipmentList.find((e) => e.id === selectedEquipmentId);
+      if (equipment) {
+        setEquipmentBalance?.(parseFloat(equipment.currentBalance || "0"));
+      }
+    }
+  }, [selectedEquipmentId, likEquipmentList, isLik]);
 
   return (
     <>
@@ -332,7 +371,35 @@ export function RefuelingMainFields({
           )}
         />
 
-        {selectedBuyer ? (
+        {isLik ? (
+          <div className="space-y-2 col-span-1 min-w-0">
+            <label className="text-sm font-medium flex items-center h-6">
+              Средство Заправки
+            </label>
+            <Combobox
+              options={(likEquipmentList || []).map((eq) => ({
+                value: eq.id,
+                label: `${eq.name} (${parseFloat(eq.currentBalance || "0").toFixed(2)} кг)`,
+              }))}
+              value={selectedEquipmentId}
+              onValueChange={(value) => {
+                setSelectedEquipmentId?.(value);
+                const equipment = likEquipmentList?.find((e) => e.id === value);
+                if (equipment) {
+                  setEquipmentBalance?.(parseFloat(equipment.currentBalance || "0"));
+                }
+              }}
+              placeholder="Выберите ТЗА"
+              className="w-full"
+              dataTestId="select-equipment-tza"
+            />
+            {selectedEquipmentId && (
+              <p className="text-xs text-muted-foreground">
+                Баланс ТЗА: {equipmentBalance.toFixed(2)} кг
+              </p>
+            )}
+          </div>
+        ) : selectedBuyer ? (
           <FormField
             control={form.control}
             name="customerBasisId"

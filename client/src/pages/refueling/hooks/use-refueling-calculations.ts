@@ -141,9 +141,30 @@ export function useRefuelingCalculations({
     status: "ok" | "warning" | "error";
     message: string;
   } => {
-    // Для услуги заправки склад не проверяем
     if (productType === PRODUCT_TYPE.SERVICE) {
       return { status: "ok", message: "—" };
+    }
+
+    if (equipmentType === EQUIPMENT_TYPE.LIK) {
+      if (!selectedEquipmentId) {
+        if (finalKg <= 0) {
+          return { status: "ok", message: "Выберите ТЗА" };
+        }
+        return { status: "error", message: "Выберите ТЗА" };
+      }
+      const likBalance = isEditing ? equipmentBalance + initialQuantityKg : equipmentBalance;
+      if (finalKg <= 0) {
+        return { status: "ok", message: `${formatNumber(likBalance)} кг` };
+      }
+      const likRemaining = likBalance - finalKg;
+      if (likRemaining >= 0) {
+        return { status: "ok", message: `ОК: ${likRemaining.toFixed(2)} кг` };
+      } else {
+        return {
+          status: "error",
+          message: `Недостаточно на ТЗА! Доступно: ${likBalance.toFixed(2)} кг`,
+        };
+      }
     }
 
     if (!isWarehouseSupplier) {
@@ -165,22 +186,6 @@ export function useRefuelingCalculations({
     }
     
     const remaining = availableBalance - finalKg;
-
-    if (equipmentType === EQUIPMENT_TYPE.LIK) {
-      if (!selectedEquipmentId) {
-        return { status: "error", message: "Выберите ТЗА" };
-      }
-      const likBalance = isEditing ? equipmentBalance + initialQuantityKg : equipmentBalance;
-      const likRemaining = likBalance - finalKg;
-      if (likRemaining >= 0) {
-        return { status: "ok", message: `ОК: ${likRemaining.toFixed(2)} кг` };
-      } else {
-        return {
-          status: "error",
-          message: `Недостаточно на ТЗА! Доступно: ${likBalance.toFixed(2)} кг`,
-        };
-      }
-    }
 
     if (remaining >= 0) {
       return { status: "ok", message: `ОК: ${remaining.toFixed(2)} кг` };

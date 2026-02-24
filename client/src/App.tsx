@@ -146,6 +146,10 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function LikRefuelingPage() {
+  return <RefuelingPage equipmentType="lik" />;
+}
+
 function Router() {
   const [, setLocation] = useLocation();
 
@@ -342,7 +346,7 @@ function Router() {
 
       <Route path="/lik/refueling">
         <AppLayout>
-          <ProtectedRoute component={() => <RefuelingPage equipmentType="lik" />} />
+          <ProtectedRoute component={LikRefuelingPage} />
         </AppLayout>
       </Route>
 

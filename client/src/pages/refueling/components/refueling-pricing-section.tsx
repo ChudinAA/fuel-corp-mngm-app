@@ -50,6 +50,7 @@ interface RefuelingPricingSectionProps {
   };
   productType: string;
   selectedSupplier: Supplier | undefined;
+  equipmentType?: string;
 }
 
 export function RefuelingPricingSection({
@@ -72,6 +73,7 @@ export function RefuelingPricingSection({
   supplierContractVolumeStatus,
   productType,
   selectedSupplier,
+  equipmentType = "common",
 }: RefuelingPricingSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -363,7 +365,7 @@ export function RefuelingPricingSection({
 
       <div className="grid gap-2 md:grid-cols-4">
         <CalculatedField
-          label="Объем на складе"
+          label={equipmentType === "lik" ? "Объем на ТЗА" : "Объем на складе"}
           value={warehouseStatus.message}
           status={warehouseStatus.status}
         />
