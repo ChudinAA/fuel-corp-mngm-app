@@ -97,7 +97,7 @@ export function EquipmentMovementTable({
           </Button>
           <Button
             variant="outline"
-            onClick={onShowHistory}
+            onClick={() => onShowHistory()}
             title="Аудит всех перемещений"
           >
             <History className="h-4 w-4 mr-2" />

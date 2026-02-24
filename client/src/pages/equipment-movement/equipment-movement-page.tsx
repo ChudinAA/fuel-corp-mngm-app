@@ -48,13 +48,24 @@ export default function EquipmentMovementPage() {
     name: "Все перемещения ЛИК",
   });
 
-  // ... inside handleEditClick or similar
   const handleShowHistory = (id?: string, name?: string) => {
     setAuditEntity({
       id: id || "",
       name: name || "Все перемещения ЛИК",
     });
     setAuditPanelOpen(true);
+  };
+
+  const handleEditClick = (movement: any) => {
+    setEditingMovement(movement);
+    setIsCopy(!!movement && !movement.id);
+    setIsDialogOpen(true);
+  };
+
+  const handleOpenDialog = () => {
+    setEditingMovement(null);
+    setIsCopy(false);
+    setIsDialogOpen(true);
   };
 
   return (

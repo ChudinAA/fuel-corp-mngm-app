@@ -227,11 +227,15 @@ export function EquipmentMovementDialog({
     warehouses,
     equipments: likEquipments,
     isEditing,
-    initialQuantityKg: isEditing
+    initialQuantityKg: isEditing || isCopy
       ? parseFloat(editMovement?.quantityKg || "0")
       : 0,
     watchMovementDate,
   });
+
+  const initialQuantityKg = isEditing || isCopy
+    ? parseFloat(editMovement?.quantityKg || "0")
+    : 0;
 
   const mutation = useMutation({
     mutationFn: async ({
