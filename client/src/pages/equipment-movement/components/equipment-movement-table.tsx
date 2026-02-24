@@ -29,13 +29,13 @@ export function EquipmentMovementTable({
   onDelete,
   onShowHistory,
 }: EquipmentMovementTableProps) {
-  const { 
-    movements, 
-    isLoading, 
-    search, 
-    setSearch, 
-    columnFilters, 
-    setColumnFilters 
+  const {
+    movements,
+    isLoading,
+    search,
+    setSearch,
+    columnFilters,
+    setColumnFilters,
   } = useEquipmentMovementTable();
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -51,12 +51,15 @@ export function EquipmentMovementTable({
     movements.forEach((m: any) => {
       let val = "";
       if (column === "productType") val = m.productType;
-      else if (column === "from") val = m.fromEquipmentName || m.fromWarehouseName;
+      else if (column === "from")
+        val = m.fromEquipmentName || m.fromWarehouseName;
       else if (column === "to") val = m.toEquipmentName || m.toWarehouseName;
-      
+
       if (val) options.add(val);
     });
-    return Array.from(options).sort().map(opt => ({ label: opt, value: opt }));
+    return Array.from(options)
+      .sort()
+      .map((opt) => ({ label: opt, value: opt }));
   };
 
   if (isLoading) {
@@ -122,7 +125,9 @@ export function EquipmentMovementTable({
                       { label: "ПВКЖ", value: PRODUCT_TYPE.PVKJ },
                     ]}
                     selectedValues={columnFilters["productType"] || []}
-                    onUpdate={(values) => handleFilterUpdate("productType", values)}
+                    onUpdate={(values) =>
+                      handleFilterUpdate("productType", values)
+                    }
                   />
                 </div>
               </TableHead>
@@ -216,13 +221,17 @@ export function EquipmentMovementTable({
                           id: "copy",
                           label: "Создать копию",
                           icon: Copy,
-                          onClick: () => onEdit({ ...item, id: undefined, isDraft: true }),
+                          onClick: () => onEdit({ ...item, id: undefined }),
                         },
                         {
                           id: "history",
                           label: "История изменений",
                           icon: History,
-                          onClick: () => onShowHistory(item.id, `Перемещение от ${formatDate(item.movementDate)}`),
+                          onClick: () =>
+                            onShowHistory(
+                              item.id,
+                              `Перемещение от ${formatDate(item.movementDate)}`,
+                            ),
                         },
                         {
                           id: "delete",

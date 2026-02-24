@@ -17,7 +17,7 @@ export function useEquipmentMovementTable() {
     queryFn: async ({ pageParam = 1 }) => {
       const params = new URLSearchParams({
         page: pageParam.toString(),
-        limit: "50",
+        limit: "20",
         search,
         ...Object.fromEntries(
           Object.entries(columnFilters).map(([k, v]) => [k, v.join(",")])
@@ -28,7 +28,7 @@ export function useEquipmentMovementTable() {
       return {
         data: json.items || [],
         total: json.total || 0,
-        hasMore: (json.items?.length || 0) === 50,
+        hasMore: (json.items?.length || 0) === 20,
         nextPage: pageParam + 1
       };
     },
