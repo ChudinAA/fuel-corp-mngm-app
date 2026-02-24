@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { equipments, equipmentTransactions } from "../entities/equipment";
-import { TRANSACTION_TYPE } from "@shared/constants";
+import { TRANSACTION_TYPE, PRODUCT_TYPE } from "@shared/constants";
 
 export class EquipmentTransactionService {
   static async createTransactionAndUpdateEquipment(
@@ -23,8 +23,9 @@ export class EquipmentTransactionService {
 
     if (!equipment) throw new Error("Оборудование не найдено");
 
-    const oldBalance = parseFloat(equipment.currentBalance || "0");
-    const oldAvgCost = parseFloat(equipment.averageCost || "0");
+    const isPvkj = productType === PRODUCT_TYPE.PVKJ;
+    const oldBalance = parseFloat((isPvkj ? equipment.pvkjBalance : equipment.currentBalance) || "0");
+    const oldAvgCost = parseFloat((isPvkj ? equipment.pvkjAverageCost : equipment.averageCost) || "0");
     let newBalance = oldBalance;
     let newAvgCost = oldAvgCost;
 
@@ -60,14 +61,22 @@ export class EquipmentTransactionService {
       })
       .returning();
 
+    const updateData: any = {
+      updatedAt: sql`NOW()`,
+      updatedById: createdById,
+    };
+
+    if (isPvkj) {
+      updateData.pvkjBalance = newBalance.toFixed(2);
+      updateData.pvkjAverageCost = newAvgCost.toFixed(4);
+    } else {
+      updateData.currentBalance = newBalance.toFixed(2);
+      updateData.averageCost = newAvgCost.toFixed(4);
+    }
+
     await tx
       .update(equipments)
-      .set({
-        currentBalance: newBalance.toFixed(2),
-        averageCost: newAvgCost.toFixed(4),
-        updatedAt: sql`NOW()`,
-        updatedById: createdById,
-      })
+      .set(updateData)
       .where(eq(equipments.id, equipmentId));
 
     return transaction;
@@ -100,11 +109,12 @@ export class EquipmentTransactionService {
 
     if (!equipment) throw new Error("Оборудование не найдено");
 
+    const isPvkj = productType === PRODUCT_TYPE.PVKJ;
     const isReceipt =
       transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
       transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
 
-    const currentBalance = parseFloat(equipment.currentBalance || "0");
+    const currentBalance = parseFloat((isPvkj ? equipment.pvkjBalance : equipment.currentBalance) || "0");
 
     let balanceBeforeOldOperation: number;
     let newBalance: number;
@@ -127,13 +137,20 @@ export class EquipmentTransactionService {
       })
       .where(eq(equipmentTransactions.id, transactionId));
 
+    const updateData: any = {
+      updatedAt: sql`NOW()`,
+      updatedById: userId,
+    };
+
+    if (isPvkj) {
+      updateData.pvkjBalance = newBalance.toFixed(2);
+    } else {
+      updateData.currentBalance = newBalance.toFixed(2);
+    }
+
     await tx
       .update(equipments)
-      .set({
-        currentBalance: newBalance.toFixed(2),
-        updatedAt: sql`NOW()`,
-        updatedById: userId,
-      })
+      .set(updateData)
       .where(eq(equipments.id, equipmentId));
 
     return newBalance;
@@ -160,32 +177,40 @@ export class EquipmentTransactionService {
 
     if (!equipment) throw new Error("Оборудование не найдено");
 
+    const isPvkj = transaction.productType === PRODUCT_TYPE.PVKJ;
     const qty = Math.abs(parseFloat(transaction.quantity));
     const isReceipt =
       transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
       transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
 
-    let newBalance = parseFloat(equipment.currentBalance || "0");
-    let newAvgCost = parseFloat(equipment.averageCost || "0");
+    let newBalance = parseFloat((isPvkj ? equipment.pvkjBalance : equipment.currentBalance) || "0");
+    let newAvgCost = parseFloat((isPvkj ? equipment.pvkjAverageCost : equipment.averageCost) || "0");
 
     if (isReceipt) {
       newBalance = Math.max(0, newBalance - qty);
       if (newBalance > 0) {
-        // Упрощенный возврат средней цены из транзакции
         newAvgCost = parseFloat(transaction.averageCostBefore || "0");
       }
     } else {
       newBalance += qty;
     }
 
+    const updateData: any = {
+      updatedAt: sql`NOW()`,
+      updatedById: userId,
+    };
+
+    if (isPvkj) {
+      updateData.pvkjBalance = newBalance.toFixed(2);
+      updateData.pvkjAverageCost = newAvgCost.toFixed(4);
+    } else {
+      updateData.currentBalance = newBalance.toFixed(2);
+      updateData.averageCost = newAvgCost.toFixed(4);
+    }
+
     await tx
       .update(equipments)
-      .set({
-        currentBalance: newBalance.toFixed(2),
-        averageCost: newAvgCost.toFixed(4),
-        updatedAt: sql`NOW()`,
-        updatedById: userId,
-      })
+      .set(updateData)
       .where(eq(equipments.id, equipment.id));
 
     await tx
@@ -212,22 +237,30 @@ export class EquipmentTransactionService {
     const [equipment] = await tx
       .select()
       .from(equipments)
-      .where(eq(equipments.id, transaction.equipmentId))
+      .where(eq(equipment.id, transaction.equipmentId))
       .for("update");
 
     if (!equipment) throw new Error("Оборудование не найдено");
 
+    const isPvkj = transaction.productType === PRODUCT_TYPE.PVKJ;
     const quantity = parseFloat(transaction.quantity);
-    const currentBalance = parseFloat(equipment.currentBalance || "0");
+    const currentBalance = parseFloat((isPvkj ? equipment.pvkjBalance : equipment.currentBalance) || "0");
     const newBalance = Math.max(0, currentBalance + quantity);
+
+    const updateData: any = {
+      updatedAt: sql`NOW()`,
+      updatedById: userId,
+    };
+
+    if (isPvkj) {
+      updateData.pvkjBalance = newBalance.toFixed(2);
+    } else {
+      updateData.currentBalance = newBalance.toFixed(2);
+    }
 
     await tx
       .update(equipments)
-      .set({
-        currentBalance: newBalance.toFixed(2),
-        updatedAt: sql`NOW()`,
-        updatedById: userId,
-      })
+      .set(updateData)
       .where(eq(equipments.id, equipment.id));
 
     await tx
