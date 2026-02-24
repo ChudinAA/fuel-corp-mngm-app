@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS "equipments" (
         "name" text NOT NULL,
         "current_balance" numeric(15, 2) DEFAULT '0',
         "average_cost" numeric(12, 4) DEFAULT '0',
+        "pvkj_balance" numeric(15, 2) DEFAULT '0',
+        "pvkj_average_cost" numeric(12, 4) DEFAULT '0',
         "is_active" text DEFAULT 'true',
         "created_at" timestamp DEFAULT now(),
         "updated_at" timestamp,

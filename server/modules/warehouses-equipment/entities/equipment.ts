@@ -24,6 +24,13 @@ export const equipments = pgTable(
     averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default(
       "0",
     ),
+    pvkjBalance: decimal("pvkj_balance", { precision: 15, scale: 2 }).default(
+      "0",
+    ),
+    pvkjAverageCost: decimal("pvkj_average_cost", {
+      precision: 12,
+      scale: 4,
+    }).default("0"),
     isActive: text("is_active").default("true"),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
