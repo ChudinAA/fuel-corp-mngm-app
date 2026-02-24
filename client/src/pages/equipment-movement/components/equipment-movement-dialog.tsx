@@ -122,10 +122,20 @@ export function EquipmentMovementDialog({
         form.setValue("fromWarehouseId", defaultLikWarehouse.id);
       }
     }
-  }, [watchMovementType, likWarehouses, watchFromWarehouseId, watchToWarehouseId, form]);
+  }, [
+    watchMovementType,
+    likWarehouses,
+    watchFromWarehouseId,
+    watchToWarehouseId,
+    form,
+  ]);
 
   const { data: likEquipments = [] } = useQuery<Equipment[]>({
-    queryKey: ["/api/warehouses", watchFromWarehouseId || watchToWarehouseId, "equipment"],
+    queryKey: [
+      "/api/warehouses",
+      watchFromWarehouseId || watchToWarehouseId,
+      "equipment",
+    ],
     queryFn: async () => {
       const warehouseId = watchFromWarehouseId || watchToWarehouseId;
       const res = await apiRequest(
@@ -255,7 +265,7 @@ export function EquipmentMovementDialog({
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/equipment-movement"] });
       queryClient.invalidateQueries({
-        queryKey: ["/api/warehouses-equipment"],
+        queryKey: ["/api/warehouses/equipment-map"],
       });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       toast({
@@ -332,7 +342,9 @@ export function EquipmentMovementDialog({
                             >
                               <CalendarIcon className="mr-2 h-4 w-4" />
                               {field.value ? (
-                                format(field.value, "dd.MM.yyyy", { locale: ru })
+                                format(field.value, "dd.MM.yyyy", {
+                                  locale: ru,
+                                })
                               ) : (
                                 <span>Выберите дату</span>
                               )}
@@ -366,10 +378,14 @@ export function EquipmentMovementDialog({
                           if (val === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA) {
                             form.setValue("toWarehouseId", "");
                             form.setValue("fromEquipmentId", "");
-                          } else if (val === EQUIPMENT_MOVEMENT_TYPE.TZA_TO_STORAGE) {
+                          } else if (
+                            val === EQUIPMENT_MOVEMENT_TYPE.TZA_TO_STORAGE
+                          ) {
                             form.setValue("fromWarehouseId", "");
                             form.setValue("toEquipmentId", "");
-                          } else if (val === EQUIPMENT_MOVEMENT_TYPE.TZA_TO_TZA) {
+                          } else if (
+                            val === EQUIPMENT_MOVEMENT_TYPE.TZA_TO_TZA
+                          ) {
                             form.setValue("fromWarehouseId", "");
                             form.setValue("toWarehouseId", "");
                           }
@@ -621,7 +637,7 @@ export function EquipmentMovementDialog({
                   ) : (
                     <Plus className="mr-2 h-4 w-4" />
                   )}
-                  {isEditing ? "Обновить" : "Создать перемещение"}
+                  {isEditing && !editMovement.isDraft ? "Обновить" : "Создать перемещение"}
                 </Button>
               </div>
             </form>
