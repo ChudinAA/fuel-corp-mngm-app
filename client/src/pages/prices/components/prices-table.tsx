@@ -62,6 +62,7 @@ import {
   getProductTypeLabel,
 } from "../utils";
 import { cn } from "@/lib/utils";
+import { ProductTypeBadge } from "@/components/product-type-badge";
 
 const PAGE_SIZE = 20;
 
@@ -100,7 +101,10 @@ export function PricesTable({
       },
     });
 
-  const prices = useMemo(() => data?.pages.flatMap((page: any) => page.data) || [], [data]);
+  const prices = useMemo(
+    () => data?.pages.flatMap((page: any) => page.data) || [],
+    [data],
+  );
 
   const { data: allContractors } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
@@ -143,8 +147,8 @@ export function PricesTable({
           price.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE
             ? "ОПТ"
             : price.counterpartyType === COUNTERPARTY_TYPE.REFUELING
-            ? "Заправка ВС"
-            : "Заправка ВС Зарубеж";
+              ? "Заправка ВС"
+              : "Заправка ВС Зарубеж";
         values.set(label, price.counterpartyType);
       } else if (key === "counterpartyRole") {
         const label =
@@ -453,9 +457,9 @@ export function PricesTable({
                           COUNTERPARTY_TYPE.WHOLESALE
                             ? "ОПТ"
                             : price.counterpartyType ===
-                              COUNTERPARTY_TYPE.REFUELING
-                            ? "Заправка ВС"
-                            : "Заправка ВС Зарубеж"}
+                                COUNTERPARTY_TYPE.REFUELING
+                              ? "Заправка ВС"
+                              : "Заправка ВС Зарубеж"}
                         </TooltipContent>
                       </Tooltip>
                     </TableCell>
@@ -487,23 +491,13 @@ export function PricesTable({
                     </TableCell>
                     <TableCell>{price.basis || "—"}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          price.productType === PRODUCT_TYPE.KEROSENE
-                            ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"
-                            : price.productType === PRODUCT_TYPE.PVKJ
-                              ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30"
-                              : price.productType === PRODUCT_TYPE.SERVICE
-                                ? "bg-green-50/50 dark:bg-green-950/20 border-green-200/30 dark:border-green-800/30"
-                                : ""
-                        }
-                      >
-                        {getProductTypeLabel(price.productType)}
-                      </Badge>
+                      <ProductTypeBadge type={price.productType} />
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {getPriceDisplay(price.priceValues, price.currencySymbol || "₽")}
+                      {getPriceDisplay(
+                        price.priceValues,
+                        price.currencySymbol || "₽",
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       {price.volume

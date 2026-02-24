@@ -9,7 +9,15 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Copy, Trash2, Loader2, Search, Filter, History } from "lucide-react";
+import {
+  Pencil,
+  Copy,
+  Trash2,
+  Loader2,
+  Search,
+  Filter,
+  History,
+} from "lucide-react";
 import { formatCurrency, formatNumber } from "../utils";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -34,6 +42,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuditPanel } from "@/components/audit-panel";
 import { ExportButton } from "@/components/export/export-button";
+import { ProductTypeBadge } from "@/components/product-type-badge";
 
 interface RefuelingAbroadTableProps {
   onEdit: (item: any) => void;
@@ -180,12 +189,16 @@ export function RefuelingAbroadTable({
                     title="Продукт"
                     options={getUniqueOptions("productType")}
                     selectedValues={columnFilters["productType"] || []}
-                    onUpdate={(values) => handleFilterUpdate("productType", values)}
+                    onUpdate={(values) =>
+                      handleFilterUpdate("productType", values)
+                    }
                     dataTestId="filter-product"
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-[13px] font-semibold p-2">Аэроп. / Борт</TableHead>
+              <TableHead className="text-[13px] font-semibold p-2">
+                Аэроп. / Борт
+              </TableHead>
               <TableHead className="text-[13px] font-semibold p-2">
                 <div className="flex items-center justify-between gap-1">
                   <span>Поставщик</span>
@@ -193,7 +206,9 @@ export function RefuelingAbroadTable({
                     title="Поставщик"
                     options={getUniqueOptions("supplier.name")}
                     selectedValues={columnFilters["supplier"] || []}
-                    onUpdate={(values) => handleFilterUpdate("supplier", values)}
+                    onUpdate={(values) =>
+                      handleFilterUpdate("supplier", values)
+                    }
                     dataTestId="filter-supplier"
                   />
                 </div>
@@ -210,18 +225,31 @@ export function RefuelingAbroadTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-center text-[13px] font-semibold p-2">Посредники</TableHead>
-              <TableHead className="text-right text-[13px] font-semibold p-2 w-[100px]">Объем (Л / Пл / КГ)</TableHead>
-              <TableHead className="text-right text-[13px] font-semibold p-2 w-[130px]">Закупка (Цена / Сумма)</TableHead>
-              <TableHead className="text-right text-[13px] font-semibold p-2 w-[130px]">Продажа (Цена / Сумма)</TableHead>
-              <TableHead className="text-right text-[13px] font-semibold p-2 w-[120px]">Комиссия / Прибыль</TableHead>
+              <TableHead className="text-center text-[13px] font-semibold p-2">
+                Посредники
+              </TableHead>
+              <TableHead className="text-right text-[13px] font-semibold p-2 w-[100px]">
+                Объем (Л / Пл / КГ)
+              </TableHead>
+              <TableHead className="text-right text-[13px] font-semibold p-2 w-[130px]">
+                Закупка (Цена / Сумма)
+              </TableHead>
+              <TableHead className="text-right text-[13px] font-semibold p-2 w-[130px]">
+                Продажа (Цена / Сумма)
+              </TableHead>
+              <TableHead className="text-right text-[13px] font-semibold p-2 w-[120px]">
+                Комиссия / Прибыль
+              </TableHead>
               <TableHead className="w-8 p-1"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-12 text-muted-foreground">
+                <TableCell
+                  colSpan={11}
+                  className="text-center py-12 text-muted-foreground"
+                >
                   Нет записей для отображения.
                 </TableCell>
               </TableRow>
@@ -248,36 +276,32 @@ export function RefuelingAbroadTable({
                     </div>
                   </TableCell>
                   <TableCell className="text-[11px] md:text-sm p-1 md:p-2">
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "whitespace-nowrap inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold",
-                        item.productType === PRODUCT_TYPE.KEROSENE
-                          ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"
-                          : item.productType === PRODUCT_TYPE.PVKJ
-                            ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30"
-                            : "",
-                      )}
-                    >
-                      {getProductLabel(item.productType)}
-                    </Badge>
+                    <ProductTypeBadge type={item.productType} />
                   </TableCell>
                   <TableCell className="p-2">
                     <div className="flex flex-col">
                       <span className="font-mono">{item.airport || "—"}</span>
-                      <span className="text-muted-foreground">{item.aircraftNumber || "—"}</span>
+                      <span className="text-muted-foreground">
+                        {item.aircraftNumber || "—"}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell className="p-2">
                     <div className="flex flex-col max-w-[120px]">
-                      <span className="truncate font-medium" title={item.supplier?.name}>
+                      <span
+                        className="truncate font-medium"
+                        title={item.supplier?.name}
+                      >
                         {item.supplier?.name || "—"}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell className="p-2">
                     <div className="flex flex-col max-w-[120px]">
-                      <span className="truncate font-medium" title={item.buyer?.name}>
+                      <span
+                        className="truncate font-medium"
+                        title={item.buyer?.name}
+                      >
                         {item.buyer?.name || "—"}
                       </span>
                     </div>
@@ -286,20 +310,30 @@ export function RefuelingAbroadTable({
                     <div className="flex flex-col gap-0.5 max-w-[180px]">
                       {item.intermediaries?.map((rel: any) => (
                         <div key={rel.id} className="text-[13px] leading-tight">
-                          <span className="font-medium">{rel.intermediary?.name}</span>
+                          <span className="font-medium">
+                            {rel.intermediary?.name}
+                          </span>
                           <span className="ml-1 text-blue-500">
                             {formatCurrency(rel.commissionUsd, "USD")}
                           </span>
                         </div>
                       ))}
-                      {(!item.intermediaries || item.intermediaries.length === 0) && "—"}
+                      {(!item.intermediaries ||
+                        item.intermediaries.length === 0) &&
+                        "—"}
                     </div>
                   </TableCell>
                   <TableCell className="p-2 text-right">
                     <div className="flex flex-col font-mono">
-                      <span className="text-muted-foreground">{formatNumber(item.quantityLiters)} л</span>
-                      <span className="text-[10px] text-muted-foreground">ρ: {item.density || "—"}</span>
-                      <span className="font-semibold">{formatNumber(item.quantityKg)} кг</span>
+                      <span className="text-muted-foreground">
+                        {formatNumber(item.quantityLiters)} л
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        ρ: {item.density || "—"}
+                      </span>
+                      <span className="font-semibold">
+                        {formatNumber(item.quantityKg)} кг
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell className="p-2 text-right">
@@ -320,13 +354,15 @@ export function RefuelingAbroadTable({
                   </TableCell>
                   <TableCell className="p-2 text-right">
                     <div className="flex flex-col font-mono">
-                      <span className="text-blue-500">{formatCurrency(item.intermediaryCommissionUsd, "USD")}</span>
+                      <span className="text-blue-500">
+                        {formatCurrency(item.intermediaryCommissionUsd, "USD")}
+                      </span>
                       <span
                         className={cn(
                           "font-semibold",
                           parseFloat(item.profitUsd || "0") < 0
                             ? "text-destructive"
-                            : "text-green-600"
+                            : "text-green-600",
                         )}
                       >
                         {formatCurrency(item.profitUsd, "USD")}

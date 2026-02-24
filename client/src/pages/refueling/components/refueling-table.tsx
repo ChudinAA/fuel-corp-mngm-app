@@ -57,6 +57,7 @@ import { ExportButton } from "@/components/export/export-button";
 import { cn } from "@/lib/utils";
 
 import { TableColumnFilter } from "@/components/ui/table-column-filter";
+import { ProductTypeBadge } from "@/components/product-type-badge";
 
 interface RefuelingDealActionsProps {
   deal: any;
@@ -382,19 +383,7 @@ export function RefuelingTable({
                     </div>
                   </TableCell>
                   <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "whitespace-nowrap inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold",
-                        deal.productType === PRODUCT_TYPE.KEROSENE
-                          ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"
-                          : deal.productType === PRODUCT_TYPE.PVKJ
-                            ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30"
-                            : "",
-                      )}
-                    >
-                      {getProductLabel(deal.productType)}
-                    </Badge>
+                    <ProductTypeBadge type={deal.productType} />
                   </TableCell>
                   <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
                     {deal.aircraftNumber || "—"}

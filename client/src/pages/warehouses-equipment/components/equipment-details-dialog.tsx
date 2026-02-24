@@ -25,7 +25,8 @@ import {
 import { Truck, ArrowUpCircle, ArrowDownCircle, Package } from "lucide-react";
 import type { Equipment, EquipmentTransaction } from "@shared/schema";
 import { formatNumber, formatCurrency } from "../../warehouses/utils";
-import { TRANSACTION_TYPE } from "@shared/constants";
+import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
+import { ProductTypeBadge } from "@/components/product-type-badge";
 
 interface EquipmentDetailsDialogProps {
   equipment: Equipment;
@@ -140,15 +141,9 @@ export function EquipmentDetailsDialog({
                       </div>
                     </TableCell>
                     <TableCell>
-                      {tx.productType === "pvkj" ? (
-                        <Badge variant="outline" className="text-[10px] border-amber-200 text-amber-700 bg-amber-50">
-                          ПВКЖ
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px]">
-                          Керосин
-                        </Badge>
-                      )}
+                      <ProductTypeBadge
+                        type={tx.productType || PRODUCT_TYPE.KEROSENE}
+                      />
                     </TableCell>
                     <TableCell
                       className={`text-right font-medium ${isReceipt(tx.transactionType) ? "text-green-600" : "text-red-600"}`}

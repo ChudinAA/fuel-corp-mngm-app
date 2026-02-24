@@ -38,6 +38,7 @@ import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { TableColumnFilter } from "@/components/ui/table-column-filter";
 import { useMovementTable } from "../hooks/use-movement-table";
 import { cn } from "@/lib/utils";
+import { ProductTypeBadge } from "@/components/product-type-badge";
 
 const formatNumberWithK = (value: string | number) => {
   const num = typeof value === "string" ? parseFloat(value) : value;
@@ -317,19 +318,9 @@ export function MovementTable({
                       </Badge>
                     </TableCell>
                     <TableCell className="py-2 px-1 md:px-2">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-[11px] md:text-xs px-2 py-0.5 h-6",
-                          item.productType === PRODUCT_TYPE.PVKJ
-                            ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30 text-purple-700 dark:text-purple-300"
-                            : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30 text-blue-700 dark:text-blue-300",
-                        )}
-                      >
-                        {getProductLabel(
-                          item.productType || PRODUCT_TYPE.KEROSENE,
-                        )}
-                      </Badge>
+                      <ProductTypeBadge
+                        type={item.productType || PRODUCT_TYPE.KEROSENE}
+                      />
                     </TableCell>
                     <TableCell className="text-xs md:text-sm py-3 px-2 md:px-4 truncate max-w-[140px]">
                       {item.fromName || "—"}

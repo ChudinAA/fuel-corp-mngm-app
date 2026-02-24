@@ -38,6 +38,7 @@ import type { WarehouseTransaction } from "../types";
 import { formatNumber, formatCurrency } from "../utils";
 import { BASE_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
+import { ProductTypeBadge } from "@/components/product-type-badge";
 
 interface WarehouseCardProps {
   warehouse: Warehouse;
@@ -64,7 +65,14 @@ export function WarehouseCard({
     queryKey: ["/api/bases"],
   });
 
-  const { data: monthStats = { income: 0, expense: 0, pvkjIncome: 0, pvkjExpense: 0 } } = useQuery<{ income: number; expense: number; pvkjIncome: number; pvkjExpense: number }>({
+  const {
+    data: monthStats = { income: 0, expense: 0, pvkjIncome: 0, pvkjExpense: 0 },
+  } = useQuery<{
+    income: number;
+    expense: number;
+    pvkjIncome: number;
+    pvkjExpense: number;
+  }>({
     queryKey: [`/api/warehouses/${warehouse.id}/monthly-stats`],
   });
 
@@ -197,9 +205,7 @@ export function WarehouseCard({
             <span className="text-2xl font-semibold">
               {formatNumber(balance)} кг
             </span>
-            <Badge variant="outline" className="text-xs">
-              Керосин
-            </Badge>
+            <ProductTypeBadge type={PRODUCT_TYPE.KEROSENE} />
           </div>
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>
@@ -234,9 +240,7 @@ export function WarehouseCard({
               <span className="text-lg font-semibold text-muted-foreground">
                 {formatNumber(pvkjBalance)} кг
               </span>
-              <Badge variant="secondary" className="text-xs">
-                ПВКЖ
-              </Badge>
+              <ProductTypeBadge type={PRODUCT_TYPE.PVKJ} />
             </div>
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>

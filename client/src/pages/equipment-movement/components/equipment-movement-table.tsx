@@ -19,6 +19,8 @@ import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExportButton } from "@/components/export/export-button";
 import { cn } from "@/lib/utils";
+import { PRODUCT_TYPE } from "@shared/constants";
+import { ProductTypeBadge } from "@/components/product-type-badge";
 
 export function EquipmentMovementTable({
   onEdit,
@@ -124,12 +126,9 @@ export function EquipmentMovementTable({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">
-                      {item?.productType === "pvkj" ||
-                      item?.productType === "PVKJ"
-                        ? "ПВКЖ"
-                        : "Керосин"}
-                    </Badge>
+                    <ProductTypeBadge
+                      type={item?.productType || PRODUCT_TYPE.KEROSENE}
+                    />
                   </TableCell>
                   <TableCell>
                     {item?.fromEquipmentName || item?.fromWarehouseName || "—"}

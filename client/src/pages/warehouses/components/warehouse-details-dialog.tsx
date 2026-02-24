@@ -49,6 +49,7 @@ import {
   SOURCE_TYPE,
   TRANSACTION_TYPE,
 } from "@shared/constants";
+import { ProductTypeBadge } from "@/components/product-type-badge";
 
 interface WarehouseDetailsDialogProps {
   warehouse: Warehouse;
@@ -66,29 +67,27 @@ export function WarehouseDetailsDialog({
     enabled: open,
   });
 
-  const {
-    data,
-    isLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery<{ transactions: WarehouseTransaction[]; hasMore: boolean }>({
-    queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
-    queryFn: async ({ pageParam = 0 }) => {
-      const res = await fetch(
-        `/api/warehouses/${warehouse.id}/transactions?offset=${pageParam}&limit=50`,
-      );
-      if (!res.ok) throw new Error("Failed to fetch transactions");
-      return res.json();
-    },
-    enabled: open,
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      if (!lastPage.hasMore) return undefined;
-      return allPages.length * 50;
-    },
-    refetchInterval: 5000,
-  });
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery<{
+      transactions: WarehouseTransaction[];
+      hasMore: boolean;
+    }>({
+      queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
+      queryFn: async ({ pageParam = 0 }) => {
+        const res = await fetch(
+          `/api/warehouses/${warehouse.id}/transactions?offset=${pageParam}&limit=50`,
+        );
+        if (!res.ok) throw new Error("Failed to fetch transactions");
+        return res.json();
+      },
+      enabled: open,
+      initialPageParam: 0,
+      getNextPageParam: (lastPage, allPages) => {
+        if (!lastPage.hasMore) return undefined;
+        return allPages.length * 50;
+      },
+      refetchInterval: 5000,
+    });
 
   const transactions = useMemo(() => {
     return data?.pages?.flatMap((page) => page.transactions || []) || [];
@@ -452,12 +451,7 @@ function DailyRowGroup({
                 className={`flex items-center py-2 border-b last:border-0 ${idx === 0 ? "pt-2" : ""}`}
               >
                 <div className="w-[9%] min-w-[80px] shrink-0 px-4">
-                  <Badge
-                    variant="outline"
-                    className={`text-[10px] ${p.productType === PRODUCT_TYPE.PVKJ ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"}`}
-                  >
-                    {p.productType === PRODUCT_TYPE.PVKJ ? "ПВКЖ" : "Керосин"}
-                  </Badge>
+                  <ProductTypeBadge type={p.productType} />
                 </div>
                 <div className="w-[12%] min-w-[100px] shrink-0 text-center px-4 font-medium text-green-600 truncate">
                   {p.receiptKg > 0 ? `+${formatNumber(p.receiptKg)}` : "0"} кг
@@ -543,14 +537,7 @@ function DailyRowGroup({
                           </div>
                         </TableCell>
                         <TableCell className="py-1">
-                          <Badge
-                            variant="outline"
-                            className={`text-[10px] scale-90 origin-left ${tx.productType === PRODUCT_TYPE.PVKJ ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30" : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/30 dark:border-blue-800/30"}`}
-                          >
-                            {tx.productType === PRODUCT_TYPE.PVKJ
-                              ? "ПВКЖ"
-                              : "Керосин"}
-                          </Badge>
+                          <ProductTypeBadge type={tx.productType} />
                         </TableCell>
                         <TableCell
                           className={`text-right py-1 font-medium text-xs ${parseFloat(tx.quantityKg) > 0 ? "text-green-600" : "text-red-600"}`}

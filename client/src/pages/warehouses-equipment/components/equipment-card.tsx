@@ -1,27 +1,18 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
-import {
-  Pencil,
-  Trash2,
-  Truck,
-} from "lucide-react";
-import {
-  EntityActionsMenu,
-} from "@/components/entity-actions-menu";
+import { Pencil, Trash2, Truck } from "lucide-react";
+import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Equipment } from "@shared/schema";
 import { formatNumber, formatCurrency } from "../../warehouses/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { ProductTypeBadge } from "@/components/product-type-badge";
+import { PRODUCT_TYPE } from "@shared/constants";
 
 interface EquipmentCardProps {
   equipment: Equipment;
@@ -53,12 +44,21 @@ export function EquipmentCard({
       return res.ok;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouses-equipment"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/warehouses-equipment"],
+      });
       if (warehouseId) {
-        queryClient.invalidateQueries({ queryKey: [`/api/warehouses/${warehouseId}/equipment`] });
-        queryClient.invalidateQueries({ queryKey: ["/api/warehouses/equipment-map"] });
+        queryClient.invalidateQueries({
+          queryKey: [`/api/warehouses/${warehouseId}/equipment`],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["/api/warehouses/equipment-map"],
+        });
       }
-      toast({ title: "Оборудование удалено", description: "Запись успешно удалена" });
+      toast({
+        title: "Оборудование удалено",
+        description: "Запись успешно удалена",
+      });
     },
     onError: () => {
       toast({
@@ -80,10 +80,16 @@ export function EquipmentCard({
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Truck className={`h-4 w-4 ${isLinked ? "text-orange-400" : "text-sky-400"}`} />
+              <Truck
+                className={`h-4 w-4 ${isLinked ? "text-orange-400" : "text-sky-400"}`}
+              />
               {equipment.name}
               {isInactive && <Badge variant="destructive">Неактивен</Badge>}
-              {isLinked && <Badge variant="outline" className="text-[10px]">ТЗК</Badge>}
+              {isLinked && (
+                <Badge variant="outline" className="text-[10px]">
+                  ТЗК
+                </Badge>
+              )}
             </CardTitle>
           </div>
           <div className="flex items-center gap-1">
@@ -122,9 +128,7 @@ export function EquipmentCard({
             <span className="text-2xl font-semibold">
               {formatNumber(balance)} кг
             </span>
-            <Badge variant="outline" className="text-xs">
-              Керосин
-            </Badge>
+            <ProductTypeBadge type={PRODUCT_TYPE.KEROSENE} />
           </div>
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>
@@ -142,14 +146,14 @@ export function EquipmentCard({
                 <span className="text-2xl font-semibold">
                   {formatNumber(pvkjBalance)} кг
                 </span>
-                <Badge variant="outline" className="text-xs border-amber-200 text-amber-700 bg-amber-50">
-                  ПВКЖ
-                </Badge>
+                <ProductTypeBadge type={PRODUCT_TYPE.PVKJ} />
               </div>
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>
                   Себестоимость:{" "}
-                  <span className="font-medium">{formatCurrency(pvkjCost)}/кг</span>
+                  <span className="font-medium">
+                    {formatCurrency(pvkjCost)}/кг
+                  </span>
                 </span>
               </div>
             </div>
