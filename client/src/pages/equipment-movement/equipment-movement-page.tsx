@@ -43,16 +43,18 @@ export default function EquipmentMovementPage() {
     },
   });
 
-  const handleEditClick = (movement: EquipmentMovement) => {
-    setEditingMovement(movement);
-    setIsCopy(!!movement && !movement.id);
-    setIsDialogOpen(true);
-  };
+  const [auditEntity, setAuditEntity] = useState<{ id: string; name: string }>({
+    id: "",
+    name: "Все перемещения ЛИК",
+  });
 
-  const handleOpenDialog = () => {
-    setEditingMovement(null);
-    setIsCopy(false);
-    setIsDialogOpen(true);
+  // ... inside handleEditClick or similar
+  const handleShowHistory = (id?: string, name?: string) => {
+    setAuditEntity({
+      id: id || "",
+      name: name || "Все перемещения ЛИК",
+    });
+    setAuditPanelOpen(true);
   };
 
   return (
@@ -85,7 +87,7 @@ export default function EquipmentMovementPage() {
           <EquipmentMovementTable
             onEdit={handleEditClick}
             onDelete={(id: string) => deleteMutation.mutate(id)}
-            onShowHistory={() => setAuditPanelOpen(true)}
+            onShowHistory={handleShowHistory}
           />
         </CardContent>
       </Card>
@@ -94,8 +96,8 @@ export default function EquipmentMovementPage() {
         open={auditPanelOpen}
         onOpenChange={setAuditPanelOpen}
         entityType="equipment_movement"
-        entityId=""
-        entityName="Все перемещения ЛИК"
+        entityId={auditEntity.id}
+        entityName={auditEntity.name}
       />
     </div>
   );

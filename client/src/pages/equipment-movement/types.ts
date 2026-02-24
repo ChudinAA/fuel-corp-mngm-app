@@ -12,7 +12,7 @@ export interface EquipmentMovementDialogProps {
 }
 
 export interface EquipmentMovementTableProps {
-  onEdit: (movement: EquipmentMovement) => void;
+  onEdit: (movement: any) => void;
   onDelete: (id: string) => void;
-  onShowHistory: () => void;
+  onShowHistory: (id?: string, name?: string) => void;
 }

@@ -498,18 +498,18 @@ export function EquipmentMovementDialog({
                   )}
                   <div className="pt-2">
                     <p className="text-xs text-muted-foreground">
-                      Объем на{" "}
-                      {watchMovementType ===
-                      EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA
-                        ? "складе"
-                        : "ТЗА"}
-                      :
+                      Текущий остаток:
                     </p>
                     <p
-                      className={`text-sm font-semibold ${likBalance.status === "error" ? "text-destructive" : "text-primary"}`}
+                      className={`text-sm font-semibold ${likBalance.status === "error" ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"}`}
                     >
                       {likBalance.message}
                     </p>
+                    {isEditing && (
+                      <p className="text-[10px] text-muted-foreground mt-1 italic">
+                        * С учетом текущего перемещения ({initialQuantityKg.toLocaleString()} кг)
+                      </p>
+                    )}
                   </div>
                 </div>
 

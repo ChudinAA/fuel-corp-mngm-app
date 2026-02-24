@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
-import { Pencil, Trash2, History, Filter, Search } from "lucide-react";
+import { Pencil, Trash2, History, Filter, Search, Copy } from "lucide-react";
 import { formatNumber, formatDate } from "../utils";
 import { useEquipmentMovementTable } from "../hooks/use-equipment-movement-table";
 import type { EquipmentMovementTableProps } from "../types";
@@ -22,13 +22,42 @@ import { cn } from "@/lib/utils";
 import { PRODUCT_TYPE } from "@shared/constants";
 import { ProductTypeBadge } from "@/components/product-type-badge";
 
+import { TableColumnFilter } from "@/components/ui/table-column-filter";
+
 export function EquipmentMovementTable({
   onEdit,
   onDelete,
   onShowHistory,
 }: EquipmentMovementTableProps) {
-  const { movements, isLoading } = useEquipmentMovementTable();
+  const { 
+    movements, 
+    isLoading, 
+    search, 
+    setSearch, 
+    columnFilters, 
+    setColumnFilters 
+  } = useEquipmentMovementTable();
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const handleFilterUpdate = (column: string, values: string[]) => {
+    setColumnFilters((prev) => ({
+      ...prev,
+      [column]: values,
+    }));
+  };
+
+  const getUniqueOptions = (column: string) => {
+    const options = new Set<string>();
+    movements.forEach((m: any) => {
+      let val = "";
+      if (column === "productType") val = m.productType;
+      else if (column === "from") val = m.fromEquipmentName || m.fromWarehouseName;
+      else if (column === "to") val = m.toEquipmentName || m.toWarehouseName;
+      
+      if (val) options.add(val);
+    });
+    return Array.from(options).sort().map(opt => ({ label: opt, value: opt }));
+  };
 
   if (isLoading) {
     return (
@@ -44,17 +73,16 @@ export function EquipmentMovementTable({
     <div className="space-y-4 px-4 md:px-6 pb-5">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4 flex-1">
-          {/* <div className="relative flex-1 max-w-sm">
+          <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              ref={searchInputRef}
-              placeholder="Поиск..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Поиск по примечаниям..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
             />
-          </div> */}
-          {/* <Button
+          </div>
+          <Button
             variant="outline"
             size="icon"
             onClick={() => setColumnFilters({})}
@@ -66,7 +94,7 @@ export function EquipmentMovementTable({
             )}
           >
             <Filter className="h-4 w-4" />
-          </Button> */}
+          </Button>
           <Button
             variant="outline"
             onClick={onShowHistory}
@@ -84,9 +112,42 @@ export function EquipmentMovementTable({
           <TableHeader>
             <TableRow>
               <TableHead>Дата</TableHead>
-              <TableHead>Продукт</TableHead>
-              <TableHead>Откуда</TableHead>
-              <TableHead>Куда</TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Продукт
+                  <TableColumnFilter
+                    title="Продукт"
+                    options={[
+                      { label: "Керосин", value: PRODUCT_TYPE.KEROSENE },
+                      { label: "ПВКЖ", value: PRODUCT_TYPE.PVKJ },
+                    ]}
+                    selectedValues={columnFilters["productType"] || []}
+                    onUpdate={(values) => handleFilterUpdate("productType", values)}
+                  />
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Откуда
+                  <TableColumnFilter
+                    title="Откуда"
+                    options={getUniqueOptions("from")}
+                    selectedValues={columnFilters["from"] || []}
+                    onUpdate={(values) => handleFilterUpdate("from", values)}
+                  />
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Куда
+                  <TableColumnFilter
+                    title="Куда"
+                    options={getUniqueOptions("to")}
+                    selectedValues={columnFilters["to"] || []}
+                    onUpdate={(values) => handleFilterUpdate("to", values)}
+                  />
+                </div>
+              </TableHead>
               <TableHead className="text-right">КГ</TableHead>
               <TableHead className="text-right">Себест.</TableHead>
               <TableHead className="w-[50px]"></TableHead>
@@ -150,6 +211,18 @@ export function EquipmentMovementTable({
                           label: "Редактировать",
                           icon: Pencil,
                           onClick: () => onEdit(item),
+                        },
+                        {
+                          id: "copy",
+                          label: "Создать копию",
+                          icon: Copy,
+                          onClick: () => onEdit({ ...item, id: undefined, isDraft: true }),
+                        },
+                        {
+                          id: "history",
+                          label: "История изменений",
+                          icon: History,
+                          onClick: () => onShowHistory(item.id, `Перемещение от ${formatDate(item.movementDate)}`),
                         },
                         {
                           id: "delete",
