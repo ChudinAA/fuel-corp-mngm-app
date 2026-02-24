@@ -1,4 +1,4 @@
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 import { db } from "../../../db";
 import { equipments, equipmentTransactions, warehousesEquipment, type Equipment, type InsertEquipment, type EquipmentTransaction, type InsertEquipmentTransaction } from "../entities/equipment";
 
@@ -81,7 +81,8 @@ export class EquipmentStorage {
           eq(equipmentTransactions.equipmentId, equipmentId),
           isNull(equipmentTransactions.deletedAt)
         )
-      );
+      )
+      .orderBy(sql`${equipmentTransactions.transactionDate} DESC`);
   }
 
   async linkToWarehouse(warehouseId: string, equipmentId: string): Promise<void> {

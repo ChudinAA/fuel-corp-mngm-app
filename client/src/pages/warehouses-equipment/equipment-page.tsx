@@ -41,6 +41,10 @@ export default function EquipmentsPage() {
     queryKey: ["/api/warehouses"],
   });
 
+  // Filter for LIK mother warehouses
+  const likWarehouses =
+    warehouses?.filter((w) => w.equipmentType === EQUIPMENT_TYPE.LIK) || [];
+
   const { data: equipmentsByWarehouse, isLoading: equipmentsLoading } = useQuery<
     Record<string, Equipment[]>
   >({
@@ -60,10 +64,6 @@ export default function EquipmentsPage() {
     },
     enabled: likWarehouses.length > 0,
   });
-
-  // Filter for LIK mother warehouses
-  const likWarehouses =
-    warehouses?.filter((w) => w.equipmentType === EQUIPMENT_TYPE.LIK) || [];
 
   const filteredLikWarehouses = likWarehouses.filter((w) =>
     w.name.toLowerCase().includes(search.toLowerCase()),
