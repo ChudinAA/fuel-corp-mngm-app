@@ -66,27 +66,29 @@ export function WarehouseDetailsDialog({
     enabled: open,
   });
 
-  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useInfiniteQuery<{
-      transactions: WarehouseTransaction[];
-      hasMore: boolean;
-    }>({
-      queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
-      queryFn: async ({ pageParam = 0 }) => {
-        const res = await fetch(
-          `/api/warehouses/${warehouse.id}/transactions?offset=${pageParam}&limit=50`,
-        );
-        if (!res.ok) throw new Error("Failed to fetch transactions");
-        return res.json();
-      },
-      enabled: open,
-      initialPageParam: 0,
-      getNextPageParam: (lastPage, allPages) => {
-        if (!lastPage.hasMore) return undefined;
-        return allPages.length * 50;
-      },
-      refetchInterval: 15000, // TODO: reduce to 5sec on prod for testing
-    });
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery<{ transactions: WarehouseTransaction[]; hasMore: boolean }>({
+    queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
+    queryFn: async ({ pageParam = 0 }) => {
+      const res = await fetch(
+        `/api/warehouses/${warehouse.id}/transactions?offset=${pageParam}&limit=50`,
+      );
+      if (!res.ok) throw new Error("Failed to fetch transactions");
+      return res.json();
+    },
+    enabled: open,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.hasMore) return undefined;
+      return allPages.length * 50;
+    },
+    refetchInterval: 5000,
+  });
 
   const transactions = useMemo(() => {
     return data?.pages?.flatMap((page) => page.transactions || []) || [];

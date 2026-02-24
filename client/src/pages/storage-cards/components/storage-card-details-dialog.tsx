@@ -42,12 +42,12 @@ export function StorageCardDetailsDialog({
   const { data: transactions, isLoading } = useQuery<any[]>({
     queryKey: [`/api/storage-cards/${card.id}/transactions`],
     enabled: open,
-    refetchInterval: 20000, // TODO: reduce to 10sec on prod for testing
+    refetchInterval: 10000,
   });
 
   const formatNumber = (value: any) =>
     new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(
-      parseFloat(value || "0"),
+      parseFloat(value || "0")
     );
 
   const formatCurrency = (value: any) =>
@@ -88,8 +88,7 @@ export function StorageCardDetailsDialog({
             </CardHeader>
             <CardContent>
               <p className="text-xl font-semibold">
-                {formatNumber(card.latestPrice?.price || 0)}{" "}
-                {card.currencySymbol}
+                {formatNumber(card.latestPrice?.price || 0)} {card.currencySymbol}
               </p>
             </CardContent>
           </Card>
@@ -132,39 +131,30 @@ export function StorageCardDetailsDialog({
                   const txPrice = parseFloat(tx.price || "0");
                   const txAmount = parseFloat(tx.quantity || "0");
                   const kg = txPrice > 0 ? txAmount / txPrice : 0;
-
+                  
                   return (
                     <TableRow key={tx.id}>
                       <TableCell className="text-xs">
-                        {format(
-                          new Date(tx.transactionDate),
-                          "dd.MM.yyyy HH:mm",
-                          {
-                            locale: ru,
-                          },
-                        )}
+                        {format(new Date(tx.transactionDate), "dd.MM.yyyy HH:mm", {
+                          locale: ru,
+                        })}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {tx.transactionType ===
-                          STORAGE_CARD_TRANSACTION_TYPE.INCOME ? (
+                          {tx.transactionType === STORAGE_CARD_TRANSACTION_TYPE.INCOME ? (
                             <ArrowUpCircle className="h-4 w-4 text-green-600" />
                           ) : (
                             <ArrowDownCircle className="h-4 w-4 text-red-600" />
                           )}
                           <span className="text-xs">
-                            {tx.transactionType ===
-                            STORAGE_CARD_TRANSACTION_TYPE.INCOME
+                            {tx.transactionType === STORAGE_CARD_TRANSACTION_TYPE.INCOME
                               ? "Пополнение"
                               : "Списание"}
                           </span>
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-medium text-xs">
-                        {tx.transactionType ===
-                        STORAGE_CARD_TRANSACTION_TYPE.INCOME
-                          ? "+"
-                          : "-"}
+                        {tx.transactionType === STORAGE_CARD_TRANSACTION_TYPE.INCOME ? "+" : "-"}
                         {formatNumber(tx.quantity)} {card.currencySymbol}
                       </TableCell>
                       <TableCell className="text-right text-xs">
