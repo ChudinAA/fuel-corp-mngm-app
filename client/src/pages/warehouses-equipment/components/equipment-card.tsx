@@ -143,7 +143,7 @@ export function EquipmentCard({
             <Separator />
             <div className="space-y-2">
               <div className="flex items-baseline justify-between">
-                <span className="text-2xl font-semibold">
+                <span className="text-lg font-semibold text-muted-foreground">
                   {formatNumber(pvkjBalance)} кг
                 </span>
                 <ProductTypeBadge type={PRODUCT_TYPE.PVKJ} />
