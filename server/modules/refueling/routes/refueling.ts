@@ -14,6 +14,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     async (req, res) => {
       const offset = parseInt(req.query.offset as string) || 0;
       const pageSize = parseInt(req.query.pageSize as string) || 20;
+      const equipmentType = req.query.equipmentType as string | undefined;
       const search = req.query.search as string | undefined;
 
       const filters: Record<string, string[]> = {};
@@ -27,6 +28,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
       const result = await (storage.aircraftRefueling as any).getRefuelings(
         offset,
         pageSize,
+        equipmentType,
         search,
         filters
       );

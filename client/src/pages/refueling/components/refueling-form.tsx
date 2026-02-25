@@ -233,7 +233,12 @@ export const RefuelingForm = forwardRef<
   });
 
   useEffect(() => {
-    if (equipmentType === EQUIPMENT_TYPE.LIK && refuelingSuppliers.length > 0 && !watchSupplierId && !editData) {
+    if (
+      equipmentType === EQUIPMENT_TYPE.LIK &&
+      refuelingSuppliers.length > 0 &&
+      !watchSupplierId &&
+      !editData
+    ) {
       const firstSupplier = refuelingSuppliers[0];
       form.setValue("supplierId", firstSupplier.id);
     }
@@ -456,7 +461,8 @@ export const RefuelingForm = forwardRef<
         agentFee: agentFee !== null ? agentFee : null,
         profit: profit !== null ? profit : null,
         equipmentType: equipmentType,
-        equipmentId: equipmentType === "lik" ? selectedEquipmentId || null : null,
+        equipmentId:
+          equipmentType === "lik" ? selectedEquipmentId || null : null,
       };
       const res = await apiRequest("POST", "/api/refueling", payload);
       return res.json();
@@ -465,6 +471,11 @@ export const RefuelingForm = forwardRef<
       queryClient.invalidateQueries({
         queryKey: ["/api/refueling/contract-used"],
       });
+      if (equipmentType === EQUIPMENT_TYPE.LIK) {
+        queryClient.invalidateQueries({
+          queryKey: ["/api/warehouses/equipment-map"],
+        });
+      }
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;
@@ -544,7 +555,8 @@ export const RefuelingForm = forwardRef<
         agentFee: agentFee !== null ? agentFee : null,
         profit: profit !== null ? profit : null,
         equipmentType: equipmentType,
-        equipmentId: equipmentType === "lik" ? selectedEquipmentId || null : null,
+        equipmentId:
+          equipmentType === "lik" ? selectedEquipmentId || null : null,
       };
       const res = await apiRequest(
         "PATCH",
@@ -557,6 +569,11 @@ export const RefuelingForm = forwardRef<
       queryClient.invalidateQueries({
         queryKey: ["/api/refueling/contract-used"],
       });
+      if (equipmentType === EQUIPMENT_TYPE.LIK) {
+        queryClient.invalidateQueries({
+          queryKey: ["/api/warehouses/equipment-map"],
+        });
+      }
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0] as string;

@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { AircraftRefueling } from "@shared/schema";
 import { EQUIPMENT_TYPE } from "@shared/constants";
 
 export function useRefuelingTable({ equipmentType = EQUIPMENT_TYPE.COMMON }: { equipmentType?: string } = {}) {
@@ -55,6 +54,11 @@ export function useRefuelingTable({ equipmentType = EQUIPMENT_TYPE.COMMON }: { e
       queryClient.invalidateQueries({ queryKey: [`/api/refueling`] });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/refueling/contract-used"] });
+      if (equipmentType === EQUIPMENT_TYPE.LIK) {
+        queryClient.invalidateQueries({
+          queryKey: ["/api/warehouses/equipment-map"],
+        });
+      }
       toast({
         title: "Заправка удалена",
         description: "Заправка ВС успешно удалена",

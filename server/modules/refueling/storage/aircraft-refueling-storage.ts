@@ -8,9 +8,15 @@ import {
   warehouseTransactions,
   type AircraftRefueling,
   type InsertAircraftRefueling,
+  equipments,
 } from "@shared/schema";
 import { IAircraftRefuelingStorage } from "./types";
-import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
+import {
+  EQUIPMENT_TYPE,
+  PRODUCT_TYPE,
+  SOURCE_TYPE,
+  TRANSACTION_TYPE,
+} from "@shared/constants";
 import { WarehouseTransactionService } from "server/modules/warehouses/services/warehouse-transaction-service";
 
 export class AircraftRefuelingStorage {
@@ -26,10 +32,17 @@ export class AircraftRefuelingStorage {
   async getRefuelings(
     offset: number = 0,
     pageSize: number = 20,
+    equipmentType?: string,
     search?: string,
     filters?: Record<string, string[]>,
   ): Promise<{ data: any[]; total: number }> {
     const baseConditions: any[] = [isNull(aircraftRefueling.deletedAt)];
+
+    if (equipmentType && equipmentType !== EQUIPMENT_TYPE.COMMON) {
+      baseConditions.push(
+        sql`${aircraftRefueling.equipmentType} IN ${equipmentType}`,
+      );
+    }
 
     if (search && search.trim()) {
       const searchPattern = `%${search.trim()}%`;
@@ -72,11 +85,13 @@ export class AircraftRefuelingStorage {
         supplierIsWarehouse: suppliers.isWarehouse,
         buyerName: customers.name,
         warehouseName: sql<string>`${warehouses.name}`,
+        equipmentName: equipments.name,
       })
       .from(aircraftRefueling)
       .leftJoin(suppliers, eq(aircraftRefueling.supplierId, suppliers.id))
       .leftJoin(customers, eq(aircraftRefueling.buyerId, customers.id))
       .leftJoin(warehouses, eq(aircraftRefueling.warehouseId, warehouses.id))
+      .leftJoin(equipments, eq(aircraftRefueling.equipmentId, equipments.id))
       .where(whereCondition)
       .orderBy(desc(aircraftRefueling.refuelingDate))
       .limit(pageSize)
@@ -97,6 +112,12 @@ export class AircraftRefuelingStorage {
         ? {
             id: row.refueling.warehouseId,
             name: row.warehouseName || "Не указан",
+          }
+        : null,
+      equipment: row.refueling.equipmentId
+        ? {
+            id: row.refueling.equipmentId,
+            name: row.equipmentName || "Не указан",
           }
         : null,
     }));
