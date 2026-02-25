@@ -40,7 +40,7 @@ export class AircraftRefuelingStorage {
 
     if (equipmentType && equipmentType !== EQUIPMENT_TYPE.COMMON) {
       baseConditions.push(
-        sql`${aircraftRefueling.equipmentType} IN ${equipmentType}`,
+        eq(aircraftRefueling.equipmentType, equipmentType),
       );
     }
 

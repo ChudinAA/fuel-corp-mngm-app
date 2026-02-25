@@ -278,6 +278,11 @@ export function RefuelingTable({
                   />
                 </div>
               </TableHead>
+              {equipmentType === "lik" && (
+                <TableHead className="text-sm font-semibold p-1 md:p-2">
+                  Средство заправки
+                </TableHead>
+              )}
               <TableHead className="text-sm font-semibold p-1 md:p-2">
                 <div className="flex items-center justify-between gap-1">
                   <span>Продукт</span>
@@ -384,6 +389,11 @@ export function RefuelingTable({
                       )}
                     </div>
                   </TableCell>
+                  {equipmentType === "lik" && (
+                    <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
+                      {deal.equipment?.name || "—"}
+                    </TableCell>
+                  )}
                   <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
                     <ProductTypeBadge type={deal.productType} />
                   </TableCell>
