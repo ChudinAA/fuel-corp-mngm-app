@@ -80,7 +80,7 @@ export function EquipmentMovementDialog({
     resolver: zodResolver(equipmentMovementFormSchema),
     defaultValues: {
       movementDate: new Date(),
-      movementType: EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA,
+      movementType: EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK,
       productType: PRODUCT_TYPE.KEROSENE,
       fromWarehouseId: "",
       toWarehouseId: "",
@@ -110,14 +110,14 @@ export function EquipmentMovementDialog({
     (w) => w.equipmentType === EQUIPMENT_TYPE.LIK,
   );
 
-  // Auto-fill logic for TZA -> Warehouse
+  // Auto-fill logic for TZK -> Warehouse
   useEffect(() => {
     const defaultLikWarehouse = likWarehouses[0];
-    if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZA_TO_STORAGE) {
+    if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE) {
       if (defaultLikWarehouse && !watchToWarehouseId) {
         form.setValue("toWarehouseId", defaultLikWarehouse.id);
       }
-    } else if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA) {
+    } else if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK) {
       if (defaultLikWarehouse && !watchFromWarehouseId) {
         form.setValue("fromWarehouseId", defaultLikWarehouse.id);
       }
@@ -147,10 +147,10 @@ export function EquipmentMovementDialog({
     enabled: !!(watchFromWarehouseId || watchToWarehouseId),
   });
 
-  // Auto-fill first available TZA for TZA -> Warehouse
+  // Auto-fill first available TZK for TZK -> Warehouse
   useEffect(() => {
     if (
-      watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZA_TO_STORAGE &&
+      watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE &&
       likEquipments.length > 0 &&
       !watchFromEquipmentId
     ) {
@@ -164,7 +164,7 @@ export function EquipmentMovementDialog({
         movementDate: new Date(editMovement.movementDate),
         movementType:
           (editMovement as any).movementType ||
-          EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA,
+          EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK,
         productType: editMovement.productType || PRODUCT_TYPE.KEROSENE,
         fromWarehouseId: editMovement.fromWarehouseId || "",
         toWarehouseId: editMovement.toWarehouseId || "",
@@ -183,7 +183,7 @@ export function EquipmentMovementDialog({
     } else {
       form.reset({
         movementDate: new Date(),
-        movementType: EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA,
+        movementType: EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK,
         productType: PRODUCT_TYPE.KEROSENE,
         fromWarehouseId: "",
         toWarehouseId: "",
@@ -227,15 +227,13 @@ export function EquipmentMovementDialog({
     warehouses,
     equipments: likEquipments,
     isEditing,
-    initialQuantityKg: isEditing || isCopy
-      ? parseFloat(editMovement?.quantityKg || "0")
-      : 0,
+    initialQuantityKg:
+      isEditing || isCopy ? parseFloat(editMovement?.quantityKg || "0") : 0,
     watchMovementDate,
   });
 
-  const initialQuantityKg = isEditing || isCopy
-    ? parseFloat(editMovement?.quantityKg || "0")
-    : 0;
+  const initialQuantityKg =
+    isEditing || isCopy ? parseFloat(editMovement?.quantityKg || "0") : 0;
 
   const mutation = useMutation({
     mutationFn: async ({
@@ -319,7 +317,7 @@ export function EquipmentMovementDialog({
                 : "Новое перемещение ЛИК"}
             </DialogTitle>
             <DialogDescription>
-              Локальное распределение топлива между складом и ТЗА
+              Локальное распределение топлива между складом и ТЗК
             </DialogDescription>
           </DialogHeader>
 
@@ -379,19 +377,14 @@ export function EquipmentMovementDialog({
                         onValueChange={(val) => {
                           field.onChange(val);
                           // Clear incompatible fields to prevent stale data in DB
-                          if (val === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA) {
+                          if (val === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK) {
                             form.setValue("toWarehouseId", "");
                             form.setValue("fromEquipmentId", "");
                           } else if (
-                            val === EQUIPMENT_MOVEMENT_TYPE.TZA_TO_STORAGE
+                            val === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE
                           ) {
                             form.setValue("fromWarehouseId", "");
                             form.setValue("toEquipmentId", "");
-                          } else if (
-                            val === EQUIPMENT_MOVEMENT_TYPE.TZA_TO_TZA
-                          ) {
-                            form.setValue("fromWarehouseId", "");
-                            form.setValue("toWarehouseId", "");
                           }
                         }}
                         value={field.value}
@@ -403,19 +396,14 @@ export function EquipmentMovementDialog({
                         </FormControl>
                         <SelectContent>
                           <SelectItem
-                            value={EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA}
+                            value={EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK}
                           >
-                            Склад {"->"} ТЗА
+                            Склад {"->"} ТЗК
                           </SelectItem>
                           <SelectItem
-                            value={EQUIPMENT_MOVEMENT_TYPE.TZA_TO_STORAGE}
+                            value={EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE}
                           >
-                            ТЗА {"->"} Склад
-                          </SelectItem>
-                          <SelectItem
-                            value={EQUIPMENT_MOVEMENT_TYPE.TZA_TO_TZA}
-                          >
-                            ТЗА {"->"} ТЗА
+                            ТЗК {"->"} Склад
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -457,7 +445,7 @@ export function EquipmentMovementDialog({
                 <div className="space-y-4 border p-4 rounded-md">
                   <h3 className="font-medium text-sm border-b pb-2">Откуда</h3>
                   {watchMovementType ===
-                  EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA ? (
+                  EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK ? (
                     <FormField
                       control={form.control}
                       name="fromWarehouseId"
@@ -484,7 +472,7 @@ export function EquipmentMovementDialog({
                       name="fromEquipmentId"
                       render={({ field }) => (
                         <FormItem key={`fromEq-${watchMovementType}`}>
-                          <FormLabel>ТЗА</FormLabel>
+                          <FormLabel>ТЗК</FormLabel>
                           <Combobox
                             key={`combo-from-eq-${watchMovementType}`}
                             options={likEquipments.map((e) => ({
@@ -493,7 +481,7 @@ export function EquipmentMovementDialog({
                             }))}
                             value={field.value || ""}
                             onValueChange={field.onChange}
-                            placeholder="Выберите ТЗА"
+                            placeholder="Выберите ТЗК"
                           />
                           <FormMessage />
                         </FormItem>
@@ -511,7 +499,8 @@ export function EquipmentMovementDialog({
                     </p>
                     {isEditing && (
                       <p className="text-[10px] text-muted-foreground mt-1 italic">
-                        * С учетом текущего перемещения ({initialQuantityKg.toLocaleString()} кг)
+                        * С учетом текущего перемещения (
+                        {initialQuantityKg.toLocaleString()} кг)
                       </p>
                     )}
                   </div>
@@ -520,7 +509,7 @@ export function EquipmentMovementDialog({
                 <div className="space-y-4 border p-4 rounded-md">
                   <h3 className="font-medium text-sm border-b pb-2">Куда</h3>
                   {watchMovementType ===
-                  EQUIPMENT_MOVEMENT_TYPE.TZA_TO_STORAGE ? (
+                  EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE ? (
                     <FormField
                       control={form.control}
                       name="toWarehouseId"
@@ -547,7 +536,7 @@ export function EquipmentMovementDialog({
                       name="toEquipmentId"
                       render={({ field }) => (
                         <FormItem key={`toEq-${watchMovementType}`}>
-                          <FormLabel>ТЗА</FormLabel>
+                          <FormLabel>ТЗК</FormLabel>
                           <Combobox
                             key={`combo-to-eq-${watchMovementType}`}
                             options={likEquipments.map((e) => ({
@@ -556,7 +545,7 @@ export function EquipmentMovementDialog({
                             }))}
                             value={field.value || ""}
                             onValueChange={field.onChange}
-                            placeholder="Выберите ТЗА"
+                            placeholder="Выберите ТЗК"
                           />
                           <FormMessage />
                         </FormItem>
@@ -641,7 +630,9 @@ export function EquipmentMovementDialog({
                   ) : (
                     <Plus className="mr-2 h-4 w-4" />
                   )}
-                  {isEditing && !editMovement.isDraft ? "Обновить" : "Создать перемещение"}
+                  {isEditing && !editMovement.isDraft
+                    ? "Обновить"
+                    : "Создать перемещение"}
                 </Button>
               </div>
             </form>

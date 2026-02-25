@@ -148,9 +148,9 @@ export function useRefuelingCalculations({
     if (equipmentType === EQUIPMENT_TYPE.LIK) {
       if (!selectedEquipmentId) {
         if (finalKg <= 0) {
-          return { status: "ok", message: "Выберите ТЗА" };
+          return { status: "ok", message: "Выберите ТЗК" };
         }
-        return { status: "error", message: "Выберите ТЗА" };
+        return { status: "error", message: "Выберите ТЗК" };
       }
       const likBalance = isEditing ? equipmentBalance + initialQuantityKg : equipmentBalance;
       if (finalKg <= 0) {
@@ -162,7 +162,7 @@ export function useRefuelingCalculations({
       } else {
         return {
           status: "error",
-          message: `Недостаточно на ТЗА! Доступно: ${likBalance.toFixed(2)} кг`,
+          message: `Недостаточно на ТЗК! Доступно: ${likBalance.toFixed(2)} кг`,
         };
       }
     }

@@ -46,7 +46,7 @@ export function useLikCalculations({
 
   const averageCost = useMemo(() => {
     const warehouseId =
-      watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA
+      watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK
         ? watchFromWarehouseId
         : watchToWarehouseId;
     const sourceWarehouse = warehouses.find((w) => w.id === warehouseId);

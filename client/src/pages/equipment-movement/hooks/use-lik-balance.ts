@@ -36,12 +36,12 @@ export function useLikBalance({
     return selectedDate.getTime() < today.getTime();
   }, [watchMovementDate]);
 
-  // If from TZA, we need to find its parent warehouse to check balance logic
-  // but for TZA we might have its own balance in equipment table
-  const sourceId = watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA ? watchFromWarehouseId : watchFromEquipmentId;
+  // If from TZK, we need to find its parent warehouse to check balance logic
+  // but for TZK we might have its own balance in equipment table
+  const sourceId = watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK ? watchFromWarehouseId : watchFromEquipmentId;
 
   const { data: balanceData, isLoading } = useBaseWarehouseBalance(
-    sourceId && watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA ? sourceId : undefined,
+    sourceId && watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK ? sourceId : undefined,
     watchMovementDate,
     watchProductType
   );
@@ -53,7 +53,7 @@ export function useLikBalance({
     let currentBalance = 0;
     let name = "";
 
-    if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZA) {
+    if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK) {
       const wh = warehouses.find((w) => w.id === sourceId);
       name = wh?.name || "";
       currentBalance = balanceData && typeof balanceData === "object" && "balance" in balanceData 
@@ -62,7 +62,7 @@ export function useLikBalance({
     } else {
       const eq = equipments.find((e) => e.id === sourceId);
       name = eq?.name || "";
-      // For TZA we use equipment balance fields
+      // For TZK we use equipment balance fields
       currentBalance = parseFloat(watchProductType === PRODUCT_TYPE.PVKJ ? eq?.pvkjBalance || "0" : eq?.currentBalance || "0");
     }
 

@@ -427,7 +427,7 @@ export function RefuelingTable({
                               <Truck className="h-3.5 w-3.5 text-orange-400 flex-shrink-0 cursor-help" />
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>ТЗА</p>
+                              <p>ТЗК</p>
                             </TooltipContent>
                           </Tooltip>
                         </div>

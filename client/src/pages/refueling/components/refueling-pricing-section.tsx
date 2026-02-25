@@ -367,7 +367,7 @@ export function RefuelingPricingSection({
         <CalculatedField
           label={
             equipmentType === EQUIPMENT_TYPE.LIK
-              ? "Объем на ТЗА"
+              ? "Объем на ТЗК"
               : "Объем на складе"
           }
           value={warehouseStatus.message}
