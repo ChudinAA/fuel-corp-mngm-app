@@ -18,6 +18,7 @@ import {
   TRANSACTION_TYPE,
 } from "@shared/constants";
 import { WarehouseTransactionService } from "server/modules/warehouses/services/warehouse-transaction-service";
+import { EquipmentTransactionService } from "server/modules/warehouses-equipment/services/equipment-transaction-service";
 
 export class AircraftRefuelingStorage {
   async getRefueling(id: string): Promise<AircraftRefueling | undefined> {
@@ -39,9 +40,7 @@ export class AircraftRefuelingStorage {
     const baseConditions: any[] = [isNull(aircraftRefueling.deletedAt)];
 
     if (equipmentType && equipmentType !== EQUIPMENT_TYPE.COMMON) {
-      baseConditions.push(
-        eq(aircraftRefueling.equipmentType, equipmentType),
-      );
+      baseConditions.push(eq(aircraftRefueling.equipmentType, equipmentType));
     }
 
     if (search && search.trim()) {
@@ -144,28 +143,49 @@ export class AircraftRefuelingStorage {
       // Для услуги заправки или черновика не создаем транзакции на складе
       if (
         !created.isDraft &&
-        created.warehouseId &&
+        (created.warehouseId || created.equipmentId) &&
         (created.productType === PRODUCT_TYPE.KEROSENE ||
           created.productType === PRODUCT_TYPE.PVKJ)
       ) {
-        const { transaction } =
-          await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
-            tx,
-            created.warehouseId,
-            TRANSACTION_TYPE.SALE,
-            created.productType,
-            SOURCE_TYPE.REFUELING,
-            created.id,
-            parseFloat(created.quantityKg),
-            parseFloat(created.purchaseAmount || "0"),
-            data.createdById,
-            created.refuelingDate,
-          );
+        if (created.equipmentId) {
+          const transaction =
+            await EquipmentTransactionService.createTransactionAndUpdateEquipment(
+              tx,
+              created.equipmentId,
+              TRANSACTION_TYPE.SALE,
+              created.productType,
+              SOURCE_TYPE.REFUELING,
+              created.id,
+              parseFloat(created.quantityKg),
+              parseFloat(created.purchaseAmount || "0"),
+              data.createdById || undefined,
+              created.refuelingDate,
+            );
 
-        await tx
-          .update(aircraftRefueling)
-          .set({ transactionId: transaction.id })
-          .where(eq(aircraftRefueling.id, created.id));
+          await tx
+            .update(aircraftRefueling)
+            .set({ equipmentTransactionId: transaction.id })
+            .where(eq(aircraftRefueling.id, created.id));
+        } else if (created.warehouseId) {
+          const { transaction } =
+            await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+              tx,
+              created.warehouseId,
+              TRANSACTION_TYPE.SALE,
+              created.productType,
+              SOURCE_TYPE.REFUELING,
+              created.id,
+              parseFloat(created.quantityKg),
+              parseFloat(created.purchaseAmount || "0"),
+              data.createdById || undefined,
+              created.refuelingDate,
+            );
+
+          await tx
+            .update(aircraftRefueling)
+            .set({ transactionId: transaction.id })
+            .where(eq(aircraftRefueling.id, created.id));
+        }
       }
 
       return created;
@@ -191,33 +211,52 @@ export class AircraftRefuelingStorage {
 
       if (
         transitioningFromDraft &&
-        data.warehouseId &&
+        (data.warehouseId || data.equipmentId) &&
         data.quantityKg &&
         (data.productType === PRODUCT_TYPE.KEROSENE ||
           data.productType === PRODUCT_TYPE.PVKJ)
       ) {
-        const { transaction } =
-          await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
-            tx,
-            data.warehouseId,
-            TRANSACTION_TYPE.SALE,
-            data.productType,
-            SOURCE_TYPE.REFUELING,
-            currentRefueling.id,
-            data.quantityKg,
-            data.purchaseAmount || 0,
-            data.updatedById,
-            data.refuelingDate,
-          );
+        if (data.equipmentId) {
+          const { transaction } =
+            await EquipmentTransactionService.createTransactionAndUpdateEquipment(
+              tx,
+              data.equipmentId,
+              TRANSACTION_TYPE.SALE,
+              data.productType,
+              SOURCE_TYPE.REFUELING,
+              currentRefueling.id,
+              data.quantityKg,
+              data.purchaseAmount || 0,
+              data.updatedById,
+              data.refuelingDate,
+            );
 
-        data.transactionId = transaction.id;
+          data.equipmentTransactionId = transaction.id;
+        } else if (data.warehouseId) {
+          const { transaction } =
+            await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+              tx,
+              data.warehouseId,
+              TRANSACTION_TYPE.SALE,
+              data.productType,
+              SOURCE_TYPE.REFUELING,
+              currentRefueling.id,
+              data.quantityKg,
+              data.purchaseAmount || 0,
+              data.updatedById,
+              data.refuelingDate,
+            );
+
+          data.transactionId = transaction.id;
+        }
       }
       // Проверяем изменилось ли количество КГ и есть ли привязанная транзакция (для НЕ черновиков)
       else if (
         !currentRefueling.isDraft &&
         data.quantityKg &&
-        currentRefueling.transactionId &&
-        currentRefueling.warehouseId &&
+        (currentRefueling.transactionId ||
+          currentRefueling.equipmentTransactionId) &&
+        (currentRefueling.warehouseId || currentRefueling.equipmentId) &&
         (currentRefueling.productType === PRODUCT_TYPE.KEROSENE ||
           currentRefueling.productType === PRODUCT_TYPE.PVKJ)
       ) {
@@ -239,18 +278,38 @@ export class AircraftRefuelingStorage {
         const newTotalCost = data.purchaseAmount || 0;
 
         if (oldQuantityKg !== newQuantityKg) {
-          await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
-            tx,
-            currentRefueling.transactionId,
-            currentRefueling.warehouseId,
-            oldQuantityKg,
-            oldTotalCost,
-            newQuantityKg,
-            newTotalCost,
-            currentRefueling.productType,
-            data.updatedById,
-            data.refuelingDate,
-          );
+          if (
+            currentRefueling.equipmentId &&
+            currentRefueling.equipmentTransactionId
+          ) {
+            await EquipmentTransactionService.updateTransactionAndRecalculateEquipment(
+              tx,
+              currentRefueling.equipmentTransactionId,
+              currentRefueling.equipmentId,
+              oldQuantityKg,
+              oldTotalCost,
+              newQuantityKg,
+              newTotalCost,
+              data.updatedById,
+              data.refuelingDate,
+            );
+          } else if (
+            currentRefueling.warehouseId &&
+            currentRefueling.transactionId
+          ) {
+            await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
+              tx,
+              currentRefueling.transactionId,
+              currentRefueling.warehouseId,
+              oldQuantityKg,
+              oldTotalCost,
+              newQuantityKg,
+              newTotalCost,
+              currentRefueling.productType,
+              data.updatedById,
+              data.refuelingDate,
+            );
+          }
         }
       }
 
@@ -279,15 +338,24 @@ export class AircraftRefuelingStorage {
       // Для услуг заправки пропускаем восстановление баланса на складе
       if (
         currentRefueling &&
-        currentRefueling.transactionId &&
+        (currentRefueling.transactionId ||
+          currentRefueling.equipmentTransactionId) &&
         (currentRefueling.productType === PRODUCT_TYPE.KEROSENE ||
           currentRefueling.productType === PRODUCT_TYPE.PVKJ)
       ) {
-        await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
-          tx,
-          currentRefueling.transactionId,
-          userId,
-        );
+        if (currentRefueling.equipmentTransactionId) {
+          await EquipmentTransactionService.deleteTransactionAndRevertEquipment(
+            tx,
+            currentRefueling.equipmentTransactionId,
+            userId,
+          );
+        } else if (currentRefueling.transactionId) {
+          await WarehouseTransactionService.deleteTransactionAndRevertWarehouse(
+            tx,
+            currentRefueling.transactionId,
+            userId,
+          );
+        }
       }
 
       await tx
@@ -365,8 +433,13 @@ export class AircraftRefuelingStorage {
         })
         .where(eq(aircraftRefueling.id, id));
 
-      // Restore associated transaction if exists and not a service
-      if (oldData.transactionId) {
+      if (oldData.equipmentTransactionId) {
+        await EquipmentTransactionService.restoreTransactionAndRecalculateEquipment(
+          tx,
+          oldData.equipmentTransactionId,
+          userId,
+        );
+      } else if (oldData.transactionId) {
         await WarehouseTransactionService.restoreTransactionAndRecalculateWarehouse(
           tx,
           oldData.transactionId,
