@@ -217,7 +217,7 @@ export class AircraftRefuelingStorage {
           data.productType === PRODUCT_TYPE.PVKJ)
       ) {
         if (data.equipmentId) {
-          const { transaction } =
+          const transaction =
             await EquipmentTransactionService.createTransactionAndUpdateEquipment(
               tx,
               data.equipmentId,
