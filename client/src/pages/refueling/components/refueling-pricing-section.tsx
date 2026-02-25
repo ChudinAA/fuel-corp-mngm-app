@@ -19,7 +19,7 @@ import type { Price, Supplier } from "@shared/schema";
 import type { RefuelingFormData } from "../schemas";
 import { CalculatedField } from "../calculated-field";
 import { formatNumber, formatCurrency } from "../utils";
-import { PRODUCT_TYPE } from "@shared/constants";
+import { EQUIPMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -365,7 +365,11 @@ export function RefuelingPricingSection({
 
       <div className="grid gap-2 md:grid-cols-4">
         <CalculatedField
-          label={equipmentType === "lik" ? "Объем на ТЗА" : "Объем на складе"}
+          label={
+            equipmentType === EQUIPMENT_TYPE.LIK
+              ? "Объем на ТЗА"
+              : "Объем на складе"
+          }
           value={warehouseStatus.message}
           status={warehouseStatus.status}
         />

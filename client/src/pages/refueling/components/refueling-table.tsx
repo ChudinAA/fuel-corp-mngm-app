@@ -25,6 +25,7 @@ import {
   History,
   Copy,
   Loader2,
+  Truck,
 } from "lucide-react";
 import {
   EntityActionsMenu,
@@ -278,11 +279,6 @@ export function RefuelingTable({
                   />
                 </div>
               </TableHead>
-              {equipmentType === "lik" && (
-                <TableHead className="text-sm font-semibold p-1 md:p-2">
-                  Средство заправки
-                </TableHead>
-              )}
               <TableHead className="text-sm font-semibold p-1 md:p-2">
                 <div className="flex items-center justify-between gap-1">
                   <span>Продукт</span>
@@ -316,6 +312,11 @@ export function RefuelingTable({
                   />
                 </div>
               </TableHead>
+              {equipmentType === EQUIPMENT_TYPE.LIK && (
+                <TableHead className="text-sm font-semibold p-1 md:p-2">
+                  Средство заправки
+                </TableHead>
+              )}
               <TableHead className="text-sm font-semibold p-1 md:p-2">
                 <div className="flex items-center justify-between gap-1">
                   <span className="truncate max-w-[80px] md:max-w-none">
@@ -389,11 +390,6 @@ export function RefuelingTable({
                       )}
                     </div>
                   </TableCell>
-                  {equipmentType === "lik" && (
-                    <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
-                      {deal.equipment?.name || "—"}
-                    </TableCell>
-                  )}
                   <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
                     <ProductTypeBadge type={deal.productType} />
                   </TableCell>
@@ -419,6 +415,25 @@ export function RefuelingTable({
                       </div>
                     </TooltipProvider>
                   </TableCell>
+                  {equipmentType === EQUIPMENT_TYPE.LIK && (
+                    <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
+                      <TooltipProvider>
+                        <div className="flex items-center gap-1">
+                          <span className="truncate max-w-[80px] md:max-w-none">
+                            {deal.equipment?.name || "—"}
+                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Truck className="h-3.5 w-3.5 text-orange-400 flex-shrink-0 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>ТЗА</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </TooltipProvider>
+                    </TableCell>
+                  )}
                   <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
                     <span className="truncate max-w-[80px] md:max-w-none block">
                       {deal.buyer?.name || "Не указан"}
@@ -481,15 +496,19 @@ export function RefuelingTable({
                     {formatCurrencyForTable(deal.profit)}
                   </TableCell>
                   <TableCell className="p-1">
-                    <RefuelingDealActions
-                      deal={deal}
-                      onEdit={() => onEdit(deal)}
-                      onCopy={() => onCopy(deal)}
-                      onDelete={() => {
-                        setDealToDelete(deal);
-                        setDeleteDialogOpen(true);
-                      }}
-                    />
+                    {((equipmentType === EQUIPMENT_TYPE.COMMON &&
+                      !deal.equipmentId) ||
+                      equipmentType === EQUIPMENT_TYPE.LIK) && (
+                      <RefuelingDealActions
+                        deal={deal}
+                        onEdit={() => onEdit(deal)}
+                        onCopy={() => onCopy(deal)}
+                        onDelete={() => {
+                          setDealToDelete(deal);
+                          setDeleteDialogOpen(true);
+                        }}
+                      />
+                    )}
                   </TableCell>
                 </TableRow>
               ))

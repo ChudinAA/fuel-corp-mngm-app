@@ -462,7 +462,7 @@ export const RefuelingForm = forwardRef<
         profit: profit !== null ? profit : null,
         equipmentType: equipmentType,
         equipmentId:
-          equipmentType === "lik" ? selectedEquipmentId || null : null,
+          equipmentType === EQUIPMENT_TYPE.LIK ? selectedEquipmentId || null : null,
       };
       const res = await apiRequest("POST", "/api/refueling", payload);
       return res.json();
@@ -556,7 +556,7 @@ export const RefuelingForm = forwardRef<
         profit: profit !== null ? profit : null,
         equipmentType: equipmentType,
         equipmentId:
-          equipmentType === "lik" ? selectedEquipmentId || null : null,
+          equipmentType === EQUIPMENT_TYPE.LIK ? selectedEquipmentId || null : null,
       };
       const res = await apiRequest(
         "PATCH",
