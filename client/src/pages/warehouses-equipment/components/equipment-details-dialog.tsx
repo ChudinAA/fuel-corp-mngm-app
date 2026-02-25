@@ -25,7 +25,7 @@ import {
 import { Truck, ArrowUpCircle, ArrowDownCircle, Package } from "lucide-react";
 import type { Equipment, EquipmentTransaction } from "@shared/schema";
 import { formatNumber, formatCurrency } from "../../warehouses/utils";
-import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
+import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 import { ProductTypeBadge } from "@/components/product-type-badge";
 
 interface EquipmentDetailsDialogProps {
@@ -53,6 +53,27 @@ export function EquipmentDetailsDialog({
       return <ArrowUpCircle className="h-4 w-4 text-green-600" />;
     }
     return <ArrowDownCircle className="h-4 w-4 text-red-600" />;
+  };
+
+  const getTransactionTypeLabel = (
+    transactionType: string,
+    sourceType?: string,
+  ) => {
+    switch (transactionType) {
+      case TRANSACTION_TYPE.RECEIPT:
+        return "Поступление";
+      case TRANSACTION_TYPE.TRANSFER_IN:
+        return "Перемещение (приход)";
+      case TRANSACTION_TYPE.TRANSFER_OUT:
+        return "Перемещение (расход)";
+      case TRANSACTION_TYPE.SALE:
+        if (sourceType === SOURCE_TYPE.REFUELING)
+          return "Продажа (Заправка ВС)";
+        if (sourceType === SOURCE_TYPE.OPT) return "Продажа (ОПТ)";
+        return "Продажа";
+      default:
+        return transactionType;
+    }
   };
 
   return (
@@ -112,8 +133,9 @@ export function EquipmentDetailsDialog({
                   <TableHead>Тип</TableHead>
                   <TableHead>Продукт</TableHead>
                   <TableHead className="text-right">Кол-во</TableHead>
+                  <TableHead className="text-right">Остаток до</TableHead>
                   <TableHead className="text-right">Остаток после</TableHead>
-                  <TableHead className="text-right">Себест. после</TableHead>
+                  <TableHead className="text-right">Себест-ть</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -123,10 +145,10 @@ export function EquipmentDetailsDialog({
                       {tx.transactionDate
                         ? format(
                             new Date(tx.transactionDate),
-                            "dd.MM.yyyy HH:mm",
+                            "dd.MM.yyyy",
                             { locale: ru },
                           )
-                        : format(new Date(tx.createdAt!), "dd.MM.yyyy HH:mm", {
+                        : format(new Date(tx.createdAt!), "dd.MM.yyyy", {
                             locale: ru,
                           })}
                     </TableCell>
@@ -134,9 +156,10 @@ export function EquipmentDetailsDialog({
                       <div className="flex items-center gap-2">
                         {getTransactionIcon(tx.transactionType)}
                         <span className="text-xs">
-                          {isReceipt(tx.transactionType)
-                            ? "Поступление"
-                            : "Расход"}
+                          {getTransactionTypeLabel(
+                            tx.transactionType,
+                            tx.sourceType || undefined,
+                          )}
                         </span>
                       </div>
                     </TableCell>
@@ -150,6 +173,9 @@ export function EquipmentDetailsDialog({
                     >
                       {isReceipt(tx.transactionType) ? "+" : ""}
                       {formatNumber(tx.quantity)} кг
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatNumber(tx.balanceBefore || 0)} кг
                     </TableCell>
                     <TableCell className="text-right">
                       {formatNumber(tx.balanceAfter || 0)} кг

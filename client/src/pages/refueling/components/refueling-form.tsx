@@ -848,6 +848,9 @@ export const RefuelingForm = forwardRef<
                 updateMutation.isPending ||
                 isChecking
               }
+              onClick={() => {
+                form.handleSubmit((data) => onSubmit(data, false))();
+              }}
               data-testid="button-submit-refueling"
             >
               {createMutation.isPending ||

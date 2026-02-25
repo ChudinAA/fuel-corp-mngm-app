@@ -40,7 +40,7 @@ export function useRefuelingFilters({
         const warehouse = warehouses?.find((w) => w.supplierId === s.id);
         return warehouse?.equipmentType === EQUIPMENT_TYPE.LIK;
       });
-    } else if (equipmentType === EQUIPMENT_TYPE.COMMON) {
+    } else {
       filteredSuppliers = filteredSuppliers.filter((s) => {
         const warehouse = warehouses?.find((w) => w.supplierId === s.id);
         // Если это склад, то он не должен быть типа LIK
