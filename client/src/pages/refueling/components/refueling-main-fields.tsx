@@ -379,7 +379,7 @@ export function RefuelingMainFields({
             <Combobox
               options={(likEquipmentList || []).map((eq) => ({
                 value: eq.id,
-                label: `${eq.name} (${parseFloat(eq.currentBalance || "0").toFixed(2)} кг)`,
+                label: eq.name,
               }))}
               value={selectedEquipmentId}
               onValueChange={(value) => {
@@ -393,11 +393,6 @@ export function RefuelingMainFields({
               className="w-full"
               dataTestId="select-equipment-tza"
             />
-            {selectedEquipmentId && (
-              <p className="text-xs text-muted-foreground">
-                Баланс ТЗА: {equipmentBalance.toFixed(2)} кг
-              </p>
-            )}
           </div>
         ) : selectedBuyer ? (
           <FormField
