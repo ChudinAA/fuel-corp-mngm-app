@@ -40,6 +40,16 @@ export function useRefuelingFilters({
         const warehouse = warehouses?.find((w) => w.supplierId === s.id);
         return warehouse?.equipmentType === EQUIPMENT_TYPE.LIK;
       });
+    } else if (equipmentType === EQUIPMENT_TYPE.COMMON) {
+      filteredSuppliers = filteredSuppliers.filter((s) => {
+        const warehouse = warehouses?.find((w) => w.supplierId === s.id);
+        // Если это склад, то он не должен быть типа LIK
+        // Если это не склад (обычный поставщик), то оставляем
+        if (s.isWarehouse && warehouse) {
+          return warehouse.equipmentType !== EQUIPMENT_TYPE.LIK;
+        }
+        return true;
+      });
     }
 
     return (
