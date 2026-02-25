@@ -171,6 +171,8 @@ export const RefuelingForm = forwardRef<
       counterpartyType: COUNTERPARTY_TYPE.REFUELING,
       suppliers: suppliers ?? [],
       allBases: allBases ?? [],
+      equipmentType,
+      warehouses,
     });
 
   // Use calculations hook
@@ -229,6 +231,13 @@ export const RefuelingForm = forwardRef<
       quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
     }),
   });
+
+  useEffect(() => {
+    if (equipmentType === EQUIPMENT_TYPE.LIK && refuelingSuppliers.length > 0 && !watchSupplierId && !editData) {
+      const firstSupplier = refuelingSuppliers[0];
+      form.setValue("supplierId", firstSupplier.id);
+    }
+  }, [equipmentType, refuelingSuppliers, watchSupplierId, editData, form]);
 
   useEffect(() => {
     if (watchSupplierId && suppliers && allBases) {

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import type { Supplier, Base } from "@shared/schema";
-import { COUNTERPARTY_ROLE } from "@shared/constants";
+import type { Supplier, Base, Warehouse } from "@shared/schema";
+import { COUNTERPARTY_ROLE, EQUIPMENT_TYPE } from "@shared/constants";
 import { usePriceLookup } from "@/pages/shared/hooks/use-price-lookup";
 
 interface UseRefuelingFiltersProps {
@@ -14,6 +14,8 @@ interface UseRefuelingFiltersProps {
   counterpartyType: string;
   suppliers: Supplier[];
   allBases: Base[];
+  equipmentType?: string;
+  warehouses?: Warehouse[];
 }
 
 export function useRefuelingFilters({
@@ -27,10 +29,21 @@ export function useRefuelingFilters({
   counterpartyType,
   suppliers,
   allBases,
+  equipmentType = EQUIPMENT_TYPE.COMMON,
+  warehouses,
 }: UseRefuelingFiltersProps) {
   const refuelingSuppliers = useMemo(() => {
+    let filteredSuppliers = suppliers || [];
+
+    if (equipmentType === EQUIPMENT_TYPE.LIK) {
+      filteredSuppliers = filteredSuppliers.filter((s) => {
+        const warehouse = warehouses?.find((w) => w.supplierId === s.id);
+        return warehouse?.equipmentType === EQUIPMENT_TYPE.LIK;
+      });
+    }
+
     return (
-      suppliers?.filter((supplier) => {
+      filteredSuppliers.filter((supplier) => {
         if (!supplier.baseIds || supplier.baseIds.length === 0) return false;
         return allBases?.some(
           (base) =>
@@ -38,7 +51,7 @@ export function useRefuelingFilters({
         );
       }) || []
     );
-  }, [suppliers, allBases]);
+  }, [suppliers, allBases, equipmentType, warehouses, baseType]);
 
   const availableBases = useMemo(() => {
     if (!supplierId || !suppliers || !allBases) return [];
