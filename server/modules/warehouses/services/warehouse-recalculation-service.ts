@@ -1,5 +1,5 @@
 import { eq, and, gte, sql, or, isNull, desc, asc } from "drizzle-orm";
-import { warehouses, warehouseTransactions, opt, aircraftRefueling, movement, warehousesEquipment, equipments, equipmentTransactions } from "@shared/schema";
+import { warehouses, warehouseTransactions, opt, aircraftRefueling, movement, warehousesEquipment, equipments, equipmentTransactions, equipmentMovement } from "@shared/schema";
 import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 
 export class WarehouseRecalculationService {
@@ -398,6 +398,17 @@ export class WarehouseRecalculationService {
             updatedById
           );
         }
+
+        // Обновляем перемещения оборудования
+        if (transaction.sourceType === SOURCE_TYPE.MOVEMENT) {
+          await this.updateEquipmentMovement(
+            tx,
+            transaction.sourceId,
+            currentAverageCost,
+            transaction.transactionType,
+            updatedById
+          );
+        }
       }
 
       await tx.update(equipmentTransactions)
@@ -640,6 +651,36 @@ export class WarehouseRecalculationService {
           .where(eq(aircraftRefueling.id, sourceId));
 
         console.log('        ✓ Заправка обновлена');
+      }
+    }
+  }
+
+  private static async updateEquipmentMovement(
+    tx: any,
+    movementId: string,
+    newAverageCost: number,
+    transactionType: string,
+    updatedById?: string
+  ) {
+    console.log('        [updateEquipmentMovement]', movementId, transactionType);
+    const move = await tx.query.equipmentMovement.findFirst({
+      where: eq(equipmentMovement.id, movementId),
+    });
+
+    if (move) {
+      const quantity = parseFloat(move.quantityKg);
+      // Если это расход с оборудования (отправитель)
+      if (transactionType === TRANSACTION_TYPE.TRANSFER_OUT) {
+        const totalCost = quantity * newAverageCost;
+        await tx.update(equipmentMovement)
+          .set({
+            costPerKg: newAverageCost.toFixed(5),
+            totalCost: totalCost.toFixed(2),
+            updatedAt: sql`NOW()`,
+            updatedById,
+          })
+          .where(eq(equipmentMovement.id, movementId));
+        console.log('        ✓ Перемещение оборудования (отправитель) обновлено');
       }
     }
   }
