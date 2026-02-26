@@ -69,7 +69,6 @@ export function AddEquipmentDialog({
       return res.json();
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/warehouses-equipment"] });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses/equipment-map"] });
       if (variables.warehouseId) {
         queryClient.invalidateQueries({ 

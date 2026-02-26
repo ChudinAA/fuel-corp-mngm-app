@@ -1,5 +1,15 @@
 import { eq, and, gte, sql, or, isNull, desc, asc } from "drizzle-orm";
-import { warehouses, warehouseTransactions, opt, aircraftRefueling, movement, warehousesEquipment, equipments, equipmentTransactions, equipmentMovement } from "@shared/schema";
+import {
+  warehouses,
+  warehouseTransactions,
+  opt,
+  aircraftRefueling,
+  movement,
+  warehousesEquipment,
+  equipments,
+  equipmentTransactions,
+  equipmentMovement,
+} from "@shared/schema";
 import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 
 export class WarehouseRecalculationService {
@@ -11,10 +21,15 @@ export class WarehouseRecalculationService {
       productType: string;
     }>,
     updatedById?: string,
-    visitedWarehouses?: Set<string>
+    visitedWarehouses?: Set<string>,
   ) {
-    console.log('  [WarehouseRecalculationService] recalculateAllAffectedTransactions');
-    console.log('    Количество затронутых складов:', affectedWarehouses.length);
+    console.log(
+      "  [WarehouseRecalculationService] recalculateAllAffectedTransactions",
+    );
+    console.log(
+      "    Количество затронутых складов:",
+      affectedWarehouses.length,
+    );
 
     const visited = visitedWarehouses || new Set<string>();
 
@@ -23,16 +38,20 @@ export class WarehouseRecalculationService {
       const key = `${warehouseId}:${productType}`;
 
       if (visited.has(key)) {
-        console.log(`    Склад ${warehouseId} (${productType}) уже обработан, пропускаем`);
+        console.log(
+          `    Склад ${warehouseId} (${productType}) уже обработан, пропускаем`,
+        );
         continue;
       }
 
       visited.add(key);
 
-      console.log(`\n    === Пересчет склада ${i + 1} из ${affectedWarehouses.length} ===`);
-      console.log('    Warehouse ID:', warehouseId);
-      console.log('    After Date:', afterDate);
-      console.log('    Product Type:', productType);
+      console.log(
+        `\n    === Пересчет склада ${i + 1} из ${affectedWarehouses.length} ===`,
+      );
+      console.log("    Warehouse ID:", warehouseId);
+      console.log("    After Date:", afterDate);
+      console.log("    Product Type:", productType);
 
       await this.recalculateWarehouseChain(
         tx,
@@ -40,13 +59,13 @@ export class WarehouseRecalculationService {
         afterDate,
         productType,
         updatedById,
-        visited
+        visited,
       );
 
       console.log(`    ✓ Склад ${i + 1} пересчитан`);
     }
 
-    console.log('\n  ✓ Все затронутые склады пересчитаны');
+    console.log("\n  ✓ Все затронутые склады пересчитаны");
   }
 
   private static async recalculateWarehouseChain(
@@ -55,9 +74,9 @@ export class WarehouseRecalculationService {
     afterDate: string,
     productType: string,
     updatedById?: string,
-    visitedWarehouses?: Set<string>
+    visitedWarehouses?: Set<string>,
   ) {
-    console.log('      [recalculateWarehouseChain] Начало пересчета цепочки');
+    console.log("      [recalculateWarehouseChain] Начало пересчета цепочки");
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
     const visited = visitedWarehouses || new Set<string>();
 
@@ -65,10 +84,10 @@ export class WarehouseRecalculationService {
       tx,
       warehouseId,
       afterDate,
-      productType
+      productType,
     );
 
-    console.log('      Начальное состояние до', afterDate, ':', initialState);
+    console.log("      Начальное состояние до", afterDate, ":", initialState);
 
     const transactions = await tx
       .select()
@@ -82,18 +101,20 @@ export class WarehouseRecalculationService {
             gte(warehouseTransactions.transactionDate, afterDate),
             and(
               isNull(warehouseTransactions.transactionDate),
-              gte(warehouseTransactions.createdAt, afterDate)
-            )
-          )
-        )
+              gte(warehouseTransactions.createdAt, afterDate),
+            ),
+          ),
+        ),
       )
       .orderBy(
-        asc(sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`),
+        asc(
+          sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`,
+        ),
         asc(warehouseTransactions.createdAt),
-        asc(warehouseTransactions.id)
+        asc(warehouseTransactions.id),
       );
 
-    console.log('      Найдено транзакций для пересчета:', transactions.length);
+    console.log("      Найдено транзакций для пересчета:", transactions.length);
 
     let currentBalance = initialState.balance;
     let currentAverageCost = initialState.averageCost;
@@ -107,18 +128,27 @@ export class WarehouseRecalculationService {
     for (let i = 0; i < transactions.length; i++) {
       const transaction = transactions[i];
       console.log(`\n      --- Транзакция ${i + 1}/${transactions.length} ---`);
-      console.log('      ID:', transaction.id);
-      console.log('      Type:', transaction.transactionType);
-      console.log('      Source:', transaction.sourceType, transaction.sourceId);
-      console.log('      TransactionDate:', transaction.transactionDate);
-      console.log('      CreatedAt:', transaction.createdAt);
+      console.log("      ID:", transaction.id);
+      console.log("      Type:", transaction.transactionType);
+      console.log(
+        "      Source:",
+        transaction.sourceType,
+        transaction.sourceId,
+      );
+      console.log("      TransactionDate:", transaction.transactionDate);
+      console.log("      CreatedAt:", transaction.createdAt);
 
       const quantity = Math.abs(parseFloat(transaction.quantity));
-      const isReceipt = transaction.transactionType === TRANSACTION_TYPE.RECEIPT || 
-                       transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
+      const isReceipt =
+        transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
+        transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
 
-      console.log('      Quantity:', quantity, isReceipt ? '(приход)' : '(расход)');
-      console.log('      До пересчета:', {
+      console.log(
+        "      Quantity:",
+        quantity,
+        isReceipt ? "(приход)" : "(расход)",
+      );
+      console.log("      До пересчета:", {
         balance: currentBalance,
         averageCost: currentAverageCost,
       });
@@ -135,15 +165,14 @@ export class WarehouseRecalculationService {
           tx,
           transaction.sourceType,
           transaction.sourceId,
-          quantity
+          quantity,
         );
 
-        console.log('      Incoming cost:', incomingCost);
+        console.log("      Incoming cost:", incomingCost);
 
         const totalCurrentCost = currentBalance * currentAverageCost;
-        newAverageCost = newBalance > 0 
-          ? (totalCurrentCost + incomingCost) / newBalance 
-          : 0;
+        newAverageCost =
+          newBalance > 0 ? (totalCurrentCost + incomingCost) / newBalance : 0;
 
         newSum = incomingCost;
         newPrice = quantity > 0 ? incomingCost / quantity : 0;
@@ -155,14 +184,15 @@ export class WarehouseRecalculationService {
         newPrice = currentAverageCost;
       }
 
-      console.log('      После пересчета:', {
+      console.log("      После пересчета:", {
         balance: newBalance,
         averageCost: newAverageCost,
         sum: newSum,
         price: newPrice,
       });
 
-      await tx.update(warehouseTransactions)
+      await tx
+        .update(warehouseTransactions)
         .set({
           balanceBefore: currentBalance.toString(),
           balanceAfter: newBalance.toString(),
@@ -175,41 +205,29 @@ export class WarehouseRecalculationService {
         })
         .where(eq(warehouseTransactions.id, transaction.id));
 
-      console.log('      ✓ Транзакция обновлена в БД');
+      console.log("      ✓ Транзакция обновлена в БД");
 
       if (transaction.transactionType === TRANSACTION_TYPE.SALE) {
-        console.log('      → Обновление связанной сделки (продажа)');
+        console.log("      → Обновление связанной сделки (продажа)");
         await this.updateRelatedDeal(
           tx,
           transaction.sourceType,
           transaction.sourceId,
           currentAverageCost,
-          updatedById
+          updatedById,
         );
       }
 
-      // if (transaction.transactionType === TRANSACTION_TYPE.TRANSFER_OUT || 
-      //     transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN) {
-      //   if (transaction.sourceType === SOURCE_TYPE.MOVEMENT) {
-      //     console.log('      → Обновление сделки перемещения');
-      //     await this.updateMovementDeal(
-      //       tx,
-      //       transaction.sourceId,
-      //       currentAverageCost,
-      //       transaction.transactionType,
-      //       updatedById
-      //     );
-      //   }
-      // }
-
-      if (transaction.sourceType === SOURCE_TYPE.MOVEMENT && 
-          transaction.transactionType === TRANSACTION_TYPE.TRANSFER_OUT) {
+      if (
+        transaction.sourceType === SOURCE_TYPE.MOVEMENT &&
+        transaction.transactionType === TRANSACTION_TYPE.TRANSFER_OUT
+      ) {
         const movementCascade = await this.getMovementCascadeInfo(
           tx,
           transaction.sourceId,
           newAverageCost,
           quantity,
-          visited
+          visited,
         );
 
         if (movementCascade) {
@@ -221,7 +239,7 @@ export class WarehouseRecalculationService {
       currentAverageCost = newAverageCost;
     }
 
-    console.log('\n      Финальное состояние склада:', {
+    console.log("\n      Финальное состояние склада:", {
       balance: currentBalance,
       averageCost: currentAverageCost,
     });
@@ -239,27 +257,35 @@ export class WarehouseRecalculationService {
       updateData.averageCost = currentAverageCost.toFixed(4);
     }
 
-    await tx.update(warehouses)
+    await tx
+      .update(warehouses)
       .set(updateData)
       .where(eq(warehouses.id, warehouseId));
 
-    console.log('      ✓ Склад обновлен с финальными значениями');
+    console.log("      ✓ Склад обновлен с финальными значениями");
 
     // Находим связанные средства заправки (equipment)
     const linkedEquipment = await tx
       .select({ equipmentId: warehousesEquipment.equipmentId })
       .from(warehousesEquipment)
-      .where(and(eq(warehousesEquipment.warehouseId, warehouseId), isNull(warehousesEquipment.deletedAt)));
+      .where(
+        and(
+          eq(warehousesEquipment.warehouseId, warehouseId),
+          isNull(warehousesEquipment.deletedAt),
+        ),
+      );
 
     if (linkedEquipment.length > 0) {
-      console.log(`      Найдено связанных средств заправки: ${linkedEquipment.length}`);
+      console.log(
+        `      Найдено связанных средств заправки: ${linkedEquipment.length}`,
+      );
       for (const { equipmentId } of linkedEquipment) {
         await this.recalculateEquipmentChain(
           tx,
           equipmentId,
           afterDate,
           productType,
-          updatedById
+          updatedById,
         );
       }
     }
@@ -267,19 +293,23 @@ export class WarehouseRecalculationService {
     for (const cascade of cascadeRecalculations) {
       const cascadeKey = `${cascade.warehouseId}:${cascade.productType}`;
       if (visited.has(cascadeKey)) {
-        console.log(`      → Каскадный пересчет ${cascade.warehouseId} уже в процессе, пропускаем`);
+        console.log(
+          `      → Каскадный пересчет ${cascade.warehouseId} уже в процессе, пропускаем`,
+        );
         continue;
       }
 
       visited.add(cascadeKey);
-      console.log(`\n      → Каскадный пересчет склада-получателя: ${cascade.warehouseId}`);
+      console.log(
+        `\n      → Каскадный пересчет склада-получателя: ${cascade.warehouseId}`,
+      );
       await this.recalculateWarehouseChain(
         tx,
         cascade.warehouseId,
         cascade.afterDate,
         cascade.productType,
         updatedById,
-        visited
+        visited,
       );
     }
   }
@@ -289,9 +319,11 @@ export class WarehouseRecalculationService {
     equipmentId: string,
     afterDate: string,
     productType: string,
-    updatedById?: string
+    updatedById?: string,
   ) {
-    console.log(`      [recalculateEquipmentChain] Пересчет оборудования ${equipmentId}`);
+    console.log(
+      `      [recalculateEquipmentChain] Пересчет оборудования ${equipmentId}`,
+    );
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
 
     // 1. Получаем состояние оборудования до даты пересчета
@@ -303,13 +335,15 @@ export class WarehouseRecalculationService {
           eq(equipmentTransactions.equipmentId, equipmentId),
           eq(equipmentTransactions.productType, productType),
           isNull(equipmentTransactions.deletedAt),
-          sql`COALESCE(${equipmentTransactions.transactionDate}, ${equipmentTransactions.createdAt}) < ${afterDate}`
-        )
+          sql`COALESCE(${equipmentTransactions.transactionDate}, ${equipmentTransactions.createdAt}) < ${afterDate}`,
+        ),
       )
       .orderBy(
-        desc(sql`COALESCE(${equipmentTransactions.transactionDate}, ${equipmentTransactions.createdAt})`),
+        desc(
+          sql`COALESCE(${equipmentTransactions.transactionDate}, ${equipmentTransactions.createdAt})`,
+        ),
         desc(equipmentTransactions.createdAt),
-        desc(equipmentTransactions.id)
+        desc(equipmentTransactions.id),
       )
       .limit(1);
 
@@ -318,10 +352,15 @@ export class WarehouseRecalculationService {
 
     if (lastTransaction.length > 0) {
       currentBalance = parseFloat(lastTransaction[0].balanceAfter || "0");
-      currentAverageCost = parseFloat(lastTransaction[0].averageCostAfter || "0");
+      currentAverageCost = parseFloat(
+        lastTransaction[0].averageCostAfter || "0",
+      );
     }
 
-    console.log(`      Начальное состояние оборудования до ${afterDate}:`, { balance: currentBalance, averageCost: currentAverageCost });
+    console.log(`      Начальное состояние оборудования до ${afterDate}:`, {
+      balance: currentBalance,
+      averageCost: currentAverageCost,
+    });
 
     // 2. Получаем транзакции оборудования для пересчета
     const transactions = await tx
@@ -336,31 +375,36 @@ export class WarehouseRecalculationService {
             gte(equipmentTransactions.transactionDate, afterDate),
             and(
               isNull(equipmentTransactions.transactionDate),
-              gte(equipmentTransactions.createdAt, afterDate)
-            )
-          )
-        )
+              gte(equipmentTransactions.createdAt, afterDate),
+            ),
+          ),
+        ),
       )
       .orderBy(
-        asc(sql`COALESCE(${equipmentTransactions.transactionDate}, ${equipmentTransactions.createdAt})`),
+        asc(
+          sql`COALESCE(${equipmentTransactions.transactionDate}, ${equipmentTransactions.createdAt})`,
+        ),
         asc(equipmentTransactions.createdAt),
-        asc(equipmentTransactions.id)
+        asc(equipmentTransactions.id),
       );
 
-    console.log(`      Найдено транзакций оборудования для пересчета: ${transactions.length}`);
+    console.log(
+      `      Найдено транзакций оборудования для пересчета: ${transactions.length}`,
+    );
 
     for (let i = 0; i < transactions.length; i++) {
       const transaction = transactions[i];
       const quantity = Math.abs(parseFloat(transaction.quantity));
-      const isReceipt = transaction.transactionType === TRANSACTION_TYPE.RECEIPT || 
-                       transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
+      const isReceipt =
+        transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
+        transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
 
       let newBalance: number;
       let newAverageCost: number;
 
       if (isReceipt) {
         newBalance = currentBalance + quantity;
-        
+
         // Для оборудования приход всегда идет со склада по текущей себестоимости склада на момент транзакции.
         // Так как мы пересчитываем цепочку после того как складские транзакции уже обновлены,
         // нам нужно найти соответствующую транзакцию склада, чтобы получить актуальную себестоимость.
@@ -370,48 +414,51 @@ export class WarehouseRecalculationService {
             where: and(
               eq(warehouseTransactions.sourceType, SOURCE_TYPE.MOVEMENT),
               eq(warehouseTransactions.sourceId, transaction.sourceId),
-              eq(warehouseTransactions.transactionType, TRANSACTION_TYPE.TRANSFER_OUT),
-              isNull(warehouseTransactions.deletedAt)
-            )
+              eq(
+                warehouseTransactions.transactionType,
+                TRANSACTION_TYPE.TRANSFER_OUT,
+              ),
+              isNull(warehouseTransactions.deletedAt),
+            ),
           });
           if (warehouseTx) {
-            incomingCost = parseFloat(warehouseTx.sum || "0");
+            incomingCost = parseFloat(warehouseTx.averageCostAfter || "0");
           }
         }
 
-        const totalCurrentCost = currentBalance * currentAverageCost;
-        newAverageCost = newBalance > 0 
-          ? (totalCurrentCost + incomingCost) / newBalance 
-          : 0;
+        newAverageCost = incomingCost;
       } else {
         newBalance = Math.max(0, currentBalance - quantity);
         newAverageCost = currentAverageCost;
 
         // Если это списание на заправку, обновляем сделку
-        if (transaction.transactionType === TRANSACTION_TYPE.SALE || 
-            (transaction.sourceType === SOURCE_TYPE.REFUELING)) {
+        if (
+          transaction.transactionType === TRANSACTION_TYPE.SALE ||
+          transaction.sourceType === SOURCE_TYPE.REFUELING
+        ) {
           await this.updateRelatedDeal(
             tx,
             transaction.sourceType || SOURCE_TYPE.REFUELING,
             transaction.sourceId,
             currentAverageCost,
-            updatedById
-          );
-        }
-
-        // Обновляем перемещения оборудования
-        if (transaction.sourceType === SOURCE_TYPE.MOVEMENT) {
-          await this.updateEquipmentMovement(
-            tx,
-            transaction.sourceId,
-            currentAverageCost,
-            transaction.transactionType,
-            updatedById
+            updatedById,
           );
         }
       }
 
-      await tx.update(equipmentTransactions)
+      // Обновляем перемещения оборудования
+      if (transaction.sourceType === SOURCE_TYPE.MOVEMENT) {
+        await this.updateEquipmentMovement(
+          tx,
+          transaction.sourceId,
+          newAverageCost,
+          transaction.transactionType,
+          updatedById,
+        );
+      }
+
+      await tx
+        .update(equipmentTransactions)
         .set({
           balanceBefore: currentBalance.toString(),
           balanceAfter: newBalance.toString(),
@@ -440,7 +487,8 @@ export class WarehouseRecalculationService {
       updateData.averageCost = currentAverageCost.toFixed(4);
     }
 
-    await tx.update(equipments)
+    await tx
+      .update(equipments)
       .set(updateData)
       .where(eq(equipments.id, equipmentId));
 
@@ -451,7 +499,7 @@ export class WarehouseRecalculationService {
     tx: any,
     warehouseId: string,
     beforeDate: string,
-    productType: string
+    productType: string,
   ): Promise<{ balance: number; averageCost: number }> {
     const lastTransaction = await tx
       .select()
@@ -461,13 +509,15 @@ export class WarehouseRecalculationService {
           eq(warehouseTransactions.warehouseId, warehouseId),
           eq(warehouseTransactions.productType, productType),
           isNull(warehouseTransactions.deletedAt),
-          sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt}) < ${beforeDate}`
-        )
+          sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt}) < ${beforeDate}`,
+        ),
       )
       .orderBy(
-        desc(sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`),
+        desc(
+          sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`,
+        ),
         desc(warehouseTransactions.createdAt),
-        desc(warehouseTransactions.id)
+        desc(warehouseTransactions.id),
       )
       .limit(1);
 
@@ -485,7 +535,7 @@ export class WarehouseRecalculationService {
     tx: any,
     sourceType: string,
     sourceId: string,
-    quantity: number
+    quantity: number,
   ): Promise<number> {
     if (sourceType === SOURCE_TYPE.MOVEMENT) {
       const movementRecord = await tx.query.movement.findFirst({
@@ -505,33 +555,51 @@ export class WarehouseRecalculationService {
     movementId: string,
     newSourceAverageCost: number,
     quantity: number,
-    visitedWarehouses: Set<string>
-  ): Promise<{ warehouseId: string; afterDate: string; productType: string } | null> {
+    visitedWarehouses: Set<string>,
+  ): Promise<{
+    warehouseId: string;
+    afterDate: string;
+    productType: string;
+  } | null> {
     const movementRecord = await tx.query.movement.findFirst({
       where: eq(movement.id, movementId),
     });
 
-    if (!movementRecord || !movementRecord.toWarehouseId || !movementRecord.fromWarehouseId) {
+    if (
+      !movementRecord ||
+      !movementRecord.toWarehouseId ||
+      !movementRecord.fromWarehouseId
+    ) {
       return null;
     }
 
     const cascadeKey = `${movementRecord.toWarehouseId}:${movementRecord.productType || "kerosene"}`;
     if (visitedWarehouses.has(cascadeKey)) {
-      console.log(`        Склад-получатель ${movementRecord.toWarehouseId} уже в очереди на пересчет`);
+      console.log(
+        `        Склад-получатель ${movementRecord.toWarehouseId} уже в очереди на пересчет`,
+      );
       return null;
     }
 
     // При каскадном пересчете мы обновляем purchasePrice и totalCost.
-    if (Math.abs(newSourceAverageCost - parseFloat(movementRecord.purchasePrice || "0")) > 0.0001) {
-      console.log(`        Обновление цены закупки перемещения: ${movementRecord.purchasePrice} -> ${newSourceAverageCost}`);
+    if (
+      Math.abs(
+        newSourceAverageCost - parseFloat(movementRecord.purchasePrice || "0"),
+      ) > 0.0001
+    ) {
+      console.log(
+        `        Обновление цены закупки перемещения: ${movementRecord.purchasePrice} -> ${newSourceAverageCost}`,
+      );
 
       // totalCost для получателя = (Кол-во * Новая цена закупки отправителя) + Доставка + Хранение
       const deliveryCost = parseFloat(movementRecord.deliveryCost || "0");
       const storageCost = parseFloat(movementRecord.storageCost || "0");
-      const newTotalCost = (quantity * newSourceAverageCost) + deliveryCost + storageCost;
-      const costPerKg = quantity > 0 ? newTotalCost / quantity : 0
-      
-      await tx.update(movement)
+      const newTotalCost =
+        quantity * newSourceAverageCost + deliveryCost + storageCost;
+      const costPerKg = quantity > 0 ? newTotalCost / quantity : 0;
+
+      await tx
+        .update(movement)
         .set({
           purchasePrice: newSourceAverageCost.toFixed(4),
           totalCost: newTotalCost.toFixed(2),
@@ -540,21 +608,30 @@ export class WarehouseRecalculationService {
         })
         .where(eq(movement.id, movementId));
 
-      const destinationTransaction = await tx.query.warehouseTransactions.findFirst({
-        where: and(
-          eq(warehouseTransactions.sourceType, SOURCE_TYPE.MOVEMENT),
-          eq(warehouseTransactions.sourceId, movementId),
-          eq(warehouseTransactions.warehouseId, movementRecord.toWarehouseId),
-          or(
-            eq(warehouseTransactions.transactionType, TRANSACTION_TYPE.RECEIPT),
-            eq(warehouseTransactions.transactionType, TRANSACTION_TYPE.TRANSFER_IN)
+      const destinationTransaction =
+        await tx.query.warehouseTransactions.findFirst({
+          where: and(
+            eq(warehouseTransactions.sourceType, SOURCE_TYPE.MOVEMENT),
+            eq(warehouseTransactions.sourceId, movementId),
+            eq(warehouseTransactions.warehouseId, movementRecord.toWarehouseId),
+            or(
+              eq(
+                warehouseTransactions.transactionType,
+                TRANSACTION_TYPE.RECEIPT,
+              ),
+              eq(
+                warehouseTransactions.transactionType,
+                TRANSACTION_TYPE.TRANSFER_IN,
+              ),
+            ),
+            isNull(warehouseTransactions.deletedAt),
           ),
-          isNull(warehouseTransactions.deletedAt)
-        )
-      });
+        });
 
       if (destinationTransaction) {
-        const txDate = destinationTransaction.transactionDate || destinationTransaction.createdAt;
+        const txDate =
+          destinationTransaction.transactionDate ||
+          destinationTransaction.createdAt;
         return {
           warehouseId: movementRecord.toWarehouseId,
           afterDate: txDate,
@@ -571,10 +648,10 @@ export class WarehouseRecalculationService {
     sourceType: string,
     sourceId: string,
     newAverageCost: number,
-    updatedById?: string
+    updatedById?: string,
   ) {
-    console.log('        [updateRelatedDeal]', sourceType, sourceId);
-    console.log('        New average cost:', newAverageCost);
+    console.log("        [updateRelatedDeal]", sourceType, sourceId);
+    console.log("        New average cost:", newAverageCost);
 
     if (sourceType === SOURCE_TYPE.OPT) {
       const deal = await tx.query.opt.findFirst({
@@ -589,19 +666,20 @@ export class WarehouseRecalculationService {
         const saleAmount = quantityKg * salePrice;
         const profit = saleAmount - purchaseAmount - deliveryCost;
 
-        console.log('        ОПТ сделка до обновления:', {
+        console.log("        ОПТ сделка до обновления:", {
           purchasePrice: deal.purchasePrice,
           purchaseAmount: deal.purchaseAmount,
           profit: deal.profit,
         });
 
-        console.log('        ОПТ сделка после обновления:', {
+        console.log("        ОПТ сделка после обновления:", {
           purchasePrice: newAverageCost.toFixed(4),
           purchaseAmount: purchaseAmount.toFixed(2),
           profit: profit.toFixed(2),
         });
 
-        await tx.update(opt)
+        await tx
+          .update(opt)
           .set({
             purchasePrice: newAverageCost.toFixed(4),
             purchaseAmount: purchaseAmount.toFixed(2),
@@ -612,7 +690,7 @@ export class WarehouseRecalculationService {
           })
           .where(eq(opt.id, sourceId));
 
-        console.log('        ✓ ОПТ сделка обновлена');
+        console.log("        ✓ ОПТ сделка обновлена");
       }
     } else if (sourceType === SOURCE_TYPE.REFUELING) {
       const refuel = await tx.query.aircraftRefueling.findFirst({
@@ -627,19 +705,20 @@ export class WarehouseRecalculationService {
         const saleAmount = quantityKg * salePrice;
         const profit = saleAmount - purchaseAmount - agentFee;
 
-        console.log('        Заправка до обновления:', {
+        console.log("        Заправка до обновления:", {
           purchasePrice: refuel.purchasePrice,
           purchaseAmount: refuel.purchaseAmount,
           profit: refuel.profit,
         });
 
-        console.log('        Заправка после обновления:', {
+        console.log("        Заправка после обновления:", {
           purchasePrice: newAverageCost.toFixed(4),
           purchaseAmount: purchaseAmount.toFixed(2),
           profit: profit.toFixed(2),
         });
 
-        await tx.update(aircraftRefueling)
+        await tx
+          .update(aircraftRefueling)
           .set({
             purchasePrice: newAverageCost.toFixed(4),
             purchaseAmount: purchaseAmount.toFixed(2),
@@ -650,7 +729,7 @@ export class WarehouseRecalculationService {
           })
           .where(eq(aircraftRefueling.id, sourceId));
 
-        console.log('        ✓ Заправка обновлена');
+        console.log("        ✓ Заправка обновлена");
       }
     }
   }
@@ -660,36 +739,42 @@ export class WarehouseRecalculationService {
     movementId: string,
     newAverageCost: number,
     transactionType: string,
-    updatedById?: string
+    updatedById?: string,
   ) {
-    console.log('        [updateEquipmentMovement]', movementId, transactionType);
+    console.log(
+      "        [updateEquipmentMovement]",
+      movementId,
+      transactionType,
+    );
     const move = await tx.query.equipmentMovement.findFirst({
       where: eq(equipmentMovement.id, movementId),
     });
 
     if (move) {
       const quantity = parseFloat(move.quantityKg);
-      // Если это расход с оборудования (отправитель)
-      if (transactionType === TRANSACTION_TYPE.TRANSFER_OUT) {
-        const totalCost = quantity * newAverageCost;
-        await tx.update(equipmentMovement)
-          .set({
-            costPerKg: newAverageCost.toFixed(5),
-            totalCost: totalCost.toFixed(2),
-            updatedAt: sql`NOW()`,
-            updatedById,
-          })
-          .where(eq(equipmentMovement.id, movementId));
-        console.log('        ✓ Перемещение оборудования (отправитель) обновлено');
-      }
+      const totalCost = quantity * newAverageCost;
+      await tx
+        .update(equipmentMovement)
+        .set({
+          costPerKg: newAverageCost.toFixed(5),
+          totalCost: totalCost.toFixed(2),
+          updatedAt: sql`NOW()`,
+          updatedById,
+        })
+        .where(eq(equipmentMovement.id, movementId));
+      console.log("        ✓ Перемещение оборудования обновлено");
     }
   }
 
   static getAffectedWarehouses(
     movementRecord: any,
-    movementDate: string
+    movementDate: string,
   ): Array<{ warehouseId: string; afterDate: string; productType: string }> {
-    const affected: Array<{ warehouseId: string; afterDate: string; productType: string }> = [];
+    const affected: Array<{
+      warehouseId: string;
+      afterDate: string;
+      productType: string;
+    }> = [];
 
     if (movementRecord.fromWarehouseId) {
       affected.push({

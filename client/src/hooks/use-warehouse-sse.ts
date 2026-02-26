@@ -66,6 +66,14 @@ export function useWarehouseSSE(isAuthenticated: boolean) {
           queryClient.invalidateQueries({
             queryKey: ["/api/movement"],
           });
+
+          queryClient.invalidateQueries({
+            queryKey: ["/api/equipment-movement"],
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: ["/api/warehouses/equipment-map"],
+          });
         } catch (error) {
           console.error("[SSE] Failed to parse event data:", error);
         }
@@ -77,7 +85,7 @@ export function useWarehouseSSE(isAuthenticated: boolean) {
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
         }
-        
+
         // Exponential backoff or longer delay if not authenticated
         const delay = isAuthenticated ? 10000 : 40000;
         reconnectTimeoutRef.current = setTimeout(connect, delay);
