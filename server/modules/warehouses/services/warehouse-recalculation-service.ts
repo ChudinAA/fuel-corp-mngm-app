@@ -166,6 +166,7 @@ export class WarehouseRecalculationService {
           transaction.sourceType,
           transaction.sourceId,
           quantity,
+          currentAverageCost,
         );
 
         console.log("      Incoming cost:", incomingCost);
@@ -536,6 +537,7 @@ export class WarehouseRecalculationService {
     sourceType: string,
     sourceId: string,
     quantity: number,
+    currentAverageCost: number,
   ): Promise<number> {
     if (sourceType === SOURCE_TYPE.MOVEMENT) {
       const movementRecord = await tx.query.movement.findFirst({
@@ -544,6 +546,25 @@ export class WarehouseRecalculationService {
 
       if (movementRecord) {
         return parseFloat(movementRecord.totalCost || "0");
+      }
+
+      // Если в таблице транзакций средств заправки (ТЗК), привязанных к складу, есть транзакция исходящего перемещения с sourceId,
+      // то это значит был возврат топлива с ТЗК на материнский склад, и надо взять себестоимсть обновляемого материнского склада,
+      // т.к. себестоимость ТЗК всегда равна себестоимости материнского склада, и не должна влиять на срденюю себестоимость склада при пересчете
+      const equipmentTx = await tx.query.equipmentTransactions.findFirst({
+        where: and(
+          eq(equipmentTransactions.sourceType, SOURCE_TYPE.MOVEMENT),
+          eq(equipmentTransactions.sourceId, sourceId),
+          eq(
+            equipmentTransactions.transactionType,
+            TRANSACTION_TYPE.TRANSFER_OUT,
+          ),
+          isNull(equipmentTransactions.deletedAt),
+        ),
+      });
+      if (equipmentTx) {
+        const totalCost = quantity * currentAverageCost;
+        return totalCost;
       }
     }
 
