@@ -23,7 +23,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Truck, ArrowUpCircle, ArrowDownCircle, Package, Loader2 } from "lucide-react";
+import {
+  Truck,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Package,
+  Loader2,
+} from "lucide-react";
 import type { Equipment, EquipmentTransaction } from "@shared/schema";
 import { formatNumber, formatCurrency } from "../../warehouses/utils";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
@@ -40,31 +46,28 @@ export function EquipmentDetailsDialog({
   open,
   onOpenChange,
 }: EquipmentDetailsDialogProps) {
-  const {
-    data,
-    isLoading,
-    hasNextPage,
-    fetchNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: [`/api/warehouses-equipment/${equipment.id}/transactions`],
-    queryFn: async ({ pageParam = 0 }) => {
-      const res = await fetch(
-        `/api/warehouses-equipment/${equipment.id}/transactions?offset=${pageParam}&limit=25`,
-      );
-      if (!res.ok) throw new Error("Failed to fetch transactions");
-      return res.json() as Promise<{
-        transactions: EquipmentTransaction[];
-        hasMore: boolean;
-      }>;
-    },
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      return lastPage.hasMore ? allPages.length * 25 : undefined;
-    },
-    enabled: open,
-    refetchInterval: 5000,
-  });
+  const pagelimit = 25;
+
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } =
+    useInfiniteQuery({
+      queryKey: [`/api/warehouses-equipment/${equipment.id}/transactions`],
+      queryFn: async ({ pageParam = 0 }) => {
+        const res = await fetch(
+          `/api/warehouses-equipment/${equipment.id}/transactions?offset=${pageParam}&limit=${pagelimit}`,
+        );
+        if (!res.ok) throw new Error("Failed to fetch transactions");
+        return res.json() as Promise<{
+          transactions: EquipmentTransaction[];
+          hasMore: boolean;
+        }>;
+      },
+      initialPageParam: 0,
+      getNextPageParam: (lastPage, allPages) => {
+        return lastPage.hasMore ? allPages.length * pagelimit : undefined;
+      },
+      enabled: open,
+      refetchInterval: 5000,
+    });
 
   const transactions = useMemo(
     () => data?.pages.flatMap((page) => page.transactions) || [],
@@ -169,11 +172,9 @@ export function EquipmentDetailsDialog({
                   <TableRow key={tx.id}>
                     <TableCell>
                       {tx.transactionDate
-                        ? format(
-                            new Date(tx.transactionDate),
-                            "dd.MM.yyyy",
-                            { locale: ru },
-                          )
+                        ? format(new Date(tx.transactionDate), "dd.MM.yyyy", {
+                            locale: ru,
+                          })
                         : format(new Date(tx.createdAt!), "dd.MM.yyyy", {
                             locale: ru,
                           })}

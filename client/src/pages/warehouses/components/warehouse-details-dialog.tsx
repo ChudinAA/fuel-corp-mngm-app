@@ -67,6 +67,8 @@ export function WarehouseDetailsDialog({
     enabled: open,
   });
 
+  const pagelimit = 25;
+
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery<{
       transactions: WarehouseTransaction[];
@@ -75,7 +77,7 @@ export function WarehouseDetailsDialog({
       queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
       queryFn: async ({ pageParam = 0 }) => {
         const res = await fetch(
-          `/api/warehouses/${warehouse.id}/transactions?offset=${pageParam}&limit=25`,
+          `/api/warehouses/${warehouse.id}/transactions?offset=${pageParam}&limit=${pagelimit}`,
         );
         if (!res.ok) throw new Error("Failed to fetch transactions");
         return res.json();
@@ -84,7 +86,7 @@ export function WarehouseDetailsDialog({
       initialPageParam: 0,
       getNextPageParam: (lastPage, allPages) => {
         if (!lastPage.hasMore) return undefined;
-        return allPages.length * 25;
+        return allPages.length * pagelimit;
       },
       refetchInterval: 5000,
     });
