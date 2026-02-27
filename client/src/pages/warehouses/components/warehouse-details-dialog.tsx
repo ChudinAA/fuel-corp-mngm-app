@@ -75,7 +75,7 @@ export function WarehouseDetailsDialog({
       queryKey: [`/api/warehouses/${warehouse.id}/transactions`],
       queryFn: async ({ pageParam = 0 }) => {
         const res = await fetch(
-          `/api/warehouses/${warehouse.id}/transactions?offset=${pageParam}&limit=50`,
+          `/api/warehouses/${warehouse.id}/transactions?offset=${pageParam}&limit=25`,
         );
         if (!res.ok) throw new Error("Failed to fetch transactions");
         return res.json();
@@ -84,7 +84,7 @@ export function WarehouseDetailsDialog({
       initialPageParam: 0,
       getNextPageParam: (lastPage, allPages) => {
         if (!lastPage.hasMore) return undefined;
-        return allPages.length * 50;
+        return allPages.length * 25;
       },
       refetchInterval: 5000,
     });
