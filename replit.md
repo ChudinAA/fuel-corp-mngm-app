@@ -6,6 +6,21 @@ This is a comprehensive web application for managing aviation fuel operations, i
 
 The application serves as a single source of truth for all fuel-related transactions, inventory tracking, and financial operations, with automatic price calculations and integrated warehouse management.
 
+### Refueling Abroad - Deal Chain
+
+The "Заправка ВС Зарубеж" (Foreign Aircraft Refueling) module features a visual "Deal Chain" ("Цепочка сделки") as the central UI element. The chain shows the money flow from Buyer → [chain items] → Supplier.
+
+**Chain item types:**
+- **Посредник (Intermediary)** - existing intermediary entity with commission/cross-rate calculation
+- **Курс (Exchange Rate)** - a currency exchange rate node (from справочник or manual entry)
+- **Комиссия банка (Bank Commission)** - bank fee node (% of sum, or % but not less than minimum)
+
+**How it works:**
+- The chain displays nodes with "+" buttons between them (clicking opens a menu to choose the item type)
+- Each item type saves to its own table: `refueling_abroad_intermediaries`, `refueling_abroad_exchange_rates`, `refueling_abroad_bank_commissions`
+- Each item has a `chainPosition`/`orderIndex` that preserves its position in the visual chain
+- On save, all three lists are sent to their respective PUT endpoints
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

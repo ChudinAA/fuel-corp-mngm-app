@@ -49,9 +49,12 @@ import type { RefuelingAbroadFormProps } from "../types";
 import { useRefuelingAbroadCalculations } from "../hooks/use-refueling-abroad-calculations";
 import { useSupplierCardBalance } from "../hooks/use-supplier-card-balance";
 import {
-  IntermediariesSection,
-  IntermediaryItem,
-} from "./intermediaries-section";
+  DealChainSection,
+  type ChainItem,
+  type ChainIntermediaryItem,
+  type ChainExchangeRateItem,
+  type ChainBankCommissionItem,
+} from "./deal-chain-section";
 import { formatCurrency, formatNumber } from "../utils";
 import { PRODUCT_TYPES_ABROAD } from "../constants";
 import type {
@@ -113,9 +116,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     form.setValue("supplierId", id);
   };
 
-  const [intermediariesList, setIntermediariesList] = useState<
-    IntermediaryItem[]
-  >([]);
+  const [chainItems, setChainItems] = useState<ChainItem[]>([]);
 
   const isCopy = !!editData && !editData.id;
   const originalId = isCopy ? (editData as any).originalId : editData?.id;
@@ -140,13 +141,33 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     queryKey: ["/api/currencies"],
   });
 
-  const { data: existingIntermediaries = [] } = useQuery<IntermediaryItem[]>({
+  const { data: existingIntermediaries = [] } = useQuery<any[]>({
     queryKey: ["/api/refueling-abroad", originalId, "intermediaries"],
     queryFn: async () => {
       if (!originalId) return [];
-      const res = await fetch(
-        `/api/refueling-abroad/${originalId}/intermediaries`,
-      );
+      const res = await fetch(`/api/refueling-abroad/${originalId}/intermediaries`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!originalId,
+  });
+
+  const { data: existingChainExchangeRates = [] } = useQuery<any[]>({
+    queryKey: ["/api/refueling-abroad", originalId, "chain-exchange-rates"],
+    queryFn: async () => {
+      if (!originalId) return [];
+      const res = await fetch(`/api/refueling-abroad/${originalId}/chain-exchange-rates`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!originalId,
+  });
+
+  const { data: existingChainBankCommissions = [] } = useQuery<any[]>({
+    queryKey: ["/api/refueling-abroad", originalId, "chain-bank-commissions"],
+    queryFn: async () => {
+      if (!originalId) return [];
+      const res = await fetch(`/api/refueling-abroad/${originalId}/chain-bank-commissions`);
       if (!res.ok) return [];
       return res.json();
     },
@@ -155,7 +176,6 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
 
   useEffect(() => {
     if (editData) {
-      // Construct composite price IDs with indices
       const purchasePriceCompositeId =
         editData.purchasePriceId && editData.purchasePriceIndex !== undefined
           ? `${editData.purchasePriceId}-${editData.purchasePriceIndex}`
@@ -169,7 +189,6 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);
 
-      // Initialize initial values for dirty check
       const initialValues = {
         refuelingDate: editData.refuelingDate ? new Date(editData.refuelingDate) : new Date(),
         productType: editData.productType || PRODUCT_TYPE.KEROSENE,
@@ -200,43 +219,63 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       initialValuesRef.current = initialValues;
       form.reset(initialValues, { keepDefaultValues: false });
     }
-    if (existingIntermediaries.length > 0) {
-      const intermediaries = existingIntermediaries.map((item: any) => ({
-        // We omit the id when it's a copy so the server creates new intermediary records
+
+    const allLoaded =
+      (existingIntermediaries.length > 0 ||
+        existingChainExchangeRates.length > 0 ||
+        existingChainBankCommissions.length > 0);
+
+    if (allLoaded) {
+      const intermediaryItems: ChainIntermediaryItem[] = existingIntermediaries.map((item: any) => ({
+        type: "intermediary" as const,
+        chainPosition: item.orderIndex ?? 0,
         id: isCopy ? undefined : item.id,
         intermediaryId: item.intermediaryId,
-        orderIndex: item.orderIndex,
         commissionFormula: item.commissionFormula || "",
-        commissionUsd: item.commissionUsd
-          ? parseFloat(String(item.commissionUsd))
-          : null,
-        manualCommissionUsd: item.manualCommissionUsd
-          ? parseFloat(item.manualCommissionUsd)
-          : null,
-        commissionRub: item.commissionRub
-          ? parseFloat(String(item.commissionRub))
-          : null,
+        commissionUsd: item.commissionUsd ? parseFloat(String(item.commissionUsd)) : null,
+        manualCommissionUsd: item.manualCommissionUsd ? parseFloat(item.manualCommissionUsd) : null,
+        commissionRub: item.commissionRub ? parseFloat(String(item.commissionRub)) : null,
         buyCurrencyId: item.buyCurrencyId,
         sellCurrencyId: item.sellCurrencyId,
-        buyExchangeRate: item.buyExchangeRate
-          ? parseFloat(String(item.buyExchangeRate))
-          : undefined,
-        sellExchangeRate: item.sellExchangeRate
-          ? parseFloat(String(item.sellExchangeRate))
-          : undefined,
-        crossConversionCost: item.crossConversionCost
-          ? parseFloat(String(item.crossConversionCost))
-          : 0,
-        crossConversionCostRub: (item as any).crossConversionCostRub
-          ? parseFloat(String((item as any).crossConversionCostRub))
-          : 0,
+        buyExchangeRate: item.buyExchangeRate ? parseFloat(String(item.buyExchangeRate)) : undefined,
+        sellExchangeRate: item.sellExchangeRate ? parseFloat(String(item.sellExchangeRate)) : undefined,
+        crossConversionCost: item.crossConversionCost ? parseFloat(String(item.crossConversionCost)) : 0,
+        crossConversionCostRub: item.crossConversionCostRub ? parseFloat(String(item.crossConversionCostRub)) : 0,
         notes: item.notes || "",
       }));
-      
-      setIntermediariesList(intermediaries);
-      initialIntermediariesRef.current = JSON.stringify(intermediaries);
+
+      const exchangeRateItems: ChainExchangeRateItem[] = existingChainExchangeRates.map((item: any) => ({
+        type: "exchange_rate" as const,
+        chainPosition: item.chainPosition ?? 0,
+        id: isCopy ? undefined : item.id,
+        exchangeRateId: item.exchangeRateId,
+        fromCurrencyId: item.fromCurrencyId,
+        toCurrencyId: item.toCurrencyId,
+        fromCurrencyCode: item.fromCurrencyCode,
+        toCurrencyCode: item.toCurrencyCode,
+        rate: item.rate ? parseFloat(String(item.rate)) : undefined,
+        rateDate: item.rateDate,
+        notes: item.notes,
+      }));
+
+      const bankCommissionItems: ChainBankCommissionItem[] = existingChainBankCommissions.map((item: any) => ({
+        type: "bank_commission" as const,
+        chainPosition: item.chainPosition ?? 0,
+        id: isCopy ? undefined : item.id,
+        commissionType: item.commissionType || "percent",
+        percent: item.percent ? parseFloat(String(item.percent)) : undefined,
+        minValue: item.minValue ? parseFloat(String(item.minValue)) : undefined,
+        bankName: item.bankName,
+        notes: item.notes,
+      }));
+
+      const merged = [...intermediaryItems, ...exchangeRateItems, ...bankCommissionItems]
+        .sort((a, b) => a.chainPosition - b.chainPosition);
+
+      setChainItems(merged);
+      initialIntermediariesRef.current = JSON.stringify(merged);
     }
-  }, [existingIntermediaries, isCopy, editData]);
+  }, [existingIntermediaries, existingChainExchangeRates, existingChainBankCommissions, isCopy, editData]);
 
   const latestUsdRate = exchangeRates
     .filter((r) => r.currency === "USD" && r.targetCurrency === "RUB")
@@ -292,15 +331,15 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     },
     isDirty: () => {
       const currentValues = form.getValues();
-      const currentIntermediaries = JSON.stringify(intermediariesList);
+      const currentChain = JSON.stringify(chainItems);
       
       const valuesChanged = initialValuesRef.current 
         ? JSON.stringify(currentValues) !== JSON.stringify(initialValuesRef.current)
         : false;
         
-      const intermediariesChanged = initialIntermediariesRef.current !== currentIntermediaries;
+      const chainChanged = initialIntermediariesRef.current !== currentChain;
       
-      return valuesChanged || intermediariesChanged || form.formState.isDirty;
+      return valuesChanged || chainChanged || form.formState.isDirty;
     }
   }));
 
@@ -335,21 +374,25 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       ? parseFloat(selectedSaleExchangeRate.rate)
       : 0;
 
-  const totalIntermediaryCommissionUsd = intermediariesList.reduce(
+  const intermediaryChainItems = chainItems.filter(
+    (i): i is ChainIntermediaryItem => i.type === "intermediary",
+  );
+
+  const totalIntermediaryCommissionUsd = intermediaryChainItems.reduce(
     (sum, item) => sum + (item.commissionUsd || 0),
     0,
   );
-  const totalIntermediaryCommissionRub = intermediariesList.reduce(
+  const totalIntermediaryCommissionRub = intermediaryChainItems.reduce(
     (sum, item) => sum + (item.commissionRub || 0),
     0,
   );
 
-  const totalCrossConversionCostUsd = intermediariesList.reduce(
+  const totalCrossConversionCostUsd = intermediaryChainItems.reduce(
     (sum, item) => sum + (item.crossConversionCost || 0),
     0,
   );
 
-  const totalCrossConversionCostRub = intermediariesList.reduce(
+  const totalCrossConversionCostRub = intermediaryChainItems.reduce(
     (sum, item) => sum + (item.crossConversionCostRub || 0),
     0,
   );
@@ -503,15 +546,13 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         refuelingId = result.id;
       }
 
-      const intermediariesPayload = intermediariesList
+      const intermediariesPayload = chainItems
+        .filter((item): item is ChainIntermediaryItem => item.type === "intermediary")
         .filter((item) => item.intermediaryId && item.intermediaryId !== "none")
-        .map((item, index) => ({
+        .map((item) => ({
           intermediaryId: item.intermediaryId,
-          orderIndex: index,
-          commissionFormula:
-            item.commissionFormula !== undefined
-              ? item.commissionFormula
-              : null,
+          orderIndex: item.chainPosition,
+          commissionFormula: item.commissionFormula !== undefined ? item.commissionFormula : null,
           manualCommissionUsd: item.manualCommissionUsd || null,
           commissionUsd: item.commissionUsd ?? null,
           commissionRub: item.commissionRub ?? null,
@@ -528,6 +569,43 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         "PUT",
         `/api/refueling-abroad/${refuelingId}/intermediaries`,
         intermediariesPayload,
+      );
+
+      const chainExchangeRatesPayload = chainItems
+        .filter((item): item is ChainExchangeRateItem => item.type === "exchange_rate")
+        .map((item) => ({
+          chainPosition: item.chainPosition,
+          exchangeRateId: item.exchangeRateId || null,
+          fromCurrencyId: item.fromCurrencyId || null,
+          toCurrencyId: item.toCurrencyId || null,
+          fromCurrencyCode: item.fromCurrencyCode || null,
+          toCurrencyCode: item.toCurrencyCode || null,
+          rate: item.rate ?? null,
+          rateDate: item.rateDate || null,
+          notes: item.notes || null,
+        }));
+
+      await apiRequest(
+        "PUT",
+        `/api/refueling-abroad/${refuelingId}/chain-exchange-rates`,
+        chainExchangeRatesPayload,
+      );
+
+      const chainBankCommissionsPayload = chainItems
+        .filter((item): item is ChainBankCommissionItem => item.type === "bank_commission")
+        .map((item) => ({
+          chainPosition: item.chainPosition,
+          commissionType: item.commissionType,
+          percent: item.percent ?? null,
+          minValue: item.minValue ?? null,
+          bankName: item.bankName || null,
+          notes: item.notes || null,
+        }));
+
+      await apiRequest(
+        "PUT",
+        `/api/refueling-abroad/${refuelingId}/chain-bank-commissions`,
+        chainBankCommissionsPayload,
       );
 
       return { id: refuelingId };
@@ -856,9 +934,9 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
           </CardContent>
         </Card>
 
-        <IntermediariesSection
-          intermediaries={intermediariesList}
-          onChange={setIntermediariesList}
+        <DealChainSection
+          chainItems={chainItems}
+          onChange={setChainItems}
           purchasePrice={calculations.purchasePrice ?? 0}
           salePrice={calculations.salePrice ?? 0}
           quantity={calculations.finalKg}

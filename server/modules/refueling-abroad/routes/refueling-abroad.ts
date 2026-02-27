@@ -1,8 +1,12 @@
 import type { Express } from "express";
 import { refuelingAbroadStorage } from "../storage/refueling-abroad-storage";
 import { refuelingAbroadIntermediariesStorage } from "../storage/refueling-abroad-intermediaries-storage";
+import { refuelingAbroadExchangeRatesStorage } from "../storage/refueling-abroad-exchange-rates-storage";
+import { refuelingAbroadBankCommissionsStorage } from "../storage/refueling-abroad-bank-commissions-storage";
 import { insertRefuelingAbroadSchema } from "../entities/refueling-abroad";
 import { insertRefuelingAbroadIntermediarySchema } from "../entities/refueling-abroad-intermediaries";
+import { insertRefuelingAbroadExchangeRateSchema } from "../entities/refueling-abroad-exchange-rates";
+import { insertRefuelingAbroadBankCommissionSchema } from "../entities/refueling-abroad-bank-commissions";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog } from "../../audit/middleware/audit-middleware";
@@ -330,6 +334,76 @@ export function registerRefuelingAbroadRoutes(app: Express) {
       } catch (error: any) {
         console.error("Error deleting intermediary:", error);
         res.status(500).json({ message: "Ошибка удаления посредника" });
+      }
+    },
+  );
+
+  // =========== EXCHANGE RATES IN DEAL CHAIN ===========
+  app.get(
+    "/api/refueling-abroad/:id/chain-exchange-rates",
+    requireAuth,
+    requirePermission("refueling", "view"),
+    async (req, res) => {
+      try {
+        const items = await refuelingAbroadExchangeRatesStorage.getByRefuelingId(req.params.id);
+        res.json(items);
+      } catch (error: any) {
+        console.error("Error fetching chain exchange rates:", error);
+        res.status(500).json({ message: "Ошибка получения курсов в цепочке" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/refueling-abroad/:id/chain-exchange-rates",
+    requireAuth,
+    requirePermission("refueling", "edit"),
+    async (req, res) => {
+      try {
+        const items = z.array(insertRefuelingAbroadExchangeRateSchema.omit({ refuelingAbroadId: true })).parse(req.body);
+        const result = await refuelingAbroadExchangeRatesStorage.replaceForRefueling(req.params.id, items);
+        res.json(result);
+      } catch (error: any) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: "Ошибка валидации", errors: error.errors });
+        }
+        console.error("Error replacing chain exchange rates:", error);
+        res.status(500).json({ message: "Ошибка обновления курсов в цепочке" });
+      }
+    },
+  );
+
+  // =========== BANK COMMISSIONS IN DEAL CHAIN ===========
+  app.get(
+    "/api/refueling-abroad/:id/chain-bank-commissions",
+    requireAuth,
+    requirePermission("refueling", "view"),
+    async (req, res) => {
+      try {
+        const items = await refuelingAbroadBankCommissionsStorage.getByRefuelingId(req.params.id);
+        res.json(items);
+      } catch (error: any) {
+        console.error("Error fetching chain bank commissions:", error);
+        res.status(500).json({ message: "Ошибка получения комиссий банков в цепочке" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/refueling-abroad/:id/chain-bank-commissions",
+    requireAuth,
+    requirePermission("refueling", "edit"),
+    async (req, res) => {
+      try {
+        const items = z.array(insertRefuelingAbroadBankCommissionSchema.omit({ refuelingAbroadId: true })).parse(req.body);
+        const result = await refuelingAbroadBankCommissionsStorage.replaceForRefueling(req.params.id, items);
+        res.json(result);
+      } catch (error: any) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: "Ошибка валидации", errors: error.errors });
+        }
+        console.error("Error replacing chain bank commissions:", error);
+        res.status(500).json({ message: "Ошибка обновления комиссий банков в цепочке" });
       }
     },
   );
