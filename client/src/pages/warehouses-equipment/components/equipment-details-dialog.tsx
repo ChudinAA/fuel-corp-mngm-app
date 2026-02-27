@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import React, { useMemo } from "react";
@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -22,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Truck, ArrowUpCircle, ArrowDownCircle, Package } from "lucide-react";
+import { Truck, ArrowUpCircle, ArrowDownCircle, Package, Loader2 } from "lucide-react";
 import type { Equipment, EquipmentTransaction } from "@shared/schema";
 import { formatNumber, formatCurrency } from "../../warehouses/utils";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "@shared/constants";
@@ -39,11 +40,36 @@ export function EquipmentDetailsDialog({
   open,
   onOpenChange,
 }: EquipmentDetailsDialogProps) {
-  const { data: transactions, isLoading } = useQuery<EquipmentTransaction[]>({
+  const {
+    data,
+    isLoading,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: [`/api/warehouses-equipment/${equipment.id}/transactions`],
+    queryFn: async ({ pageParam = 0 }) => {
+      const res = await fetch(
+        `/api/warehouses-equipment/${equipment.id}/transactions?offset=${pageParam}&limit=25`,
+      );
+      if (!res.ok) throw new Error("Failed to fetch transactions");
+      return res.json() as Promise<{
+        transactions: EquipmentTransaction[];
+        hasMore: boolean;
+      }>;
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.hasMore ? allPages.length * 25 : undefined;
+    },
     enabled: open,
     refetchInterval: 5000,
   });
+
+  const transactions = useMemo(
+    () => data?.pages.flatMap((page) => page.transactions) || [],
+    [data],
+  );
 
   const isReceipt = (type: string) =>
     type === TRANSACTION_TYPE.TRANSFER_IN || type === TRANSACTION_TYPE.RECEIPT;
@@ -191,6 +217,26 @@ export function EquipmentDetailsDialog({
             <div className="text-center py-8 text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-4 opacity-20" />
               <p>Нет операций</p>
+            </div>
+          )}
+
+          {hasNextPage && (
+            <div className="flex justify-center p-4">
+              <Button
+                variant="outline"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                data-testid="button-load-more"
+              >
+                {isFetchingNextPage ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Загрузка...
+                  </>
+                ) : (
+                  "Загрузить еще"
+                )}
+              </Button>
             </div>
           )}
         </ScrollArea>

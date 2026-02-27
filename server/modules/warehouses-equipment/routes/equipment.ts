@@ -96,7 +96,9 @@ export function registerEquipmentRoutes(app: Router) {
     requireAuth,
     requirePermission("equipment", "view"),
     async (req, res) => {
-      const data = await equipmentStorage.getTransactions(req.params.id);
+      const limit = parseInt(req.query.limit as string) || 25;
+      const offset = parseInt(req.query.offset as string) || 0;
+      const data = await equipmentStorage.getTransactions(req.params.id, limit, offset);
       res.json(data);
     },
   );

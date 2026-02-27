@@ -73,8 +73,8 @@ export class EquipmentStorage {
     return transaction;
   }
 
-  async getTransactions(equipmentId: string): Promise<EquipmentTransaction[]> {
-    return await db.select()
+  async getTransactions(equipmentId: string, limit: number = 25, offset: number = 0): Promise<{ transactions: EquipmentTransaction[], hasMore: boolean }> {
+    const transactions = await db.select()
       .from(equipmentTransactions)
       .where(
         and(
@@ -82,7 +82,15 @@ export class EquipmentStorage {
           isNull(equipmentTransactions.deletedAt)
         )
       )
-      .orderBy(sql`${equipmentTransactions.transactionDate} DESC`);
+      .orderBy(sql`${equipmentTransactions.transactionDate} DESC`, sql`${equipmentTransactions.id} DESC`)
+      .limit(limit + 1)
+      .offset(offset);
+
+    const hasMore = transactions.length > limit;
+    return {
+      transactions: transactions.slice(0, limit),
+      hasMore
+    };
   }
 
   async linkToWarehouse(warehouseId: string, equipmentId: string): Promise<void> {
