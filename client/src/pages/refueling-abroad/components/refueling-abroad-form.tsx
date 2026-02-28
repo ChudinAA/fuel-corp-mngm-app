@@ -1,4 +1,10 @@
-import { useEffect, useState, forwardRef, useImperativeHandle, useRef } from "react";
+import {
+  useEffect,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+  useRef,
+} from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -35,7 +41,6 @@ import {
   Loader2,
   Plane,
   DollarSign,
-  ArrowRightLeft,
   CalendarIcon,
   Plus,
 } from "lucide-react";
@@ -54,7 +59,7 @@ import {
   type ChainIntermediaryItem,
   type ChainExchangeRateItem,
   type ChainBankCommissionItem,
-} from "./deal-chain-section";
+} from "./deal-chain";
 import { formatCurrency, formatNumber } from "../utils";
 import { PRODUCT_TYPES_ABROAD } from "../constants";
 import type {
@@ -82,14 +87,16 @@ export interface RefuelingAbroadFormHandle {
   isDirty: () => boolean;
 }
 
-export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, RefuelingAbroadFormProps>(
-  ({ onSuccess, editData }, ref) => {
-    const { hasPermission } = useAuth();
-    const { toast } = useToast();
+export const RefuelingAbroadForm = forwardRef<
+  RefuelingAbroadFormHandle,
+  RefuelingAbroadFormProps
+>(({ onSuccess, editData }, ref) => {
+  const { hasPermission } = useAuth();
+  const { toast } = useToast();
 
-    const isEditing = !!editData && !!editData.id;
-    const initialValuesRef = useRef<RefuelingAbroadFormData | null>(null);
-    const initialIntermediariesRef = useRef<string>("");
+  const isEditing = !!editData && !!editData.id;
+  const initialValuesRef = useRef<RefuelingAbroadFormData | null>(null);
+  const initialIntermediariesRef = useRef<string>("");
 
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
   const handlePurchasePriceCreated = (id: string) => {
@@ -145,7 +152,9 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     queryKey: ["/api/refueling-abroad", originalId, "intermediaries"],
     queryFn: async () => {
       if (!originalId) return [];
-      const res = await fetch(`/api/refueling-abroad/${originalId}/intermediaries`);
+      const res = await fetch(
+        `/api/refueling-abroad/${originalId}/intermediaries`,
+      );
       if (!res.ok) return [];
       return res.json();
     },
@@ -156,7 +165,9 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     queryKey: ["/api/refueling-abroad", originalId, "chain-exchange-rates"],
     queryFn: async () => {
       if (!originalId) return [];
-      const res = await fetch(`/api/refueling-abroad/${originalId}/chain-exchange-rates`);
+      const res = await fetch(
+        `/api/refueling-abroad/${originalId}/chain-exchange-rates`,
+      );
       if (!res.ok) return [];
       return res.json();
     },
@@ -167,7 +178,9 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     queryKey: ["/api/refueling-abroad", originalId, "chain-bank-commissions"],
     queryFn: async () => {
       if (!originalId) return [];
-      const res = await fetch(`/api/refueling-abroad/${originalId}/chain-bank-commissions`);
+      const res = await fetch(
+        `/api/refueling-abroad/${originalId}/chain-bank-commissions`,
+      );
       if (!res.ok) return [];
       return res.json();
     },
@@ -190,7 +203,9 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       setSelectedSalePriceId(salePriceCompositeId);
 
       const initialValues = {
-        refuelingDate: editData.refuelingDate ? new Date(editData.refuelingDate) : new Date(),
+        refuelingDate: editData.refuelingDate
+          ? new Date(editData.refuelingDate)
+          : new Date(),
         productType: editData.productType || PRODUCT_TYPE.KEROSENE,
         aircraftNumber: editData.aircraftNumber || "",
         flightNumber: editData.flightNumber || "",
@@ -199,7 +214,9 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         buyerId: editData.buyerId || "",
         basisId: editData.basisId || "",
         intermediaries: [],
-        inputMode: (editData.inputMode as "liters" | "kg") || (editData.quantityLiters ? "liters" : "kg"),
+        inputMode:
+          (editData.inputMode as "liters" | "kg") ||
+          (editData.quantityLiters ? "liters" : "kg"),
         quantityLiters: editData.quantityLiters?.toString() || "",
         density: editData.density?.toString() || "0.8",
         quantityKg: editData.quantityKg?.toString() || "",
@@ -208,74 +225,100 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         purchasePriceUsd: editData.purchasePriceUsd || "",
         salePriceUsd: editData.salePriceUsd || "",
         purchaseExchangeRateId: editData.purchaseExchangeRateId || "",
-        manualPurchaseExchangeRate: editData.purchaseExchangeRateValue?.toString() || "",
+        manualPurchaseExchangeRate:
+          editData.purchaseExchangeRateValue?.toString() || "",
         saleExchangeRateId: editData.saleExchangeRateId || "",
-        manualSaleExchangeRate: editData.saleExchangeRateValue?.toString() || "",
+        manualSaleExchangeRate:
+          editData.saleExchangeRateValue?.toString() || "",
         notes: editData.notes || "",
         isApproxVolume: editData.isApproxVolume || false,
         isDraft: editData.isDraft || false,
       };
-      
+
       initialValuesRef.current = initialValues;
       form.reset(initialValues, { keepDefaultValues: false });
     }
 
     const allLoaded =
-      (existingIntermediaries.length > 0 ||
-        existingChainExchangeRates.length > 0 ||
-        existingChainBankCommissions.length > 0);
+      existingIntermediaries.length > 0 ||
+      existingChainExchangeRates.length > 0 ||
+      existingChainBankCommissions.length > 0;
 
     if (allLoaded) {
-      const intermediaryItems: ChainIntermediaryItem[] = existingIntermediaries.map((item: any) => ({
-        type: "intermediary" as const,
-        chainPosition: item.orderIndex ?? 0,
-        id: isCopy ? undefined : item.id,
-        intermediaryId: item.intermediaryId,
-        commissionFormula: item.commissionFormula || "",
-        commissionUsd: item.commissionUsd ? parseFloat(String(item.commissionUsd)) : null,
-        manualCommissionUsd: item.manualCommissionUsd ? parseFloat(item.manualCommissionUsd) : null,
-        commissionRub: item.commissionRub ? parseFloat(String(item.commissionRub)) : null,
-        buyCurrencyId: item.buyCurrencyId,
-        sellCurrencyId: item.sellCurrencyId,
-        buyExchangeRate: item.buyExchangeRate ? parseFloat(String(item.buyExchangeRate)) : undefined,
-        sellExchangeRate: item.sellExchangeRate ? parseFloat(String(item.sellExchangeRate)) : undefined,
-        crossConversionCost: item.crossConversionCost ? parseFloat(String(item.crossConversionCost)) : 0,
-        crossConversionCostRub: item.crossConversionCostRub ? parseFloat(String(item.crossConversionCostRub)) : 0,
-        notes: item.notes || "",
-      }));
+      const VALID_INCOME_TYPES = ["percent_sale", "royalty_per_ton", "fixed"];
+      const intermediaryItems: ChainIntermediaryItem[] =
+        existingIntermediaries.map((item: any) => {
+          const storedFormula = item.commissionFormula || "";
+          const incomeType = VALID_INCOME_TYPES.includes(storedFormula)
+            ? (storedFormula as "percent_sale" | "royalty_per_ton" | "fixed")
+            : "fixed";
+          const rateValue = item.manualCommissionUsd
+            ? parseFloat(item.manualCommissionUsd)
+            : item.commissionUsd
+              ? parseFloat(String(item.commissionUsd))
+              : undefined;
+          return {
+            type: "intermediary" as const,
+            chainPosition: item.orderIndex ?? 0,
+            id: isCopy ? undefined : item.id,
+            intermediaryId: item.intermediaryId,
+            incomeType,
+            rateValue,
+            commissionUsd: item.commissionUsd
+              ? parseFloat(String(item.commissionUsd))
+              : null,
+            commissionRub: item.commissionRub
+              ? parseFloat(String(item.commissionRub))
+              : null,
+            notes: item.notes || "",
+          };
+        });
 
-      const exchangeRateItems: ChainExchangeRateItem[] = existingChainExchangeRates.map((item: any) => ({
-        type: "exchange_rate" as const,
-        chainPosition: item.chainPosition ?? 0,
-        id: isCopy ? undefined : item.id,
-        exchangeRateId: item.exchangeRateId,
-        fromCurrencyId: item.fromCurrencyId,
-        toCurrencyId: item.toCurrencyId,
-        fromCurrencyCode: item.fromCurrencyCode,
-        toCurrencyCode: item.toCurrencyCode,
-        rate: item.rate ? parseFloat(String(item.rate)) : undefined,
-        rateDate: item.rateDate,
-        notes: item.notes,
-      }));
+      const exchangeRateItems: ChainExchangeRateItem[] =
+        existingChainExchangeRates.map((item: any) => ({
+          type: "exchange_rate" as const,
+          chainPosition: item.chainPosition ?? 0,
+          id: isCopy ? undefined : item.id,
+          exchangeRateId: item.exchangeRateId,
+          fromCurrencyId: item.fromCurrencyId,
+          toCurrencyId: item.toCurrencyId,
+          fromCurrencyCode: item.fromCurrencyCode,
+          toCurrencyCode: item.toCurrencyCode,
+          rate: item.rate ? parseFloat(String(item.rate)) : undefined,
+          rateDate: item.rateDate,
+          notes: item.notes,
+        }));
 
-      const bankCommissionItems: ChainBankCommissionItem[] = existingChainBankCommissions.map((item: any) => ({
-        type: "bank_commission" as const,
-        chainPosition: item.chainPosition ?? 0,
-        id: isCopy ? undefined : item.id,
-        commissionType: item.commissionType || "percent",
-        percent: item.percent ? parseFloat(String(item.percent)) : undefined,
-        minValue: item.minValue ? parseFloat(String(item.minValue)) : undefined,
-        bankName: item.bankName,
-        notes: item.notes,
-      }));
+      const bankCommissionItems: ChainBankCommissionItem[] =
+        existingChainBankCommissions.map((item: any) => ({
+          type: "bank_commission" as const,
+          chainPosition: item.chainPosition ?? 0,
+          id: isCopy ? undefined : item.id,
+          commissionType: item.commissionType || "percent",
+          percent: item.percent ? parseFloat(String(item.percent)) : undefined,
+          minValue: item.minValue
+            ? parseFloat(String(item.minValue))
+            : undefined,
+          bankName: item.bankName,
+          notes: item.notes,
+        }));
 
-      const merged = [...intermediaryItems, ...exchangeRateItems, ...bankCommissionItems]
-        .sort((a, b) => a.chainPosition - b.chainPosition);
+      const merged = [
+        ...intermediaryItems,
+        ...exchangeRateItems,
+        ...bankCommissionItems,
+      ].sort((a, b) => a.chainPosition - b.chainPosition);
 
       setChainItems(merged);
       initialIntermediariesRef.current = JSON.stringify(merged);
     }
-  }, [existingIntermediaries, existingChainExchangeRates, existingChainBankCommissions, isCopy, editData]);
+  }, [
+    existingIntermediaries,
+    existingChainExchangeRates,
+    existingChainBankCommissions,
+    isCopy,
+    editData,
+  ]);
 
   const latestUsdRate = exchangeRates
     .filter((r) => r.currency === "USD" && r.targetCurrency === "RUB")
@@ -332,15 +375,16 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     isDirty: () => {
       const currentValues = form.getValues();
       const currentChain = JSON.stringify(chainItems);
-      
-      const valuesChanged = initialValuesRef.current 
-        ? JSON.stringify(currentValues) !== JSON.stringify(initialValuesRef.current)
+
+      const valuesChanged = initialValuesRef.current
+        ? JSON.stringify(currentValues) !==
+          JSON.stringify(initialValuesRef.current)
         : false;
-        
+
       const chainChanged = initialIntermediariesRef.current !== currentChain;
-      
+
       return valuesChanged || chainChanged || form.formState.isDirty;
-    }
+    },
   }));
 
   const watchedValues = form.watch();
@@ -351,6 +395,9 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
 
   const selectedSupplier = foreignSuppliers?.find(
     (s) => s.id === watchedValues.supplierId,
+  );
+  const selectedBuyer = foreignCustomers?.find(
+    (c) => c.id === watchedValues.buyerId,
   );
   const selectedBasis = foreignBases?.find(
     (b) => b.id === watchedValues.basisId,
@@ -382,20 +429,6 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     (sum, item) => sum + (item.commissionUsd || 0),
     0,
   );
-  const totalIntermediaryCommissionRub = intermediaryChainItems.reduce(
-    (sum, item) => sum + (item.commissionRub || 0),
-    0,
-  );
-
-  const totalCrossConversionCostUsd = intermediaryChainItems.reduce(
-    (sum, item) => sum + (item.crossConversionCost || 0),
-    0,
-  );
-
-  const totalCrossConversionCostRub = intermediaryChainItems.reduce(
-    (sum, item) => sum + (item.crossConversionCostRub || 0),
-    0,
-  );
 
   // Use filtering hook
   const { refuelingSuppliers, availableBases, purchasePrices, salePrices } =
@@ -420,9 +453,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     purchaseExchangeRate,
     saleExchangeRate,
     commissionFormula: "",
-    manualCommissionUsd: (
-      totalIntermediaryCommissionUsd + totalCrossConversionCostUsd
-    ).toString(),
+    manualCommissionUsd: totalIntermediaryCommissionUsd.toString(),
     purchasePrices,
     salePrices,
     selectedPurchasePriceId,
@@ -488,7 +519,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         intermediaryId: null,
         intermediaryCommissionFormula: null,
         intermediaryCommissionUsd: totalIntermediaryCommissionUsd || null,
-        intermediaryCommissionRub: totalIntermediaryCommissionRub || null,
+        intermediaryCommissionRub: intermediaryChainItems.reduce((s, i) => s + (i.commissionRub || 0), 0) || null,
         quantityLiters: data.quantityLiters
           ? parseFloat(data.quantityLiters)
           : null,
@@ -547,21 +578,23 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       }
 
       const intermediariesPayload = chainItems
-        .filter((item): item is ChainIntermediaryItem => item.type === "intermediary")
+        .filter(
+          (item): item is ChainIntermediaryItem => item.type === "intermediary",
+        )
         .filter((item) => item.intermediaryId && item.intermediaryId !== "none")
         .map((item) => ({
           intermediaryId: item.intermediaryId,
           orderIndex: item.chainPosition,
-          commissionFormula: item.commissionFormula !== undefined ? item.commissionFormula : null,
-          manualCommissionUsd: item.manualCommissionUsd || null,
+          commissionFormula: item.incomeType || null,
+          manualCommissionUsd: item.rateValue ?? null,
           commissionUsd: item.commissionUsd ?? null,
           commissionRub: item.commissionRub ?? null,
-          buyCurrencyId: item.buyCurrencyId || null,
-          sellCurrencyId: item.sellCurrencyId || null,
-          buyExchangeRate: item.buyExchangeRate ?? null,
-          sellExchangeRate: item.sellExchangeRate ?? null,
-          crossConversionCost: item.crossConversionCost ?? 0,
-          crossConversionCostRub: item.crossConversionCostRub ?? 0,
+          buyCurrencyId: null,
+          sellCurrencyId: null,
+          buyExchangeRate: null,
+          sellExchangeRate: null,
+          crossConversionCost: 0,
+          crossConversionCostRub: 0,
           notes: item.notes || null,
         }));
 
@@ -572,7 +605,10 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       );
 
       const chainExchangeRatesPayload = chainItems
-        .filter((item): item is ChainExchangeRateItem => item.type === "exchange_rate")
+        .filter(
+          (item): item is ChainExchangeRateItem =>
+            item.type === "exchange_rate",
+        )
         .map((item) => ({
           chainPosition: item.chainPosition,
           exchangeRateId: item.exchangeRateId || null,
@@ -592,7 +628,10 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       );
 
       const chainBankCommissionsPayload = chainItems
-        .filter((item): item is ChainBankCommissionItem => item.type === "bank_commission")
+        .filter(
+          (item): item is ChainBankCommissionItem =>
+            item.type === "bank_commission",
+        )
         .map((item) => ({
           chainPosition: item.chainPosition,
           commissionType: item.commissionType,
@@ -799,6 +838,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
           </CardContent>
         </Card>
 
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Контрагенты</CardTitle>
@@ -934,16 +974,6 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
           </CardContent>
         </Card>
 
-        <DealChainSection
-          chainItems={chainItems}
-          onChange={setChainItems}
-          purchasePrice={calculations.purchasePrice ?? 0}
-          salePrice={calculations.salePrice ?? 0}
-          quantity={calculations.finalKg}
-          exchangeRate={saleExchangeRate}
-          currencies={currencies}
-        />
-
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Объем топлива</CardTitle>
@@ -1050,6 +1080,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
             </div>
           </CardContent>
         </Card>
+        </div>
 
         <Card>
           <CardHeader className="pb-3">
@@ -1282,71 +1313,6 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3">
                   <h5 className="text-xs text-muted-foreground font-medium">
-                    Для закупки у Поставщика
-                  </h5>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="purchaseExchangeRateId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Курс из справочника</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value || ""}
-                          >
-                            <FormControl>
-                              <SelectTrigger data-testid="select-purchase-exchange-rate">
-                                <SelectValue placeholder="Выберите курс" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {exchangeRates
-                                .filter(
-                                  (r) =>
-                                    r.currency === "USD" &&
-                                    r.targetCurrency === "RUB",
-                                )
-                                .map((rate) => (
-                                  <SelectItem key={rate.id} value={rate.id}>
-                                    {rate.rate} (
-                                    {new Date(rate.rateDate).toLocaleDateString(
-                                      "ru-RU",
-                                    )}
-                                    )
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="manualPurchaseExchangeRate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Или вручную</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder={
-                                selectedPurchaseExchangeRate?.rate || "90.00"
-                              }
-                              {...field}
-                              value={field.value || ""}
-                              data-testid="input-manual-purchase-exchange-rate"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h5 className="text-xs text-muted-foreground font-medium">
                     Для продажи Покупателю
                   </h5>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1409,122 +1375,89 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                     />
                   </div>
                 </div>
+
+                <div className="space-y-3">
+                  <h5 className="text-xs text-muted-foreground font-medium">
+                    Для закупки у Поставщика
+                  </h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="purchaseExchangeRateId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Курс из справочника</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || ""}
+                          >
+                            <FormControl>
+                              <SelectTrigger data-testid="select-purchase-exchange-rate">
+                                <SelectValue placeholder="Выберите курс" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {exchangeRates
+                                .filter(
+                                  (r) =>
+                                    r.currency === "USD" &&
+                                    r.targetCurrency === "RUB",
+                                )
+                                .map((rate) => (
+                                  <SelectItem key={rate.id} value={rate.id}>
+                                    {rate.rate} (
+                                    {new Date(rate.rateDate).toLocaleDateString(
+                                      "ru-RU",
+                                    )}
+                                    )
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="manualPurchaseExchangeRate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Или вручную</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder={
+                                selectedPurchaseExchangeRate?.rate || "90.00"
+                              }
+                              {...field}
+                              value={field.value || ""}
+                              data-testid="input-manual-purchase-exchange-rate"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <ArrowRightLeft className="h-4 w-4" />
-              Расчетные значения
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Закупка (USD)
-                </Label>
-                <div className="font-medium">
-                  {formatCurrency(calculations.purchaseAmountUsd, "USD")}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Продажа (USD)
-                </Label>
-                <div className="font-medium">
-                  {formatCurrency(calculations.saleAmountUsd, "USD")}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Комиссия посредников (USD)
-                </Label>
-                <div
-                  className="font-medium"
-                  data-testid="text-intermediary-commission-usd"
-                >
-                  {formatCurrency(totalIntermediaryCommissionUsd, "USD")}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Потери на кросс-курсах (USD)
-                </Label>
-                <div
-                  className="font-medium text-destructive"
-                  data-testid="text-cross-conversion-loss-usd"
-                >
-                  {formatCurrency(totalCrossConversionCostUsd, "USD")}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Прибыль (USD)
-                </Label>
-                <div
-                  className={`font-medium ${(calculations.profitUsd || 0) < 0 ? "text-destructive" : "text-green-600"}`}
-                >
-                  {formatCurrency(calculations.profitUsd, "USD")}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4 pt-4 border-t">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Закупка (RUB)
-                </Label>
-                <div className="font-medium">
-                  {formatCurrency(calculations.purchaseAmountRub, "RUB")}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Продажа (RUB)
-                </Label>
-                <div className="font-medium">
-                  {formatCurrency(calculations.saleAmountRub, "RUB")}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Комиссия посредников (RUB)
-                </Label>
-                <div
-                  className="font-medium"
-                  data-testid="text-intermediary-commission-rub"
-                >
-                  {formatCurrency(totalIntermediaryCommissionRub, "RUB")}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Потери на кросс-курсах (RUB)
-                </Label>
-                <div
-                  className="font-medium text-destructive"
-                  data-testid="text-cross-conversion-loss-usd"
-                >
-                  {formatCurrency(totalCrossConversionCostRub, "RUB")}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Прибыль (RUB)
-                </Label>
-                <div
-                  className={`font-medium ${(calculations.profitRub || 0) < 0 ? "text-destructive" : "text-green-600"}`}
-                >
-                  {formatCurrency(calculations.profitRub, "RUB")}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <DealChainSection
+          chainItems={chainItems}
+          onChange={setChainItems}
+          purchaseAmountUsd={calculations.purchaseAmountUsd ?? 0}
+          saleAmountUsd={calculations.saleAmountUsd ?? 0}
+          quantityKg={calculations.finalKg}
+          purchasePrice={calculations.purchasePrice ?? 0}
+          salePrice={calculations.salePrice ?? 0}
+          exchangeRate={saleExchangeRate}
+          currencies={currencies}
+          buyerName={selectedBuyer?.name}
+          supplierName={selectedSupplier?.name}
+        />
 
         <div className="grid gap-4 md:grid-cols-2 items-end">
           <FormField
