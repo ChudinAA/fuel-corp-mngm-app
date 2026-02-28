@@ -1082,6 +1082,20 @@ export const RefuelingAbroadForm = forwardRef<
         </Card>
         </div>
 
+        <DealChainSection
+          chainItems={chainItems}
+          onChange={setChainItems}
+          purchaseAmountUsd={calculations.purchaseAmountUsd ?? 0}
+          saleAmountUsd={calculations.saleAmountUsd ?? 0}
+          quantityKg={calculations.finalKg}
+          purchasePrice={calculations.purchasePrice ?? 0}
+          salePrice={calculations.salePrice ?? 0}
+          exchangeRate={saleExchangeRate}
+          currencies={currencies}
+          buyerName={selectedBuyer?.name}
+          supplierName={selectedSupplier?.name}
+        />
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -1444,20 +1458,6 @@ export const RefuelingAbroadForm = forwardRef<
             </div>
           </CardContent>
         </Card>
-
-        <DealChainSection
-          chainItems={chainItems}
-          onChange={setChainItems}
-          purchaseAmountUsd={calculations.purchaseAmountUsd ?? 0}
-          saleAmountUsd={calculations.saleAmountUsd ?? 0}
-          quantityKg={calculations.finalKg}
-          purchasePrice={calculations.purchasePrice ?? 0}
-          salePrice={calculations.salePrice ?? 0}
-          exchangeRate={saleExchangeRate}
-          currencies={currencies}
-          buyerName={selectedBuyer?.name}
-          supplierName={selectedSupplier?.name}
-        />
 
         <div className="grid gap-4 md:grid-cols-2 items-end">
           <FormField

@@ -2,10 +2,28 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, ArrowRight, Users, DollarSign, Percent, TrendingUp, TrendingDown } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Plus,
+  ArrowRight,
+  Users,
+  DollarSign,
+  Percent,
+  TrendingUp,
+  TrendingDown,
+} from "lucide-react";
 import type { Supplier } from "@shared/schema";
-import type { ChainItem, ChainItemType, ChainIntermediaryItem, ChainExchangeRateItem, ChainBankCommissionItem } from "./types";
+import type {
+  ChainItem,
+  ChainItemType,
+  ChainIntermediaryItem,
+  ChainExchangeRateItem,
+  ChainBankCommissionItem,
+} from "./types";
 import { computeIntermediaryCommission, computeBankCommission } from "./types";
 import { ChainNode } from "./chain-node";
 import { IntermediaryDialog } from "./dialogs/intermediary-dialog";
@@ -13,7 +31,13 @@ import { ExchangeRateDialog } from "./dialogs/exchange-rate-dialog";
 import { BankCommissionDialog } from "./dialogs/bank-commission-dialog";
 import { formatCurrency } from "../../utils";
 
-export type { ChainItem, ChainItemType, ChainIntermediaryItem, ChainExchangeRateItem, ChainBankCommissionItem };
+export type {
+  ChainItem,
+  ChainItemType,
+  ChainIntermediaryItem,
+  ChainExchangeRateItem,
+  ChainBankCommissionItem,
+};
 
 interface DealChainSectionProps {
   chainItems: ChainItem[];
@@ -137,7 +161,10 @@ export function DealChainSection({
   ) => {
     if (editingIndex !== null) {
       const updated = [...chainItems];
-      updated[editingIndex] = { ...updated[editingIndex], ...itemData } as ChainIntermediaryItem;
+      updated[editingIndex] = {
+        ...updated[editingIndex],
+        ...itemData,
+      } as ChainIntermediaryItem;
       onChange(updated);
       setEditingIndex(null);
     } else if (addingAtPosition !== null) {
@@ -155,7 +182,10 @@ export function DealChainSection({
   ) => {
     if (editingIndex !== null) {
       const updated = [...chainItems];
-      updated[editingIndex] = { ...updated[editingIndex], ...itemData } as ChainExchangeRateItem;
+      updated[editingIndex] = {
+        ...updated[editingIndex],
+        ...itemData,
+      } as ChainExchangeRateItem;
       onChange(updated);
       setEditingIndex(null);
     } else if (addingAtPosition !== null) {
@@ -173,7 +203,10 @@ export function DealChainSection({
   ) => {
     if (editingIndex !== null) {
       const updated = [...chainItems];
-      updated[editingIndex] = { ...updated[editingIndex], ...itemData } as ChainBankCommissionItem;
+      updated[editingIndex] = {
+        ...updated[editingIndex],
+        ...itemData,
+      } as ChainBankCommissionItem;
       onChange(updated);
       setEditingIndex(null);
     } else if (addingAtPosition !== null) {
@@ -198,12 +231,15 @@ export function DealChainSection({
 
   const handleEdit = (index: number) => {
     const sorted = [...sortedItems];
-    const originalIndex = chainItems.findIndex((item) => item === sorted[index]);
+    const originalIndex = chainItems.findIndex(
+      (item) => item === sorted[index],
+    );
     setEditingIndex(originalIndex !== -1 ? originalIndex : index);
     setAddingType(sorted[index].type);
   };
 
-  const editingItem = editingIndex !== null ? chainItems[editingIndex] : undefined;
+  const editingItem =
+    editingIndex !== null ? chainItems[editingIndex] : undefined;
 
   const intermediaryItems = sortedItems.filter(
     (i): i is ChainIntermediaryItem => i.type === "intermediary",
@@ -275,15 +311,16 @@ export function DealChainSection({
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="bg-muted/20 p-4 rounded-lg border border-dashed border-primary/30">
-          <div className="flex flex-wrap items-start gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <div className="flex flex-col items-center gap-0.5 shrink-0">
-              <div className="bg-background border-2 border-primary/30 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap">
-                Покупатель
-              </div>
-              {buyerName && (
-                <span className="text-[10px] text-muted-foreground max-w-[100px] text-center truncate">
+              {buyerName ? (
+                <div className="bg-background border-2 border-primary/30 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap">
                   {buyerName}
-                </span>
+                </div>
+              ) : (
+                <div className="bg-background border-2 border-primary/30 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap">
+                  Покупатель
+                </div>
               )}
               {saleAmountUsd > 0 && (
                 <span className="text-[10px] text-green-600 font-medium">
@@ -314,15 +351,15 @@ export function DealChainSection({
               </div>
             ))}
 
-            <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-[9px]" />
             <div className="flex flex-col items-center gap-0.5 shrink-0">
-              <div className="bg-background border-2 border-primary/30 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap">
-                Поставщик
-              </div>
-              {supplierName && (
-                <span className="text-[10px] text-muted-foreground max-w-[100px] text-center truncate">
+              {supplierName ? (
+                <div className="bg-background border-2 border-primary/30 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap">
                   {supplierName}
-                </span>
+                </div>
+              ) : (
+                <div className="bg-background border-2 border-primary/30 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap">
+                  Поставщик
+                </div>
               )}
               {purchaseAmountUsd > 0 && (
                 <span className="text-[10px] text-destructive font-medium">
@@ -372,10 +409,15 @@ export function DealChainSection({
                   </div>
                   <div className="text-[10px] text-muted-foreground space-y-0">
                     {totalIntermediaryCommission > 0 && (
-                      <div>Посредники: {formatCurrency(totalIntermediaryCommission, "USD")}</div>
+                      <div>
+                        Посредники:{" "}
+                        {formatCurrency(totalIntermediaryCommission, "USD")}
+                      </div>
                     )}
                     {totalBankCommission > 0 && (
-                      <div>Банк: {formatCurrency(totalBankCommission, "USD")}</div>
+                      <div>
+                        Банк: {formatCurrency(totalBankCommission, "USD")}
+                      </div>
                     )}
                   </div>
                 </div>
