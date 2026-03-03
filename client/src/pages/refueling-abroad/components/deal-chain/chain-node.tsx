@@ -70,12 +70,12 @@ export function ChainNode({
             {supplierName || (item.intermediaryId ? "Загрузка..." : "Не выбран")}
           </span>
           {item.incomeType && (
-            <span className="text-[10px] text-muted-foreground">
-              {INCOME_TYPE_SHORT[item.incomeType]} · {rateDisplay}
+            <span className="text-[10.5px] text-muted-foreground">
+              {INCOME_TYPE_SHORT[item.incomeType]} ({rateDisplay})
             </span>
           )}
           {realtimeCommission > 0 && (
-            <span className="text-[10px] text-destructive font-medium mt-0.5">
+            <span className="text-[10.5px] text-destructive font-medium mt-0.5">
               -{formatCurrency(realtimeCommission, "USD")}
             </span>
           )}
@@ -117,7 +117,7 @@ export function ChainNode({
             <span className="text-xs text-muted-foreground">Не задан</span>
           )}
           {item.rate != null && (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-[10.5px] text-muted-foreground">
               {item.rate}
             </span>
           )}
@@ -168,11 +168,11 @@ export function ChainNode({
               {item.bankName}
             </span>
           )}
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-[10.5px] text-muted-foreground">
             {commTypeLabel}
           </span>
           {realtimeCommission > 0 && (
-            <span className="text-[10px] text-destructive font-medium mt-0.5">
+            <span className="text-[10.5px] text-destructive font-medium mt-0.5">
               -{formatCurrency(realtimeCommission, "USD")}
             </span>
           )}

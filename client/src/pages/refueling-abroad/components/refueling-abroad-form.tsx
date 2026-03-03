@@ -1310,7 +1310,7 @@ export const RefuelingAbroadForm = forwardRef<
               )}
 
               <CalculatedField
-                label="Остаток на карте"
+                label="Остаток на карте Поставщика"
                 value={supplierBalanceStatus.supplierBalanceStatus.message}
                 status={supplierBalanceStatus.supplierBalanceStatus.status}
               />

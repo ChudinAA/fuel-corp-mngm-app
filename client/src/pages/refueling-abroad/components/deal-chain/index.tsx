@@ -323,7 +323,7 @@ export function DealChainSection({
                 </div>
               )}
               {saleAmountUsd > 0 && (
-                <span className="text-[10px] text-green-600 font-medium">
+                <span className="text-[11px] text-green-600 font-medium">
                   +{formatCurrency(saleAmountUsd, "USD")}
                 </span>
               )}
@@ -362,7 +362,7 @@ export function DealChainSection({
                 </div>
               )}
               {purchaseAmountUsd > 0 && (
-                <span className="text-[10px] text-destructive font-medium">
+                <span className="text-[11px] text-destructive font-medium">
                   -{formatCurrency(purchaseAmountUsd, "USD")}
                 </span>
               )}
@@ -407,7 +407,7 @@ export function DealChainSection({
                   <div className="text-sm font-semibold text-destructive">
                     -{formatCurrency(totalCosts, "USD")}
                   </div>
-                  <div className="text-[10px] text-muted-foreground space-y-0">
+                  <div className="text-[11px] text-muted-foreground space-y-0">
                     {totalIntermediaryCommission > 0 && (
                       <div>
                         Посредники:{" "}
