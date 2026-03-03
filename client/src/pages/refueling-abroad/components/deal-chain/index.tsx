@@ -416,14 +416,14 @@ export function DealChainSection({
                 <div className="text-sm font-semibold text-green-600 flex items-baseline gap-1 flex-wrap">
                   <span>{formatCurrency(saleAmountUsd, "USD")}</span>
                   {saleAmountRub !== null && (
-                    <span className="text-[11px] text-muted-foreground font-normal">
+                    <span className="text-[12px] text-muted-foreground font-normal">
                       ({new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(saleAmountRub)} ₽)
                     </span>
                   )}
                 </div>
                 {saleExchangeRateDate && (
-                  <div className="text-[10px] text-muted-foreground italic">
-                    Зафиксирована: {saleExchangeRateDate}
+                  <div className="text-[11px] text-muted-foreground">
+                    Курс зафиксирован: {saleExchangeRateDate}
                   </div>
                 )}
               </div>
@@ -434,14 +434,14 @@ export function DealChainSection({
                 <div className="text-sm font-semibold flex items-baseline gap-1 flex-wrap">
                   <span>{formatCurrency(purchaseAmountUsd, "USD")}</span>
                   {purchaseAmountRub !== null && (
-                    <span className="text-[11px] text-muted-foreground font-normal">
+                    <span className="text-[12px] text-muted-foreground font-normal">
                       ({new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(purchaseAmountRub)} ₽)
                     </span>
                   )}
                 </div>
                 {purchaseExchangeRateDate && (
-                  <div className="text-[10px] text-muted-foreground italic">
-                    Зафиксирована: {purchaseExchangeRateDate}
+                  <div className="text-[11px] text-muted-foreground">
+                    Курс зафиксирован: {purchaseExchangeRateDate}
                   </div>
                 )}
               </div>
@@ -453,7 +453,7 @@ export function DealChainSection({
                   <div className="text-sm font-semibold text-destructive flex items-baseline gap-1 flex-wrap">
                     <span>-{formatCurrency(totalCosts, "USD")}</span>
                     {costsRub !== null && (
-                      <span className="text-[11px] font-normal">
+                      <span className="text-[12px] font-normal">
                         ({new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(costsRub)} ₽)
                       </span>
                     )}
@@ -467,7 +467,7 @@ export function DealChainSection({
                     )}
                     {totalBankCommission > 0 && (
                       <div>
-                        Банк: {formatCurrency(totalBankCommission, "USD")}
+                        Банк. комисс.: {formatCurrency(totalBankCommission, "USD")}
                       </div>
                     )}
                   </div>
@@ -487,10 +487,13 @@ export function DealChainSection({
                   )}
                   <span>{formatCurrency(profit, "USD")}</span>
                   {profitRub !== null && (
-                    <span className={`text-[11px] font-normal ${profitRub >= 0 ? "text-green-600" : "text-destructive"}`}>
+                    <span className={`text-[12px] font-normal ${profitRub >= 0 ? "text-green-600" : "text-destructive"}`}>
                       ({new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(profitRub)} ₽)
                     </span>
                   )}
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  С учетом разницы курсов
                 </div>
               </div>
             </div>

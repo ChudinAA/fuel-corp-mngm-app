@@ -61,12 +61,10 @@ export function useRefuelingAbroadCalculations({
   });
 
   const purchasePrice = useMemo(() => {
-    // purchasePriceUsd - legacy manual price
     return extractedPurchasePrice;
   }, [extractedPurchasePrice]);
 
   const salePrice = useMemo(() => {
-    // purchasePriceUsd - legacy manual price
     return extractedSalePrice;
   }, [extractedSalePrice]);
 
