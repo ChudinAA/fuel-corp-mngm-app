@@ -227,9 +227,12 @@ export const RefuelingAbroadForm = forwardRef<
         purchaseExchangeRateId: editData.purchaseExchangeRateId || "",
         manualPurchaseExchangeRate:
           editData.purchaseExchangeRateValue?.toString() || "",
+        manualPurchaseExchangeRateDate:
+          editData.purchaseExchangeRateDate || "",
         saleExchangeRateId: editData.saleExchangeRateId || "",
         manualSaleExchangeRate:
           editData.saleExchangeRateValue?.toString() || "",
+        manualSaleExchangeRateDate: editData.saleExchangeRateDate || "",
         notes: editData.notes || "",
         isApproxVolume: editData.isApproxVolume || false,
         isDraft: editData.isDraft || false,
@@ -354,9 +357,12 @@ export const RefuelingAbroadForm = forwardRef<
         editData?.purchaseExchangeRateId || latestUsdRate?.id || "",
       manualPurchaseExchangeRate:
         editData?.purchaseExchangeRateValue?.toString() || "",
+      manualPurchaseExchangeRateDate:
+        editData?.purchaseExchangeRateDate || "",
       saleExchangeRateId:
         editData?.saleExchangeRateId || latestUsdRate?.id || "",
       manualSaleExchangeRate: editData?.saleExchangeRateValue?.toString() || "",
+      manualSaleExchangeRateDate: editData?.saleExchangeRateDate || "",
       notes: editData?.notes || "",
       isApproxVolume: editData?.isApproxVolume || false,
       isDraft: editData?.isDraft || false,
@@ -420,6 +426,18 @@ export const RefuelingAbroadForm = forwardRef<
     : selectedSaleExchangeRate
       ? parseFloat(selectedSaleExchangeRate.rate)
       : 0;
+
+  const effectiveSaleExchangeRateDate =
+    watchedValues.manualSaleExchangeRateDate ||
+    (selectedSaleExchangeRate?.rateDate
+      ? new Date(selectedSaleExchangeRate.rateDate).toLocaleDateString("ru-RU")
+      : null);
+
+  const effectivePurchaseExchangeRateDate =
+    watchedValues.manualPurchaseExchangeRateDate ||
+    (selectedPurchaseExchangeRate?.rateDate
+      ? new Date(selectedPurchaseExchangeRate.rateDate).toLocaleDateString("ru-RU")
+      : null);
 
   const intermediaryChainItems = chainItems.filter(
     (i): i is ChainIntermediaryItem => i.type === "intermediary",
@@ -533,8 +551,11 @@ export const RefuelingAbroadForm = forwardRef<
         currency: "USD",
         purchaseExchangeRateId: data.purchaseExchangeRateId || null,
         purchaseExchangeRateValue: purchaseExchangeRate || null,
+        purchaseExchangeRateDate:
+          data.manualPurchaseExchangeRateDate || null,
         saleExchangeRateId: data.saleExchangeRateId || null,
         saleExchangeRateValue: saleExchangeRate || null,
+        saleExchangeRateDate: data.manualSaleExchangeRateDate || null,
         purchasePriceUsd: calculations.purchasePrice || null,
         purchasePriceRub:
           calculations.purchasePrice && purchaseExchangeRate
@@ -838,7 +859,7 @@ export const RefuelingAbroadForm = forwardRef<
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Контрагенты</CardTitle>
@@ -1094,6 +1115,12 @@ export const RefuelingAbroadForm = forwardRef<
           currencies={currencies}
           buyerName={selectedBuyer?.name}
           supplierName={selectedSupplier?.name}
+          saleExchangeRate={saleExchangeRate}
+          purchaseExchangeRate={purchaseExchangeRate}
+          saleExchangeRateDate={effectiveSaleExchangeRateDate ?? undefined}
+          purchaseExchangeRateDate={
+            effectivePurchaseExchangeRateDate ?? undefined
+          }
         />
 
         <Card>
@@ -1329,7 +1356,7 @@ export const RefuelingAbroadForm = forwardRef<
                   <h5 className="text-xs text-muted-foreground font-medium">
                     Для продажи Покупателю
                   </h5>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField
                       control={form.control}
                       name="saleExchangeRateId"
@@ -1387,6 +1414,23 @@ export const RefuelingAbroadForm = forwardRef<
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={form.control}
+                      name="manualSaleExchangeRateDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Дата фиксации</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="date"
+                              {...field}
+                              value={field.value || ""}
+                              data-testid="input-sale-exchange-rate-date"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </div>
 
@@ -1394,7 +1438,7 @@ export const RefuelingAbroadForm = forwardRef<
                   <h5 className="text-xs text-muted-foreground font-medium">
                     Для закупки у Поставщика
                   </h5>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField
                       control={form.control}
                       name="purchaseExchangeRateId"
@@ -1447,6 +1491,23 @@ export const RefuelingAbroadForm = forwardRef<
                               {...field}
                               value={field.value || ""}
                               data-testid="input-manual-purchase-exchange-rate"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="manualPurchaseExchangeRateDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Дата фиксации</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="date"
+                              {...field}
+                              value={field.value || ""}
+                              data-testid="input-purchase-exchange-rate-date"
                             />
                           </FormControl>
                         </FormItem>

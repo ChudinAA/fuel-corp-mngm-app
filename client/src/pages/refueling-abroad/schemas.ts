@@ -41,8 +41,10 @@ export const refuelingAbroadFormSchema = z
 
     purchaseExchangeRateId: z.string().optional().nullable(),
     manualPurchaseExchangeRate: z.string().optional().nullable(),
+    manualPurchaseExchangeRateDate: z.string().optional().nullable(),
     saleExchangeRateId: z.string().optional().nullable(),
     manualSaleExchangeRate: z.string().optional().nullable(),
+    manualSaleExchangeRateDate: z.string().optional().nullable(),
 
     notes: z.string().optional().nullable(),
     isApproxVolume: z.boolean().default(false),

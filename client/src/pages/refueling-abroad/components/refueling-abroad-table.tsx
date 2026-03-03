@@ -228,6 +228,9 @@ export function RefuelingAbroadTable({
               <TableHead className="text-center text-[13px] font-semibold p-2">
                 Посредники
               </TableHead>
+              <TableHead className="text-center text-[13px] font-semibold p-2">
+                Банк.комисс.
+              </TableHead>
               <TableHead className="text-right text-[13px] font-semibold p-2 w-[100px]">
                 Объем (Л / Пл / КГ)
               </TableHead>
@@ -237,8 +240,8 @@ export function RefuelingAbroadTable({
               <TableHead className="text-right text-[13px] font-semibold p-2 w-[130px]">
                 Продажа (Цена / Сумма)
               </TableHead>
-              <TableHead className="text-right text-[13px] font-semibold p-2 w-[120px]">
-                Комиссия / Прибыль
+              <TableHead className="text-right text-[13px] font-semibold p-2 w-[160px]">
+                Комиссия / Посредники / Прибыль
               </TableHead>
               <TableHead className="w-8 p-1"></TableHead>
             </TableRow>
@@ -247,7 +250,7 @@ export function RefuelingAbroadTable({
             {items.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={11}
+                  colSpan={12}
                   className="text-center py-12 text-muted-foreground"
                 >
                   Нет записей для отображения.
@@ -323,6 +326,36 @@ export function RefuelingAbroadTable({
                         "—"}
                     </div>
                   </TableCell>
+                  <TableCell className="p-2">
+                    <div className="flex flex-col gap-0.5 max-w-[160px]">
+                      {item.bankCommissions?.map((bc: any) => {
+                        const base = parseFloat(item.purchaseAmountUsd || "0");
+                        const pct = parseFloat(bc.percent || "0");
+                        const minV = parseFloat(bc.minValue || "0");
+                        const computed = (base * pct) / 100;
+                        const amount =
+                          bc.commissionType === "percent_min" && minV > 0
+                            ? Math.max(computed, minV)
+                            : computed;
+                        return (
+                          <div
+                            key={bc.id}
+                            className="text-[13px] leading-tight"
+                          >
+                            {bc.bankName && (
+                              <span className="font-medium">{bc.bankName}</span>
+                            )}
+                            <span className="ml-1 text-violet-500">
+                              {formatCurrency(amount, "USD")}
+                            </span>
+                          </div>
+                        );
+                      })}
+                      {(!item.bankCommissions ||
+                        item.bankCommissions.length === 0) &&
+                        "—"}
+                    </div>
+                  </TableCell>
                   <TableCell className="p-2 text-right">
                     <div className="flex flex-col font-mono">
                       <span className="text-muted-foreground">
@@ -354,19 +387,50 @@ export function RefuelingAbroadTable({
                   </TableCell>
                   <TableCell className="p-2 text-right">
                     <div className="flex flex-col font-mono">
-                      <span className="text-blue-500">
-                        {formatCurrency(item.intermediaryCommissionUsd, "USD")}
-                      </span>
-                      <span
-                        className={cn(
-                          "font-semibold",
-                          parseFloat(item.profitUsd || "0") < 0
-                            ? "text-destructive"
-                            : "text-green-600",
-                        )}
-                      >
-                        {formatCurrency(item.profitUsd, "USD")}
-                      </span>
+                      {(() => {
+                        const base = parseFloat(
+                          item.purchaseAmountUsd || "0",
+                        );
+                        const totalBankComm = (item.bankCommissions || []).reduce(
+                          (sum: number, bc: any) => {
+                            const pct = parseFloat(bc.percent || "0");
+                            const minV = parseFloat(bc.minValue || "0");
+                            const computed = (base * pct) / 100;
+                            return (
+                              sum +
+                              (bc.commissionType === "percent_min" && minV > 0
+                                ? Math.max(computed, minV)
+                                : computed)
+                            );
+                          },
+                          0,
+                        );
+                        return (
+                          <>
+                            {totalBankComm > 0 && (
+                              <span className="text-violet-500">
+                                {formatCurrency(totalBankComm, "USD")}
+                              </span>
+                            )}
+                            <span className="text-blue-500">
+                              {formatCurrency(
+                                item.intermediaryCommissionUsd,
+                                "USD",
+                              )}
+                            </span>
+                            <span
+                              className={cn(
+                                "font-semibold",
+                                parseFloat(item.profitUsd || "0") < 0
+                                  ? "text-destructive"
+                                  : "text-green-600",
+                              )}
+                            >
+                              {formatCurrency(item.profitUsd, "USD")}
+                            </span>
+                          </>
+                        );
+                      })()}
                     </div>
                   </TableCell>
                   <TableCell className="p-1">

@@ -17,6 +17,7 @@ import {
   RefuelingAbroad,
 } from "../entities/refueling-abroad";
 import { refuelingAbroadIntermediaries } from "../entities/refueling-abroad-intermediaries";
+import { refuelingAbroadBankCommissions } from "../entities/refueling-abroad-bank-commissions";
 import { suppliers } from "../../suppliers/entities/suppliers";
 import { customers } from "../../customers/entities/customers";
 import { prices, storageCards, storageCardTransactions } from "@shared/schema";
@@ -131,7 +132,7 @@ export class RefuelingAbroadStorage {
         desc(refuelingAbroad.createdAt),
       );
 
-    // Get intermediaries for each deal
+    // Get intermediaries and bank commissions for each deal
     const mappedData = await Promise.all(
       data.map(async (row) => {
         const intermediaries =
@@ -146,11 +147,23 @@ export class RefuelingAbroadStorage {
             orderBy: [asc(refuelingAbroadIntermediaries.orderIndex)],
           });
 
+        const bankCommissions = await db
+          .select()
+          .from(refuelingAbroadBankCommissions)
+          .where(
+            eq(
+              refuelingAbroadBankCommissions.refuelingAbroadId,
+              row.refuelingAbroad.id,
+            ),
+          )
+          .orderBy(asc(refuelingAbroadBankCommissions.chainPosition));
+
         return {
           ...row.refuelingAbroad,
           supplier: row.supplier,
           buyer: row.buyer,
           intermediaries,
+          bankCommissions,
         };
       }),
     );

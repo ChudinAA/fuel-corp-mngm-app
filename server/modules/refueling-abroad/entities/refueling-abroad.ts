@@ -79,6 +79,8 @@ export const refuelingAbroad = pgTable(
       precision: 15,
       scale: 4,
     }),
+    saleExchangeRateDate: text("sale_exchange_rate_date"),
+    purchaseExchangeRateDate: text("purchase_exchange_rate_date"),
     purchasePriceUsd: decimal("purchase_price_usd", {
       precision: 12,
       scale: 4,
@@ -215,6 +217,8 @@ export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
     purchaseExchangeRateValue: z.number().nullable().optional(),
     saleExchangeRateId: z.string().nullable().optional(),
     saleExchangeRateValue: z.number().nullable().optional(),
+    saleExchangeRateDate: z.string().nullable().optional(),
+    purchaseExchangeRateDate: z.string().nullable().optional(),
     purchasePriceUsd: z.number().nullable().optional(),
     purchasePriceRub: z.number().nullable().optional(),
     purchasePriceId: z.string().nullable().optional(),

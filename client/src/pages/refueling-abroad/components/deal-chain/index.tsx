@@ -51,6 +51,10 @@ interface DealChainSectionProps {
   currencies: any[];
   buyerName?: string;
   supplierName?: string;
+  saleExchangeRate?: number;
+  purchaseExchangeRate?: number;
+  saleExchangeRateDate?: string;
+  purchaseExchangeRateDate?: string;
 }
 
 function AddItemMenu({ onAdd }: { onAdd: (type: ChainItemType) => void }) {
@@ -121,6 +125,10 @@ export function DealChainSection({
   currencies,
   buyerName,
   supplierName,
+  saleExchangeRate,
+  purchaseExchangeRate,
+  saleExchangeRateDate,
+  purchaseExchangeRateDate,
 }: DealChainSectionProps) {
   const { data: allSuppliers = [] } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
@@ -276,6 +284,24 @@ export function DealChainSection({
   const profit = saleAmountUsd - purchaseAmountUsd - totalCosts;
   const hasSummary = purchaseAmountUsd > 0 || saleAmountUsd > 0;
 
+  const saleAmountRub =
+    saleExchangeRate && saleAmountUsd
+      ? saleAmountUsd * saleExchangeRate
+      : null;
+  const purchaseAmountRub =
+    purchaseExchangeRate && purchaseAmountUsd
+      ? purchaseAmountUsd * purchaseExchangeRate
+      : null;
+  const costsRub =
+    saleExchangeRate && totalCosts ? totalCosts * saleExchangeRate : null;
+  const profitRub =
+    saleAmountRub !== null && purchaseAmountRub !== null
+      ? saleAmountRub - purchaseAmountRub - (costsRub ?? 0)
+      : null;
+
+  const fmtRub = (n: number) =>
+    new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n);
+
   const isIntermediaryDialogOpen =
     (addingType === "intermediary" && addingAtPosition !== null) ||
     (editingIndex !== null && editingItem?.type === "intermediary");
@@ -387,25 +413,50 @@ export function DealChainSection({
                 <div className="text-[10px] text-muted-foreground uppercase font-medium tracking-wide">
                   Продажа
                 </div>
-                <div className="text-sm font-semibold text-green-600">
-                  {formatCurrency(saleAmountUsd, "USD")}
+                <div className="text-sm font-semibold text-green-600 flex items-baseline gap-1 flex-wrap">
+                  <span>{formatCurrency(saleAmountUsd, "USD")}</span>
+                  {saleAmountRub !== null && (
+                    <span className="text-[11px] text-muted-foreground font-normal">
+                      ({new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(saleAmountRub)} ₽)
+                    </span>
+                  )}
                 </div>
+                {saleExchangeRateDate && (
+                  <div className="text-[10px] text-muted-foreground italic">
+                    Зафиксирована: {saleExchangeRateDate}
+                  </div>
+                )}
               </div>
               <div className="space-y-0.5">
                 <div className="text-[10px] text-muted-foreground uppercase font-medium tracking-wide">
                   Закупка
                 </div>
-                <div className="text-sm font-semibold">
-                  {formatCurrency(purchaseAmountUsd, "USD")}
+                <div className="text-sm font-semibold flex items-baseline gap-1 flex-wrap">
+                  <span>{formatCurrency(purchaseAmountUsd, "USD")}</span>
+                  {purchaseAmountRub !== null && (
+                    <span className="text-[11px] text-muted-foreground font-normal">
+                      ({new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(purchaseAmountRub)} ₽)
+                    </span>
+                  )}
                 </div>
+                {purchaseExchangeRateDate && (
+                  <div className="text-[10px] text-muted-foreground italic">
+                    Зафиксирована: {purchaseExchangeRateDate}
+                  </div>
+                )}
               </div>
               {totalCosts > 0 && (
                 <div className="space-y-0.5">
                   <div className="text-[10px] text-muted-foreground uppercase font-medium tracking-wide">
                     Расходы
                   </div>
-                  <div className="text-sm font-semibold text-destructive">
-                    -{formatCurrency(totalCosts, "USD")}
+                  <div className="text-sm font-semibold text-destructive flex items-baseline gap-1 flex-wrap">
+                    <span>-{formatCurrency(totalCosts, "USD")}</span>
+                    {costsRub !== null && (
+                      <span className="text-[11px] font-normal">
+                        ({new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(costsRub)} ₽)
+                      </span>
+                    )}
                   </div>
                   <div className="text-[11px] text-muted-foreground space-y-0">
                     {totalIntermediaryCommission > 0 && (
@@ -427,14 +478,19 @@ export function DealChainSection({
                   Прибыль
                 </div>
                 <div
-                  className={`text-sm font-bold flex items-center gap-1 ${profit >= 0 ? "text-green-600" : "text-destructive"}`}
+                  className={`text-sm font-bold flex items-center gap-1 flex-wrap ${profit >= 0 ? "text-green-600" : "text-destructive"}`}
                 >
                   {profit >= 0 ? (
-                    <TrendingUp className="h-3 w-3" />
+                    <TrendingUp className="h-3 w-3 shrink-0" />
                   ) : (
-                    <TrendingDown className="h-3 w-3" />
+                    <TrendingDown className="h-3 w-3 shrink-0" />
                   )}
-                  {formatCurrency(profit, "USD")}
+                  <span>{formatCurrency(profit, "USD")}</span>
+                  {profitRub !== null && (
+                    <span className={`text-[11px] font-normal ${profitRub >= 0 ? "text-green-600" : "text-destructive"}`}>
+                      ({new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(profitRub)} ₽)
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
