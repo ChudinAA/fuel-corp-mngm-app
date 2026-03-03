@@ -697,6 +697,14 @@ export class RefuelingAbroadStorage {
           ? String(data.intermediaryCommissionRub)
           : null;
     }
+    if (data.bankCommissionUsd !== undefined) {
+      result.bankCommissionUsd =
+        data.bankCommissionUsd !== null ? String(data.bankCommissionUsd) : null;
+    }
+    if (data.bankCommissionRub !== undefined) {
+      result.bankCommissionRub =
+        data.bankCommissionRub !== null ? String(data.bankCommissionRub) : null;
+    }
 
     return result;
   }

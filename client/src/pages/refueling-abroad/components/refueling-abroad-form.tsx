@@ -60,6 +60,7 @@ import {
   type ChainExchangeRateItem,
   type ChainBankCommissionItem,
 } from "./deal-chain";
+import { computeBankCommission } from "./deal-chain/types";
 import { formatCurrency, formatNumber } from "../utils";
 import { PRODUCT_TYPES_ABROAD } from "../constants";
 import type {
@@ -483,6 +484,35 @@ export const RefuelingAbroadForm = forwardRef<
         : 0,
   });
 
+  const bankChainItems = chainItems.filter(
+    (i): i is ChainBankCommissionItem => i.type === "bank_commission",
+  );
+  const totalBankCommissionUsd = bankChainItems.reduce((sum, item) => {
+    return (
+      sum +
+      computeBankCommission(
+        item.commissionType,
+        item.percent,
+        item.minValue,
+        calculations.purchaseAmountUsd ?? 0,
+      )
+    );
+  }, 0);
+  const totalBankCommissionRub = saleExchangeRate
+    ? totalBankCommissionUsd * saleExchangeRate
+    : purchaseExchangeRate
+      ? totalBankCommissionUsd * purchaseExchangeRate
+      : 0;
+
+  const adjustedProfitUsd =
+    calculations.profitUsd !== null && calculations.profitUsd !== undefined
+      ? calculations.profitUsd - totalBankCommissionUsd
+      : null;
+  const adjustedProfitRub =
+    calculations.profitRub !== null && calculations.profitRub !== undefined
+      ? calculations.profitRub - totalBankCommissionRub
+      : null;
+
   const supplierBalanceStatus = useSupplierCardBalance({
     supplierId: watchedValues.supplierId,
     purchaseAmountUsd: calculations.purchaseAmountUsd,
@@ -570,8 +600,10 @@ export const RefuelingAbroadForm = forwardRef<
         saleAmountUsd: calculations.saleAmountUsd || null,
         purchaseAmountRub: calculations.purchaseAmountRub || null,
         saleAmountRub: calculations.saleAmountRub || null,
-        profitUsd: calculations.profitUsd ?? null,
-        profitRub: calculations.profitRub ?? null,
+        profitUsd: adjustedProfitUsd ?? null,
+        profitRub: adjustedProfitRub ?? null,
+        bankCommissionUsd: totalBankCommissionUsd || null,
+        bankCommissionRub: totalBankCommissionRub || null,
         notes: data.notes || null,
         isApproxVolume: data.isApproxVolume || false,
         inputMode: data.inputMode,
@@ -668,6 +700,36 @@ export const RefuelingAbroadForm = forwardRef<
         chainBankCommissionsPayload,
       );
 
+      if (
+        data.manualSaleExchangeRate &&
+        (!data.saleExchangeRateId || data.saleExchangeRateId === "none")
+      ) {
+        try {
+          await apiRequest("POST", "/api/exchange-rates", {
+            currency: "USD",
+            targetCurrency: "RUB",
+            rate: parseFloat(data.manualSaleExchangeRate),
+            rateDate: data.manualSaleExchangeRateDate || null,
+            notes: "Ручной ввод при сохранении сделки",
+          });
+        } catch (_) {}
+      }
+
+      if (
+        data.manualPurchaseExchangeRate &&
+        (!data.purchaseExchangeRateId || data.purchaseExchangeRateId === "none")
+      ) {
+        try {
+          await apiRequest("POST", "/api/exchange-rates", {
+            currency: "USD",
+            targetCurrency: "RUB",
+            rate: parseFloat(data.manualPurchaseExchangeRate),
+            rateDate: data.manualPurchaseExchangeRateDate || null,
+            notes: "Ручной ввод при сохранении сделки",
+          });
+        } catch (_) {}
+      }
+
       return { id: refuelingId };
     },
     onSuccess: () => {
@@ -676,6 +738,7 @@ export const RefuelingAbroadForm = forwardRef<
       });
       queryClient.invalidateQueries({ queryKey: ["/api/storage-cards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/refueling-abroad"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/exchange-rates"] });
       queryClient.invalidateQueries({
         queryKey: ["/api/storage-cards/advances"],
       });
@@ -1420,14 +1483,45 @@ export const RefuelingAbroadForm = forwardRef<
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Дата фиксации</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="date"
-                              {...field}
-                              value={field.value || ""}
-                              data-testid="input-sale-exchange-rate-date"
-                            />
-                          </FormControl>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  className="w-full justify-start text-left font-normal"
+                                  data-testid="input-sale-exchange-rate-date"
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {field.value
+                                    ? format(
+                                        new Date(field.value + "T00:00:00"),
+                                        "yyyy-MM-dd",
+                                      )
+                                    : "Выберите дату"}
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className="w-auto p-0"
+                              align="start"
+                            >
+                              <Calendar
+                                mode="single"
+                                selected={
+                                  field.value
+                                    ? new Date(field.value + "T00:00:00")
+                                    : undefined
+                                }
+                                onSelect={(date) =>
+                                  field.onChange(
+                                    date ? format(date, "yyyy-MM-dd") : "",
+                                  )
+                                }
+                                locale={ru}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
                         </FormItem>
                       )}
                     />
@@ -1502,14 +1596,45 @@ export const RefuelingAbroadForm = forwardRef<
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Дата фиксации</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="date"
-                              {...field}
-                              value={field.value || ""}
-                              data-testid="input-purchase-exchange-rate-date"
-                            />
-                          </FormControl>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  className="w-full justify-start text-left font-normal"
+                                  data-testid="input-purchase-exchange-rate-date"
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {field.value
+                                    ? format(
+                                        new Date(field.value + "T00:00:00"),
+                                        "yyyy-MM-dd",
+                                      )
+                                    : "Выберите дату"}
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className="w-auto p-0"
+                              align="start"
+                            >
+                              <Calendar
+                                mode="single"
+                                selected={
+                                  field.value
+                                    ? new Date(field.value + "T00:00:00")
+                                    : undefined
+                                }
+                                onSelect={(date) =>
+                                  field.onChange(
+                                    date ? format(date, "yyyy-MM-dd") : "",
+                                  )
+                                }
+                                locale={ru}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
                         </FormItem>
                       )}
                     />

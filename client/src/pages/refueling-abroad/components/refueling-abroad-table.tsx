@@ -388,22 +388,8 @@ export function RefuelingAbroadTable({
                   <TableCell className="p-2 text-right">
                     <div className="flex flex-col font-mono">
                       {(() => {
-                        const base = parseFloat(
-                          item.purchaseAmountUsd || "0",
-                        );
-                        const totalBankComm = (item.bankCommissions || []).reduce(
-                          (sum: number, bc: any) => {
-                            const pct = parseFloat(bc.percent || "0");
-                            const minV = parseFloat(bc.minValue || "0");
-                            const computed = (base * pct) / 100;
-                            return (
-                              sum +
-                              (bc.commissionType === "percent_min" && minV > 0
-                                ? Math.max(computed, minV)
-                                : computed)
-                            );
-                          },
-                          0,
+                        const totalBankComm = parseFloat(
+                          item.bankCommissionUsd || "0",
                         );
                         return (
                           <>

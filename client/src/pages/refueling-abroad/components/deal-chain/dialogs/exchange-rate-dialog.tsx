@@ -1,8 +1,17 @@
 import { useState } from "react";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -230,13 +239,40 @@ export function ExchangeRateDialog({
                 </div>
                 <div>
                   <Label className="text-sm font-medium mb-1 block">Дата</Label>
-                  <Input
-                    type="date"
-                    value={form.rateDate || ""}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, rateDate: e.target.value }))
-                    }
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {form.rateDate
+                          ? format(
+                              new Date(form.rateDate + "T00:00:00"),
+                              "yyyy-MM-dd",
+                            )
+                          : "Выберите дату"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={
+                          form.rateDate
+                            ? new Date(form.rateDate + "T00:00:00")
+                            : undefined
+                        }
+                        onSelect={(date) =>
+                          setForm((f) => ({
+                            ...f,
+                            rateDate: date ? format(date, "yyyy-MM-dd") : "",
+                          }))
+                        }
+                        locale={ru}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
             </div>
