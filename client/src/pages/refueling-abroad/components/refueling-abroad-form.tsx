@@ -37,13 +37,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Loader2,
-  Plane,
-  DollarSign,
-  CalendarIcon,
-  Plus,
-} from "lucide-react";
+import { Loader2, Plane, DollarSign, CalendarIcon, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
@@ -228,8 +222,7 @@ export const RefuelingAbroadForm = forwardRef<
         purchaseExchangeRateId: editData.purchaseExchangeRateId || "",
         manualPurchaseExchangeRate:
           editData.purchaseExchangeRateValue?.toString() || "",
-        manualPurchaseExchangeRateDate:
-          editData.purchaseExchangeRateDate || "",
+        manualPurchaseExchangeRateDate: editData.purchaseExchangeRateDate || "",
         saleExchangeRateId: editData.saleExchangeRateId || "",
         manualSaleExchangeRate:
           editData.saleExchangeRateValue?.toString() || "",
@@ -358,8 +351,7 @@ export const RefuelingAbroadForm = forwardRef<
         editData?.purchaseExchangeRateId || latestUsdRate?.id || "",
       manualPurchaseExchangeRate:
         editData?.purchaseExchangeRateValue?.toString() || "",
-      manualPurchaseExchangeRateDate:
-        editData?.purchaseExchangeRateDate || "",
+      manualPurchaseExchangeRateDate: editData?.purchaseExchangeRateDate || "",
       saleExchangeRateId:
         editData?.saleExchangeRateId || latestUsdRate?.id || "",
       manualSaleExchangeRate: editData?.saleExchangeRateValue?.toString() || "",
@@ -437,17 +429,10 @@ export const RefuelingAbroadForm = forwardRef<
   const effectivePurchaseExchangeRateDate =
     watchedValues.manualPurchaseExchangeRateDate ||
     (selectedPurchaseExchangeRate?.rateDate
-      ? new Date(selectedPurchaseExchangeRate.rateDate).toLocaleDateString("ru-RU")
+      ? new Date(selectedPurchaseExchangeRate.rateDate).toLocaleDateString(
+          "ru-RU",
+        )
       : null);
-
-  const intermediaryChainItems = chainItems.filter(
-    (i): i is ChainIntermediaryItem => i.type === "intermediary",
-  );
-
-  const totalIntermediaryCommissionUsd = intermediaryChainItems.reduce(
-    (sum, item) => sum + (item.commissionUsd || 0),
-    0,
-  );
 
   // Use filtering hook
   const { refuelingSuppliers, availableBases, purchasePrices, salePrices } =
@@ -471,47 +456,17 @@ export const RefuelingAbroadForm = forwardRef<
     quantityKg: watchedValues.quantityKg || "",
     purchaseExchangeRate,
     saleExchangeRate,
-    commissionFormula: "",
-    manualCommissionUsd: totalIntermediaryCommissionUsd.toString(),
     purchasePrices,
     salePrices,
     selectedPurchasePriceId,
     selectedSalePriceId,
     productType: watchedValues.productType || "",
+    chainItems,
     initialQuantityKg:
       isEditing && !editData.isDraft
         ? parseFloat(editData?.quantityKg || "0")
         : 0,
   });
-
-  const bankChainItems = chainItems.filter(
-    (i): i is ChainBankCommissionItem => i.type === "bank_commission",
-  );
-  const totalBankCommissionUsd = bankChainItems.reduce((sum, item) => {
-    return (
-      sum +
-      computeBankCommission(
-        item.commissionType,
-        item.percent,
-        item.minValue,
-        calculations.purchaseAmountUsd ?? 0,
-      )
-    );
-  }, 0);
-  const totalBankCommissionRub = saleExchangeRate
-    ? totalBankCommissionUsd * saleExchangeRate
-    : purchaseExchangeRate
-      ? totalBankCommissionUsd * purchaseExchangeRate
-      : 0;
-
-  const adjustedProfitUsd =
-    calculations.profitUsd !== null && calculations.profitUsd !== undefined
-      ? calculations.profitUsd - totalBankCommissionUsd
-      : null;
-  const adjustedProfitRub =
-    calculations.profitRub !== null && calculations.profitRub !== undefined
-      ? calculations.profitRub - totalBankCommissionRub
-      : null;
 
   const supplierBalanceStatus = useSupplierCardBalance({
     supplierId: watchedValues.supplierId,
@@ -566,8 +521,8 @@ export const RefuelingAbroadForm = forwardRef<
         basisId: data.basisId && data.basisId !== "none" ? data.basisId : null,
         intermediaryId: null,
         intermediaryCommissionFormula: null,
-        intermediaryCommissionUsd: totalIntermediaryCommissionUsd || null,
-        intermediaryCommissionRub: intermediaryChainItems.reduce((s, i) => s + (i.commissionRub || 0), 0) || null,
+        intermediaryCommissionUsd: calculations.totalIntermediaryCommissionUsd,
+        intermediaryCommissionRub: calculations.totalIntermediaryCommissionRub,
         quantityLiters: data.quantityLiters
           ? parseFloat(data.quantityLiters)
           : null,
@@ -581,8 +536,7 @@ export const RefuelingAbroadForm = forwardRef<
         currency: "USD",
         purchaseExchangeRateId: data.purchaseExchangeRateId || null,
         purchaseExchangeRateValue: purchaseExchangeRate || null,
-        purchaseExchangeRateDate:
-          data.manualPurchaseExchangeRateDate || null,
+        purchaseExchangeRateDate: data.manualPurchaseExchangeRateDate || null,
         saleExchangeRateId: data.saleExchangeRateId || null,
         saleExchangeRateValue: saleExchangeRate || null,
         saleExchangeRateDate: data.manualSaleExchangeRateDate || null,
@@ -600,10 +554,10 @@ export const RefuelingAbroadForm = forwardRef<
         saleAmountUsd: calculations.saleAmountUsd || null,
         purchaseAmountRub: calculations.purchaseAmountRub || null,
         saleAmountRub: calculations.saleAmountRub || null,
-        profitUsd: adjustedProfitUsd ?? null,
-        profitRub: adjustedProfitRub ?? null,
-        bankCommissionUsd: totalBankCommissionUsd || null,
-        bankCommissionRub: totalBankCommissionRub || null,
+        profitUsd: calculations.profitUsd ?? null,
+        profitRub: calculations.profitRub ?? null,
+        bankCommissionUsd: calculations.totalBankCommissionUsd,
+        bankCommissionRub: calculations.totalBankCommissionRub,
         notes: data.notes || null,
         isApproxVolume: data.isApproxVolume || false,
         inputMode: data.inputMode,
@@ -700,36 +654,6 @@ export const RefuelingAbroadForm = forwardRef<
         chainBankCommissionsPayload,
       );
 
-      if (
-        data.manualSaleExchangeRate &&
-        (!data.saleExchangeRateId || data.saleExchangeRateId === "none")
-      ) {
-        try {
-          await apiRequest("POST", "/api/exchange-rates", {
-            currency: "USD",
-            targetCurrency: "RUB",
-            rate: parseFloat(data.manualSaleExchangeRate),
-            rateDate: data.manualSaleExchangeRateDate || null,
-            notes: "Ручной ввод при сохранении сделки",
-          });
-        } catch (_) {}
-      }
-
-      if (
-        data.manualPurchaseExchangeRate &&
-        (!data.purchaseExchangeRateId || data.purchaseExchangeRateId === "none")
-      ) {
-        try {
-          await apiRequest("POST", "/api/exchange-rates", {
-            currency: "USD",
-            targetCurrency: "RUB",
-            rate: parseFloat(data.manualPurchaseExchangeRate),
-            rateDate: data.manualPurchaseExchangeRateDate || null,
-            notes: "Ручной ввод при сохранении сделки",
-          });
-        } catch (_) {}
-      }
-
       return { id: refuelingId };
     },
     onSuccess: () => {
@@ -738,7 +662,6 @@ export const RefuelingAbroadForm = forwardRef<
       });
       queryClient.invalidateQueries({ queryKey: ["/api/storage-cards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/refueling-abroad"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/exchange-rates"] });
       queryClient.invalidateQueries({
         queryKey: ["/api/storage-cards/advances"],
       });
@@ -923,181 +846,223 @@ export const RefuelingAbroadForm = forwardRef<
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Контрагенты</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormField
-              control={form.control}
-              name="supplierId"
-              render={({ field }) => (
-                <FormItem className="col-span-1 min-w-0">
-                  <FormLabel>Поставщик</FormLabel>
-                  <div className="flex gap-1 items-center w-full">
-                    <FormControl>
-                      <div className="flex-1 min-w-0">
-                        <Combobox
-                          options={foreignSuppliers.map((s) => ({
-                            value: s.id,
-                            label: s.name,
-                          }))}
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          placeholder="Выберите поставщика"
-                          className="w-full"
-                          dataTestId="select-supplier"
-                        />
-                      </div>
-                    </FormControl>
-                    {hasPermission("directories", "create") && (
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="outline"
-                        onClick={() => setAddSupplierOpen(true)}
-                        data-testid="button-add-supplier-inline"
-                        className="shrink-0 h-9 w-9"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {selectedSupplier &&
-            selectedSupplier.baseIds &&
-            selectedSupplier.baseIds.length > 0 ? (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Контрагенты</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
-                name="basisId"
+                name="supplierId"
                 render={({ field }) => (
                   <FormItem className="col-span-1 min-w-0">
-                    <FormLabel>Базис</FormLabel>
-                    <FormControl>
-                      <div className="w-full">
-                        <Combobox
-                          options={availableBases.map((base) => ({
-                            value: base.id,
-                            label: base.name,
-                            render: (
-                              <div className="flex items-center gap-2">
-                                {base.name}
-                                <BaseTypeBadge
-                                  type={base.baseType}
-                                  short={true}
-                                />
-                              </div>
-                            ),
-                          }))}
-                          value={field.value || ""}
-                          onValueChange={field.onChange}
-                          placeholder="Выберите базис"
-                          dataTestId="select-basis"
-                          className="w-full"
-                        />
-                      </div>
-                    </FormControl>
+                    <FormLabel>Поставщик</FormLabel>
+                    <div className="flex gap-1 items-center w-full">
+                      <FormControl>
+                        <div className="flex-1 min-w-0">
+                          <Combobox
+                            options={foreignSuppliers.map((s) => ({
+                              value: s.id,
+                              label: s.name,
+                            }))}
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            placeholder="Выберите поставщика"
+                            className="w-full"
+                            dataTestId="select-supplier"
+                          />
+                        </div>
+                      </FormControl>
+                      {hasPermission("directories", "create") && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          onClick={() => setAddSupplierOpen(true)}
+                          data-testid="button-add-supplier-inline"
+                          className="shrink-0 h-9 w-9"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            ) : (
-              <div className="space-y-2 col-span-1 min-w-0">
-                <label className="text-sm font-medium flex items-center h-6">
-                  Базис
-                </label>
-                <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md text-sm overflow-hidden truncate">
-                  {selectedBasis?.name || "—"}
-                </div>
-              </div>
-            )}
 
-            <FormField
-              control={form.control}
-              name="buyerId"
-              render={({ field }) => (
-                <FormItem className="col-span-1 min-w-0">
-                  <FormLabel>Покупатель</FormLabel>
-                  <div className="flex gap-1 items-center w-full">
-                    <FormControl>
-                      <div className="flex-1 min-w-0">
-                        <Combobox
-                          options={(foreignCustomers || [])?.map((c) => ({
-                            value: c.id,
-                            label: c.name,
-                          }))}
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          placeholder="Выберите покупателя"
-                          className="w-full"
-                          dataTestId="select-buyer"
-                        />
-                      </div>
-                    </FormControl>
-                    {hasPermission("directories", "create") && (
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="outline"
-                        onClick={() => setAddCustomerOpen(true)}
-                        data-testid="button-add-customer-inline"
-                        className="shrink-0 h-9 w-9"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    )}
+              {selectedSupplier &&
+              selectedSupplier.baseIds &&
+              selectedSupplier.baseIds.length > 0 ? (
+                <FormField
+                  control={form.control}
+                  name="basisId"
+                  render={({ field }) => (
+                    <FormItem className="col-span-1 min-w-0">
+                      <FormLabel>Базис</FormLabel>
+                      <FormControl>
+                        <div className="w-full">
+                          <Combobox
+                            options={availableBases.map((base) => ({
+                              value: base.id,
+                              label: base.name,
+                              render: (
+                                <div className="flex items-center gap-2">
+                                  {base.name}
+                                  <BaseTypeBadge
+                                    type={base.baseType}
+                                    short={true}
+                                  />
+                                </div>
+                              ),
+                            }))}
+                            value={field.value || ""}
+                            onValueChange={field.onChange}
+                            placeholder="Выберите базис"
+                            dataTestId="select-basis"
+                            className="w-full"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <div className="space-y-2 col-span-1 min-w-0">
+                  <label className="text-sm font-medium flex items-center h-6">
+                    Базис
+                  </label>
+                  <div className="flex items-center gap-2 h-9 px-3 bg-muted rounded-md text-sm overflow-hidden truncate">
+                    {selectedBasis?.name || "—"}
                   </div>
-                  <FormMessage />
-                </FormItem>
+                </div>
               )}
-            />
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Объем топлива</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="inputMode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <RadioGroup
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      className="flex gap-4"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="kg" id="mode-kg" />
-                        <Label htmlFor="mode-kg">Ввод в кг</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="liters" id="mode-liters" />
-                        <Label htmlFor="mode-liters">Ввод в литрах</Label>
-                      </div>
-                    </RadioGroup>
-                  </FormControl>
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="buyerId"
+                render={({ field }) => (
+                  <FormItem className="col-span-1 min-w-0">
+                    <FormLabel>Покупатель</FormLabel>
+                    <div className="flex gap-1 items-center w-full">
+                      <FormControl>
+                        <div className="flex-1 min-w-0">
+                          <Combobox
+                            options={(foreignCustomers || [])?.map((c) => ({
+                              value: c.id,
+                              label: c.name,
+                            }))}
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            placeholder="Выберите покупателя"
+                            className="w-full"
+                            dataTestId="select-buyer"
+                          />
+                        </div>
+                      </FormControl>
+                      {hasPermission("directories", "create") && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          onClick={() => setAddCustomerOpen(true)}
+                          data-testid="button-add-customer-inline"
+                          className="shrink-0 h-9 w-9"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {watchedValues.inputMode === "liters" ? (
-                <>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Объем топлива</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="inputMode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <RadioGroup
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        className="flex gap-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="kg" id="mode-kg" />
+                          <Label htmlFor="mode-kg">Ввод в кг</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="liters" id="mode-liters" />
+                          <Label htmlFor="mode-liters">Ввод в литрах</Label>
+                        </div>
+                      </RadioGroup>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {watchedValues.inputMode === "liters" ? (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="quantityLiters"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            Литры
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...field}
+                              value={field.value || ""}
+                              data-testid="input-quantity-liters"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="density"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            Плотность
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.001"
+                              {...field}
+                              value={field.value || ""}
+                              data-testid="input-density"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                ) : (
                   <FormField
                     control={form.control}
-                    name="quantityLiters"
+                    name="quantityKg"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="flex items-center gap-2">
-                          Литры
+                          Масса (кг)
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -1105,65 +1070,23 @@ export const RefuelingAbroadForm = forwardRef<
                             step="0.01"
                             {...field}
                             value={field.value || ""}
-                            data-testid="input-quantity-liters"
+                            data-testid="input-quantity-kg"
                           />
                         </FormControl>
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="density"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          Плотность
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.001"
-                            {...field}
-                            value={field.value || ""}
-                            data-testid="input-density"
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </>
-              ) : (
-                <FormField
-                  control={form.control}
-                  name="quantityKg"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        Масса (кг)
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          {...field}
-                          value={field.value || ""}
-                          data-testid="input-quantity-kg"
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              )}
+                )}
 
-              <div>
-                <Label className="text-muted-foreground">Итого (кг)</Label>
-                <div className="h-9 px-3 flex items-center bg-muted rounded-md text-sm font-medium">
-                  {formatNumber(calculations.finalKg)}
+                <div>
+                  <Label className="text-muted-foreground">Итого (кг)</Label>
+                  <div className="h-9 px-3 flex items-center bg-muted rounded-md text-sm font-medium">
+                    {formatNumber(calculations.finalKg)}
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
         </div>
 
         <DealChainSection

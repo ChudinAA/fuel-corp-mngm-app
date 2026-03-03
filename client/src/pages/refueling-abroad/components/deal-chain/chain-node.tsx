@@ -47,6 +47,8 @@ export function ChainNode({
       quantityKg,
     );
 
+    item.commissionUsd = realtimeCommission
+    
     const rateDisplay =
       item.incomeType === "percent_sale"
         ? `${item.rateValue ?? 0}%`
