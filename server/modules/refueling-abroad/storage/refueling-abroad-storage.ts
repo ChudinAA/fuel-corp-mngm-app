@@ -342,6 +342,56 @@ export class RefuelingAbroadStorage {
           .where(eq(refuelingAbroad.id, created.id));
       }
 
+      // Buyer card deduction (optional — absence of card is not a blocker)
+      if (!created.isDraft && created.buyerId && created.saleAmountUsd) {
+        const buyerCard = await tx.query.storageCards.findFirst({
+          where: and(
+            eq(storageCards.buyerId, created.buyerId),
+            sql`${storageCards.cardType} = 'buyer'`,
+            isNull(storageCards.deletedAt),
+          ),
+        });
+
+        if (buyerCard) {
+          const buyerBalance = parseFloat(buyerCard.currentBalance || "0");
+          const deductAmount = parseFloat(String(created.saleAmountUsd));
+          const newBuyerBalance = buyerBalance - deductAmount;
+
+          await tx
+            .update(storageCards)
+            .set({
+              currentBalance: newBuyerBalance.toFixed(2),
+              updatedAt: sql`NOW()`,
+              updatedById: userId,
+            })
+            .where(eq(storageCards.id, buyerCard.id));
+
+          const [buyerTx] = await tx
+            .insert(storageCardTransactions)
+            .values({
+              storageCardId: buyerCard.id,
+              transactionType: STORAGE_CARD_TRANSACTION_TYPE.EXPENSE,
+              quantity: String(deductAmount),
+              price: "1",
+              balanceBefore: String(buyerBalance),
+              balanceAfter: String(newBuyerBalance),
+              transactionDate: data.refuelingDate,
+              sourceType: SOURCE_TYPE.REFUELING_ABROAD,
+              sourceId: created.id,
+              createdById: userId,
+            })
+            .returning();
+
+          await tx
+            .update(refuelingAbroad)
+            .set({
+              buyerStorageCardId: buyerCard.id,
+              buyerTransactionId: buyerTx.id,
+            })
+            .where(eq(refuelingAbroad.id, created.id));
+        }
+      }
+
       return { ...created, needsTopUp };
     });
   }
@@ -484,6 +534,88 @@ export class RefuelingAbroadStorage {
         }
       }
 
+      // Handle buyer card transaction update if saleAmountUsd changed
+      const newSaleAmount = data.saleAmountUsd;
+      const oldSaleAmount = parseFloat(currentRefueling.saleAmountUsd || "0");
+      if (
+        !currentRefueling.isDraft &&
+        newSaleAmount !== undefined &&
+        newSaleAmount !== null &&
+        newSaleAmount !== oldSaleAmount
+      ) {
+        const effectiveBuyerId = data.buyerId || currentRefueling.buyerId;
+        if (effectiveBuyerId) {
+          const buyerCard = await tx.query.storageCards.findFirst({
+            where: and(
+              eq(storageCards.buyerId, effectiveBuyerId),
+              sql`${storageCards.cardType} = 'buyer'`,
+              isNull(storageCards.deletedAt),
+            ),
+          });
+
+          if (buyerCard) {
+            if (currentRefueling.buyerTransactionId) {
+              // Reverse old transaction and apply new
+              const oldBuyerBalance = parseFloat(buyerCard.currentBalance || "0");
+              const revertedBalance = oldBuyerBalance + oldSaleAmount;
+              const newBuyerBalance = revertedBalance - newSaleAmount;
+
+              await tx
+                .update(storageCards)
+                .set({
+                  currentBalance: newBuyerBalance.toFixed(2),
+                  updatedAt: sql`NOW()`,
+                  updatedById: userId,
+                })
+                .where(eq(storageCards.id, buyerCard.id));
+
+              await tx
+                .update(storageCardTransactions)
+                .set({
+                  quantity: String(newSaleAmount),
+                  balanceAfter: String(newBuyerBalance),
+                  updatedAt: sql`NOW()`,
+                  updatedById: userId,
+                  transactionDate: data.refuelingDate,
+                })
+                .where(eq(storageCardTransactions.id, currentRefueling.buyerTransactionId));
+            } else {
+              // Create new buyer transaction
+              const buyerBalance = parseFloat(buyerCard.currentBalance || "0");
+              const newBuyerBalance = buyerBalance - newSaleAmount;
+
+              await tx
+                .update(storageCards)
+                .set({
+                  currentBalance: newBuyerBalance.toFixed(2),
+                  updatedAt: sql`NOW()`,
+                  updatedById: userId,
+                })
+                .where(eq(storageCards.id, buyerCard.id));
+
+              const [buyerTx] = await tx
+                .insert(storageCardTransactions)
+                .values({
+                  storageCardId: buyerCard.id,
+                  transactionType: STORAGE_CARD_TRANSACTION_TYPE.EXPENSE,
+                  quantity: String(newSaleAmount),
+                  price: "1",
+                  balanceBefore: String(buyerBalance),
+                  balanceAfter: String(newBuyerBalance),
+                  transactionDate: data.refuelingDate,
+                  sourceType: SOURCE_TYPE.REFUELING_ABROAD,
+                  sourceId: id,
+                  createdById: userId,
+                })
+                .returning();
+
+              data.buyerStorageCardId = buyerCard.id;
+              data.buyerTransactionId = buyerTx.id;
+            }
+          }
+        }
+      }
+
       const [updated] = await tx
         .update(refuelingAbroad)
         .set({
@@ -551,6 +683,36 @@ export class RefuelingAbroadStorage {
             deletedById: userId,
           })
           .where(eq(storageCardTransactions.id, transaction.id));
+      }
+
+      // Reverse buyer card transaction if exists
+      if (currentRefueling?.buyerTransactionId && currentRefueling?.buyerStorageCardId) {
+        const buyerTx = await tx.query.storageCardTransactions.findFirst({
+          where: eq(storageCardTransactions.id, currentRefueling.buyerTransactionId),
+        });
+
+        if (buyerTx && !buyerTx.deletedAt) {
+          const restoredBalance = buyerTx.balanceBefore
+            ? parseFloat(String(buyerTx.balanceBefore))
+            : parseFloat(buyerTx.balanceAfter || "0") + parseFloat(buyerTx.quantity);
+
+          await tx
+            .update(storageCards)
+            .set({
+              currentBalance: String(restoredBalance),
+              updatedAt: sql`NOW()`,
+              updatedById: userId,
+            })
+            .where(eq(storageCards.id, currentRefueling.buyerStorageCardId));
+
+          await tx
+            .update(storageCardTransactions)
+            .set({
+              deletedAt: sql`NOW()`,
+              deletedById: userId,
+            })
+            .where(eq(storageCardTransactions.id, currentRefueling.buyerTransactionId));
+        }
       }
 
       const [result] = await tx

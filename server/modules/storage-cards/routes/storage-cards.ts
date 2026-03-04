@@ -27,6 +27,30 @@ export function registerStorageCardsRoutes(app: Express) {
   );
 
   app.get(
+    "/api/storage-cards/by-counterparty",
+    requireAuth,
+    requirePermission("storage-cards", "view"),
+    async (req, res) => {
+      try {
+        const { supplierId, buyerId, excludeId } = req.query as {
+          supplierId?: string;
+          buyerId?: string;
+          excludeId?: string;
+        };
+        const card = await storage.storageCards.getCardByCounterparty({
+          supplierId,
+          buyerId,
+          excludeId,
+        });
+        res.json(card || null);
+      } catch (error: any) {
+        console.error("Error checking counterparty card:", error);
+        res.status(500).json({ message: "Ошибка проверки карты контрагента" });
+      }
+    }
+  );
+
+  app.get(
     "/api/storage-cards",
     requireAuth,
     requirePermission("storage-cards", "view"),

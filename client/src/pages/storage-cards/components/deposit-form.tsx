@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -14,23 +14,19 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { format } from "date-fns";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { ru } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import { STORAGE_CARD_TRANSACTION_TYPE } from "@shared/constants";
 import { Combobox } from "@/components/ui/combobox";
-
-const supplierDepositSchema = z.object({
-  amount: z.string().min(1, "Сумма обязательна"),
-  notes: z.string().optional(),
-});
-
-const buyerDepositSchema = z.object({
-  amount: z.string().min(1, "Сумма (USD) обязательна"),
-  localCurrencyId: z.string().optional(),
-  localCurrencyAmount: z.string().optional(),
-  exchangeRateToUsd: z.string().optional(),
-  rateDate: z.string().optional(),
-  notes: z.string().optional(),
-});
+import { useEffect } from "react";
 
 interface Currency {
   id: string;
@@ -38,6 +34,18 @@ interface Currency {
   name: string;
   symbol: string;
 }
+
+const depositSchema = z.object({
+  currencyMode: z.enum(["USD", "local"]).default("USD"),
+  localCurrencyId: z.string().optional(),
+  localAmount: z.string().optional(),
+  exchangeRate: z.string().optional(),
+  rateDate: z.string().optional(),
+  amountUsd: z.string().min(1, "Сумма (USD) обязательна"),
+  notes: z.string().optional(),
+});
+
+type DepositFormData = z.infer<typeof depositSchema>;
 
 export function DepositForm({
   card,
@@ -58,36 +66,57 @@ export function DepositForm({
     enabled: isBuyer,
   });
 
-  const form = useForm<any>({
-    resolver: zodResolver(isBuyer ? buyerDepositSchema : supplierDepositSchema),
+  const form = useForm<DepositFormData>({
+    resolver: zodResolver(depositSchema),
     defaultValues: {
-      amount: "",
+      currencyMode: "USD",
       localCurrencyId: "",
-      localCurrencyAmount: "",
-      exchangeRateToUsd: "",
+      localAmount: "",
+      exchangeRate: "",
       rateDate: format(new Date(), "yyyy-MM-dd"),
+      amountUsd: "",
       notes: "",
     },
   });
 
+  const currencyMode = useWatch({ control: form.control, name: "currencyMode" });
+  const localAmount = useWatch({ control: form.control, name: "localAmount" });
+  const exchangeRate = useWatch({ control: form.control, name: "exchangeRate" });
+  const isLocalMode = isBuyer && currencyMode === "local";
+
+  // Auto-calculate USD amount from local amount and rate
+  useEffect(() => {
+    if (!isLocalMode) return;
+    const local = parseFloat(localAmount || "0");
+    const rate = parseFloat(exchangeRate || "0");
+    if (local > 0 && rate > 0) {
+      const usd = local / rate;
+      form.setValue("amountUsd", usd.toFixed(2));
+    } else {
+      form.setValue("amountUsd", "");
+    }
+  }, [localAmount, exchangeRate, isLocalMode, form]);
+
+  const selectedCurrency = currencies.find(
+    (c) => c.id === form.watch("localCurrencyId"),
+  );
+
   const depositMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: DepositFormData) => {
+      const quantity = parseFloat(data.amountUsd);
+
       const payload: any = {
         transactionType: STORAGE_CARD_TRANSACTION_TYPE.INCOME,
-        quantity: parseFloat(data.amount),
+        quantity,
         price: card.latestPrice?.price || 0,
         notes: data.notes || (isBuyer ? "Пополнение карты покупателя" : "Пополнение аванса"),
         transactionDate: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
       };
 
-      if (isBuyer && data.localCurrencyId) {
+      if (isLocalMode && data.localCurrencyId && data.localAmount && data.exchangeRate) {
         payload.localCurrencyId = data.localCurrencyId;
-        payload.localCurrencyAmount = data.localCurrencyAmount
-          ? parseFloat(data.localCurrencyAmount)
-          : null;
-        payload.exchangeRateToUsd = data.exchangeRateToUsd
-          ? parseFloat(data.exchangeRateToUsd)
-          : null;
+        payload.localCurrencyAmount = parseFloat(data.localAmount);
+        payload.exchangeRateToUsd = parseFloat(data.exchangeRate);
         payload.rateDate = data.rateDate || null;
       }
 
@@ -119,107 +148,95 @@ export function DepositForm({
         onSubmit={form.handleSubmit((data) => depositMutation.mutate(data))}
         className="space-y-4"
       >
-        <FormField
-          control={form.control}
-          name="amount"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Сумма (USD)</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  data-testid="input-deposit-amount"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
         {isBuyer && (
-          <>
-            <div className="border rounded-md p-3 space-y-3 bg-muted/30">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Пополнение в местной валюте (для расчёта ср. курса)
-              </p>
+          <FormField
+            control={form.control}
+            name="currencyMode"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Валюта пополнения</FormLabel>
+                <FormControl>
+                  <Combobox
+                    options={[
+                      { value: "USD", label: "USD — Доллар США" },
+                      ...currencies
+                        .filter((c) => c.code !== "USD")
+                        .map((c) => ({
+                          value: "local:" + c.id,
+                          label: `${c.code} — ${c.name}`,
+                        })),
+                    ]}
+                    value={
+                      field.value === "USD"
+                        ? "USD"
+                        : "local:" + form.watch("localCurrencyId")
+                    }
+                    onValueChange={(val) => {
+                      if (val === "USD") {
+                        field.onChange("USD");
+                        form.setValue("localCurrencyId", "");
+                        form.setValue("localAmount", "");
+                        form.setValue("exchangeRate", "");
+                        form.setValue("amountUsd", "");
+                      } else {
+                        const currId = val.replace("local:", "");
+                        field.onChange("local");
+                        form.setValue("localCurrencyId", currId);
+                        form.setValue("amountUsd", "");
+                      }
+                    }}
+                    placeholder="Выберите валюту..."
+                    dataTestId="select-currency-mode"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
+        {isLocalMode && (
+          <div className="border rounded-md p-3 space-y-3 bg-muted/30">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Пополнение в {selectedCurrency?.code || "местной валюте"}
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
-                name="localCurrencyId"
+                name="localAmount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Валюта пополнения</FormLabel>
+                    <FormLabel>
+                      Сумма ({selectedCurrency?.code || "местн. вал."})
+                    </FormLabel>
                     <FormControl>
-                      <Combobox
-                        options={currencies.map((c) => ({
-                          value: c.id,
-                          label: `${c.code} — ${c.name}`,
-                        }))}
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        placeholder="Выберите валюту..."
-                        dataTestId="select-local-currency"
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        data-testid="input-local-amount"
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              <div className="grid grid-cols-2 gap-3">
-                <FormField
-                  control={form.control}
-                  name="localCurrencyAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Сумма в местной валюте</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          data-testid="input-local-amount"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="exchangeRateToUsd"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Курс к USD</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.00001"
-                          placeholder="0.00000"
-                          data-testid="input-exchange-rate"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
               <FormField
                 control={form.control}
-                name="rateDate"
+                name="exchangeRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Дата пополнения</FormLabel>
+                    <FormLabel>
+                      Курс ({selectedCurrency?.code || "местн."} за 1 USD)
+                    </FormLabel>
                     <FormControl>
                       <Input
-                        type="date"
-                        data-testid="input-rate-date"
+                        type="number"
+                        step="0.00001"
+                        placeholder="0.00000"
+                        data-testid="input-exchange-rate"
                         {...field}
                       />
                     </FormControl>
@@ -228,8 +245,80 @@ export function DepositForm({
                 )}
               />
             </div>
-          </>
+
+            <FormField
+              control={form.control}
+              name="rateDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Дата пополнения</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !field.value && "text-muted-foreground",
+                          )}
+                          data-testid="button-rate-date"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {field.value
+                            ? format(parseISO(field.value), "dd MMMM yyyy", {
+                                locale: ru,
+                              })
+                            : "Выберите дату"}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value ? parseISO(field.value) : undefined}
+                        onSelect={(date) =>
+                          field.onChange(
+                            date ? format(date, "yyyy-MM-dd") : "",
+                          )
+                        }
+                        locale={ru}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         )}
+
+        <FormField
+          control={form.control}
+          name="amountUsd"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Сумма (USD)</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  readOnly={isLocalMode}
+                  className={isLocalMode ? "bg-muted text-muted-foreground cursor-not-allowed" : ""}
+                  data-testid="input-deposit-amount"
+                  {...field}
+                />
+              </FormControl>
+              {isLocalMode && (
+                <p className="text-xs text-muted-foreground">
+                  Рассчитывается автоматически из местной валюты и курса
+                </p>
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
@@ -248,6 +337,7 @@ export function DepositForm({
             </FormItem>
           )}
         />
+
         <div className="flex justify-end gap-2">
           <Button
             type="button"

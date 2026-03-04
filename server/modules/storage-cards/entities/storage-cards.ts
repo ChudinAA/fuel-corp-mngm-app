@@ -39,6 +39,8 @@ export const storageCards = pgTable(
       precision: 12,
       scale: 5,
     }).default("0"),
+    localCurrencyCode: text("local_currency_code"),
+    localCurrencySymbol: text("local_currency_symbol"),
     notes: text("notes"),
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -177,8 +179,11 @@ export const insertStorageCardSchema = createInsertSchema(storageCards)
   .extend({
     name: z.string().min(1, "Название обязательно"),
     cardType: z.enum(["supplier", "buyer"]).default("supplier"),
-    supplierId: z.string().nullable().optional(),
-    buyerId: z.string().nullable().optional(),
+    supplierId: z.string().uuid().nullable().optional(),
+    buyerId: z.string().uuid().nullable().optional(),
+    currencyId: z.string().uuid().nullable().optional(),
+    localCurrencyCode: z.string().nullable().optional(),
+    localCurrencySymbol: z.string().nullable().optional(),
   });
 
 export const insertStorageCardTransactionSchema = createInsertSchema(

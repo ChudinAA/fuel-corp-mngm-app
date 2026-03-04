@@ -1,4 +1,4 @@
-import { eq, desc, sql, isNull, and, ne } from "drizzle-orm";
+import { eq, desc, sql, isNull, and, or } from "drizzle-orm";
 import { db } from "server/db";
 import {
   storageCardTransactions,
@@ -8,7 +8,7 @@ import {
   type InsertStorageCardTransaction,
 } from "../entities/storage-cards";
 
-import { prices, suppliers, storageCards, customers } from "@shared/schema";
+import { prices, suppliers, storageCards, customers, currencies } from "@shared/schema";
 import {
   COUNTERPARTY_ROLE,
   STORAGE_CARD_TRANSACTION_TYPE,
@@ -20,12 +20,13 @@ export class StorageCardsStorage {
 
     if (cardType === "buyer") {
       conditions.push(sql`${storageCards.cardType} = 'buyer'`);
-      conditions.push(sql`${storageCards.buyerId} IS NOT NULL`);
     } else {
       conditions.push(
-        sql`(${storageCards.cardType} = 'supplier' OR ${storageCards.cardType} IS NULL)`,
+        or(
+          sql`${storageCards.cardType} = 'supplier'`,
+          sql`${storageCards.cardType} IS NULL`,
+        ),
       );
-      conditions.push(sql`${storageCards.supplierId} IS NOT NULL`);
     }
 
     const cards = await db.query.storageCards.findMany({
@@ -37,16 +38,32 @@ export class StorageCardsStorage {
     });
 
     if (cardType === "buyer") {
-      return cards.map((card) => ({
-        ...card,
-        latestPrice: null,
-        kgAmount: 0,
-        weightedAverageRate: parseFloat(card.weightedAverageRate || "0"),
-      }));
+      return cards.map((card) => {
+        const usdBalance = parseFloat(card.currentBalance || "0");
+        const rate = parseFloat(card.weightedAverageRate || "0");
+        const localBalance = rate > 0 ? usdBalance * rate : null;
+
+        return {
+          ...card,
+          latestPrice: null,
+          kgAmount: 0,
+          weightedAverageRate: rate,
+          localCurrencyBalance: localBalance,
+        };
+      });
     }
 
     const results = await Promise.all(
       cards.map(async (card) => {
+        if (!card.supplierId) {
+          return {
+            ...card,
+            latestPrice: null,
+            kgAmount: 0,
+            weightedAverageRate: parseFloat(card.weightedAverageRate || "0"),
+          };
+        }
+
         const latestPrice = await db.query.prices.findFirst({
           where: and(
             eq(prices.counterpartyId, card.supplierId!),
@@ -94,6 +111,29 @@ export class StorageCardsStorage {
     );
 
     return results;
+  }
+
+  async getCardByCounterparty(params: {
+    supplierId?: string;
+    buyerId?: string;
+    excludeId?: string;
+  }): Promise<StorageCard | undefined> {
+    if (!params.supplierId && !params.buyerId) return undefined;
+
+    let condition: any;
+    if (params.supplierId) {
+      condition = eq(storageCards.supplierId, params.supplierId);
+    } else {
+      condition = eq(storageCards.buyerId, params.buyerId!);
+    }
+
+    const found = await db.query.storageCards.findFirst({
+      where: and(condition, isNull(storageCards.deletedAt)),
+    });
+
+    if (!found) return undefined;
+    if (params.excludeId && found.id === params.excludeId) return undefined;
+    return found;
   }
 
   async getAllStorageCards(): Promise<StorageCard[]> {
@@ -164,8 +204,11 @@ export class StorageCardsStorage {
         isNull(storageCardTransactions.deletedAt),
       ),
       orderBy: [desc(storageCardTransactions.transactionDate)],
-      limit: 20,
-    });
+      limit: 50,
+      with: {
+        localCurrency: true,
+      },
+    } as any);
   }
 
   async createTransaction(
@@ -178,6 +221,7 @@ export class StorageCardsStorage {
 
     const currentBalance = parseFloat(card.currentBalance || "0");
     const currentAvgCost = parseFloat(card.averageCost || "0");
+    // weightedAverageRate = local units per 1 USD
     const currentWeightedAvgRate = parseFloat(card.weightedAverageRate || "0");
     const quantity = data.quantity;
     const price = data.price || 0;
@@ -189,16 +233,15 @@ export class StorageCardsStorage {
       newBalance = currentBalance + quantity;
 
       if (data.localCurrencyAmount && data.exchangeRateToUsd) {
-        const prevLocalTotal = currentWeightedAvgRate > 0
-          ? currentBalance / currentWeightedAvgRate
-          : 0;
+        // exchangeRateToUsd = local units per 1 USD (e.g., 90 RUB per 1 USD)
+        // usdAmount = localAmount / rate (quantity is already the USD amount)
         const newLocalAmount = parseFloat(String(data.localCurrencyAmount));
-        const newRate = parseFloat(String(data.exchangeRateToUsd));
-        const totalLocal = prevLocalTotal + newLocalAmount;
+        // prevLocalAmount = prevUsdBalance * weightedAverageRate
+        const prevLocalTotal = currentBalance * currentWeightedAvgRate;
         const prevUsdTotal = currentBalance;
-        const newUsdAmount = quantity;
-        const totalUsd = prevUsdTotal + newUsdAmount;
-        newWeightedAvgRate = totalLocal > 0 ? totalUsd / totalLocal : 0;
+        const totalLocal = prevLocalTotal + newLocalAmount;
+        const totalUsd = prevUsdTotal + quantity; // quantity is USD amount
+        newWeightedAvgRate = totalUsd > 0 ? totalLocal / totalUsd : 0;
       }
     } else if (data.transactionType === STORAGE_CARD_TRANSACTION_TYPE.EXPENSE) {
       newBalance = currentBalance - quantity;
@@ -231,10 +274,22 @@ export class StorageCardsStorage {
         averageCost: String(price),
         updatedAt: sql`NOW()`,
         updatedById: data.createdById,
+        weightedAverageRate: String(newWeightedAvgRate),
       };
 
-      if (newWeightedAvgRate !== currentWeightedAvgRate) {
-        updateData.weightedAverageRate = String(newWeightedAvgRate);
+      // Save local currency info to card on first local-currency deposit
+      if (
+        data.transactionType === STORAGE_CARD_TRANSACTION_TYPE.INCOME &&
+        data.localCurrencyId &&
+        !card.localCurrencyCode
+      ) {
+        const currency = await tx.query.currencies.findFirst({
+          where: eq(currencies.id, data.localCurrencyId),
+        });
+        if (currency) {
+          updateData.localCurrencyCode = currency.code;
+          updateData.localCurrencySymbol = currency.symbol;
+        }
       }
 
       await tx
@@ -256,17 +311,21 @@ export class StorageCardsStorage {
     const card = await this.getStorageCard(transaction.storageCardId);
     if (!card) return false;
 
-    const quantity = parseFloat(transaction.quantity);
-    const currentBalance = parseFloat(card.currentBalance || "0");
-    let newBalance = currentBalance;
-
-    if (transaction.transactionType === STORAGE_CARD_TRANSACTION_TYPE.INCOME) {
-      newBalance = currentBalance - quantity;
-    } else if (
-      transaction.transactionType === STORAGE_CARD_TRANSACTION_TYPE.EXPENSE
-    ) {
-      newBalance = currentBalance + quantity;
-    }
+    // Restore balance using balanceBefore from the transaction (accurate rollback)
+    const restoredBalance = transaction.balanceBefore
+      ? parseFloat(String(transaction.balanceBefore))
+      : (() => {
+          const quantity = parseFloat(transaction.quantity);
+          const currentBalance = parseFloat(card.currentBalance || "0");
+          if (
+            transaction.transactionType ===
+            STORAGE_CARD_TRANSACTION_TYPE.INCOME
+          ) {
+            return currentBalance - quantity;
+          } else {
+            return currentBalance + quantity;
+          }
+        })();
 
     const prevWeightedAvgRate = transaction.weightedAverageRateBefore
       ? parseFloat(String(transaction.weightedAverageRateBefore))
@@ -284,7 +343,7 @@ export class StorageCardsStorage {
       await tx
         .update(storageCards)
         .set({
-          currentBalance: String(newBalance),
+          currentBalance: String(restoredBalance),
           weightedAverageRate: String(prevWeightedAvgRate),
           updatedAt: sql`NOW()`,
         })
