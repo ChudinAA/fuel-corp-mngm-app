@@ -1,4 +1,4 @@
-import { eq, desc, sql, isNull, and } from "drizzle-orm";
+import { eq, desc, sql, isNull, and, ne } from "drizzle-orm";
 import { db } from "server/db";
 import {
   storageCardTransactions,
@@ -8,27 +8,45 @@ import {
   type InsertStorageCardTransaction,
 } from "../entities/storage-cards";
 
-import { prices, suppliers, storageCards } from "@shared/schema";
+import { prices, suppliers, storageCards, customers } from "@shared/schema";
 import {
   COUNTERPARTY_ROLE,
   STORAGE_CARD_TRANSACTION_TYPE,
 } from "@shared/constants";
 
 export class StorageCardsStorage {
-  async getAdvanceCards(): Promise<any[]> {
+  async getAdvanceCards(cardType?: "supplier" | "buyer"): Promise<any[]> {
+    const conditions: any[] = [isNull(storageCards.deletedAt)];
+
+    if (cardType === "buyer") {
+      conditions.push(sql`${storageCards.cardType} = 'buyer'`);
+      conditions.push(sql`${storageCards.buyerId} IS NOT NULL`);
+    } else {
+      conditions.push(
+        sql`(${storageCards.cardType} = 'supplier' OR ${storageCards.cardType} IS NULL)`,
+      );
+      conditions.push(sql`${storageCards.supplierId} IS NOT NULL`);
+    }
+
     const cards = await db.query.storageCards.findMany({
-      where: and(
-        isNull(storageCards.deletedAt),
-        sql`${storageCards.supplierId} IS NOT NULL`,
-      ),
+      where: and(...conditions),
       with: {
         supplier: true,
+        buyer: true,
       },
     });
 
+    if (cardType === "buyer") {
+      return cards.map((card) => ({
+        ...card,
+        latestPrice: null,
+        kgAmount: 0,
+        weightedAverageRate: parseFloat(card.weightedAverageRate || "0"),
+      }));
+    }
+
     const results = await Promise.all(
       cards.map(async (card) => {
-        // Get latest price for supplier
         const latestPrice = await db.query.prices.findFirst({
           where: and(
             eq(prices.counterpartyId, card.supplierId!),
@@ -46,7 +64,6 @@ export class StorageCardsStorage {
           latestPrice.priceValues.length > 0
         ) {
           try {
-            // Parse price from JSON string like "{\"price\":71}"
             const priceObj = JSON.parse(latestPrice.priceValues[0]);
             pricePerKg = parseFloat(priceObj.price || "0");
           } catch (e) {
@@ -71,6 +88,7 @@ export class StorageCardsStorage {
               }
             : null,
           kgAmount,
+          weightedAverageRate: parseFloat(card.weightedAverageRate || "0"),
         };
       }),
     );
@@ -160,13 +178,28 @@ export class StorageCardsStorage {
 
     const currentBalance = parseFloat(card.currentBalance || "0");
     const currentAvgCost = parseFloat(card.averageCost || "0");
+    const currentWeightedAvgRate = parseFloat(card.weightedAverageRate || "0");
     const quantity = data.quantity;
     const price = data.price || 0;
 
     let newBalance = currentBalance;
+    let newWeightedAvgRate = currentWeightedAvgRate;
 
     if (data.transactionType === STORAGE_CARD_TRANSACTION_TYPE.INCOME) {
       newBalance = currentBalance + quantity;
+
+      if (data.localCurrencyAmount && data.exchangeRateToUsd) {
+        const prevLocalTotal = currentWeightedAvgRate > 0
+          ? currentBalance / currentWeightedAvgRate
+          : 0;
+        const newLocalAmount = parseFloat(String(data.localCurrencyAmount));
+        const newRate = parseFloat(String(data.exchangeRateToUsd));
+        const totalLocal = prevLocalTotal + newLocalAmount;
+        const prevUsdTotal = currentBalance;
+        const newUsdAmount = quantity;
+        const totalUsd = prevUsdTotal + newUsdAmount;
+        newWeightedAvgRate = totalLocal > 0 ? totalUsd / totalLocal : 0;
+      }
     } else if (data.transactionType === STORAGE_CARD_TRANSACTION_TYPE.EXPENSE) {
       newBalance = currentBalance - quantity;
     }
@@ -182,17 +215,31 @@ export class StorageCardsStorage {
           balanceAfter: String(newBalance),
           averageCostBefore: String(currentAvgCost),
           averageCostAfter: String(price),
-        })
+          weightedAverageRateBefore: String(currentWeightedAvgRate),
+          weightedAverageRateAfter: String(newWeightedAvgRate),
+          localCurrencyAmount: data.localCurrencyAmount
+            ? String(data.localCurrencyAmount)
+            : null,
+          exchangeRateToUsd: data.exchangeRateToUsd
+            ? String(data.exchangeRateToUsd)
+            : null,
+        } as any)
         .returning();
+
+      const updateData: any = {
+        currentBalance: String(newBalance),
+        averageCost: String(price),
+        updatedAt: sql`NOW()`,
+        updatedById: data.createdById,
+      };
+
+      if (newWeightedAvgRate !== currentWeightedAvgRate) {
+        updateData.weightedAverageRate = String(newWeightedAvgRate);
+      }
 
       await tx
         .update(storageCards)
-        .set({
-          currentBalance: String(newBalance),
-          averageCost: String(price),
-          updatedAt: sql`NOW()`,
-          updatedById: data.createdById,
-        })
+        .set(updateData)
         .where(eq(storageCards.id, data.storageCardId));
 
       return transaction;
@@ -221,6 +268,10 @@ export class StorageCardsStorage {
       newBalance = currentBalance + quantity;
     }
 
+    const prevWeightedAvgRate = transaction.weightedAverageRateBefore
+      ? parseFloat(String(transaction.weightedAverageRateBefore))
+      : parseFloat(card.weightedAverageRate || "0");
+
     return await db.transaction(async (tx) => {
       await tx
         .update(storageCardTransactions)
@@ -234,6 +285,7 @@ export class StorageCardsStorage {
         .update(storageCards)
         .set({
           currentBalance: String(newBalance),
+          weightedAverageRate: String(prevWeightedAvgRate),
           updatedAt: sql`NOW()`,
         })
         .where(eq(storageCards.id, transaction.storageCardId));

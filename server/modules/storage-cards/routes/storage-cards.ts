@@ -16,7 +16,8 @@ export function registerStorageCardsRoutes(app: Express) {
     requirePermission("storage-cards", "view"),
     async (req, res) => {
       try {
-        const results = await storage.storageCards.getAdvanceCards();
+        const cardType = req.query.cardType as "supplier" | "buyer" | undefined;
+        const results = await storage.storageCards.getAdvanceCards(cardType);
         res.json(results);
       } catch (error: any) {
         console.error("Error fetching advance cards:", error);

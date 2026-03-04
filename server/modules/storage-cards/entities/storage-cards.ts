@@ -14,6 +14,7 @@ import { z } from "zod";
 import { users } from "../../users/entities/users";
 
 import { suppliers } from "../../suppliers/entities/suppliers";
+import { customers } from "../../customers/entities/customers";
 import { currencies } from "@shared/schema";
 
 export const storageCards = pgTable(
@@ -21,6 +22,7 @@ export const storageCards = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     name: text("name").notNull(),
+    cardType: text("card_type").default("supplier"),
     currency: text("currency").default("USD"),
     currencySymbol: text("currency_symbol").default("$"),
     currencyId: uuid("currency_id").references(() => currencies.id),
@@ -29,9 +31,14 @@ export const storageCards = pgTable(
       scale: 2,
     }).default("0"),
     supplierId: uuid("supplier_id").references(() => suppliers.id),
+    buyerId: uuid("buyer_id").references(() => customers.id),
     averageCost: decimal("average_cost", { precision: 12, scale: 5 }).default(
       "0",
     ),
+    weightedAverageRate: decimal("weighted_average_rate", {
+      precision: 12,
+      scale: 5,
+    }).default("0"),
     notes: text("notes"),
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -44,6 +51,8 @@ export const storageCards = pgTable(
   (table) => ({
     nameIdx: index("storage_cards_name_idx").on(table.name),
     isActiveIdx: index("storage_cards_is_active_idx").on(table.isActive),
+    cardTypeIdx: index("storage_cards_card_type_idx").on(table.cardType),
+    buyerIdIdx: index("storage_cards_buyer_id_idx").on(table.buyerId),
   }),
 );
 
@@ -68,6 +77,24 @@ export const storageCardTransactions = pgTable(
     averageCostAfter: decimal("average_cost_after", {
       precision: 12,
       scale: 4,
+    }),
+    localCurrencyId: uuid("local_currency_id").references(() => currencies.id),
+    localCurrencyAmount: decimal("local_currency_amount", {
+      precision: 15,
+      scale: 2,
+    }),
+    exchangeRateToUsd: decimal("exchange_rate_to_usd", {
+      precision: 12,
+      scale: 5,
+    }),
+    rateDate: date("rate_date"),
+    weightedAverageRateBefore: decimal("weighted_average_rate_before", {
+      precision: 12,
+      scale: 5,
+    }),
+    weightedAverageRateAfter: decimal("weighted_average_rate_after", {
+      precision: 12,
+      scale: 5,
     }),
     sourceType: text("source_type"),
     sourceId: uuid("source_id"),
@@ -106,6 +133,10 @@ export const storageCardsRelations = relations(
       fields: [storageCards.supplierId],
       references: [suppliers.id],
     }),
+    buyer: one(customers, {
+      fields: [storageCards.buyerId],
+      references: [customers.id],
+    }),
     currency: one(currencies, {
       fields: [storageCards.currencyId],
       references: [currencies.id],
@@ -130,6 +161,10 @@ export const storageCardTransactionsRelations = relations(
       fields: [storageCardTransactions.storageCardId],
       references: [storageCards.id],
     }),
+    localCurrency: one(currencies, {
+      fields: [storageCardTransactions.localCurrencyId],
+      references: [currencies.id],
+    }),
     createdBy: one(users, {
       fields: [storageCardTransactions.createdById],
       references: [users.id],
@@ -141,6 +176,9 @@ export const insertStorageCardSchema = createInsertSchema(storageCards)
   .omit({ id: true, createdAt: true })
   .extend({
     name: z.string().min(1, "Название обязательно"),
+    cardType: z.enum(["supplier", "buyer"]).default("supplier"),
+    supplierId: z.string().nullable().optional(),
+    buyerId: z.string().nullable().optional(),
   });
 
 export const insertStorageCardTransactionSchema = createInsertSchema(
@@ -150,6 +188,10 @@ export const insertStorageCardTransactionSchema = createInsertSchema(
   .extend({
     quantity: z.number(),
     price: z.number().optional(),
+    localCurrencyId: z.string().nullable().optional(),
+    localCurrencyAmount: z.number().nullable().optional(),
+    exchangeRateToUsd: z.number().nullable().optional(),
+    rateDate: z.string().nullable().optional(),
   });
 
 export type StorageCard = typeof storageCards.$inferSelect;

@@ -143,7 +143,7 @@ const gеtAbroadMenuItems = (hasPermission: (p: string) => boolean) =>
       permission: "refueling.view",
     },
     {
-      title: "Авансы поставщикам",
+      title: "Авансы",
       url: "/storage-cards",
       icon: WalletCards,
       permission: "storage-cards.view",

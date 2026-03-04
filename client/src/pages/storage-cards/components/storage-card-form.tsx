@@ -16,22 +16,15 @@ import {
 } from "@/components/ui/form";
 import { Combobox } from "@/components/ui/combobox";
 
-const storageCardFormSchema = z.object({
-  name: z.string().min(1, "Название обязательно"),
-  currency: z.string().default("USD"),
-  currencySymbol: z.string().default("$"),
-  currencyId: z.string().optional(),
-  notes: z.string().optional(),
-});
-
-type StorageCardFormData = z.infer<typeof storageCardFormSchema>;
-
 interface StorageCard {
   id: string;
   name: string;
+  cardType?: string | null;
   currency: string | null;
   currencySymbol: string | null;
   currencyId: string | null;
+  supplierId?: string | null;
+  buyerId?: string | null;
   currentBalance: string | null;
   averageCost: string | null;
   notes: string | null;
@@ -45,16 +38,41 @@ interface Currency {
   symbol: string;
 }
 
+interface Supplier {
+  id: string;
+  name: string;
+}
+
+interface Buyer {
+  id: string;
+  name: string;
+}
+
+const storageCardFormSchema = z.object({
+  name: z.string().min(1, "Название обязательно"),
+  currency: z.string().default("USD"),
+  currencySymbol: z.string().default("$"),
+  currencyId: z.string().optional(),
+  supplierId: z.string().optional(),
+  buyerId: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+type StorageCardFormData = z.infer<typeof storageCardFormSchema>;
+
 export function StorageCardForm({
   editCard,
+  cardType = "supplier",
   onSuccess,
   onCancel,
 }: {
   editCard?: StorageCard | null;
+  cardType?: "supplier" | "buyer";
   onSuccess: () => void;
   onCancel: () => void;
 }) {
   const { toast } = useToast();
+  const isBuyer = cardType === "buyer";
 
   const form = useForm<StorageCardFormData>({
     resolver: zodResolver(storageCardFormSchema),
@@ -63,6 +81,8 @@ export function StorageCardForm({
       currency: editCard?.currency || "USD",
       currencySymbol: editCard?.currencySymbol || "$",
       currencyId: editCard?.currencyId || "",
+      supplierId: editCard?.supplierId || "",
+      buyerId: editCard?.buyerId || "",
       notes: editCard?.notes || "",
     },
   });
@@ -71,16 +91,35 @@ export function StorageCardForm({
     queryKey: ["/api/currencies"],
   });
 
+  const { data: suppliers = [] } = useQuery<Supplier[]>({
+    queryKey: ["/api/suppliers"],
+    enabled: !isBuyer,
+  });
+
+  const { data: customers = [] } = useQuery<Buyer[]>({
+    queryKey: ["/api/customers"],
+    enabled: isBuyer,
+  });
+
+  const foreignCustomers = (customers as any[]).filter((c) => c.isForeign);
+  const foreignSuppliers = (suppliers as any[]).filter((s) => s.isForeign);
+
   const createMutation = useMutation({
     mutationFn: async (data: StorageCardFormData) => {
-      const response = await apiRequest("POST", "/api/storage-cards", data);
+      const payload = {
+        ...data,
+        cardType,
+        supplierId: isBuyer ? null : (data.supplierId || null),
+        buyerId: isBuyer ? (data.buyerId || null) : null,
+      };
+      const response = await apiRequest("POST", "/api/storage-cards", payload);
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/storage-cards/advances"],
       });
-      toast({ title: "Карта хранения создана" });
+      toast({ title: "Карта создана" });
       onSuccess();
     },
     onError: (error: any) => {
@@ -94,10 +133,16 @@ export function StorageCardForm({
 
   const updateMutation = useMutation({
     mutationFn: async (data: StorageCardFormData) => {
+      const payload = {
+        ...data,
+        cardType,
+        supplierId: isBuyer ? null : (data.supplierId || null),
+        buyerId: isBuyer ? (data.buyerId || null) : null,
+      };
       const response = await apiRequest(
         "PATCH",
         `/api/storage-cards/${editCard?.id}`,
-        data,
+        payload,
       );
       return response.json();
     },
@@ -105,7 +150,7 @@ export function StorageCardForm({
       queryClient.invalidateQueries({
         queryKey: ["/api/storage-cards/advances"],
       });
-      toast({ title: "Карта хранения обновлена" });
+      toast({ title: "Карта обновлена" });
       onSuccess();
     },
     onError: (error: any) => {
@@ -133,10 +178,10 @@ export function StorageCardForm({
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Название</FormLabel>
+              <FormLabel>Название карты</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="Карта хранения..."
+                  placeholder="Карта аванса..."
                   data-testid="input-card-name"
                   {...field}
                 />
@@ -145,6 +190,75 @@ export function StorageCardForm({
             </FormItem>
           )}
         />
+
+        {!isBuyer && (
+          <FormField
+            control={form.control}
+            name="supplierId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Поставщик (зарубежный)</FormLabel>
+                <FormControl>
+                  <Combobox
+                    options={[
+                      { value: "", label: "— без привязки —" },
+                      ...foreignSuppliers.map((s) => ({
+                        value: s.id,
+                        label: s.name,
+                      })),
+                      ...(suppliers as any[])
+                        .filter((s) => !s.isForeign)
+                        .map((s) => ({
+                          value: s.id,
+                          label: s.name,
+                        })),
+                    ]}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Выберите поставщика..."
+                    dataTestId="select-supplier"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {isBuyer && (
+          <FormField
+            control={form.control}
+            name="buyerId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Покупатель (зарубежный)</FormLabel>
+                <FormControl>
+                  <Combobox
+                    options={[
+                      { value: "", label: "— без привязки —" },
+                      ...foreignCustomers.map((c) => ({
+                        value: c.id,
+                        label: c.name,
+                      })),
+                      ...(customers as any[])
+                        .filter((c) => !c.isForeign)
+                        .map((c) => ({
+                          value: c.id,
+                          label: c.name,
+                        })),
+                    ]}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Выберите покупателя..."
+                    dataTestId="select-buyer"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
         <div className="grid gap-4 md:grid-cols-2">
           <FormField
             control={form.control}
@@ -172,7 +286,7 @@ export function StorageCardForm({
                       }}
                       placeholder="USD"
                       className="w-full"
-                      dataTestId="select-base-type"
+                      dataTestId="select-currency"
                     />
                   </div>
                 </FormControl>

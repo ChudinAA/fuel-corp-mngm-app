@@ -47,6 +47,7 @@ import {
 import type { RefuelingAbroadFormProps } from "../types";
 import { useRefuelingAbroadCalculations } from "../hooks/use-refueling-abroad-calculations";
 import { useSupplierCardBalance } from "../hooks/use-supplier-card-balance";
+import { useBuyerCardBalance } from "../hooks/use-buyer-card-balance";
 import {
   DealChainSection,
   type ChainItem,
@@ -477,6 +478,15 @@ export const RefuelingAbroadForm = forwardRef<
         : 0,
   });
 
+  const buyerBalanceStatus = useBuyerCardBalance({
+    buyerId: watchedValues.buyerId,
+    saleAmountUsd: calculations.saleAmountUsd,
+    initialSaleAmountUsd:
+      isEditing && !editData.isDraft
+        ? parseFloat(editData?.saleAmountUsd || "0")
+        : 0,
+  });
+
   // Используем общий хук для автоматического выбора цен
   useAutoPriceSelection({
     supplierId: watchedValues.supplierId,
@@ -691,15 +701,6 @@ export const RefuelingAbroadForm = forwardRef<
       toast({
         title: "Ошибка: недостаточно объема по договору Поставщика",
         description: calculations.contractVolumeStatus.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (supplierBalanceStatus.supplierBalanceStatus.status === "error") {
-      toast({
-        title: "Ошибка: недостаточно средств на карте Поставщика",
-        description: supplierBalanceStatus.supplierBalanceStatus.message,
         variant: "destructive",
       });
       return;
@@ -1326,6 +1327,12 @@ export const RefuelingAbroadForm = forwardRef<
                 label="Остаток на карте Поставщика"
                 value={supplierBalanceStatus.supplierBalanceStatus.message}
                 status={supplierBalanceStatus.supplierBalanceStatus.status}
+              />
+
+              <CalculatedField
+                label="Остаток на карте Покупателя"
+                value={buyerBalanceStatus.buyerBalanceStatus.message}
+                status={buyerBalanceStatus.buyerBalanceStatus.status}
               />
 
               <CalculatedField

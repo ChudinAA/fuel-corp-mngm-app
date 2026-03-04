@@ -263,6 +263,8 @@ export function RefuelingAbroadTable({
                   className={cn(
                     item.isDraft &&
                       "bg-muted/70 opacity-60 border-2 border-orange-200",
+                    item.needsTopUp && !item.isDraft &&
+                      "bg-amber-50 dark:bg-amber-950/20 border-l-2 border-l-amber-400",
                   )}
                 >
                   <TableCell className="text-[10px] md:text-xs p-1 md:p-3">
@@ -274,6 +276,14 @@ export function RefuelingAbroadTable({
                           className="w-fit text-[9px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200"
                         >
                           Черновик
+                        </Badge>
+                      )}
+                      {item.needsTopUp && !item.isDraft && (
+                        <Badge
+                          variant="secondary"
+                          className="w-fit text-[9px] h-4 px-1 bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400"
+                        >
+                          Пополнение карты
                         </Badge>
                       )}
                     </div>

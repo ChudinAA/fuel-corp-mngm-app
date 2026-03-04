@@ -120,6 +120,11 @@ export const refuelingAbroad = pgTable(
     deletedAt: timestamp("deleted_at", { mode: "string" }),
     deletedById: uuid("deleted_by_id").references(() => users.id),
     isDraft: boolean("is_draft").default(false).notNull(),
+    needsTopUp: boolean("needs_top_up").default(false),
+    buyerStorageCardId: uuid("buyer_storage_card_id").references(() => storageCards.id),
+    buyerTransactionId: uuid("buyer_transaction_id").references(
+      () => storageCardTransactions.id,
+    ),
   },
   (table) => ({
     refuelingDateIdx: index("refueling_abroad_date_idx").on(
@@ -192,6 +197,16 @@ export const refuelingAbroadRelations = relations(
       references: [users.id],
     }),
     intermediaries: many(refuelingAbroadIntermediaries),
+    buyerStorageCard: one(storageCards, {
+      fields: [refuelingAbroad.buyerStorageCardId],
+      references: [storageCards.id],
+      relationName: "buyerStorageCard",
+    }),
+    buyerTransaction: one(storageCardTransactions, {
+      fields: [refuelingAbroad.buyerTransactionId],
+      references: [storageCardTransactions.id],
+      relationName: "buyerTransaction",
+    }),
   }),
 );
 
@@ -243,6 +258,9 @@ export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
     notes: z.string().nullable().optional(),
     isApproxVolume: z.boolean().optional(),
     isDraft: z.boolean().default(false),
+    needsTopUp: z.boolean().optional(),
+    buyerStorageCardId: z.string().nullable().optional(),
+    buyerTransactionId: z.string().nullable().optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.isDraft) {

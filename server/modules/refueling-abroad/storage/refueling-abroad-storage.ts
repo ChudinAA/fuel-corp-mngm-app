@@ -287,14 +287,20 @@ export class RefuelingAbroadStorage {
       });
 
       // Для услуги заправки или черновика не создаем транзакции на складе
+      let needsTopUp = false;
+
       if (!created.isDraft && storageCard) {
         const currentBalance = parseFloat(storageCard.currentBalance || "0");
         const currentCost = storageCard.averageCost || "0";
         const quantity = parseFloat(created.purchaseAmountUsd || "0");
-        const newBalance = Math.max(0, currentBalance - quantity);
+        const newBalance = currentBalance - quantity;
         const newAverageCost = parseFloat(
           created.purchasePriceUsd || currentCost,
         );
+
+        if (newBalance < 0) {
+          needsTopUp = true;
+        }
 
         await tx
           .update(storageCards)
@@ -326,11 +332,17 @@ export class RefuelingAbroadStorage {
 
         await tx
           .update(refuelingAbroad)
-          .set({ transactionId: transaction.id })
+          .set({ transactionId: transaction.id, needsTopUp })
+          .where(eq(refuelingAbroad.id, created.id));
+      } else if (!storageCard && !created.isDraft && created.supplierId) {
+        needsTopUp = true;
+        await tx
+          .update(refuelingAbroad)
+          .set({ needsTopUp: true })
           .where(eq(refuelingAbroad.id, created.id));
       }
 
-      return created;
+      return { ...created, needsTopUp };
     });
   }
 
@@ -364,8 +376,14 @@ export class RefuelingAbroadStorage {
         const currentBalance = parseFloat(storageCard.currentBalance || "0");
         const currentCost = storageCard.averageCost || "0";
         const quantity = data.purchaseAmountUsd;
-        const newBalance = Math.max(0, currentBalance - quantity);
+        const newBalance = currentBalance - quantity;
         const newAverageCost = data.purchasePriceUsd || parseFloat(currentCost);
+
+        if (newBalance < 0) {
+          data.needsTopUp = true;
+        } else {
+          data.needsTopUp = false;
+        }
 
         await tx
           .update(storageCards)
@@ -434,11 +452,10 @@ export class RefuelingAbroadStorage {
           const currentCost = storageCard.averageCost || "0";
           const balanceBeforeOldOperation = currentBalance + oldQuantity;
 
-          const newBalance = Math.max(
-            0,
-            balanceBeforeOldOperation - newQuantity,
-          );
+          const newBalance = balanceBeforeOldOperation - newQuantity;
           const newCost = data.purchasePriceUsd || parseFloat(currentCost);
+
+          data.needsTopUp = newBalance < 0;
 
           await tx
             .update(storageCards)
