@@ -85,6 +85,8 @@ export class AircraftRefuelingStorage {
         buyerName: customers.name,
         warehouseName: sql<string>`${warehouses.name}`,
         equipmentName: equipments.name,
+        basisName: sql<string | null>`(SELECT name FROM bases WHERE id = ${aircraftRefueling.basisId})`,
+        customerBasisName: sql<string | null>`(SELECT name FROM bases WHERE id = ${aircraftRefueling.customerBasisId})`,
       })
       .from(aircraftRefueling)
       .leftJoin(suppliers, eq(aircraftRefueling.supplierId, suppliers.id))
@@ -117,6 +119,18 @@ export class AircraftRefuelingStorage {
         ? {
             id: row.refueling.equipmentId,
             name: row.equipmentName || "Не указан",
+          }
+        : null,
+      basis: row.refueling.basisId
+        ? {
+            id: row.refueling.basisId,
+            name: row.basisName || "Не указан",
+          }
+        : null,
+      customerBasis: row.refueling.customerBasisId
+        ? {
+            id: row.refueling.customerBasisId,
+            name: row.customerBasisName || "Не указан",
           }
         : null,
     }));

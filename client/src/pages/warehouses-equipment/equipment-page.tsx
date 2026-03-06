@@ -4,12 +4,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Truck, History, Badge } from "lucide-react";
+import { Plus, Search, Truck, History, Plane, Warehouse } from "lucide-react";
 import { ExportButton } from "@/components/export/export-button";
 import { AuditPanel } from "@/components/audit-panel";
-import type { Warehouse, Equipment } from "@shared/schema";
+import type { Warehouse as WarehouseType, Equipment } from "@shared/schema";
 import { WarehouseCard } from "../warehouses/components/warehouse-card";
 import { WarehouseDetailsDialog } from "../warehouses/components/warehouse-details-dialog";
+import { AddWarehouseDialog } from "../warehouses/components/add-warehouse-dialog";
 import { EquipmentCard } from "./components/equipment-card";
 import { EquipmentDetailsDialog } from "./components/equipment-details-dialog";
 import { AddEquipmentDialog } from "./components/add-equipment-dialog";
@@ -18,58 +19,45 @@ import { EQUIPMENT_TYPE } from "@shared/constants";
 
 export default function EquipmentsPage() {
   const [search, setSearch] = useState("");
-  const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(
-    null,
-  );
+  const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [viewingEquipment, setViewingEquipment] = useState<Equipment | null>(
-    null,
-  );
+  const [viewingEquipment, setViewingEquipment] = useState<Equipment | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
-  const [viewingWarehouse, setViewingWarehouse] = useState<Warehouse | null>(
-    null,
-  );
+  const [editingWarehouse, setEditingWarehouse] = useState<WarehouseType | null>(null);
+  const [isWarehouseDialogOpen, setIsWarehouseDialogOpen] = useState(false);
+  const [viewingWarehouse, setViewingWarehouse] = useState<WarehouseType | null>(null);
   const [isWarehouseDetailsOpen, setIsWarehouseDetailsOpen] = useState(false);
 
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { hasPermission } = useAuth();
 
-  const { data: warehouses, isLoading: warehousesLoading } = useQuery<
-    Warehouse[]
-  >({
+  const { data: warehouses, isLoading: warehousesLoading } = useQuery<WarehouseType[]>({
     queryKey: ["/api/warehouses"],
   });
 
-  // Filter for LIK mother warehouses
+  const { data: allEquipments = [], isLoading: equipmentsLoading } = useQuery<Equipment[]>({
+    queryKey: ["/api/warehouses-equipment"],
+  });
+
   const likWarehouses =
     warehouses?.filter((w) => w.equipmentType === EQUIPMENT_TYPE.LIK) || [];
 
-  const { data: equipmentsByWarehouse, isLoading: equipmentsLoading } = useQuery<
-    Record<string, Equipment[]>
-  >({
-    queryKey: ["/api/warehouses/equipment-map"],
-    queryFn: async () => {
-      if (!likWarehouses.length) return {};
-      const results: Record<string, Equipment[]> = {};
-      await Promise.all(
-        likWarehouses.map(async (w) => {
-          const res = await fetch(`/api/warehouses/${w.id}/equipment`);
-          if (res.ok) {
-            results[w.id] = await res.json();
-          }
-        })
-      );
-      return results;
-    },
-    enabled: likWarehouses.length > 0,
-  });
+  const searchLower = search.toLowerCase();
 
   const filteredLikWarehouses = likWarehouses.filter((w) =>
-    w.name.toLowerCase().includes(search.toLowerCase()),
+    w.name.toLowerCase().includes(searchLower),
   );
 
-  const handleEdit = (equipment: Equipment) => {
+  const filteredEquipments = allEquipments
+    .filter((e) => e.name.toLowerCase().includes(searchLower))
+    .sort((a, b) => {
+      const balA = parseFloat(a.currentBalance || "0");
+      const balB = parseFloat(b.currentBalance || "0");
+      return balB - balA;
+    });
+
+  const handleEditEquipment = (equipment: Equipment) => {
     setEditingEquipment(equipment);
     setIsDialogOpen(true);
   };
@@ -79,7 +67,12 @@ export default function EquipmentsPage() {
     setIsDetailsDialogOpen(true);
   };
 
-  const handleViewWarehouseDetails = (warehouse: Warehouse) => {
+  const handleEditWarehouse = (warehouse: WarehouseType) => {
+    setEditingWarehouse(warehouse);
+    setIsWarehouseDialogOpen(true);
+  };
+
+  const handleViewWarehouseDetails = (warehouse: WarehouseType) => {
     setViewingWarehouse(warehouse);
     setIsWarehouseDetailsOpen(true);
   };
@@ -92,7 +85,7 @@ export default function EquipmentsPage() {
         <div>
           <h1 className="text-2xl font-semibold">Средства Заправки</h1>
           <p className="text-muted-foreground">
-            Управление парком ТЗК склада ЛИК
+            Управление парком СЗ ЛИК
           </p>
         </div>
         {hasPermission("equipment", "create") && (
@@ -101,7 +94,7 @@ export default function EquipmentsPage() {
             data-testid="button-add-equipment"
           >
             <Plus className="mr-2 h-4 w-4" />
-            Добавить ТЗК
+            Добавить СЗ
           </Button>
         )}
       </div>
@@ -131,38 +124,56 @@ export default function EquipmentsPage() {
               <Skeleton key={i} className="h-48 w-full" />
             ))}
           </div>
-        ) : filteredLikWarehouses.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Truck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">
-                Нет данных для отображения
-              </p>
-            </CardContent>
-          </Card>
         ) : (
           <div className="space-y-8">
-            {filteredLikWarehouses.map((warehouse) => (
-              <div key={warehouse.id} className="space-y-4">
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  <WarehouseCard
-                    warehouse={warehouse}
-                    onEdit={() => {}} // LIK editing usually from warehouses page
-                    onViewDetails={handleViewWarehouseDetails}
-                  />
-                  {equipmentsByWarehouse?.[warehouse.id]?.map((eq) => (
-                    <EquipmentCard
-                      key={eq.id}
-                      equipment={eq}
-                      isLinked={true}
-                      onEdit={handleEdit}
-                      onViewDetails={handleViewDetails}
-                      warehouseId={warehouse.id}
+            {filteredLikWarehouses.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <Plane className="h-4 w-4 text-green-400" />
+                  Базовые склады
+                </h2>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredLikWarehouses.map((warehouse) => (
+                    <WarehouseCard
+                      key={warehouse.id}
+                      warehouse={warehouse}
+                      onEdit={handleEditWarehouse}
+                      onViewDetails={handleViewWarehouseDetails}
+                      isBase
                     />
                   ))}
                 </div>
               </div>
-            ))}
+            )}
+
+            {filteredEquipments.length > 0 ? (
+              <div className="space-y-3">
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-orange-400" />
+                  Средства заправки
+                </h2>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredEquipments.map((eq) => (
+                    <EquipmentCard
+                      key={eq.id}
+                      equipment={eq}
+                      isLinked={true}
+                      onEdit={handleEditEquipment}
+                      onViewDetails={handleViewDetails}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              filteredLikWarehouses.length === 0 && (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Truck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">Нет данных для отображения</p>
+                  </CardContent>
+                </Card>
+              )
+            )}
           </div>
         )}
       </div>
@@ -184,6 +195,19 @@ export default function EquipmentsPage() {
           onOpenChange={setIsDetailsDialogOpen}
         />
       )}
+
+      <AddWarehouseDialog
+        warehouseToEdit={editingWarehouse}
+        onSave={() => {
+          setIsWarehouseDialogOpen(false);
+          setEditingWarehouse(null);
+        }}
+        open={isWarehouseDialogOpen}
+        onOpenChange={(open) => {
+          setIsWarehouseDialogOpen(open);
+          if (!open) setEditingWarehouse(null);
+        }}
+      />
 
       {viewingWarehouse && (
         <WarehouseDetailsDialog

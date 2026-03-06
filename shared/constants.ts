@@ -47,6 +47,7 @@ export const MOVEMENT_TYPE = {
 export const EQUIPMENT_MOVEMENT_TYPE = {
   STORAGE_TO_TZK: "storage_to_tzk",
   TZK_TO_STORAGE: "tzk_to_storage",
+  TZK_TO_TZK: "tzk_to_tzk",
 } as const;
 
 // Entity types for delivery cost

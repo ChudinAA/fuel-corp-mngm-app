@@ -87,7 +87,7 @@ export function EquipmentCard({
               {isInactive && <Badge variant="destructive">Неактивен</Badge>}
               {isLinked && (
                 <Badge variant="outline" className="text-[10px]">
-                  ТЗК
+                  СЗ
                 </Badge>
               )}
             </CardTitle>

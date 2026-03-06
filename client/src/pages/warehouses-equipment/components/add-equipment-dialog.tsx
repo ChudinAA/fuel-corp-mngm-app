@@ -91,7 +91,7 @@ export function AddEquipmentDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? "Редактирование ТЗК" : "Новое средство заправки (ТЗК)"}
+            {isEditing ? "Редактирование СЗ" : "Новое средство заправки (СЗ)"}
           </DialogTitle>
           <DialogDescription>
             Укажите название и привяжите к складу ЛИК
@@ -104,9 +104,9 @@ export function AddEquipmentDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Название / Номер ТЗК</FormLabel>
+                  <FormLabel>Название / Номер СЗ</FormLabel>
                   <FormControl>
-                    <Input placeholder="Например, ТЗК-01" {...field} />
+                    <Input placeholder="Например, СЗ-01" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

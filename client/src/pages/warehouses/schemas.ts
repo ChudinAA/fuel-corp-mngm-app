@@ -15,6 +15,7 @@ export const newWarehouseFormSchema = z.object({
   ).min(1, "Добавьте хотя бы один базис"),
   storageCost: z.string().optional(),
   createSupplier: z.boolean(),
+  isBase: z.boolean().default(false),
 });
 
 export type WarehouseFormData = z.infer<typeof warehouseFormSchema>;

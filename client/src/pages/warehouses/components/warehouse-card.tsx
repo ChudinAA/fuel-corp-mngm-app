@@ -25,6 +25,7 @@ import {
   Droplets,
   Fuel,
   Loader2,
+  Plane,
 } from "lucide-react";
 import {
   EntityActionsMenu,
@@ -44,12 +45,14 @@ interface WarehouseCardProps {
   warehouse: Warehouse;
   onEdit: (warehouse: Warehouse) => void;
   onViewDetails: (warehouse: Warehouse) => void;
+  isBase?: boolean;
 }
 
 export function WarehouseCard({
   warehouse,
   onEdit,
   onViewDetails,
+  isBase = false,
 }: WarehouseCardProps) {
   const { toast } = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -114,6 +117,7 @@ export function WarehouseCard({
           <div className="flex-1">
             <CardTitle className="text-lg flex items-center gap-2">
               <WarehouseIcon className="h-4 w-4 text-sky-400" />
+              {isBase && <Plane className="h-4 w-4 text-green-400" />}
               {warehouse.name}
               {warehouse.isRecalculating && (
                 <Badge

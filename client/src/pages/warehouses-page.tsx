@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Warehouse, History, Globe } from "lucide-react";
+import { Plus, Search, Warehouse, History, Globe, Plane } from "lucide-react";
 import { ExportButton } from "@/components/export/export-button";
 import { AuditPanel } from "@/components/audit-panel";
 import type { Warehouse as WarehouseType } from "@shared/schema";
@@ -36,6 +36,13 @@ export default function WarehousesPage() {
         w.name.toLowerCase().includes(search.toLowerCase());
       return matchesSearch;
     }) || [];
+
+  const commonWarehouses = filteredWarehouses.filter(
+    (w) => w.equipmentType !== EQUIPMENT_TYPE.LIK,
+  );
+  const baseWarehouses = filteredWarehouses.filter(
+    (w) => w.equipmentType === EQUIPMENT_TYPE.LIK,
+  );
 
   const handleSave = () => {
     setEditingWarehouse(null);
@@ -122,15 +129,45 @@ export default function WarehousesPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredWarehouses.map((warehouse) => (
-              <WarehouseCard
-                key={warehouse.id}
-                warehouse={warehouse}
-                onEdit={handleEdit}
-                onViewDetails={handleViewDetails}
-              />
-            ))}
+          <div className="space-y-8">
+            {commonWarehouses.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <Warehouse className="h-4 w-4" />
+                  Общие склады
+                </h2>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {commonWarehouses.map((warehouse) => (
+                    <WarehouseCard
+                      key={warehouse.id}
+                      warehouse={warehouse}
+                      onEdit={handleEdit}
+                      onViewDetails={handleViewDetails}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {baseWarehouses.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <Plane className="h-4 w-4 text-green-400" />
+                  Базовые склады (Обособленные подразделения)
+                </h2>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {baseWarehouses.map((warehouse) => (
+                    <WarehouseCard
+                      key={warehouse.id}
+                      warehouse={warehouse}
+                      onEdit={handleEdit}
+                      onViewDetails={handleViewDetails}
+                      isBase
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

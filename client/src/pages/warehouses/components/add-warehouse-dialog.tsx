@@ -10,10 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Loader2, X } from "lucide-react";
+import { Plus, Loader2, X, Building2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Warehouse } from "@shared/schema";
+import { EQUIPMENT_TYPE } from "@shared/constants";
 import { newWarehouseFormSchema } from "../schemas";
 import type { NewWarehouseFormValues } from "../types";
 import { BaseTypeBadge } from "@/components/base-type-badge";
@@ -59,6 +60,7 @@ export function AddWarehouseDialog({
       bases: [{ baseId: "" }],
       storageCost: "",
       createSupplier: false,
+      isBase: false,
     },
   });
 
@@ -78,6 +80,7 @@ export function AddWarehouseDialog({
         bases: basesList,
         storageCost: warehouseToEdit.storageCost || "",
         createSupplier: !!warehouseToEdit.supplierId,
+        isBase: warehouseToEdit.equipmentType === EQUIPMENT_TYPE.LIK,
       });
     } else {
       form.reset({
@@ -85,6 +88,7 @@ export function AddWarehouseDialog({
         bases: [{ baseId: "" }],
         storageCost: "",
         createSupplier: false,
+        isBase: false,
       });
     }
   }, [warehouseToEdit, form]);
@@ -95,6 +99,7 @@ export function AddWarehouseDialog({
         ...data,
         baseIds: data.bases.map(b => b.baseId),
         ...(data.storageCost && { storageCost: data.storageCost }),
+        equipmentType: data.isBase ? EQUIPMENT_TYPE.LIK : EQUIPMENT_TYPE.COMMON,
       };
       const url = isEditing ? `/api/warehouses/${warehouseToEdit?.id}` : "/api/warehouses";
       const method = isEditing ? "PATCH" : "POST";
@@ -248,13 +253,44 @@ export function AddWarehouseDialog({
             />
             <FormField
               control={form.control}
+              name="isBase"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2 space-y-0">
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        if (checked) {
+                          form.setValue("createSupplier", true);
+                        }
+                      }}
+                      data-testid="switch-is-base"
+                    />
+                  </FormControl>
+                  <div className="flex items-center gap-1">
+                    <Building2 className="h-4 w-4 text-green-500" />
+                    <FormLabel className="font-normal cursor-pointer">
+                      Сделать склад базовым (Обособленное подразделение)
+                    </FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="createSupplier"
               render={({ field }) => (
                 <FormItem className="flex items-center gap-2 space-y-0">
                   <FormControl>
                     <Switch 
                       checked={field.value} 
-                      onCheckedChange={field.onChange} 
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        if (!checked) {
+                          form.setValue("isBase", false);
+                        }
+                      }}
                       data-testid="switch-create-supplier" 
                     />
                   </FormControl>

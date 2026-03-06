@@ -317,6 +317,11 @@ export function RefuelingTable({
                   Средство заправки
                 </TableHead>
               )}
+              {equipmentType === EQUIPMENT_TYPE.LIK && (
+                <TableHead className="text-sm font-semibold p-1 md:p-2">
+                  Базис
+                </TableHead>
+              )}
               <TableHead className="text-sm font-semibold p-1 md:p-2">
                 <div className="flex items-center justify-between gap-1">
                   <span className="truncate max-w-[80px] md:max-w-none">
@@ -427,11 +432,21 @@ export function RefuelingTable({
                               <Truck className="h-3.5 w-3.5 text-orange-400 flex-shrink-0 cursor-help" />
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>ТЗК</p>
+                              <p>СЗ</p>
                             </TooltipContent>
                           </Tooltip>
                         </div>
                       </TooltipProvider>
+                    </TableCell>
+                  )}
+                  {equipmentType === EQUIPMENT_TYPE.LIK && (
+                    <TableCell
+                      className="text-[11px] md:text-sm p-1 md:p-4"
+                      data-testid={`text-basis-${deal.id}`}
+                    >
+                      <span className="truncate max-w-[80px] md:max-w-none block text-muted-foreground">
+                        {deal.basis?.name || "—"}
+                      </span>
                     </TableCell>
                   )}
                   <TableCell className="text-[11px] md:text-sm p-1 md:p-4">

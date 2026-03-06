@@ -110,7 +110,12 @@ export function EquipmentMovementDialog({
     (w) => w.equipmentType === EQUIPMENT_TYPE.LIK,
   );
 
-  // Auto-fill logic for TZK -> Warehouse
+  // Fetch all СЗ globally (not per-warehouse)
+  const { data: likEquipments = [] } = useQuery<Equipment[]>({
+    queryKey: ["/api/warehouses-equipment"],
+  });
+
+  // Auto-fill logic for warehouse when movement type changes
   useEffect(() => {
     const defaultLikWarehouse = likWarehouses[0];
     if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE) {
@@ -129,34 +134,6 @@ export function EquipmentMovementDialog({
     watchToWarehouseId,
     form,
   ]);
-
-  const { data: likEquipments = [] } = useQuery<Equipment[]>({
-    queryKey: [
-      "/api/warehouses",
-      watchFromWarehouseId || watchToWarehouseId,
-      "equipment",
-    ],
-    queryFn: async () => {
-      const warehouseId = watchFromWarehouseId || watchToWarehouseId;
-      const res = await apiRequest(
-        "GET",
-        `/api/warehouses/${warehouseId}/equipment`,
-      );
-      return res.json();
-    },
-    enabled: !!(watchFromWarehouseId || watchToWarehouseId),
-  });
-
-  // Auto-fill first available TZK for TZK -> Warehouse
-  useEffect(() => {
-    if (
-      watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE &&
-      likEquipments.length > 0 &&
-      !watchFromEquipmentId
-    ) {
-      form.setValue("fromEquipmentId", likEquipments[0].id);
-    }
-  }, [watchMovementType, likEquipments, watchFromEquipmentId, form]);
 
   useEffect(() => {
     if (editMovement) {
@@ -317,7 +294,7 @@ export function EquipmentMovementDialog({
                 : "Новое перемещение ЛИК"}
             </DialogTitle>
             <DialogDescription>
-              Локальное распределение топлива между складом и ТЗК
+              Локальное распределение топлива между базовыми складами и СЗ
             </DialogDescription>
           </DialogHeader>
 
@@ -385,6 +362,11 @@ export function EquipmentMovementDialog({
                           ) {
                             form.setValue("fromWarehouseId", "");
                             form.setValue("toEquipmentId", "");
+                          } else if (
+                            val === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_TZK
+                          ) {
+                            form.setValue("fromWarehouseId", "");
+                            form.setValue("toWarehouseId", "");
                           }
                         }}
                         value={field.value}
@@ -398,12 +380,17 @@ export function EquipmentMovementDialog({
                           <SelectItem
                             value={EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK}
                           >
-                            Склад {"->"} ТЗК
+                            Склад {"->"} СЗ
                           </SelectItem>
                           <SelectItem
                             value={EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE}
                           >
-                            ТЗК {"->"} Склад
+                            СЗ {"->"} Склад
+                          </SelectItem>
+                          <SelectItem
+                            value={EQUIPMENT_MOVEMENT_TYPE.TZK_TO_TZK}
+                          >
+                            СЗ {"->"} СЗ
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -472,7 +459,7 @@ export function EquipmentMovementDialog({
                       name="fromEquipmentId"
                       render={({ field }) => (
                         <FormItem key={`fromEq-${watchMovementType}`}>
-                          <FormLabel>ТЗК</FormLabel>
+                          <FormLabel>СЗ</FormLabel>
                           <Combobox
                             key={`combo-from-eq-${watchMovementType}`}
                             options={likEquipments.map((e) => ({
@@ -481,7 +468,7 @@ export function EquipmentMovementDialog({
                             }))}
                             value={field.value || ""}
                             onValueChange={field.onChange}
-                            placeholder="Выберите ТЗК"
+                            placeholder="Выберите СЗ"
                           />
                           <FormMessage />
                         </FormItem>
@@ -536,16 +523,20 @@ export function EquipmentMovementDialog({
                       name="toEquipmentId"
                       render={({ field }) => (
                         <FormItem key={`toEq-${watchMovementType}`}>
-                          <FormLabel>ТЗК</FormLabel>
+                          <FormLabel>СЗ</FormLabel>
                           <Combobox
                             key={`combo-to-eq-${watchMovementType}`}
-                            options={likEquipments.map((e) => ({
+                            options={likEquipments.filter((e) =>
+                              watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_TZK
+                                ? e.id !== watchFromEquipmentId
+                                : true
+                            ).map((e) => ({
                               label: e.name,
                               value: e.id,
                             }))}
                             value={field.value || ""}
                             onValueChange={field.onChange}
-                            placeholder="Выберите ТЗК"
+                            placeholder="Выберите СЗ"
                           />
                           <FormMessage />
                         </FormItem>

@@ -20,4 +20,5 @@ export interface NewWarehouseFormValues {
   bases: { baseId: string }[];
   storageCost: string;
   createSupplier: boolean;
+  isBase: boolean;
 }

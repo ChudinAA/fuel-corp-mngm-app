@@ -23,7 +23,6 @@ export function useLikCalculations({
   watchMovementType,
   watchProductType,
   watchFromWarehouseId,
-  watchToWarehouseId,
   watchFromEquipmentId,
   watchLiters,
   watchDensity,
@@ -45,23 +44,26 @@ export function useLikCalculations({
   const kgNum = calculatedKg || 0;
 
   const averageCost = useMemo(() => {
-    const warehouseId =
-      watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK
-        ? watchFromWarehouseId
-        : watchToWarehouseId;
-    const sourceWarehouse = warehouses.find((w) => w.id === warehouseId);
-
-    if (!sourceWarehouse) return 0;
-
-    const costStr =
-      watchProductType === PRODUCT_TYPE.PVKJ
-        ? sourceWarehouse.pvkjAverageCost
-        : sourceWarehouse.averageCost;
-    return costStr ? parseFloat(costStr) : 0;
+    if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK) {
+      const sourceWarehouse = warehouses.find((w) => w.id === watchFromWarehouseId);
+      if (!sourceWarehouse) return 0;
+      const costStr =
+        watchProductType === PRODUCT_TYPE.PVKJ
+          ? sourceWarehouse.pvkjAverageCost
+          : sourceWarehouse.averageCost;
+      return costStr ? parseFloat(costStr) : 0;
+    } else {
+      const sourceEquipment = equipments.find((e) => e.id === watchFromEquipmentId);
+      if (!sourceEquipment) return 0;
+      const costStr =
+        watchProductType === PRODUCT_TYPE.PVKJ
+          ? sourceEquipment.pvkjAverageCost
+          : sourceEquipment.averageCost;
+      return costStr ? parseFloat(costStr) : 0;
+    }
   }, [
     watchMovementType,
     watchFromWarehouseId,
-    watchToWarehouseId,
     watchFromEquipmentId,
     watchProductType,
     warehouses,

@@ -397,7 +397,7 @@ export function RefuelingMainFields({
                   setEquipmentBalance?.(parseFloat(equipment.currentBalance || "0"));
                 }
               }}
-              placeholder="Выберите ТЗК"
+              placeholder="Выберите СЗ"
               className="w-full"
               dataTestId="select-equipment-tzk"
             />

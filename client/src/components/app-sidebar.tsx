@@ -99,7 +99,7 @@ const getOperationsMenuItems = (hasPermission: (p: string) => boolean) =>
       permission: "exchange.view",
     },
     {
-      title: "Аренда ТЗА",
+      title: "Аренда СЗ",
       url: "/rent",
       icon: CarFrontIcon,
       permission: "movement.view",
