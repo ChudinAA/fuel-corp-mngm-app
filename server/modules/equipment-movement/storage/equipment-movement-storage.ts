@@ -8,7 +8,6 @@ import { eq, and, isNull, desc, or, ilike, sql } from "drizzle-orm";
 import { TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { EquipmentTransactionService } from "../../warehouses-equipment/services/equipment-transaction-service";
 import { WarehouseTransactionService } from "server/modules/warehouses/services/warehouse-transaction-service";
-import { EquipmentRecalculationQueueService } from "../../warehouses-equipment/services/equipment-recalculation-queue-service";
 
 export class EquipmentMovementStorage {
   async getMovements(
@@ -17,15 +16,6 @@ export class EquipmentMovementStorage {
     search?: string,
     filters?: Record<string, string[]>,
   ) {
-    let query = db
-      .select()
-      .from(equipmentMovement)
-      .where(isNull(equipmentMovement.deletedAt));
-
-    if (search) {
-      query = query.where(ilike(equipmentMovement.notes, `%${search}%`));
-    }
-
     const items = await db
       .select({
         id: equipmentMovement.id,
@@ -37,6 +27,7 @@ export class EquipmentMovementStorage {
         toEquipmentId: equipmentMovement.toEquipmentId,
         quantityKg: equipmentMovement.quantityKg,
         costPerKg: equipmentMovement.costPerKg,
+        totalCost: equipmentMovement.totalCost,
         notes: equipmentMovement.notes,
         fromWarehouseName: sql<string>`(SELECT name FROM warehouses WHERE id = ${equipmentMovement.fromWarehouseId})`,
         toWarehouseName: sql<string>`(SELECT name FROM warehouses WHERE id = ${equipmentMovement.toWarehouseId})`,
@@ -45,19 +36,22 @@ export class EquipmentMovementStorage {
         isDraft: equipmentMovement.isDraft,
       })
       .from(equipmentMovement)
-      .where(isNull(equipmentMovement.deletedAt))
+      .where(
+        and(
+          isNull(equipmentMovement.deletedAt),
+          search ? ilike(equipmentMovement.notes, `%${search}%`) : undefined,
+        ),
+      )
       .limit(pageSize)
       .offset(offset)
       .orderBy(desc(equipmentMovement.movementDate));
 
-    // @ts-ignore - totalResult might be undefined but we handle it with totalCount
     const [totalResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(equipmentMovement)
       .where(isNull(equipmentMovement.deletedAt));
 
     const totalCount = Number(totalResult?.count || 0);
-
     return { items, total: totalCount };
   }
 
@@ -72,7 +66,7 @@ export class EquipmentMovementStorage {
   }
 
   async createMovement(data: any): Promise<EquipmentMovement> {
-    const item = await db.transaction(async (tx) => {
+    return await db.transaction(async (tx) => {
       const [item] = await tx
         .insert(equipmentMovement)
         .values(data)
@@ -107,7 +101,7 @@ export class EquipmentMovementStorage {
           .where(eq(equipmentMovement.id, item.id));
       }
 
-      // Обработка склада назначения (если возвращаем с ТЗК на склад)
+      // Возврат с СЗ на склад
       if (item.toWarehouseId) {
         const { transaction } =
           await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
@@ -129,6 +123,7 @@ export class EquipmentMovementStorage {
           .where(eq(equipmentMovement.id, item.id));
       }
 
+      // Source warehouse (expense)
       if (item.fromWarehouseId) {
         const { transaction: sourceTransaction } =
           await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
@@ -139,7 +134,7 @@ export class EquipmentMovementStorage {
             SOURCE_TYPE.MOVEMENT,
             item.id,
             quantityKg,
-            0, // При расходе totalCost = 0
+            0,
             item.createdById || undefined,
             item.movementDate,
           );
@@ -174,39 +169,14 @@ export class EquipmentMovementStorage {
 
       return item;
     });
-
-    // Queue recalculation for affected equipment after transaction commits
-    if (!data.isDraft && item.movementDate) {
-      const productType = item.productType || "kerosene";
-      if (item.toEquipmentId) {
-        await EquipmentRecalculationQueueService.addToQueue(
-          item.toEquipmentId,
-          productType,
-          item.movementDate,
-          item.createdById || undefined,
-          1,
-        ).catch((e) => console.error("[EquipmentMovementStorage] Queue error:", e));
-      }
-      if (item.fromEquipmentId) {
-        await EquipmentRecalculationQueueService.addToQueue(
-          item.fromEquipmentId,
-          productType,
-          item.movementDate,
-          item.createdById || undefined,
-          1,
-        ).catch((e) => console.error("[EquipmentMovementStorage] Queue error:", e));
-      }
-    }
-
-    return item;
   }
 
   async updateMovement(
     id: string,
     data: any,
   ): Promise<EquipmentMovement | undefined> {
-    const current = await this.getMovement(id);
-    const updated = await db.transaction(async (tx) => {
+    return await db.transaction(async (tx) => {
+      const current = await this.getMovement(id);
       if (!current) throw new Error("Запись не найдена");
 
       const transitioningFromDraft = current.isDraft && data.isDraft === false;
@@ -253,10 +223,9 @@ export class EquipmentMovementStorage {
               current.id,
               quantityKg,
               totalCost,
-              data.createdById || undefined,
+              data.updatedById || undefined,
               data.movementDate,
             );
-
           data.warehouseTransactionId = transaction.id;
         }
 
@@ -270,11 +239,10 @@ export class EquipmentMovementStorage {
               SOURCE_TYPE.MOVEMENT,
               current.id,
               quantityKg,
-              0, // При расходе totalCost = 0
-              data.createdById || undefined,
+              0,
+              data.updatedById || undefined,
               data.movementDate,
             );
-
           data.sourceWarehouseTransactionId = sourceTransaction.id;
         }
 
@@ -295,19 +263,12 @@ export class EquipmentMovementStorage {
           data.sourceTransactionId = sourceTransaction.id;
         }
       } else if (!data.isDraft && !current.isDraft) {
-        // Logic for updating existing transactions if quantity/cost changed
         const oldQty = parseFloat(current.quantityKg || "0");
         const newQty = parseFloat(data.quantityKg || "0");
         const oldCost = parseFloat(current.totalCost || "0");
         const newCost = parseFloat(data.totalCost || "0");
 
         if (oldQty !== newQty || oldCost !== newCost) {
-          if (data.movementType !== current.movementType) {
-            throw new Error(
-              "Нельзя поменять тип для существующего перемещения",
-            );
-          }
-
           if (current.transactionId && current.toEquipmentId) {
             await EquipmentTransactionService.updateTransactionAndRecalculateEquipment(
               tx,
@@ -344,9 +305,9 @@ export class EquipmentMovementStorage {
               current.sourceWarehouseTransactionId,
               current.fromWarehouseId,
               oldQty,
-              0, // При расходе totalCost = 0
+              0,
               newQty,
-              0, // При расходе totalCost = 0
+              0,
               current.productType,
               data.updatedById || undefined,
               data.movementDate || undefined,
@@ -382,27 +343,6 @@ export class EquipmentMovementStorage {
 
       return updated;
     });
-
-    // Queue recalculation for affected equipment after transaction commits
-    if (updated && !updated.isDraft) {
-      const movementDate = updated.movementDate || current?.movementDate;
-      if (movementDate) {
-        const productType = updated.productType || current?.productType || "kerosene";
-        const userId = data.updatedById;
-        const toEqId = updated.toEquipmentId || current?.toEquipmentId;
-        const fromEqId = updated.fromEquipmentId || current?.fromEquipmentId;
-        if (toEqId) {
-          await EquipmentRecalculationQueueService.addToQueue(toEqId, productType, movementDate, userId, 1)
-            .catch((e) => console.error("[EquipmentMovementStorage] Queue error:", e));
-        }
-        if (fromEqId) {
-          await EquipmentRecalculationQueueService.addToQueue(fromEqId, productType, movementDate, userId, 1)
-            .catch((e) => console.error("[EquipmentMovementStorage] Queue error:", e));
-        }
-      }
-    }
-
-    return updated;
   }
 
   async deleteMovement(id: string, userId: string): Promise<void> {
@@ -478,7 +418,6 @@ export class EquipmentMovementStorage {
           userId,
         );
       }
-
       if (oldData.sourceWarehouseTransactionId) {
         await WarehouseTransactionService.restoreTransactionAndRecalculateWarehouse(
           tx,
