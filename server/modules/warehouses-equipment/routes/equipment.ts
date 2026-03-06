@@ -92,6 +92,27 @@ export function registerEquipmentRoutes(app: Router) {
   );
 
   router.get(
+    "/:id/balance",
+    requireAuth,
+    requirePermission("equipment", "view"),
+    async (req, res) => {
+      try {
+        const id = req.params.id;
+        const dateStr = req.query.date as string;
+        const productType = (req.query.productType as string) || "kerosene";
+        if (!dateStr) {
+          return res.status(400).json({ message: "Дата не указана" });
+        }
+        const date = new Date(dateStr);
+        const balanceData = await equipmentStorage.getEquipmentBalanceAtDate(id, date, productType);
+        res.json(balanceData);
+      } catch (error) {
+        res.status(500).json({ message: "Ошибка получения баланса СЗ" });
+      }
+    },
+  );
+
+  router.get(
     "/:id/transactions",
     requireAuth,
     requirePermission("equipment", "view"),

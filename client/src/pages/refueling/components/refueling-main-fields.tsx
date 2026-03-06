@@ -94,27 +94,11 @@ export function RefuelingMainFields({
   const refuelingBases =
     allBases?.filter((b) => b.baseType === BASE_TYPE.REFUELING) || [];
 
-  const selectedSupplierWarehouse = isLik
-    ? warehouses?.find((w) => w.supplierId === selectedSupplier?.id)
-    : undefined;
-
+  // Fetch ALL equipment globally (not per-warehouse) since СЗ are independent
   const { data: likEquipmentList } = useQuery<Equipment[]>({
-    queryKey: ["/api/warehouses", selectedSupplierWarehouse?.id, "equipment"],
-    queryFn: async () => {
-      const res = await fetch(`/api/warehouses/${selectedSupplierWarehouse!.id}/equipment`);
-      if (!res.ok) throw new Error("Failed to fetch equipment");
-      return res.json();
-    },
-    enabled: isLik && !!selectedSupplierWarehouse?.id,
+    queryKey: ["/api/warehouses-equipment"],
+    enabled: isLik,
   });
-
-  useEffect(() => {
-    if (isLik && likEquipmentList && likEquipmentList.length > 0 && !selectedEquipmentId) {
-      const firstEq = likEquipmentList[0];
-      setSelectedEquipmentId?.(firstEq.id);
-      setEquipmentBalance?.(parseFloat(firstEq.currentBalance || "0"));
-    }
-  }, [isLik, likEquipmentList, selectedEquipmentId, setSelectedEquipmentId, setEquipmentBalance]);
 
   useEffect(() => {
     if (isLik && selectedEquipmentId && likEquipmentList) {

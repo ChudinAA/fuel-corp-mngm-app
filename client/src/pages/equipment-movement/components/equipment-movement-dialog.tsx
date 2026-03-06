@@ -247,6 +247,7 @@ export function EquipmentMovementDialog({
         queryKey: ["/api/warehouses/equipment-map"],
       });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses-equipment"] });
       toast({
         title: variables.isDraft
           ? "Черновик сохранен"
@@ -353,21 +354,11 @@ export function EquipmentMovementDialog({
                       <Select
                         onValueChange={(val) => {
                           field.onChange(val);
-                          // Clear incompatible fields to prevent stale data in DB
-                          if (val === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK) {
-                            form.setValue("toWarehouseId", "");
-                            form.setValue("fromEquipmentId", "");
-                          } else if (
-                            val === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE
-                          ) {
-                            form.setValue("fromWarehouseId", "");
-                            form.setValue("toEquipmentId", "");
-                          } else if (
-                            val === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_TZK
-                          ) {
-                            form.setValue("fromWarehouseId", "");
-                            form.setValue("toWarehouseId", "");
-                          }
+                          // Clear ALL direction fields on type change to prevent stale visual state
+                          form.setValue("fromWarehouseId", "", { shouldValidate: false });
+                          form.setValue("toWarehouseId", "", { shouldValidate: false });
+                          form.setValue("fromEquipmentId", "", { shouldValidate: false });
+                          form.setValue("toEquipmentId", "", { shouldValidate: false });
                         }}
                         value={field.value}
                       >

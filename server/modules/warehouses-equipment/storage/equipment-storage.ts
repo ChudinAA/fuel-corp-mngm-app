@@ -1,4 +1,4 @@
-import { eq, and, isNull, sql } from "drizzle-orm";
+import { eq, and, isNull, sql, desc } from "drizzle-orm";
 import { db } from "../../../db";
 import { equipments, equipmentTransactions, warehousesEquipment, type Equipment, type InsertEquipment, type EquipmentTransaction, type InsertEquipmentTransaction } from "../entities/equipment";
 
@@ -90,6 +90,37 @@ export class EquipmentStorage {
     return {
       transactions: transactions.slice(0, limit),
       hasMore
+    };
+  }
+
+  async getEquipmentBalanceAtDate(
+    equipmentId: string,
+    date: Date,
+    productType: string,
+  ): Promise<{ balance: string; averageCost: string }> {
+    const dateStr = date.toISOString().split("T")[0];
+
+    const [lastTransaction] = await db
+      .select()
+      .from(equipmentTransactions)
+      .where(
+        and(
+          eq(equipmentTransactions.equipmentId, equipmentId),
+          eq(equipmentTransactions.productType, productType),
+          sql`CAST(${equipmentTransactions.transactionDate} AS DATE) <= CAST(${dateStr} AS DATE)`,
+          isNull(equipmentTransactions.deletedAt),
+        ),
+      )
+      .orderBy(
+        desc(equipmentTransactions.transactionDate),
+        desc(equipmentTransactions.createdAt),
+        desc(equipmentTransactions.id),
+      )
+      .limit(1);
+
+    return {
+      balance: lastTransaction?.balanceAfter || "0",
+      averageCost: lastTransaction?.averageCostAfter || "0",
     };
   }
 

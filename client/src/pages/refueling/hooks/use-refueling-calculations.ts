@@ -6,6 +6,7 @@ import { usePriceExtraction } from "../../shared/hooks/use-price-extraction";
 import { parsePriceCompositeId } from "@/pages/shared/utils/price-utils";
 import { useContractVolume } from "@/pages/shared/hooks/use-contract-volume";
 import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
+import { useEquipmentBalance } from "@/hooks/use-equipment-balance";
 import { formatNumber } from "../utils";
 
 interface UseRefuelingCalculationsProps {
@@ -62,15 +63,24 @@ export function useRefuelingCalculations({
     quantityKg,
   });
 
+  const isLikMode = equipmentType === EQUIPMENT_TYPE.LIK;
+
   const { data: warehouseData, isLoading: isHistoricalLoading } = useWarehouseBalance(
-    isWarehouseSupplier ? supplierWarehouse?.id : undefined,
+    isWarehouseSupplier && !isLikMode ? supplierWarehouse?.id : undefined,
     refuelingDate,
     productType
   );
 
   const { data: currentWarehouseData, isLoading: isCurrentLoading } = useWarehouseBalance(
-    isWarehouseSupplier ? supplierWarehouse?.id : undefined,
+    isWarehouseSupplier && !isLikMode ? supplierWarehouse?.id : undefined,
     new Date(),
+    productType
+  );
+
+  // For LIK mode: fetch equipment cost at refueling date
+  const { data: equipmentData, isLoading: isEquipmentLoading } = useEquipmentBalance(
+    isLikMode ? selectedEquipmentId : undefined,
+    refuelingDate,
     productType
   );
 
@@ -109,12 +119,24 @@ export function useRefuelingCalculations({
     productType,
   });
 
+  // Equipment (СЗ) average cost at the refueling date
+  const equipmentPriceAtDate = useMemo(() => {
+    if (!isLikMode || isEquipmentLoading) return null;
+    return equipmentData && typeof equipmentData === "object" && "averageCost" in equipmentData
+      ? (equipmentData.averageCost ? parseFloat(equipmentData.averageCost as string) : null)
+      : null;
+  }, [isLikMode, equipmentData, isEquipmentLoading]);
+
   const purchasePrice = useMemo(() => {
+    // LIK mode: cost comes from the selected equipment (СЗ) average cost at refueling date
+    if (isLikMode && productType !== PRODUCT_TYPE.SERVICE) {
+      return equipmentPriceAtDate !== null ? equipmentPriceAtDate : extractedPurchasePrice;
+    }
     if (isWarehouseSupplier && productType !== PRODUCT_TYPE.SERVICE) {
       return warehousePriceAtDate !== null ? warehousePriceAtDate : extractedPurchasePrice;
     }
     return extractedPurchasePrice;
-  }, [isWarehouseSupplier, productType, warehousePriceAtDate, extractedPurchasePrice, selectedSupplier]);
+  }, [isLikMode, isWarehouseSupplier, productType, equipmentPriceAtDate, warehousePriceAtDate, extractedPurchasePrice]);
 
   const salePrice = useMemo(() => {
     if (isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) {

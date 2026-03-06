@@ -161,16 +161,20 @@ export function EquipmentDetailsDialog({
                   <TableHead>Дата</TableHead>
                   <TableHead>Тип</TableHead>
                   <TableHead>Продукт</TableHead>
-                  <TableHead className="text-right">Кол-во</TableHead>
+                  <TableHead className="text-right">Кол-во, кг</TableHead>
                   <TableHead className="text-right">Остаток до</TableHead>
                   <TableHead className="text-right">Остаток после</TableHead>
-                  <TableHead className="text-right">Себест-ть</TableHead>
+                  <TableHead className="text-right">Себест. до</TableHead>
+                  <TableHead className="text-right">Себест. после</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {transactions.map((tx) => (
+                {transactions.map((tx) => {
+                  const costChanged =
+                    tx.averageCostBefore !== tx.averageCostAfter;
+                  return (
                   <TableRow key={tx.id}>
-                    <TableCell>
+                    <TableCell className="text-xs">
                       {tx.transactionDate
                         ? format(new Date(tx.transactionDate), "dd.MM.yyyy", {
                             locale: ru,
@@ -196,22 +200,26 @@ export function EquipmentDetailsDialog({
                       />
                     </TableCell>
                     <TableCell
-                      className={`text-right font-medium ${isReceipt(tx.transactionType) ? "text-green-600" : "text-red-600"}`}
+                      className={`text-right font-medium text-sm ${isReceipt(tx.transactionType) ? "text-green-600" : "text-red-600"}`}
                     >
                       {isReceipt(tx.transactionType) ? "+" : ""}
-                      {formatNumber(tx.quantity)} кг
+                      {formatNumber(tx.quantity)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right text-xs text-muted-foreground">
                       {formatNumber(tx.balanceBefore || 0)} кг
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right text-xs font-medium">
                       {formatNumber(tx.balanceAfter || 0)} кг
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right text-xs text-muted-foreground">
+                      {formatCurrency(tx.averageCostBefore || 0)}
+                    </TableCell>
+                    <TableCell className={`text-right text-xs font-medium ${costChanged ? "text-primary" : ""}`}>
                       {formatCurrency(tx.averageCostAfter || 0)}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           ) : (

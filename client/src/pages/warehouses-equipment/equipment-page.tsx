@@ -38,6 +38,7 @@ export default function EquipmentsPage() {
 
   const { data: allEquipments = [], isLoading: equipmentsLoading } = useQuery<Equipment[]>({
     queryKey: ["/api/warehouses-equipment"],
+    refetchInterval: 10000,
   });
 
   const likWarehouses =

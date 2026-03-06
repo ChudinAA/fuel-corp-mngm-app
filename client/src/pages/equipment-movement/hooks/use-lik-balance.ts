@@ -71,6 +71,11 @@ export function useLikBalance({
     if (available <= 0) return { balance: available, status: "error", message: "Пусто" };
     if (kgNum > available) return { balance: available, status: "error", message: `Недостаточно! Доступно: ${available.toLocaleString()} кг` };
 
+    if (kgNum > 0) {
+      const remaining = available - kgNum;
+      return { balance: available, status: "ok", message: `${available.toLocaleString()} кг → после: ${remaining.toFixed(2)} кг` };
+    }
+
     return { balance: available, status: "ok", message: `${available.toLocaleString()} кг` };
   }, [sourceId, isLoading, balanceData, watchProductType, watchMovementType, warehouses, equipments, isEditing, initialQuantityKg, kgNum]);
 }
