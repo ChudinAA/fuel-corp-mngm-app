@@ -8,6 +8,7 @@ import { eq, and, isNull, desc, or, ilike, sql } from "drizzle-orm";
 import { TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { EquipmentTransactionService } from "../../warehouses-equipment/services/equipment-transaction-service";
 import { WarehouseTransactionService } from "server/modules/warehouses/services/warehouse-transaction-service";
+import { EquipmentRecalculationQueueService } from "../../warehouses-equipment/services/equipment-recalculation-queue-service";
 
 export class EquipmentMovementStorage {
   async getMovements(
@@ -71,7 +72,7 @@ export class EquipmentMovementStorage {
   }
 
   async createMovement(data: any): Promise<EquipmentMovement> {
-    return await db.transaction(async (tx) => {
+    const item = await db.transaction(async (tx) => {
       const [item] = await tx
         .insert(equipmentMovement)
         .values(data)
@@ -173,14 +174,39 @@ export class EquipmentMovementStorage {
 
       return item;
     });
+
+    // Queue recalculation for affected equipment after transaction commits
+    if (!data.isDraft && item.movementDate) {
+      const productType = item.productType || "kerosene";
+      if (item.toEquipmentId) {
+        await EquipmentRecalculationQueueService.addToQueue(
+          item.toEquipmentId,
+          productType,
+          item.movementDate,
+          item.createdById || undefined,
+          1,
+        ).catch((e) => console.error("[EquipmentMovementStorage] Queue error:", e));
+      }
+      if (item.fromEquipmentId) {
+        await EquipmentRecalculationQueueService.addToQueue(
+          item.fromEquipmentId,
+          productType,
+          item.movementDate,
+          item.createdById || undefined,
+          1,
+        ).catch((e) => console.error("[EquipmentMovementStorage] Queue error:", e));
+      }
+    }
+
+    return item;
   }
 
   async updateMovement(
     id: string,
     data: any,
   ): Promise<EquipmentMovement | undefined> {
-    return await db.transaction(async (tx) => {
-      const current = await this.getMovement(id);
+    const current = await this.getMovement(id);
+    const updated = await db.transaction(async (tx) => {
       if (!current) throw new Error("Запись не найдена");
 
       const transitioningFromDraft = current.isDraft && data.isDraft === false;
@@ -356,6 +382,27 @@ export class EquipmentMovementStorage {
 
       return updated;
     });
+
+    // Queue recalculation for affected equipment after transaction commits
+    if (updated && !updated.isDraft) {
+      const movementDate = updated.movementDate || current?.movementDate;
+      if (movementDate) {
+        const productType = updated.productType || current?.productType || "kerosene";
+        const userId = data.updatedById;
+        const toEqId = updated.toEquipmentId || current?.toEquipmentId;
+        const fromEqId = updated.fromEquipmentId || current?.fromEquipmentId;
+        if (toEqId) {
+          await EquipmentRecalculationQueueService.addToQueue(toEqId, productType, movementDate, userId, 1)
+            .catch((e) => console.error("[EquipmentMovementStorage] Queue error:", e));
+        }
+        if (fromEqId) {
+          await EquipmentRecalculationQueueService.addToQueue(fromEqId, productType, movementDate, userId, 1)
+            .catch((e) => console.error("[EquipmentMovementStorage] Queue error:", e));
+        }
+      }
+    }
+
+    return updated;
   }
 
   async deleteMovement(id: string, userId: string): Promise<void> {

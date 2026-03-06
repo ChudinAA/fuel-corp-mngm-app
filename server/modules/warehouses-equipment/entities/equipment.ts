@@ -6,6 +6,7 @@ import {
   timestamp,
   uuid,
   index,
+  integer,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -66,8 +67,12 @@ export const equipmentTransactions = pgTable(
       precision: 12,
       scale: 4,
     }),
+    sum: decimal("sum", { precision: 15, scale: 2 }),
+    price: decimal("price", { precision: 12, scale: 4 }),
     transactionDate: timestamp("transaction_date", { mode: "string" }),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "string" }),
+    updatedById: uuid("updated_by_id").references(() => users.id),
     createdById: uuid("created_by_id").references(() => users.id),
     deletedAt: timestamp("deleted_at", { mode: "string" }),
     deletedById: uuid("deleted_by_id").references(() => users.id),
@@ -156,6 +161,48 @@ export const warehousesEquipmentRelations = relations(
   }),
 );
 
+export const equipmentRecalculationQueue = pgTable(
+  "equipment_recalculation_queue",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    equipmentId: uuid("equipment_id")
+      .notNull()
+      .references(() => equipments.id),
+    productType: text("product_type").notNull().default("kerosene"),
+    afterDate: timestamp("after_date", { mode: "string" }).notNull(),
+    status: text("status").notNull().default("pending"),
+    priority: integer("priority").default(0),
+    attempts: integer("attempts").default(0),
+    errorMessage: text("error_message"),
+    processingStartedAt: timestamp("processing_started_at", {
+      mode: "string",
+    }),
+    processedAt: timestamp("processed_at", { mode: "string" }),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+    createdById: uuid("created_by_id").references(() => users.id),
+  },
+  (table) => ({
+    equipmentProductIdx: index(
+      "eq_recalculation_queue_equipment_product_idx",
+    ).on(table.equipmentId, table.productType),
+    statusIdx: index("eq_recalculation_queue_status_idx").on(table.status),
+  }),
+);
+
+export const equipmentRecalculationQueueRelations = relations(
+  equipmentRecalculationQueue,
+  ({ one }) => ({
+    equipment: one(equipments, {
+      fields: [equipmentRecalculationQueue.equipmentId],
+      references: [equipments.id],
+    }),
+    createdBy: one(users, {
+      fields: [equipmentRecalculationQueue.createdById],
+      references: [users.id],
+    }),
+  }),
+);
+
 export const insertEquipmentSchema = createInsertSchema(equipments).omit({
   id: true,
   createdAt: true,
@@ -171,3 +218,5 @@ export type EquipmentTransaction = typeof equipmentTransactions.$inferSelect;
 export type InsertEquipmentTransaction = z.infer<
   typeof insertEquipmentTransactionSchema
 >;
+export type EquipmentRecalculationQueueItem =
+  typeof equipmentRecalculationQueue.$inferSelect;

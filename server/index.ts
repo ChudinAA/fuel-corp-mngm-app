@@ -6,6 +6,7 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
 import { RecalculationWorker } from "./modules/warehouses/services/recalculation-worker";
+import { EquipmentRecalculationWorker } from "./modules/warehouses-equipment/services/equipment-recalculation-worker";
 
 const app = express();
 const httpServer = createServer(app);
@@ -128,6 +129,8 @@ app.use((req, res, next) => {
       
       RecalculationWorker.start(5000);
       log("Recalculation worker started");
+      EquipmentRecalculationWorker.start(5000);
+      log("Equipment recalculation worker started");
     },
   );
 })();

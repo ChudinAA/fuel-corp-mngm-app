@@ -1,0 +1,283 @@
+import { eq, and, gte, asc, desc, isNull, or, sql } from "drizzle-orm";
+import {
+  equipments,
+  equipmentTransactions,
+} from "../entities/equipment";
+import {
+  equipmentMovement,
+  aircraftRefueling,
+  opt,
+} from "@shared/schema";
+import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
+
+export class EquipmentRecalculationService {
+  static async recalculateEquipmentFromDate(
+    tx: any,
+    equipmentId: string,
+    afterDate: string,
+    productType: string,
+    updatedById?: string,
+  ) {
+    console.log(
+      `[EquipmentRecalculationService] Recalculating equipment ${equipmentId} from ${afterDate}, productType=${productType}`,
+    );
+
+    const isPvkj = productType === PRODUCT_TYPE.PVKJ;
+
+    // 1. Find state BEFORE afterDate
+    const [lastBefore] = await tx
+      .select()
+      .from(equipmentTransactions)
+      .where(
+        and(
+          eq(equipmentTransactions.equipmentId, equipmentId),
+          eq(equipmentTransactions.productType, productType),
+          isNull(equipmentTransactions.deletedAt),
+          sql`COALESCE(${equipmentTransactions.transactionDate}, ${equipmentTransactions.createdAt}) < ${afterDate}`,
+        ),
+      )
+      .orderBy(
+        desc(
+          sql`COALESCE(${equipmentTransactions.transactionDate}, ${equipmentTransactions.createdAt})`,
+        ),
+        desc(equipmentTransactions.createdAt),
+        desc(equipmentTransactions.id),
+      )
+      .limit(1);
+
+    let currentBalance = parseFloat(lastBefore?.balanceAfter || "0");
+    let currentAverageCost = parseFloat(lastBefore?.averageCostAfter || "0");
+
+    console.log(
+      `  Initial state before ${afterDate}: balance=${currentBalance}, avgCost=${currentAverageCost}`,
+    );
+
+    // 2. Get all transactions from afterDate onwards, ordered chronologically
+    const transactions = await tx
+      .select()
+      .from(equipmentTransactions)
+      .where(
+        and(
+          eq(equipmentTransactions.equipmentId, equipmentId),
+          eq(equipmentTransactions.productType, productType),
+          isNull(equipmentTransactions.deletedAt),
+          or(
+            gte(equipmentTransactions.transactionDate, afterDate),
+            and(
+              isNull(equipmentTransactions.transactionDate),
+              gte(equipmentTransactions.createdAt, afterDate),
+            ),
+          ),
+        ),
+      )
+      .orderBy(
+        asc(
+          sql`COALESCE(${equipmentTransactions.transactionDate}, ${equipmentTransactions.createdAt})`,
+        ),
+        asc(equipmentTransactions.createdAt),
+        asc(equipmentTransactions.id),
+      );
+
+    console.log(`  Found ${transactions.length} transactions to recalculate`);
+
+    for (const transaction of transactions) {
+      const quantity = Math.abs(parseFloat(transaction.quantity));
+      const isReceipt =
+        transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
+        transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
+
+      let newBalance: number;
+      let newAverageCost: number;
+      let newSum: number;
+      let newPrice: number;
+
+      if (isReceipt) {
+        newBalance = currentBalance + quantity;
+
+        // For equipment receipts: incoming cost comes from source equipment's averageCost
+        // (transferred from another equipment or from a warehouse)
+        const incomingCost = await this.getIncomingCostForEquipment(
+          tx,
+          transaction.sourceType,
+          transaction.sourceId,
+          quantity,
+          currentAverageCost,
+        );
+
+        const totalCurrentCost = currentBalance * currentAverageCost;
+        newAverageCost =
+          newBalance > 0 ? (totalCurrentCost + incomingCost) / newBalance : 0;
+
+        newSum = incomingCost;
+        newPrice = quantity > 0 ? incomingCost / quantity : 0;
+      } else {
+        newBalance = Math.max(0, currentBalance - quantity);
+        newAverageCost = currentAverageCost;
+        newSum = quantity * currentAverageCost;
+        newPrice = currentAverageCost;
+
+        // Update related deal if it's a sale (refueling or opt)
+        if (transaction.sourceType || transaction.transactionType === TRANSACTION_TYPE.SALE) {
+          await this.updateRelatedDeal(
+            tx,
+            transaction.sourceType,
+            transaction.sourceId,
+            currentAverageCost,
+            updatedById,
+          );
+        }
+      }
+
+      await tx
+        .update(equipmentTransactions)
+        .set({
+          balanceBefore: currentBalance.toString(),
+          balanceAfter: newBalance.toString(),
+          averageCostBefore: currentAverageCost.toFixed(4),
+          averageCostAfter: newAverageCost.toFixed(4),
+          sum: newSum.toFixed(2),
+          price: newPrice.toFixed(4),
+          updatedAt: sql`NOW()`,
+          updatedById,
+        })
+        .where(eq(equipmentTransactions.id, transaction.id));
+
+      console.log(
+        `  Tx ${transaction.id} (${transaction.transactionType}): balance ${currentBalance} -> ${newBalance}, avgCost ${currentAverageCost.toFixed(4)} -> ${newAverageCost.toFixed(4)}`,
+      );
+
+      currentBalance = newBalance;
+      currentAverageCost = newAverageCost;
+    }
+
+    // 3. Update equipment's current state
+    const updateData: any = { updatedAt: sql`NOW()`, updatedById };
+
+    if (isPvkj) {
+      updateData.pvkjBalance = currentBalance.toFixed(2);
+      updateData.pvkjAverageCost = currentAverageCost.toFixed(4);
+    } else {
+      updateData.currentBalance = currentBalance.toFixed(2);
+      updateData.averageCost = currentAverageCost.toFixed(4);
+    }
+
+    await tx
+      .update(equipments)
+      .set(updateData)
+      .where(eq(equipments.id, equipmentId));
+
+    console.log(
+      `  Equipment ${equipmentId} updated: balance=${currentBalance.toFixed(2)}, avgCost=${currentAverageCost.toFixed(4)}`,
+    );
+  }
+
+  private static async getIncomingCostForEquipment(
+    tx: any,
+    sourceType: string | null | undefined,
+    sourceId: string | null | undefined,
+    quantity: number,
+    fallbackAverageCost: number,
+  ): Promise<number> {
+    if (!sourceId) return quantity * fallbackAverageCost;
+
+    if (sourceType === SOURCE_TYPE.MOVEMENT) {
+      // Look for the corresponding equipment movement record
+      const move = await tx.query.equipmentMovement?.findFirst({
+        where: eq(equipmentMovement.id, sourceId),
+      });
+
+      if (move) {
+        const totalCost = parseFloat(move.totalCost || "0");
+        if (totalCost > 0) return totalCost;
+        // Fallback: use costPerKg * quantity
+        const costPerKg = parseFloat(move.costPerKg || "0");
+        if (costPerKg > 0) return costPerKg * quantity;
+      }
+
+      // If no movement record or totalCost=0, look for the source equipment's transfer-out tx
+      const sourceTx = await tx
+        .select()
+        .from(equipmentTransactions)
+        .where(
+          and(
+            eq(equipmentTransactions.sourceType, SOURCE_TYPE.MOVEMENT),
+            eq(equipmentTransactions.sourceId, sourceId),
+            eq(equipmentTransactions.transactionType, TRANSACTION_TYPE.TRANSFER_OUT),
+            isNull(equipmentTransactions.deletedAt),
+          ),
+        )
+        .limit(1);
+
+      if (sourceTx.length > 0) {
+        const srcQty = Math.abs(parseFloat(sourceTx[0].quantity));
+        const srcCost = parseFloat(sourceTx[0].averageCostAfter || sourceTx[0].averageCostBefore || "0");
+        return srcQty > 0 ? srcCost * quantity : quantity * fallbackAverageCost;
+      }
+    }
+
+    return quantity * fallbackAverageCost;
+  }
+
+  private static async updateRelatedDeal(
+    tx: any,
+    sourceType: string | null | undefined,
+    sourceId: string | null | undefined,
+    averageCost: number,
+    updatedById?: string,
+  ) {
+    if (!sourceId || !sourceType) return;
+
+    try {
+      if (sourceType === SOURCE_TYPE.REFUELING) {
+        const refueling = await tx.query.aircraftRefueling?.findFirst({
+          where: eq(aircraftRefueling.id, sourceId),
+        });
+
+        if (refueling) {
+          const quantityKg = parseFloat(refueling.quantityKg || "0");
+          const newPurchaseCost = quantityKg * averageCost;
+          const salePrice = parseFloat(refueling.salePrice || "0");
+          const newProfit = quantityKg * salePrice - newPurchaseCost;
+
+          await tx
+            .update(aircraftRefueling)
+            .set({
+              purchasePrice: averageCost.toFixed(4),
+              purchaseCost: newPurchaseCost.toFixed(2),
+              profit: newProfit.toFixed(2),
+              updatedAt: sql`NOW()`,
+              updatedById,
+            })
+            .where(eq(aircraftRefueling.id, sourceId));
+        }
+      } else if (sourceType === SOURCE_TYPE.OPT) {
+        const deal = await tx.query.opt?.findFirst({
+          where: eq(opt.id, sourceId),
+        });
+
+        if (deal) {
+          const quantityKg = parseFloat(deal.quantityKg || "0");
+          const newPurchaseCost = quantityKg * averageCost;
+          const salePriceTotal = parseFloat(deal.salePriceTotal || "0");
+          const newProfit = salePriceTotal - newPurchaseCost;
+
+          await tx
+            .update(opt)
+            .set({
+              purchasePrice: averageCost.toFixed(4),
+              purchaseCost: newPurchaseCost.toFixed(2),
+              profit: newProfit.toFixed(2),
+              updatedAt: sql`NOW()`,
+              updatedById,
+            })
+            .where(eq(opt.id, sourceId));
+        }
+      }
+    } catch (err) {
+      console.error(
+        `[EquipmentRecalculationService] Error updating deal ${sourceType}/${sourceId}:`,
+        err,
+      );
+    }
+  }
+}
