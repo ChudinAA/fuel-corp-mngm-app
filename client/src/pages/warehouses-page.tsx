@@ -33,7 +33,6 @@ export default function WarehousesPage() {
   const filteredWarehouses =
     warehouses?.filter((w) => {
       const matchesSearch =
-        w.equipmentType === EQUIPMENT_TYPE.COMMON &&
         w.name.toLowerCase().includes(search.toLowerCase());
       return matchesSearch;
     }) || [];
