@@ -391,8 +391,7 @@ export class WarehouseRecalculationService {
         return parseFloat(movementRecord.totalCost || "0");
       }
 
-      // Проверяем, не является ли источником возврат с СЗ (equipmentMovement)
-      // Если СЗ делало возврат на склад, себестоимость берём со склада
+      // Проверяем, не является ли источником СЗ (equipmentMovement)
       const equipmentTx = await tx.query.equipmentTransactions.findFirst({
         where: and(
           eq(equipmentTransactions.sourceType, SOURCE_TYPE.MOVEMENT),
@@ -405,7 +404,8 @@ export class WarehouseRecalculationService {
         ),
       });
       if (equipmentTx) {
-        const totalCost = quantity * currentAverageCost;
+        const averageCost = parseFloat(equipmentTx.averageCostAfter || "0");
+        const totalCost = quantity * averageCost;
         return totalCost;
       }
     }
