@@ -1,6 +1,11 @@
 import { eq, and, gte, asc, desc, isNull, or, sql } from "drizzle-orm";
 import { equipments, equipmentTransactions } from "../entities/equipment";
-import { equipmentMovement, aircraftRefueling, opt } from "@shared/schema";
+import {
+  equipmentMovement,
+  aircraftRefueling,
+  opt,
+  warehouseTransactions,
+} from "@shared/schema";
 import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { WarehouseRecalculationService } from "server/modules/warehouses/services/warehouse-recalculation-service";
 
@@ -11,7 +16,21 @@ export class EquipmentRecalculationService {
     afterDate: string,
     productType: string,
     updatedById?: string,
+    visitedEquipments?: Set<string>,
+    visitedWarehouses?: Set<string>,
   ) {
+    const visited = visitedEquipments || new Set<string>();
+    const visitedWh = visitedWarehouses || new Set<string>();
+
+    const equipmentKey = `${equipmentId}:${productType}`;
+    if (visited.has(equipmentKey)) {
+      console.log(
+        `[EquipmentRecalculationService] Equipment ${equipmentId} (${productType}) already visited, skipping`,
+      );
+      return;
+    }
+    visited.add(equipmentKey);
+
     console.log(
       `[EquipmentRecalculationService] Recalculating equipment ${equipmentId} from ${afterDate}, productType=${productType}`,
     );
@@ -88,8 +107,6 @@ export class EquipmentRecalculationService {
       if (isReceipt) {
         newBalance = currentBalance + quantity;
 
-        // For equipment receipts: incoming cost comes from source equipment's averageCost
-        // (transferred from another equipment or from a warehouse)
         const incomingCost = await this.getIncomingCostForEquipment(
           tx,
           transaction.sourceType,
@@ -110,7 +127,6 @@ export class EquipmentRecalculationService {
         newSum = quantity * currentAverageCost;
         newPrice = currentAverageCost;
 
-        // Update related deal if it's a sale (refueling or opt)
         if (
           transaction.sourceType ||
           transaction.transactionType === TRANSACTION_TYPE.SALE
@@ -125,7 +141,6 @@ export class EquipmentRecalculationService {
         }
       }
 
-      // Обновляем перемещения оборудования
       if (transaction.sourceType === SOURCE_TYPE.MOVEMENT) {
         await this.updateEquipmentMovement(
           tx,
@@ -133,6 +148,8 @@ export class EquipmentRecalculationService {
           newAverageCost,
           transaction.transactionType,
           updatedById,
+          visited,
+          visitedWh,
         );
       }
 
@@ -189,7 +206,6 @@ export class EquipmentRecalculationService {
     if (!sourceId) return quantity * fallbackAverageCost;
 
     if (sourceType === SOURCE_TYPE.MOVEMENT) {
-      // Look for the corresponding equipment movement record
       const move = await tx.query.equipmentMovement?.findFirst({
         where: eq(equipmentMovement.id, sourceId),
       });
@@ -197,12 +213,10 @@ export class EquipmentRecalculationService {
       if (move) {
         const totalCost = parseFloat(move.totalCost || "0");
         if (totalCost > 0) return totalCost;
-        // Fallback: use costPerKg * quantity
         const costPerKg = parseFloat(move.costPerKg || "0");
         if (costPerKg > 0) return costPerKg * quantity;
       }
 
-      // If no movement record or totalCost=0, look for the source equipment's transfer-out tx
       const sourceTx = await tx
         .select()
         .from(equipmentTransactions)
@@ -237,6 +251,8 @@ export class EquipmentRecalculationService {
     newAverageCost: number,
     transactionType: string,
     updatedById?: string,
+    visitedEquipments?: Set<string>,
+    visitedWarehouses?: Set<string>,
   ) {
     console.log(
       "        [updateEquipmentMovement]",
@@ -247,23 +263,111 @@ export class EquipmentRecalculationService {
       where: eq(equipmentMovement.id, movementId),
     });
 
-    if (move) {
-      const quantity = parseFloat(move.quantityKg);
-      const totalCost = quantity * newAverageCost;
-      await tx
-        .update(equipmentMovement)
-        .set({
-          costPerKg: newAverageCost.toFixed(5),
-          totalCost: totalCost.toFixed(2),
-          updatedAt: sql`NOW()`,
-          updatedById,
-        })
-        .where(eq(equipmentMovement.id, movementId));
-      console.log("        ✓ Перемещение оборудования обновлено");
+    if (!move) return;
 
-      // Каскадный пересчет Базового склада или СЗ, на который сделано перемещение
-      if (transactionType === TRANSACTION_TYPE.TRANSFER_OUT) {
-        // TODO: сделать каскадый пересчет склада или СЗ по аналогии как сделано в WarehouseRecalculationService без циклических пересчетов
+    const quantity = parseFloat(move.quantityKg);
+    const totalCost = quantity * newAverageCost;
+    await tx
+      .update(equipmentMovement)
+      .set({
+        costPerKg: newAverageCost.toFixed(5),
+        totalCost: totalCost.toFixed(2),
+        updatedAt: sql`NOW()`,
+        updatedById,
+      })
+      .where(eq(equipmentMovement.id, movementId));
+    console.log("        ✓ Перемещение оборудования обновлено");
+
+    if (transactionType !== TRANSACTION_TYPE.TRANSFER_OUT) return;
+
+    const visited = visitedEquipments || new Set<string>();
+    const visitedWh = visitedWarehouses || new Set<string>();
+
+    if (move.toEquipmentId) {
+      // СЗ → СЗ: каскадный пересчёт СЗ-получателя
+      const eqKey = `${move.toEquipmentId}:${move.productType}`;
+      if (visited.has(eqKey)) {
+        console.log(
+          `        → СЗ-получатель ${move.toEquipmentId} уже обрабатывается, пропускаем`,
+        );
+        return;
+      }
+
+      const destTx = await tx.query.equipmentTransactions.findFirst({
+        where: and(
+          eq(equipmentTransactions.sourceType, SOURCE_TYPE.MOVEMENT),
+          eq(equipmentTransactions.sourceId, movementId),
+          eq(equipmentTransactions.equipmentId, move.toEquipmentId),
+          or(
+            eq(equipmentTransactions.transactionType, TRANSACTION_TYPE.RECEIPT),
+            eq(
+              equipmentTransactions.transactionType,
+              TRANSACTION_TYPE.TRANSFER_IN,
+            ),
+          ),
+          isNull(equipmentTransactions.deletedAt),
+        ),
+      });
+
+      if (destTx) {
+        const txDate = destTx.transactionDate || destTx.createdAt;
+        console.log(
+          `        → Каскадный пересчёт СЗ-получателя ${move.toEquipmentId} с ${txDate}`,
+        );
+        await EquipmentRecalculationService.recalculateEquipmentFromDate(
+          tx,
+          move.toEquipmentId,
+          txDate,
+          move.productType,
+          updatedById,
+          visited,
+          visitedWh,
+        );
+      }
+    } else if (move.toWarehouseId) {
+      // СЗ → Склад: каскадный пересчёт склада-получателя
+      const whKey = `${move.toWarehouseId}:${move.productType}`;
+      if (visitedWh.has(whKey)) {
+        console.log(
+          `        → Склад-получатель ${move.toWarehouseId} уже обрабатывается, пропускаем`,
+        );
+        return;
+      }
+
+      const destTx = await tx.query.warehouseTransactions.findFirst({
+        where: and(
+          eq(warehouseTransactions.sourceType, SOURCE_TYPE.MOVEMENT),
+          eq(warehouseTransactions.sourceId, movementId),
+          eq(warehouseTransactions.warehouseId, move.toWarehouseId),
+          or(
+            eq(warehouseTransactions.transactionType, TRANSACTION_TYPE.RECEIPT),
+            eq(
+              warehouseTransactions.transactionType,
+              TRANSACTION_TYPE.TRANSFER_IN,
+            ),
+          ),
+          isNull(warehouseTransactions.deletedAt),
+        ),
+      });
+
+      if (destTx) {
+        const txDate = destTx.transactionDate || destTx.createdAt;
+        console.log(
+          `        → Каскадный пересчёт склада-получателя ${move.toWarehouseId} с ${txDate}`,
+        );
+        await WarehouseRecalculationService.recalculateAllAffectedTransactions(
+          tx,
+          [
+            {
+              warehouseId: move.toWarehouseId,
+              afterDate: txDate,
+              productType: move.productType,
+            },
+          ],
+          updatedById,
+          visitedWh,
+          visited,
+        );
       }
     }
   }

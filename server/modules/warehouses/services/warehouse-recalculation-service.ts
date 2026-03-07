@@ -5,8 +5,6 @@ import {
   opt,
   aircraftRefueling,
   movement,
-  warehousesEquipment,
-  equipments,
   equipmentTransactions,
   equipmentMovement,
 } from "@shared/schema";
@@ -23,6 +21,7 @@ export class WarehouseRecalculationService {
     }>,
     updatedById?: string,
     visitedWarehouses?: Set<string>,
+    visitedEquipments?: Set<string>,
   ) {
     console.log(
       "  [WarehouseRecalculationService] recalculateAllAffectedTransactions",
@@ -33,6 +32,7 @@ export class WarehouseRecalculationService {
     );
 
     const visited = visitedWarehouses || new Set<string>();
+    const visitedEq = visitedEquipments || new Set<string>();
 
     for (let i = 0; i < affectedWarehouses.length; i++) {
       const { warehouseId, afterDate, productType } = affectedWarehouses[i];
@@ -61,6 +61,7 @@ export class WarehouseRecalculationService {
         productType,
         updatedById,
         visited,
+        visitedEq,
       );
 
       console.log(`    ✓ Склад ${i + 1} пересчитан`);
@@ -76,10 +77,12 @@ export class WarehouseRecalculationService {
     productType: string,
     updatedById?: string,
     visitedWarehouses?: Set<string>,
+    visitedEquipments?: Set<string>,
   ) {
     console.log("      [recalculateWarehouseChain] Начало пересчета цепочки");
     const isPvkj = productType === PRODUCT_TYPE.PVKJ;
     const visited = visitedWarehouses || new Set<string>();
+    const visitedEq = visitedEquipments || new Set<string>();
 
     const initialState = await this.getWarehouseStateBeforeDate(
       tx,
@@ -122,6 +125,12 @@ export class WarehouseRecalculationService {
 
     const cascadeRecalculations: Array<{
       warehouseId: string;
+      afterDate: string;
+      productType: string;
+    }> = [];
+
+    const cascadeEquipmentRecalculations: Array<{
+      equipmentId: string;
       afterDate: string;
       productType: string;
     }> = [];
@@ -224,7 +233,8 @@ export class WarehouseRecalculationService {
         transaction.sourceType === SOURCE_TYPE.MOVEMENT &&
         transaction.transactionType === TRANSACTION_TYPE.TRANSFER_OUT
       ) {
-        const movementCascade = await this.getMovementCascadeInfo(
+        // Каскад на склад (warehouse → warehouse через таблицу movement)
+        const warehouseCascade = await this.getMovementCascadeInfo(
           tx,
           transaction.sourceId,
           newAverageCost,
@@ -232,8 +242,22 @@ export class WarehouseRecalculationService {
           visited,
         );
 
-        if (movementCascade) {
-          cascadeRecalculations.push(movementCascade);
+        if (warehouseCascade) {
+          cascadeRecalculations.push(warehouseCascade);
+        }
+
+        // Каскад на СЗ (warehouse → СЗ через таблицу equipmentMovement)
+        const equipmentCascade = await this.getEquipmentMovementCascadeInfo(
+          tx,
+          transaction.sourceId,
+          newAverageCost,
+          quantity,
+          visitedEq,
+          updatedById,
+        );
+
+        if (equipmentCascade) {
+          cascadeEquipmentRecalculations.push(equipmentCascade);
         }
       }
 
@@ -266,32 +290,7 @@ export class WarehouseRecalculationService {
 
     console.log("      ✓ Склад обновлен с финальными значениями");
 
-    // Находим связанные средства заправки (equipment)
-    const linkedEquipment = await tx
-      .select({ equipmentId: warehousesEquipment.equipmentId })
-      .from(warehousesEquipment)
-      .where(
-        and(
-          eq(warehousesEquipment.warehouseId, warehouseId),
-          isNull(warehousesEquipment.deletedAt),
-        ),
-      );
-
-    if (linkedEquipment.length > 0) {
-      console.log(
-        `      Найдено связанных средств заправки: ${linkedEquipment.length}`,
-      );
-      for (const { equipmentId } of linkedEquipment) {
-        await EquipmentRecalculationService.recalculateEquipmentFromDate(
-          tx,
-          equipmentId,
-          afterDate,
-          productType,
-          updatedById,
-        );
-      }
-    }
-
+    // Каскадный пересчёт складов-получателей (warehouse → warehouse)
     for (const cascade of cascadeRecalculations) {
       const cascadeKey = `${cascade.warehouseId}:${cascade.productType}`;
       if (visited.has(cascadeKey)) {
@@ -311,6 +310,30 @@ export class WarehouseRecalculationService {
         cascade.afterDate,
         cascade.productType,
         updatedById,
+        visited,
+        visitedEq,
+      );
+    }
+
+    // Каскадный пересчёт СЗ, получавших топливо с этого склада
+    for (const cascade of cascadeEquipmentRecalculations) {
+      const eqKey = `${cascade.equipmentId}:${cascade.productType}`;
+      if (visitedEq.has(eqKey)) {
+        console.log(
+          `      → Каскадный пересчет СЗ ${cascade.equipmentId} уже в процессе, пропускаем`,
+        );
+        continue;
+      }
+      console.log(
+        `\n      → Каскадный пересчет СЗ-получателя: ${cascade.equipmentId}`,
+      );
+      await EquipmentRecalculationService.recalculateEquipmentFromDate(
+        tx,
+        cascade.equipmentId,
+        cascade.afterDate,
+        cascade.productType,
+        updatedById,
+        visitedEq,
         visited,
       );
     }
@@ -368,9 +391,8 @@ export class WarehouseRecalculationService {
         return parseFloat(movementRecord.totalCost || "0");
       }
 
-      // Если в таблице транзакций средств заправки (ТЗК), привязанных к складу, есть транзакция исходящего перемещения с sourceId,
-      // то это значит был возврат топлива с ТЗК на материнский склад, и надо взять себестоимсть обновляемого материнского склада,
-      // т.к. себестоимость ТЗК всегда равна себестоимости материнского склада, и не должна влиять на срденюю себестоимость склада при пересчете
+      // Проверяем, не является ли источником возврат с СЗ (equipmentMovement)
+      // Если СЗ делало возврат на склад, себестоимость берём со склада
       const equipmentTx = await tx.query.equipmentTransactions.findFirst({
         where: and(
           eq(equipmentTransactions.sourceType, SOURCE_TYPE.MOVEMENT),
@@ -422,7 +444,6 @@ export class WarehouseRecalculationService {
       return null;
     }
 
-    // При каскадном пересчете мы обновляем purchasePrice и totalCost.
     if (
       Math.abs(
         newSourceAverageCost - parseFloat(movementRecord.purchasePrice || "0"),
@@ -432,7 +453,6 @@ export class WarehouseRecalculationService {
         `        Обновление цены закупки перемещения: ${movementRecord.purchasePrice} -> ${newSourceAverageCost}`,
       );
 
-      // totalCost для получателя = (Кол-во * Новая цена закупки отправителя) + Доставка + Хранение
       const deliveryCost = parseFloat(movementRecord.deliveryCost || "0");
       const storageCost = parseFloat(movementRecord.storageCost || "0");
       const newTotalCost =
@@ -479,6 +499,88 @@ export class WarehouseRecalculationService {
           productType: movementRecord.productType || "kerosene",
         };
       }
+    }
+
+    return null;
+  }
+
+  /**
+   * Обрабатывает каскад для перемещения Склад → СЗ (через таблицу equipmentMovement).
+   * Обновляет costPerKg и totalCost в записи equipmentMovement,
+   * и возвращает данные для пересчёта СЗ-получателя.
+   */
+  private static async getEquipmentMovementCascadeInfo(
+    tx: any,
+    movementId: string,
+    newSourceAverageCost: number,
+    quantity: number,
+    visitedEquipments: Set<string>,
+    updatedById?: string,
+  ): Promise<{
+    equipmentId: string;
+    afterDate: string;
+    productType: string;
+  } | null> {
+    const moveRecord = await tx.query.equipmentMovement.findFirst({
+      where: and(
+        eq(equipmentMovement.id, movementId),
+        isNull(equipmentMovement.deletedAt),
+      ),
+    });
+
+    if (!moveRecord || !moveRecord.toEquipmentId) {
+      return null;
+    }
+
+    const eqKey = `${moveRecord.toEquipmentId}:${moveRecord.productType}`;
+    if (visitedEquipments.has(eqKey)) {
+      console.log(
+        `        СЗ-получатель ${moveRecord.toEquipmentId} уже в очереди на пересчет`,
+      );
+      return null;
+    }
+
+    const newTotalCost = quantity * newSourceAverageCost;
+    const newCostPerKg = quantity > 0 ? newTotalCost / quantity : 0;
+
+    console.log(
+      `        Обновление стоимости перемещения Склад→СЗ: costPerKg=${newCostPerKg.toFixed(5)}, totalCost=${newTotalCost.toFixed(2)}`,
+    );
+
+    await tx
+      .update(equipmentMovement)
+      .set({
+        costPerKg: newCostPerKg.toFixed(5),
+        totalCost: newTotalCost.toFixed(2),
+        updatedAt: sql`NOW()`,
+        updatedById,
+      })
+      .where(eq(equipmentMovement.id, movementId));
+
+    // Находим приходную транзакцию СЗ-получателя
+    const destTx = await tx.query.equipmentTransactions.findFirst({
+      where: and(
+        eq(equipmentTransactions.sourceType, SOURCE_TYPE.MOVEMENT),
+        eq(equipmentTransactions.sourceId, movementId),
+        eq(equipmentTransactions.equipmentId, moveRecord.toEquipmentId),
+        or(
+          eq(equipmentTransactions.transactionType, TRANSACTION_TYPE.RECEIPT),
+          eq(
+            equipmentTransactions.transactionType,
+            TRANSACTION_TYPE.TRANSFER_IN,
+          ),
+        ),
+        isNull(equipmentTransactions.deletedAt),
+      ),
+    });
+
+    if (destTx) {
+      const txDate = destTx.transactionDate || destTx.createdAt;
+      return {
+        equipmentId: moveRecord.toEquipmentId,
+        afterDate: txDate,
+        productType: moveRecord.productType,
+      };
     }
 
     return null;

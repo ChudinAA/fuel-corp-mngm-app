@@ -425,13 +425,13 @@ export function EquipmentMovementDialog({
                   {watchMovementType ===
                   EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK ? (
                     <FormField
+                      key={`from-wh-${watchMovementType}`}
                       control={form.control}
                       name="fromWarehouseId"
                       render={({ field }) => (
-                        <FormItem key={`fromWh-${watchMovementType}`}>
+                        <FormItem>
                           <FormLabel>Склад</FormLabel>
                           <Combobox
-                            key={`combo-from-wh-${watchMovementType}`}
                             options={likWarehouses.map((w) => ({
                               label: w.name,
                               value: w.id,
@@ -446,13 +446,13 @@ export function EquipmentMovementDialog({
                     />
                   ) : (
                     <FormField
+                      key={`from-eq-${watchMovementType}`}
                       control={form.control}
                       name="fromEquipmentId"
                       render={({ field }) => (
-                        <FormItem key={`fromEq-${watchMovementType}`}>
+                        <FormItem>
                           <FormLabel>СЗ</FormLabel>
                           <Combobox
-                            key={`combo-from-eq-${watchMovementType}`}
                             options={likEquipments.map((e) => ({
                               label: e.name,
                               value: e.id,
@@ -489,13 +489,13 @@ export function EquipmentMovementDialog({
                   {watchMovementType ===
                   EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE ? (
                     <FormField
+                      key={`to-wh-${watchMovementType}`}
                       control={form.control}
                       name="toWarehouseId"
                       render={({ field }) => (
-                        <FormItem key={`toWh-${watchMovementType}`}>
+                        <FormItem>
                           <FormLabel>Склад</FormLabel>
                           <Combobox
-                            key={`combo-to-wh-${watchMovementType}`}
                             options={likWarehouses.map((w) => ({
                               label: w.name,
                               value: w.id,
@@ -510,13 +510,13 @@ export function EquipmentMovementDialog({
                     />
                   ) : (
                     <FormField
+                      key={`to-eq-${watchMovementType}`}
                       control={form.control}
                       name="toEquipmentId"
                       render={({ field }) => (
-                        <FormItem key={`toEq-${watchMovementType}`}>
+                        <FormItem>
                           <FormLabel>СЗ</FormLabel>
                           <Combobox
-                            key={`combo-to-eq-${watchMovementType}`}
                             options={likEquipments.filter((e) =>
                               watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_TZK
                                 ? e.id !== watchFromEquipmentId
