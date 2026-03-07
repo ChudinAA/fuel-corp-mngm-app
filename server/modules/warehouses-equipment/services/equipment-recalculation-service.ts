@@ -1,14 +1,8 @@
 import { eq, and, gte, asc, desc, isNull, or, sql } from "drizzle-orm";
-import {
-  equipments,
-  equipmentTransactions,
-} from "../entities/equipment";
-import {
-  equipmentMovement,
-  aircraftRefueling,
-  opt,
-} from "@shared/schema";
+import { equipments, equipmentTransactions } from "../entities/equipment";
+import { equipmentMovement, aircraftRefueling, opt } from "@shared/schema";
 import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
+import { WarehouseRecalculationService } from "server/modules/warehouses/services/warehouse-recalculation-service";
 
 export class EquipmentRecalculationService {
   static async recalculateEquipmentFromDate(
@@ -117,8 +111,11 @@ export class EquipmentRecalculationService {
         newPrice = currentAverageCost;
 
         // Update related deal if it's a sale (refueling or opt)
-        if (transaction.sourceType || transaction.transactionType === TRANSACTION_TYPE.SALE) {
-          await this.updateRelatedDeal(
+        if (
+          transaction.sourceType ||
+          transaction.transactionType === TRANSACTION_TYPE.SALE
+        ) {
+          await WarehouseRecalculationService.updateRelatedDeal(
             tx,
             transaction.sourceType,
             transaction.sourceId,
@@ -126,6 +123,17 @@ export class EquipmentRecalculationService {
             updatedById,
           );
         }
+      }
+
+      // Обновляем перемещения оборудования
+      if (transaction.sourceType === SOURCE_TYPE.MOVEMENT) {
+        await this.updateEquipmentMovement(
+          tx,
+          transaction.sourceId,
+          newAverageCost,
+          transaction.transactionType,
+          updatedById,
+        );
       }
 
       await tx
@@ -202,7 +210,10 @@ export class EquipmentRecalculationService {
           and(
             eq(equipmentTransactions.sourceType, SOURCE_TYPE.MOVEMENT),
             eq(equipmentTransactions.sourceId, sourceId),
-            eq(equipmentTransactions.transactionType, TRANSACTION_TYPE.TRANSFER_OUT),
+            eq(
+              equipmentTransactions.transactionType,
+              TRANSACTION_TYPE.TRANSFER_OUT,
+            ),
             isNull(equipmentTransactions.deletedAt),
           ),
         )
@@ -210,7 +221,9 @@ export class EquipmentRecalculationService {
 
       if (sourceTx.length > 0) {
         const srcQty = Math.abs(parseFloat(sourceTx[0].quantity));
-        const srcCost = parseFloat(sourceTx[0].averageCostAfter || sourceTx[0].averageCostBefore || "0");
+        const srcCost = parseFloat(
+          sourceTx[0].averageCostAfter || sourceTx[0].averageCostBefore || "0",
+        );
         return srcQty > 0 ? srcCost * quantity : quantity * fallbackAverageCost;
       }
     }
@@ -218,66 +231,40 @@ export class EquipmentRecalculationService {
     return quantity * fallbackAverageCost;
   }
 
-  private static async updateRelatedDeal(
+  private static async updateEquipmentMovement(
     tx: any,
-    sourceType: string | null | undefined,
-    sourceId: string | null | undefined,
-    averageCost: number,
+    movementId: string,
+    newAverageCost: number,
+    transactionType: string,
     updatedById?: string,
   ) {
-    if (!sourceId || !sourceType) return;
+    console.log(
+      "        [updateEquipmentMovement]",
+      movementId,
+      transactionType,
+    );
+    const move = await tx.query.equipmentMovement.findFirst({
+      where: eq(equipmentMovement.id, movementId),
+    });
 
-    try {
-      if (sourceType === SOURCE_TYPE.REFUELING) {
-        const refueling = await tx.query.aircraftRefueling?.findFirst({
-          where: eq(aircraftRefueling.id, sourceId),
-        });
+    if (move) {
+      const quantity = parseFloat(move.quantityKg);
+      const totalCost = quantity * newAverageCost;
+      await tx
+        .update(equipmentMovement)
+        .set({
+          costPerKg: newAverageCost.toFixed(5),
+          totalCost: totalCost.toFixed(2),
+          updatedAt: sql`NOW()`,
+          updatedById,
+        })
+        .where(eq(equipmentMovement.id, movementId));
+      console.log("        ✓ Перемещение оборудования обновлено");
 
-        if (refueling) {
-          const quantityKg = parseFloat(refueling.quantityKg || "0");
-          const newPurchaseCost = quantityKg * averageCost;
-          const salePrice = parseFloat(refueling.salePrice || "0");
-          const newProfit = quantityKg * salePrice - newPurchaseCost;
-
-          await tx
-            .update(aircraftRefueling)
-            .set({
-              purchasePrice: averageCost.toFixed(4),
-              purchaseCost: newPurchaseCost.toFixed(2),
-              profit: newProfit.toFixed(2),
-              updatedAt: sql`NOW()`,
-              updatedById,
-            })
-            .where(eq(aircraftRefueling.id, sourceId));
-        }
-      } else if (sourceType === SOURCE_TYPE.OPT) {
-        const deal = await tx.query.opt?.findFirst({
-          where: eq(opt.id, sourceId),
-        });
-
-        if (deal) {
-          const quantityKg = parseFloat(deal.quantityKg || "0");
-          const newPurchaseCost = quantityKg * averageCost;
-          const salePriceTotal = parseFloat(deal.salePriceTotal || "0");
-          const newProfit = salePriceTotal - newPurchaseCost;
-
-          await tx
-            .update(opt)
-            .set({
-              purchasePrice: averageCost.toFixed(4),
-              purchaseCost: newPurchaseCost.toFixed(2),
-              profit: newProfit.toFixed(2),
-              updatedAt: sql`NOW()`,
-              updatedById,
-            })
-            .where(eq(opt.id, sourceId));
-        }
+      // Каскадный пересчет Базового склада или СЗ, на который сделано перемещение
+      if (transactionType === TRANSACTION_TYPE.TRANSFER_OUT) {
+        // TODO: сделать каскадый пересчет склада или СЗ по аналогии как сделано в WarehouseRecalculationService без циклических пересчетов
       }
-    } catch (err) {
-      console.error(
-        `[EquipmentRecalculationService] Error updating deal ${sourceType}/${sourceId}:`,
-        err,
-      );
     }
   }
 }

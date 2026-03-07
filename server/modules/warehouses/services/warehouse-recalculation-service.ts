@@ -11,6 +11,7 @@ import {
   equipmentMovement,
 } from "@shared/schema";
 import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
+import { EquipmentRecalculationService } from "server/modules/warehouses-equipment/services/equipment-recalculation-service";
 
 export class WarehouseRecalculationService {
   static async recalculateAllAffectedTransactions(
@@ -281,7 +282,7 @@ export class WarehouseRecalculationService {
         `      Найдено связанных средств заправки: ${linkedEquipment.length}`,
       );
       for (const { equipmentId } of linkedEquipment) {
-        await this.recalculateEquipmentChain(
+        await EquipmentRecalculationService.recalculateEquipmentFromDate(
           tx,
           equipmentId,
           afterDate,
@@ -313,187 +314,6 @@ export class WarehouseRecalculationService {
         visited,
       );
     }
-  }
-
-  private static async recalculateEquipmentChain(
-    tx: any,
-    equipmentId: string,
-    afterDate: string,
-    productType: string,
-    updatedById?: string,
-  ) {
-    console.log(
-      `      [recalculateEquipmentChain] Пересчет оборудования ${equipmentId}`,
-    );
-    const isPvkj = productType === PRODUCT_TYPE.PVKJ;
-
-    // 1. Получаем состояние оборудования до даты пересчета
-    const lastTransaction = await tx
-      .select()
-      .from(equipmentTransactions)
-      .where(
-        and(
-          eq(equipmentTransactions.equipmentId, equipmentId),
-          eq(equipmentTransactions.productType, productType),
-          isNull(equipmentTransactions.deletedAt),
-          sql`COALESCE(${equipmentTransactions.transactionDate}, ${equipmentTransactions.createdAt}) < ${afterDate}`,
-        ),
-      )
-      .orderBy(
-        desc(
-          sql`COALESCE(${equipmentTransactions.transactionDate}, ${equipmentTransactions.createdAt})`,
-        ),
-        desc(equipmentTransactions.createdAt),
-        desc(equipmentTransactions.id),
-      )
-      .limit(1);
-
-    let currentBalance = 0;
-    let currentAverageCost = 0;
-
-    if (lastTransaction.length > 0) {
-      currentBalance = parseFloat(lastTransaction[0].balanceAfter || "0");
-      currentAverageCost = parseFloat(
-        lastTransaction[0].averageCostAfter || "0",
-      );
-    }
-
-    console.log(`      Начальное состояние оборудования до ${afterDate}:`, {
-      balance: currentBalance,
-      averageCost: currentAverageCost,
-    });
-
-    // 2. Получаем транзакции оборудования для пересчета
-    const transactions = await tx
-      .select()
-      .from(equipmentTransactions)
-      .where(
-        and(
-          eq(equipmentTransactions.equipmentId, equipmentId),
-          eq(equipmentTransactions.productType, productType),
-          isNull(equipmentTransactions.deletedAt),
-          or(
-            gte(equipmentTransactions.transactionDate, afterDate),
-            and(
-              isNull(equipmentTransactions.transactionDate),
-              gte(equipmentTransactions.createdAt, afterDate),
-            ),
-          ),
-        ),
-      )
-      .orderBy(
-        asc(
-          sql`COALESCE(${equipmentTransactions.transactionDate}, ${equipmentTransactions.createdAt})`,
-        ),
-        asc(equipmentTransactions.createdAt),
-        asc(equipmentTransactions.id),
-      );
-
-    console.log(
-      `      Найдено транзакций оборудования для пересчета: ${transactions.length}`,
-    );
-
-    for (let i = 0; i < transactions.length; i++) {
-      const transaction = transactions[i];
-      const quantity = Math.abs(parseFloat(transaction.quantity));
-      const isReceipt =
-        transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
-        transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
-
-      let newBalance: number;
-      let newAverageCost: number;
-
-      if (isReceipt) {
-        newBalance = currentBalance + quantity;
-
-        // Для оборудования приход всегда идет со склада по текущей себестоимости склада на момент транзакции.
-        // Так как мы пересчитываем цепочку после того как складские транзакции уже обновлены,
-        // нам нужно найти соответствующую транзакцию склада, чтобы получить актуальную себестоимость.
-        let incomingCost = 0;
-        if (transaction.sourceType === SOURCE_TYPE.MOVEMENT) {
-          const warehouseTx = await tx.query.warehouseTransactions.findFirst({
-            where: and(
-              eq(warehouseTransactions.sourceType, SOURCE_TYPE.MOVEMENT),
-              eq(warehouseTransactions.sourceId, transaction.sourceId),
-              eq(
-                warehouseTransactions.transactionType,
-                TRANSACTION_TYPE.TRANSFER_OUT,
-              ),
-              isNull(warehouseTransactions.deletedAt),
-            ),
-          });
-          if (warehouseTx) {
-            incomingCost = parseFloat(warehouseTx.averageCostAfter || "0");
-          }
-        }
-
-        newAverageCost = incomingCost;
-      } else {
-        newBalance = Math.max(0, currentBalance - quantity);
-        newAverageCost = currentAverageCost;
-
-        // Если это списание на заправку, обновляем сделку
-        if (
-          transaction.transactionType === TRANSACTION_TYPE.SALE ||
-          transaction.sourceType === SOURCE_TYPE.REFUELING
-        ) {
-          await this.updateRelatedDeal(
-            tx,
-            transaction.sourceType || SOURCE_TYPE.REFUELING,
-            transaction.sourceId,
-            currentAverageCost,
-            updatedById,
-          );
-        }
-      }
-
-      // Обновляем перемещения оборудования
-      if (transaction.sourceType === SOURCE_TYPE.MOVEMENT) {
-        await this.updateEquipmentMovement(
-          tx,
-          transaction.sourceId,
-          newAverageCost,
-          transaction.transactionType,
-          updatedById,
-        );
-      }
-
-      await tx
-        .update(equipmentTransactions)
-        .set({
-          balanceBefore: currentBalance.toString(),
-          balanceAfter: newBalance.toString(),
-          averageCostBefore: currentAverageCost.toFixed(4),
-          averageCostAfter: newAverageCost.toFixed(4),
-          updatedAt: sql`NOW()`,
-          updatedById,
-        })
-        .where(eq(equipmentTransactions.id, transaction.id));
-
-      currentBalance = newBalance;
-      currentAverageCost = newAverageCost;
-    }
-
-    // 3. Обновляем итоговое состояние оборудования
-    const updateData: any = {
-      updatedAt: sql`NOW()`,
-      updatedById,
-    };
-
-    if (isPvkj) {
-      updateData.pvkjBalance = currentBalance.toFixed(2);
-      updateData.pvkjAverageCost = currentAverageCost.toFixed(4);
-    } else {
-      updateData.currentBalance = currentBalance.toFixed(2);
-      updateData.averageCost = currentAverageCost.toFixed(4);
-    }
-
-    await tx
-      .update(equipments)
-      .set(updateData)
-      .where(eq(equipments.id, equipmentId));
-
-    console.log(`      ✓ Оборудование ${equipmentId} пересчитано`);
   }
 
   private static async getWarehouseStateBeforeDate(
@@ -664,7 +484,7 @@ export class WarehouseRecalculationService {
     return null;
   }
 
-  private static async updateRelatedDeal(
+  static async updateRelatedDeal(
     tx: any,
     sourceType: string,
     sourceId: string,
@@ -753,66 +573,5 @@ export class WarehouseRecalculationService {
         console.log("        ✓ Заправка обновлена");
       }
     }
-  }
-
-  private static async updateEquipmentMovement(
-    tx: any,
-    movementId: string,
-    newAverageCost: number,
-    transactionType: string,
-    updatedById?: string,
-  ) {
-    console.log(
-      "        [updateEquipmentMovement]",
-      movementId,
-      transactionType,
-    );
-    const move = await tx.query.equipmentMovement.findFirst({
-      where: eq(equipmentMovement.id, movementId),
-    });
-
-    if (move) {
-      const quantity = parseFloat(move.quantityKg);
-      const totalCost = quantity * newAverageCost;
-      await tx
-        .update(equipmentMovement)
-        .set({
-          costPerKg: newAverageCost.toFixed(5),
-          totalCost: totalCost.toFixed(2),
-          updatedAt: sql`NOW()`,
-          updatedById,
-        })
-        .where(eq(equipmentMovement.id, movementId));
-      console.log("        ✓ Перемещение оборудования обновлено");
-    }
-  }
-
-  static getAffectedWarehouses(
-    movementRecord: any,
-    movementDate: string,
-  ): Array<{ warehouseId: string; afterDate: string; productType: string }> {
-    const affected: Array<{
-      warehouseId: string;
-      afterDate: string;
-      productType: string;
-    }> = [];
-
-    if (movementRecord.fromWarehouseId) {
-      affected.push({
-        warehouseId: movementRecord.fromWarehouseId,
-        afterDate: movementDate,
-        productType: movementRecord.productType || "kerosene",
-      });
-    }
-
-    if (movementRecord.toWarehouseId) {
-      affected.push({
-        warehouseId: movementRecord.toWarehouseId,
-        afterDate: movementDate,
-        productType: movementRecord.productType || "kerosene",
-      });
-    }
-
-    return affected;
   }
 }
