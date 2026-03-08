@@ -18,11 +18,6 @@ declare global {
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.session.userId) {
-    // For SSE endpoints, close the connection instead of retrying
-    if (req.path.includes("/sse/")) {
-      res.status(401).end();
-      return;
-    }
     return res.status(401).json({ message: "Необходима авторизация" });
   }
   next();

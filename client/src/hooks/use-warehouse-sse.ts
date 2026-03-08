@@ -75,6 +75,12 @@ export function useWarehouseSSE(isAuthenticated: boolean) {
       }
     });
 
+    eventSource.addEventListener("auth_error", () => {
+      console.warn("[SSE] Auth error received, closing connection permanently");
+      eventSource.close();
+      eventSourceRef.current = null;
+    });
+
     eventSource.onerror = (err) => {
       console.error("[SSE] Connection error:", err);
       eventSource.close();

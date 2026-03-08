@@ -308,12 +308,18 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     },
   );
 
-  app.get("/api/warehouses/sse/events", requireAuth, (req, res) => {
+  app.get("/api/warehouses/sse/events", (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders();
+
+    if (!req.session.userId) {
+      res.write('event: auth_error\ndata: {"message":"unauthorized"}\n\n');
+      res.end();
+      return;
+    }
 
     res.write('data: {"type":"connected"}\n\n');
 
