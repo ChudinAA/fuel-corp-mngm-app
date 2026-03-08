@@ -429,16 +429,6 @@ export function EquipmentMovementDialog({
                           : "Выберите СЗ"
                       }
                     />
-                    {form.formState.errors.fromWarehouseId && (
-                      <p className="text-sm font-medium text-destructive">
-                        {form.formState.errors.fromWarehouseId.message}
-                      </p>
-                    )}
-                    {form.formState.errors.fromEquipmentId && (
-                      <p className="text-sm font-medium text-destructive">
-                        {form.formState.errors.fromEquipmentId.message}
-                      </p>
-                    )}
                   </FormItem>
                   <div className="pt-2">
                     <p className="text-xs text-muted-foreground">
@@ -468,13 +458,7 @@ export function EquipmentMovementDialog({
                       options={
                         watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE
                           ? likWarehouses.map((w) => ({ label: w.name, value: w.id }))
-                          : likEquipments
-                              .filter((e) =>
-                                watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_TZK
-                                  ? e.id !== watchFromEquipmentId
-                                  : true
-                              )
-                              .map((e) => ({ label: e.name, value: e.id }))
+                          : likEquipments.map((e) => ({ label: e.name, value: e.id }))
                       }
                       value={
                         watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE
@@ -494,16 +478,6 @@ export function EquipmentMovementDialog({
                           : "Выберите СЗ"
                       }
                     />
-                    {form.formState.errors.toWarehouseId && (
-                      <p className="text-sm font-medium text-destructive">
-                        {form.formState.errors.toWarehouseId.message}
-                      </p>
-                    )}
-                    {form.formState.errors.toEquipmentId && (
-                      <p className="text-sm font-medium text-destructive">
-                        {form.formState.errors.toEquipmentId.message}
-                      </p>
-                    )}
                   </FormItem>
                 </div>
               </div>
