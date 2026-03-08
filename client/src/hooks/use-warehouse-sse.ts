@@ -8,7 +8,6 @@ interface SSEEventData {
 
 export function useWarehouseSSE(isAuthenticated: boolean) {
   const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -84,10 +83,6 @@ export function useWarehouseSSE(isAuthenticated: boolean) {
     eventSourceRef.current = eventSource;
 
     return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
