@@ -69,6 +69,7 @@ export function AddEquipmentDialog({
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses-equipment"] });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses/equipment-map"] });
       toast({
         title: isEditing ? "Обновлено" : "Создано",

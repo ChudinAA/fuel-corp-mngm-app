@@ -39,16 +39,20 @@ export function registerEquipmentRoutes(app: Router) {
       getNewData: (req) => req.body,
     }),
     async (req, res) => {
-      const { warehouseId, ...equipmentData } = req.body;
-      const parsed = insertEquipmentSchema.safeParse(equipmentData);
-      if (!parsed.success) return res.status(400).json(parsed.error);
+      try {
+        const { warehouseId, ...equipmentData } = req.body;
+        const parsed = insertEquipmentSchema.safeParse(equipmentData);
+        if (!parsed.success) return res.status(400).json(parsed.error);
 
-      const data = await equipmentStorage.createEquipment({
-        ...parsed.data,
-        createdById: req.session.userId as string,
-      });
+        const data = await equipmentStorage.createEquipment({
+          ...parsed.data,
+          createdById: req.session.userId as string,
+        });
 
-      res.status(201).json(data);
+        res.status(201).json(data);
+      } catch (error: any) {
+        res.status(409).json({ message: error.message || "Ошибка при создании СЗ" });
+      }
     },
   );
 
@@ -63,12 +67,16 @@ export function registerEquipmentRoutes(app: Router) {
       getNewData: (req) => req.body,
     }),
     async (req, res) => {
-      const data = await equipmentStorage.updateEquipment(req.params.id, {
-        ...req.body,
-        updatedById: req.session.userId as string,
-      });
-      if (!data) return res.status(404).json({ message: "Not found" });
-      res.json(data);
+      try {
+        const data = await equipmentStorage.updateEquipment(req.params.id, {
+          ...req.body,
+          updatedById: req.session.userId as string,
+        });
+        if (!data) return res.status(404).json({ message: "Not found" });
+        res.json(data);
+      } catch (error: any) {
+        res.status(500).json({ message: error.message || "Ошибка при обновлении СЗ" });
+      }
     },
   );
 
@@ -82,8 +90,12 @@ export function registerEquipmentRoutes(app: Router) {
       getOldData: async (req) => equipmentStorage.getEquipment(req.params.id),
     }),
     async (req, res) => {
-      await equipmentStorage.deleteEquipment(req.params.id, req.session.userId as string);
-      res.status(204).end();
+      try {
+        await equipmentStorage.deleteEquipment(req.params.id, req.session.userId as string);
+        res.status(204).end();
+      } catch (error: any) {
+        res.status(500).json({ message: error.message || "Ошибка при удалении СЗ" });
+      }
     },
   );
 
