@@ -338,14 +338,6 @@ export function EquipmentMovementDialog({
                           form.setValue("toWarehouseId", "", { shouldValidate: false });
                           form.setValue("fromEquipmentId", "", { shouldValidate: false });
                           form.setValue("toEquipmentId", "", { shouldValidate: false });
-                          const defaultWh = likWarehouses[0];
-                          if (defaultWh) {
-                            if (val === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK) {
-                              form.setValue("fromWarehouseId", defaultWh.id, { shouldValidate: false });
-                            } else if (val === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE) {
-                              form.setValue("toWarehouseId", defaultWh.id, { shouldValidate: false });
-                            }
-                          }
                         }}
                         value={field.value}
                       >
@@ -409,48 +401,45 @@ export function EquipmentMovementDialog({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4 border p-4 rounded-md">
                   <h3 className="font-medium text-sm border-b pb-2">Откуда</h3>
-                  {watchMovementType ===
-                  EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK ? (
-                    <FormField
-                      control={form.control}
-                      name="fromWarehouseId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Склад</FormLabel>
-                          <Combobox
-                            options={likWarehouses.map((w) => ({
-                              label: w.name,
-                              value: w.id,
-                            }))}
-                            value={field.value || ""}
-                            onValueChange={field.onChange}
-                            placeholder="Выберите склад"
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                  <FormItem>
+                    <FormLabel>
+                      {watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK ? "Склад" : "СЗ"}
+                    </FormLabel>
+                    <Combobox
+                      options={
+                        watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK
+                          ? likWarehouses.map((w) => ({ label: w.name, value: w.id }))
+                          : likEquipments.map((e) => ({ label: e.name, value: e.id }))
+                      }
+                      value={
+                        watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK
+                          ? (watchFromWarehouseId || "")
+                          : (watchFromEquipmentId || "")
+                      }
+                      onValueChange={(val) => {
+                        if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK) {
+                          form.setValue("fromWarehouseId", val, { shouldValidate: true });
+                        } else {
+                          form.setValue("fromEquipmentId", val, { shouldValidate: true });
+                        }
+                      }}
+                      placeholder={
+                        watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK
+                          ? "Выберите склад"
+                          : "Выберите СЗ"
+                      }
                     />
-                  ) : (
-                    <FormField
-                      control={form.control}
-                      name="fromEquipmentId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>СЗ</FormLabel>
-                          <Combobox
-                            options={likEquipments.map((e) => ({
-                              label: e.name,
-                              value: e.id,
-                            }))}
-                            value={field.value || ""}
-                            onValueChange={field.onChange}
-                            placeholder="Выберите СЗ"
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
+                    {form.formState.errors.fromWarehouseId && (
+                      <p className="text-sm font-medium text-destructive">
+                        {form.formState.errors.fromWarehouseId.message}
+                      </p>
+                    )}
+                    {form.formState.errors.fromEquipmentId && (
+                      <p className="text-sm font-medium text-destructive">
+                        {form.formState.errors.fromEquipmentId.message}
+                      </p>
+                    )}
+                  </FormItem>
                   <div className="pt-2">
                     <p className="text-xs text-muted-foreground">
                       Текущий остаток:
@@ -471,52 +460,51 @@ export function EquipmentMovementDialog({
 
                 <div className="space-y-4 border p-4 rounded-md">
                   <h3 className="font-medium text-sm border-b pb-2">Куда</h3>
-                  {watchMovementType ===
-                  EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE ? (
-                    <FormField
-                      control={form.control}
-                      name="toWarehouseId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Склад</FormLabel>
-                          <Combobox
-                            options={likWarehouses.map((w) => ({
-                              label: w.name,
-                              value: w.id,
-                            }))}
-                            value={field.value || ""}
-                            onValueChange={field.onChange}
-                            placeholder="Выберите склад"
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                  <FormItem>
+                    <FormLabel>
+                      {watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE ? "Склад" : "СЗ"}
+                    </FormLabel>
+                    <Combobox
+                      options={
+                        watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE
+                          ? likWarehouses.map((w) => ({ label: w.name, value: w.id }))
+                          : likEquipments
+                              .filter((e) =>
+                                watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_TZK
+                                  ? e.id !== watchFromEquipmentId
+                                  : true
+                              )
+                              .map((e) => ({ label: e.name, value: e.id }))
+                      }
+                      value={
+                        watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE
+                          ? (watchToWarehouseId || "")
+                          : (watchToEquipmentId || "")
+                      }
+                      onValueChange={(val) => {
+                        if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE) {
+                          form.setValue("toWarehouseId", val, { shouldValidate: true });
+                        } else {
+                          form.setValue("toEquipmentId", val, { shouldValidate: true });
+                        }
+                      }}
+                      placeholder={
+                        watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE
+                          ? "Выберите склад"
+                          : "Выберите СЗ"
+                      }
                     />
-                  ) : (
-                    <FormField
-                      control={form.control}
-                      name="toEquipmentId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>СЗ</FormLabel>
-                          <Combobox
-                            options={likEquipments.filter((e) =>
-                              watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_TZK
-                                ? e.id !== watchFromEquipmentId
-                                : true
-                            ).map((e) => ({
-                              label: e.name,
-                              value: e.id,
-                            }))}
-                            value={field.value || ""}
-                            onValueChange={field.onChange}
-                            placeholder="Выберите СЗ"
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
+                    {form.formState.errors.toWarehouseId && (
+                      <p className="text-sm font-medium text-destructive">
+                        {form.formState.errors.toWarehouseId.message}
+                      </p>
+                    )}
+                    {form.formState.errors.toEquipmentId && (
+                      <p className="text-sm font-medium text-destructive">
+                        {form.formState.errors.toEquipmentId.message}
+                      </p>
+                    )}
+                  </FormItem>
                 </div>
               </div>
 
