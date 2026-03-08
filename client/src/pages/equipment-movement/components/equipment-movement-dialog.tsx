@@ -115,26 +115,6 @@ export function EquipmentMovementDialog({
     queryKey: ["/api/warehouses-equipment"],
   });
 
-  // Auto-fill logic for warehouse when movement type changes
-  useEffect(() => {
-    const defaultLikWarehouse = likWarehouses[0];
-    if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE) {
-      if (defaultLikWarehouse && !watchToWarehouseId) {
-        form.setValue("toWarehouseId", defaultLikWarehouse.id);
-      }
-    } else if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK) {
-      if (defaultLikWarehouse && !watchFromWarehouseId) {
-        form.setValue("fromWarehouseId", defaultLikWarehouse.id);
-      }
-    }
-  }, [
-    watchMovementType,
-    likWarehouses,
-    watchFromWarehouseId,
-    watchToWarehouseId,
-    form,
-  ]);
-
   useEffect(() => {
     if (editMovement) {
       const resetValues = {
@@ -354,11 +334,18 @@ export function EquipmentMovementDialog({
                       <Select
                         onValueChange={(val) => {
                           field.onChange(val);
-                          // Clear ALL direction fields on type change to prevent stale visual state
                           form.setValue("fromWarehouseId", "", { shouldValidate: false });
                           form.setValue("toWarehouseId", "", { shouldValidate: false });
                           form.setValue("fromEquipmentId", "", { shouldValidate: false });
                           form.setValue("toEquipmentId", "", { shouldValidate: false });
+                          const defaultWh = likWarehouses[0];
+                          if (defaultWh) {
+                            if (val === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK) {
+                              form.setValue("fromWarehouseId", defaultWh.id, { shouldValidate: false });
+                            } else if (val === EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE) {
+                              form.setValue("toWarehouseId", defaultWh.id, { shouldValidate: false });
+                            }
+                          }
                         }}
                         value={field.value}
                       >
@@ -425,7 +412,6 @@ export function EquipmentMovementDialog({
                   {watchMovementType ===
                   EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK ? (
                     <FormField
-                      key={`from-wh-${watchMovementType}`}
                       control={form.control}
                       name="fromWarehouseId"
                       render={({ field }) => (
@@ -446,7 +432,6 @@ export function EquipmentMovementDialog({
                     />
                   ) : (
                     <FormField
-                      key={`from-eq-${watchMovementType}`}
                       control={form.control}
                       name="fromEquipmentId"
                       render={({ field }) => (
@@ -489,7 +474,6 @@ export function EquipmentMovementDialog({
                   {watchMovementType ===
                   EQUIPMENT_MOVEMENT_TYPE.TZK_TO_STORAGE ? (
                     <FormField
-                      key={`to-wh-${watchMovementType}`}
                       control={form.control}
                       name="toWarehouseId"
                       render={({ field }) => (
@@ -510,7 +494,6 @@ export function EquipmentMovementDialog({
                     />
                   ) : (
                     <FormField
-                      key={`to-eq-${watchMovementType}`}
                       control={form.control}
                       name="toEquipmentId"
                       render={({ field }) => (
