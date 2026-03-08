@@ -15,7 +15,7 @@ import { z } from "zod";
 
 const formSchema = z.object({
   name: z.string().min(1, "Название обязательно"),
-  warehouseId: z.string().uuid("Выберите материнский склад"),
+  // warehouseId: z.string().uuid("Выберите материнский склад"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -40,7 +40,7 @@ export function AddEquipmentDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      warehouseId: likWarehouses[0]?.id || "",
+      // warehouseId: undefined,
     },
   });
 
@@ -48,15 +48,15 @@ export function AddEquipmentDialog({
     if (equipmentToEdit) {
       form.reset({
         name: equipmentToEdit.name,
-        warehouseId: likWarehouses[0]?.id || "", // In a real app we'd fetch current link
+        // warehouseId: undefined,
       });
     } else {
       form.reset({
         name: "",
-        warehouseId: likWarehouses[0]?.id || "",
+        // warehouseId: undefined,
       });
     }
-  }, [equipmentToEdit, likWarehouses, form]);
+  }, [equipmentToEdit, form]);
 
   const mutation = useMutation({
     mutationFn: async (data: FormValues) => {
@@ -68,13 +68,8 @@ export function AddEquipmentDialog({
       const res = await apiRequest(method, url, data);
       return res.json();
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses/equipment-map"] });
-      if (variables.warehouseId) {
-        queryClient.invalidateQueries({ 
-          queryKey: [`/api/warehouses/${variables.warehouseId}/equipment`] 
-        });
-      }
       toast({
         title: isEditing ? "Обновлено" : "Создано",
         description: "Средство заправки успешно сохранено",
@@ -113,7 +108,7 @@ export function AddEquipmentDialog({
               )}
             />
 
-            <FormField
+            {/* <FormField
               control={form.control}
               name="warehouseId"
               render={({ field }) => (
@@ -136,7 +131,7 @@ export function AddEquipmentDialog({
                   <FormMessage />
                 </FormItem>
               )}
-            />
+            /> */}
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

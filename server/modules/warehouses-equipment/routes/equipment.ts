@@ -48,10 +48,6 @@ export function registerEquipmentRoutes(app: Router) {
         createdById: req.session.userId as string,
       });
 
-      if (warehouseId) {
-        await equipmentStorage.linkToWarehouse(warehouseId, data.id);
-      }
-
       res.status(201).json(data);
     },
   );

@@ -13,6 +13,18 @@ export class EquipmentStorage {
   }
 
   async createEquipment(data: InsertEquipment): Promise<Equipment> {
+    // Check for duplicates
+    const existing = await db.query.equipments.findFirst({
+      where: and(
+        eq(equipments.name, data.name),
+        isNull(equipments.deletedAt),
+      ),
+    });
+
+    if (existing) {
+      throw new Error("Такая запись уже существует");
+    }
+    
     const [equipment] = await db.insert(equipments).values(data).returning();
     return equipment;
   }
