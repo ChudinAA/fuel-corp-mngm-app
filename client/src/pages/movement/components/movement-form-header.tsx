@@ -1,9 +1,24 @@
-
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import {
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -27,14 +42,25 @@ export function MovementFormHeader({ form }: MovementFormHeaderProps) {
             <Popover>
               <PopoverTrigger asChild>
                 <FormControl>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal" data-testid="input-movement-date">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                    data-testid="input-movement-date"
+                  >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {field.value ? format(field.value, "dd.MM.yyyy", { locale: ru }) : "Выберите дату"}
+                    {field.value
+                      ? format(field.value, "dd.MM.yyyy", { locale: ru })
+                      : "Выберите дату"}
                   </Button>
                 </FormControl>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={field.value} onSelect={field.onChange} locale={ru} />
+                <Calendar
+                  mode="single"
+                  selected={field.value}
+                  onSelect={field.onChange}
+                  locale={ru}
+                />
               </PopoverContent>
             </Popover>
             <FormMessage />
@@ -48,7 +74,14 @@ export function MovementFormHeader({ form }: MovementFormHeaderProps) {
         render={({ field }) => (
           <FormItem>
             <FormLabel>Тип перемещения</FormLabel>
-            <Select onValueChange={field.onChange} value={field.value}>
+            <Select
+              onValueChange={(val) => {
+                field.onChange(val);
+                form.setValue("supplierId", "", { shouldValidate: false });
+                form.setValue("fromWarehouseId", "", { shouldValidate: false });
+              }}
+              value={field.value}
+            >
               <FormControl>
                 <SelectTrigger data-testid="select-movement-type">
                   <SelectValue placeholder="Выберите тип" />
@@ -56,7 +89,9 @@ export function MovementFormHeader({ form }: MovementFormHeaderProps) {
               </FormControl>
               <SelectContent>
                 <SelectItem value={MOVEMENT_TYPE.SUPPLY}>Покупка</SelectItem>
-                <SelectItem value={MOVEMENT_TYPE.INTERNAL}>Внутреннее перемещение</SelectItem>
+                <SelectItem value={MOVEMENT_TYPE.INTERNAL}>
+                  Внутреннее перемещение
+                </SelectItem>
               </SelectContent>
             </Select>
             <FormMessage />

@@ -15,6 +15,8 @@ import { Warehouse } from "@shared/schema";
 interface MovementSourceSectionProps {
   form: UseFormReturn<MovementFormData>;
   watchMovementType: string;
+  watchSupplierId: string;
+  watchFromWarehouseId: string;
   suppliers: AllSupplier[];
   warehouses: Warehouse[];
 }
@@ -22,59 +24,44 @@ interface MovementSourceSectionProps {
 export function MovementSourceSection({
   form,
   watchMovementType,
+  watchSupplierId,
+  watchFromWarehouseId,
   suppliers,
   warehouses,
 }: MovementSourceSectionProps) {
-
-  if (watchMovementType === MOVEMENT_TYPE.SUPPLY) {
-    return (
-      <FormField
-        control={form.control}
-        name="supplierId"
-        render={({ field }) => (
-          <FormItem className="col-span-1 min-w-0">
-            <FormLabel>Поставщик</FormLabel>
-            <FormControl>
-              <div className="w-full">
-                <Combobox
-                  options={suppliers?.map((s) => ({ value: s.id, label: s.name })) || []}
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  placeholder="Выберите поставщика"
-                  className="w-full"
-                  dataTestId="select-movement-supplier"
-                />
-              </div>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+  return (
+    <FormItem>
+      <FormLabel>
+        {watchMovementType === MOVEMENT_TYPE.SUPPLY
+          ? "Поставщик"
+          : "Откуда (склад)"}
+      </FormLabel>
+      <Combobox
+        options={
+          watchMovementType === MOVEMENT_TYPE.SUPPLY
+            ? suppliers?.map((s) => ({ value: s.id, label: s.name })) || []
+            : warehouses?.map((w) => ({ value: w.id, label: w.name })) || []
+        }
+        value={
+          watchMovementType === MOVEMENT_TYPE.SUPPLY
+            ? watchSupplierId || ""
+            : watchFromWarehouseId || ""
+        }
+        onValueChange={(val) => {
+          if (watchMovementType === MOVEMENT_TYPE.SUPPLY) {
+            form.setValue("supplierId", val, { shouldValidate: true });
+          } else {
+            form.setValue("fromWarehouseId", val, {
+              shouldValidate: true,
+            });
+          }
+        }}
+        placeholder={
+          watchMovementType === MOVEMENT_TYPE.SUPPLY
+            ? "Выберите поставщика"
+            : "Выберите склад"
+        }
       />
-    );
-  } else {
-    return (
-      <FormField
-        control={form.control}
-        name="fromWarehouseId"
-        render={({ field }) => (
-          <FormItem className="col-span-1 min-w-0">
-            <FormLabel>Откуда (склад)</FormLabel>
-            <FormControl>
-              <div className="w-full">
-                <Combobox
-                  options={warehouses?.map((w) => ({ value: w.id, label: w.name })) || []}
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  placeholder="Выберите склад"
-                  className="w-full"
-                  dataTestId="select-movement-from"
-                />
-              </div>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    );
-  }
+    </FormItem>
+  );
 }

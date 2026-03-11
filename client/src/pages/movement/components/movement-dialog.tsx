@@ -439,7 +439,9 @@ export function MovementDialog({
                 <MovementFormHeader form={form} />
                 <MovementSourceSection
                   form={form}
-                  watchMovementType={watchMovementType}
+                  watchMovementType={watchMovementType || MOVEMENT_TYPE.SUPPLY}
+                  watchSupplierId={watchSupplierId || ""}
+                  watchFromWarehouseId={watchFromWarehouseId || ""}
                   suppliers={suppliers}
                   warehouses={warehouses}
                 />
