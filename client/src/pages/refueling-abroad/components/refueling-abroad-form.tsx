@@ -1399,6 +1399,7 @@ export const RefuelingAbroadForm = forwardRef<
                           <FormControl>
                             <Input
                               type="number"
+                              min="0"
                               step="0.01"
                               placeholder={
                                 selectedSaleExchangeRate?.rate || "90.00"
@@ -1512,6 +1513,7 @@ export const RefuelingAbroadForm = forwardRef<
                           <FormControl>
                             <Input
                               type="number"
+                              min="0"
                               step="0.01"
                               placeholder={
                                 selectedPurchaseExchangeRate?.rate || "90.00"

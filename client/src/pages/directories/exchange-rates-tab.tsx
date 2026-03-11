@@ -338,6 +338,7 @@ export function ExchangeRatesTab() {
                     <Label>Курс (сколько {formData.targetCurrency} за 1 {formData.currency})</Label>
                     <Input
                       type="number"
+                      min="0"
                       step="0.000001"
                       value={formData.rate}
                       onChange={(e) => setFormData({ ...formData, rate: e.target.value })}

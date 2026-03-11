@@ -225,6 +225,7 @@ export function ExchangeRateDialog({
                   <Label className="text-sm font-medium mb-1 block">Курс</Label>
                   <Input
                     type="number"
+                    min="0"
                     step="0.000001"
                     placeholder="Например: 90.5"
                     value={form.rate || ""}

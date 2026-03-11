@@ -164,6 +164,7 @@ export function IntermediaryDialog({
             <Label className="text-sm font-medium mb-1 block">{rateLabel}</Label>
             <Input
               type="number"
+              min="0"
               step="0.01"
               placeholder={ratePlaceholder}
               value={form.rateValue ?? ""}

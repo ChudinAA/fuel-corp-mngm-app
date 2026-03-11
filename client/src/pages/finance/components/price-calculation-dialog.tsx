@@ -231,6 +231,7 @@ export function PriceCalculationDialog({ open, onOpenChange, calculation }: Pric
                 <Input
                   id="purchasePrice"
                   type="number"
+                  min="0"
                   step="0.01"
                   {...register("purchasePrice")}
                 />
@@ -241,6 +242,7 @@ export function PriceCalculationDialog({ open, onOpenChange, calculation }: Pric
                 <Input
                   id="deliveryCost"
                   type="number"
+                  min="0"
                   step="0.01"
                   {...register("deliveryCost")}
                 />
@@ -251,6 +253,7 @@ export function PriceCalculationDialog({ open, onOpenChange, calculation }: Pric
                 <Input
                   id="storageCost"
                   type="number"
+                  min="0"
                   step="0.01"
                   {...register("storageCost")}
                 />
@@ -261,6 +264,7 @@ export function PriceCalculationDialog({ open, onOpenChange, calculation }: Pric
                 <Input
                   id="serviceFee"
                   type="number"
+                  min="0"
                   step="0.01"
                   {...register("serviceFee")}
                 />
@@ -271,6 +275,7 @@ export function PriceCalculationDialog({ open, onOpenChange, calculation }: Pric
                 <Input
                   id="agentFee"
                   type="number"
+                  min="0"
                   step="0.01"
                   {...register("agentFee")}
                 />
@@ -281,6 +286,7 @@ export function PriceCalculationDialog({ open, onOpenChange, calculation }: Pric
                 <Input
                   id="otherCosts"
                   type="number"
+                  min="0"
                   step="0.01"
                   {...register("otherCosts")}
                 />
@@ -314,6 +320,7 @@ export function PriceCalculationDialog({ open, onOpenChange, calculation }: Pric
                 <Input
                   id="markupValue"
                   type="number"
+                  min="0"
                   step="0.01"
                   {...register("markupValue")}
                 />

@@ -476,6 +476,7 @@ export function AddSupplierDialog({
                       <Input
                         placeholder="0.00"
                         type="number"
+                        min="0"
                         step="0.01"
                         {...field}
                       />
@@ -494,6 +495,7 @@ export function AddSupplierDialog({
                       <Input
                         placeholder="0.00"
                         type="number"
+                        min="0"
                         step="0.01"
                         {...field}
                       />
@@ -512,6 +514,7 @@ export function AddSupplierDialog({
                       <Input
                         placeholder="0.00"
                         type="number"
+                        min="0"
                         step="0.01"
                         {...field}
                       />
@@ -610,6 +613,7 @@ export function AddSupplierDialog({
                     <FormControl>
                       <Input
                         type="number"
+                        min="0"
                         step="0.01"
                         placeholder="0.00"
                         data-testid="input-storage-cost"

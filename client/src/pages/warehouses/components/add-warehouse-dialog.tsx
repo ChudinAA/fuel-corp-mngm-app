@@ -242,7 +242,8 @@ export function AddWarehouseDialog({
                   <FormControl>
                     <Input 
                       placeholder="Стоимость хранения" 
-                      type="number" 
+                      type="number"
+                      min="0"
                       data-testid="input-storage-cost" 
                       {...field} 
                     />

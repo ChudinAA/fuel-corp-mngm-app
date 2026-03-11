@@ -471,6 +471,7 @@ export function AddDeliveryCostDialog({
                     <FormControl>
                       <Input
                         type="number"
+                        min="0"
                         step="0.0001"
                         placeholder="0.0000"
                         data-testid="input-cost-per-kg"
@@ -490,6 +491,7 @@ export function AddDeliveryCostDialog({
                     <FormControl>
                       <Input
                         type="number"
+                        min="0"
                         step="0.01"
                         placeholder="0.00"
                         data-testid="input-distance"

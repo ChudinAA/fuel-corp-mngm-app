@@ -99,6 +99,7 @@ export function PriceCalculator() {
                 <Input
                   id="calc-delivery"
                   type="number"
+                  min="0"
                   step="0.01"
                   value={deliveryCost}
                   onChange={(e) => setDeliveryCost(parseFloat(e.target.value) || 0)}
@@ -110,6 +111,7 @@ export function PriceCalculator() {
                 <Input
                   id="calc-storage"
                   type="number"
+                  min="0"
                   step="0.01"
                   value={storageCost}
                   onChange={(e) => setStorageCost(parseFloat(e.target.value) || 0)}
@@ -121,6 +123,7 @@ export function PriceCalculator() {
                 <Input
                   id="calc-service"
                   type="number"
+                  min="0"
                   step="0.01"
                   value={serviceFee}
                   onChange={(e) => setServiceFee(parseFloat(e.target.value) || 0)}
@@ -132,6 +135,7 @@ export function PriceCalculator() {
                 <Input
                   id="calc-agent"
                   type="number"
+                  min="0"
                   step="0.01"
                   value={agentFee}
                   onChange={(e) => setAgentFee(parseFloat(e.target.value) || 0)}
@@ -143,6 +147,7 @@ export function PriceCalculator() {
                 <Input
                   id="calc-other"
                   type="number"
+                  min="0"
                   step="0.01"
                   value={otherCosts}
                   onChange={(e) => setOtherCosts(parseFloat(e.target.value) || 0)}
@@ -177,6 +182,7 @@ export function PriceCalculator() {
                 <Input
                   id="calc-markup"
                   type="number"
+                  min="0"
                   step="0.01"
                   value={markupValue}
                   onChange={(e) => setMarkupValue(parseFloat(e.target.value) || 0)}
