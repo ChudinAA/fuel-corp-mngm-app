@@ -1027,6 +1027,7 @@ export const RefuelingAbroadForm = forwardRef<
                           <FormControl>
                             <Input
                               type="number"
+                              min="0"
                               step="0.01"
                               {...field}
                               value={field.value || ""}
@@ -1047,6 +1048,7 @@ export const RefuelingAbroadForm = forwardRef<
                           <FormControl>
                             <Input
                               type="number"
+                              min="0"
                               step="0.001"
                               {...field}
                               value={field.value || ""}
@@ -1069,6 +1071,7 @@ export const RefuelingAbroadForm = forwardRef<
                         <FormControl>
                           <Input
                             type="number"
+                            min="0"
                             step="0.01"
                             {...field}
                             value={field.value || ""}

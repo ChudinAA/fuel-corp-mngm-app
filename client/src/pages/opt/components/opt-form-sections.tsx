@@ -89,6 +89,8 @@ export function VolumeInputSection({
                 <FormControl>
                   <Input
                     type="number"
+                    min="0"
+                    step="0.01"
                     placeholder="0.00"
                     data-testid="input-liters"
                     disabled={inputMode === "kg"}
@@ -110,6 +112,7 @@ export function VolumeInputSection({
                 <FormControl>
                   <Input
                     type="number"
+                    min="0"
                     step="0.0001"
                     placeholder="0.8000"
                     data-testid="input-density"
@@ -141,6 +144,8 @@ export function VolumeInputSection({
                   <FormControl>
                     <Input
                       type="number"
+                      min="0"
+                      step="0.01"
                       placeholder="0.00"
                       data-testid="input-kg"
                       {...field}
