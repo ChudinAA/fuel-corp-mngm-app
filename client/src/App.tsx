@@ -316,7 +316,7 @@ function Router() {
 
       <Route path="/admin/widgets">
         <AppLayout>
-          <ProtectedRoute component={WidgetsPage} />
+          <ProtectedRoute component={InDevelopmentPage} />
         </AppLayout>
       </Route>
 

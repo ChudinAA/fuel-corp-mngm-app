@@ -86,7 +86,7 @@ export default function EquipmentsPage() {
         <div>
           <h1 className="text-2xl font-semibold">Средства Заправки</h1>
           <p className="text-muted-foreground">
-            Управление парком СЗ ЛИК
+            Управление парком СЗ
           </p>
         </div>
         {hasPermission("equipment", "create") && (

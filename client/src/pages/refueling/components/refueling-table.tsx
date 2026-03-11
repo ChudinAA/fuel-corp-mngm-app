@@ -312,14 +312,12 @@ export function RefuelingTable({
                   />
                 </div>
               </TableHead>
+              <TableHead className="text-sm font-semibold p-1 md:p-2">
+                Базис
+              </TableHead>
               {equipmentType === EQUIPMENT_TYPE.LIK && (
                 <TableHead className="text-sm font-semibold p-1 md:p-2">
                   Средство заправки
-                </TableHead>
-              )}
-              {equipmentType === EQUIPMENT_TYPE.LIK && (
-                <TableHead className="text-sm font-semibold p-1 md:p-2">
-                  Базис
                 </TableHead>
               )}
               <TableHead className="text-sm font-semibold p-1 md:p-2">
@@ -420,6 +418,14 @@ export function RefuelingTable({
                       </div>
                     </TooltipProvider>
                   </TableCell>
+                  <TableCell
+                    className="text-[11px] md:text-sm p-1 md:p-4"
+                    data-testid={`text-basis-${deal.id}`}
+                  >
+                    <span className="truncate max-w-[80px] md:max-w-none block text-muted-foreground">
+                      {deal.basis?.name || "—"}
+                    </span>
+                  </TableCell>
                   {equipmentType === EQUIPMENT_TYPE.LIK && (
                     <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
                       <TooltipProvider>
@@ -437,16 +443,6 @@ export function RefuelingTable({
                           </Tooltip>
                         </div>
                       </TooltipProvider>
-                    </TableCell>
-                  )}
-                  {equipmentType === EQUIPMENT_TYPE.LIK && (
-                    <TableCell
-                      className="text-[11px] md:text-sm p-1 md:p-4"
-                      data-testid={`text-basis-${deal.id}`}
-                    >
-                      <span className="truncate max-w-[80px] md:max-w-none block text-muted-foreground">
-                        {deal.basis?.name || "—"}
-                      </span>
                     </TableCell>
                   )}
                   <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
