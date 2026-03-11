@@ -28,6 +28,7 @@ import type {
 } from "@shared/schema";
 import { OptMainFields } from "./opt-main-fields";
 import { OptPricingSection } from "./opt-pricing-section";
+import { SpecialConditionsBanner } from "@/components/special-conditions-banner";
 import { VolumeInputSection } from "./opt-form-sections";
 import { LogisticsSection } from "./opt-form-sections";
 import { optFormSchema, type OptFormData } from "../schemas";
@@ -773,6 +774,11 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
                 </FormItem>
               )}
             />
+          </div>
+
+          <div className="space-y-2">
+            <SpecialConditionsBanner counterparty={selectedSupplier} label={selectedSupplier?.name} />
+            <SpecialConditionsBanner counterparty={selectedBuyer} label={selectedBuyer?.name} />
           </div>
 
           <div className="flex justify-end gap-4 pt-4 border-t">

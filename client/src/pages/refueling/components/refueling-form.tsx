@@ -47,6 +47,7 @@ import { useAutoPriceSelection } from "../../shared/hooks/use-auto-price-selecti
 import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
+import { SpecialConditionsBanner } from "@/components/special-conditions-banner";
 
 export interface RefuelingFormHandle {
   getFormState: () => { supplierId: string; buyerId: string };
@@ -801,6 +802,11 @@ export const RefuelingForm = forwardRef<
                 </FormItem>
               )}
             />
+          </div>
+
+          <div className="space-y-2">
+            <SpecialConditionsBanner counterparty={selectedSupplier} label={selectedSupplier?.name} />
+            <SpecialConditionsBanner counterparty={selectedBuyer} label={selectedBuyer?.name} />
           </div>
 
           <div className="flex justify-end gap-4 pt-4 border-t">

@@ -33,6 +33,9 @@ export const customers = pgTable(
     phone: text("phone"),
     email: text("email"),
     module: text("module").notNull(), // "wholesale", "refueling", "both"
+    hasSpecialConditions: boolean("has_special_conditions").default(false),
+    specialConditions: text("special_conditions"),
+    specialConditionsExpiresAt: date("special_conditions_expires_at"),
     isIntermediary: boolean("is_intermediary").default(false),
     isForeign: boolean("is_foreign").default(false),
     withVAT: boolean("with_vat").default(false),

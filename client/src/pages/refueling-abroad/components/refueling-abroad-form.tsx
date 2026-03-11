@@ -76,6 +76,7 @@ import { useAutoPriceSelection } from "@/pages/shared/hooks/use-auto-price-selec
 import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
 import { CalculatedField } from "@/pages/refueling/calculated-field";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
+import { SpecialConditionsBanner } from "@/components/special-conditions-banner";
 
 export interface RefuelingAbroadFormHandle {
   getFormState: () => { supplierId: string; buyerId: string };
@@ -1613,6 +1614,11 @@ export const RefuelingAbroadForm = forwardRef<
               </FormItem>
             )}
           />
+        </div>
+
+        <div className="space-y-2">
+          <SpecialConditionsBanner counterparty={selectedSupplier} label={selectedSupplier?.name} />
+          <SpecialConditionsBanner counterparty={selectedBuyer} label={selectedBuyer?.name} />
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t">

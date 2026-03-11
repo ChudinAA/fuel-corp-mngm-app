@@ -34,12 +34,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Loader2, X } from "lucide-react";
+import { Plus, Loader2, X, CalendarIcon } from "lucide-react";
 import type { Base, Customer } from "@shared/schema";
 import { Combobox } from "@/components/ui/combobox";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import { useAuth } from "@/hooks/use-auth";
 import { AddBaseDialog } from "../directories/bases-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, parseISO } from "date-fns";
+import { ru } from "date-fns/locale";
 
 const customerFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
@@ -57,6 +61,9 @@ const customerFormSchema = z.object({
   email: z.string().email("Неверный формат email").optional().or(z.literal("")),
   inn: z.string().optional(),
   contractNumber: z.string().optional(),
+  hasSpecialConditions: z.boolean().default(false),
+  specialConditions: z.string().optional(),
+  specialConditionsExpiresAt: z.date().optional().nullable(),
   isIntermediary: z.boolean().default(false),
   isForeign: z.boolean().default(false),
   withVAT: z.boolean().default(false),
@@ -106,6 +113,9 @@ export function AddCustomerDialog({
       email: "",
       inn: "",
       contractNumber: "",
+      hasSpecialConditions: false,
+      specialConditions: "",
+      specialConditionsExpiresAt: null,
       isIntermediary: false,
       isForeign: false,
       withVAT: false,
@@ -126,6 +136,7 @@ export function AddCustomerDialog({
   }, [fields.length, append]);
 
   const isForeign = form.watch("isForeign");
+  const hasSpecialConditions = form.watch("hasSpecialConditions");
 
   useEffect(() => {
     if (editCustomer) {
@@ -146,6 +157,11 @@ export function AddCustomerDialog({
         email: editCustomer.email || "",
         inn: editCustomer.inn || "",
         contractNumber: editCustomer.contractNumber || "",
+        hasSpecialConditions: editCustomer.hasSpecialConditions || false,
+        specialConditions: editCustomer.specialConditions || "",
+        specialConditionsExpiresAt: editCustomer.specialConditionsExpiresAt
+          ? parseISO(editCustomer.specialConditionsExpiresAt)
+          : null,
         isIntermediary: editCustomer.isIntermediary || false,
         isForeign: editCustomer.isForeign || false,
         withVAT: editCustomer.withVAT || false,
@@ -171,6 +187,11 @@ export function AddCustomerDialog({
         email: data.email || null,
         inn: data.inn,
         contractNumber: data.contractNumber,
+        hasSpecialConditions: data.hasSpecialConditions,
+        specialConditions: data.hasSpecialConditions ? (data.specialConditions || null) : null,
+        specialConditionsExpiresAt: data.hasSpecialConditions && data.specialConditionsExpiresAt
+          ? format(data.specialConditionsExpiresAt, "yyyy-MM-dd")
+          : null,
         isIntermediary: data.isIntermediary,
         isForeign: data.isForeign,
         withVAT: data.isForeign ? data.withVAT : false,
@@ -209,6 +230,9 @@ export function AddCustomerDialog({
         email: "",
         inn: "",
         contractNumber: "",
+        hasSpecialConditions: false,
+        specialConditions: "",
+        specialConditionsExpiresAt: null,
         isIntermediary: false,
         isForeign: false,
         withVAT: false,
@@ -246,6 +270,9 @@ export function AddCustomerDialog({
         email: "",
         inn: "",
         contractNumber: "",
+        hasSpecialConditions: false,
+        specialConditions: "",
+        specialConditionsExpiresAt: null,
         isIntermediary: false,
         isForeign: false,
         withVAT: false,
@@ -466,6 +493,98 @@ export function AddCustomerDialog({
                     </FormItem>
                   )}
                 />
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <FormField
+                control={form.control}
+                name="hasSpecialConditions"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-2 space-y-0">
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="switch-customer-special-conditions"
+                      />
+                    </FormControl>
+                    <FormLabel className="font-normal cursor-pointer text-sm">
+                      Особые условия
+                    </FormLabel>
+                  </FormItem>
+                )}
+              />
+
+              {hasSpecialConditions && (
+                <div className="space-y-3 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-600 p-3">
+                  <FormField
+                    control={form.control}
+                    name="specialConditions"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm">Текст особых условий</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Введите особые условия или важную информацию по контрагенту..."
+                            className="resize-none"
+                            rows={3}
+                            data-testid="input-customer-special-conditions"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="specialConditionsExpiresAt"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm">Действует до (необязательно)</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start text-left font-normal"
+                                data-testid="input-customer-special-conditions-expires"
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {field.value
+                                  ? format(field.value, "dd.MM.yyyy", { locale: ru })
+                                  : "Без срока действия"}
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value ?? undefined}
+                              onSelect={(date) => field.onChange(date ?? null)}
+                              locale={ru}
+                            />
+                            {field.value && (
+                              <div className="p-2 border-t">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full"
+                                  onClick={() => field.onChange(null)}
+                                >
+                                  Сбросить дату
+                                </Button>
+                              </div>
+                            )}
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               )}
             </div>
 
