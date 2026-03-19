@@ -201,41 +201,6 @@ export function PriceFormFields({
           )}
         />
 
-        {counterpartyType === COUNTERPARTY_TYPE.TRANSPORTATION && (
-          <FormField
-            control={control}
-            name="loadingBasisId"
-            render={({ field }) => (
-              <FormItem className="col-span-1 min-w-0">
-                <FormLabel>Базис погрузки</FormLabel>
-                <FormControl>
-                  <div className="w-full">
-                    <Combobox
-                      options={
-                        availableBases?.map((b) => ({
-                          value: b.id,
-                          label: b.name,
-                          render: (
-                            <div className="flex items-center gap-2">
-                              {b.name}
-                              <BaseTypeBadge type={b.baseType} short={true} />
-                            </div>
-                          ),
-                        })) || []
-                      }
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      placeholder="Выберите базис погрузки"
-                      className="w-full"
-                      dataTestId="select-loading-basis"
-                    />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
 
         {counterpartyType === COUNTERPARTY_TYPE.REFUELING_ABROAD && (
           <FormField
@@ -316,7 +281,9 @@ export function PriceFormFields({
                 </FormControl>
                 <SelectContent>
                   <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
-                  <SelectItem value={PRODUCT_TYPE.SERVICE}>Услуга</SelectItem>
+                  {counterpartyType !== COUNTERPARTY_TYPE.TRANSPORTATION && (
+                    <SelectItem value={PRODUCT_TYPE.SERVICE}>Услуга</SelectItem>
+                  )}
                   <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
                 </SelectContent>
               </Select>
@@ -326,7 +293,99 @@ export function PriceFormFields({
         />
       </div>
 
+      {counterpartyType === COUNTERPARTY_TYPE.TRANSPORTATION && (
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={control}
+            name="loadingBasisId"
+            render={({ field }) => (
+              <FormItem className="col-span-1 min-w-0">
+                <FormLabel>Базис погрузки</FormLabel>
+                <FormControl>
+                  <div className="w-full">
+                    <Combobox
+                      options={
+                        availableBases?.map((b) => ({
+                          value: b.id,
+                          label: b.name,
+                          render: (
+                            <div className="flex items-center gap-2">
+                              {b.name}
+                              <BaseTypeBadge type={b.baseType} short={true} />
+                            </div>
+                          ),
+                        })) || []
+                      }
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Выберите базис погрузки"
+                      className="w-full"
+                      dataTestId="select-loading-basis"
+                    />
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name="basisId"
+            render={({ field }) => (
+              <FormItem className="col-span-1 min-w-0">
+                <FormLabel>Базис (место поставки/заправки)</FormLabel>
+                <div className="flex gap-1 items-center w-full">
+                  <FormControl>
+                    <div className="flex-1 min-w-0">
+                      <Combobox
+                        options={
+                          availableBases?.map((b) => ({
+                            value: b.id,
+                            label: b.name,
+                            render: (
+                              <div className="flex items-center gap-2">
+                                {b.name}
+                                <BaseTypeBadge type={b.baseType} short={true} />
+                              </div>
+                            ),
+                          })) || []
+                        }
+                        value={field.value}
+                        onValueChange={(val) => {
+                          field.onChange(val);
+                          const selectedBase = availableBases.find((b) => b.id === val);
+                          if (selectedBase) {
+                            control._formValues.basis = selectedBase.name;
+                          }
+                        }}
+                        placeholder="Выберите базис"
+                        className="w-full"
+                        dataTestId="select-basis"
+                      />
+                    </div>
+                  </FormControl>
+                  {hasPermission("directories", "create") && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={() => setAddBaseOpen(true)}
+                      data-testid="button-add-customer-inline"
+                      className="shrink-0 h-9 w-9"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
+        {counterpartyType !== COUNTERPARTY_TYPE.TRANSPORTATION && (
         <FormField
           control={control}
           name="basisId"
@@ -382,6 +441,7 @@ export function PriceFormFields({
             </FormItem>
           )}
         />
+        )}
 
         <FormField
           control={control}

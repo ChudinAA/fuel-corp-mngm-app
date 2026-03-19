@@ -7,6 +7,7 @@ interface PriceLookupParams {
   counterpartyRole: string;
   counterpartyType: string;
   basisId?: string | null;
+  loadingBasisId?: string | null;
   productType?: string;
   date: Date | null;
   enabled?: boolean;
@@ -17,6 +18,7 @@ export function usePriceLookup({
   counterpartyRole,
   counterpartyType,
   basisId,
+  loadingBasisId,
   productType,
   date,
   enabled = true,
@@ -30,6 +32,7 @@ export function usePriceLookup({
       counterpartyRole,
       counterpartyType,
       basisId,
+      loadingBasisId,
       productType,
       dateStr,
     ],
@@ -40,6 +43,7 @@ export function usePriceLookup({
       params.append("counterpartyType", counterpartyType);
       params.append("date", dateStr);
       if (basisId) params.append("basisId", basisId);
+      if (loadingBasisId) params.append("loadingBasisId", loadingBasisId);
       if (productType) params.append("productType", productType);
 
       const res = await fetch(`/api/prices/find-active?${params.toString()}`);

@@ -420,7 +420,7 @@ export function AddSupplierDialog({
                 <div key={field.id} className="flex gap-2 items-center">
                   <div className="flex-1 min-w-0">
                     <Combobox
-                      options={bases.map((b) => ({
+                      options={(bases || []).map((b) => ({
                         value: b.id,
                         label: b.name,
                         render: (

@@ -138,12 +138,15 @@ export function AddPriceDialog({
     queryKey: ["/api/currencies"],
   });
 
-  const allBases =
-    bases?.filter((b) => b.baseType === watchCounterpartyType) || [];
+  const isTransportation = watchCounterpartyType === COUNTERPARTY_TYPE.TRANSPORTATION;
 
-  const availableSuppliers =
-    suppliers?.filter((s) => allBases.find((b) => s.baseIds?.includes(b.id))) ||
-    [];
+  const allBases = isTransportation
+    ? bases || []
+    : bases?.filter((b) => b.baseType === watchCounterpartyType) || [];
+
+  const availableSuppliers = isTransportation
+    ? suppliers || []
+    : suppliers?.filter((s) => allBases.find((b) => s.baseIds?.includes(b.id))) || [];
 
   const contractors = (
     watchCounterpartyRole === COUNTERPARTY_ROLE.SUPPLIER
@@ -153,8 +156,9 @@ export function AddPriceDialog({
         : customers || []
   ) as (Supplier | Customer)[];
 
-  // Фильтруем базисы для поставщика
+  // Для перевозки — все базисы без фильтрации по контрагенту
   const availableBases = (() => {
+    if (isTransportation) return allBases;
     const contractor = contractors?.find((s) => s.id === watchCounterpartyId);
     if (contractor && contractor.baseIds && contractor.baseIds.length > 0) {
       return allBases.filter((b) => contractor.baseIds?.includes(b.id));
@@ -162,9 +166,9 @@ export function AddPriceDialog({
     return allBases;
   })();
 
-  // Автоматически выбираем первый базис для поставщика
+  // Автоматически выбираем первый базис для поставщика (не для перевозки)
   useEffect(() => {
-    if (watchCounterpartyId && !editPrice) {
+    if (watchCounterpartyId && !editPrice && !isTransportation) {
       const contractor = contractors?.find((s) => s.id === watchCounterpartyId);
       if (contractor && contractor.baseIds && contractor.baseIds.length > 0) {
         const firstBaseId = contractor.baseIds[0];
@@ -175,7 +179,7 @@ export function AddPriceDialog({
         }
       }
     }
-  }, [watchCounterpartyId, contractors, allBases, form, watchBasis, editPrice]);
+  }, [watchCounterpartyId, contractors, allBases, form, watchBasis, editPrice, isTransportation]);
 
   // Установка валюты по умолчанию при смене типа сделки
   useEffect(() => {

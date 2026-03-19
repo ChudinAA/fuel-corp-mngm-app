@@ -55,10 +55,11 @@ export function useTransportationFilters({
     counterpartyId: supplierId,
     counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
     counterpartyType: COUNTERPARTY_TYPE.TRANSPORTATION,
-    basisId: basisId,
+    basisId: customerBasisId,
+    loadingBasisId: basisId,
     productType: productType || PRODUCT_TYPE.KEROSENE,
     date: dealDate || undefined,
-    enabled: !!supplierId && !!basisId && !!dealDate && isAviaService,
+    enabled: !!supplierId && !!basisId && !!customerBasisId && !!dealDate && isAviaService,
   });
 
   const saleLookup = usePriceLookup({
@@ -66,6 +67,7 @@ export function useTransportationFilters({
     counterpartyRole: COUNTERPARTY_ROLE.BUYER,
     counterpartyType: COUNTERPARTY_TYPE.TRANSPORTATION,
     basisId: customerBasisId,
+    loadingBasisId: basisId,
     productType: productType || PRODUCT_TYPE.KEROSENE,
     date: dealDate || undefined,
     enabled: !!buyerId && !!customerBasisId && !!dealDate,

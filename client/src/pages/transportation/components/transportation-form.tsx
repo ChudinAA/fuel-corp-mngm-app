@@ -934,13 +934,14 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
         />
 
         <AddCustomerDialog
+          bases={allBases}
           isInline
           inlineOpen={addCustomerOpen}
           onInlineOpenChange={setAddCustomerOpen}
           onCreated={(id) => form.setValue("buyerId", id)}
-          module={CUSTOMER_MODULE.WHOLESALE}
         />
         <AddSupplierDialog
+          bases={allBases}
           isInline
           inlineOpen={addSupplierOpen}
           onInlineOpenChange={setAddSupplierOpen}
