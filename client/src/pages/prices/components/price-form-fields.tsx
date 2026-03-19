@@ -165,6 +165,9 @@ export function PriceFormFields({
                   <SelectItem value={COUNTERPARTY_TYPE.REFUELING_ABROAD}>
                     Заправка ВС Зарубеж
                   </SelectItem>
+                  <SelectItem value={COUNTERPARTY_TYPE.TRANSPORTATION}>
+                    Перевозка
+                  </SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -197,6 +200,42 @@ export function PriceFormFields({
             </FormItem>
           )}
         />
+
+        {counterpartyType === COUNTERPARTY_TYPE.TRANSPORTATION && (
+          <FormField
+            control={control}
+            name="loadingBasisId"
+            render={({ field }) => (
+              <FormItem className="col-span-1 min-w-0">
+                <FormLabel>Базис погрузки</FormLabel>
+                <FormControl>
+                  <div className="w-full">
+                    <Combobox
+                      options={
+                        availableBases?.map((b) => ({
+                          value: b.id,
+                          label: b.name,
+                          render: (
+                            <div className="flex items-center gap-2">
+                              {b.name}
+                              <BaseTypeBadge type={b.baseType} short={true} />
+                            </div>
+                          ),
+                        })) || []
+                      }
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Выберите базис погрузки"
+                      className="w-full"
+                      dataTestId="select-loading-basis"
+                    />
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         {counterpartyType === COUNTERPARTY_TYPE.REFUELING_ABROAD && (
           <FormField

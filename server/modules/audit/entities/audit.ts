@@ -85,6 +85,7 @@ export const ENTITY_TYPES = {
   STORAGE_CARD: 'storage_cards',
   EQUIPMENT: 'equipment',
   EQUIPMENT_MOVEMENT: 'equipment_movement',
+  TRANSPORTATION: 'transportation',
 } as const;
 
 export type EntityType = typeof ENTITY_TYPES[keyof typeof ENTITY_TYPES];

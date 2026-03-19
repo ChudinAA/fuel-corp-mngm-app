@@ -3,9 +3,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 
 export interface DuplicateCheckConfig {
-  type: "opt" | "refueling";
+  type: "opt" | "refueling" | "transportation";
   getFields: () => {
-    date: Date;
+    date: Date | null;
     supplierId: string;
     buyerId: string;
     productType: string;
@@ -35,10 +35,13 @@ export function useDuplicateCheck({ type, getFields }: DuplicateCheckConfig) {
     };
 
     if (type === "opt") {
-      payload.dealDate = format(fields.date, "yyyy-MM-dd");
+      payload.dealDate = fields.date ? format(fields.date, "yyyy-MM-dd") : null;
+      payload.deliveryLocationId = fields.deliveryLocationId;
+    } else if (type === "transportation") {
+      payload.dealDate = fields.date ? format(fields.date, "yyyy-MM-dd") : null;
       payload.deliveryLocationId = fields.deliveryLocationId;
     } else {
-      payload.refuelingDate = format(fields.date, "yyyy-MM-dd");
+      payload.refuelingDate = fields.date ? format(fields.date, "yyyy-MM-dd") : null;
     }
 
     setIsChecking(true);

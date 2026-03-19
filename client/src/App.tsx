@@ -55,6 +55,7 @@ import RefuelingAbroadPage from "@/pages/refueling-abroad";
 import EquipmentMovementPage from "@/pages/equipment-movement/equipment-movement-page";
 
 import InDevelopmentPage from "@/pages/shared/in-development";
+import TransportationPage from "@/pages/transportation/transportation-page";
 
 function ProtectedRoute({
   component: Component,
@@ -340,7 +341,7 @@ function Router() {
 
       <Route path="/transportation">
         <AppLayout>
-          <ProtectedRoute component={InDevelopmentPage} />
+          <ProtectedRoute component={TransportationPage} />
         </AppLayout>
       </Route>
 

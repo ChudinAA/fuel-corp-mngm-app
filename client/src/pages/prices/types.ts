@@ -21,6 +21,7 @@ export interface PriceFormData {
   notes?: string;
   currency?: string;
   currencyId?: string;
+  loadingBasisId?: string;
 }
 
 export interface PriceDialogProps {

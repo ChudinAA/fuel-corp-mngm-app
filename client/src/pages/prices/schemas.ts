@@ -14,7 +14,8 @@ export const priceFormSchema = z.object({
     COUNTERPARTY_TYPE.WHOLESALE,
     COUNTERPARTY_TYPE.REFUELING,
     COUNTERPARTY_TYPE.REFUELING_ABROAD,
-  ]),
+    COUNTERPARTY_TYPE.TRANSPORTATION,
+  ] as [string, ...string[]]),
   counterpartyRole: z.enum([
     COUNTERPARTY_ROLE.SUPPLIER,
     COUNTERPARTY_ROLE.BUYER,
@@ -41,4 +42,5 @@ export const priceFormSchema = z.object({
   notes: z.string().optional(),
   currency: z.string().optional().default("RUB"),
   currencyId: z.string().optional(),
+  loadingBasisId: z.string().optional(),
 });

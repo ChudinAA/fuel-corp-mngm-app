@@ -62,6 +62,7 @@ export const COUNTERPARTY_TYPE = {
   WHOLESALE: "wholesale",
   REFUELING: "refueling",
   REFUELING_ABROAD: "abroad",
+  TRANSPORTATION: "transportation",
 } as const;
 
 // Counterparty roles

@@ -30,6 +30,7 @@ export const prices = pgTable(
     counterpartyRole: text("counterparty_role").notNull(),
     basis: text("basis").notNull(),
     basisId: uuid("basis_id").references(() => bases.id),
+    loadingBasisId: uuid("loading_basis_id").references(() => bases.id),
     priceValues: text("price_values").array(),
     volume: decimal("volume", { precision: 15, scale: 2 }),
     dateFrom: date("date_from").notNull(),
@@ -82,7 +83,8 @@ export const pricesRelations = relations(prices, ({ many, one }) => ({
     relationName: "purchasePrice",
   }),
   refuelingSales: many(aircraftRefueling, { relationName: "salePrice" }),
-  basis: one(bases, { fields: [prices.basisId], references: [bases.id] }),
+  basis: one(bases, { fields: [prices.basisId], references: [bases.id], relationName: "deliveryBasis" }),
+  loadingBasis: one(bases, { fields: [prices.loadingBasisId], references: [bases.id], relationName: "loadingBasis" }),
   currency: one(currencies, {
     fields: [prices.currencyId],
     references: [currencies.id],

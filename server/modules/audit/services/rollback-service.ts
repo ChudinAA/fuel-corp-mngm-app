@@ -383,6 +383,7 @@ export class RollbackService {
       roles: () => storage.roles.getRole(entityId),
       equipment: () => storage.equipment.getEquipment(entityId),
       equipment_movement: () => (storage as any).equipmentMovement.getMovement(entityId),
+      transportation: () => (storage as any).transportation.getTransportation(entityId),
     };
 
     const getter = storageMap[entityType];
@@ -426,6 +427,7 @@ export class RollbackService {
       roles: (id, data, userId) => storage.roles.updateRole(id, data),
       equipment: (id, data, userId) => storage.equipment.updateEquipment(id, { ...data, updatedById: userId }),
       equipment_movement: (id, data, userId) => (storage as any).equipmentMovement.updateMovement(id, { ...data, updatedById: userId }),
+      transportation: (id, data, userId) => (storage as any).transportation.updateTransportation(id, { ...data, updatedById: userId }),
     };
 
     const updater = storageMap[entityType];
@@ -469,6 +471,7 @@ export class RollbackService {
       roles: (id, userId) => storage.roles.deleteRole(id, userId),
       equipment: (id, userId) => storage.equipment.deleteEquipment(id, userId!),
       equipment_movement: (id, userId) => (storage as any).equipmentMovement.deleteMovement(id, userId),
+      transportation: (id, userId) => (storage as any).transportation.deleteTransportation(id, userId),
     };
 
     const deleter = storageMap[entityType];
@@ -514,6 +517,7 @@ export class RollbackService {
       roles: (id, oldData, userId) => storage.roles.restoreRole(id, userId),
       equipment: (id, oldData, userId) => storage.equipment.restoreEquipment(id, userId!),
       equipment_movement: (id, oldData, userId) => (storage as any).equipmentMovement.restoreMovement(id, oldData, userId),
+      transportation: (id, oldData, userId) => (storage as any).transportation.restoreTransportation(id, oldData, userId),
     };
 
     const restorer = storageMap[entityType];
