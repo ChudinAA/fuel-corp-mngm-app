@@ -46,7 +46,6 @@ import type {
 } from "@shared/schema";
 import { PRODUCT_TYPE, COUNTERPARTY_TYPE } from "@shared/constants";
 import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
-import { useAutoPriceSelection } from "@/pages/shared/hooks/use-auto-price-selection";
 import { useDuplicateCheck } from "@/pages/shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "@/pages/shared/components/duplicate-alert-dialog";
 import { useTransportationFilters } from "../hooks/use-transportation-filters";
@@ -236,33 +235,59 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
       }
     }, [aviaServiceCarrier, editData]);
 
-    // Clear deliveryLocationId when switching to АвиаСервис and clear purchase price when switching away from АвиаСервис
+    // When switching to АвиаСервис, clear delivery location (irrelevant for АвиаСервис)
+    // When switching away from АвиаСервис, clear purchase price (only applicable to АвиаСервис)
+    const prevIsAviaServiceRef = useRef<boolean | null>(null);
     useEffect(() => {
+      if (prevIsAviaServiceRef.current === null) {
+        // First render — just record the value, don't touch anything
+        prevIsAviaServiceRef.current = isAviaService;
+        return;
+      }
+      const changed = prevIsAviaServiceRef.current !== isAviaService;
+      prevIsAviaServiceRef.current = isAviaService;
+      if (!changed) return;
+
       if (isAviaService) {
-        // When switching to АвиаСервис, clear delivery location
-        if (form.getValues("deliveryLocationId")) {
-          form.setValue("deliveryLocationId", null, { shouldDirty: false });
+        form.setValue("deliveryLocationId", null, { shouldDirty: false });
+      } else {
+        setSelectedPurchasePriceId("");
+      }
+    }, [isAviaService]);
+
+    // Отслеживаем была ли уже инициализирована цена при редактировании
+    const salePriceInitializedRef = useRef(false);
+
+    // Автовыбор цены покупки: только для АвиаСервис, при создании
+    useEffect(() => {
+      if (!editData && isAviaService && purchasePrices.length > 0 && !selectedPurchasePriceId) {
+        setSelectedPurchasePriceId(`${purchasePrices[0].id}-0`);
+      }
+    }, [isAviaService, purchasePrices, editData]);
+
+    // Автовыбор цены продажи: при создании — первая доступная; при редактировании — из editData
+    useEffect(() => {
+      if (!editData) {
+        // Создание: подставляем первую цену как только загрузится список
+        if (watchBuyerId && salePrices.length > 0) {
+          setSelectedSalePriceId((prev) => prev || `${salePrices[0].id}-0`);
+        } else if (watchBuyerId && salePrices.length === 0) {
+          setSelectedSalePriceId("");
         }
       } else {
-        // When switching away from АвиаСервис, clear purchase price since it's not applicable
-        if (selectedPurchasePriceId) {
-          setSelectedPurchasePriceId("");
+        // Редактирование: когда salePrices загрузятся и ref не инициализирован — восстановить
+        if (!salePriceInitializedRef.current && salePrices.length > 0) {
+          const salePriceCompositeId =
+            editData.salePriceId !== undefined && editData.salePriceId !== null
+              ? editData.salePriceIndex !== undefined && editData.salePriceIndex !== null
+                ? `${editData.salePriceId}-${editData.salePriceIndex}`
+                : editData.salePriceId
+              : "";
+          setSelectedSalePriceId(salePriceCompositeId);
+          salePriceInitializedRef.current = true;
         }
       }
-    }, [isAviaService, selectedPurchasePriceId]);
-
-    useAutoPriceSelection({
-      supplierId: watchSupplierId,
-      buyerId: watchBuyerId,
-      purchasePrices,
-      salePrices,
-      isWarehouseSupplier: false,
-      productType: watchProductType,
-      editData,
-      setSelectedPurchasePriceId,
-      setSelectedSalePriceId,
-      formSetValue: form.setValue,
-    });
+    }, [watchBuyerId, salePrices, editData]);
 
     // Load editData into form
     useEffect(() => {
@@ -423,7 +448,7 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
       <>
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit((data) => onSubmit(data))}
+            onSubmit={form.handleSubmit((data) => onSubmit(data, false))}
             className="space-y-6"
           >
             {/* Main fields */}

@@ -1,13 +1,18 @@
 import { eq, desc, sql, or, isNull, and } from "drizzle-orm";
+import { aliasedTable } from "drizzle-orm";
 import { db } from "server/db";
 import {
   suppliers,
   customers,
   logisticsCarriers,
   logisticsDeliveryLocations,
+  bases,
 } from "@shared/schema";
 import { transportation } from "../entities/transportation";
 import type { Transportation, InsertTransportation } from "../entities/transportation";
+
+const loadingBases = aliasedTable(bases, "loading_bases");
+const customerBases = aliasedTable(bases, "customer_bases");
 
 export class TransportationStorage {
   async getTransportation(id: string): Promise<Transportation | undefined> {
@@ -80,6 +85,8 @@ export class TransportationStorage {
         buyerName: customers.name,
         carrierName: sql<string>`${logisticsCarriers.name}`,
         deliveryLocationName: sql<string>`${logisticsDeliveryLocations.name}`,
+        loadingBasisName: sql<string>`${loadingBases.name}`,
+        customerBasisName: sql<string>`${customerBases.name}`,
       })
       .from(transportation)
       .leftJoin(suppliers, eq(transportation.supplierId, suppliers.id))
@@ -95,6 +102,8 @@ export class TransportationStorage {
           logisticsDeliveryLocations.id,
         ),
       )
+      .leftJoin(loadingBases, eq(transportation.basisId, loadingBases.id))
+      .leftJoin(customerBases, eq(transportation.customerBasisId, customerBases.id))
       .where(filterCondition)
       .orderBy(desc(transportation.dealDate))
       .limit(pageSize)
@@ -102,6 +111,8 @@ export class TransportationStorage {
 
     const data = rawData.map((row) => ({
       ...row.transportation,
+      basis: row.loadingBasisName || row.transportation.basis || "",
+      customerBasis: row.customerBasisName || row.transportation.customerBasis || "",
       supplier: {
         id: row.transportation.supplierId,
         name: row.supplierName || "Не указан",
@@ -140,6 +151,8 @@ export class TransportationStorage {
           logisticsDeliveryLocations.id,
         ),
       )
+      .leftJoin(loadingBases, eq(transportation.basisId, loadingBases.id))
+      .leftJoin(customerBases, eq(transportation.customerBasisId, customerBases.id))
       .where(filterCondition);
 
     return { data, total: Number(countResult?.count || 0) };
