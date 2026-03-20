@@ -62,6 +62,7 @@ import { CalculatedField } from "@/pages/opt/components/calculated-field";
 import { formatCurrency, formatNumber } from "@/pages/opt/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { CUSTOMER_MODULE } from "@shared/constants";
+import { cn } from "@/lib/utils";
 
 export interface TransportationFormHandle {
   getFormState: () => { supplierId: string; buyerId: string };
@@ -122,7 +123,11 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
       }),
       saveAsDraft: async () => {
         const values = form.getValues();
-        await createMutation.mutateAsync({ ...values, isDraft: true });
+        if (editData?.id) {
+          await updateMutation.mutateAsync({ ...values, isDraft: true, id: editData.id });
+        } else {
+          await createMutation.mutateAsync({ ...values, isDraft: true });
+        }
       },
       isDirty: () => {
         if (!initialValuesRef.current) return form.formState.isDirty;
@@ -704,7 +709,7 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
                 <CardTitle className="text-lg">Логистика</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className={cn("grid gap-4", isAviaService ? "md:grid-cols-1 max-w-sm" : "md:grid-cols-2")}>
                   <FormField
                     control={form.control}
                     name="carrierId"
@@ -733,62 +738,66 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="deliveryLocationId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Пункт доставки</FormLabel>
-                        <div className="flex gap-1 items-center">
-                          <FormControl>
-                            <Combobox
-                              options={availableLocations.map((l) => ({ value: l.id, label: l.name }))}
-                              value={field.value || ""}
-                              onValueChange={field.onChange}
-                              placeholder="Выберите пункт доставки"
-                              className="w-full"
-                              dataTestId="select-delivery-location"
-                            />
-                          </FormControl>
-                          {hasPermission("directories", "create") && (
-                            <Button type="button" size="icon" variant="outline" onClick={() => setAddLocationOpen(true)} data-testid="button-add-location">
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {!isAviaService && (
+                    <FormField
+                      control={form.control}
+                      name="deliveryLocationId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Пункт доставки</FormLabel>
+                          <div className="flex gap-1 items-center">
+                            <FormControl>
+                              <Combobox
+                                options={availableLocations.map((l) => ({ value: l.id, label: l.name }))}
+                                value={field.value || ""}
+                                onValueChange={field.onChange}
+                                placeholder="Выберите пункт доставки"
+                                className="w-full"
+                                dataTestId="select-delivery-location"
+                              />
+                            </FormControl>
+                            {hasPermission("directories", "create") && (
+                              <Button type="button" size="icon" variant="outline" onClick={() => setAddLocationOpen(true)} data-testid="button-add-location">
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
                 {!isAviaService && (
-                  <div className="flex gap-2">
-                    {hasPermission("directories", "create") && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setAddCostOpen(true)}
-                        data-testid="button-add-delivery-cost"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Добавить тариф
-                      </Button>
-                    )}
-                  </div>
-                )}
+                  <>
+                    <div className="flex gap-2">
+                      {hasPermission("directories", "create") && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setAddCostOpen(true)}
+                          data-testid="button-add-delivery-cost"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Добавить тариф
+                        </Button>
+                      )}
+                    </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <CalculatedField
-                    label="Тариф (₽/кг)"
-                    value={deliveryTariff !== null ? formatNumber(deliveryTariff) : isAviaService ? "Нет (АвиаСервис)" : "—"}
-                  />
-                  <CalculatedField
-                    label="Стоимость доставки (₽)"
-                    value={deliveryCost !== null ? formatCurrency(deliveryCost) : isAviaService ? "Нет (АвиаСервис)" : "—"}
-                  />
-                </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <CalculatedField
+                        label="Тариф (₽/кг)"
+                        value={deliveryTariff !== null ? formatNumber(deliveryTariff) : "—"}
+                      />
+                      <CalculatedField
+                        label="Стоимость доставки (₽)"
+                        value={deliveryCost !== null ? formatCurrency(deliveryCost) : "—"}
+                      />
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -823,7 +832,7 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
                         </SelectContent>
                       </Select>
                     ) : (
-                      <div className="text-sm text-muted-foreground italic">
+                      <div className="text-sm text-muted-foreground">
                         0 (перевозчик не АвиаСервис)
                       </div>
                     )}
@@ -856,12 +865,12 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
 
                 <div className="grid gap-4 md:grid-cols-3">
                   <CalculatedField
-                    label="Цена покупки (₽/кг)"
-                    value={purchasePrice !== null ? formatNumber(purchasePrice) : !isAviaService ? "0" : "—"}
+                    label="Сумма закупки"
+                    value={purchaseAmount !== null ? formatCurrency(purchaseAmount) : !isAviaService ? "0" : "—"}
                   />
                   <CalculatedField
-                    label="Цена продажи (₽/кг)"
-                    value={salePrice !== null ? formatNumber(salePrice) : "—"}
+                    label="Сумма продажи"
+                    value={saleAmount !== null ? formatCurrency(saleAmount) : "—"}
                   />
                   <div className={profit !== null ? (profit >= 0 ? "text-green-600" : "text-red-600") : ""}>
                     <CalculatedField
@@ -871,16 +880,6 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <CalculatedField
-                    label="Сумма покупки (₽)"
-                    value={purchaseAmount !== null ? formatCurrency(purchaseAmount) : !isAviaService ? "0" : "—"}
-                  />
-                  <CalculatedField
-                    label="Сумма продажи (₽)"
-                    value={saleAmount !== null ? formatCurrency(saleAmount) : "—"}
-                  />
-                </div>
               </CardContent>
             </Card>
 
@@ -907,20 +906,45 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onSubmit(form.getValues(), true)}
+                onClick={() => {
+                  form.reset();
+                  onSuccess?.();
+                }}
                 disabled={isPending}
-                data-testid="button-save-draft"
+                data-testid="button-cancel"
               >
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Черновик
+                {editData ? "Отмена" : "Очистить"}
               </Button>
+
+              {(!isEditing || (editData && editData.isDraft)) && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={isPending}
+                  data-testid="button-save-draft"
+                  onClick={() => {
+                    form.clearErrors();
+                    form.handleSubmit((data) => onSubmit(data, true))();
+                  }}
+                >
+                  {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Сохранить черновик
+                </Button>
+              )}
+
               <Button
                 type="submit"
                 disabled={isPending}
                 data-testid="button-submit"
               >
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditing ? "Сохранить" : "Создать сделку"}
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isEditing ? "Сохранение..." : "Создание..."}
+                  </>
+                ) : (
+                  isEditing && !editData?.isDraft ? "Сохранить изменения" : "Создать сделку"
+                )}
               </Button>
             </div>
           </form>
@@ -941,31 +965,37 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
           onCreated={(id) => form.setValue("buyerId", id)}
         />
         <AddSupplierDialog
-          bases={allBases}
+          bases={allBases || []}
           isInline
           inlineOpen={addSupplierOpen}
           onInlineOpenChange={setAddSupplierOpen}
           onCreated={(id) => form.setValue("supplierId", id)}
         />
         <AddLogisticsDialog
-          type="carrier"
+          carriers={carriers || []}
           isInline
           inlineOpen={addCarrierOpen}
           onInlineOpenChange={setAddCarrierOpen}
           onCreated={(id) => form.setValue("carrierId", id)}
+          defaultType="carrier"
         />
         <AddLogisticsDialog
-          type="location"
+          carriers={carriers || []}
           isInline
           inlineOpen={addLocationOpen}
           onInlineOpenChange={setAddLocationOpen}
           onCreated={(id) => form.setValue("deliveryLocationId", id)}
+          defaultType="delivery_location"
         />
+        
+        {addCostOpen && (
         <AddDeliveryCostDialog
+          editDeliveryCost={null}
           isInline
           inlineOpen={addCostOpen}
           onInlineOpenChange={setAddCostOpen}
         />
+        )}
         {addPurchasePriceOpen && (
           <AddPriceDialog
             isInline

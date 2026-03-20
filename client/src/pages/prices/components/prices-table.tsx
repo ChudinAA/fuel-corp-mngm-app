@@ -42,6 +42,7 @@ import {
   History,
   Filter,
   Loader2,
+  Car,
 } from "lucide-react";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
@@ -148,7 +149,9 @@ export function PricesTable({
             ? "ОПТ"
             : price.counterpartyType === COUNTERPARTY_TYPE.REFUELING
               ? "Заправка ВС"
-              : "Заправка ВС Зарубеж";
+              : price.counterpartyType === COUNTERPARTY_TYPE.REFUELING_ABROAD
+                ? "Заправка ВС Зарубеж"
+                : "Перевозка";
         values.set(label, price.counterpartyType);
       } else if (key === "counterpartyRole") {
         const label =
@@ -336,6 +339,10 @@ export function PricesTable({
                         label: "Заправка ВС Зарубеж",
                         value: COUNTERPARTY_TYPE.REFUELING_ABROAD,
                       },
+                      {
+                        label: "Перевозка",
+                        value: COUNTERPARTY_TYPE.TRANSPORTATION,
+                      },
                     ]}
                     selectedValues={columnFilters["counterpartyType"] || []}
                     onUpdate={(values) =>
@@ -447,8 +454,11 @@ export function PricesTable({
                             ) : price.counterpartyType ===
                               COUNTERPARTY_TYPE.REFUELING ? (
                               <Plane className="h-5 w-5 text-purple-500/70" />
-                            ) : (
+                            ) : price.counterpartyType ===
+                              COUNTERPARTY_TYPE.REFUELING_ABROAD ? (
                               <Plane className="h-5 w-5 text-teal-500/70" />
+                            ) : (
+                              <Car className="h-5 w-5 text-yellow-500/70" />
                             )}
                           </div>
                         </TooltipTrigger>
@@ -459,7 +469,10 @@ export function PricesTable({
                             : price.counterpartyType ===
                                 COUNTERPARTY_TYPE.REFUELING
                               ? "Заправка ВС"
-                              : "Заправка ВС Зарубеж"}
+                              : price.counterpartyType ===
+                                  COUNTERPARTY_TYPE.REFUELING_ABROAD
+                                ? "Заправка ВС Зарубеж"
+                                : "Перевозка"}
                         </TooltipContent>
                       </Tooltip>
                     </TableCell>

@@ -57,6 +57,7 @@ export function AddPriceDialog({
       productType: PRODUCT_TYPE.KEROSENE,
       basis: "",
       basisId: undefined,
+      loadingBasisId: undefined,
       volume: "",
       priceValues: [{ price: "" }],
       contractNumber: "",
@@ -93,6 +94,7 @@ export function AddPriceDialog({
         productType: editPrice.productType,
         basis: editPrice.basis || "",
         basisId: editPrice.basisId || undefined,
+        loadingBasisId: editPrice.loadingBasisId || undefined,
         currency: editPrice.currency || "RUB",
         currencyId: editPrice.currencyId || undefined,
         volume: editPrice.volume || "",
@@ -112,6 +114,7 @@ export function AddPriceDialog({
   const watchDateTo = form.watch("dateTo");
   const watchBasis = form.watch("basis");
   const watchBasisId = form.watch("basisId");
+  const watchLoadingBasisId = form.watch("loadingBasisId");
   const watchProductType = form.watch("productType");
 
   // Сбрасывать проверку дат при изменении критических полей
@@ -122,6 +125,7 @@ export function AddPriceDialog({
     watchCounterpartyId,
     watchBasisId,
     watchBasis,
+    watchLoadingBasisId,
     watchProductType,
     watchDateFrom,
     watchDateTo,
@@ -216,6 +220,7 @@ export function AddPriceDialog({
       counterpartyRole: watchCounterpartyRole,
       basis: watchBasis,
       basisId: watchBasisId,
+      loadingBasisId: watchLoadingBasisId,
       productType: watchProductType,
       dateFrom: watchDateFrom,
       dateTo: watchDateTo,
@@ -247,6 +252,7 @@ export function AddPriceDialog({
         counterpartyRole: data.counterpartyRole,
         basis: data.basis,
         basisId: data.basisId || null,
+        loadingBasisId: data.loadingBasisId || null,
         currency: data.currency,
         currencyId: data.currencyId || null,
         volume: data.volume || null,
@@ -292,6 +298,7 @@ export function AddPriceDialog({
         productType: PRODUCT_TYPE.KEROSENE,
         basis: "",
         basisId: undefined,
+        loadingBasisId: undefined,
         currency: "RUB",
         currencyId: undefined,
         volume: "",
@@ -352,6 +359,7 @@ export function AddPriceDialog({
         counterpartyRole: watchCounterpartyRole,
         basis: watchBasis,
         basisId: watchBasisId,
+        loadingBasisId: watchLoadingBasisId,
         productType: watchProductType,
         dateFrom: watchDateFrom,
         dateTo: watchDateTo,
@@ -397,6 +405,7 @@ export function AddPriceDialog({
             productType: PRODUCT_TYPE.KEROSENE,
             basis: "",
             basisId: undefined,
+            loadingBasisId: undefined,
             volume: "",
             priceValues: [{ price: "" }],
             contractNumber: "",

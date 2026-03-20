@@ -276,6 +276,7 @@ export class PriceStorage {
     dateTo: string,
     excludeId?: string,
     basisId?: string,
+    loadingBasisId?: string,
   ): Promise<{
     status: string;
     message: string;
@@ -286,6 +287,7 @@ export class PriceStorage {
       : eq(prices.basis, basis);
 
     const conditions = [
+      isNull(prices.deletedAt),
       eq(prices.counterpartyId, counterpartyId),
       eq(prices.counterpartyType, counterpartyType),
       eq(prices.counterpartyRole, counterpartyRole),
@@ -295,6 +297,10 @@ export class PriceStorage {
       sql`${prices.dateFrom} <= ${dateTo}`,
       sql`${prices.dateTo} >= ${dateFrom}`,
     ];
+
+    if (loadingBasisId) {
+      conditions.push(eq(prices.loadingBasisId, loadingBasisId));
+    }
 
     if (excludeId) {
       conditions.push(sql`${prices.id} != ${excludeId}`);

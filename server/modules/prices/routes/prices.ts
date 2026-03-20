@@ -66,6 +66,7 @@ export function registerPricesRoutes(app: Express) {
         dateTo,
         excludeId,
         basisId,
+        loadingBasisId,
       } = req.query;
       const result = await storage.prices.checkPriceDateOverlaps(
         String(counterpartyId),
@@ -77,6 +78,7 @@ export function registerPricesRoutes(app: Express) {
         String(dateTo),
         excludeId ? String(excludeId) : undefined,
         basisId ? String(basisId) : undefined,
+        loadingBasisId ? String(loadingBasisId) : undefined,
       );
       res.json(result);
     },
@@ -203,6 +205,7 @@ export function registerPricesRoutes(app: Express) {
           String(body.dateTo),
           undefined,
           body.basisId ? String(body.basisId) : undefined,
+          body.loadingBasisId ? String(body.loadingBasisId) : undefined,
         );
 
         if (overlapResult.status === "error") {
@@ -265,6 +268,7 @@ export function registerPricesRoutes(app: Express) {
               String(body.dateTo),
               String(id),
               String(body.basisId || currentPrice.basisId),
+              body.loadingBasisId ? String(body.loadingBasisId) : (currentPrice.loadingBasisId ? String(currentPrice.loadingBasisId) : undefined),
             );
 
             if (overlapResult.status === "error") {

@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Pencil, Trash2, Search, FileText, History, Copy, Loader2 } from "lucide-react";
+import { Pencil, Trash2, Search, FileText, History, Copy, Loader2, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -63,7 +63,16 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
   const [auditItemId, setAuditItemId] = useState<string | null>(null);
   const [notesItem, setNotesItem] = useState<any | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_TRANSPORTATION_COLUMNS);
+  const [deletedDealsAuditOpen, setDeletedDealsAuditOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const loaderRef = useRef<HTMLDivElement | null>(null);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput), 500);
+    return () => clearTimeout(timer);
+  }, [searchInput, setSearch]);
 
   const allDeals = useMemo(
     () => transportationDeals?.pages.flatMap((p) => p.data) || [],
@@ -86,21 +95,33 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
     return () => { if (el) observer.unobserve(el); };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const getFilterOptions = (columnId: string): string[] => {
+  const getFilterOptions = (columnId: string): { label: string; value: string }[] => {
     const all = transportationDeals?.pages.flatMap((p) => p.data) || [];
     switch (columnId) {
-      case "date":
-        return [...new Set(all.map((d) => d.dealDate ? format(new Date(d.dealDate), "dd.MM.yyyy", { locale: ru }) : ""))].filter(Boolean);
-      case "supplier":
-        return [...new Set(all.map((d) => d.supplier?.name || ""))].filter(Boolean);
-      case "buyer":
-        return [...new Set(all.map((d) => d.buyer?.name || ""))].filter(Boolean);
-      case "carrier":
-        return [...new Set(all.map((d) => d.carrier?.name || ""))].filter(Boolean);
-      case "deliveryLocation":
-        return [...new Set(all.map((d) => d.deliveryLocation?.name || ""))].filter(Boolean);
-      case "productType":
-        return [...new Set(all.map((d) => d.productType || ""))].filter(Boolean);
+      case "date": {
+        const vals = [...new Set(all.map((d) => d.dealDate ? format(new Date(d.dealDate), "dd.MM.yyyy", { locale: ru }) : ""))].filter(Boolean);
+        return vals.map((v) => ({ label: v, value: v }));
+      }
+      case "supplier": {
+        const vals = [...new Set(all.map((d) => d.supplier?.name || ""))].filter(Boolean);
+        return vals.map((v) => ({ label: v, value: v }));
+      }
+      case "buyer": {
+        const vals = [...new Set(all.map((d) => d.buyer?.name || ""))].filter(Boolean);
+        return vals.map((v) => ({ label: v, value: v }));
+      }
+      case "carrier": {
+        const vals = [...new Set(all.map((d) => d.carrier?.name || ""))].filter(Boolean);
+        return vals.map((v) => ({ label: v, value: v }));
+      }
+      case "deliveryLocation": {
+        const vals = [...new Set(all.map((d) => d.deliveryLocation?.name || ""))].filter(Boolean);
+        return vals.map((v) => ({ label: v, value: v }));
+      }
+      case "productType": {
+        const vals = [...new Set(all.map((d) => d.productType || ""))].filter(Boolean);
+        return vals.map((v) => ({ label: getProductLabel(v), value: v }));
+      }
       default:
         return [];
     }
@@ -140,16 +161,37 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Поиск..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            ref={searchInputRef}
+            placeholder="Поиск по поставщику, покупателю, базису..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="pl-9"
             data-testid="input-search"
           />
         </div>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setColumnFilters({})}
+          disabled={Object.values(columnFilters).every((v: any) => !v || v.length === 0)}
+          title="Сбросить все фильтры"
+          className={cn(
+            Object.values(columnFilters).some((v: any) => v && v.length > 0) && "text-primary border-primary",
+          )}
+        >
+          <Filter className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => setDeletedDealsAuditOpen(true)}
+          title="История всех изменений"
+        >
+          <History className="h-4 w-4 mr-2" />
+          История изменений
+        </Button>
         <ExportButton data={exportData} filename="transportation" />
         <div className="text-sm text-muted-foreground">
           Всего: {totalCount}
@@ -166,10 +208,10 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
                     {col.label}
                     {["date", "supplier", "buyer", "carrier", "deliveryLocation", "productType"].includes(col.id) && (
                       <TableColumnFilter
-                        columnId={col.id}
+                        title={col.label}
                         options={getFilterOptions(col.id)}
                         selectedValues={columnFilters[col.id] || []}
-                        onChange={(vals) =>
+                        onUpdate={(vals) =>
                           setColumnFilters((prev) => ({ ...prev, [col.id]: vals }))
                         }
                       />
@@ -192,7 +234,7 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
                 <TableRow
                   key={deal.id}
                   className={cn(
-                    deal.isDraft ? "opacity-60 italic" : "",
+                    deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200",
                     "cursor-pointer hover-elevate",
                   )}
                   data-testid={`row-transportation-${deal.id}`}
@@ -200,14 +242,21 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
                 >
                   {isColumnVisible("date") && (
                     <TableCell className="whitespace-nowrap">
-                      {deal.dealDate
-                        ? format(new Date(deal.dealDate), "dd.MM.yyyy", { locale: ru })
-                        : "—"}
-                      {deal.isDraft && (
-                        <Badge variant="secondary" className="ml-1 text-xs">
-                          Черновик
-                        </Badge>
-                      )}
+                      <div className="flex flex-col gap-0.5">
+                        <span>
+                          {deal.dealDate
+                            ? format(new Date(deal.dealDate), "dd.MM.yyyy", { locale: ru })
+                            : "—"}
+                        </span>
+                        {deal.isDraft && (
+                          <Badge
+                            variant="secondary"
+                            className="w-fit text-[9px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200"
+                          >
+                            Черновик
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                   )}
                   {isColumnVisible("supplier") && (
@@ -373,6 +422,14 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
           </DialogContent>
         </Dialog>
       )}
+
+      <AuditPanel
+        open={deletedDealsAuditOpen}
+        onOpenChange={setDeletedDealsAuditOpen}
+        entityType="transportation"
+        entityId=""
+        entityName="Все перевозки (включая удалённые)"
+      />
     </div>
   );
 }

@@ -112,7 +112,11 @@ export const RefuelingForm = forwardRef<
     }),
     saveAsDraft: async () => {
       const values = form.getValues();
-      await createMutation.mutateAsync({ ...values, isDraft: true });
+      if (editData?.id) {
+        await updateMutation.mutateAsync({ ...values, isDraft: true, id: editData.id });
+      } else {
+        await createMutation.mutateAsync({ ...values, isDraft: true });
+      }
     },
     isDirty: () => {
       if (!initialValuesRef.current) return form.formState.isDirty;
