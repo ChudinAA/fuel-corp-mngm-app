@@ -96,7 +96,7 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
       defaultValues: {
         supplierId: "",
         buyerId: "",
-        dealDate: format(new Date(), "yyyy-MM-dd"),
+        dealDate: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
         basisId: null,
         customerBasisId: null,
         productType: PRODUCT_TYPE.KEROSENE,
@@ -304,7 +304,7 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
         const resetValues: TransportationFormSchema = {
           supplierId: editData.supplierId || "",
           buyerId: editData.buyerId || "",
-          dealDate: editData.dealDate ? format(new Date(editData.dealDate), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+          dealDate: editData.dealDate ? format(editData.dealDate, "yyyy-MM-dd'T'HH:mm:ss") : format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
           basisId: editData.basisId || null,
           customerBasisId: editData.customerBasisId || null,
           productType: editData.productType || PRODUCT_TYPE.KEROSENE,
@@ -341,7 +341,7 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
       return {
         supplierId: data.supplierId,
         buyerId: data.buyerId,
-        dealDate: data.dealDate ? `${data.dealDate}T00:00:00` : null,
+        dealDate: data.dealDate ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
         basisId: data.basisId || null,
         customerBasisId: data.customerBasisId || null,
         productType: data.productType,
@@ -429,10 +429,6 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
 
     const isPending = createMutation.isPending || updateMutation.isPending;
 
-    const keroseneOnlyBases = availableBases.filter(
-      (b) => b.productType === PRODUCT_TYPE.KEROSENE || b.productType === PRODUCT_TYPE.PVKJ || !b.productType,
-    );
-
     const formatPriceOption = (p: any) => {
       const priceValues = Array.isArray(p.priceValues) ? p.priceValues : [];
       return priceValues
@@ -483,9 +479,22 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
                             <Calendar
                               mode="single"
                               selected={field.value ? new Date(field.value) : undefined}
-                              onSelect={(date) =>
-                                field.onChange(date ? format(date, "yyyy-MM-dd") : "")
-                              }
+                              onSelect={(date) => {
+                                if (date) {
+                                  const now = new Date();
+                                  const combined = new Date(
+                                    date.getFullYear(),
+                                    date.getMonth(),
+                                    date.getDate(),
+                                    now.getHours(),
+                                    now.getMinutes(),
+                                    now.getSeconds(),
+                                  );
+                                  field.onChange(format(combined, "yyyy-MM-dd'T'HH:mm:ss"));
+                                } else {
+                                  field.onChange("");
+                                }
+                              }}
                               locale={ru}
                             />
                           </PopoverContent>
@@ -914,7 +923,7 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
                   />
                   <div className={profit !== null ? (profit >= 0 ? "text-green-600" : "text-red-600") : ""}>
                     <CalculatedField
-                      label="Прибыль (₽)"
+                      label="Прибыль"
                       value={profit !== null ? formatCurrency(profit) : "—"}
                     />
                   </div>

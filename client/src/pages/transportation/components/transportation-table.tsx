@@ -13,7 +13,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Pencil, Trash2, Search, FileText, History, Copy, Loader2, Filter } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  Search,
+  FileText,
+  History,
+  Copy,
+  Loader2,
+  Filter,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -28,22 +37,35 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { formatNumberForTable, formatCurrencyForTable, getProductLabel } from "@/pages/opt/utils";
+import {
+  formatNumberForTable,
+  formatCurrencyForTable,
+  getProductLabel,
+} from "@/pages/opt/utils";
 import { useTransportationTable } from "../hooks/use-transportation-table";
-import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
+import {
+  EntityActionsMenu,
+  EntityAction,
+} from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
 import { ExportButton } from "@/components/export/export-button";
 import { Badge } from "@/components/ui/badge";
 import { TableColumnFilter } from "@/components/ui/table-column-filter";
 import { ProductTypeBadge } from "@/components/product-type-badge";
-import { TRANSPORTATION_TABLE_COLUMNS, DEFAULT_TRANSPORTATION_COLUMNS } from "../constants";
+import {
+  TRANSPORTATION_TABLE_COLUMNS,
+  DEFAULT_TRANSPORTATION_COLUMNS,
+} from "../constants";
 
 interface TransportationTableProps {
   onEdit: (item: any) => void;
   onCopy: (item: any) => void;
 }
 
-export function TransportationTable({ onEdit, onCopy }: TransportationTableProps) {
+export function TransportationTable({
+  onEdit,
+  onCopy,
+}: TransportationTableProps) {
   const {
     search,
     setSearch,
@@ -62,7 +84,9 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [auditItemId, setAuditItemId] = useState<string | null>(null);
   const [notesItem, setNotesItem] = useState<any | null>(null);
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(DEFAULT_TRANSPORTATION_COLUMNS);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(
+    DEFAULT_TRANSPORTATION_COLUMNS,
+  );
   const [deletedDealsAuditOpen, setDeletedDealsAuditOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -92,34 +116,56 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
     );
     const el = loaderRef.current;
     if (el) observer.observe(el);
-    return () => { if (el) observer.unobserve(el); };
+    return () => {
+      if (el) observer.unobserve(el);
+    };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const getFilterOptions = (columnId: string): { label: string; value: string }[] => {
+  const getFilterOptions = (
+    columnId: string,
+  ): { label: string; value: string }[] => {
     const all = transportationDeals?.pages.flatMap((p) => p.data) || [];
     switch (columnId) {
       case "date": {
-        const vals = [...new Set(all.map((d) => d.dealDate ? format(new Date(d.dealDate), "dd.MM.yyyy", { locale: ru }) : ""))].filter(Boolean);
+        const vals = [
+          ...new Set(
+            all.map((d) =>
+              d.dealDate
+                ? format(new Date(d.dealDate), "dd.MM.yyyy", { locale: ru })
+                : "",
+            ),
+          ),
+        ].filter(Boolean);
         return vals.map((v) => ({ label: v, value: v }));
       }
       case "supplier": {
-        const vals = [...new Set(all.map((d) => d.supplier?.name || ""))].filter(Boolean);
+        const vals = [
+          ...new Set(all.map((d) => d.supplier?.name || "")),
+        ].filter(Boolean);
         return vals.map((v) => ({ label: v, value: v }));
       }
       case "buyer": {
-        const vals = [...new Set(all.map((d) => d.buyer?.name || ""))].filter(Boolean);
+        const vals = [...new Set(all.map((d) => d.buyer?.name || ""))].filter(
+          Boolean,
+        );
         return vals.map((v) => ({ label: v, value: v }));
       }
       case "carrier": {
-        const vals = [...new Set(all.map((d) => d.carrier?.name || ""))].filter(Boolean);
+        const vals = [...new Set(all.map((d) => d.carrier?.name || ""))].filter(
+          Boolean,
+        );
         return vals.map((v) => ({ label: v, value: v }));
       }
       case "deliveryLocation": {
-        const vals = [...new Set(all.map((d) => d.deliveryLocation?.name || ""))].filter(Boolean);
+        const vals = [
+          ...new Set(all.map((d) => d.deliveryLocation?.name || "")),
+        ].filter(Boolean);
         return vals.map((v) => ({ label: v, value: v }));
       }
       case "productType": {
-        const vals = [...new Set(all.map((d) => d.productType || ""))].filter(Boolean);
+        const vals = [...new Set(all.map((d) => d.productType || ""))].filter(
+          Boolean,
+        );
         return vals.map((v) => ({ label: getProductLabel(v), value: v }));
       }
       default:
@@ -130,22 +176,22 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
   const isColumnVisible = (id: string) => visibleColumns.includes(id);
 
   const exportData = allDeals.map((d) => ({
-    "Дата": d.dealDate ? format(new Date(d.dealDate), "dd.MM.yyyy") : "",
-    "Поставщик": d.supplier?.name || "",
-    "Покупатель": d.buyer?.name || "",
+    Дата: d.dealDate ? format(new Date(d.dealDate), "dd.MM.yyyy") : "",
+    Поставщик: d.supplier?.name || "",
+    Покупатель: d.buyer?.name || "",
     "Базис погрузки": d.basis || "",
     "Базис доставки": d.customerBasis || "",
-    "Перевозчик": d.carrier?.name || "",
+    Перевозчик: d.carrier?.name || "",
     "Пункт доставки": d.deliveryLocation?.name || "",
-    "Продукт": getProductLabel(d.productType),
-    "Кг": d.quantityKg || "",
+    Продукт: getProductLabel(d.productType),
+    Кг: d.quantityKg || "",
     "Цена покупки": d.purchasePrice || "",
     "Цена продажи": d.salePrice || "",
     "Сумма покупки": d.purchaseAmount || "",
     "Сумма продажи": d.saleAmount || "",
     "Стоимость доставки": d.deliveryCost || "",
-    "Прибыль": d.profit || "",
-    "Примечание": d.notes || "",
+    Прибыль: d.profit || "",
+    Примечание: d.notes || "",
   }));
 
   if (isLoading) {
@@ -176,10 +222,13 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
           variant="outline"
           size="icon"
           onClick={() => setColumnFilters({})}
-          disabled={Object.values(columnFilters).every((v: any) => !v || v.length === 0)}
+          disabled={Object.values(columnFilters).every(
+            (v: any) => !v || v.length === 0,
+          )}
           title="Сбросить все фильтры"
           className={cn(
-            Object.values(columnFilters).some((v: any) => v && v.length > 0) && "text-primary border-primary",
+            Object.values(columnFilters).some((v: any) => v && v.length > 0) &&
+              "text-primary border-primary",
           )}
         >
           <Filter className="h-4 w-4" />
@@ -193,26 +242,35 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
           История изменений
         </Button>
         <ExportButton data={exportData} filename="transportation" />
-        <div className="text-sm text-muted-foreground">
-          Всего: {totalCount}
-        </div>
       </div>
 
       <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              {TRANSPORTATION_TABLE_COLUMNS.filter((c) => isColumnVisible(c.id)).map((col) => (
+              {TRANSPORTATION_TABLE_COLUMNS.filter((c) =>
+                isColumnVisible(c.id),
+              ).map((col) => (
                 <TableHead key={col.id} className="whitespace-nowrap">
                   <div className="flex items-center gap-1">
                     {col.label}
-                    {["date", "supplier", "buyer", "carrier", "deliveryLocation", "productType"].includes(col.id) && (
+                    {[
+                      "date",
+                      "supplier",
+                      "buyer",
+                      "carrier",
+                      "deliveryLocation",
+                      "productType",
+                    ].includes(col.id) && (
                       <TableColumnFilter
                         title={col.label}
                         options={getFilterOptions(col.id)}
                         selectedValues={columnFilters[col.id] || []}
                         onUpdate={(vals) =>
-                          setColumnFilters((prev) => ({ ...prev, [col.id]: vals }))
+                          setColumnFilters((prev) => ({
+                            ...prev,
+                            [col.id]: vals,
+                          }))
                         }
                       />
                     )}
@@ -225,7 +283,10 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
           <TableBody>
             {allDeals.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={visibleColumns.length + 1} className="text-center text-muted-foreground py-8">
+                <TableCell
+                  colSpan={visibleColumns.length + 1}
+                  className="text-center text-muted-foreground py-8"
+                >
                   Нет данных
                 </TableCell>
               </TableRow>
@@ -234,7 +295,8 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
                 <TableRow
                   key={deal.id}
                   className={cn(
-                    deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200",
+                    deal.isDraft &&
+                      "bg-muted/70 opacity-60 border-2 border-orange-200",
                     "cursor-pointer hover-elevate",
                   )}
                   data-testid={`row-transportation-${deal.id}`}
@@ -245,7 +307,9 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
                       <div className="flex flex-col gap-0.5">
                         <span>
                           {deal.dealDate
-                            ? format(new Date(deal.dealDate), "dd.MM.yyyy", { locale: ru })
+                            ? format(new Date(deal.dealDate), "dd.MM.yyyy", {
+                                locale: ru,
+                              })
                             : "—"}
                         </span>
                         {deal.isDraft && (
@@ -387,8 +451,8 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
       </div>
 
       <DeleteConfirmDialog
-        isOpen={!!deleteId}
-        onClose={() => setDeleteId(null)}
+        open={!!deleteId}
+        onOpenChange={() => setDeleteId(null)}
         onConfirm={() => {
           if (deleteId) {
             handleDelete(deleteId);
@@ -397,19 +461,16 @@ export function TransportationTable({ onEdit, onCopy }: TransportationTableProps
         }}
         title="Удалить перевозку?"
         description="Это действие нельзя отменить. Запись будет помечена как удалённая."
-        isLoading={deleteMutation.isPending}
       />
 
       {auditItemId && (
-        <Dialog open={!!auditItemId} onOpenChange={() => setAuditItemId(null)}>
-          <DialogContent className="sm:max-w-[750px] h-[70vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>История изменений</DialogTitle>
-              <DialogDescription>Все изменения этой записи</DialogDescription>
-            </DialogHeader>
-            <AuditPanel entityType="transportation" entityId={auditItemId} />
-          </DialogContent>
-        </Dialog>
+        <AuditPanel
+          open={!!auditItemId}
+          onOpenChange={() => setAuditItemId(null)}
+          entityType="transportation"
+          entityId={auditItemId}
+          entityName="Все изменения этой записи"
+        />
       )}
 
       {notesItem && (

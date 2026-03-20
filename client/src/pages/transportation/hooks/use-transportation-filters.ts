@@ -58,7 +58,7 @@ export function useTransportationFilters({
     basisId: customerBasisId,
     loadingBasisId: basisId,
     productType: productType || PRODUCT_TYPE.KEROSENE,
-    date: dealDate || undefined,
+    date: dealDate ?? null,
     enabled: !!supplierId && !!basisId && !!customerBasisId && !!dealDate && isAviaService,
   });
 
@@ -69,7 +69,7 @@ export function useTransportationFilters({
     basisId: customerBasisId,
     loadingBasisId: basisId,
     productType: productType || PRODUCT_TYPE.KEROSENE,
-    date: dealDate || undefined,
+    date: dealDate ?? null,
     enabled: !!buyerId && !!customerBasisId && !!dealDate,
   });
 
