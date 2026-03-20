@@ -203,3 +203,26 @@ The system includes a specialized module for international fuel operations:
 
 **Date Handling:**
 - date-fns library with Russian locale support
+
+## Recent Fixes (March 20, 2026)
+
+### Transportation Module Improvements
+
+**Issue 1: Sale Price Auto-selection**
+- Fixed: Sale price now auto-selects the first available price when buyer is changed
+- Fixed: When editing existing transportation records, the sale price is correctly pre-populated from saved data
+- Implementation: Modified `useAutoPriceSelection` hook to handle both creation and editing scenarios
+- The hook now checks if edited data exists and preserves previously selected prices instead of overwriting them
+
+**Issue 2: Logistics Section Runtime Error**
+- Fixed: Runtime error when switching from АвиаСервис carrier to other carriers
+- Fixed: Delivery location field is now properly cleared when switching to АвиаСервис
+- Fixed: Purchase price is cleared when switching away from АвиаСервис (since it's only applicable for АвиаСервис)
+- Implementation: Added `useEffect` logic to manage field state during carrier transitions
+- Ensures form remains consistent when toggling between АвиаСервис and other logistics providers
+
+**Technical Details:**
+- Modified: `client/src/pages/shared/hooks/use-auto-price-selection.ts`
+- Modified: `client/src/pages/transportation/components/transportation-form.tsx`
+- Carrier switching now properly triggers field cleanup and state synchronization
+- Form validation works correctly across all carrier types

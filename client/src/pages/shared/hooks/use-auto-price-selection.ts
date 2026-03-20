@@ -45,13 +45,18 @@ export function useAutoPriceSelection({
     formSetValue,
   ]);
 
-  // Автоматический выбор первой цены продажи при выборе покупателя или изменении цен (например, при смене точки поставки)
+  // Автоматический выбор первой цены продажи при выборе покупателя или изменении цен
   useEffect(() => {
-    if (buyerId && salePrices.length > 0 && !editData) {
+    if (buyerId && salePrices.length > 0) {
+      // Если редактируем и уже есть выбранная цена - не перезаписываем
+      if (editData && salePrices.some(p => p.id === editData.salePriceId)) {
+        return;
+      }
+      // Иначе выбираем первую цену
       const firstSalePriceId = `${salePrices[0].id}-0`;
       setSelectedSalePriceId(firstSalePriceId);
       formSetValue("selectedSalePriceId", firstSalePriceId);
-    } else if (buyerId && salePrices.length === 0 && !editData) {
+    } else if (buyerId && salePrices.length === 0) {
       // Очищаем выбор, если цен для нового базиса нет
       setSelectedSalePriceId("");
       formSetValue("selectedSalePriceId", "");

@@ -236,6 +236,21 @@ export const TransportationForm = forwardRef<TransportationFormHandle, Transport
       }
     }, [aviaServiceCarrier, editData]);
 
+    // Clear deliveryLocationId when switching to АвиаСервис and clear purchase price when switching away from АвиаСервис
+    useEffect(() => {
+      if (isAviaService) {
+        // When switching to АвиаСервис, clear delivery location
+        if (form.getValues("deliveryLocationId")) {
+          form.setValue("deliveryLocationId", null, { shouldDirty: false });
+        }
+      } else {
+        // When switching away from АвиаСервис, clear purchase price since it's not applicable
+        if (selectedPurchasePriceId) {
+          setSelectedPurchasePriceId("");
+        }
+      }
+    }, [isAviaService, selectedPurchasePriceId]);
+
     useAutoPriceSelection({
       supplierId: watchSupplierId,
       buyerId: watchBuyerId,
