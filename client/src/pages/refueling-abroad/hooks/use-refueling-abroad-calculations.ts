@@ -48,6 +48,7 @@ export function useRefuelingAbroadCalculations({
     quantityLiters,
     density,
     quantityKg,
+    isAbroad: true,
   });
 
   const {

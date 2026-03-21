@@ -62,6 +62,7 @@ export function AddPriceDialog({
       priceValues: [{ price: "" }],
       contractNumber: "",
       notes: "",
+      priceUnit: "kg" as "kg" | "liter",
     },
   });
 
@@ -101,6 +102,7 @@ export function AddPriceDialog({
         priceValues: parsedPriceValues,
         contractNumber: editPrice.contractNumber || "",
         notes: editPrice.notes || "",
+        priceUnit: (editPrice.priceUnit as "kg" | "liter") || "kg",
       });
       setOpen(true);
       setDateCheckPassed(false);
@@ -261,6 +263,7 @@ export function AddPriceDialog({
         dateTo: format(data.dateTo, "yyyy-MM-dd"),
         contractNumber: data.contractNumber || null,
         notes: data.notes || null,
+        priceUnit: data.priceUnit || "kg",
       };
       if (editPrice) {
         const res = await apiRequest(
@@ -305,6 +308,7 @@ export function AddPriceDialog({
         priceValues: [{ price: "" }],
         contractNumber: "",
         notes: "",
+        priceUnit: "kg" as "kg" | "liter",
       });
       dateCheck.setResult(null);
       setDateCheckPassed(false);

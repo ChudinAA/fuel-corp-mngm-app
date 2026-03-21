@@ -114,6 +114,7 @@ export const RefuelingAbroadForm = forwardRef<
 
   const handleCustomerCreated = (id: string) => {
     form.setValue("buyerId", id);
+    queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
   };
 
   const handleSupplierCreated = (id: string) => {
@@ -206,6 +207,7 @@ export const RefuelingAbroadForm = forwardRef<
         productType: editData.productType || PRODUCT_TYPE.KEROSENE,
         aircraftNumber: editData.aircraftNumber || "",
         flightNumber: editData.flightNumber || "",
+        rtNumber: editData.rtNumber || "",
         airportCode: editData.airport || "",
         supplierId: editData.supplierId || "",
         buyerId: editData.buyerId || "",
@@ -256,11 +258,13 @@ export const RefuelingAbroadForm = forwardRef<
             : item.commissionUsd
               ? parseFloat(String(item.commissionUsd))
               : undefined;
+          const isCustomerIntermediary = !item.intermediaryId && !!item.customerIntermediaryId;
           return {
             type: "intermediary" as const,
             chainPosition: item.orderIndex ?? 0,
             id: isCopy ? undefined : item.id,
-            intermediaryId: item.intermediaryId,
+            intermediaryId: item.customerIntermediaryId || item.intermediaryId,
+            intermediarySource: isCustomerIntermediary ? "customer" : "supplier",
             incomeType,
             rateValue,
             commissionUsd: item.commissionUsd
@@ -603,7 +607,10 @@ export const RefuelingAbroadForm = forwardRef<
         )
         .filter((item) => item.intermediaryId && item.intermediaryId !== "none")
         .map((item) => ({
-          intermediaryId: item.intermediaryId,
+          intermediaryId:
+            item.intermediarySource === "customer" ? null : (item.intermediaryId || null),
+          customerIntermediaryId:
+            item.intermediarySource === "customer" ? (item.intermediaryId || null) : null,
           orderIndex: item.chainPosition,
           commissionFormula: item.incomeType || null,
           manualCommissionUsd: item.rateValue ?? null,
@@ -1711,7 +1718,7 @@ export const RefuelingAbroadForm = forwardRef<
       />
 
       <AddCustomerDialog
-        bases={foreignBases}
+        bases={allBases || []}
         isInline
         inlineOpen={addCustomerOpen}
         onInlineOpenChange={setAddCustomerOpen}
