@@ -6,12 +6,13 @@ import {
   computeBankCommission,
 } from "./types";
 import { formatCurrency } from "../../utils";
-import type { Supplier } from "@shared/schema";
+import type { Supplier, Customer } from "@shared/schema";
 
 interface ChainNodeProps {
   item: ChainItem;
   currencies: any[];
   intermediarySuppliers: Supplier[];
+  intermediaryCustomers?: Customer[];
   onEdit: () => void;
   onRemove: () => void;
   purchaseAmountUsd: number;
@@ -29,6 +30,7 @@ export function ChainNode({
   item,
   currencies,
   intermediarySuppliers,
+  intermediaryCustomers = [],
   onEdit,
   onRemove,
   purchaseAmountUsd,
@@ -39,6 +41,10 @@ export function ChainNode({
     const supplierName = intermediarySuppliers.find(
       (s) => s.id === item.intermediaryId,
     )?.name;
+    const customerName = intermediaryCustomers.find(
+      (c) => c.id === item.intermediaryId,
+    )?.name;
+    const intermediaryName = supplierName || customerName;
 
     const realtimeCommission = computeIntermediaryCommission(
       item.incomeType || "fixed",
@@ -69,7 +75,7 @@ export function ChainNode({
             </span>
           </div>
           <span className="text-xs font-medium truncate max-w-[130px]">
-            {supplierName || (item.intermediaryId ? "Загрузка..." : "Не выбран")}
+            {intermediaryName || (item.intermediaryId ? "Загрузка..." : "Не выбран")}
           </span>
           {item.incomeType && (
             <span className="text-[10.5px] text-muted-foreground">

@@ -45,6 +45,7 @@ export const prices = pgTable(
     currency: text("currency").default("RUB"),
     currencyId: uuid("currency_id").references(() => currencies.id),
     exchangeRateId: uuid("exchange_rate_id").references(() => exchangeRates.id),
+    priceUnit: text("price_unit").default("kg"),
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -107,7 +108,9 @@ export const pricesRelations = relations(prices, ({ many, one }) => ({
 
 // ============ INSERT SCHEMAS ============
 
-export const insertPriceSchema = createInsertSchema(prices).omit({ id: true });
+export const insertPriceSchema = createInsertSchema(prices).omit({ id: true }).extend({
+  priceUnit: z.enum(["kg", "liter"]).default("kg"),
+});
 
 // ============ TYPES ============
 

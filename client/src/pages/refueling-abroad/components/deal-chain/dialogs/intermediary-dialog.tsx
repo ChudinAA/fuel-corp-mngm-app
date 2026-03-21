@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Supplier } from "@shared/schema";
+import type { Supplier, Customer } from "@shared/schema";
 import type { ChainIntermediaryItem, IntermediaryIncomeType } from "../types";
 import { computeIntermediaryCommission } from "../types";
 import { formatCurrency } from "../../../utils";
@@ -52,10 +52,16 @@ export function IntermediaryDialog({
   const { data: suppliers = [] } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
   });
+  const { data: customers = [] } = useQuery<Customer[]>({
+    queryKey: ["/api/customers"],
+  });
+
   const intermediarySuppliers = suppliers.filter((s) => s.isIntermediary);
+  const intermediaryCustomers = customers.filter((c) => c.isIntermediary);
 
   const [form, setForm] = useState({
     intermediaryId: editItem?.intermediaryId || "",
+    intermediarySource: (editItem?.intermediarySource || "customer") as "supplier" | "customer",
     incomeType: (editItem?.incomeType || "percent_sale") as IntermediaryIncomeType,
     rateValue: editItem?.rateValue ?? (undefined as number | undefined),
     notes: editItem?.notes || "",
@@ -73,6 +79,7 @@ export function IntermediaryDialog({
     onSave({
       id: editItem?.id,
       intermediaryId: form.intermediaryId,
+      intermediarySource: form.intermediarySource,
       incomeType: form.incomeType,
       rateValue: form.rateValue,
       commissionUsd: computedCommissionUsd || null,
@@ -96,6 +103,14 @@ export function IntermediaryDialog({
         ? "Роялти за тонну (USD)"
         : "Фиксированная сумма (USD)";
 
+  const handleSelectIntermediary = (value: string, source: "supplier" | "customer") => {
+    setForm((f) => ({
+      ...f,
+      intermediaryId: value === "none" ? "" : value,
+      intermediarySource: source,
+    }));
+  };
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg">
@@ -110,23 +125,44 @@ export function IntermediaryDialog({
             <Label className="text-sm font-medium mb-1 block">Посредник</Label>
             <Select
               value={form.intermediaryId || "none"}
-              onValueChange={(v) =>
-                setForm((f) => ({
-                  ...f,
-                  intermediaryId: v === "none" ? "" : v,
-                }))
-              }
+              onValueChange={(v) => {
+                if (v === "none") {
+                  handleSelectIntermediary("none", "customer");
+                  return;
+                }
+                const isCustomer = intermediaryCustomers.some((c) => c.id === v);
+                handleSelectIntermediary(v, isCustomer ? "customer" : "supplier");
+              }}
             >
               <SelectTrigger data-testid="select-intermediary-dialog">
                 <SelectValue placeholder="Выберите посредника" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Не выбран</SelectItem>
-                {intermediarySuppliers.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
+                {intermediaryCustomers.length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground font-medium">
+                      Покупатели-посредники
+                    </div>
+                    {intermediaryCustomers.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
+                {intermediarySuppliers.length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground font-medium">
+                      Поставщики-посредники
+                    </div>
+                    {intermediarySuppliers.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
           </div>

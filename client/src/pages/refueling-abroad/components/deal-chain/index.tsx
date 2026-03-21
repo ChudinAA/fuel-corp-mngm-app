@@ -8,6 +8,16 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Plus,
   ArrowRight,
   Users,
@@ -16,7 +26,7 @@ import {
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
-import type { Supplier } from "@shared/schema";
+import type { Supplier, Customer } from "@shared/schema";
 import type {
   ChainItem,
   ChainItemType,
@@ -133,26 +143,102 @@ export function DealChainSection({
   const { data: allSuppliers = [] } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
   });
+  const { data: allCustomers = [] } = useQuery<Customer[]>({
+    queryKey: ["/api/customers"],
+  });
   const intermediarySuppliers = allSuppliers.filter((s) => s.isIntermediary);
+  const intermediaryCustomers = allCustomers.filter((c) => c.isIntermediary);
 
   const [addingAtPosition, setAddingAtPosition] = useState<number | null>(null);
   const [addingType, setAddingType] = useState<ChainItemType | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+  const [chainReplaceAlertOpen, setChainReplaceAlertOpen] = useState(false);
+  const [pendingExchangeRateAdd, setPendingExchangeRateAdd] = useState<{
+    position: number;
+    prefillFromCurrencyId?: string;
+    prefillFromCurrencyCode?: string;
+    itemsToRemoveIndices: number[];
+  } | null>(null);
 
   const sortedItems = [...chainItems].sort(
     (a, b) => a.chainPosition - b.chainPosition,
   );
 
   const handleAddAtPosition = (position: number, type: ChainItemType) => {
+    if (type === "exchange_rate") {
+      const exchangeRateItemsBefore = sortedItems.filter(
+        (it) => it.type === "exchange_rate" && it.chainPosition < position,
+      ) as ChainExchangeRateItem[];
+      const exchangeRateItemsAfter = sortedItems.filter(
+        (it) => it.type === "exchange_rate" && it.chainPosition >= position,
+      );
+
+      const lastBefore = exchangeRateItemsBefore[exchangeRateItemsBefore.length - 1];
+      const prefillFromCurrencyId = lastBefore?.toCurrencyId;
+      const prefillFromCurrencyCode = lastBefore?.toCurrencyCode;
+
+      if (exchangeRateItemsAfter.length > 0) {
+        const itemsToRemoveIndices = exchangeRateItemsAfter.map((item) =>
+          sortedItems.indexOf(item),
+        );
+        setPendingExchangeRateAdd({
+          position,
+          prefillFromCurrencyId,
+          prefillFromCurrencyCode,
+          itemsToRemoveIndices,
+        });
+        setChainReplaceAlertOpen(true);
+        return;
+      }
+
+      setAddingAtPosition(position);
+      setAddingType(type);
+      if (prefillFromCurrencyId || prefillFromCurrencyCode) {
+        setPendingExchangeRateAdd({
+          position,
+          prefillFromCurrencyId,
+          prefillFromCurrencyCode,
+          itemsToRemoveIndices: [],
+        });
+      }
+      return;
+    }
+
     setAddingAtPosition(position);
     setAddingType(type);
+  };
+
+  const handleChainReplaceConfirm = () => {
+    if (!pendingExchangeRateAdd) return;
+    const { position, itemsToRemoveIndices } = pendingExchangeRateAdd;
+
+    const sorted = [...sortedItems];
+    const indicesToRemove = new Set(
+      itemsToRemoveIndices.map((i) => sorted[i]).filter(Boolean).map((item) => item),
+    );
+    const remaining = sorted.filter((item) => !indicesToRemove.has(item));
+    const reindexed = remaining.map((item, i) => ({ ...item, chainPosition: i }));
+    onChange(reindexed);
+
+    setChainReplaceAlertOpen(false);
+    setAddingAtPosition(position);
+    setAddingType("exchange_rate");
+  };
+
+  const handleChainReplaceCancel = () => {
+    setChainReplaceAlertOpen(false);
+    setPendingExchangeRateAdd(null);
   };
 
   const insertItemAtPosition = (
     position: number,
     item: Omit<ChainItem, "chainPosition">,
   ) => {
-    const newItems = sortedItems.map((it) =>
+    const currentSorted = [...chainItems].sort(
+      (a, b) => a.chainPosition - b.chainPosition,
+    );
+    const newItems = currentSorted.map((it) =>
       it.chainPosition >= position
         ? { ...it, chainPosition: it.chainPosition + 1 }
         : it,
@@ -203,6 +289,7 @@ export function DealChainSection({
       } as Omit<ChainExchangeRateItem, "chainPosition">);
       setAddingAtPosition(null);
       setAddingType(null);
+      setPendingExchangeRateAdd(null);
     }
   };
 
@@ -323,6 +410,7 @@ export function DealChainSection({
     setAddingAtPosition(null);
     setAddingType(null);
     setEditingIndex(null);
+    setPendingExchangeRateAdd(null);
   };
 
   return (
@@ -364,6 +452,7 @@ export function DealChainSection({
                   item={item}
                   currencies={currencies}
                   intermediarySuppliers={intermediarySuppliers}
+                  intermediaryCustomers={intermediaryCustomers}
                   onEdit={() => handleEdit(idx)}
                   onRemove={() => handleRemove(idx)}
                   purchaseAmountUsd={purchaseAmountUsd}
@@ -528,6 +617,8 @@ export function DealChainSection({
             : undefined
         }
         currencies={currencies}
+        prefillFromCurrencyId={pendingExchangeRateAdd?.prefillFromCurrencyId}
+        prefillFromCurrencyCode={pendingExchangeRateAdd?.prefillFromCurrencyCode}
       />
 
       <BankCommissionDialog
@@ -541,6 +632,21 @@ export function DealChainSection({
             : undefined
         }
       />
+
+      <AlertDialog open={chainReplaceAlertOpen} onOpenChange={setChainReplaceAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Заменить цепочку курсов?</AlertDialogTitle>
+            <AlertDialogDescription>
+              При добавлении нового курса в эту позицию все курсы правее будут удалены из цепочки. Продолжить?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleChainReplaceCancel}>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleChainReplaceConfirm}>Продолжить</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

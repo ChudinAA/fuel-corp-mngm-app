@@ -7,6 +7,7 @@ export interface ChainIntermediaryItem {
   chainPosition: number;
   id?: string;
   intermediaryId: string;
+  intermediarySource?: "supplier" | "customer";
   incomeType: IntermediaryIncomeType;
   rateValue?: number;
   commissionUsd: number | null;

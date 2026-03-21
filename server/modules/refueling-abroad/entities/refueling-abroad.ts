@@ -125,6 +125,9 @@ export const refuelingAbroad = pgTable(
     buyerTransactionId: uuid("buyer_transaction_id").references(
       () => storageCardTransactions.id,
     ),
+    rtNumber: text("rt_number"),
+    currentCurrencyCode: text("current_currency_code"),
+    currentCurrencyId: uuid("current_currency_id"),
   },
   (table) => ({
     refuelingDateIdx: index("refueling_abroad_date_idx").on(
@@ -261,6 +264,9 @@ export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
     needsTopUp: z.boolean().optional(),
     buyerStorageCardId: z.string().nullable().optional(),
     buyerTransactionId: z.string().nullable().optional(),
+    rtNumber: z.string().nullable().optional(),
+    currentCurrencyCode: z.string().nullable().optional(),
+    currentCurrencyId: z.string().nullable().optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.isDraft) {

@@ -35,6 +35,8 @@ interface ExchangeRateDialogProps {
   onSave: (item: Omit<ChainExchangeRateItem, "type" | "chainPosition">) => void;
   editItem?: ChainExchangeRateItem;
   currencies: any[];
+  prefillFromCurrencyId?: string;
+  prefillFromCurrencyCode?: string;
 }
 
 export function ExchangeRateDialog({
@@ -43,6 +45,8 @@ export function ExchangeRateDialog({
   onSave,
   editItem,
   currencies,
+  prefillFromCurrencyId,
+  prefillFromCurrencyCode,
 }: ExchangeRateDialogProps) {
   const { data: exchangeRates = [] } = useQuery<ExchangeRate[]>({
     queryKey: ["/api/exchange-rates"],
@@ -51,9 +55,9 @@ export function ExchangeRateDialog({
   const [useExisting, setUseExisting] = useState(!!editItem?.exchangeRateId);
   const [form, setForm] = useState({
     exchangeRateId: editItem?.exchangeRateId || "",
-    fromCurrencyId: editItem?.fromCurrencyId || "",
+    fromCurrencyId: editItem?.fromCurrencyId || prefillFromCurrencyId || "",
     toCurrencyId: editItem?.toCurrencyId || "",
-    fromCurrencyCode: editItem?.fromCurrencyCode || "",
+    fromCurrencyCode: editItem?.fromCurrencyCode || prefillFromCurrencyCode || "",
     toCurrencyCode: editItem?.toCurrencyCode || "",
     rate: editItem?.rate || (undefined as number | undefined),
     rateDate: editItem?.rateDate || "",

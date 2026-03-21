@@ -43,4 +43,5 @@ export const priceFormSchema = z.object({
   currency: z.string().optional().default("RUB"),
   currencyId: z.string().optional(),
   loadingBasisId: z.string().optional(),
+  priceUnit: z.enum(["kg", "liter"]).default("kg"),
 });

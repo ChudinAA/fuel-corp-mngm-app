@@ -334,6 +334,7 @@ export const RefuelingAbroadForm = forwardRef<
       productType: editData?.productType || PRODUCT_TYPE.KEROSENE,
       aircraftNumber: editData?.aircraftNumber || "",
       flightNumber: editData?.flightNumber || "",
+      rtNumber: editData?.rtNumber || "",
       airportCode: editData?.airport || "",
       supplierId: editData?.supplierId || "",
       buyerId: editData?.buyerId || "",
@@ -522,6 +523,7 @@ export const RefuelingAbroadForm = forwardRef<
         productType: data.productType || null,
         aircraftNumber: data.aircraftNumber || null,
         flightNumber: data.flightNumber || null,
+        rtNumber: data.rtNumber || null,
         airport: data.airportCode || null,
         country: null,
         supplierId:
@@ -839,6 +841,24 @@ export const RefuelingAbroadForm = forwardRef<
                       {...field}
                       value={field.value || ""}
                       data-testid="input-flight-number"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="rtNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Номер РТ</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="РТ-001"
+                      {...field}
+                      value={field.value || ""}
+                      data-testid="input-rt-number"
                     />
                   </FormControl>
                 </FormItem>

@@ -466,7 +466,43 @@ export function PriceFormFields({
       </div>
 
       <div className="space-y-3">
-        <FormLabel>Цены (добавьте одну или несколько)</FormLabel>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <FormLabel>Цены (добавьте одну или несколько)</FormLabel>
+          <FormField
+            control={control}
+            name="priceUnit"
+            render={({ field }) => (
+              <FormItem>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => field.onChange("kg")}
+                    className={`px-2 py-1 text-xs rounded-md border transition-colors ${
+                      field.value === "kg"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-input hover-elevate"
+                    }`}
+                    data-testid="button-price-unit-kg"
+                  >
+                    за кг
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => field.onChange("liter")}
+                    className={`px-2 py-1 text-xs rounded-md border transition-colors ${
+                      field.value === "liter"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-input hover-elevate"
+                    }`}
+                    data-testid="button-price-unit-liter"
+                  >
+                    за литр
+                  </button>
+                </div>
+              </FormItem>
+            )}
+          />
+        </div>
         {fields.map((field, index) => (
           <div key={field.id} className="flex gap-2 items-end">
             <FormField
@@ -479,7 +515,7 @@ export function PriceFormFields({
                       type="number"
                       step="0.00001"
                       min="0"
-                      placeholder="Цена за кг"
+                      placeholder="Цена"
                       data-testid={`input-price-${index}`}
                       {...field}
                     />

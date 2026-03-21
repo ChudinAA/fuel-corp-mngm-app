@@ -1,4 +1,4 @@
-import { sql, relations } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import {
   pgTable,
   text,
@@ -9,7 +9,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import { currencies, suppliers } from "@shared/schema";
+import { currencies, suppliers, customers } from "@shared/schema";
 import { refuelingAbroad } from "./refueling-abroad";
 
 export const refuelingAbroadIntermediaries = pgTable(
@@ -20,8 +20,9 @@ export const refuelingAbroadIntermediaries = pgTable(
       .notNull()
       .references(() => refuelingAbroad.id, { onDelete: "cascade" }),
     intermediaryId: uuid("intermediary_id")
-      .notNull()
       .references(() => suppliers.id),
+    customerIntermediaryId: uuid("customer_intermediary_id")
+      .references(() => customers.id),
     orderIndex: integer("order_index").default(0).notNull(),
     buyCurrencyId: uuid("buy_currency_id").references(() => currencies.id),
     sellCurrencyId: uuid("sell_currency_id").references(() => currencies.id),
@@ -70,6 +71,10 @@ export const refuelingAbroadIntermediariesRelations = relations(
       fields: [refuelingAbroadIntermediaries.intermediaryId],
       references: [suppliers.id],
     }),
+    customerIntermediary: one(customers, {
+      fields: [refuelingAbroadIntermediaries.customerIntermediaryId],
+      references: [customers.id],
+    }),
     buyCurrency: one(currencies, {
       fields: [refuelingAbroadIntermediaries.buyCurrencyId],
       references: [currencies.id],
@@ -87,7 +92,8 @@ export const insertRefuelingAbroadIntermediarySchema = createInsertSchema(
   .omit({ id: true })
   .extend({
     refuelingAbroadId: z.string(),
-    intermediaryId: z.string(),
+    intermediaryId: z.string().nullable().optional(),
+    customerIntermediaryId: z.string().nullable().optional(),
     orderIndex: z.number().optional().default(0),
     commissionFormula: z.string().nullable().optional(),
     manualCommissionUsd: z.number().nullable().optional(),

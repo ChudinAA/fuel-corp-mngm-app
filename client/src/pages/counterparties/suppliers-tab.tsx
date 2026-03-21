@@ -154,6 +154,8 @@ export function SuppliersTab() {
                     <TableHead>Название</TableHead>
                     <TableHead>Базисы</TableHead>
                     <TableHead>Описание</TableHead>
+                    <TableHead>Посредник</TableHead>
+                    <TableHead>Зарубеж</TableHead>
                     <TableHead>Статус</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
@@ -162,7 +164,7 @@ export function SuppliersTab() {
                   {filteredSuppliers.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={5}
+                        colSpan={7}
                         className="text-center py-8 text-muted-foreground"
                       >
                         <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -248,6 +250,20 @@ export function SuppliersTab() {
                               !supplier.pvkjPrice &&
                               "—"}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {supplier.isIntermediary ? (
+                            <Badge variant="secondary">Посредник</Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {supplier.isForeign ? (
+                            <Badge variant="secondary">Зарубеж</Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {supplier.isActive ? (

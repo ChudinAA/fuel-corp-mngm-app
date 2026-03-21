@@ -131,6 +131,8 @@ export function CustomersTab() {
                     <TableHead>Название</TableHead>
                     <TableHead>Модуль</TableHead>
                     <TableHead>Базисы</TableHead>
+                    <TableHead>Посредник</TableHead>
+                    <TableHead>Зарубеж</TableHead>
                     <TableHead>Статус</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
@@ -139,7 +141,7 @@ export function CustomersTab() {
                   {filteredItems.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={7}
+                        colSpan={8}
                         className="text-center py-8 text-muted-foreground"
                       >
                         <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -187,6 +189,20 @@ export function CustomersTab() {
                               <span>—</span>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {item.isIntermediary ? (
+                            <Badge variant="secondary">Посредник</Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {item.isForeign ? (
+                            <Badge variant="secondary">Зарубеж</Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {item.isActive ? (

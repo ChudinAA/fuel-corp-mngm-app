@@ -49,6 +49,7 @@ export const refuelingAbroadFormSchema = z
     notes: z.string().optional().nullable(),
     isApproxVolume: z.boolean().default(false),
     isDraft: z.boolean().default(false),
+    rtNumber: z.string().optional().nullable(),
   })
   .superRefine((data, ctx) => {
     if (!data.isDraft) {
