@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Trash2, Users, DollarSign, Percent } from "lucide-react";
+import { Trash2, Users, DollarSign, Percent, ArrowRight } from "lucide-react";
 import type { ChainItem, ChainIntermediaryItem } from "./types";
 import {
   computeIntermediaryCommission,
@@ -18,6 +18,8 @@ interface ChainNodeProps {
   purchaseAmountUsd: number;
   saleAmountUsd: number;
   quantityKg: number;
+  fromAmount?: number;
+  toAmount?: number;
 }
 
 const INCOME_TYPE_SHORT: Record<string, string> = {
@@ -25,6 +27,22 @@ const INCOME_TYPE_SHORT: Record<string, string> = {
   royalty_per_ton: "Роялти/т",
   fixed: "Фикс.",
 };
+
+function formatRunningAmount(amount: number, currencyCode?: string): string {
+  if (amount === 0) return "0";
+  const symbols: Record<string, string> = {
+    RUB: "₽", USD: "$", EUR: "€", KZT: "₸",
+    AZN: "₼", GEL: "₾", TRY: "₺", CNY: "¥",
+  };
+  const sym = currencyCode ? (symbols[currencyCode] || currencyCode) : "";
+  if (Math.abs(amount) >= 1_000_000) {
+    return `${(amount / 1_000_000).toFixed(2)}M ${sym}`.trim();
+  }
+  if (Math.abs(amount) >= 1_000) {
+    return `${Math.round(amount).toLocaleString("ru-RU")} ${sym}`.trim();
+  }
+  return `${amount.toFixed(2)} ${sym}`.trim();
+}
 
 export function ChainNode({
   item,
@@ -36,6 +54,8 @@ export function ChainNode({
   purchaseAmountUsd,
   saleAmountUsd,
   quantityKg,
+  fromAmount,
+  toAmount,
 }: ChainNodeProps) {
   if (item.type === "intermediary") {
     const supplierName = intermediarySuppliers.find(
@@ -53,8 +73,8 @@ export function ChainNode({
       quantityKg,
     );
 
-    item.commissionUsd = realtimeCommission
-    
+    item.commissionUsd = realtimeCommission;
+
     const rateDisplay =
       item.incomeType === "percent_sale"
         ? `${item.rateValue ?? 0}%`
@@ -128,6 +148,17 @@ export function ChainNode({
             <span className="text-[10.5px] text-muted-foreground">
               {item.rate}
             </span>
+          )}
+          {fromAmount != null && toAmount != null && item.fromCurrencyCode && item.toCurrencyCode && (
+            <div className="flex items-center gap-0.5 mt-1 flex-wrap">
+              <span className="text-[10px] text-muted-foreground">
+                {formatRunningAmount(fromAmount, item.fromCurrencyCode)}
+              </span>
+              <ArrowRight className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
+              <span className="text-[10px] font-medium text-green-600">
+                {formatRunningAmount(toAmount, item.toCurrencyCode)}
+              </span>
+            </div>
           )}
         </div>
         <Button

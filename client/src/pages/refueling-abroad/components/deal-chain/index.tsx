@@ -184,26 +184,37 @@ export function DealChainSection({
   const lastExchangeRateItem = exchangeRateItems[exchangeRateItems.length - 1];
   const hasExchangeRates = exchangeRateItems.length > 0;
   const lastToCurrencyCode = lastExchangeRateItem?.toCurrencyCode;
-  const chainEndsWithUsd =
-    !hasExchangeRates || lastToCurrencyCode === "USD";
+  const chainEndsWithUsd = !hasExchangeRates || lastToCurrencyCode === "USD";
 
-  const conversionLoss = useMemo(() => {
-    if (!hasExchangeRates || !saleExchangeRate || saleExchangeRate === 0)
-      return null;
+  const saleAmountRub =
+    saleExchangeRate && saleAmountUsd ? saleAmountUsd * saleExchangeRate : null;
+  const purchaseAmountRub =
+    purchaseExchangeRate && purchaseAmountUsd
+      ? purchaseAmountUsd * purchaseExchangeRate
+      : null;
 
-    const saleAmountRub = saleAmountUsd * saleExchangeRate;
-    if (saleAmountRub === 0) return null;
+  const runningAmounts = useMemo(() => {
+    if (!saleAmountRub) return [];
+    const amounts: { fromAmount: number; toAmount: number }[] = [];
+    let current = saleAmountRub;
+    for (const item of exchangeRateItems) {
+      const fromAmt = current;
+      const toAmt = item.rate != null ? current * item.rate : 0;
+      amounts.push({ fromAmount: fromAmt, toAmount: toAmt });
+      current = toAmt;
+    }
+    return amounts;
+  }, [exchangeRateItems, saleAmountRub]);
 
-    let currentAmount = saleAmountRub;
+  const chainFinalUsd = useMemo(() => {
+    if (!hasExchangeRates || !saleAmountRub) return null;
+    let current = saleAmountRub;
     for (const item of exchangeRateItems) {
       if (!item.rate || item.rate === 0) return null;
-      currentAmount = currentAmount * item.rate;
+      current = current * item.rate;
     }
-
-    const lossUsd = saleAmountUsd - currentAmount;
-    const lossRub = lossUsd * saleExchangeRate;
-    return { lossUsd, lossRub, chainUsd: currentAmount };
-  }, [exchangeRateItems, saleAmountUsd, saleExchangeRate, hasExchangeRates]);
+    return current;
+  }, [exchangeRateItems, saleAmountRub, hasExchangeRates]);
 
   const getExchangeRatePrefill = (position: number) => {
     const exchangeRatesBefore = sortedItems.filter(
@@ -214,8 +225,9 @@ export function DealChainSection({
 
     if (lastBefore) {
       return {
-        prefillFromCurrencyId:
-          currencies.find((c) => c.code === lastBefore.toCurrencyCode)?.id,
+        prefillFromCurrencyId: currencies.find(
+          (c) => c.code === lastBefore.toCurrencyCode,
+        )?.id,
         prefillFromCurrencyCode: lastBefore.toCurrencyCode,
       };
     }
@@ -226,12 +238,30 @@ export function DealChainSection({
     };
   };
 
+  const getInputAmountForPosition = (position: number): { amount: number; currencyCode: string } | null => {
+    if (!saleAmountRub) return null;
+    const exchangeRatesBefore = sortedItems.filter(
+      (it): it is ChainExchangeRateItem =>
+        it.type === "exchange_rate" && it.chainPosition < position,
+    );
+    if (exchangeRatesBefore.length === 0) {
+      return { amount: saleAmountRub, currencyCode: rubCurrency?.code || "RUB" };
+    }
+    let current = saleAmountRub;
+    let lastCode = rubCurrency?.code || "RUB";
+    for (const item of exchangeRatesBefore) {
+      if (!item.rate || item.rate === 0) return null;
+      current = current * item.rate;
+      lastCode = item.toCurrencyCode || lastCode;
+    }
+    return { amount: current, currencyCode: lastCode };
+  };
+
   const handleAddAtPosition = (position: number, type: ChainItemType) => {
     if (type === "exchange_rate") {
       const exchangeRateItemsAfter = sortedItems.filter(
         (it) => it.type === "exchange_rate" && it.chainPosition >= position,
       );
-
       const prefill = getExchangeRatePrefill(position);
 
       if (exchangeRateItemsAfter.length > 0) {
@@ -247,7 +277,11 @@ export function DealChainSection({
         return;
       }
 
-      setPendingExchangeRateAdd({ position, ...prefill, itemsToRemoveIndices: [] });
+      setPendingExchangeRateAdd({
+        position,
+        ...prefill,
+        itemsToRemoveIndices: [],
+      });
       setAddingAtPosition(position);
       setAddingType(type);
       return;
@@ -260,13 +294,15 @@ export function DealChainSection({
   const handleChainReplaceConfirm = () => {
     if (!pendingExchangeRateAdd) return;
     const { position, itemsToRemoveIndices } = pendingExchangeRateAdd;
-
     const sorted = [...sortedItems];
     const itemsToRemove = new Set(
       itemsToRemoveIndices.map((i) => sorted[i]).filter(Boolean),
     );
     const remaining = sorted.filter((item) => !itemsToRemove.has(item));
-    const reindexed = remaining.map((item, i) => ({ ...item, chainPosition: i }));
+    const reindexed = remaining.map((item, i) => ({
+      ...item,
+      chainPosition: i,
+    }));
     onChange(reindexed);
 
     setChainReplaceAlertOpen(false);
@@ -374,9 +410,7 @@ export function DealChainSection({
 
   const handleEdit = (index: number) => {
     const sorted = [...sortedItems];
-    const originalIndex = chainItems.findIndex(
-      (item) => item === sorted[index],
-    );
+    const originalIndex = chainItems.findIndex((item) => item === sorted[index]);
     setEditingIndex(originalIndex !== -1 ? originalIndex : index);
     setAddingType(sorted[index].type);
 
@@ -429,16 +463,7 @@ export function DealChainSection({
   const profit = saleAmountUsd - purchaseAmountUsd - totalCosts;
   const hasSummary = purchaseAmountUsd > 0 || saleAmountUsd > 0;
 
-  const saleAmountRub =
-    saleExchangeRate && saleAmountUsd
-      ? saleAmountUsd * saleExchangeRate
-      : null;
-  const purchaseAmountRub =
-    purchaseExchangeRate && purchaseAmountUsd
-      ? purchaseAmountUsd * purchaseExchangeRate
-      : null;
-  const costsRub =
-    saleExchangeRate && totalCosts ? totalCosts * saleExchangeRate : null;
+  const costsRub = saleExchangeRate && totalCosts ? totalCosts * saleExchangeRate : null;
   const profitRub =
     saleAmountRub !== null && purchaseAmountRub !== null
       ? saleAmountRub - purchaseAmountRub - (costsRub ?? 0)
@@ -473,13 +498,32 @@ export function DealChainSection({
       ? (editingItem as ChainExchangeRateItem)
       : undefined;
 
+  const dialogPrefillFromCurrencyCode = editingExchangeRateItem
+    ? (editingExchangeRateItem.fromCurrencyCode || pendingExchangeRateAdd?.prefillFromCurrencyCode)
+    : pendingExchangeRateAdd?.prefillFromCurrencyCode;
+
   const dialogPrefillFromCurrencyId = editingExchangeRateItem
-    ? pendingExchangeRateAdd?.prefillFromCurrencyId
+    ? (currencies.find((c) => c.code === dialogPrefillFromCurrencyCode)?.id || pendingExchangeRateAdd?.prefillFromCurrencyId)
     : pendingExchangeRateAdd?.prefillFromCurrencyId;
 
-  const dialogPrefillFromCurrencyCode = editingExchangeRateItem
-    ? editingExchangeRateItem.fromCurrencyCode || pendingExchangeRateAdd?.prefillFromCurrencyCode
-    : pendingExchangeRateAdd?.prefillFromCurrencyCode;
+  const dialogInputAmount = useMemo(() => {
+    const position = editingExchangeRateItem
+      ? editingExchangeRateItem.chainPosition
+      : addingAtPosition;
+    if (position == null) return null;
+    return getInputAmountForPosition(position);
+  }, [editingExchangeRateItem, addingAtPosition, sortedItems, saleAmountRub]);
+
+  const erIndexMap = useMemo(() => {
+    let erIdx = 0;
+    const map: Record<number, number> = {};
+    sortedItems.forEach((item, idx) => {
+      if (item.type === "exchange_rate") {
+        map[idx] = erIdx++;
+      }
+    });
+    return map;
+  }, [sortedItems]);
 
   return (
     <Card>
@@ -504,18 +548,12 @@ export function DealChainSection({
           </Alert>
         )}
 
-        <div className="bg-muted/20 p-4 rounded-lg border border-dashed border-primary/30">
-          <div className="flex flex-wrap items-center gap-1">
+        <div className="bg-muted/20 p-4 rounded-lg border border-dashed border-primary/30 overflow-x-auto">
+          <div className="flex flex-nowrap items-center gap-1 min-w-max">
             <div className="flex flex-col items-center gap-0.5 shrink-0">
-              {buyerName ? (
-                <div className="bg-background border-2 border-primary/30 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap">
-                  {buyerName}
-                </div>
-              ) : (
-                <div className="bg-background border-2 border-primary/30 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap">
-                  Покупатель
-                </div>
-              )}
+              <div className="bg-background border-2 border-primary/30 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap">
+                {buyerName || "Покупатель"}
+              </div>
               {saleAmountUsd > 0 && (
                 <span className="text-[11px] text-green-600 font-medium">
                   +{formatCurrency(saleAmountUsd, "USD")}
@@ -523,47 +561,44 @@ export function DealChainSection({
               )}
               {saleAmountRub !== null && (
                 <span className="text-[10px] text-muted-foreground">
-                  {new Intl.NumberFormat("ru-RU", {
-                    maximumFractionDigits: 0,
-                  }).format(saleAmountRub)}{" "}
-                  ₽
+                  {new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(saleAmountRub)} ₽
                 </span>
               )}
             </div>
 
             <AddItemMenu onAdd={(type) => handleAddAtPosition(0, type)} />
 
-            {sortedItems.map((item, idx) => (
-              <div key={idx} className="flex items-center gap-1">
-                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-[-8px]" />
-                <ChainNode
-                  item={item}
-                  currencies={currencies}
-                  intermediarySuppliers={intermediarySuppliers}
-                  intermediaryCustomers={intermediaryCustomers}
-                  onEdit={() => handleEdit(idx)}
-                  onRemove={() => handleRemove(idx)}
-                  purchaseAmountUsd={purchaseAmountUsd}
-                  saleAmountUsd={saleAmountUsd}
-                  quantityKg={quantityKg}
-                />
-                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-[-8px]" />
-                <AddItemMenu
-                  onAdd={(type) => handleAddAtPosition(idx + 1, type)}
-                />
-              </div>
-            ))}
+            {sortedItems.map((item, idx) => {
+              const erIdx = erIndexMap[idx];
+              const running = erIdx !== undefined ? runningAmounts[erIdx] : undefined;
+              return (
+                <div key={idx} className="flex items-center gap-1">
+                  <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-[-8px]" />
+                  <ChainNode
+                    item={item}
+                    currencies={currencies}
+                    intermediarySuppliers={intermediarySuppliers}
+                    intermediaryCustomers={intermediaryCustomers}
+                    onEdit={() => handleEdit(idx)}
+                    onRemove={() => handleRemove(idx)}
+                    purchaseAmountUsd={purchaseAmountUsd}
+                    saleAmountUsd={saleAmountUsd}
+                    quantityKg={quantityKg}
+                    fromAmount={running?.fromAmount}
+                    toAmount={running?.toAmount}
+                  />
+                  <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-[-8px]" />
+                  <AddItemMenu
+                    onAdd={(type) => handleAddAtPosition(idx + 1, type)}
+                  />
+                </div>
+              );
+            })}
 
             <div className="flex flex-col items-center gap-0.5 shrink-0">
-              {supplierName ? (
-                <div className="bg-background border-2 border-primary/30 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap">
-                  {supplierName}
-                </div>
-              ) : (
-                <div className="bg-background border-2 border-primary/30 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap">
-                  Поставщик
-                </div>
-              )}
+              <div className="bg-background border-2 border-primary/30 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap">
+                {supplierName || "Поставщик"}
+              </div>
               {purchaseAmountUsd > 0 && (
                 <span className="text-[11px] text-destructive font-medium">
                   -{formatCurrency(purchaseAmountUsd, "USD")}
@@ -574,11 +609,7 @@ export function DealChainSection({
 
           {sortedItems.length === 0 && (
             <p className="text-center text-sm text-muted-foreground mt-3">
-              Нажмите{" "}
-              <span className="inline-flex items-center gap-1 font-medium">
-                <Plus className="h-3 w-3" />
-              </span>{" "}
-              между узлами цепочки, чтобы добавить элемент
+              Нажмите <span className="inline-flex items-center gap-1 font-medium"><Plus className="h-3 w-3" /></span> чтобы добавить элемент
             </p>
           )}
         </div>
@@ -594,11 +625,7 @@ export function DealChainSection({
                   <span>{formatCurrency(saleAmountUsd, "USD")}</span>
                   {saleAmountRub !== null && (
                     <span className="text-[12px] text-muted-foreground font-normal">
-                      (
-                      {new Intl.NumberFormat("ru-RU", {
-                        maximumFractionDigits: 0,
-                      }).format(saleAmountRub)}{" "}
-                      ₽)
+                      ({new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(saleAmountRub)} ₽)
                     </span>
                   )}
                 </div>
@@ -616,11 +643,7 @@ export function DealChainSection({
                   <span>{formatCurrency(purchaseAmountUsd, "USD")}</span>
                   {purchaseAmountRub !== null && (
                     <span className="text-[12px] text-muted-foreground font-normal">
-                      (
-                      {new Intl.NumberFormat("ru-RU", {
-                        maximumFractionDigits: 0,
-                      }).format(purchaseAmountRub)}{" "}
-                      ₽)
+                      ({new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(purchaseAmountRub)} ₽)
                     </span>
                   )}
                 </div>
@@ -639,26 +662,16 @@ export function DealChainSection({
                     <span>-{formatCurrency(totalCosts, "USD")}</span>
                     {costsRub !== null && (
                       <span className="text-[12px] font-normal">
-                        (
-                        {new Intl.NumberFormat("ru-RU", {
-                          maximumFractionDigits: 0,
-                        }).format(costsRub)}{" "}
-                        ₽)
+                        ({new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(costsRub)} ₽)
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-muted-foreground space-y-0">
+                  <div className="text-[11px] text-muted-foreground">
                     {totalIntermediaryCommission > 0 && (
-                      <div>
-                        Посредники:{" "}
-                        {formatCurrency(totalIntermediaryCommission, "USD")}
-                      </div>
+                      <div>Посредники: {formatCurrency(totalIntermediaryCommission, "USD")}</div>
                     )}
                     {totalBankCommission > 0 && (
-                      <div>
-                        Банк. комисс.:{" "}
-                        {formatCurrency(totalBankCommission, "USD")}
-                      </div>
+                      <div>Банк. комисс.: {formatCurrency(totalBankCommission, "USD")}</div>
                     )}
                   </div>
                 </div>
@@ -667,9 +680,7 @@ export function DealChainSection({
                 <div className="text-[10px] text-muted-foreground uppercase font-medium tracking-wide">
                   Прибыль
                 </div>
-                <div
-                  className={`text-sm font-bold flex items-center gap-1 flex-wrap ${profit >= 0 ? "text-green-600" : "text-destructive"}`}
-                >
+                <div className={`text-sm font-bold flex items-center gap-1 flex-wrap ${profit >= 0 ? "text-green-600" : "text-destructive"}`}>
                   {profit >= 0 ? (
                     <TrendingUp className="h-3 w-3 shrink-0" />
                   ) : (
@@ -677,74 +688,73 @@ export function DealChainSection({
                   )}
                   <span>{formatCurrency(profit, "USD")}</span>
                   {profitRub !== null && (
-                    <span
-                      className={`text-[12px] font-normal ${profitRub >= 0 ? "text-green-600" : "text-destructive"}`}
-                    >
-                      (
-                      {new Intl.NumberFormat("ru-RU", {
-                        maximumFractionDigits: 0,
-                      }).format(profitRub)}{" "}
-                      ₽)
+                    <span className={`text-[12px] font-normal ${profitRub >= 0 ? "text-green-600" : "text-destructive"}`}>
+                      ({new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(profitRub)} ₽)
                     </span>
                   )}
                 </div>
               </div>
             </div>
 
-            {conversionLoss !== null && hasExchangeRates && (
+            {hasExchangeRates && chainFinalUsd !== null && saleAmountRub !== null && (
               <div className="border-t pt-2.5">
-                <div className="text-[10px] text-muted-foreground uppercase font-medium tracking-wide mb-1.5">
+                <div className="text-[10px] text-muted-foreground uppercase font-medium tracking-wide mb-2">
                   Цепочка конвертации валют
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                  <div className="space-y-0.5">
-                    <div className="text-[11px] text-muted-foreground">
-                      Исходная сумма (RUB):
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                  <div className="space-y-0.5 p-2 rounded-md bg-background border">
+                    <div className="text-[10px] text-muted-foreground uppercase font-medium">
+                      Получено от покупателя
                     </div>
-                    <div className="font-medium">
-                      {saleAmountRub !== null
-                        ? new Intl.NumberFormat("ru-RU", {
-                            maximumFractionDigits: 0,
-                          }).format(saleAmountRub) + " ₽"
-                        : "—"}
+                    <div className="font-semibold">
+                      {new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(saleAmountRub)} ₽
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      = {formatCurrency(saleAmountUsd, "USD")} по курсу продажи
                     </div>
                   </div>
-                  <div className="space-y-0.5">
-                    <div className="text-[11px] text-muted-foreground">
-                      После конвертации (USD):
+                  <div className="space-y-0.5 p-2 rounded-md bg-background border">
+                    <div className="text-[10px] text-muted-foreground uppercase font-medium">
+                      После конвертации цепочки
                     </div>
-                    <div className="font-medium">
-                      {formatCurrency(conversionLoss.chainUsd, "USD")}
+                    <div className="font-semibold text-green-600">
+                      {formatCurrency(chainFinalUsd, "USD")}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      через {exchangeRateItems.length} курс{exchangeRateItems.length === 1 ? "" : exchangeRateItems.length < 5 ? "а" : "ов"}
                     </div>
                   </div>
-                  <div className="space-y-0.5">
-                    <div className="text-[11px] text-muted-foreground">
-                      Потери на конвертации:
+                  <div className="space-y-0.5 p-2 rounded-md bg-background border">
+                    <div className="text-[10px] text-muted-foreground uppercase font-medium">
+                      Разница с курсом продажи
                     </div>
-                    <div
-                      className={`font-semibold ${conversionLoss.lossUsd > 0 ? "text-destructive" : "text-green-600"}`}
-                    >
-                      {conversionLoss.lossUsd > 0 ? "−" : "+"}
-                      {formatCurrency(
-                        Math.abs(conversionLoss.lossUsd),
-                        "USD",
-                      )}
-                      {saleAmountRub !== null && (
-                        <span className="text-[12px] font-normal ml-1">
-                          (
-                          {conversionLoss.lossRub > 0 ? "−" : "+"}
-                          {new Intl.NumberFormat("ru-RU", {
-                            maximumFractionDigits: 0,
-                          }).format(Math.abs(conversionLoss.lossRub))}{" "}
-                          ₽)
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      vs прямой обмен RUB→USD
-                    </div>
+                    {(() => {
+                      const diff = chainFinalUsd - saleAmountUsd;
+                      const diffRub = saleExchangeRate ? diff * saleExchangeRate : null;
+                      return (
+                        <>
+                          <div className={`font-semibold ${diff >= 0 ? "text-green-600" : "text-destructive"}`}>
+                            {diff >= 0 ? "+" : ""}{formatCurrency(diff, "USD")}
+                          </div>
+                          {diffRub !== null && (
+                            <div className={`text-[11px] ${diff >= 0 ? "text-green-600" : "text-destructive"}`}>
+                              {diff >= 0 ? "+" : ""}{new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(diffRub)} ₽
+                            </div>
+                          )}
+                          <div className="text-[10px] text-muted-foreground">
+                            {diff >= 0 ? "выгода" : "потери"} конвертации vs прямой курс
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
+                {purchaseAmountUsd > 0 && (
+                  <div className="mt-2 p-2 rounded-md bg-muted/30 text-[11px] text-muted-foreground flex flex-wrap gap-x-4 gap-y-0.5">
+                    <span>Курс закупки: <strong className="text-foreground">{formatCurrency(purchaseAmountUsd, "USD")}</strong></span>
+                    <span>Цепочка vs закупка: <strong className={chainFinalUsd >= purchaseAmountUsd ? "text-green-600" : "text-destructive"}>{formatCurrency(chainFinalUsd - purchaseAmountUsd, "USD")}</strong></span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -776,6 +786,8 @@ export function DealChainSection({
         currencies={currencies}
         prefillFromCurrencyId={dialogPrefillFromCurrencyId}
         prefillFromCurrencyCode={dialogPrefillFromCurrencyCode}
+        inputAmount={dialogInputAmount?.amount}
+        inputCurrencyCode={dialogInputAmount?.currencyCode}
       />
 
       <BankCommissionDialog

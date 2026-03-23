@@ -239,12 +239,7 @@ export const RefuelingAbroadForm = forwardRef<
       form.reset(initialValues, { keepDefaultValues: false });
     }
 
-    const allLoaded =
-      existingIntermediaries.length > 0 ||
-      existingChainExchangeRates.length > 0 ||
-      existingChainBankCommissions.length > 0;
-
-    if (allLoaded) {
+    if (originalId && (existingIntermediaries.length > 0 || existingChainExchangeRates.length > 0 || existingChainBankCommissions.length > 0)) {
       const VALID_INCOME_TYPES = ["percent_sale", "royalty_per_ton", "fixed"];
       const intermediaryItems: ChainIntermediaryItem[] =
         existingIntermediaries.map((item: any) => {
@@ -257,12 +252,14 @@ export const RefuelingAbroadForm = forwardRef<
             : item.commissionUsd
               ? parseFloat(String(item.commissionUsd))
               : undefined;
-          const isCustomerIntermediary = !item.intermediaryId && !!item.customerIntermediaryId;
+          const customerIntermediaryId = item.customerIntermediaryId || item.customerIntermediary?.id || null;
+          const supplierIntermediaryId = item.intermediaryId || item.supplierIntermediary?.id || null;
+          const isCustomerIntermediary = !!customerIntermediaryId && !supplierIntermediaryId;
           return {
             type: "intermediary" as const,
             chainPosition: item.orderIndex ?? 0,
             id: isCopy ? undefined : item.id,
-            intermediaryId: item.customerIntermediaryId || item.intermediaryId,
+            intermediaryId: customerIntermediaryId || supplierIntermediaryId || "",
             intermediarySource: isCustomerIntermediary ? "customer" : "supplier",
             incomeType,
             rateValue,

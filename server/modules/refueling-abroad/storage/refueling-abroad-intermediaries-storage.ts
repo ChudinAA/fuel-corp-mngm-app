@@ -1,15 +1,15 @@
 import { db } from "server/db";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import {
   refuelingAbroadIntermediaries,
   InsertRefuelingAbroadIntermediary,
   RefuelingAbroadIntermediary,
 } from "../entities/refueling-abroad-intermediaries";
-import { suppliers } from "@shared/schema";
+import { suppliers, customers } from "@shared/schema";
 
 export interface IRefuelingAbroadIntermediariesStorage {
   getByRefuelingId(refuelingAbroadId: string): Promise<RefuelingAbroadIntermediary[]>;
-  getByRefuelingIdWithDetails(refuelingAbroadId: string): Promise<(RefuelingAbroadIntermediary & { intermediary: { id: string; name: string } })[]>;
+  getByRefuelingIdWithDetails(refuelingAbroadId: string): Promise<any[]>;
   create(data: InsertRefuelingAbroadIntermediary): Promise<RefuelingAbroadIntermediary>;
   createMany(data: InsertRefuelingAbroadIntermediary[]): Promise<RefuelingAbroadIntermediary[]>;
   update(id: string, data: Partial<InsertRefuelingAbroadIntermediary>): Promise<RefuelingAbroadIntermediary | undefined>;
@@ -27,12 +27,13 @@ export class RefuelingAbroadIntermediariesStorage implements IRefuelingAbroadInt
       .orderBy(asc(refuelingAbroadIntermediaries.orderIndex));
   }
 
-  async getByRefuelingIdWithDetails(refuelingAbroadId: string): Promise<(RefuelingAbroadIntermediary & { intermediary: { id: string; name: string } })[]> {
+  async getByRefuelingIdWithDetails(refuelingAbroadId: string): Promise<any[]> {
     const results = await db
       .select({
         id: refuelingAbroadIntermediaries.id,
         refuelingAbroadId: refuelingAbroadIntermediaries.refuelingAbroadId,
         intermediaryId: refuelingAbroadIntermediaries.intermediaryId,
+        customerIntermediaryId: refuelingAbroadIntermediaries.customerIntermediaryId,
         orderIndex: refuelingAbroadIntermediaries.orderIndex,
         commissionFormula: refuelingAbroadIntermediaries.commissionFormula,
         manualCommissionUsd: refuelingAbroadIntermediaries.manualCommissionUsd,
@@ -43,18 +44,24 @@ export class RefuelingAbroadIntermediariesStorage implements IRefuelingAbroadInt
         buyExchangeRate: refuelingAbroadIntermediaries.buyExchangeRate,
         sellExchangeRate: refuelingAbroadIntermediaries.sellExchangeRate,
         crossConversionCost: refuelingAbroadIntermediaries.crossConversionCost,
+        crossConversionCostRub: refuelingAbroadIntermediaries.crossConversionCostRub,
         notes: refuelingAbroadIntermediaries.notes,
-        intermediary: {
+        supplierIntermediary: {
           id: suppliers.id,
           name: suppliers.name,
+        },
+        customerIntermediary: {
+          id: customers.id,
+          name: customers.name,
         },
       })
       .from(refuelingAbroadIntermediaries)
       .leftJoin(suppliers, eq(refuelingAbroadIntermediaries.intermediaryId, suppliers.id))
+      .leftJoin(customers, eq(refuelingAbroadIntermediaries.customerIntermediaryId, customers.id))
       .where(eq(refuelingAbroadIntermediaries.refuelingAbroadId, refuelingAbroadId))
       .orderBy(asc(refuelingAbroadIntermediaries.orderIndex));
-    
-    return results as any;
+
+    return results;
   }
 
   async create(data: InsertRefuelingAbroadIntermediary): Promise<RefuelingAbroadIntermediary> {
@@ -67,7 +74,7 @@ export class RefuelingAbroadIntermediariesStorage implements IRefuelingAbroadInt
 
   async createMany(data: InsertRefuelingAbroadIntermediary[]): Promise<RefuelingAbroadIntermediary[]> {
     if (data.length === 0) return [];
-    
+
     const results = await db
       .insert(refuelingAbroadIntermediaries)
       .values(data.map(d => this.transformData(d)))
@@ -105,21 +112,21 @@ export class RefuelingAbroadIntermediariesStorage implements IRefuelingAbroadInt
     intermediaries: Omit<InsertRefuelingAbroadIntermediary, "refuelingAbroadId">[]
   ): Promise<RefuelingAbroadIntermediary[]> {
     await this.deleteByRefuelingId(refuelingAbroadId);
-    
+
     if (intermediaries.length === 0) return [];
-    
+
     const dataWithRefuelingId = intermediaries.map((item, index) => ({
       ...item,
       refuelingAbroadId,
       orderIndex: item.orderIndex ?? index,
     }));
-    
+
     return this.createMany(dataWithRefuelingId);
   }
 
   private transformData(data: Partial<InsertRefuelingAbroadIntermediary>): any {
     const result: any = { ...data };
-    
+
     if (data.commissionFormula !== undefined) {
       result.commissionFormula = data.commissionFormula;
     }
@@ -144,7 +151,7 @@ export class RefuelingAbroadIntermediariesStorage implements IRefuelingAbroadInt
     if (data.crossConversionCostRub !== undefined) {
       result.crossConversionCostRub = data.crossConversionCostRub !== null ? String(data.crossConversionCostRub) : null;
     }
-    
+
     return result;
   }
 }
