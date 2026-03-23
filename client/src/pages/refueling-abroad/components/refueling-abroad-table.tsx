@@ -197,7 +197,7 @@ export function RefuelingAbroadTable({
                 </div>
               </TableHead>
               <TableHead className="text-[13px] font-semibold p-2">
-                Аэроп. / Борт
+                Аэроп. / Борт / № РТ
               </TableHead>
               <TableHead className="text-[13px] font-semibold p-2">
                 <div className="flex items-center justify-between gap-1">
@@ -296,6 +296,9 @@ export function RefuelingAbroadTable({
                       <span className="font-mono">{item.airport || "—"}</span>
                       <span className="text-muted-foreground">
                         {item.aircraftNumber || "—"}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {item.rtNumber || "—"}
                       </span>
                     </div>
                   </TableCell>
