@@ -143,6 +143,7 @@ export class RefuelingAbroadStorage {
             ),
             with: {
               intermediary: true,
+              customerIntermediary: true,
             },
             orderBy: [asc(refuelingAbroadIntermediaries.orderIndex)],
           });

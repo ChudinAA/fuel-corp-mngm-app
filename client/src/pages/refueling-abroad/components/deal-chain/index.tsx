@@ -535,10 +535,10 @@ export function DealChainSection({
           </CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-2">
         {!chainEndsWithUsd && (
           <Alert variant="destructive" className="py-2">
-            <AlertTriangle className="h-4 w-4" />
+            {/* <AlertTriangle className="h-4 w-4" /> */}
             <AlertDescription className="text-sm">
               Цепочка курсов должна завершаться валютой{" "}
               <strong>USD</strong>. Текущая конечная валюта:{" "}

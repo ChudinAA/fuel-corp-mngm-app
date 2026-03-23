@@ -874,7 +874,7 @@ export const RefuelingAbroadForm = forwardRef<
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[5fr_2fr] gap-4">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Контрагенты</CardTitle>
@@ -1040,7 +1040,7 @@ export const RefuelingAbroadForm = forwardRef<
                 )}
               />
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
                 {watchedValues.inputMode === "liters" ? (
                   <>
                     <FormField
@@ -1064,7 +1064,7 @@ export const RefuelingAbroadForm = forwardRef<
                         </FormItem>
                       )}
                     />
-                    <FormField
+                    {/* <FormField
                       control={form.control}
                       name="density"
                       render={({ field }) => (
@@ -1084,7 +1084,7 @@ export const RefuelingAbroadForm = forwardRef<
                           </FormControl>
                         </FormItem>
                       )}
-                    />
+                    /> */}
                   </>
                 ) : (
                   <FormField
@@ -1110,12 +1110,12 @@ export const RefuelingAbroadForm = forwardRef<
                   />
                 )}
 
-                <div>
+                {/* <div>
                   <Label className="text-muted-foreground">Итого (кг)</Label>
                   <div className="h-9 px-3 flex items-center bg-muted rounded-md text-sm font-medium">
                     {formatNumber(calculations.finalKg)}
                   </div>
-                </div>
+                </div> */}
               </div>
             </CardContent>
           </Card>

@@ -324,7 +324,7 @@ export function RefuelingAbroadTable({
                       {item.intermediaries?.map((rel: any) => (
                         <div key={rel.id} className="text-[13px] leading-tight">
                           <span className="font-medium">
-                            {rel.intermediary?.name}
+                            {rel.intermediary?.name ?? rel.customerIntermediary?.name}
                           </span>
                           <span className="ml-1 text-blue-500">
                             {formatCurrency(rel.commissionUsd, "USD")}
