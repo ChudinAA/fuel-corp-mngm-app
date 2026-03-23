@@ -114,7 +114,6 @@ export const RefuelingAbroadForm = forwardRef<
 
   const handleCustomerCreated = (id: string) => {
     form.setValue("buyerId", id);
-    queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
   };
 
   const handleSupplierCreated = (id: string) => {
@@ -732,7 +731,7 @@ export const RefuelingAbroadForm = forwardRef<
               Информация о рейсе
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <CardContent className="grid grid-cols-2 md:grid-cols-6 gap-4">
             <FormField
               control={form.control}
               name="refuelingDate"
@@ -1710,7 +1709,7 @@ export const RefuelingAbroadForm = forwardRef<
       />
 
       <AddSupplierDialog
-        bases={foreignBases}
+        bases={allBases || []}
         isInline
         inlineOpen={addSupplierOpen}
         onInlineOpenChange={setAddSupplierOpen}
