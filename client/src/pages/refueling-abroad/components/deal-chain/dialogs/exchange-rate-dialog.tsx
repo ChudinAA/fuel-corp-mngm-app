@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
+import { Lock } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -52,17 +54,36 @@ export function ExchangeRateDialog({
     queryKey: ["/api/exchange-rates"],
   });
 
+  const lockedFromCurrencyCode = editItem?.fromCurrencyCode || prefillFromCurrencyCode;
+  const lockedFromCurrencyId = editItem?.fromCurrencyId || prefillFromCurrencyId;
+
   const [useExisting, setUseExisting] = useState(!!editItem?.exchangeRateId);
   const [form, setForm] = useState({
     exchangeRateId: editItem?.exchangeRateId || "",
-    fromCurrencyId: editItem?.fromCurrencyId || prefillFromCurrencyId || "",
+    fromCurrencyId: lockedFromCurrencyId || "",
     toCurrencyId: editItem?.toCurrencyId || "",
-    fromCurrencyCode: editItem?.fromCurrencyCode || prefillFromCurrencyCode || "",
+    fromCurrencyCode: lockedFromCurrencyCode || "",
     toCurrencyCode: editItem?.toCurrencyCode || "",
     rate: editItem?.rate || (undefined as number | undefined),
     rateDate: editItem?.rateDate || "",
     notes: editItem?.notes || "",
   });
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        exchangeRateId: editItem?.exchangeRateId || "",
+        fromCurrencyId: lockedFromCurrencyId || "",
+        toCurrencyId: editItem?.toCurrencyId || "",
+        fromCurrencyCode: lockedFromCurrencyCode || "",
+        toCurrencyCode: editItem?.toCurrencyCode || "",
+        rate: editItem?.rate || undefined,
+        rateDate: editItem?.rateDate || "",
+        notes: editItem?.notes || "",
+      });
+      setUseExisting(!!editItem?.exchangeRateId);
+    }
+  }, [open]);
 
   const handleSelectExistingRate = (rateId: string) => {
     const rate = exchangeRates.find((r) => r.id === rateId);
@@ -70,7 +91,6 @@ export function ExchangeRateDialog({
       setForm((f) => ({
         ...f,
         exchangeRateId: rateId,
-        fromCurrencyCode: rate.currency,
         toCurrencyCode: rate.targetCurrency,
         rate: parseFloat(rate.rate),
         rateDate: rate.rateDate,
@@ -81,14 +101,13 @@ export function ExchangeRateDialog({
   };
 
   const handleSave = () => {
-    const fromCurr = currencies.find((c) => c.id === form.fromCurrencyId);
     const toCurr = currencies.find((c) => c.id === form.toCurrencyId);
     onSave({
       id: editItem?.id,
       exchangeRateId: useExisting ? form.exchangeRateId || undefined : undefined,
-      fromCurrencyId: form.fromCurrencyId || undefined,
+      fromCurrencyId: lockedFromCurrencyId || form.fromCurrencyId || undefined,
       toCurrencyId: form.toCurrencyId || undefined,
-      fromCurrencyCode: form.fromCurrencyCode || fromCurr?.code || undefined,
+      fromCurrencyCode: lockedFromCurrencyCode || form.fromCurrencyCode || undefined,
       toCurrencyCode: form.toCurrencyCode || toCurr?.code || undefined,
       rate: form.rate,
       rateDate: form.rateDate || undefined,
@@ -96,6 +115,14 @@ export function ExchangeRateDialog({
     });
     onClose();
   };
+
+  const filteredExchangeRates = lockedFromCurrencyCode
+    ? exchangeRates.filter(
+        (r) =>
+          r.currency === lockedFromCurrencyCode ||
+          r.targetCurrency === lockedFromCurrencyCode,
+      )
+    : exchangeRates;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -107,6 +134,18 @@ export function ExchangeRateDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {lockedFromCurrencyCode && (
+            <div className="flex items-center gap-2 p-2.5 bg-muted/30 rounded-md border border-dashed">
+              <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="text-sm text-muted-foreground">
+                Валюта (откуда) зафиксирована:
+              </span>
+              <Badge variant="secondary" className="font-mono">
+                {lockedFromCurrencyCode}
+              </Badge>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <Button
               type="button"
@@ -130,6 +169,11 @@ export function ExchangeRateDialog({
             <div>
               <Label className="text-sm font-medium mb-1 block">
                 Курс из справочника
+                {lockedFromCurrencyCode && (
+                  <span className="text-muted-foreground font-normal ml-1">
+                    (фильтр: {lockedFromCurrencyCode})
+                  </span>
+                )}
               </Label>
               <Select
                 value={form.exchangeRateId || "none"}
@@ -142,7 +186,7 @@ export function ExchangeRateDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Не выбран</SelectItem>
-                  {exchangeRates.map((r) => (
+                  {filteredExchangeRates.map((r) => (
                     <SelectItem key={r.id} value={r.id}>
                       {r.currency}/{r.targetCurrency} — {r.rate} (
                       {new Date(r.rateDate).toLocaleDateString("ru-RU")})
@@ -155,7 +199,8 @@ export function ExchangeRateDialog({
                 <div className="mt-3 p-3 bg-muted/30 rounded-md text-sm">
                   <span className="text-muted-foreground">Выбранный курс: </span>
                   <span className="font-medium">
-                    {form.fromCurrencyCode}/{form.toCurrencyCode} = {form.rate}
+                    {lockedFromCurrencyCode || form.fromCurrencyCode}/
+                    {form.toCurrencyCode} = {form.rate}
                   </span>
                 </div>
               )}
@@ -164,34 +209,43 @@ export function ExchangeRateDialog({
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-sm font-medium mb-1 block">
+                  <Label className="text-sm font-medium mb-1 flex items-center gap-1.5">
                     Валюта (откуда)
+                    {lockedFromCurrencyCode && (
+                      <Lock className="h-3 w-3 text-muted-foreground" />
+                    )}
                   </Label>
-                  <Select
-                    value={form.fromCurrencyId || "none"}
-                    onValueChange={(v) => {
-                      const curr = currencies.find(
-                        (c) => c.id === (v === "none" ? "" : v),
-                      );
-                      setForm((f) => ({
-                        ...f,
-                        fromCurrencyId: v === "none" ? "" : v,
-                        fromCurrencyCode: curr?.code || "",
-                      }));
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Валюта" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Не выбрана</SelectItem>
-                      {currencies.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.code}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {lockedFromCurrencyCode ? (
+                    <div className="flex h-9 items-center px-3 rounded-md border bg-muted/50 text-sm font-medium">
+                      {lockedFromCurrencyCode}
+                    </div>
+                  ) : (
+                    <Select
+                      value={form.fromCurrencyId || "none"}
+                      onValueChange={(v) => {
+                        const curr = currencies.find(
+                          (c) => c.id === (v === "none" ? "" : v),
+                        );
+                        setForm((f) => ({
+                          ...f,
+                          fromCurrencyId: v === "none" ? "" : v,
+                          fromCurrencyCode: curr?.code || "",
+                        }));
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Валюта" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Не выбрана</SelectItem>
+                        {currencies.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.code}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <div>
                   <Label className="text-sm font-medium mb-1 block">
@@ -226,13 +280,18 @@ export function ExchangeRateDialog({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-sm font-medium mb-1 block">Курс</Label>
+                  <Label className="text-sm font-medium mb-1 block">
+                    Курс{" "}
+                    {lockedFromCurrencyCode && form.toCurrencyCode
+                      ? `(${lockedFromCurrencyCode} → ${form.toCurrencyCode})`
+                      : ""}
+                  </Label>
                   <Input
                     type="number"
                     min="0"
                     step="0.000001"
-                    placeholder="Например: 90.5"
-                    value={form.rate || ""}
+                    placeholder="Например: 0.0033"
+                    value={form.rate ?? ""}
                     onChange={(e) =>
                       setForm((f) => ({
                         ...f,

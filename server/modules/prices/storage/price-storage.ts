@@ -22,6 +22,7 @@ export class PriceStorage {
     loadingBasisId?: string;
     productType?: string;
     date: string;
+    priceUnit?: string;
   }): Promise<Price[]> {
     const conditions = [
       isNull(prices.deletedAt),
@@ -41,6 +42,9 @@ export class PriceStorage {
     }
     if (filters.productType) {
       conditions.push(eq(prices.productType, filters.productType));
+    }
+    if (filters.priceUnit) {
+      conditions.push(eq(prices.priceUnit, filters.priceUnit));
     }
 
     return db

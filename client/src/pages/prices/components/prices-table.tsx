@@ -409,7 +409,7 @@ export function PricesTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-right">Цена за кг</TableHead>
+              <TableHead className="text-right">Цена</TableHead>
               <TableHead className="text-center">Объем (кг)</TableHead>
               <TableHead className="text-center">Выборка (кг)</TableHead>
               <TableHead className="w-[10px]"></TableHead>
@@ -507,10 +507,17 @@ export function PricesTable({
                       <ProductTypeBadge type={price.productType} />
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {getPriceDisplay(
-                        price.priceValues,
-                        price.currencySymbol || "₽",
-                      )}
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span>
+                          {getPriceDisplay(
+                            price.priceValues,
+                            price.currencySymbol || "₽",
+                          )}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground font-normal border rounded px-1 py-0.5 leading-none">
+                          {price.priceUnit === "liter" ? "л" : "кг"}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       {price.volume

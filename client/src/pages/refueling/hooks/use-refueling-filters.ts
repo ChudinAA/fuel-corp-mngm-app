@@ -16,6 +16,7 @@ interface UseRefuelingFiltersProps {
   allBases: Base[];
   equipmentType?: string;
   warehouses?: Warehouse[];
+  priceUnit?: "kg" | "liter";
 }
 
 export function useRefuelingFilters({
@@ -31,6 +32,7 @@ export function useRefuelingFilters({
   allBases,
   equipmentType = EQUIPMENT_TYPE.COMMON,
   warehouses,
+  priceUnit,
 }: UseRefuelingFiltersProps) {
   const refuelingSuppliers = useMemo(() => {
     let filteredSuppliers = suppliers || [];
@@ -82,6 +84,7 @@ export function useRefuelingFilters({
     productType: productType,
     date: refuelingDate,
     enabled: !!supplierId && !!basisId && !!refuelingDate,
+    priceUnit: priceUnit,
   });
 
   const saleLookup = usePriceLookup({
@@ -92,6 +95,7 @@ export function useRefuelingFilters({
     productType: productType,
     date: refuelingDate,
     enabled: !!buyerId && !!customerBasisId && !!refuelingDate,
+    priceUnit: priceUnit,
   });
 
   // Фильтрация цен покупки

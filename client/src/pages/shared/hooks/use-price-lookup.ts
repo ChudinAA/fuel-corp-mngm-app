@@ -11,6 +11,7 @@ interface PriceLookupParams {
   productType?: string;
   date: Date | null;
   enabled?: boolean;
+  priceUnit?: "kg" | "liter";
 }
 
 export function usePriceLookup({
@@ -22,6 +23,7 @@ export function usePriceLookup({
   productType,
   date,
   enabled = true,
+  priceUnit,
 }: PriceLookupParams) {
   const dateStr = date ? format(date, "yyyy-MM-dd") : "";
 
@@ -35,6 +37,7 @@ export function usePriceLookup({
       loadingBasisId,
       productType,
       dateStr,
+      priceUnit,
     ],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -45,6 +48,7 @@ export function usePriceLookup({
       if (basisId) params.append("basisId", basisId);
       if (loadingBasisId) params.append("loadingBasisId", loadingBasisId);
       if (productType) params.append("productType", productType);
+      if (priceUnit) params.append("priceUnit", priceUnit);
 
       const res = await fetch(`/api/prices/find-active?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch prices");

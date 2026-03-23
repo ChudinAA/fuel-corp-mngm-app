@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Popover,
   PopoverContent,
@@ -25,6 +26,7 @@ import {
   Percent,
   TrendingUp,
   TrendingDown,
+  AlertTriangle,
 } from "lucide-react";
 import type { Supplier, Customer } from "@shared/schema";
 import type {
@@ -149,6 +151,11 @@ export function DealChainSection({
   const intermediarySuppliers = allSuppliers.filter((s) => s.isIntermediary);
   const intermediaryCustomers = allCustomers.filter((c) => c.isIntermediary);
 
+  const rubCurrency = useMemo(
+    () => currencies.find((c) => c.code === "RUB"),
+    [currencies],
+  );
+
   const [addingAtPosition, setAddingAtPosition] = useState<number | null>(null);
   const [addingType, setAddingType] = useState<ChainItemType | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -161,22 +168,71 @@ export function DealChainSection({
     itemsToRemoveIndices: number[];
   } | null>(null);
 
-  const sortedItems = [...chainItems].sort(
-    (a, b) => a.chainPosition - b.chainPosition,
+  const sortedItems = useMemo(
+    () => [...chainItems].sort((a, b) => a.chainPosition - b.chainPosition),
+    [chainItems],
   );
+
+  const exchangeRateItems = useMemo(
+    () =>
+      sortedItems.filter(
+        (it): it is ChainExchangeRateItem => it.type === "exchange_rate",
+      ),
+    [sortedItems],
+  );
+
+  const lastExchangeRateItem = exchangeRateItems[exchangeRateItems.length - 1];
+  const hasExchangeRates = exchangeRateItems.length > 0;
+  const lastToCurrencyCode = lastExchangeRateItem?.toCurrencyCode;
+  const chainEndsWithUsd =
+    !hasExchangeRates || lastToCurrencyCode === "USD";
+
+  const conversionLoss = useMemo(() => {
+    if (!hasExchangeRates || !saleExchangeRate || saleExchangeRate === 0)
+      return null;
+
+    const saleAmountRub = saleAmountUsd * saleExchangeRate;
+    if (saleAmountRub === 0) return null;
+
+    let currentAmount = saleAmountRub;
+    for (const item of exchangeRateItems) {
+      if (!item.rate || item.rate === 0) return null;
+      currentAmount = currentAmount * item.rate;
+    }
+
+    const lossUsd = saleAmountUsd - currentAmount;
+    const lossRub = lossUsd * saleExchangeRate;
+    return { lossUsd, lossRub, chainUsd: currentAmount };
+  }, [exchangeRateItems, saleAmountUsd, saleExchangeRate, hasExchangeRates]);
+
+  const getExchangeRatePrefill = (position: number) => {
+    const exchangeRatesBefore = sortedItems.filter(
+      (it): it is ChainExchangeRateItem =>
+        it.type === "exchange_rate" && it.chainPosition < position,
+    );
+    const lastBefore = exchangeRatesBefore[exchangeRatesBefore.length - 1];
+
+    if (lastBefore) {
+      return {
+        prefillFromCurrencyId:
+          currencies.find((c) => c.code === lastBefore.toCurrencyCode)?.id,
+        prefillFromCurrencyCode: lastBefore.toCurrencyCode,
+      };
+    }
+
+    return {
+      prefillFromCurrencyId: rubCurrency?.id,
+      prefillFromCurrencyCode: rubCurrency?.code || "RUB",
+    };
+  };
 
   const handleAddAtPosition = (position: number, type: ChainItemType) => {
     if (type === "exchange_rate") {
-      const exchangeRateItemsBefore = sortedItems.filter(
-        (it) => it.type === "exchange_rate" && it.chainPosition < position,
-      ) as ChainExchangeRateItem[];
       const exchangeRateItemsAfter = sortedItems.filter(
         (it) => it.type === "exchange_rate" && it.chainPosition >= position,
       );
 
-      const lastBefore = exchangeRateItemsBefore[exchangeRateItemsBefore.length - 1];
-      const prefillFromCurrencyId = lastBefore?.toCurrencyId;
-      const prefillFromCurrencyCode = lastBefore?.toCurrencyCode;
+      const prefill = getExchangeRatePrefill(position);
 
       if (exchangeRateItemsAfter.length > 0) {
         const itemsToRemoveIndices = exchangeRateItemsAfter.map((item) =>
@@ -184,24 +240,16 @@ export function DealChainSection({
         );
         setPendingExchangeRateAdd({
           position,
-          prefillFromCurrencyId,
-          prefillFromCurrencyCode,
+          ...prefill,
           itemsToRemoveIndices,
         });
         setChainReplaceAlertOpen(true);
         return;
       }
 
+      setPendingExchangeRateAdd({ position, ...prefill, itemsToRemoveIndices: [] });
       setAddingAtPosition(position);
       setAddingType(type);
-      if (prefillFromCurrencyId || prefillFromCurrencyCode) {
-        setPendingExchangeRateAdd({
-          position,
-          prefillFromCurrencyId,
-          prefillFromCurrencyCode,
-          itemsToRemoveIndices: [],
-        });
-      }
       return;
     }
 
@@ -214,15 +262,15 @@ export function DealChainSection({
     const { position, itemsToRemoveIndices } = pendingExchangeRateAdd;
 
     const sorted = [...sortedItems];
-    const indicesToRemove = new Set(
-      itemsToRemoveIndices.map((i) => sorted[i]).filter(Boolean).map((item) => item),
+    const itemsToRemove = new Set(
+      itemsToRemoveIndices.map((i) => sorted[i]).filter(Boolean),
     );
-    const remaining = sorted.filter((item) => !indicesToRemove.has(item));
+    const remaining = sorted.filter((item) => !itemsToRemove.has(item));
     const reindexed = remaining.map((item, i) => ({ ...item, chainPosition: i }));
     onChange(reindexed);
 
     setChainReplaceAlertOpen(false);
-    setAddingAtPosition(position);
+    setAddingAtPosition(pendingExchangeRateAdd.position);
     setAddingType("exchange_rate");
   };
 
@@ -331,6 +379,16 @@ export function DealChainSection({
     );
     setEditingIndex(originalIndex !== -1 ? originalIndex : index);
     setAddingType(sorted[index].type);
+
+    if (sorted[index].type === "exchange_rate") {
+      const item = sorted[index] as ChainExchangeRateItem;
+      const prefill = getExchangeRatePrefill(item.chainPosition);
+      setPendingExchangeRateAdd({
+        position: item.chainPosition,
+        ...prefill,
+        itemsToRemoveIndices: [],
+      });
+    }
   };
 
   const editingItem =
@@ -386,9 +444,6 @@ export function DealChainSection({
       ? saleAmountRub - purchaseAmountRub - (costsRub ?? 0)
       : null;
 
-  const fmtRub = (n: number) =>
-    new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n);
-
   const isIntermediaryDialogOpen =
     (addingType === "intermediary" && addingAtPosition !== null) ||
     (editingIndex !== null && editingItem?.type === "intermediary");
@@ -413,6 +468,19 @@ export function DealChainSection({
     setPendingExchangeRateAdd(null);
   };
 
+  const editingExchangeRateItem =
+    editingIndex !== null && editingItem?.type === "exchange_rate"
+      ? (editingItem as ChainExchangeRateItem)
+      : undefined;
+
+  const dialogPrefillFromCurrencyId = editingExchangeRateItem
+    ? pendingExchangeRateAdd?.prefillFromCurrencyId
+    : pendingExchangeRateAdd?.prefillFromCurrencyId;
+
+  const dialogPrefillFromCurrencyCode = editingExchangeRateItem
+    ? editingExchangeRateItem.fromCurrencyCode || pendingExchangeRateAdd?.prefillFromCurrencyCode
+    : pendingExchangeRateAdd?.prefillFromCurrencyCode;
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -424,6 +492,18 @@ export function DealChainSection({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {!chainEndsWithUsd && (
+          <Alert variant="destructive" className="py-2">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-sm">
+              Цепочка курсов должна завершаться валютой{" "}
+              <strong>USD</strong>. Текущая конечная валюта:{" "}
+              <strong>{lastToCurrencyCode || "не задана"}</strong>. Добавьте
+              или исправьте последний курс.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="bg-muted/20 p-4 rounded-lg border border-dashed border-primary/30">
           <div className="flex flex-wrap items-center gap-1">
             <div className="flex flex-col items-center gap-0.5 shrink-0">
@@ -439,6 +519,14 @@ export function DealChainSection({
               {saleAmountUsd > 0 && (
                 <span className="text-[11px] text-green-600 font-medium">
                   +{formatCurrency(saleAmountUsd, "USD")}
+                </span>
+              )}
+              {saleAmountRub !== null && (
+                <span className="text-[10px] text-muted-foreground">
+                  {new Intl.NumberFormat("ru-RU", {
+                    maximumFractionDigits: 0,
+                  }).format(saleAmountRub)}{" "}
+                  ₽
                 </span>
               )}
             </div>
@@ -496,7 +584,7 @@ export function DealChainSection({
         </div>
 
         {hasSummary && (
-          <div className="rounded-lg border bg-muted/10 p-3">
+          <div className="rounded-lg border bg-muted/10 p-3 space-y-3">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="space-y-0.5">
                 <div className="text-[10px] text-muted-foreground uppercase font-medium tracking-wide">
@@ -506,13 +594,17 @@ export function DealChainSection({
                   <span>{formatCurrency(saleAmountUsd, "USD")}</span>
                   {saleAmountRub !== null && (
                     <span className="text-[12px] text-muted-foreground font-normal">
-                      ({new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(saleAmountRub)} ₽)
+                      (
+                      {new Intl.NumberFormat("ru-RU", {
+                        maximumFractionDigits: 0,
+                      }).format(saleAmountRub)}{" "}
+                      ₽)
                     </span>
                   )}
                 </div>
                 {saleExchangeRateDate && (
                   <div className="text-[11px] text-muted-foreground">
-                    Курс зафиксирован: {saleExchangeRateDate}
+                    Курс: {saleExchangeRateDate}
                   </div>
                 )}
               </div>
@@ -524,13 +616,17 @@ export function DealChainSection({
                   <span>{formatCurrency(purchaseAmountUsd, "USD")}</span>
                   {purchaseAmountRub !== null && (
                     <span className="text-[12px] text-muted-foreground font-normal">
-                      ({new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(purchaseAmountRub)} ₽)
+                      (
+                      {new Intl.NumberFormat("ru-RU", {
+                        maximumFractionDigits: 0,
+                      }).format(purchaseAmountRub)}{" "}
+                      ₽)
                     </span>
                   )}
                 </div>
                 {purchaseExchangeRateDate && (
                   <div className="text-[11px] text-muted-foreground">
-                    Курс зафиксирован: {purchaseExchangeRateDate}
+                    Курс: {purchaseExchangeRateDate}
                   </div>
                 )}
               </div>
@@ -543,7 +639,11 @@ export function DealChainSection({
                     <span>-{formatCurrency(totalCosts, "USD")}</span>
                     {costsRub !== null && (
                       <span className="text-[12px] font-normal">
-                        ({new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(costsRub)} ₽)
+                        (
+                        {new Intl.NumberFormat("ru-RU", {
+                          maximumFractionDigits: 0,
+                        }).format(costsRub)}{" "}
+                        ₽)
                       </span>
                     )}
                   </div>
@@ -556,7 +656,8 @@ export function DealChainSection({
                     )}
                     {totalBankCommission > 0 && (
                       <div>
-                        Банк. комисс.: {formatCurrency(totalBankCommission, "USD")}
+                        Банк. комисс.:{" "}
+                        {formatCurrency(totalBankCommission, "USD")}
                       </div>
                     )}
                   </div>
@@ -576,16 +677,76 @@ export function DealChainSection({
                   )}
                   <span>{formatCurrency(profit, "USD")}</span>
                   {profitRub !== null && (
-                    <span className={`text-[12px] font-normal ${profitRub >= 0 ? "text-green-600" : "text-destructive"}`}>
-                      ({new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(profitRub)} ₽)
+                    <span
+                      className={`text-[12px] font-normal ${profitRub >= 0 ? "text-green-600" : "text-destructive"}`}
+                    >
+                      (
+                      {new Intl.NumberFormat("ru-RU", {
+                        maximumFractionDigits: 0,
+                      }).format(profitRub)}{" "}
+                      ₽)
                     </span>
                   )}
                 </div>
-                <div className="text-[11px] text-muted-foreground">
-                  С учетом разницы курсов
-                </div>
               </div>
             </div>
+
+            {conversionLoss !== null && hasExchangeRates && (
+              <div className="border-t pt-2.5">
+                <div className="text-[10px] text-muted-foreground uppercase font-medium tracking-wide mb-1.5">
+                  Цепочка конвертации валют
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                  <div className="space-y-0.5">
+                    <div className="text-[11px] text-muted-foreground">
+                      Исходная сумма (RUB):
+                    </div>
+                    <div className="font-medium">
+                      {saleAmountRub !== null
+                        ? new Intl.NumberFormat("ru-RU", {
+                            maximumFractionDigits: 0,
+                          }).format(saleAmountRub) + " ₽"
+                        : "—"}
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="text-[11px] text-muted-foreground">
+                      После конвертации (USD):
+                    </div>
+                    <div className="font-medium">
+                      {formatCurrency(conversionLoss.chainUsd, "USD")}
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="text-[11px] text-muted-foreground">
+                      Потери на конвертации:
+                    </div>
+                    <div
+                      className={`font-semibold ${conversionLoss.lossUsd > 0 ? "text-destructive" : "text-green-600"}`}
+                    >
+                      {conversionLoss.lossUsd > 0 ? "−" : "+"}
+                      {formatCurrency(
+                        Math.abs(conversionLoss.lossUsd),
+                        "USD",
+                      )}
+                      {saleAmountRub !== null && (
+                        <span className="text-[12px] font-normal ml-1">
+                          (
+                          {conversionLoss.lossRub > 0 ? "−" : "+"}
+                          {new Intl.NumberFormat("ru-RU", {
+                            maximumFractionDigits: 0,
+                          }).format(Math.abs(conversionLoss.lossRub))}{" "}
+                          ₽)
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      vs прямой обмен RUB→USD
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
@@ -611,14 +772,10 @@ export function DealChainSection({
         open={isExchangeRateDialogOpen}
         onClose={closeDialogs}
         onSave={handleSaveExchangeRate}
-        editItem={
-          editingIndex !== null && editingItem?.type === "exchange_rate"
-            ? (editingItem as ChainExchangeRateItem)
-            : undefined
-        }
+        editItem={editingExchangeRateItem}
         currencies={currencies}
-        prefillFromCurrencyId={pendingExchangeRateAdd?.prefillFromCurrencyId}
-        prefillFromCurrencyCode={pendingExchangeRateAdd?.prefillFromCurrencyCode}
+        prefillFromCurrencyId={dialogPrefillFromCurrencyId}
+        prefillFromCurrencyCode={dialogPrefillFromCurrencyCode}
       />
 
       <BankCommissionDialog
@@ -633,17 +790,25 @@ export function DealChainSection({
         }
       />
 
-      <AlertDialog open={chainReplaceAlertOpen} onOpenChange={setChainReplaceAlertOpen}>
+      <AlertDialog
+        open={chainReplaceAlertOpen}
+        onOpenChange={setChainReplaceAlertOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Заменить цепочку курсов?</AlertDialogTitle>
             <AlertDialogDescription>
-              При добавлении нового курса в эту позицию все курсы правее будут удалены из цепочки. Продолжить?
+              При добавлении нового курса в эту позицию все курсы правее будут
+              удалены из цепочки. Продолжить?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleChainReplaceCancel}>Отмена</AlertDialogCancel>
-            <AlertDialogAction onClick={handleChainReplaceConfirm}>Продолжить</AlertDialogAction>
+            <AlertDialogCancel onClick={handleChainReplaceCancel}>
+              Отмена
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleChainReplaceConfirm}>
+              Продолжить
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

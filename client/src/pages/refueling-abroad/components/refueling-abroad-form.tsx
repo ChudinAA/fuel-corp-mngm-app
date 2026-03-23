@@ -441,6 +441,9 @@ export const RefuelingAbroadForm = forwardRef<
       : null);
 
   // Use filtering hook
+  const abroadPriceUnit: "kg" | "liter" =
+    watchedValues.inputMode === "liters" ? "liter" : "kg";
+
   const { refuelingSuppliers, availableBases, purchasePrices, salePrices } =
     useRefuelingFilters({
       supplierId: watchedValues.supplierId,
@@ -453,6 +456,7 @@ export const RefuelingAbroadForm = forwardRef<
       counterpartyType: COUNTERPARTY_TYPE.REFUELING_ABROAD,
       suppliers: foreignSuppliers,
       allBases: foreignBases,
+      priceUnit: abroadPriceUnit,
     });
 
   const calculations = useRefuelingAbroadCalculations({

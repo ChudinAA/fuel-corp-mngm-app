@@ -98,6 +98,7 @@ export function registerPricesRoutes(app: Express) {
           loadingBasisId,
           productType,
           date,
+          priceUnit,
         } = req.query;
 
         if (
@@ -119,6 +120,7 @@ export function registerPricesRoutes(app: Express) {
           loadingBasisId: loadingBasisId as string,
           productType: productType as string,
           date: date as string,
+          priceUnit: priceUnit as string | undefined,
         });
 
         res.json(data);
