@@ -167,6 +167,11 @@ export function DealChainSection({
     prefillFromCurrencyCode?: string;
     itemsToRemoveIndices: number[];
   } | null>(null);
+  const [pendingEditWithReplace, setPendingEditWithReplace] = useState<{
+    editingIndex: number;
+    newItemData: Omit<ChainExchangeRateItem, "type" | "chainPosition">;
+    itemsToRemoveIndices: number[];
+  } | null>(null);
 
   const sortedItems = useMemo(
     () => [...chainItems].sort((a, b) => a.chainPosition - b.chainPosition),
@@ -292,6 +297,30 @@ export function DealChainSection({
   };
 
   const handleChainReplaceConfirm = () => {
+    if (pendingEditWithReplace) {
+      const { editingIndex: idx, newItemData, itemsToRemoveIndices } = pendingEditWithReplace;
+      const sorted = [...sortedItems];
+      const itemsToRemove = new Set(
+        itemsToRemoveIndices.map((i) => sorted[i]).filter(Boolean),
+      );
+      const updatedChain = chainItems.map((item, i) => {
+        if (itemsToRemove.has(item)) return null;
+        if (i === idx) {
+          return { ...item, ...newItemData } as ChainExchangeRateItem;
+        }
+        return item;
+      }).filter((item): item is ChainItem => item !== null);
+      const reindexed = [...updatedChain].sort((a, b) => a.chainPosition - b.chainPosition).map((item, i) => ({
+        ...item,
+        chainPosition: i,
+      }));
+      onChange(reindexed);
+      setChainReplaceAlertOpen(false);
+      setPendingEditWithReplace(null);
+      closeDialogs();
+      return;
+    }
+
     if (!pendingExchangeRateAdd) return;
     const { position, itemsToRemoveIndices } = pendingExchangeRateAdd;
     const sorted = [...sortedItems];
@@ -313,6 +342,7 @@ export function DealChainSection({
   const handleChainReplaceCancel = () => {
     setChainReplaceAlertOpen(false);
     setPendingExchangeRateAdd(null);
+    setPendingEditWithReplace(null);
   };
 
   const insertItemAtPosition = (
@@ -359,6 +389,32 @@ export function DealChainSection({
     itemData: Omit<ChainExchangeRateItem, "type" | "chainPosition">,
   ) => {
     if (editingIndex !== null) {
+      const currentItem = chainItems[editingIndex] as ChainExchangeRateItem;
+      const toCurrencyChanged =
+        itemData.toCurrencyCode &&
+        currentItem.toCurrencyCode &&
+        itemData.toCurrencyCode !== currentItem.toCurrencyCode;
+
+      if (toCurrencyChanged) {
+        const editedPosition = currentItem.chainPosition;
+        const erItemsAfter = sortedItems.filter(
+          (it): it is ChainExchangeRateItem =>
+            it.type === "exchange_rate" && it.chainPosition > editedPosition,
+        );
+        if (erItemsAfter.length > 0) {
+          const itemsToRemoveIndices = erItemsAfter.map((item) =>
+            sortedItems.indexOf(item),
+          );
+          setPendingEditWithReplace({
+            editingIndex,
+            newItemData: itemData,
+            itemsToRemoveIndices,
+          });
+          setChainReplaceAlertOpen(true);
+          return;
+        }
+      }
+
       const updated = [...chainItems];
       updated[editingIndex] = {
         ...updated[editingIndex],
@@ -366,6 +422,7 @@ export function DealChainSection({
       } as ChainExchangeRateItem;
       onChange(updated);
       setEditingIndex(null);
+      closeDialogs();
     } else if (addingAtPosition !== null) {
       insertItemAtPosition(addingAtPosition, {
         type: "exchange_rate",
@@ -696,7 +753,7 @@ export function DealChainSection({
               </div>
             </div>
 
-            {hasExchangeRates && chainFinalUsd !== null && saleAmountRub !== null && (
+            {hasExchangeRates && saleAmountRub !== null && (
               <div className="border-t pt-2.5">
                 <div className="text-[10px] text-muted-foreground uppercase font-medium tracking-wide mb-2">
                   Цепочка конвертации валют
@@ -717,42 +774,56 @@ export function DealChainSection({
                     <div className="text-[10px] text-muted-foreground uppercase font-medium">
                       После конвертации цепочки
                     </div>
-                    <div className="font-semibold text-green-600">
-                      {formatCurrency(chainFinalUsd, "USD")}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      через {exchangeRateItems.length} курс{exchangeRateItems.length === 1 ? "" : exchangeRateItems.length < 5 ? "а" : "ов"}
-                    </div>
+                    {!chainEndsWithUsd ? (
+                      <div className="font-semibold text-muted-foreground">—</div>
+                    ) : (
+                      <>
+                        <div className="font-semibold text-green-600">
+                          {chainFinalUsd !== null ? formatCurrency(chainFinalUsd, "USD") : "—"}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          через {exchangeRateItems.length} курс{exchangeRateItems.length === 1 ? "" : exchangeRateItems.length < 5 ? "а" : "ов"}
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div className="space-y-0.5 p-2 rounded-md bg-background border">
                     <div className="text-[10px] text-muted-foreground uppercase font-medium">
                       Разница с курсом продажи
                     </div>
-                    {(() => {
-                      const diff = chainFinalUsd - saleAmountUsd;
-                      const diffRub = saleExchangeRate ? diff * saleExchangeRate : null;
-                      return (
-                        <>
-                          <div className={`font-semibold ${diff >= 0 ? "text-green-600" : "text-destructive"}`}>
-                            {diff >= 0 ? "+" : ""}{formatCurrency(diff, "USD")}
-                          </div>
-                          {diffRub !== null && (
-                            <div className={`text-[11px] ${diff >= 0 ? "text-green-600" : "text-destructive"}`}>
-                              {diff >= 0 ? "+" : ""}{new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(diffRub)} ₽
+                    {!chainEndsWithUsd || chainFinalUsd === null ? (
+                      <div className="font-semibold text-muted-foreground">—</div>
+                    ) : (
+                      (() => {
+                        const diff = chainFinalUsd - saleAmountUsd;
+                        const diffRub = saleExchangeRate ? diff * saleExchangeRate : null;
+                        return (
+                          <>
+                            <div className={`font-semibold ${diff >= 0 ? "text-green-600" : "text-destructive"}`}>
+                              {diff >= 0 ? "+" : ""}{formatCurrency(diff, "USD")}
                             </div>
-                          )}
-                          <div className="text-[10px] text-muted-foreground">
-                            {diff >= 0 ? "выгода" : "потери"} конвертации vs прямой курс
-                          </div>
-                        </>
-                      );
-                    })()}
+                            {diffRub !== null && (
+                              <div className={`text-[11px] ${diff >= 0 ? "text-green-600" : "text-destructive"}`}>
+                                {diff >= 0 ? "+" : ""}{new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(diffRub)} ₽
+                              </div>
+                            )}
+                            <div className="text-[10px] text-muted-foreground">
+                              {diff >= 0 ? "выгода" : "потери"} конвертации vs прямой курс
+                            </div>
+                          </>
+                        );
+                      })()
+                    )}
                   </div>
                 </div>
                 {purchaseAmountUsd > 0 && (
                   <div className="mt-2 p-2 rounded-md bg-muted/30 text-[11px] text-muted-foreground flex flex-wrap gap-x-4 gap-y-0.5">
                     <span>Курс закупки: <strong className="text-foreground">{formatCurrency(purchaseAmountUsd, "USD")}</strong></span>
-                    <span>Цепочка vs закупка: <strong className={chainFinalUsd >= purchaseAmountUsd ? "text-green-600" : "text-destructive"}>{formatCurrency(chainFinalUsd - purchaseAmountUsd, "USD")}</strong></span>
+                    {!chainEndsWithUsd || chainFinalUsd === null ? (
+                      <span>Цепочка vs закупка: <strong className="text-muted-foreground">—</strong></span>
+                    ) : (
+                      <span>Цепочка vs закупка: <strong className={chainFinalUsd >= purchaseAmountUsd ? "text-green-600" : "text-destructive"}>{formatCurrency(chainFinalUsd - purchaseAmountUsd, "USD")}</strong></span>
+                    )}
                   </div>
                 )}
               </div>
