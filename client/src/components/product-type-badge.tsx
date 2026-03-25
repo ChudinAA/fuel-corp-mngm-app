@@ -22,7 +22,7 @@ export function ProductTypeBadge({ type }: ProductTypeBadgeProps) {
     <Badge
       variant="outline"
       className={cn(
-        "text-[11px] md:text-xs px-1.5 py-0.8 h-5",
+        "text-[11px] px-1 py-0.8 h-4",
         type === PRODUCT_TYPE.PVKJ
           ? "bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/30 dark:border-purple-800/30 text-purple-700 dark:text-purple-300"
           : type === PRODUCT_TYPE.KEROSENE

@@ -288,7 +288,7 @@ export function TransportationTable({
                   </div>
                 </TableHead>
               ))}
-              <TableHead className="w-[32px] px-1 py-1 sticky right-0 bg-background z-10" />
+              <TableHead className="w-[10px] px-1 py-1 sticky right-0 bg-background z-10" />
             </TableRow>
           </TableHeader>
           <TableBody>

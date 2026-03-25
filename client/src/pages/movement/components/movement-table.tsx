@@ -264,7 +264,7 @@ export function MovementTable({
               <TableHead className="text-right w-[70px] text-xs font-semibold px-1 py-1">
                 Себест.
               </TableHead>
-              <TableHead className="w-[32px] px-1 py-1 sticky right-0 bg-background z-10"></TableHead>
+              <TableHead className="w-[10px] px-1 py-1 sticky right-0 bg-background z-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

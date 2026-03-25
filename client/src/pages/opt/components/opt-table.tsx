@@ -393,7 +393,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
               <TableHead className="text-right text-xs font-semibold p-1 w-[75px]">
                 Прибыль
               </TableHead>
-              <TableHead className="w-[32px] p-1 sticky right-0 bg-background z-10"></TableHead>
+              <TableHead className="w-[10px] p-1 sticky right-0 bg-background z-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

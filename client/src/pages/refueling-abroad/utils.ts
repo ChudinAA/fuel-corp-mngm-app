@@ -13,7 +13,7 @@ export function formatNumber(value: number | string | null | undefined): string 
   //   }) + "к";
   // }
   
-  return num.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return num.toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 export function formatCurrency(value: number | string | null | undefined, currency: string = "USD"): string {

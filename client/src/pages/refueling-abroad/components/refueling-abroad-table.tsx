@@ -172,7 +172,7 @@ export function RefuelingAbroadTable({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="text-[13px] font-semibold p-2 w-[100px]">
+              <TableHead className="text-[13px] font-semibold p-2 w-[90px]">
                 <div className="flex items-center justify-between gap-1">
                   <span>Дата</span>
                   <TableColumnFilter
@@ -184,9 +184,9 @@ export function RefuelingAbroadTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-[13px] font-semibold p-2 w-[110px]">
+              <TableHead className="text-[13px] font-semibold p-2">
                 <div className="flex items-center justify-between gap-1">
-                  <span>Продукт</span>
+                  <span>Прод.</span>
                   <TableColumnFilter
                     title="Продукт"
                     options={getUniqueOptions("productType")}
@@ -234,7 +234,7 @@ export function RefuelingAbroadTable({
                 Банк.комисс.
               </TableHead>
               <TableHead className="text-right text-[13px] font-semibold p-2 w-[100px]">
-                Объем (Л / Пл / КГ)
+                Объем (Л / КГ)
               </TableHead>
               <TableHead className="text-right text-[13px] font-semibold p-2 w-[130px]">
                 Закупка (Цена / Сумма)
@@ -245,7 +245,7 @@ export function RefuelingAbroadTable({
               <TableHead className="text-right text-[13px] font-semibold p-2 w-[160px]">
                 Комиссия / Посредники / Прибыль
               </TableHead>
-              <TableHead className="w-8 p-1"></TableHead>
+              <TableHead className="w-6 p-1"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -269,7 +269,7 @@ export function RefuelingAbroadTable({
                       "bg-amber-50 dark:bg-amber-950/20 border-l-2 border-l-amber-400",
                   )}
                 >
-                  <TableCell className="text-[10px] md:text-xs p-1 md:p-3">
+                  <TableCell className="text-[10px] md:text-xs p-1">
                     <div className="flex flex-col gap-0.5">
                       <span>{formatDate(item.refuelingDate)}</span>
                       {item.isDraft && (
@@ -305,7 +305,7 @@ export function RefuelingAbroadTable({
                     </div>
                   </TableCell>
                   <TableCell className="p-2">
-                    <div className="flex flex-col max-w-[120px]">
+                    <div className="text-[13px] flex flex-col max-w-[120px]">
                       <span
                         className="truncate font-medium"
                         title={item.supplier?.name}
@@ -315,7 +315,7 @@ export function RefuelingAbroadTable({
                     </div>
                   </TableCell>
                   <TableCell className="p-2">
-                    <div className="flex flex-col max-w-[120px]">
+                    <div className="text-[13px] flex flex-col max-w-[120px]">
                       <span
                         className="truncate font-medium"
                         title={item.buyer?.name}
@@ -371,17 +371,18 @@ export function RefuelingAbroadTable({
                         "—"}
                     </div>
                   </TableCell>
-                  <TableCell className="p-2 text-right">
+                  <TableCell className="text-[12px] p-2 text-right">
                     <div className="flex flex-col font-mono">
-                      <span className="text-muted-foreground">
+                      {item.quantityLiters && (
+                        <span className="text-muted-foreground">
                         {formatNumber(item.quantityLiters)} л
                       </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        ρ: {item.density || "—"}
-                      </span>
-                      <span className="font-semibold">
+                      )}
+                      {!item.quantityLiters && (
+                        <span className="font-semibold">
                         {formatNumber(item.quantityKg)} кг
                       </span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="p-2 text-right">
@@ -434,7 +435,7 @@ export function RefuelingAbroadTable({
                       })()}
                     </div>
                   </TableCell>
-                  <TableCell className="p-1">
+                  <TableCell className="p-0">
                     <EntityActionsMenu
                       actions={[
                         {

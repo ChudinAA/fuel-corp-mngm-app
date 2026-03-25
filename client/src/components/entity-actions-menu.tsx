@@ -75,9 +75,9 @@ export function EntityActionsMenu({
           <Button
             variant="ghost"
             size="icon"
-            className={triggerClassName || "h-8 w-8"}
+            className={triggerClassName || "h-4 w-4"}
           >
-            <MoreVertical className="h-4 w-4" />
+            <MoreVertical className="h-3.5 w-3.5" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align={alignMenu}>
