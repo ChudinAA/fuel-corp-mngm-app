@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -91,6 +92,7 @@ export const TransportationForm = forwardRef<
   TransportationFormProps
 >(({ onSuccess, editData }, ref) => {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const { hasPermission } = useAuth();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
@@ -437,12 +439,7 @@ export const TransportationForm = forwardRef<
       });
       onSuccess?.();
     },
-    onError: (e: Error) =>
-      toast({
-        title: "Ошибка",
-        description: e.message,
-        variant: "destructive",
-      }),
+    onError: (e: Error) => showError(e, "transportation"),
   });
 
   const updateMutation = useMutation({
@@ -470,12 +467,7 @@ export const TransportationForm = forwardRef<
       });
       onSuccess?.();
     },
-    onError: (e: Error) =>
-      toast({
-        title: "Ошибка",
-        description: e.message,
-        variant: "destructive",
-      }),
+    onError: (e: Error) => showError(e, "transportation"),
   });
 
   const onSubmit = async (
@@ -1261,6 +1253,7 @@ export const TransportationForm = forwardRef<
           }}
         />
       )}
+      <ErrorModalComponent />
     </>
   );
 });

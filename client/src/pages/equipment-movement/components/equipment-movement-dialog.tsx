@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -71,6 +72,7 @@ export function EquipmentMovementDialog({
   onOpenChange,
 }: EquipmentMovementDialogProps) {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
   const isEditing = !!editMovement && !isCopy;
   const [showExitConfirm, setShowExitConfirm] = useState(false);
@@ -238,11 +240,7 @@ export function EquipmentMovementDialog({
       onOpenChange(false);
     },
     onError: (error: Error) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(error, "movement");
     },
   });
 
@@ -590,6 +588,7 @@ export function EquipmentMovementDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ErrorModalComponent />
     </>
   );
 }

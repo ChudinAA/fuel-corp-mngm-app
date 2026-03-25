@@ -19,7 +19,7 @@ import type { Price, Supplier } from "@shared/schema";
 import type { RefuelingFormData } from "../schemas";
 import { CalculatedField } from "../calculated-field";
 import { formatNumber, formatCurrency } from "../utils";
-import { EQUIPMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
+import { EQUIPMENT_TYPE, PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -76,6 +76,11 @@ export function RefuelingPricingSection({
   equipmentType = "common",
 }: RefuelingPricingSectionProps) {
   const { hasPermission } = useAuth();
+
+  const watchSupplierId = form.watch("supplierId");
+  const watchBuyerId = form.watch("buyerId");
+  const watchBasisId = form.watch("basisId");
+  const watchBasis = form.watch("basis");
 
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
   const handlePurchasePriceCreated = (id: string) => {
@@ -408,6 +413,16 @@ export function RefuelingPricingSection({
         inlineOpen={addPurchasePriceOpen}
         onInlineOpenChange={setAddPurchasePriceOpen}
         onCreated={handlePurchasePriceCreated}
+        inlineDefaults={{
+          counterpartyType: equipmentType === EQUIPMENT_TYPE.LIK
+            ? COUNTERPARTY_TYPE.REFUELING
+            : COUNTERPARTY_TYPE.REFUELING,
+          counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
+          counterpartyId: watchSupplierId || "",
+          basisId: watchBasisId || undefined,
+          basis: watchBasis || "",
+          productType: (productType as any) || PRODUCT_TYPE.KEROSENE,
+        }}
       />
 
       <AddPriceDialog
@@ -415,6 +430,14 @@ export function RefuelingPricingSection({
         inlineOpen={addSalePriceOpen}
         onInlineOpenChange={setAddSalePriceOpen}
         onCreated={handleSalePriceCreated}
+        inlineDefaults={{
+          counterpartyType: COUNTERPARTY_TYPE.REFUELING,
+          counterpartyRole: COUNTERPARTY_ROLE.BUYER,
+          counterpartyId: watchBuyerId || "",
+          basisId: watchBasisId || undefined,
+          basis: watchBasis || "",
+          productType: (productType as any) || PRODUCT_TYPE.KEROSENE,
+        }}
       />
     </>
   );

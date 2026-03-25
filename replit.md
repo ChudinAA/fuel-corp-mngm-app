@@ -204,6 +204,41 @@ The system includes a specialized module for international fuel operations:
 **Date Handling:**
 - date-fns library with Russian locale support
 
+## UX Improvements (March 25, 2026)
+
+### 6 UX/Functionality Improvements
+
+**1. Auto-date "До" (+1 day) in AddPriceDialog**
+- Default dateTo is now set to currentDate + 1 day (was same as dateFrom)
+- Applied in 3 places: initial form defaults, onSuccess reset, onOpenChange reset
+
+**2. Carrier Validation in Movement Table**
+- Missing carrier on non-draft SUPPLY movements shows red "Не указан" with AlertTriangle icon
+- Implemented in `client/src/pages/movement/components/movement-table.tsx`
+
+**3. Responsive Tables**
+- All 5 data tables now have `overflow-x-auto` wrapper
+- Actions column is `sticky right-0 bg-background z-10` in all tables:
+  - opt-table, refueling-table, movement-table, transportation-table, equipment-movement-table
+
+**4. Auto-fill Inline Price Forms**
+- New `inlineDefaults?: Partial<PriceFormData>` prop added to `PriceDialogProps` in `types.ts`
+- `AddPriceDialog` applies defaults when inline dialog opens (useEffect on inlineOpen)
+- `OptPricingSection`: purchase dialog gets supplier/basis/WHOLESALE/SUPPLIER, sale gets buyer/BUYER
+- `RefuelingPricingSection`: similar auto-fill with REFUELING counterparty type
+
+**5. Centralized Error Modal**
+- New `useErrorModal` hook at `client/src/hooks/use-error-modal.tsx`
+- Intelligent error message matching with helpful hints for: prices, carriers, balance, dates, suppliers, buyers, volumes, contracts
+- Applied in: movement-dialog, opt-form, refueling-form, transportation-form, equipment-movement-dialog, add-price-dialog
+- Modal stays visible until dismissed (unlike auto-dismissing toast)
+
+**6. Collapsible Inline Price Form**
+- Inline AddPriceDialog now renders as a fixed bottom-right floating panel
+- Header bar with minimize/expand button (ChevronUp/Minus) and close button (X)
+- Click on header toggles minimize state; preserves form data when minimized
+- Auto-expands when panel is re-opened
+
 ## Recent Fixes (March 20, 2026)
 
 ### Transportation Module Improvements

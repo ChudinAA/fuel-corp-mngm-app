@@ -17,6 +17,7 @@ import {
 import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -60,6 +61,7 @@ export const RefuelingForm = forwardRef<
   RefuelingFormProps
 >(({ onSuccess, editData, equipmentType = EQUIPMENT_TYPE.COMMON }, ref) => {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("liters");
   const [selectedBasis, setSelectedBasis] = useState<string>("");
   const [customerBasis, setCustomerBasis] = useState<string>("");
@@ -502,11 +504,7 @@ export const RefuelingForm = forwardRef<
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(error, "refueling");
     },
   });
 
@@ -600,11 +598,7 @@ export const RefuelingForm = forwardRef<
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(error, "refueling");
     },
   });
 
@@ -889,6 +883,7 @@ export const RefuelingForm = forwardRef<
         onCancel={handleCancel}
         description="В системе уже есть заправка с такими же параметрами (дата, поставщик, покупатель, базис и объем). Продолжить создание?"
       />
+      <ErrorModalComponent />
     </>
   );
 });

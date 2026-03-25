@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,7 +16,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Minus, ChevronUp, X } from "lucide-react";
 import type { Base, Supplier, Customer, Currency } from "@shared/schema";
 import {
   COUNTERPARTY_ROLE,
@@ -35,9 +36,12 @@ export function AddPriceDialog({
   inlineOpen = false,
   onInlineOpenChange,
   onCreated,
+  inlineDefaults,
 }: PriceDialogProps) {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const [localOpen, setLocalOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   const open = isInline ? inlineOpen : localOpen;
   const setOpen = isInline ? onInlineOpenChange || setLocalOpen : setLocalOpen;
@@ -46,11 +50,17 @@ export function AddPriceDialog({
 
   const dateCheck = useDateCheck();
 
+  const getDefaultDateTo = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d;
+  };
+
   const form = useForm<PriceFormData>({
     resolver: zodResolver(priceFormSchema),
     defaultValues: {
       dateFrom: new Date(),
-      dateTo: new Date(),
+      dateTo: getDefaultDateTo(),
       counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
       counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
       counterpartyId: "",
@@ -103,11 +113,46 @@ export function AddPriceDialog({
         contractNumber: editPrice.contractNumber || "",
         notes: editPrice.notes || "",
         priceUnit: (editPrice.priceUnit as "kg" | "liter") || "kg",
-      });
+      } as PriceFormData);
       setOpen(true);
       setDateCheckPassed(false);
     }
   }, [editPrice, form]);
+
+  // Сброс свернутого состояния при открытии
+  useEffect(() => {
+    if (isInline && inlineOpen) {
+      setIsMinimized(false);
+    }
+  }, [isInline, inlineOpen]);
+
+  // Применяем inlineDefaults когда inline-диалог открывается
+  useEffect(() => {
+    if (isInline && inlineOpen && !editPrice && inlineDefaults) {
+      const defaults = {
+        dateFrom: new Date(),
+        dateTo: getDefaultDateTo(),
+        counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
+        counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
+        counterpartyId: "",
+        productType: PRODUCT_TYPE.KEROSENE,
+        basis: "",
+        basisId: undefined,
+        loadingBasisId: undefined,
+        currency: "RUB",
+        currencyId: undefined,
+        volume: "",
+        priceValues: [{ price: "" }],
+        contractNumber: "",
+        notes: "",
+        priceUnit: "kg" as "kg" | "liter",
+        ...inlineDefaults,
+      };
+      form.reset(defaults as PriceFormData);
+      setDateCheckPassed(false);
+      dateCheck.setResult(null);
+    }
+  }, [isInline, inlineOpen]);
 
   const watchCounterpartyType = form.watch("counterpartyType");
   const watchCounterpartyRole = form.watch("counterpartyRole");
@@ -294,7 +339,7 @@ export function AddPriceDialog({
       });
       form.reset({
         dateFrom: new Date(),
-        dateTo: new Date(),
+        dateTo: getDefaultDateTo(),
         counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
         counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
         counterpartyId: "",
@@ -321,11 +366,7 @@ export function AddPriceDialog({
       }
     },
     onError: (error: Error) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(error, "price");
     },
   });
 
@@ -394,7 +435,106 @@ export function AddPriceDialog({
     createMutation.mutate(data);
   };
 
+  // Inline режим: плавающая панель с возможностью свернуть
+  if (isInline) {
+    if (!open) return <ErrorModalComponent />;
+
+    const formContent = (
+      <Form {...form}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            form.handleSubmit(handleSubmit)(e);
+          }}
+          className="space-y-4 p-4 overflow-y-auto max-h-[calc(90vh-3.5rem)]"
+        >
+          <PriceFormFields
+            control={form.control}
+            contractors={contractors}
+            availableBases={availableBases}
+            currencies={currencies || []}
+            fields={fields}
+            remove={remove}
+            append={append}
+          />
+
+          <PriceChecksPanel
+            dateCheckResult={dateCheck.result}
+            onCheckDates={handleCheckDates}
+            isChecking={dateCheck.isChecking}
+            dateCheckPassed={dateCheckPassed}
+          />
+
+          <div className="flex justify-end gap-2 pt-2 pb-1">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (setOpen) setOpen(false);
+              }}
+            >
+              Отмена
+            </Button>
+            <Button
+              type="submit"
+              disabled={createMutation.isPending || !dateCheckPassed}
+            >
+              {createMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Создать
+            </Button>
+          </div>
+        </form>
+      </Form>
+    );
+
+    return (
+      <>
+        <div
+          className="fixed bottom-0 right-6 z-50 w-[520px] rounded-t-md shadow-xl border border-border bg-background flex flex-col"
+          style={{ maxWidth: "calc(100vw - 2rem)" }}
+        >
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/50 rounded-t-md cursor-pointer select-none"
+            onClick={() => setIsMinimized((m) => !m)}
+          >
+            <span className="text-sm font-medium">
+              {editPrice ? "Редактирование цены" : "Новая цена"}
+            </span>
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              <Button
+                size="icon"
+                variant="ghost"
+                type="button"
+                onClick={() => setIsMinimized((m) => !m)}
+                title={isMinimized ? "Развернуть" : "Свернуть"}
+              >
+                {isMinimized ? <ChevronUp className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                type="button"
+                onClick={() => {
+                  if (setOpen) setOpen(false);
+                }}
+                title="Закрыть"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {!isMinimized && formContent}
+        </div>
+        <ErrorModalComponent />
+      </>
+    );
+  }
+
   return (
+    <>
     <Dialog
       open={open || !!editPrice}
       onOpenChange={(isOpen) => {
@@ -402,7 +542,7 @@ export function AddPriceDialog({
         if (!isOpen) {
           form.reset({
             dateFrom: new Date(),
-            dateTo: new Date(),
+            dateTo: getDefaultDateTo(),
             counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
             counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
             counterpartyId: "",
@@ -453,7 +593,7 @@ export function AddPriceDialog({
               control={form.control}
               contractors={contractors}
               availableBases={availableBases}
-              currencies={currencies}
+              currencies={currencies || []}
               fields={fields}
               remove={remove}
               append={append}
@@ -503,5 +643,7 @@ export function AddPriceDialog({
         </Form>
       </DialogContent>
     </Dialog>
+    {!isInline && <ErrorModalComponent />}
+  </>
   );
 }

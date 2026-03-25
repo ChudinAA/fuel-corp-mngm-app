@@ -6,6 +6,7 @@ import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -65,6 +66,7 @@ export function MovementDialog({
   onOpenChange,
 }: MovementDialogProps) {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
   const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
     useState<string>("");
@@ -361,11 +363,7 @@ export function MovementDialog({
       onOpenChange(false);
     },
     onError: (error: Error) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(error, "movement");
     },
   });
 
@@ -572,6 +570,7 @@ export function MovementDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ErrorModalComponent />
     </>
   );
 }

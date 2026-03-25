@@ -273,7 +273,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
         <ExportButton moduleName="opt" /> {/* Export button added here */}
       </div>
 
-      <div className="border rounded-lg">
+      <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -384,7 +384,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
               <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[90px]">
                 Прибыль
               </TableHead>
-              <TableHead className="w-[40px] p-1"></TableHead>
+              <TableHead className="w-[40px] p-1 sticky right-0 bg-background z-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -507,7 +507,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   <TableCell className="text-right text-green-600 font-medium text-[11px] md:text-sm p-1 md:p-4">
                     {formatCurrencyForTable(deal.profit)}
                   </TableCell>
-                  <TableCell className="p-1">
+                  <TableCell className="p-1 sticky right-0 bg-background">
                     <OptDealActions
                       deal={deal}
                       onEdit={() => onEdit(deal)}

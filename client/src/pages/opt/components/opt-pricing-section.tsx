@@ -15,6 +15,7 @@ import {
 import type { UseFormReturn } from "react-hook-form";
 import type { Price, Warehouse } from "@shared/schema";
 import type { OptFormData } from "../schemas";
+import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, PRODUCT_TYPE } from "@shared/constants";
 import { CalculatedField } from "./calculated-field";
 import { formatNumber, formatCurrency } from "../utils";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,14 @@ export function OptPricingSection({
   warehousePriceAtDate,
 }: OptPricingSectionProps) {
   const { hasPermission } = useAuth();
+
+  const watchSupplierId = form.watch("supplierId");
+  const watchBuyerId = form.watch("buyerId");
+  const watchBasisId = form.watch("basisId");
+  const watchBasis = form.watch("basis");
+  const watchCustomerBasisId = form.watch("customerBasisId");
+  const watchCustomerBasis = form.watch("customerBasis");
+  const watchProductType = form.watch("productType");
 
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
   const handlePurchasePriceCreated = (id: string) => {
@@ -389,6 +398,14 @@ export function OptPricingSection({
         inlineOpen={addPurchasePriceOpen}
         onInlineOpenChange={setAddPurchasePriceOpen}
         onCreated={handlePurchasePriceCreated}
+        inlineDefaults={{
+          counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
+          counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
+          counterpartyId: watchSupplierId || "",
+          basisId: watchBasisId || undefined,
+          basis: watchBasis || "",
+          productType: (watchProductType as any) || PRODUCT_TYPE.KEROSENE,
+        }}
       />
 
       <AddPriceDialog
@@ -396,6 +413,14 @@ export function OptPricingSection({
         inlineOpen={addSalePriceOpen}
         onInlineOpenChange={setAddSalePriceOpen}
         onCreated={handleSalePriceCreated}
+        inlineDefaults={{
+          counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
+          counterpartyRole: COUNTERPARTY_ROLE.BUYER,
+          counterpartyId: watchBuyerId || "",
+          basisId: watchCustomerBasisId || undefined,
+          basis: watchCustomerBasis || "",
+          productType: (watchProductType as any) || PRODUCT_TYPE.KEROSENE,
+        }}
       />
     </>
   );

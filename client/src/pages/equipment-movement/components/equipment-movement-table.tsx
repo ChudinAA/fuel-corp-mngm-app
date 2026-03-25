@@ -155,7 +155,7 @@ export function EquipmentMovementTable({
               </TableHead>
               <TableHead className="text-right">КГ</TableHead>
               <TableHead className="text-right">Себест.</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="w-[50px] sticky right-0 bg-background z-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -208,7 +208,7 @@ export function EquipmentMovementTable({
                   <TableCell className="text-right font-medium">
                     {formatNumber(item?.costPerKg)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="sticky right-0 bg-background">
                     <EntityActionsMenu
                       actions={[
                         {

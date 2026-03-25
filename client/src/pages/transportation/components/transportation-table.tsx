@@ -277,7 +277,7 @@ export function TransportationTable({
                   </div>
                 </TableHead>
               ))}
-              <TableHead />
+              <TableHead className="sticky right-0 bg-background z-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -393,7 +393,7 @@ export function TransportationTable({
                       {deal.notes || "—"}
                     </TableCell>
                   )}
-                  <TableCell onClick={(e) => e.stopPropagation()}>
+                  <TableCell onClick={(e) => e.stopPropagation()} className="sticky right-0 bg-background">
                     <EntityActionsMenu
                       actions={[
                         ...(deal.notes

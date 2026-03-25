@@ -22,6 +22,7 @@ import {
   Filter,
   History,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import {
@@ -254,7 +255,7 @@ export function MovementTable({
               <TableHead className="text-right w-[90px] text-xs md:text-sm px-2 md:px-3 leading-tight">
                 Себест.
               </TableHead>
-              <TableHead className="w-[30px] px-2 md:px-2"></TableHead>
+              <TableHead className="w-[30px] px-2 md:px-2 sticky right-0 bg-background z-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -341,8 +342,17 @@ export function MovementTable({
                         ? formatNumberWithK(purchaseAmount)
                         : "—"}
                     </TableCell>
-                    <TableCell className="text-xs md:text-sm py-3 px-2 md:px-4 truncate max-w-[120px]">
-                      {item.carrierName || "—"}
+                    <TableCell className="text-xs md:text-sm py-3 px-2 md:px-4 max-w-[120px]">
+                      {item.carrierName ? (
+                        <span className="truncate block">{item.carrierName}</span>
+                      ) : item.movementType === MOVEMENT_TYPE.SUPPLY && !item.isDraft ? (
+                        <span className="flex items-center gap-1 text-destructive whitespace-nowrap">
+                          <AlertTriangle className="h-3 w-3 shrink-0" />
+                          <span className="text-[11px] font-medium">Не указан</span>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right text-xs md:text-sm py-3 px-2 md:px-4">
                       {formatNumberWithK(deliveryCost)}
@@ -353,7 +363,7 @@ export function MovementTable({
                     <TableCell className="text-right font-bold text-xs md:text-sm py-3 px-2 md:px-4 whitespace-nowrap">
                       {formatNumber(costPerKg)}
                     </TableCell>
-                    <TableCell className="py-3 px-2 md:px-1">
+                    <TableCell className="py-3 px-2 md:px-1 sticky right-0 bg-background">
                       <EntityActionsMenu
                         actions={[
                           {

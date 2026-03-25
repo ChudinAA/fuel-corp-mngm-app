@@ -32,6 +32,7 @@ export interface PriceDialogProps {
   inlineOpen?: boolean;
   onInlineOpenChange?: (open: boolean) => void;
   onCreated?: (id: string) => void;
+  inlineDefaults?: Partial<PriceFormData>;
 }
 
 export interface PricesTableProps {

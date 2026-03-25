@@ -11,6 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -56,6 +57,7 @@ export interface OptFormHandle {
 export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
   ({ onSuccess, editData }, ref) => {
     const { toast } = useToast();
+    const { showError, ErrorModalComponent } = useErrorModal();
     const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
     const [selectedBasis, setSelectedBasis] = useState<string>("");
     const [customerBasis, setCustomerBasis] = useState<string>("");
@@ -478,11 +480,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         onSuccess?.();
       },
       onError: (error: Error) => {
-        toast({
-          title: "Ошибка",
-          description: error.message,
-          variant: "destructive",
-        });
+        showError(error, "opt");
       },
     });
 
@@ -583,11 +581,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         onSuccess?.();
       },
       onError: (error: Error) => {
-        toast({
-          title: "Ошибка",
-          description: error.message,
-          variant: "destructive",
-        });
+        showError(error, "opt");
       },
     });
 
@@ -878,6 +872,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           onCancel={handleCancel}
           description="В системе уже есть сделка с такими же параметрами (дата, поставщик, покупатель, базис, место доставки и объем). Продолжить создание?"
         />
+        <ErrorModalComponent />
       </>
     );
   },
