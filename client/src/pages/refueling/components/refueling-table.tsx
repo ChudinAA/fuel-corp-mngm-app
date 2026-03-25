@@ -26,6 +26,7 @@ import {
   Copy,
   Loader2,
   Truck,
+  Plus,
 } from "lucide-react";
 import {
   EntityActionsMenu,

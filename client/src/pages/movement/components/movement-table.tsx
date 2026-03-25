@@ -59,6 +59,8 @@ export function MovementTable({
   onShowHistory: () => void;
   onCreate?: () => void;
 }) {
+  const { hasPermission } = useAuth();
+  
   const {
     search,
     setSearch,
