@@ -45,6 +45,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, CalendarIcon, DollarSign, Loader2, ArrowRight } from "lucide-react";
+import { useErrorModal } from "@/hooks/use-error-modal";
 
 interface ExchangeRate {
   id: string;
@@ -69,6 +70,7 @@ interface Currency {
 
 export function ExchangeRatesTab() {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const { hasPermission } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -125,7 +127,7 @@ export function ExchangeRatesTab() {
       resetForm();
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      showError(error.message);
     },
   });
 
@@ -142,7 +144,7 @@ export function ExchangeRatesTab() {
       resetCurrencyForm();
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      showError(error.message);
     },
   });
 
@@ -156,7 +158,7 @@ export function ExchangeRatesTab() {
       setDeletingCurrencyId(null);
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка удаления", description: error.message, variant: "destructive" });
+      showError(error.message);
     },
   });
 
@@ -171,7 +173,7 @@ export function ExchangeRatesTab() {
       setDeletingId(null);
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка удаления", description: error.message, variant: "destructive" });
+      showError(error.message);
     },
   });
 
@@ -231,11 +233,11 @@ export function ExchangeRatesTab() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.rate || parseFloat(formData.rate) <= 0) {
-      toast({ title: "Ошибка", description: "Укажите корректный курс", variant: "destructive" });
+      showError("Укажите корректный курс");
       return;
     }
     if (formData.currency === formData.targetCurrency) {
-      toast({ title: "Ошибка", description: "Валюты должны отличаться", variant: "destructive" });
+      showError("Валюты должны отличаться");
       return;
     }
     createMutation.mutate(formData);
@@ -244,7 +246,7 @@ export function ExchangeRatesTab() {
   const handleAddCurrency = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCurrency.code || !newCurrency.name) {
-      toast({ title: "Ошибка", description: "Заполните код и название валюты", variant: "destructive" });
+      showError("Заполните код и название валюты");
       return;
     }
     createCurrencyMutation.mutate(newCurrency);
@@ -613,6 +615,7 @@ export function ExchangeRatesTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ErrorModalComponent />
     </div>
   );
 }

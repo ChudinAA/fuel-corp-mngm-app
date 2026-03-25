@@ -15,6 +15,7 @@ import { WidgetSelector } from "./components/widget-selector";
 import { TemplateManager } from "./components/template-manager";
 import { DashboardConfiguration, WidgetDefinition, DashboardWidget } from "./types";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,7 @@ export default function CustomizableDashboard() {
   const [activeTab, setActiveTab] = useState("main");
   const [gridWidth, setGridWidth] = useState(1200);
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const queryClient = useQueryClient();
 
   const { data: config, isLoading: isLoadingConfig } = useQuery<DashboardConfiguration>({
@@ -87,11 +89,7 @@ export default function CustomizableDashboard() {
       setHasUnsavedChanges(false);
     },
     onError: () => {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось сохранить конфигурацию",
-        variant: "destructive",
-      });
+      showError("Не удалось сохранить конфигурацию");
     },
   });
 
@@ -123,11 +121,7 @@ export default function CustomizableDashboard() {
       });
     },
     onError: () => {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось создать шаблон",
-        variant: "destructive",
-      });
+      showError("Не удалось создать шаблон");
     },
   });
 
@@ -276,11 +270,7 @@ export default function CustomizableDashboard() {
 
   const handleCreateTemplate = () => {
     if (!newTemplateName.trim()) {
-      toast({
-        title: "Ошибка",
-        description: "Введите название шаблона",
-        variant: "destructive",
-      });
+      showError("Введите название шаблона");
       return;
     }
     createTemplateMutation.mutate({
@@ -455,6 +445,7 @@ export default function CustomizableDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ErrorModalComponent />
     </div>
   );
 }

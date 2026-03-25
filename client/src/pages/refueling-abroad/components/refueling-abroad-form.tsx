@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/popover";
 import { Loader2, Plane, DollarSign, CalendarIcon, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
   refuelingAbroadFormSchema,
@@ -84,13 +85,12 @@ export interface RefuelingAbroadFormHandle {
   isDirty: () => boolean;
 }
 
-export const RefuelingAbroadForm = forwardRef<
-  RefuelingAbroadFormHandle,
-  RefuelingAbroadFormProps
->(({ onSuccess, editData }, ref) => {
+export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, RefuelingAbroadFormProps>(
+  ({ onSuccess, editData }, ref) => {
   const { hasPermission } = useAuth();
   const { toast } = useToast();
 
+  const { showError, ErrorModalComponent } = useErrorModal();
   const isEditing = !!editData && !!editData.id;
   const initialValuesRef = useRef<RefuelingAbroadFormData | null>(null);
   const initialIntermediariesRef = useRef<string>("");
@@ -691,11 +691,7 @@ export const RefuelingAbroadForm = forwardRef<
       onSuccess?.();
     },
     onError: (error: any) => {
-      toast({
-        title: "Ошибка",
-        description: error.message || "Не удалось сохранить запись",
-        variant: "destructive",
-      });
+      showError(error.message || "Не удалось сохранить запись");
     },
   });
 
@@ -708,11 +704,7 @@ export const RefuelingAbroadForm = forwardRef<
     form.setValue("isDraft", finalIsDraft);
 
     if (calculations.contractVolumeStatus.status === "error") {
-      toast({
-        title: "Ошибка: недостаточно объема по договору Поставщика",
-        description: calculations.contractVolumeStatus.message,
-        variant: "destructive",
-      });
+      showError(calculations.contractVolumeStatus.message);
       return;
     }
 
@@ -720,6 +712,7 @@ export const RefuelingAbroadForm = forwardRef<
   };
 
   return (
+    <>
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit((data) => onSubmit(data))}
@@ -1725,5 +1718,7 @@ export const RefuelingAbroadForm = forwardRef<
         onCreated={handleCustomerCreated}
       />
     </Form>
+    <ErrorModalComponent />
+    </>
   );
 });

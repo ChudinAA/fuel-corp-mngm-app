@@ -115,6 +115,7 @@ interface RefuelingTableProps {
   onEdit: (refueling: any) => void;
   onCopy: (refueling: any) => void;
   onDelete?: () => void;
+  onAdd?: () => void;
   equipmentType?: string;
 }
 
@@ -122,6 +123,7 @@ export function RefuelingTable({
   onEdit,
   onCopy,
   onDelete,
+  onAdd,
   equipmentType = EQUIPMENT_TYPE.COMMON,
 }: RefuelingTableProps) {
   const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
@@ -222,8 +224,14 @@ export function RefuelingTable({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex items-center gap-2 flex-wrap">
+        {onAdd && hasPermission("refueling", "create") && (
+          <Button onClick={onAdd} data-testid="button-add-refueling">
+            <Plus className="mr-2 h-4 w-4" />
+            Новая заправка
+          </Button>
+        )}
+        <div className="relative flex-1 min-w-[160px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             ref={searchInputRef}
@@ -258,7 +266,7 @@ export function RefuelingTable({
           title="Аудит всех заправок"
         >
           <History className="h-4 w-4 mr-2" />
-          История изменений
+          История
         </Button>
         <ExportButton module="refueling" />
       </div>

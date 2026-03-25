@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Table,
@@ -45,6 +46,7 @@ const categoryColors: Record<string, string> = {
 
 export function CashflowTable() {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const { hasPermission } = useAuth();
   const [editingTransaction, setEditingTransaction] = useState<CashflowTransaction | null>(null);
 
@@ -70,11 +72,7 @@ export function CashflowTable() {
       });
     },
     onError: () => {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось удалить транзакцию",
-        variant: "destructive",
-      });
+      showError("Не удалось удалить транзакцию");
     },
   });
 
@@ -188,6 +186,7 @@ export function CashflowTable() {
           transaction={editingTransaction}
         />
       )}
+    <ErrorModalComponent />
     </>
   );
 }

@@ -5,6 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +77,7 @@ function RoleFormDialog({
   onSuccess?: () => void;
 }) {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const [open, setOpen] = useState(!!editRole);
 
   const form = useForm<RoleFormData>({
@@ -107,7 +110,7 @@ function RoleFormDialog({
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      showError(error.message);
     },
   });
 
@@ -258,6 +261,7 @@ function RoleFormDialog({
           </form>
         </Form>
       </DialogContent>
+      <ErrorModalComponent />
     </Dialog>
   );
 }
@@ -269,6 +273,7 @@ export default function RolesPage() {
   const [roleToEdit, setRoleToEdit] = useState<Role | null>(null);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const { hasPermission } = useAuth();
 
   const { data: roles, isLoading } = useQuery<Role[]>({
@@ -291,7 +296,7 @@ export default function RolesPage() {
       toast({ title: "Роль удалена", description: "Запись успешно удалена" });
     },
     onError: () => {
-      toast({ title: "Ошибка", description: "Не удалось удалить роль", variant: "destructive" });
+      showError("Не удалось удалить роль");
     },
   });
 
@@ -470,6 +475,7 @@ export default function RolesPage() {
         entityType="roles"
         entityId=""
       />
+      <ErrorModalComponent />
     </div>
   );
 }

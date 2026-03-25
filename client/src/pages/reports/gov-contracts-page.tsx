@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Pencil, Trash2, Plus, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -42,6 +43,7 @@ interface GovernmentContract {
 
 export default function GovContractsPage() {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingContract, setEditingContract] = useState<GovernmentContract | null>(null);
@@ -85,7 +87,7 @@ export default function GovContractsPage() {
       resetForm();
     },
     onError: () => {
-      toast({ title: "Ошибка создания контракта", variant: "destructive" });
+      showError("Ошибка создания контракта");
     },
   });
 
@@ -107,7 +109,7 @@ export default function GovContractsPage() {
       resetForm();
     },
     onError: () => {
-      toast({ title: "Ошибка обновления контракта", variant: "destructive" });
+      showError("Ошибка обновления контракта");
     },
   });
 
@@ -125,7 +127,7 @@ export default function GovContractsPage() {
       toast({ title: "Данные обновлены из продаж" });
     },
     onError: () => {
-      toast({ title: "Ошибка обновления данных", variant: "destructive" });
+      showError("Ошибка обновления данных");
     },
   });
 
@@ -142,7 +144,7 @@ export default function GovContractsPage() {
       toast({ title: "Контракт удален успешно" });
     },
     onError: () => {
-      toast({ title: "Ошибка удаления контракта", variant: "destructive" });
+      showError("Ошибка удаления контракта");
     },
   });
 
@@ -469,6 +471,7 @@ export default function GovContractsPage() {
           )}
         </CardContent>
       </Card>
+      <ErrorModalComponent />
     </div>
   );
 }

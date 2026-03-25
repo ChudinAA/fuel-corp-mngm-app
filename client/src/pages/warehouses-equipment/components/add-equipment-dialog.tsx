@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import type { Equipment, Warehouse } from "@shared/schema";
 import { z } from "zod";
 
@@ -34,6 +35,7 @@ export function AddEquipmentDialog({
   likWarehouses,
 }: AddEquipmentDialogProps) {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const isEditing = !!equipmentToEdit;
 
   const form = useForm<FormValues>({
@@ -78,7 +80,7 @@ export function AddEquipmentDialog({
       onOpenChange(false);
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      showError(error.message);
     },
   });
 
@@ -146,6 +148,7 @@ export function AddEquipmentDialog({
           </form>
         </Form>
       </DialogContent>
+    <ErrorModalComponent />
     </Dialog>
   );
 }

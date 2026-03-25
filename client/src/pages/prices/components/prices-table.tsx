@@ -2,6 +2,7 @@ import { useState, useMemo, Fragment } from "react";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -84,6 +85,7 @@ export function PricesTable({
   const [selectedPrice, setSelectedPrice] = useState<Price | null>(null);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery<{ data: any[]; total: number }>({
@@ -250,11 +252,7 @@ export function PricesTable({
       toast({ title: "Цена удалена", description: "Запись успешно удалена" });
     },
     onError: () => {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось удалить цену",
-        variant: "destructive",
-      });
+      showError("Не удалось удалить цену");
     },
   });
 
@@ -687,6 +685,7 @@ export function PricesTable({
         entityId=""
         entityName="Все цены (включая удаленные)"
       />
+      <ErrorModalComponent />
     </div>
   );
 }

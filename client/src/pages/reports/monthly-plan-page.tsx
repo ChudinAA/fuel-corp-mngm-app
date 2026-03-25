@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Pencil, Trash2, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -34,6 +35,7 @@ interface MonthlyPlan {
 
 export default function MonthlyPlanPage() {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<MonthlyPlan | null>(null);
@@ -73,7 +75,7 @@ export default function MonthlyPlanPage() {
       resetForm();
     },
     onError: () => {
-      toast({ title: "Ошибка создания плана", variant: "destructive" });
+      showError("Ошибка создания плана");
     },
   });
 
@@ -95,7 +97,7 @@ export default function MonthlyPlanPage() {
       resetForm();
     },
     onError: () => {
-      toast({ title: "Ошибка обновления плана", variant: "destructive" });
+      showError("Ошибка обновления плана");
     },
   });
 
@@ -112,7 +114,7 @@ export default function MonthlyPlanPage() {
       toast({ title: "План удален успешно" });
     },
     onError: () => {
-      toast({ title: "Ошибка удаления плана", variant: "destructive" });
+      showError("Ошибка удаления плана");
     },
   });
 
@@ -358,6 +360,7 @@ export default function MonthlyPlanPage() {
           )}
         </CardContent>
       </Card>
+      <ErrorModalComponent />
     </div>
   );
 }

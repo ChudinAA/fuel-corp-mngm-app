@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -68,6 +69,7 @@ export function AddBaseDialog({
   onCreated,
 }: AddBaseDialogProps) {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const [localOpen, setLocalOpen] = useState(false);
 
   const open = isInline ? inlineOpen : localOpen;
@@ -112,11 +114,7 @@ export function AddBaseDialog({
       }
     },
     onError: (error: Error) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(error.message);
     },
   });
 
@@ -269,6 +267,7 @@ export function AddBaseDialog({
           </form>
         </Form>
       </DialogContent>
+      <ErrorModalComponent />
     </Dialog>
   );
 }

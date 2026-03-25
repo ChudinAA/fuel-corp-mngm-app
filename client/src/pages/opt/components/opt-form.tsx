@@ -593,33 +593,18 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         // Проверяем наличие количества
         const calculatedKgValue = calculatedKg ? parseFloat(calculatedKg) : 0;
         if (calculatedKgValue <= 0) {
-          toast({
-            title: "Ошибка: отсутствует объем",
-            description:
-              "Укажите корректное количество топлива в килограммах или литрах.",
-            variant: "destructive",
-          });
+          showError("Укажите корректное количество топлива в килограммах или литрах.");
           return;
         }
 
         // Проверяем налич �е ошибок в ценах
         if (!isWarehouseSupplier && purchasePrice === null) {
-          toast({
-            title: "Ошибка: отсутствует цена покупки",
-            description:
-              "Не указана цена покупки. Выберите цену из списка или проверьте настройки поставщика и базиса.",
-            variant: "destructive",
-          });
+          showError("Не указана цена покупки. Выберите цену из списка или проверьте настройки поставщика и базиса.");
           return;
         }
 
         if (salePrice === null) {
-          toast({
-            title: "Ошибка: отсутствует цена продажи",
-            description:
-              "Не указана цена продажи. Выберите цену из списка или проверьте настройки покупателя.",
-            variant: "destructive",
-          });
+          showError("Не указана цена продажи. Выберите цену из списка или проверьте настройки покупателя.");
           return;
         }
 
@@ -635,21 +620,13 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
             : availableBalance;
 
           if (baseBalance < 0) {
-            toast({
-              title: "Ошибка: недостаточно объема на складе",
-              description: `На складе "${supplierWarehouse.name}" на выбранную дату недостаточно топлива. Доступно: ${baseBalance.toFixed(2)} кг, требуется: ${finalKg.toFixed(2)} кг`,
-              variant: "destructive",
-            });
+            showError(`На складе "${supplierWarehouse.name}" на выбранную дату недостаточно топлива. Доступно: ${baseBalance.toFixed(2)} кг, требуется: ${finalKg.toFixed(2)} кг`);
             return;
           }
         }
 
         if (contractVolumeStatus.status === "error") {
-          toast({
-            title: "Ошибка: недостаточно объема по договору Покупателя",
-            description: contractVolumeStatus.message,
-            variant: "destructive",
-          });
+          showError(contractVolumeStatus.message);
           return;
         }
 
@@ -657,23 +634,14 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           !isWarehouseSupplier &&
           supplierContractVolumeStatus.status === "error"
         ) {
-          toast({
-            title: "Ошибка: недостаточно объема по договору Поставщика",
-            description: supplierContractVolumeStatus.message,
-            variant: "destructive",
-          });
+          showError(supplierContractVolumeStatus.message);
           return;
         }
       } else {
         // Для черновика проверяем только поставщика и покупателя (уже проверено Zod)
         // Но дополнительно убедимся, что ID не пустые строки
         if (!data.supplierId || !data.buyerId) {
-          toast({
-            title: "Ошибка валидации",
-            description:
-              "Для сохранения черновика необходимо выбрать поставщика и покупателя.",
-            variant: "destructive",
-          });
+          showError("Для сохранения черновика необходимо выбрать поставщика и покупателя.");
           return;
         }
       }

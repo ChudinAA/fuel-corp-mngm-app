@@ -2,14 +2,12 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 import { AuditPanel } from "@/components/audit-panel";
 import type { Movement, Warehouse } from "@shared/schema";
 import { MovementDialog } from "./movement/components/movement-dialog";
 import { MovementTable } from "./movement/components/movement-table";
-import { useAuth } from "@/hooks/use-auth";
 
 export default function MovementPage() {
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
@@ -17,7 +15,7 @@ export default function MovementPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
-  const { hasPermission } = useAuth();
+  const { showError, ErrorModalComponent } = useErrorModal();
 
   const { data: warehouses } = useQuery<Warehouse[]>({
     queryKey: ["/api/warehouses"],
@@ -63,11 +61,7 @@ export default function MovementPage() {
       toast({ title: "Перемещение удалено" });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(error.message);
     },
   });
 
@@ -85,19 +79,11 @@ export default function MovementPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Перемещение</h1>
-          <p className="text-muted-foreground">
-            Учет покупок и внутренних перемещений топлива
-          </p>
-        </div>
-        {hasPermission("movement", "create") && (
-          <Button onClick={handleOpenDialog} data-testid="button-add-movement">
-            <Plus className="mr-2 h-4 w-4" />
-            Новое перемещение
-          </Button>
-        )}
+      <div>
+        <h1 className="text-2xl font-semibold">Перемещение</h1>
+        <p className="text-muted-foreground">
+          Учет покупок и внутренних перемещений топлива
+        </p>
       </div>
 
       <MovementDialog
@@ -120,6 +106,7 @@ export default function MovementPage() {
             onEdit={handleEditClick}
             onDelete={(id) => deleteMutation.mutate(id)}
             onShowHistory={() => setAuditPanelOpen(true)}
+            onCreate={handleOpenDialog}
           />
         </CardContent>
       </Card>
@@ -131,6 +118,7 @@ export default function MovementPage() {
         entityId=""
         entityName="Все перемещения (включая удаленные)"
       />
+      <ErrorModalComponent />
     </div>
   );
 }

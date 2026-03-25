@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +54,7 @@ function AddUserDialog({
   onEditComplete
 }: { roles: Role[]; editUser: User | null; onEditComplete: () => void }) {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const [open, setOpen] = useState(false);
 
   const form = useForm<UserFormData>({
@@ -83,7 +85,7 @@ function AddUserDialog({
       setOpen(false);
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      showError(error.message);
     },
   });
 
@@ -104,7 +106,7 @@ function AddUserDialog({
       onEditComplete();
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      showError(error.message);
     },
   });
 
@@ -277,6 +279,7 @@ function AddUserDialog({
           </form>
         </Form>
       </DialogContent>
+      <ErrorModalComponent />
     </Dialog>
   );
 }
@@ -289,6 +292,7 @@ export default function UsersPage() {
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const { hasPermission } = useAuth();
 
   const {
@@ -332,7 +336,7 @@ export default function UsersPage() {
       toast({ title: "Пользователь удален", description: "Запись успешно удалена" });
     },
     onError: () => {
-      toast({ title: "Ошибка", description: "Не удалось удалить пользователя", variant: "destructive" });
+      showError("Не удалось удалить пользователя");
     },
   });
 
@@ -531,6 +535,7 @@ export default function UsersPage() {
         entityType="users"
         entityId=""
       />
+      <ErrorModalComponent />
     </div>
   );
 }

@@ -479,19 +479,11 @@ export const TransportationForm = forwardRef<
     if (!isDraft) {
       const kgVal = calculatedKg ? parseFloat(calculatedKg) : 0;
       if (kgVal <= 0) {
-        toast({
-          title: "Ошибка",
-          description: "Укажите корректное количество топлива",
-          variant: "destructive",
-        });
+        showError("Укажите корректное количество топлива");
         return;
       }
       if (salePrice === null) {
-        toast({
-          title: "Ошибка",
-          description: "Не указана цена продажи",
-          variant: "destructive",
-        });
+        showError("Не указана цена продажи");
         return;
       }
     }

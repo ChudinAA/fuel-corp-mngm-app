@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Loader2, X, Building2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import type { Warehouse } from "@shared/schema";
 import { EQUIPMENT_TYPE } from "@shared/constants";
 import { newWarehouseFormSchema } from "../schemas";
@@ -37,6 +38,7 @@ export function AddWarehouseDialog({
 
   const { hasPermission } = useAuth();
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const [internalOpen, setInternalOpen] = useState(false);
   const [addBaseOpen, setAddBaseOpen] = useState(false);
 
@@ -120,11 +122,12 @@ export function AddWarehouseDialog({
       onSave();
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      showError(error);
     },
   });
 
   return (
+    <>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
@@ -327,5 +330,7 @@ export function AddWarehouseDialog({
         />
       </DialogContent>
     </Dialog>
+    <ErrorModalComponent />
+    </>
   );
 }

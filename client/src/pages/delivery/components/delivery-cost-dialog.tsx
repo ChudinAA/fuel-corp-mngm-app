@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -62,6 +63,7 @@ export function AddDeliveryCostDialog({
   onClose,
 }: AddDeliveryCostDialogProps) {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const { hasPermission } = useAuth();
   const [localOpen, setLocalOpen] = useState(false);
   const [addCarrierOpen, setAddCarrierOpen] = useState(false);
@@ -170,11 +172,7 @@ export function AddDeliveryCostDialog({
       }
     },
     onError: (error: Error) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(error.message);
     },
   });
 
@@ -196,11 +194,7 @@ export function AddDeliveryCostDialog({
       handleClose();
     },
     onError: (error: Error) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(error.message);
     },
   });
 
@@ -540,6 +534,7 @@ export function AddDeliveryCostDialog({
           }}
         />
       </DialogContent>
+    <ErrorModalComponent />
     </Dialog>
   );
 }

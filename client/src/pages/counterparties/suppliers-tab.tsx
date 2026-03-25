@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import {
   Card,
   CardContent,
@@ -62,6 +63,7 @@ export function SuppliersTab() {
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
 
+  const { showError, ErrorModalComponent } = useErrorModal();
   const { data: suppliers, isLoading: suppliersLoading } = useQuery<Supplier[]>(
     {
       queryKey: ["/api/suppliers"],
@@ -86,11 +88,7 @@ export function SuppliersTab() {
       });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(error.message);
     },
   });
 
@@ -357,6 +355,7 @@ export function SuppliersTab() {
         entityType="suppliers"
         entityId=""
       />
+      <ErrorModalComponent />
     </Card>
   );
 }

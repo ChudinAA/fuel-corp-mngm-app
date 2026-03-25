@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,6 +26,7 @@ interface DeliveryTableProps {
 
 export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases = [] }: DeliveryTableProps) {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const { hasPermission } = useAuth();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [costToDelete, setCostToDelete] = useState<DeliveryCost | null>(null);
@@ -56,11 +58,12 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
       toast({ title: "Тариф удален", description: "Запись успешно удалена" });
     },
     onError: () => {
-      toast({ title: "Ошибка", description: "Не удалось удалить тариф", variant: "destructive" });
+      showError("Не удалось удалить тариф");
     },
   });
 
   return (
+    <>
     <div className="border rounded-lg">
       <Table>
         <TableHeader>
@@ -182,5 +185,7 @@ export function DeliveryTable({ costs, isLoading, getCarrierName, onEdit, bases 
         description="Вы уверены, что хотите удалить этот тариф доставки? Это действие нельзя отменить."
       />
     </div>
+    <ErrorModalComponent />
+    </>
   );
 }

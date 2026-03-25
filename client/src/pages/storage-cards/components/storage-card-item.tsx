@@ -23,6 +23,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 
 interface StorageCardItemProps {
   card: any;
@@ -41,6 +42,7 @@ export function StorageCardItem({
 }: StorageCardItemProps) {
   const { hasPermission } = useAuth();
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const formatNumber = (value: number) =>
@@ -81,7 +83,7 @@ export function StorageCardItem({
       toast({ title: "Карта удалена" });
     },
     onError: (error: any) => {
-      toast({ title: "Ошибка удаления", description: error.message, variant: "destructive" });
+      showError(error.message);
     },
   });
 
@@ -256,6 +258,7 @@ export function StorageCardItem({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ErrorModalComponent />
     </>
   );
 }

@@ -7,6 +7,7 @@ import { ru } from "date-fns/locale";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +28,7 @@ export function ExchangeDialog({
   onOpenChange 
 }: ExchangeDialogProps) {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const isEditing = !!editExchange;
 
   const form = useForm<ExchangeFormData>({
@@ -70,7 +72,7 @@ export function ExchangeDialog({
       onOpenChange(false);
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      showError(error);
     },
   });
 
@@ -82,6 +84,7 @@ export function ExchangeDialog({
     : 0;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
@@ -258,5 +261,7 @@ export function ExchangeDialog({
         </Form>
       </DialogContent>
     </Dialog>
+    <ErrorModalComponent />
+    </>
   );
 }

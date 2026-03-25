@@ -56,21 +56,13 @@ export default function RefuelingPage({ equipmentType = EQUIPMENT_TYPE.COMMON }:
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">
-            {equipmentType === EQUIPMENT_TYPE.LIK ? "Заправка ВС ЛИК" : "Заправка ВС"}
-          </h1>
-          <p className="text-muted-foreground">
-            {equipmentType === EQUIPMENT_TYPE.LIK ? "Учет заправок ЛИК" : "Учет заправок воздушных судов"}
-          </p>
-        </div>
-        {hasPermission("refueling", "create") && (
-          <Button onClick={handleOpenDialog} data-testid="button-add-refueling">
-            <Plus className="mr-2 h-4 w-4" />
-            Новая заправка
-          </Button>
-        )}
+      <div>
+        <h1 className="text-2xl font-semibold">
+          {equipmentType === EQUIPMENT_TYPE.LIK ? "Заправка ВС ЛИК" : "Заправка ВС"}
+        </h1>
+        <p className="text-muted-foreground">
+          {equipmentType === EQUIPMENT_TYPE.LIK ? "Учет заправок ЛИК" : "Учет заправок воздушных судов"}
+        </p>
       </div>
 
       <div className="space-y-4">
@@ -118,6 +110,7 @@ export default function RefuelingPage({ equipmentType = EQUIPMENT_TYPE.COMMON }:
               onEdit={handleEditRefueling}
               onCopy={handleCopyRefueling}
               onDelete={handleRefuelingDeleted}
+              onAdd={handleOpenDialog}
               equipmentType={equipmentType}
             />
           </CardContent>

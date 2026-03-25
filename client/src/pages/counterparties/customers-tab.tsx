@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import {
   Card,
   CardContent,
@@ -40,6 +41,7 @@ export function CustomersTab() {
   );
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const { hasPermission } = useAuth();
 
   const { data: customers, isLoading } = useQuery<Customer[]>({
@@ -63,11 +65,7 @@ export function CustomersTab() {
       });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(error.message);
     },
   });
 
@@ -288,6 +286,7 @@ export function CustomersTab() {
         description="Вы уверены, что хотите удалить этого покупателя? Это действие нельзя отменить."
         itemName={customerToDelete?.name}
       />
+      <ErrorModalComponent />
     </Card>
   );
 }

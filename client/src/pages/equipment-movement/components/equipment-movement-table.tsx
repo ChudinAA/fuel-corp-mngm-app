@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
-import { Pencil, Trash2, History, Filter, Search, Copy } from "lucide-react";
+import { Pencil, Trash2, History, Filter, Search, Copy, Plus } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import { formatNumber, formatDate } from "../utils";
 import { useEquipmentMovementTable } from "../hooks/use-equipment-movement-table";
 import type { EquipmentMovementTableProps } from "../types";
@@ -28,7 +29,9 @@ export function EquipmentMovementTable({
   onEdit,
   onDelete,
   onShowHistory,
-}: EquipmentMovementTableProps) {
+  onCreate,
+}: EquipmentMovementTableProps & { onCreate?: () => void }) {
+  const { hasPermission } = useAuth();
   const {
     movements,
     isLoading,
@@ -74,40 +77,44 @@ export function EquipmentMovementTable({
 
   return (
     <div className="space-y-4 px-4 md:px-6 pb-5">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4 flex-1">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Поиск по примечаниям..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setColumnFilters({})}
-            disabled={Object.values(columnFilters).every((v) => v.length === 0)}
-            title="Сбросить все фильтры"
-            className={cn(
-              Object.values(columnFilters).some((v) => v.length > 0) &&
-                "text-primary border-primary",
-            )}
-          >
-            <Filter className="h-4 w-4" />
+      <div className="flex items-center gap-2 flex-wrap">
+        {onCreate && hasPermission("movement", "create") && (
+          <Button onClick={onCreate} data-testid="button-add-equipment-movement">
+            <Plus className="mr-2 h-4 w-4" />
+            Новое перемещение
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => onShowHistory()}
-            title="Аудит всех перемещений"
-          >
-            <History className="h-4 w-4 mr-2" />
-            История изменений
-          </Button>
-          <ExportButton moduleName="equipment-movement" />
+        )}
+        <div className="relative flex-1 min-w-[160px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Поиск по примечаниям..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
         </div>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setColumnFilters({})}
+          disabled={Object.values(columnFilters).every((v) => v.length === 0)}
+          title="Сбросить все фильтры"
+          className={cn(
+            Object.values(columnFilters).some((v) => v.length > 0) &&
+              "text-primary border-primary",
+          )}
+        >
+          <Filter className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => onShowHistory()}
+          title="Аудит всех перемещений"
+        >
+          <History className="h-4 w-4 mr-2" />
+          История
+        </Button>
+        <ExportButton moduleName="equipment-movement" />
       </div>
 
       <div className="border rounded-lg overflow-x-auto">

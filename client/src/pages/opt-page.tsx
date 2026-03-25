@@ -63,17 +63,9 @@ export default function OptPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Оптовые продажи</h1>
-          <p className="text-muted-foreground">Учет оптовых сделок</p>
-        </div>
-        {hasPermission("opt", "create") && (
-          <Button onClick={handleOpenDialog} data-testid="button-add-opt">
-            <Plus className="mr-2 h-4 w-4" />
-            Новая сделка
-          </Button>
-        )}
+      <div>
+        <h1 className="text-2xl font-semibold">Оптовые продажи</h1>
+        <p className="text-muted-foreground">Учет оптовых сделок</p>
       </div>
 
       <AddOptDialog
@@ -116,6 +108,7 @@ export default function OptPage() {
             onEdit={handleEditOpt}
             onCopy={handleCopyOpt}
             onDelete={handleOptDeleted}
+            onAdd={handleOpenDialog}
           />
         </CardContent>
       </Card>

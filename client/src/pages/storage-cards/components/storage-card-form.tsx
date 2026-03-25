@@ -4,6 +4,7 @@ import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -77,6 +78,7 @@ export function StorageCardForm({
   onCancel: () => void;
 }) {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const isBuyer = cardType === "buyer";
   const [confirmRelinkCard, setConfirmRelinkCard] = useState<any>(null);
   const [pendingSubmitData, setPendingSubmitData] = useState<StorageCardFormData | null>(null);
@@ -130,7 +132,7 @@ export function StorageCardForm({
       onSuccess();
     },
     onError: (error: any) => {
-      toast({ title: "Ошибка создания", description: error.message, variant: "destructive" });
+      showError(error.message);
     },
   });
 
@@ -149,7 +151,7 @@ export function StorageCardForm({
       onSuccess();
     },
     onError: (error: any) => {
-      toast({ title: "Ошибка обновления", description: error.message, variant: "destructive" });
+      showError(error.message);
     },
   });
 
@@ -348,6 +350,7 @@ export function StorageCardForm({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    <ErrorModalComponent />
     </>
   );
 }

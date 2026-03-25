@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import {
   Card,
   CardContent,
@@ -65,6 +66,7 @@ export function GenericLogisticsTab({
   } | null>(null);
   const { toast } = useToast();
 
+  const { showError, ErrorModalComponent } = useErrorModal();
   const queryKeys: Record<string, string> = {
     carrier: "/api/logistics/carriers",
     delivery_location: "/api/logistics/delivery-locations",

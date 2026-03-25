@@ -7,6 +7,7 @@ import { CUSTOMER_MODULE } from "@shared/constants";
 import type { CustomerModule } from "@shared/constants";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import {
   Dialog,
   DialogContent,
@@ -93,6 +94,7 @@ export function AddCustomerDialog({
 }: AddCustomerDialogProps) {
   const { hasPermission } = useAuth();
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const [localOpen, setLocalOpen] = useState(false);
   const [addBaseOpen, setAddBaseOpen] = useState(false);
 
@@ -247,11 +249,7 @@ export function AddCustomerDialog({
       }
     },
     onError: (error: Error) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(error.message);
     },
   });
 
@@ -642,6 +640,7 @@ export function AddCustomerDialog({
           onInlineOpenChange={setAddBaseOpen}
         />
       </DialogContent>
+    <ErrorModalComponent />
     </Dialog>
   );
 }

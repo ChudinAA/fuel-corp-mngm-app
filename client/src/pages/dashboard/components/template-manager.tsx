@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Trash2, Download, Upload, CheckCircle2, Loader2 } from "lucide-react";
 
 interface DashboardTemplate {
@@ -23,6 +24,7 @@ interface DashboardTemplate {
 
 export function TemplateManager() {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const queryClient = useQueryClient();
 
   // Загрузка всех шаблонов
@@ -53,11 +55,7 @@ export function TemplateManager() {
       });
     },
     onError: () => {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось применить шаблон",
-        variant: "destructive",
-      });
+      showError("Не удалось применить шаблон");
     },
   });
 
@@ -95,7 +93,7 @@ export function TemplateManager() {
       
       toast({ title: "Экспорт завершён", description: "Конфигурация сохранена в файл" });
     } catch (error) {
-      toast({ title: "Ошибка экспорта", variant: "destructive" });
+      showError("Ошибка экспорта конфигурации");
     }
   };
 
@@ -120,7 +118,7 @@ export function TemplateManager() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/configuration"] });
       toast({ title: "Импорт завершён", description: "Конфигурация загружена" });
     } catch (error) {
-      toast({ title: "Ошибка импорта", description: "Неверный формат файла", variant: "destructive" });
+      showError("Ошибка импорта: неверный формат файла");
     }
   };
 
@@ -208,6 +206,7 @@ export function TemplateManager() {
           </p>
         </Card>
       )}
+      <ErrorModalComponent />
     </div>
   );
 }

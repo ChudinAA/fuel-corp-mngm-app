@@ -4,6 +4,7 @@ import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -59,6 +60,7 @@ export function DepositForm({
   onCancel: () => void;
 }) {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const isBuyer = cardType === "buyer";
 
   const { data: currencies = [] } = useQuery<Currency[]>({
@@ -134,15 +136,12 @@ export function DepositForm({
       onSuccess();
     },
     onError: (error: any) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(error.message);
     },
   });
 
   return (
+    <>
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit((data) => depositMutation.mutate(data))}
@@ -358,5 +357,7 @@ export function DepositForm({
         </div>
       </form>
     </Form>
+    <ErrorModalComponent />
+    </>
   );
 }

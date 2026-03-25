@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -253,11 +254,7 @@ export function AddPriceDialog({
 
   const handleCheckDates = () => {
     if (!watchCounterpartyId || !watchBasis || !watchDateFrom || !watchDateTo) {
-      toast({
-        title: "Ошибка",
-        description: "Заполните все обязательные поля",
-        variant: "destructive",
-      });
+      showError("Заполните все обязательные поля");
       return;
     }
 
@@ -373,11 +370,7 @@ export function AddPriceDialog({
   const handleSubmit = async (data: PriceFormData) => {
     // Если проверка показала ошибку пересечения дат, блокируем создание
     if (dateCheck.result && dateCheck.result.status === "error") {
-      toast({
-        title: "Ошибка пересечения дат!",
-        description: "Исправьте даты перед созданием цены",
-        variant: "destructive",
-      });
+      showError("Исправьте даты перед созданием цены — обнаружено пересечение периодов");
       return;
     }
 
@@ -389,11 +382,7 @@ export function AddPriceDialog({
         !watchDateFrom ||
         !watchDateTo
       ) {
-        toast({
-          title: "Ошибка",
-          description: "Заполните все обязательные поля",
-          variant: "destructive",
-        });
+        showError("Заполните все обязательные поля");
         return;
       }
 
@@ -415,19 +404,11 @@ export function AddPriceDialog({
         const result = await dateCheck.checkAsync(checkParams);
 
         if (result && result.status === "error") {
-          toast({
-            title: "Ошибка пересечения дат!",
-            description: result.message,
-            variant: "destructive",
-          });
+          showError(result.message);
           return;
         }
       } catch (error) {
-        toast({
-          title: "Ошибка!",
-          description: "Не удалось проверить даты",
-          variant: "destructive",
-        });
+        showError("Не удалось проверить даты");
         return;
       }
     }
@@ -435,99 +416,123 @@ export function AddPriceDialog({
     createMutation.mutate(data);
   };
 
-  // Inline режим: плавающая панель с возможностью свернуть
+  // Inline режим: Dialog с кнопкой свернуть + portal для свёрнутого состояния
   if (isInline) {
     if (!open) return <ErrorModalComponent />;
 
-    const formContent = (
-      <Form {...form}>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            form.handleSubmit(handleSubmit)(e);
-          }}
-          className="space-y-4 p-4 overflow-y-auto max-h-[calc(90vh-3.5rem)]"
-        >
-          <PriceFormFields
-            control={form.control}
-            contractors={contractors}
-            availableBases={availableBases}
-            currencies={currencies || []}
-            fields={fields}
-            remove={remove}
-            append={append}
-          />
-
-          <PriceChecksPanel
-            dateCheckResult={dateCheck.result}
-            onCheckDates={handleCheckDates}
-            isChecking={dateCheck.isChecking}
-            dateCheckPassed={dateCheckPassed}
-          />
-
-          <div className="flex justify-end gap-2 pt-2 pb-1">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                if (setOpen) setOpen(false);
-              }}
-            >
-              Отмена
-            </Button>
-            <Button
-              type="submit"
-              disabled={createMutation.isPending || !dateCheckPassed}
-            >
-              {createMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Создать
-            </Button>
-          </div>
-        </form>
-      </Form>
-    );
-
-    return (
-      <>
-        <div
-          className="fixed bottom-0 right-6 z-50 w-[520px] rounded-t-md shadow-xl border border-border bg-background flex flex-col"
-          style={{ maxWidth: "calc(100vw - 2rem)" }}
-        >
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/50 rounded-t-md cursor-pointer select-none"
-            onClick={() => setIsMinimized((m) => !m)}
+    // Свёрнутый режим: плавающая полоска через portal на уровне document.body
+    if (isMinimized) {
+      return createPortal(
+        <>
+          <div
+            className="fixed bottom-0 right-6 z-[99999] bg-background border border-border rounded-t-md shadow-xl flex items-center px-4 py-2.5 gap-2 min-w-[260px] cursor-pointer select-none"
+            onClick={() => setIsMinimized(false)}
           >
-            <span className="text-sm font-medium">
+            <span className="text-sm font-medium flex-1 truncate">
               {editPrice ? "Редактирование цены" : "Новая цена"}
             </span>
-            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-              <Button
-                size="icon"
-                variant="ghost"
-                type="button"
-                onClick={() => setIsMinimized((m) => !m)}
-                title={isMinimized ? "Развернуть" : "Свернуть"}
-              >
-                {isMinimized ? <ChevronUp className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                type="button"
-                onClick={() => {
-                  if (setOpen) setOpen(false);
-                }}
-                title="Закрыть"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setIsMinimized(false); }}
+              title="Развернуть"
+            >
+              <ChevronUp className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              type="button"
+              onClick={(e) => { e.stopPropagation(); if (setOpen) setOpen(false); }}
+              title="Закрыть"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
+          <ErrorModalComponent />
+        </>,
+        document.body,
+      );
+    }
 
-          {!isMinimized && formContent}
-        </div>
+    // Развёрнутый режим: обычный Dialog с кнопкой «Свернуть» в заголовке
+    return (
+      <>
+        <Dialog
+          open={true}
+          onOpenChange={(isOpen) => { if (!isOpen && setOpen) setOpen(false); }}
+        >
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <DialogTitle>
+                    {editPrice ? "Редактирование цены" : "Новая цена"}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Добавление или редактирование цены покупки или продажи
+                  </DialogDescription>
+                </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  type="button"
+                  onClick={() => setIsMinimized(true)}
+                  title="Свернуть"
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+              </div>
+            </DialogHeader>
+            <Form {...form}>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  form.handleSubmit(handleSubmit)(e);
+                }}
+                className="space-y-4"
+              >
+                <PriceFormFields
+                  control={form.control}
+                  contractors={contractors}
+                  availableBases={availableBases}
+                  currencies={currencies || []}
+                  fields={fields}
+                  remove={remove}
+                  append={append}
+                />
+
+                <PriceChecksPanel
+                  dateCheckResult={dateCheck.result}
+                  onCheckDates={handleCheckDates}
+                  isChecking={dateCheck.isChecking}
+                  dateCheckPassed={dateCheckPassed}
+                />
+
+                <div className="flex justify-end gap-2 pt-2 pb-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => { if (setOpen) setOpen(false); }}
+                  >
+                    Отмена
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createMutation.isPending || !dateCheckPassed}
+                  >
+                    {createMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    Создать
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
         <ErrorModalComponent />
       </>
     );

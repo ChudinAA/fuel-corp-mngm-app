@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import {
   Card,
   CardContent,
@@ -59,6 +60,7 @@ export function BasesTab() {
   const [editingItem, setEditingItem] = useState<Base | null>(null);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const { hasPermission } = useAuth();
 
   const { data: bases, isLoading } = useQuery<Base[]>({
@@ -78,11 +80,7 @@ export function BasesTab() {
       });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(error);
     },
   });
 
@@ -94,6 +92,7 @@ export function BasesTab() {
     }) || [];
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -282,5 +281,7 @@ export function BasesTab() {
         entityId=""
       />
     </Card>
+    <ErrorModalComponent />
+    </>
   );
 }

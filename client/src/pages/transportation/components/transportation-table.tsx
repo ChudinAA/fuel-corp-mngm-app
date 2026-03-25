@@ -22,7 +22,9 @@ import {
   Copy,
   Loader2,
   Filter,
+  Plus,
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -60,12 +62,15 @@ import {
 interface TransportationTableProps {
   onEdit: (item: any) => void;
   onCopy: (item: any) => void;
+  onCreate?: () => void;
 }
 
 export function TransportationTable({
   onEdit,
   onCopy,
+  onCreate,
 }: TransportationTableProps) {
+  const { hasPermission } = useAuth();
   const {
     search,
     setSearch,
@@ -207,11 +212,17 @@ export function TransportationTable({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+        {onCreate && hasPermission("opt", "create") && (
+          <Button onClick={onCreate} data-testid="button-add-transportation">
+            <Plus className="mr-2 h-4 w-4" />
+            Новая перевозка
+          </Button>
+        )}
+        <div className="relative flex-1 min-w-[160px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             ref={searchInputRef}
-            placeholder="Поиск по поставщику, покупателю, базису..."
+            placeholder="Поиск по поставщику, покупателю..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="pl-9"
@@ -239,7 +250,7 @@ export function TransportationTable({
           title="История всех изменений"
         >
           <History className="h-4 w-4 mr-2" />
-          История изменений
+          История
         </Button>
         <ExportButton data={exportData} filename="transportation" />
       </div>

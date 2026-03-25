@@ -8,6 +8,7 @@ import { Pencil, Trash2, Truck } from "lucide-react";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import type { Equipment } from "@shared/schema";
 import { formatNumber, formatCurrency } from "../../warehouses/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -30,6 +31,7 @@ export function EquipmentCard({
   warehouseId,
 }: EquipmentCardProps) {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const balance = parseFloat(equipment.currentBalance || "0");
   const cost = parseFloat(equipment.averageCost || "0");
@@ -61,11 +63,7 @@ export function EquipmentCard({
       });
     },
     onError: () => {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось удалить оборудование",
-        variant: "destructive",
-      });
+      showError("Не удалось удалить оборудование");
     },
   });
 
@@ -173,6 +171,7 @@ export function EquipmentCard({
         description="Вы уверены, что хотите удалить это средство заправки? Это действие нельзя отменить."
         itemName={equipment.name}
       />
+      <ErrorModalComponent />
     </Card>
   );
 }

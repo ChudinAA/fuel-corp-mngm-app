@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { formatCurrency, formatNumber } from "../utils";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +55,7 @@ export function RefuelingAbroadTable({
   onCopy,
 }: RefuelingAbroadTableProps) {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const {
@@ -525,6 +527,7 @@ export function RefuelingAbroadTable({
         entityId=""
         entityName="Все заправки ВС Зарубеж (включая удаленные)"
       />
+      <ErrorModalComponent />
     </div>
   );
 }

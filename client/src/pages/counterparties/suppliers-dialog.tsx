@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -82,6 +83,7 @@ export function AddSupplierDialog({
 }: AddSupplierDialogProps) {
   const { hasPermission } = useAuth();
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const [localOpen, setLocalOpen] = useState(false);
   const [addBaseOpen, setAddBaseOpen] = useState(false);
 
@@ -208,11 +210,7 @@ export function AddSupplierDialog({
       }
     },
     onError: (error: Error) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(error.message);
     },
   });
 
@@ -791,6 +789,7 @@ export function AddSupplierDialog({
           onInlineOpenChange={setAddBaseOpen}
         />
       </DialogContent>
+    <ErrorModalComponent />
     </Dialog>
   );
 }

@@ -34,6 +34,7 @@ import {
 import { AuditPanel } from "@/components/audit-panel";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import type { Warehouse, Base } from "@shared/schema";
 import type { WarehouseTransaction } from "../types";
 import { formatNumber, formatCurrency } from "../utils";
@@ -55,6 +56,7 @@ export function WarehouseCard({
   isBase = false,
 }: WarehouseCardProps) {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState("");
   const balance = parseFloat(warehouse.currentBalance || "0");
@@ -97,11 +99,7 @@ export function WarehouseCard({
       toast({ title: "Склад удален", description: "Запись успешно удалена" });
     },
     onError: () => {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось удалить склад",
-        variant: "destructive",
-      });
+      showError("Не удалось удалить склад");
     },
   });
 
@@ -289,6 +287,7 @@ export function WarehouseCard({
         description={confirmMessage}
         itemName={warehouse.name}
       />
+      <ErrorModalComponent />
     </Card>
   );
 }

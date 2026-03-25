@@ -2,14 +2,12 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 import { AuditPanel } from "@/components/audit-panel";
 import type { EquipmentMovement, Warehouse, Equipment } from "@shared/schema";
 import { EquipmentMovementDialog } from "./components/equipment-movement-dialog";
 import { EquipmentMovementTable } from "./components/equipment-movement-table";
-import { useAuth } from "@/hooks/use-auth";
 
 export default function EquipmentMovementPage() {
   const [editingMovement, setEditingMovement] =
@@ -18,7 +16,7 @@ export default function EquipmentMovementPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
-  const { hasPermission } = useAuth();
+  const { showError, ErrorModalComponent } = useErrorModal();
 
   const { data: warehouses } = useQuery<Warehouse[]>({
     queryKey: ["/api/warehouses"],
@@ -37,11 +35,7 @@ export default function EquipmentMovementPage() {
       toast({ title: "Перемещение удалено" });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
-      });
+      showError(error.message);
     },
   });
 
@@ -72,16 +66,8 @@ export default function EquipmentMovementPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Перемещение ЛИК</h1>
-        </div>
-        {hasPermission("equipment_movement", "create") && (
-          <Button onClick={handleOpenDialog} data-testid="button-add-movement">
-            <Plus className="mr-2 h-4 w-4" />
-            Новое перемещение
-          </Button>
-        )}
+      <div>
+        <h1 className="text-2xl font-semibold">Перемещение ЛИК</h1>
       </div>
 
       <EquipmentMovementDialog
@@ -101,6 +87,7 @@ export default function EquipmentMovementPage() {
             onEdit={handleEditClick}
             onDelete={(id: string) => deleteMutation.mutate(id)}
             onShowHistory={handleShowHistory}
+            onCreate={handleOpenDialog}
           />
         </CardContent>
       </Card>
@@ -112,6 +99,7 @@ export default function EquipmentMovementPage() {
         entityId={auditEntity.id}
         entityName={auditEntity.name}
       />
+      <ErrorModalComponent />
     </div>
   );
 }

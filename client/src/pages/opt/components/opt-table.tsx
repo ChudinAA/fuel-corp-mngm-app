@@ -25,7 +25,9 @@ import {
   Copy,
   Loader2,
   TriangleAlert,
+  Plus,
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -128,6 +130,7 @@ function OptDealActions({
 }
 
 export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
+  const { hasPermission } = useAuth();
   const {
     search,
     setSearch,
@@ -232,12 +235,18 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex items-center gap-2 flex-wrap">
+        {onAdd && hasPermission("opt", "create") && (
+          <Button onClick={onAdd} data-testid="button-add-opt">
+            <Plus className="mr-2 h-4 w-4" />
+            Новая сделка
+          </Button>
+        )}
+        <div className="relative flex-1 min-w-[160px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             ref={searchInputRef}
-            placeholder="Поиск по поставщику, покупателю, базису..."
+            placeholder="Поиск по поставщику, покупателю..."
             value={searchInput}
             onChange={(e) => {
               setSearchInput(e.target.value);
@@ -268,9 +277,9 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
           title="Аудит всех сделок"
         >
           <History className="h-4 w-4 mr-2" />
-          История изменений
+          История
         </Button>
-        <ExportButton moduleName="opt" /> {/* Export button added here */}
+        <ExportButton moduleName="opt" />
       </div>
 
       <div className="border rounded-lg overflow-x-auto">

@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Pencil, Trash2, Plus, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -31,6 +32,7 @@ interface BudgetEntry {
 
 export default function BudgetPage() {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<BudgetEntry | null>(null);
@@ -70,7 +72,7 @@ export default function BudgetPage() {
       resetForm();
     },
     onError: () => {
-      toast({ title: "Ошибка создания записи", variant: "destructive" });
+      showError("Ошибка создания записи");
     },
   });
 
@@ -92,7 +94,7 @@ export default function BudgetPage() {
       resetForm();
     },
     onError: () => {
-      toast({ title: "Ошибка обновления записи", variant: "destructive" });
+      showError("Ошибка обновления записи");
     },
   });
 
@@ -112,7 +114,7 @@ export default function BudgetPage() {
       toast({ title: "Данные обновлены из продаж" });
     },
     onError: () => {
-      toast({ title: "Ошибка обновления данных", variant: "destructive" });
+      showError("Ошибка обновления данных");
     },
   });
 
@@ -129,7 +131,7 @@ export default function BudgetPage() {
       toast({ title: "Запись удалена успешно" });
     },
     onError: () => {
-      toast({ title: "Ошибка удаления записи", variant: "destructive" });
+      showError("Ошибка удаления записи");
     },
   });
 
@@ -486,6 +488,7 @@ export default function BudgetPage() {
           )}
         </CardContent>
       </Card>
+      <ErrorModalComponent />
     </div>
   );
 }

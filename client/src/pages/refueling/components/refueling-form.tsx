@@ -616,11 +616,7 @@ export const RefuelingForm = forwardRef<
     if (!isDraft) {
       // Проверяем наличие количества
       if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
-        toast({
-          title: "Ошибка валидации",
-          description: "Укажите корректное количество топлива.",
-          variant: "destructive",
-        });
+        showError("Укажите корректное количество топлива.");
         return;
       }
 
@@ -630,41 +626,23 @@ export const RefuelingForm = forwardRef<
         productType !== PRODUCT_TYPE.SERVICE &&
         purchasePrice === null
       ) {
-        toast({
-          title: "Ошибка валидации",
-          description:
-            "Не указана цена покупки. Выберите цену или проверьте настройки поставщика.",
-          variant: "destructive",
-        });
+        showError("Не указана цена покупки. Выберите цену или проверьте настройки поставщика.");
         return;
       }
 
       if (salePrice === null) {
-        toast({
-          title: "Ошибка валидации",
-          description:
-            "Не указана цена продажи. Выберите цену или проверьте настройки покупателя.",
-          variant: "destructive",
-        });
+        showError("Не указана цена продажи. Выберите цену или проверьте настройки покупателя.");
         return;
       }
 
       // Проверяем достаточность объема на складе
       if (warehouseStatus.status === "error") {
-        toast({
-          title: "Ошибка валидации",
-          description: warehouseStatus.message,
-          variant: "destructive",
-        });
+        showError(warehouseStatus.message);
         return;
       }
 
       if (contractVolumeStatus.status === "error") {
-        toast({
-          title: "Ошибка: недостаточно объема по договору Поставщика",
-          description: contractVolumeStatus.message,
-          variant: "destructive",
-        });
+        showError(contractVolumeStatus.message);
         return;
       }
 
@@ -672,22 +650,13 @@ export const RefuelingForm = forwardRef<
         !isWarehouseSupplier &&
         supplierContractVolumeStatus.status === "error"
       ) {
-        toast({
-          title: "Ошибка: недостаточно объема по договору Поставщика",
-          description: supplierContractVolumeStatus.message,
-          variant: "destructive",
-        });
+        showError(supplierContractVolumeStatus.message);
         return;
       }
     } else {
       // Для черновика проверяем обязательные поля
       if (!data.supplierId || !data.buyerId) {
-        toast({
-          title: "Ошибка валидации",
-          description:
-            "Для сохранения черновика необходимо выбрать поставщика и покупателя.",
-          variant: "destructive",
-        });
+        showError("Для сохранения черновика необходимо выбрать поставщика и покупателя.");
         return;
       }
     }

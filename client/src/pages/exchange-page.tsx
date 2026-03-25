@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ export default function ExchangePage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const { hasPermission } = useAuth();
   const pageSize = 10;
 
@@ -42,7 +44,7 @@ export default function ExchangePage() {
       toast({ title: "Сделка удалена", description: "Биржевая сделка успешно удалена" });
     },
     onError: (error: Error) => {
-      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      showError(error.message);
     },
   });
 
@@ -166,6 +168,7 @@ export default function ExchangePage() {
         entityId=""
         entityName="Все биржевые сделки (включая удаленные)"
       />
+      <ErrorModalComponent />
     </div>
   );
 }

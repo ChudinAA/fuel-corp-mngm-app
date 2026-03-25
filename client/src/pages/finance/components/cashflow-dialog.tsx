@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Dialog,
@@ -46,6 +47,7 @@ interface CashflowDialogProps {
 
 export function CashflowDialog({ open, onOpenChange, transaction }: CashflowDialogProps) {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const [isPlanned, setIsPlanned] = useState(transaction?.isPlanned || false);
   const { user } = useAuth(); // Assuming useAuth provides user information
 
@@ -87,11 +89,7 @@ export function CashflowDialog({ open, onOpenChange, transaction }: CashflowDial
       onOpenChange(false);
     },
     onError: () => {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось создать транзакцию",
-        variant: "destructive",
-      });
+      showError("Не удалось создать транзакцию");
     },
   });
 
@@ -116,11 +114,7 @@ export function CashflowDialog({ open, onOpenChange, transaction }: CashflowDial
       onOpenChange(false);
     },
     onError: () => {
-      toast({
-        title: "Ошибка",
-        description: "Не удалось обновить транзакцию",
-        variant: "destructive",
-      });
+      showError("Не удалось обновить транзакцию");
     },
   });
 
@@ -240,6 +234,7 @@ export function CashflowDialog({ open, onOpenChange, transaction }: CashflowDial
           </DialogFooter>
         </form>
       </DialogContent>
+    <ErrorModalComponent />
     </Dialog>
   );
 }

@@ -23,6 +23,7 @@ import {
   History,
   Loader2,
   AlertTriangle,
+  Plus,
 } from "lucide-react";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import {
@@ -53,8 +54,10 @@ export function MovementTable({
   onEdit,
   onDelete,
   onShowHistory,
+  onCreate,
 }: Omit<MovementTableProps, "data" | "isLoading" | "isDeleting"> & {
   onShowHistory: () => void;
+  onCreate?: () => void;
 }) {
   const {
     search,
@@ -130,41 +133,45 @@ export function MovementTable({
 
   return (
     <div className="space-y-4 px-4 md:px-6 pb-5">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4 flex-1">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              ref={searchInputRef}
-              placeholder="Поиск..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setColumnFilters({})}
-            disabled={Object.values(columnFilters).every((v) => v.length === 0)}
-            title="Сбросить все фильтры"
-            className={cn(
-              Object.values(columnFilters).some((v) => v.length > 0) &&
-                "text-primary border-primary",
-            )}
-          >
-            <Filter className="h-4 w-4" />
+      <div className="flex items-center gap-2 flex-wrap">
+        {onCreate && hasPermission("movement", "create") && (
+          <Button onClick={onCreate} data-testid="button-add-movement">
+            <Plus className="mr-2 h-4 w-4" />
+            Новое перемещение
           </Button>
-          <Button
-            variant="outline"
-            onClick={onShowHistory}
-            title="Аудит всех перемещений"
-          >
-            <History className="h-4 w-4 mr-2" />
-            История изменений
-          </Button>
-          <ExportButton moduleName="movement" />
+        )}
+        <div className="relative flex-1 min-w-[160px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            ref={searchInputRef}
+            placeholder="Поиск..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="pl-9"
+          />
         </div>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setColumnFilters({})}
+          disabled={Object.values(columnFilters).every((v) => v.length === 0)}
+          title="Сбросить все фильтры"
+          className={cn(
+            Object.values(columnFilters).some((v) => v.length > 0) &&
+              "text-primary border-primary",
+          )}
+        >
+          <Filter className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="outline"
+          onClick={onShowHistory}
+          title="Аудит всех перемещений"
+        >
+          <History className="h-4 w-4 mr-2" />
+          История
+        </Button>
+        <ExportButton moduleName="movement" />
       </div>
 
       <div className="border rounded-lg overflow-x-auto">

@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { FileText, Download, TrendingUp, DollarSign, Package, FileCheck, Truck, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -76,6 +77,7 @@ const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
 export default function ManagementReportPage() {
   const { toast } = useToast();
+  const { showError, ErrorModalComponent } = useErrorModal();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
@@ -108,7 +110,7 @@ export default function ManagementReportPage() {
       toast({ title: "Отчет успешно сгенерирован" });
     },
     onError: () => {
-      toast({ title: "Ошибка генерации отчета", variant: "destructive" });
+      showError("Ошибка генерации отчета");
     },
   });
 
@@ -130,13 +132,13 @@ export default function ManagementReportPage() {
       setSaveFormData({ reportName: "", description: "", notes: "" });
     },
     onError: () => {
-      toast({ title: "Ошибка сохранения отчета", variant: "destructive" });
+      showError("Ошибка сохранения отчета");
     },
   });
 
   const handleGenerate = () => {
     if (!periodStart || !periodEnd) {
-      toast({ title: "Укажите период отчета", variant: "destructive" });
+      showError("Укажите период отчета");
       return;
     }
     generateMutation.mutate({ periodStart, periodEnd });
@@ -144,7 +146,7 @@ export default function ManagementReportPage() {
 
   const handleSaveReport = () => {
     if (!reportData || !saveFormData.reportName) {
-      toast({ title: "Заполните название отчета", variant: "destructive" });
+      showError("Заполните название отчета");
       return;
     }
     saveMutation.mutate({
@@ -631,6 +633,7 @@ export default function ManagementReportPage() {
           </div>
         </DialogContent>
       </Dialog>
+      <ErrorModalComponent />
     </div>
   );
 }
