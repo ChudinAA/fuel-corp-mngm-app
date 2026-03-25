@@ -262,9 +262,9 @@ export function TransportationTable({
               {TRANSPORTATION_TABLE_COLUMNS.filter((c) =>
                 isColumnVisible(c.id),
               ).map((col) => (
-                <TableHead key={col.id} className="whitespace-nowrap">
+                <TableHead key={col.id} className="text-xs font-semibold px-1 py-1">
                   <div className="flex items-center gap-1">
-                    {col.label}
+                    <span className="truncate max-w-[80px]">{col.label}</span>
                     {[
                       "date",
                       "supplier",
@@ -288,7 +288,7 @@ export function TransportationTable({
                   </div>
                 </TableHead>
               ))}
-              <TableHead className="sticky right-0 bg-background z-10" />
+              <TableHead className="w-[32px] px-1 py-1 sticky right-0 bg-background z-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -296,7 +296,7 @@ export function TransportationTable({
               <TableRow>
                 <TableCell
                   colSpan={visibleColumns.length + 1}
-                  className="text-center text-muted-foreground py-8"
+                  className="text-center text-muted-foreground text-xs py-8"
                 >
                   Нет данных
                 </TableCell>
@@ -314,7 +314,7 @@ export function TransportationTable({
                   onClick={() => onEdit(deal)}
                 >
                   {isColumnVisible("date") && (
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="text-[10px] py-1.5 px-1 whitespace-nowrap">
                       <div className="flex flex-col gap-0.5">
                         <span>
                           {deal.dealDate
@@ -335,62 +335,74 @@ export function TransportationTable({
                     </TableCell>
                   )}
                   {isColumnVisible("supplier") && (
-                    <TableCell>{deal.supplier?.name || "—"}</TableCell>
+                    <TableCell className="text-xs py-1.5 px-1 max-w-[100px]">
+                      <span className="truncate block">{deal.supplier?.name || "—"}</span>
+                    </TableCell>
                   )}
                   {isColumnVisible("buyer") && (
-                    <TableCell>{deal.buyer?.name || "—"}</TableCell>
+                    <TableCell className="text-xs py-1.5 px-1 max-w-[100px]">
+                      <span className="truncate block">{deal.buyer?.name || "—"}</span>
+                    </TableCell>
                   )}
                   {isColumnVisible("basis") && (
-                    <TableCell>{deal.basis || "—"}</TableCell>
+                    <TableCell className="text-xs py-1.5 px-1 max-w-[80px]">
+                      <span className="truncate block">{deal.basis || "—"}</span>
+                    </TableCell>
                   )}
                   {isColumnVisible("customerBasis") && (
-                    <TableCell>{deal.customerBasis || "—"}</TableCell>
+                    <TableCell className="text-xs py-1.5 px-1 max-w-[80px]">
+                      <span className="truncate block">{deal.customerBasis || "—"}</span>
+                    </TableCell>
                   )}
                   {isColumnVisible("carrier") && (
-                    <TableCell>{deal.carrier?.name || "—"}</TableCell>
+                    <TableCell className="text-xs py-1.5 px-1 max-w-[90px]">
+                      <span className="truncate block">{deal.carrier?.name || "—"}</span>
+                    </TableCell>
                   )}
                   {isColumnVisible("deliveryLocation") && (
-                    <TableCell>{deal.deliveryLocation?.name || "—"}</TableCell>
+                    <TableCell className="text-xs py-1.5 px-1 max-w-[90px]">
+                      <span className="truncate block">{deal.deliveryLocation?.name || "—"}</span>
+                    </TableCell>
                   )}
                   {isColumnVisible("productType") && (
-                    <TableCell>
+                    <TableCell className="py-1.5 px-1">
                       <ProductTypeBadge type={deal.productType} />
                     </TableCell>
                   )}
                   {isColumnVisible("quantityKg") && (
-                    <TableCell className="text-right whitespace-nowrap">
+                    <TableCell className="text-right text-xs py-1.5 px-1">
                       {formatNumberForTable(deal.quantityKg)}
                     </TableCell>
                   )}
                   {isColumnVisible("purchasePrice") && (
-                    <TableCell className="text-right whitespace-nowrap">
+                    <TableCell className="text-right text-xs py-1.5 px-1">
                       {formatNumberForTable(deal.purchasePrice)}
                     </TableCell>
                   )}
                   {isColumnVisible("salePrice") && (
-                    <TableCell className="text-right whitespace-nowrap">
+                    <TableCell className="text-right text-xs py-1.5 px-1">
                       {formatNumberForTable(deal.salePrice)}
                     </TableCell>
                   )}
                   {isColumnVisible("purchaseAmount") && (
-                    <TableCell className="text-right whitespace-nowrap">
+                    <TableCell className="text-right text-xs py-1.5 px-1">
                       {formatCurrencyForTable(deal.purchaseAmount)}
                     </TableCell>
                   )}
                   {isColumnVisible("saleAmount") && (
-                    <TableCell className="text-right whitespace-nowrap">
+                    <TableCell className="text-right text-xs py-1.5 px-1">
                       {formatCurrencyForTable(deal.saleAmount)}
                     </TableCell>
                   )}
                   {isColumnVisible("deliveryCost") && (
-                    <TableCell className="text-right whitespace-nowrap">
+                    <TableCell className="text-right text-xs py-1.5 px-1">
                       {formatCurrencyForTable(deal.deliveryCost)}
                     </TableCell>
                   )}
                   {isColumnVisible("profit") && (
                     <TableCell
                       className={cn(
-                        "text-right whitespace-nowrap",
+                        "text-right text-xs py-1.5 px-1",
                         deal.profit !== null && parseFloat(deal.profit) >= 0
                           ? "text-green-600"
                           : "text-red-600",
@@ -400,11 +412,11 @@ export function TransportationTable({
                     </TableCell>
                   )}
                   {isColumnVisible("notes") && (
-                    <TableCell className="max-w-[150px] truncate">
+                    <TableCell className="text-xs py-1.5 px-1 max-w-[100px] truncate">
                       {deal.notes || "—"}
                     </TableCell>
                   )}
-                  <TableCell onClick={(e) => e.stopPropagation()} className="sticky right-0 bg-background">
+                  <TableCell onClick={(e) => e.stopPropagation()} className="py-1.5 px-1 sticky right-0 bg-background">
                     <EntityActionsMenu
                       actions={[
                         ...(deal.notes

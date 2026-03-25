@@ -180,7 +180,7 @@ export function MovementTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[90px] text-xs md:text-sm px-2 md:px-4">
+              <TableHead className="w-[80px] text-xs font-semibold px-1 py-1">
                 <div className="flex items-center justify-between gap-1">
                   <span>Дата</span>
                   <TableColumnFilter
@@ -191,7 +191,7 @@ export function MovementTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="w-[100px] text-xs md:text-sm px-2 md:px-4">
+              <TableHead className="w-[85px] text-xs font-semibold px-1 py-1">
                 <div className="flex items-center justify-between gap-1">
                   <span>Тип</span>
                   <TableColumnFilter
@@ -202,9 +202,9 @@ export function MovementTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="w-[90px] text-xs md:text-sm px-2 md:px-2">
+              <TableHead className="w-[70px] text-xs font-semibold px-1 py-1">
                 <div className="flex items-center justify-between gap-0.5">
-                  <span>Продукт</span>
+                  <span>Прод.</span>
                   <TableColumnFilter
                     title="Продукт"
                     options={getUniqueOptions("product")}
@@ -213,9 +213,9 @@ export function MovementTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="flex-1 min-w-[120px] text-xs md:text-sm px-2 md:px-4">
+              <TableHead className="text-xs font-semibold px-1 py-1">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="truncate">Откуда</span>
+                  <span className="truncate max-w-[70px]">Откуда</span>
                   <TableColumnFilter
                     title="Откуда"
                     options={getUniqueOptions("fromName")}
@@ -224,9 +224,9 @@ export function MovementTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="flex-1 min-w-[120px] text-xs md:text-sm px-2 md:px-4">
+              <TableHead className="text-xs font-semibold px-1 py-1">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="truncate">Куда</span>
+                  <span className="truncate max-w-[70px]">Куда</span>
                   <TableColumnFilter
                     title="Куда"
                     options={getUniqueOptions("toName")}
@@ -235,18 +235,18 @@ export function MovementTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-right w-[80px] text-xs md:text-sm px-2 md:px-4">
+              <TableHead className="text-right w-[60px] text-xs font-semibold px-1 py-1">
                 КГ
               </TableHead>
-              <TableHead className="text-right w-[90px] text-xs md:text-sm px-2 md:px-3 leading-tight">
-                Цена закупки
+              <TableHead className="text-right w-[70px] text-xs font-semibold px-1 py-1 leading-tight">
+                Цена
               </TableHead>
-              <TableHead className="text-right w-[100px] text-xs md:text-sm px-2 md:px-3 leading-tight">
-                Сумма закупки
+              <TableHead className="text-right w-[75px] text-xs font-semibold px-1 py-1 leading-tight">
+                Сумма
               </TableHead>
-              <TableHead className="flex-1 min-w-[120px] text-xs md:text-sm px-2 md:px-2">
+              <TableHead className="text-xs font-semibold px-1 py-1">
                 <div className="flex items-center justify-between gap-0.5">
-                  <span className="truncate">Перевозчик</span>
+                  <span className="truncate max-w-[65px]">Перевозчик</span>
                   <TableColumnFilter
                     title="Перевозчик"
                     options={getUniqueOptions("carrierName")}
@@ -255,16 +255,16 @@ export function MovementTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-right w-[80px] text-xs md:text-sm px-2 md:px-1">
-                Доставка
+              <TableHead className="text-right w-[65px] text-xs font-semibold px-1 py-1">
+                Дост.
               </TableHead>
-              <TableHead className="text-right w-[80px] text-xs md:text-sm px-2 md:px-3">
-                Хранение
+              <TableHead className="text-right w-[65px] text-xs font-semibold px-1 py-1">
+                Хран.
               </TableHead>
-              <TableHead className="text-right w-[90px] text-xs md:text-sm px-2 md:px-3 leading-tight">
+              <TableHead className="text-right w-[70px] text-xs font-semibold px-1 py-1">
                 Себест.
               </TableHead>
-              <TableHead className="w-[30px] px-2 md:px-2 sticky right-0 bg-background z-10"></TableHead>
+              <TableHead className="w-[32px] px-1 py-1 sticky right-0 bg-background z-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -272,7 +272,7 @@ export function MovementTable({
               <TableRow>
                 <TableCell
                   colSpan={13}
-                  className="text-center py-8 text-muted-foreground"
+                  className="text-center py-8 text-muted-foreground text-xs"
                 >
                   Нет данных
                 </TableCell>
@@ -304,7 +304,7 @@ export function MovementTable({
                         "bg-muted/70 opacity-60 border-2 border-orange-200",
                     )}
                   >
-                    <TableCell className="text-[11px] md:text-xs py-2 px-1 md:px-2 whitespace-nowrap">
+                    <TableCell className="text-[10px] py-1.5 px-1 whitespace-nowrap">
                       <div className="flex flex-col gap-1">
                         {formatDate(item.movementDate)}
                         {item.isDraft && (
@@ -317,62 +317,62 @@ export function MovementTable({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="py-2 px-1 md:px-2">
+                    <TableCell className="py-1.5 px-1">
                       <Badge
                         variant="outline"
-                        className="text-[11px] md:text-xs px-2 py-0.5 h-6"
+                        className="text-[10px] px-1.5 py-0 h-5"
                       >
                         {item.movementType === MOVEMENT_TYPE.SUPPLY
                           ? "Покупка"
-                          : "Внутреннее"}
+                          : "Внутр."}
                       </Badge>
                     </TableCell>
-                    <TableCell className="py-2 px-1 md:px-2">
+                    <TableCell className="py-1.5 px-1">
                       <ProductTypeBadge
                         type={item.productType || PRODUCT_TYPE.KEROSENE}
                       />
                     </TableCell>
-                    <TableCell className="text-xs md:text-sm py-3 px-2 md:px-4 truncate max-w-[140px]">
+                    <TableCell className="text-xs py-1.5 px-1 truncate max-w-[100px]">
                       {item.fromName || "—"}
                     </TableCell>
-                    <TableCell className="text-xs md:text-sm py-3 px-2 md:px-4 truncate max-w-[140px]">
+                    <TableCell className="text-xs py-1.5 px-1 truncate max-w-[100px]">
                       {item.toName || "—"}
                     </TableCell>
-                    <TableCell className="text-right font-medium text-xs md:text-sm py-3 px-2 md:px-4">
+                    <TableCell className="text-right font-medium text-xs py-1.5 px-1">
                       {formatNumberWithK(item.quantityKg)}
                     </TableCell>
-                    <TableCell className="text-right font-bold text-xs md:text-sm py-3 px-2 md:px-4 whitespace-nowrap">
+                    <TableCell className="text-right font-bold text-xs py-1.5 px-1">
                       {purchasePrice !== null
                         ? formatNumber(purchasePrice)
                         : "—"}
                     </TableCell>
-                    <TableCell className="text-right text-xs md:text-sm py-3 px-2 md:px-4">
+                    <TableCell className="text-right text-xs py-1.5 px-1">
                       {purchaseAmount > 0
                         ? formatNumberWithK(purchaseAmount)
                         : "—"}
                     </TableCell>
-                    <TableCell className="text-xs md:text-sm py-3 px-2 md:px-4 max-w-[120px]">
+                    <TableCell className="text-xs py-1.5 px-1 max-w-[100px]">
                       {item.carrierName ? (
                         <span className="truncate block">{item.carrierName}</span>
                       ) : item.movementType === MOVEMENT_TYPE.SUPPLY && !item.isDraft ? (
-                        <span className="flex items-center gap-1 text-destructive whitespace-nowrap">
+                        <span className="flex items-center gap-1 text-destructive">
                           <AlertTriangle className="h-3 w-3 shrink-0" />
-                          <span className="text-[11px] font-medium">Не указан</span>
+                          <span className="text-[10px] font-medium">Не указан</span>
                         </span>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right text-xs md:text-sm py-3 px-2 md:px-4">
+                    <TableCell className="text-right text-xs py-1.5 px-1">
                       {formatNumberWithK(deliveryCost)}
                     </TableCell>
-                    <TableCell className="text-right text-xs md:text-sm py-3 px-2 md:px-4">
+                    <TableCell className="text-right text-xs py-1.5 px-1">
                       {formatNumberWithK(storageCost)}
                     </TableCell>
-                    <TableCell className="text-right font-bold text-xs md:text-sm py-3 px-2 md:px-4 whitespace-nowrap">
+                    <TableCell className="text-right font-bold text-xs py-1.5 px-1">
                       {formatNumber(costPerKg)}
                     </TableCell>
-                    <TableCell className="py-3 px-2 md:px-1 sticky right-0 bg-background">
+                    <TableCell className="py-1.5 px-1 sticky right-0 bg-background">
                       <EntityActionsMenu
                         actions={[
                           {

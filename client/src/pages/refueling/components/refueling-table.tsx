@@ -276,7 +276,7 @@ export function RefuelingTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="text-sm font-semibold p-1 md:p-2 w-[90px]">
+              <TableHead className="text-xs font-semibold p-1 w-[80px]">
                 <div className="flex items-center justify-between gap-1">
                   <span>Дата</span>
                   <TableColumnFilter
@@ -288,9 +288,9 @@ export function RefuelingTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-sm font-semibold p-1 md:p-2">
+              <TableHead className="text-xs font-semibold p-1">
                 <div className="flex items-center justify-between gap-1">
-                  <span>Продукт</span>
+                  <span>Прод.</span>
                   <TableColumnFilter
                     title="Продукт"
                     options={getUniqueOptions("productType")}
@@ -302,12 +302,12 @@ export function RefuelingTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-sm font-semibold p-1 md:p-2">
+              <TableHead className="text-xs font-semibold p-1 w-[55px]">
                 Борт
               </TableHead>
-              <TableHead className="text-sm font-semibold p-1 md:p-2">
+              <TableHead className="text-xs font-semibold p-1">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="truncate max-w-[80px] md:max-w-none">
+                  <span className="truncate max-w-[70px]">
                     Поставщик
                   </span>
                   <TableColumnFilter
@@ -321,17 +321,17 @@ export function RefuelingTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-sm font-semibold p-1 md:p-2">
+              <TableHead className="text-xs font-semibold p-1 w-[65px]">
                 Базис
               </TableHead>
               {equipmentType === EQUIPMENT_TYPE.LIK && (
-                <TableHead className="text-sm font-semibold p-1 md:p-2">
-                  Средство заправки
+                <TableHead className="text-xs font-semibold p-1 w-[70px]">
+                  СЗ
                 </TableHead>
               )}
-              <TableHead className="text-sm font-semibold p-1 md:p-2">
+              <TableHead className="text-xs font-semibold p-1">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="truncate max-w-[80px] md:max-w-none">
+                  <span className="truncate max-w-[70px]">
                     Покупатель
                   </span>
                   <TableColumnFilter
@@ -343,31 +343,31 @@ export function RefuelingTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-center text-sm font-semibold p-1 md:p-2 w-[50px]">
-                Литры
+              <TableHead className="text-right text-xs font-semibold p-1 w-[50px]">
+                Лит.
               </TableHead>
-              <TableHead className="text-center text-sm font-semibold p-1 md:p-2 w-[50px]">
-                Плотн.
+              <TableHead className="text-right text-xs font-semibold p-1 w-[45px]">
+                Пл.
               </TableHead>
-              <TableHead className="text-center text-sm font-semibold p-1 md:p-2 w-[60px]">
+              <TableHead className="text-right text-xs font-semibold p-1 w-[55px]">
                 КГ
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[80px]">
+              <TableHead className="text-right text-xs font-semibold p-1 w-[68px]">
                 Цена пок.
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[90px]">
+              <TableHead className="text-right text-xs font-semibold p-1 w-[72px]">
                 Покупка
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[80px]">
-                Цена прод.
+              <TableHead className="text-right text-xs font-semibold p-1 w-[68px]">
+                Цена пр.
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[90px]">
+              <TableHead className="text-right text-xs font-semibold p-1 w-[72px]">
                 Продажа
               </TableHead>
-              <TableHead className="text-right text-sm font-semibold p-1 md:p-2 w-[90px]">
+              <TableHead className="text-right text-xs font-semibold p-1 w-[72px]">
                 Прибыль
               </TableHead>
-              <TableHead className="w-[40px] p-1 sticky right-0 bg-background z-10"></TableHead>
+              <TableHead className="w-[32px] p-1 sticky right-0 bg-background z-10"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -375,7 +375,7 @@ export function RefuelingTable({
               <TableRow>
                 <TableCell
                   colSpan={12}
-                  className="text-center py-8 text-muted-foreground text-sm"
+                  className="text-center py-8 text-muted-foreground text-xs"
                 >
                   Нет данных для отображения
                 </TableCell>
@@ -389,7 +389,7 @@ export function RefuelingTable({
                       "bg-muted/70 opacity-60 border-2 border-orange-200",
                   )}
                 >
-                  <TableCell className="text-[10px] md:text-xs p-1 md:p-4">
+                  <TableCell className="text-[10px] py-1.5 px-1">
                     <div className="flex flex-col gap-0.5">
                       <span>{formatDate(deal.refuelingDate)}</span>
                       {deal.isDraft && (
@@ -402,22 +402,24 @@ export function RefuelingTable({
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
+                  <TableCell className="py-1.5 px-1">
                     <ProductTypeBadge type={deal.productType} />
                   </TableCell>
-                  <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
-                    {deal.aircraftNumber || "—"}
+                  <TableCell className="text-xs py-1.5 px-1">
+                    <span className="truncate max-w-[50px] block">
+                      {deal.aircraftNumber || "—"}
+                    </span>
                   </TableCell>
-                  <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
+                  <TableCell className="text-xs py-1.5 px-1">
                     <TooltipProvider>
                       <div className="flex items-center gap-1">
-                        <span className="truncate max-w-[80px] md:max-w-none">
+                        <span className="truncate max-w-[80px] block">
                           {deal.supplier?.name || "Не указан"}
                         </span>
                         {deal.supplier?.isWarehouse && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Warehouse className="h-3.5 w-3.5 text-sky-400 flex-shrink-0 cursor-help" />
+                              <Warehouse className="h-3 w-3 text-sky-400 flex-shrink-0 cursor-help" />
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>Склад</p>
@@ -428,23 +430,23 @@ export function RefuelingTable({
                     </TooltipProvider>
                   </TableCell>
                   <TableCell
-                    className="text-[11px] md:text-sm p-1 md:p-4"
+                    className="text-xs py-1.5 px-1"
                     data-testid={`text-basis-${deal.id}`}
                   >
-                    <span className="truncate max-w-[80px] md:max-w-none block text-muted-foreground">
+                    <span className="truncate max-w-[60px] block text-muted-foreground">
                       {deal.basis?.name || "—"}
                     </span>
                   </TableCell>
                   {equipmentType === EQUIPMENT_TYPE.LIK && (
-                    <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
+                    <TableCell className="text-xs py-1.5 px-1">
                       <TooltipProvider>
                         <div className="flex items-center gap-1">
-                          <span className="truncate max-w-[80px] md:max-w-none">
+                          <span className="truncate max-w-[65px] block">
                             {deal.equipment?.name || "—"}
                           </span>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Truck className="h-3.5 w-3.5 text-orange-400 flex-shrink-0 cursor-help" />
+                              <Truck className="h-3 w-3 text-orange-400 flex-shrink-0 cursor-help" />
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>СЗ</p>
@@ -454,29 +456,25 @@ export function RefuelingTable({
                       </TooltipProvider>
                     </TableCell>
                   )}
-                  <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
-                    <span className="truncate max-w-[80px] md:max-w-none block">
+                  <TableCell className="text-xs py-1.5 px-1">
+                    <span className="truncate max-w-[80px] block">
                       {deal.buyer?.name || "Не указан"}
                     </span>
                   </TableCell>
-                  <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
-                    <span className="truncate max-w-[50px] md:max-w-none block">
-                      {formatNumberForTable(deal.quantityLiters) || "-"}
-                    </span>
+                  <TableCell className="text-right text-xs py-1.5 px-1">
+                    {formatNumberForTable(deal.quantityLiters) || "-"}
                   </TableCell>
-                  <TableCell className="text-[11px] md:text-sm p-1 md:p-4">
-                    <span className="truncate max-w-[50px] md:max-w-none block">
-                      {deal.density || "-"}
-                    </span>
+                  <TableCell className="text-right text-xs py-1.5 px-1">
+                    {deal.density || "-"}
                   </TableCell>
-                  <TableCell className="text-right font-medium text-[11px] md:text-sm p-1 md:p-4">
+                  <TableCell className="text-right font-medium text-xs py-1.5 px-1">
                     <TooltipProvider>
                       <div className="flex items-center justify-end gap-1">
                         <span>{formatNumberForTable(deal.quantityKg)}</span>
                         {deal.isApproxVolume && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <AlertCircle className="h-3.5 w-3.5 text-red-300 flex-shrink-0 cursor-help" />
+                              <AlertCircle className="h-3 w-3 text-red-300 flex-shrink-0 cursor-help" />
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>Примерный объем</p>
@@ -486,7 +484,7 @@ export function RefuelingTable({
                       </div>
                     </TooltipProvider>
                   </TableCell>
-                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-4">
+                  <TableCell className="text-right text-xs py-1.5 px-1">
                     <div className="flex items-center justify-end gap-1">
                       {deal.purchasePrice
                         ? Number(deal.purchasePrice).toFixed(4)
@@ -494,7 +492,7 @@ export function RefuelingTable({
                       {deal.purchasePriceModified && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <TriangleAlert className="h-3.5 w-3.5 text-orange-500 flex-shrink-0 cursor-help" />
+                            <TriangleAlert className="h-3 w-3 text-orange-500 flex-shrink-0 cursor-help" />
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>Цена закупки была автоматически пересчитана</p>
@@ -503,16 +501,16 @@ export function RefuelingTable({
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-4">
+                  <TableCell className="text-right text-xs py-1.5 px-1">
                     {formatCurrencyForTable(deal.purchaseAmount)}
                   </TableCell>
-                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-4">
+                  <TableCell className="text-right text-xs py-1.5 px-1">
                     {formatNumber(deal.salePrice)} ₽/кг
                   </TableCell>
-                  <TableCell className="text-right text-[11px] md:text-sm p-1 md:p-4">
+                  <TableCell className="text-right text-xs py-1.5 px-1">
                     {formatCurrencyForTable(deal.saleAmount)}
                   </TableCell>
-                  <TableCell className="text-right text-green-600 font-medium text-[11px] md:text-sm p-1 md:p-4">
+                  <TableCell className="text-right text-green-600 font-medium text-xs py-1.5 px-1">
                     {formatCurrencyForTable(deal.profit)}
                   </TableCell>
                   <TableCell className="p-1 sticky right-0 bg-background">

@@ -427,6 +427,7 @@ export function AddPriceDialog({
           <div
             className="fixed bottom-0 right-6 z-[99999] bg-background border border-border rounded-t-md shadow-xl flex items-center px-4 py-2.5 gap-2 min-w-[260px] cursor-pointer select-none"
             onClick={() => setIsMinimized(false)}
+            onPointerDown={(e) => e.stopPropagation()}
           >
             <span className="text-sm font-medium flex-1 truncate">
               {editPrice ? "Редактирование цены" : "Новая цена"}
