@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -416,48 +416,86 @@ export function AddPriceDialog({
     createMutation.mutate(data);
   };
 
-  // Inline режим: полностью кастомный портал без Radix Dialog.
-  // Это необходимо потому что Radix DismissableLayer родительского диалога
-  // (форма ОПТ/Перевозок) регистрирует нативные DOM-слушатели на document.
-  // Любой клик в портале (даже с stopPropagation) достигает этих слушателей
-  // и Radix ошибочно интерпретирует клик как "вне диалога" → закрывает всё.
-  // Кастомный портал не участвует в системе Radix DismissableLayer.
+  // Ref-флаг: при программном сворачивании блокируем вызов setOpen(false) в onOpenChange.
+  // Radix Dialog в режиме controlled НЕ вызывает onOpenChange при изменении open-пропа,
+  // но держим ref как страховку на случай edge-cases разных версий Radix.
+  const isMinimizingRef = useRef(false);
+
+  const handleMinimize = () => {
+    isMinimizingRef.current = true;
+    setIsMinimized(true);
+  };
+
+  const handleCloseDialog = () => {
+    if (setOpen) setOpen(false);
+  };
+
+  const handleDialogOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      if (isMinimizingRef.current) {
+        // Это программное закрытие при сворачивании — игнорируем
+        isMinimizingRef.current = false;
+        return;
+      }
+      if (setOpen) setOpen(false);
+      form.reset({
+        dateFrom: new Date(),
+        dateTo: getDefaultDateTo(),
+        counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
+        counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
+        counterpartyId: "",
+        productType: PRODUCT_TYPE.KEROSENE,
+        basis: "",
+        basisId: undefined,
+        loadingBasisId: undefined,
+        volume: "",
+        priceValues: [{ price: "" }],
+        contractNumber: "",
+        notes: "",
+      });
+      dateCheck.setResult(null);
+      setDateCheckPassed(false);
+      if (onEditComplete) {
+        onEditComplete();
+      }
+    }
+  };
+
+  // Inline режим: используем Radix Dialog с open={!isMinimized}.
+  // При сворачивании: setIsMinimized(true) → open становится false → Dialog скрывается.
+  // Radix в controlled-режиме НЕ вызывает onOpenChange при изменении open-пропа.
+  // При разворачивании: клик по свёрнутой полоске — нативный pointerdown блокируется
+  // stopImmediatePropagation ДО того, как Radix DismissableLayer родительского диалога
+  // (ОПТ/Перевозки) успеет его обработать и ошибочно посчитать кликом "вне диалога".
   if (isInline) {
-    if (!open) return <ErrorModalComponent />;
-
-    return createPortal(
+    return (
       <>
-        {/* Оверлей: показывается только в развёрнутом состоянии */}
-        {!isMinimized && (
-          <div
-            className="fixed inset-0 z-[9990] bg-black/80"
-            onClick={() => { if (setOpen) setOpen(false); }}
-          />
-        )}
-
-        {/* Развёрнутый диалог */}
-        {!isMinimized && (
-          <div
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[9991] w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-background border border-border rounded-lg shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
+        <Dialog
+          open={open && !isMinimized}
+          onOpenChange={handleDialogOpenChange}
+          modal={false}
+        >
+          <DialogContent
+            className="max-w-2xl max-h-[90vh] overflow-y-auto"
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onInteractOutside={(e) => e.preventDefault()}
           >
-            <div className="p-6 space-y-4">
+            <DialogHeader>
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h2 className="text-lg font-semibold leading-none tracking-tight">
+                  <DialogTitle>
                     {editPrice ? "Редактирование цены" : "Новая цена"}
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-1.5">
+                  </DialogTitle>
+                  <DialogDescription>
                     Добавление или редактирование цены покупки или продажи
-                  </p>
+                  </DialogDescription>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 shrink-0 mt-[-4px]">
                   <Button
                     size="icon"
                     variant="ghost"
                     type="button"
-                    onClick={() => setIsMinimized(true)}
+                    onClick={handleMinimize}
                     title="Свернуть"
                   >
                     <Minus className="h-4 w-4" />
@@ -466,70 +504,81 @@ export function AddPriceDialog({
                     size="icon"
                     variant="ghost"
                     type="button"
-                    onClick={() => { if (setOpen) setOpen(false); }}
+                    onClick={handleCloseDialog}
                     title="Закрыть"
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
+            </DialogHeader>
+            <Form {...form}>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  form.handleSubmit(handleSubmit)(e);
+                }}
+                className="space-y-4"
+              >
+                <PriceFormFields
+                  control={form.control}
+                  contractors={contractors}
+                  availableBases={availableBases}
+                  currencies={currencies || []}
+                  fields={fields}
+                  remove={remove}
+                  append={append}
+                />
 
-              <Form {...form}>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    form.handleSubmit(handleSubmit)(e);
-                  }}
-                  className="space-y-4"
-                >
-                  <PriceFormFields
-                    control={form.control}
-                    contractors={contractors}
-                    availableBases={availableBases}
-                    currencies={currencies || []}
-                    fields={fields}
-                    remove={remove}
-                    append={append}
-                  />
+                <PriceChecksPanel
+                  dateCheckResult={dateCheck.result}
+                  onCheckDates={handleCheckDates}
+                  isChecking={dateCheck.isChecking}
+                  dateCheckPassed={dateCheckPassed}
+                />
 
-                  <PriceChecksPanel
-                    dateCheckResult={dateCheck.result}
-                    onCheckDates={handleCheckDates}
-                    isChecking={dateCheck.isChecking}
-                    dateCheckPassed={dateCheckPassed}
-                  />
+                <div className="flex justify-end gap-2 pt-2 pb-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCloseDialog}
+                  >
+                    Отмена
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createMutation.isPending || !dateCheckPassed}
+                  >
+                    {createMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    Создать
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
 
-                  <div className="flex justify-end gap-2 pt-2 pb-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => { if (setOpen) setOpen(false); }}
-                    >
-                      Отмена
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={createMutation.isPending || !dateCheckPassed}
-                    >
-                      {createMutation.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : null}
-                      Создать
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </div>
-          </div>
-        )}
-
-        {/* Свёрнутая полоска */}
-        {isMinimized && (
+        {/* Свёрнутая полоска — рендерится через портал чтобы быть поверх всего */}
+        {open && isMinimized && createPortal(
           <div
-            className="fixed bottom-0 right-6 z-[9991] bg-background border border-border rounded-t-md shadow-xl flex items-center px-4 py-2.5 gap-2 min-w-[260px] cursor-pointer select-none"
-            onClick={() => setIsMinimized(false)}
-            onPointerDown={(e) => { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); }}
+            className="fixed bottom-0 right-6 z-[9991] bg-background border border-border rounded-t-md shadow-xl flex items-center px-4 py-2.5 gap-2 min-w-[260px] select-none"
+            style={{ cursor: "pointer" }}
+            onPointerDown={(e) => {
+              // Блокируем нативный DOM-ивент ДО того как Radix DismissableLayer
+              // родительского диалога (ОПТ/Перевозки) обработает его.
+              // stopImmediatePropagation останавливает ВСЕ нативные слушатели
+              // на document, включая Radix DismissableLayer.
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              isMinimizingRef.current = false;
+              setIsMinimized(false);
+            }}
           >
             <span className="text-sm font-medium flex-1 truncate">
               {editPrice ? "Редактирование цены" : "Новая цена"}
@@ -538,7 +587,15 @@ export function AddPriceDialog({
               size="icon"
               variant="ghost"
               type="button"
-              onClick={(e) => { e.stopPropagation(); setIsMinimized(false); }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                e.nativeEvent.stopImmediatePropagation();
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                isMinimizingRef.current = false;
+                setIsMinimized(false);
+              }}
               title="Развернуть"
             >
               <ChevronUp className="h-4 w-4" />
@@ -547,17 +604,24 @@ export function AddPriceDialog({
               size="icon"
               variant="ghost"
               type="button"
-              onClick={(e) => { e.stopPropagation(); if (setOpen) setOpen(false); }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                e.nativeEvent.stopImmediatePropagation();
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCloseDialog();
+              }}
               title="Закрыть"
             >
               <X className="h-4 w-4" />
             </Button>
-          </div>
+          </div>,
+          document.body,
         )}
 
         <ErrorModalComponent />
-      </>,
-      document.body,
+      </>
     );
   }
 

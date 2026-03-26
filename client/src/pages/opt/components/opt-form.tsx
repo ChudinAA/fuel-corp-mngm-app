@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getReadableZodError } from "@/lib/form-errors";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
@@ -796,10 +797,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
                     form.handleSubmit(
                       (data) => onSubmit(data, true),
                       (errors) => {
-                        const msgs = Object.values(errors)
-                          .map((e: any) => e?.message)
-                          .filter(Boolean);
-                        showError(msgs[0] || "Для сохранения черновика укажите поставщика и покупателя.");
+                        showError(getReadableZodError(errors, "Для сохранения черновика необходимо выбрать поставщика и покупателя."));
                       },
                     )();
                   }}
@@ -824,10 +822,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
                   form.handleSubmit(
                     (data) => onSubmit(data, false),
                     (errors) => {
-                      const msgs = Object.values(errors)
-                        .map((e: any) => e?.message)
-                        .filter(Boolean);
-                      showError(msgs[0] || "Заполните все обязательные поля перед созданием сделки.");
+                      showError(getReadableZodError(errors, "Заполните все обязательные поля перед созданием сделки."));
                     },
                   )();
                 }}

@@ -41,6 +41,7 @@ import { Loader2, Plane, DollarSign, CalendarIcon, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { getReadableZodError } from "@/lib/form-errors";
 import {
   refuelingAbroadFormSchema,
   type RefuelingAbroadFormData,
@@ -1671,10 +1672,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
               form.handleSubmit(
                 (data) => onSubmit(data, false),
                 (errors) => {
-                  const msgs = Object.values(errors)
-                    .map((e: any) => e?.message)
-                    .filter(Boolean);
-                  showError(msgs[0] || "Заполните все обязательные поля перед созданием сделки.");
+                  showError(getReadableZodError(errors, "Заполните все обязательные поля перед созданием сделки."));
                 },
               )();
             }}

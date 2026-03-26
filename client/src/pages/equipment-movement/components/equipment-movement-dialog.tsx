@@ -10,6 +10,7 @@ import {
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getReadableZodError } from "@/lib/form-errors";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
@@ -326,10 +327,7 @@ export function EquipmentMovementDialog({
                   mutation.mutate({ data, isDraft: false });
                 },
                 (errors) => {
-                  const msgs = Object.values(errors)
-                    .map((e: any) => e?.message)
-                    .filter(Boolean);
-                  showError(msgs[0] || "Заполните все обязательные поля перед созданием сделки.");
+                  showError(getReadableZodError(errors, "Заполните все обязательные поля перед созданием сделки."));
                 },
               )}
               className="space-y-6"

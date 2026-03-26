@@ -38,6 +38,7 @@ import type {
   Price,
 } from "@shared/schema";
 import { refuelingFormSchema, type RefuelingFormData } from "../schemas";
+import { getReadableZodError } from "@/lib/form-errors";
 import type { RefuelingFormProps } from "../types";
 import { RefuelingMainFields } from "./refueling-main-fields";
 import { RefuelingPricingSection } from "./refueling-pricing-section";
@@ -805,10 +806,7 @@ export const RefuelingForm = forwardRef<
                   form.handleSubmit(
                     (data) => onSubmit(data, true),
                     (errors) => {
-                      const msgs = Object.values(errors)
-                        .map((e: any) => e?.message)
-                        .filter(Boolean);
-                      showError(msgs[0] || "Для сохранения черновика укажите поставщика и покупателя.");
+                      showError(getReadableZodError(errors, "Для сохранения черновика необходимо выбрать поставщика и покупателя."));
                     },
                   )();
                 }}
@@ -833,10 +831,7 @@ export const RefuelingForm = forwardRef<
                 form.handleSubmit(
                   (data) => onSubmit(data, false),
                   (errors) => {
-                    const msgs = Object.values(errors)
-                      .map((e: any) => e?.message)
-                      .filter(Boolean);
-                    showError(msgs[0] || "Заполните все обязательные поля перед созданием сделки.");
+                    showError(getReadableZodError(errors, "Заполните все обязательные поля перед созданием сделки."));
                   },
                 )();
               }}
