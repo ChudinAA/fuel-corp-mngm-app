@@ -664,7 +664,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       <>
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit((data) => onSubmit(data))}
+            onSubmit={(e) => e.preventDefault()}
             className="space-y-6"
           >
             <OptMainFields
@@ -793,7 +793,15 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
                   }
                   onClick={() => {
                     form.clearErrors();
-                    form.handleSubmit((data) => onSubmit(data, true))();
+                    form.handleSubmit(
+                      (data) => onSubmit(data, true),
+                      (errors) => {
+                        const msgs = Object.values(errors)
+                          .map((e: any) => e?.message)
+                          .filter(Boolean);
+                        showError(msgs[0] || "Для сохранения черновика укажите поставщика и покупателя.");
+                      },
+                    )();
                   }}
                 >
                   {createMutation.isPending ||
@@ -806,14 +814,22 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
               ) : null}
 
               <Button
-                type="submit"
+                type="button"
                 disabled={
                   createMutation.isPending ||
                   updateMutation.isPending ||
                   isChecking
                 }
                 onClick={() => {
-                  form.handleSubmit((data) => onSubmit(data, false))();
+                  form.handleSubmit(
+                    (data) => onSubmit(data, false),
+                    (errors) => {
+                      const msgs = Object.values(errors)
+                        .map((e: any) => e?.message)
+                        .filter(Boolean);
+                      showError(msgs[0] || "Заполните все обязательные поля перед созданием сделки.");
+                    },
+                  )();
                 }}
                 data-testid="button-submit-opt"
               >

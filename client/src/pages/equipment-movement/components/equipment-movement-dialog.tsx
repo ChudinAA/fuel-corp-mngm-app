@@ -310,8 +310,27 @@ export function EquipmentMovementDialog({
 
           <Form {...form}>
             <form
-              onSubmit={form.handleSubmit((data) =>
-                mutation.mutate({ data, isDraft: false }),
+              onSubmit={form.handleSubmit(
+                (data) => {
+                  // Бизнес-валидация для полного создания сделки
+                  const hasFrom = !!(data.fromWarehouseId || data.fromEquipmentId);
+                  const hasTo = !!(data.toWarehouseId || data.toEquipmentId);
+                  if (!hasFrom) {
+                    showError("Укажите склад или оборудование источника (поле «Откуда»).");
+                    return;
+                  }
+                  if (!hasTo) {
+                    showError("Укажите склад или оборудование получателя (поле «Куда»).");
+                    return;
+                  }
+                  mutation.mutate({ data, isDraft: false });
+                },
+                (errors) => {
+                  const msgs = Object.values(errors)
+                    .map((e: any) => e?.message)
+                    .filter(Boolean);
+                  showError(msgs[0] || "Заполните все обязательные поля перед созданием сделки.");
+                },
               )}
               className="space-y-6"
             >

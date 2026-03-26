@@ -715,7 +715,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     <>
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit((data) => onSubmit(data))}
+        onSubmit={(e) => e.preventDefault()}
         className="space-y-4"
       >
         <Card>
@@ -1668,7 +1668,15 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
             type="button"
             disabled={createMutation.isPending}
             onClick={() => {
-              form.handleSubmit((data) => onSubmit(data, false))();
+              form.handleSubmit(
+                (data) => onSubmit(data, false),
+                (errors) => {
+                  const msgs = Object.values(errors)
+                    .map((e: any) => e?.message)
+                    .filter(Boolean);
+                  showError(msgs[0] || "Заполните все обязательные поля перед созданием сделки.");
+                },
+              )();
             }}
             data-testid="button-submit-refueling"
           >

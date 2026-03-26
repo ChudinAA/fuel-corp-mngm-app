@@ -416,98 +416,120 @@ export function AddPriceDialog({
     createMutation.mutate(data);
   };
 
-  // Inline режим: Dialog с кнопкой свернуть + portal для свёрнутого состояния
+  // Inline режим: полностью кастомный портал без Radix Dialog.
+  // Это необходимо потому что Radix DismissableLayer родительского диалога
+  // (форма ОПТ/Перевозок) регистрирует нативные DOM-слушатели на document.
+  // Любой клик в портале (даже с stopPropagation) достигает этих слушателей
+  // и Radix ошибочно интерпретирует клик как "вне диалога" → закрывает всё.
+  // Кастомный портал не участвует в системе Radix DismissableLayer.
   if (isInline) {
     if (!open) return <ErrorModalComponent />;
 
-    // Всегда рендерим Dialog, управляя его open через isMinimized.
-    // Это сохраняет состояние формы (useForm вне Dialog) и исключает
-    // проблему с повторным монтированием Dialog, которая приводила к
-    // закрытию всех окон при попытке развернуть свёрнутый диалог.
-    return (
+    return createPortal(
       <>
-        <Dialog
-          open={!isMinimized}
-          onOpenChange={(isOpen) => { if (!isOpen && setOpen) setOpen(false); }}
-        >
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <DialogTitle>
-                    {editPrice ? "Редактирование цены" : "Новая цена"}
-                  </DialogTitle>
-                  <DialogDescription>
-                    Добавление или редактирование цены покупки или продажи
-                  </DialogDescription>
-                </div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  type="button"
-                  onClick={() => setIsMinimized(true)}
-                  title="Свернуть"
-                >
-                  <Minus className="h-4 w-4" />
-                </Button>
-              </div>
-            </DialogHeader>
-            <Form {...form}>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  form.handleSubmit(handleSubmit)(e);
-                }}
-                className="space-y-4"
-              >
-                <PriceFormFields
-                  control={form.control}
-                  contractors={contractors}
-                  availableBases={availableBases}
-                  currencies={currencies || []}
-                  fields={fields}
-                  remove={remove}
-                  append={append}
-                />
-
-                <PriceChecksPanel
-                  dateCheckResult={dateCheck.result}
-                  onCheckDates={handleCheckDates}
-                  isChecking={dateCheck.isChecking}
-                  dateCheckPassed={dateCheckPassed}
-                />
-
-                <div className="flex justify-end gap-2 pt-2 pb-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => { if (setOpen) setOpen(false); }}
-                  >
-                    Отмена
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={createMutation.isPending || !dateCheckPassed}
-                  >
-                    {createMutation.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
-                    Создать
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Свёрнутая полоска через portal — рендерится независимо от Dialog */}
-        {isMinimized && createPortal(
+        {/* Оверлей: показывается только в развёрнутом состоянии */}
+        {!isMinimized && (
           <div
-            className="fixed bottom-0 right-6 z-[99999] bg-background border border-border rounded-t-md shadow-xl flex items-center px-4 py-2.5 gap-2 min-w-[260px] cursor-pointer select-none"
-            onClick={() => setIsMinimized(false)}
+            className="fixed inset-0 z-[9990] bg-black/80"
+            onClick={() => { if (setOpen) setOpen(false); }}
+          />
+        )}
+
+        {/* Развёрнутый диалог */}
+        {!isMinimized && (
+          <div
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[9991] w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-background border border-border rounded-lg shadow-lg"
+            onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 space-y-4">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h2 className="text-lg font-semibold leading-none tracking-tight">
+                    {editPrice ? "Редактирование цены" : "Новая цена"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1.5">
+                    Добавление или редактирование цены покупки или продажи
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    type="button"
+                    onClick={() => setIsMinimized(true)}
+                    title="Свернуть"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    type="button"
+                    onClick={() => { if (setOpen) setOpen(false); }}
+                    title="Закрыть"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <Form {...form}>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    form.handleSubmit(handleSubmit)(e);
+                  }}
+                  className="space-y-4"
+                >
+                  <PriceFormFields
+                    control={form.control}
+                    contractors={contractors}
+                    availableBases={availableBases}
+                    currencies={currencies || []}
+                    fields={fields}
+                    remove={remove}
+                    append={append}
+                  />
+
+                  <PriceChecksPanel
+                    dateCheckResult={dateCheck.result}
+                    onCheckDates={handleCheckDates}
+                    isChecking={dateCheck.isChecking}
+                    dateCheckPassed={dateCheckPassed}
+                  />
+
+                  <div className="flex justify-end gap-2 pt-2 pb-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => { if (setOpen) setOpen(false); }}
+                    >
+                      Отмена
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={createMutation.isPending || !dateCheckPassed}
+                    >
+                      {createMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      Создать
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </div>
+          </div>
+        )}
+
+        {/* Свёрнутая полоска */}
+        {isMinimized && (
+          <div
+            className="fixed bottom-0 right-6 z-[9991] bg-background border border-border rounded-t-md shadow-xl flex items-center px-4 py-2.5 gap-2 min-w-[260px] cursor-pointer select-none"
+            onClick={() => setIsMinimized(false)}
+            onPointerDown={(e) => { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); }}
           >
             <span className="text-sm font-medium flex-1 truncate">
               {editPrice ? "Редактирование цены" : "Новая цена"}
@@ -530,12 +552,12 @@ export function AddPriceDialog({
             >
               <X className="h-4 w-4" />
             </Button>
-          </div>,
-          document.body,
+          </div>
         )}
 
         <ErrorModalComponent />
-      </>
+      </>,
+      document.body,
     );
   }
 

@@ -387,8 +387,8 @@ export const TransportationForm = forwardRef<
         false,
       );
     return {
-      supplierId: data.supplierId,
-      buyerId: data.buyerId,
+      supplierId: data.supplierId || null,
+      buyerId: data.buyerId || null,
       dealDate: data.dealDate
         ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss")
         : null,
@@ -512,7 +512,15 @@ export const TransportationForm = forwardRef<
     <>
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit((data) => onSubmit(data, false))}
+          onSubmit={form.handleSubmit(
+            (data) => onSubmit(data, false),
+            (errors) => {
+              const msgs = Object.values(errors)
+                .map((e: any) => e?.message)
+                .filter(Boolean);
+              showError(msgs[0] || "Заполните все обязательные поля перед созданием сделки.");
+            },
+          )}
           className="space-y-6"
         >
           {/* Main fields */}
@@ -1151,7 +1159,15 @@ export const TransportationForm = forwardRef<
                 data-testid="button-save-draft"
                 onClick={() => {
                   form.clearErrors();
-                  form.handleSubmit((data) => onSubmit(data, true))();
+                  form.handleSubmit(
+                    (data) => onSubmit(data, true),
+                    (errors) => {
+                      const msgs = Object.values(errors)
+                        .map((e: any) => e?.message)
+                        .filter(Boolean);
+                      showError(msgs[0] || "Для сохранения черновика укажите поставщика или покупателя.");
+                    },
+                  )();
                 }}
               >
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

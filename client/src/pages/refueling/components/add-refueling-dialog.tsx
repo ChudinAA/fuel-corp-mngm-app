@@ -19,6 +19,7 @@ import {
 import { RefuelingForm, type RefuelingFormHandle } from "./refueling-form";
 import type { AddRefuelingDialogProps } from "../types";
 import { EQUIPMENT_TYPE } from "@shared/constants";
+import { useErrorModal } from "@/hooks/use-error-modal";
 
 export function AddRefuelingDialog({
   isOpen,
@@ -29,23 +30,21 @@ export function AddRefuelingDialog({
 }: AddRefuelingDialogProps & { equipmentType?: string }) {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const formRef = useRef<RefuelingFormHandle>(null);
+  const { showError, ErrorModalComponent } = useErrorModal();
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       const formState = formRef.current?.getFormState();
       const isDirty = formRef.current?.isDirty();
-      const isNewRefueling = !editRefueling && !isCopy;
-      const isDraftEdit = !!editRefueling && editRefueling.isDraft;
 
-      // Если это создание новой заправки и введен поставщик или покупатель
-      // ИЛИ если это редактирование существующего черновика и были изменения
-      if (
-        (isNewRefueling &&
-          formState &&
-          formState.supplierId &&
-          formState.buyerId) ||
-        (isDraftEdit && isDirty)
-      ) {
+      // Показываем алерт для новых заявок И для копий (оба случая = несохранённые данные)
+      const isNewOrCopy = !editRefueling || isCopy;
+      const isDraftEdit = !!editRefueling && !isCopy && editRefueling.isDraft;
+
+      // Хотя бы одно ключевое поле заполнено
+      const hasKeyFields = !!(formState?.supplierId || formState?.buyerId);
+
+      if ((isNewOrCopy && hasKeyFields) || (isDraftEdit && isDirty)) {
         setShowExitConfirm(true);
       } else {
         onClose();
@@ -54,6 +53,13 @@ export function AddRefuelingDialog({
   };
 
   const handleSaveDraft = async () => {
+    const formState = formRef.current?.getFormState();
+    const hasKeyFields = !!(formState?.supplierId || formState?.buyerId);
+    if (!hasKeyFields) {
+      showError("Для сохранения черновика необходимо выбрать поставщика или покупателя.");
+      setShowExitConfirm(false);
+      return;
+    }
     if (formRef.current) {
       await formRef.current.saveAsDraft();
       setShowExitConfirm(false);
@@ -120,6 +126,8 @@ export function AddRefuelingDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ErrorModalComponent />
     </>
   );
 }
