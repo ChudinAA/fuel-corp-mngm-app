@@ -15,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import {
   RefuelingAbroadForm,
   type RefuelingAbroadFormHandle,
@@ -30,6 +31,7 @@ export function AddRefuelingAbroadDialog({
 }: AddRefuelingAbroadDialogProps) {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const formRef = useRef<RefuelingAbroadFormHandle>(null);
+  const { showError, ErrorModalComponent } = useErrorModal();
 
   const title = editRefueling
     ? isCopy
@@ -41,16 +43,13 @@ export function AddRefuelingAbroadDialog({
     if (!open) {
       const formState = formRef.current?.getFormState();
       const isDirty = formRef.current?.isDirty();
-      const isNewRefueling = !editRefueling && !isCopy;
-      const isDraftEdit = !!editRefueling && editRefueling.isDraft;
+      // Новая заправка ИЛИ копия — оба сценария требуют алерта при наличии данных
+      const isNewOrCopy = !editRefueling || isCopy;
+      const isDraftEdit = !!editRefueling && !isCopy && editRefueling.isDraft;
 
-      // Если это создание новой заправки и введен поставщик или покупатель
-      // ИЛИ если это редактирование существующего черновика и были изменения
+      // Алерт показываем если заполнено хотя бы одно ключевое поле (поставщик ИЛИ покупатель)
       if (
-        (isNewRefueling &&
-          formState &&
-          formState.supplierId &&
-          formState.buyerId) ||
+        (isNewOrCopy && formState && (formState.supplierId || formState.buyerId)) ||
         (isDraftEdit && isDirty)
       ) {
         setShowExitConfirm(true);
@@ -61,6 +60,13 @@ export function AddRefuelingAbroadDialog({
   };
 
   const handleSaveDraft = async () => {
+    const formState = formRef.current?.getFormState();
+    // Черновик можно сохранить только если заполнено хотя бы одно ключевое поле
+    if (!formState?.supplierId && !formState?.buyerId) {
+      showError("Для сохранения черновика необходимо заполнить хотя бы одно поле: Поставщик или Покупатель");
+      setShowExitConfirm(false);
+      return;
+    }
     if (formRef.current) {
       await formRef.current.saveAsDraft();
       setShowExitConfirm(false);
@@ -111,6 +117,8 @@ export function AddRefuelingAbroadDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ErrorModalComponent />
     </>
   );
 }

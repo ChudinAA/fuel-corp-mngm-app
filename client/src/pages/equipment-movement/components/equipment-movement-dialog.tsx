@@ -246,20 +246,51 @@ export function EquipmentMovementDialog({
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      const isDirty =
+      const currentValues = form.getValues();
+
+      // Для копии и нового перемещения — показываем алерт если есть хотя бы одно ключевое поле
+      const isNewOrCopy = !isEditing;
+      const isDraftEdit = isEditing && editMovement?.isDraft;
+
+      const hasKeyFields = !!(
+        currentValues.fromWarehouseId ||
+        currentValues.toWarehouseId ||
+        currentValues.fromEquipmentId ||
+        currentValues.toEquipmentId
+      );
+
+      let isDirty =
         form.formState.isDirty ||
-        JSON.stringify(form.getValues()) !==
+        JSON.stringify(currentValues) !==
           JSON.stringify(
             initialValuesRef.current || form.control._defaultValues,
           );
-      if (isDirty && !mutation.isPending) {
-        setShowExitConfirm(true);
+
+      if ((isNewOrCopy && hasKeyFields) || (isDraftEdit && isDirty)) {
+        if (!mutation.isPending) {
+          setShowExitConfirm(true);
+        }
       } else {
         onOpenChange(false);
       }
     } else {
       onOpenChange(true);
     }
+  };
+
+  const handleSaveDraftWithValidation = () => {
+    const values = form.getValues();
+    const hasKeyFields = !!(
+      values.fromWarehouseId ||
+      values.toWarehouseId ||
+      values.fromEquipmentId ||
+      values.toEquipmentId
+    );
+    if (!hasKeyFields) {
+      showError("Для сохранения черновика необходимо заполнить хотя бы одно поле: Откуда или Куда");
+      return;
+    }
+    mutation.mutate({ data: values, isDraft: true });
   };
 
   return (
@@ -535,9 +566,7 @@ export function EquipmentMovementDialog({
                     type="button"
                     variant="secondary"
                     disabled={mutation.isPending}
-                    onClick={() =>
-                      mutation.mutate({ data: form.getValues(), isDraft: true })
-                    }
+                    onClick={handleSaveDraftWithValidation}
                   >
                     {mutation.isPending ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -575,13 +604,14 @@ export function EquipmentMovementDialog({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => onOpenChange(false)}>
+            <AlertDialogCancel onClick={() => { setShowExitConfirm(false); onOpenChange(false); }}>
               Нет
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() =>
-                mutation.mutate({ data: form.getValues(), isDraft: true })
-              }
+              onClick={() => {
+                setShowExitConfirm(false);
+                handleSaveDraftWithValidation();
+              }}
             >
               Да, сохранить
             </AlertDialogAction>

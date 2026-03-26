@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { TransportationForm, type TransportationFormHandle } from "./transportation-form";
 
 interface TransportationDialogProps {
@@ -33,16 +34,19 @@ export function TransportationDialog({
 }: TransportationDialogProps) {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const formRef = useRef<TransportationFormHandle>(null);
+  const { showError, ErrorModalComponent } = useErrorModal();
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       const formState = formRef.current?.getFormState();
       const isDirty = formRef.current?.isDirty();
-      const isNewDeal = !editItem && !isCopy;
-      const isDraftEdit = !!editItem && editItem.isDraft;
+      // Новая сделка ИЛИ копия — оба сценария требуют алерта при наличии данных
+      const isNewOrCopy = !editItem || !!isCopy;
+      const isDraftEdit = !!editItem && !isCopy && editItem.isDraft;
 
+      // Алерт показываем если заполнено хотя бы одно ключевое поле (поставщик ИЛИ покупатель)
       if (
-        (isNewDeal && formState && formState.supplierId && formState.buyerId) ||
+        (isNewOrCopy && formState && (formState.supplierId || formState.buyerId)) ||
         (isDraftEdit && isDirty)
       ) {
         setShowExitConfirm(true);
@@ -53,6 +57,13 @@ export function TransportationDialog({
   };
 
   const handleSaveDraft = async () => {
+    const formState = formRef.current?.getFormState();
+    // Черновик можно сохранить только если заполнено хотя бы одно ключевое поле
+    if (!formState?.supplierId && !formState?.buyerId) {
+      showError("Для сохранения черновика необходимо заполнить хотя бы одно поле: Поставщик или Покупатель");
+      setShowExitConfirm(false);
+      return;
+    }
     if (formRef.current) {
       await formRef.current.saveAsDraft();
       setShowExitConfirm(false);
@@ -116,6 +127,8 @@ export function TransportationDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ErrorModalComponent />
     </>
   );
 }

@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useErrorModal } from "@/hooks/use-error-modal";
 import { OptForm, type OptFormHandle } from "./opt-form";
 import type { AddOptDialogProps } from "../types";
 
@@ -28,18 +29,19 @@ export function AddOptDialog({
 }: AddOptDialogProps) {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const formRef = useRef<OptFormHandle>(null);
+  const { showError, ErrorModalComponent } = useErrorModal();
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       const formState = formRef.current?.getFormState();
       const isDirty = formRef.current?.isDirty();
-      const isNewDeal = !editOpt && !isCopy;
-      const isDraftEdit = !!editOpt && editOpt.isDraft;
+      // Новая сделка ИЛИ копия — оба сценария требуют алерта при наличии данных
+      const isNewOrCopy = !editOpt || !!isCopy;
+      const isDraftEdit = !!editOpt && !isCopy && editOpt.isDraft;
 
-      // Если это создание новой сделки и введен поставщик или покупатель
-      // ИЛИ если это редактирование существующего черновика и были изменения
+      // Алерт показываем если заполнено хотя бы одно ключевое поле (поставщик ИЛИ покупатель)
       if (
-        (isNewDeal && formState && (formState.supplierId && formState.buyerId)) ||
+        (isNewOrCopy && formState && (formState.supplierId || formState.buyerId)) ||
         (isDraftEdit && isDirty)
       ) {
         setShowExitConfirm(true);
@@ -50,6 +52,13 @@ export function AddOptDialog({
   };
 
   const handleSaveDraft = async () => {
+    const formState = formRef.current?.getFormState();
+    // Черновик можно сохранить только если заполнено хотя бы одно ключевое поле
+    if (!formState?.supplierId && !formState?.buyerId) {
+      showError("Для сохранения черновика необходимо заполнить хотя бы одно поле: Поставщик или Покупатель");
+      setShowExitConfirm(false);
+      return;
+    }
     if (formRef.current) {
       await formRef.current.saveAsDraft();
       setShowExitConfirm(false);
@@ -100,6 +109,8 @@ export function AddOptDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ErrorModalComponent />
     </>
   );
 }

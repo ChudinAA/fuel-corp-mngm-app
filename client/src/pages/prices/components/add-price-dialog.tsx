@@ -420,48 +420,14 @@ export function AddPriceDialog({
   if (isInline) {
     if (!open) return <ErrorModalComponent />;
 
-    // Свёрнутый режим: плавающая полоска через portal на уровне document.body
-    if (isMinimized) {
-      return createPortal(
-        <>
-          <div
-            className="fixed bottom-0 right-6 z-[99999] bg-background border border-border rounded-t-md shadow-xl flex items-center px-4 py-2.5 gap-2 min-w-[260px] cursor-pointer select-none"
-            onClick={() => setIsMinimized(false)}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <span className="text-sm font-medium flex-1 truncate">
-              {editPrice ? "Редактирование цены" : "Новая цена"}
-            </span>
-            <Button
-              size="icon"
-              variant="ghost"
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setIsMinimized(false); }}
-              title="Развернуть"
-            >
-              <ChevronUp className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              type="button"
-              onClick={(e) => { e.stopPropagation(); if (setOpen) setOpen(false); }}
-              title="Закрыть"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          <ErrorModalComponent />
-        </>,
-        document.body,
-      );
-    }
-
-    // Развёрнутый режим: обычный Dialog с кнопкой «Свернуть» в заголовке
+    // Всегда рендерим Dialog, управляя его open через isMinimized.
+    // Это сохраняет состояние формы (useForm вне Dialog) и исключает
+    // проблему с повторным монтированием Dialog, которая приводила к
+    // закрытию всех окон при попытке развернуть свёрнутый диалог.
     return (
       <>
         <Dialog
-          open={true}
+          open={!isMinimized}
           onOpenChange={(isOpen) => { if (!isOpen && setOpen) setOpen(false); }}
         >
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -534,6 +500,40 @@ export function AddPriceDialog({
             </Form>
           </DialogContent>
         </Dialog>
+
+        {/* Свёрнутая полоска через portal — рендерится независимо от Dialog */}
+        {isMinimized && createPortal(
+          <div
+            className="fixed bottom-0 right-6 z-[99999] bg-background border border-border rounded-t-md shadow-xl flex items-center px-4 py-2.5 gap-2 min-w-[260px] cursor-pointer select-none"
+            onClick={() => setIsMinimized(false)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <span className="text-sm font-medium flex-1 truncate">
+              {editPrice ? "Редактирование цены" : "Новая цена"}
+            </span>
+            <Button
+              size="icon"
+              variant="ghost"
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setIsMinimized(false); }}
+              title="Развернуть"
+            >
+              <ChevronUp className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              type="button"
+              onClick={(e) => { e.stopPropagation(); if (setOpen) setOpen(false); }}
+              title="Закрыть"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>,
+          document.body,
+        )}
+
         <ErrorModalComponent />
       </>
     );

@@ -291,8 +291,9 @@ export function MovementDialog({
       if (!isDraft) {
         validateForm();
       } else {
-        if (!data.toWarehouseId) {
-          throw new Error("Склад-назначения не указан");
+        // Для черновика требуется хотя бы одно ключевое поле: склад-назначение или поставщик
+        if (!data.toWarehouseId && !data.supplierId) {
+          throw new Error("Для сохранения черновика необходимо заполнить хотя бы одно поле: Поставщик или Склад-назначение");
         }
       }
 
@@ -379,9 +380,11 @@ export function MovementDialog({
       const isNewRecord = !isEditing;
       const isDraftEdit = isEditing && editMovement?.isDraft;
 
-      // Если это новая запись и введены основные данные
-      // ИЛИ если это редактирование черновика и были изменения
-      if ((isNewRecord && currentValues.toWarehouseId) || (isDraftEdit && isDirty)) {
+      // Алерт для новой записи/копии: если заполнено хотя бы одно ключевое поле
+      // (склад-назначение ИЛИ поставщик)
+      const hasKeyFields = !!(currentValues.toWarehouseId || currentValues.supplierId);
+
+      if ((isNewRecord && hasKeyFields) || (isDraftEdit && isDirty)) {
         setShowExitConfirm(true);
       } else {
         onOpenChange(false);
