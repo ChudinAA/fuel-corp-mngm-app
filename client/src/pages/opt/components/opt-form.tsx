@@ -812,6 +812,9 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
                   updateMutation.isPending ||
                   isChecking
                 }
+                onClick={() => {
+                  form.handleSubmit((data) => onSubmit(data, false))();
+                }}
                 data-testid="button-submit-opt"
               >
                 {createMutation.isPending ||
