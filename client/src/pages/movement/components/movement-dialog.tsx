@@ -272,6 +272,7 @@ export function MovementDialog({
     watchMovementType,
     watchProductType,
     watchFromWarehouseId,
+    watchCarrierId,
     calculatedKg,
     kgNum,
     purchasePrice,

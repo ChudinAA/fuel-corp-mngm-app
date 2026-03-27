@@ -4,6 +4,7 @@ interface UseMovementValidationProps {
   watchMovementType: string;
   watchProductType: string;
   watchFromWarehouseId: string;
+  watchCarrierId: string;
   calculatedKg: number | null;
   kgNum: number;
   purchasePrice: number | null;
@@ -19,6 +20,7 @@ export function useMovementValidation({
   watchMovementType,
   watchProductType,
   watchFromWarehouseId,
+  watchCarrierId,
   calculatedKg,
   kgNum,
   purchasePrice,
@@ -54,17 +56,28 @@ export function useMovementValidation({
       );
 
       if (currentBalance < kgNum) {
-        throw new Error(`На складе "${fromWarehouse.name}" недостаточно ${isPvkj ? "ПВКЖ" : "керосина"}. Доступно: ${currentBalance.toLocaleString()} кг, требуется: ${kgNum.toLocaleString()} кг.`);
+        throw new Error(
+          `На складе "${fromWarehouse.name}" недостаточно ${isPvkj ? "ПВКЖ" : "керосина"}. Доступно: ${currentBalance.toLocaleString()} кг, требуется: ${kgNum.toLocaleString()} кг.`,
+        );
       }
 
       if (currentCost <= 0) {
-        throw new Error(`На складе "${fromWarehouse.name}" отсутствует себестоимость ${isPvkj ? "ПВКЖ" : "керосина"}. Невозможно выполнить перемещение.`);
+        throw new Error(
+          `На складе "${fromWarehouse.name}" отсутствует себестоимость ${isPvkj ? "ПВКЖ" : "керосина"}. Невозможно выполнить перемещение.`,
+        );
       }
+    }
+
+    // Check carrier
+    if (!watchCarrierId) {
+      throw new Error("Выберите перевозчика");
     }
 
     // Check purchase price (for supply)
     if (watchMovementType === MOVEMENT_TYPE.SUPPLY && purchasePrice === null) {
-      throw new Error("Не указана цена закупки. Проверьте настройки поставщика, базиса или маршрута.");
+      throw new Error(
+        "Не указана цена закупки. Проверьте настройки поставщика, базиса или маршрута.",
+      );
     }
 
     if (
