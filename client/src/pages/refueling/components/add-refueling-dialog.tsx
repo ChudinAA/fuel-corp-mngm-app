@@ -56,7 +56,9 @@ export function AddRefuelingDialog({
     const formState = formRef.current?.getFormState();
     const hasKeyFields = !!(formState?.supplierId || formState?.buyerId);
     if (!hasKeyFields) {
-      showError("Для сохранения черновика необходимо выбрать поставщика или покупателя.");
+      showError(
+        "Для сохранения черновика необходимо выбрать поставщика или покупателя.",
+      );
       setShowExitConfirm(false);
       return;
     }
@@ -79,10 +81,16 @@ export function AddRefuelingDialog({
           <DialogHeader>
             <DialogTitle>
               {isCopy
-                ? "Копирование заправки"
+                ? equipmentType === EQUIPMENT_TYPE.LIK
+                  ? "Копирование заправки ЛИК"
+                  : "Копирование заправки"
                 : editRefueling
-                  ? "Редактирование заправки"
-                  : "Новая заправка ВС"}
+                  ? equipmentType === EQUIPMENT_TYPE.LIK
+                    ? "Редактирование заправки ЛИК"
+                    : "Редактирование заправки"
+                  : equipmentType === EQUIPMENT_TYPE.LIK
+                    ? "Новая заправка ЛИК"
+                    : "Новая заправка ВС"}
             </DialogTitle>
             <DialogDescription>
               {isCopy
@@ -112,14 +120,12 @@ export function AddRefuelingDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Сохранить черновик?</AlertDialogTitle>
             <AlertDialogDescription>
-              Вы начали вводить данные. Хотите сохранить изменения как
-              черновик перед закрытием?
+              Вы начали вводить данные. Хотите сохранить изменения как черновик
+              перед закрытием?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleDiscard}>
-              Нет
-            </AlertDialogCancel>
+            <AlertDialogCancel onClick={handleDiscard}>Нет</AlertDialogCancel>
             <AlertDialogAction onClick={handleSaveDraft}>
               Да, сохранить
             </AlertDialogAction>
