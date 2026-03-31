@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -479,6 +478,7 @@ export function AddPriceDialog({
             className="max-w-2xl max-h-[90vh] overflow-y-auto"
             onPointerDownOutside={(e) => e.preventDefault()}
             onInteractOutside={(e) => e.preventDefault()}
+            onWheel={(e) => e.stopPropagation()}
           >
             <DialogHeader>
               <div className="flex items-start justify-between gap-2">
@@ -561,19 +561,14 @@ export function AddPriceDialog({
           </DialogContent>
         </Dialog>
 
-        {/* Свёрнутая полоска — рендерится через портал чтобы быть поверх всего */}
-        {open && isMinimized && createPortal(
+        {/* Свёрнутая полоска — рендерится как обычный дочерний элемент с position:fixed,
+            чтобы оставаться внутри DOM-дерева родительского диалога.
+            Это гарантирует, что Radix DismissableLayer не воспримет клик на полоске
+            как «клик снаружи» и не закроет родительский диалог (ОПТ/Перевозки). */}
+        {open && isMinimized && (
           <div
             className="fixed bottom-0 right-6 z-[9991] bg-background border border-border rounded-t-md shadow-xl flex items-center px-4 py-2.5 gap-2 min-w-[260px] select-none"
             style={{ cursor: "pointer" }}
-            onPointerDown={(e) => {
-              // Блокируем нативный DOM-ивент ДО того как Radix DismissableLayer
-              // родительского диалога (ОПТ/Перевозки) обработает его.
-              // stopImmediatePropagation останавливает ВСЕ нативные слушатели
-              // на document, включая Radix DismissableLayer.
-              e.stopPropagation();
-              e.nativeEvent.stopImmediatePropagation();
-            }}
             onClick={(e) => {
               e.stopPropagation();
               isMinimizingRef.current = false;
@@ -587,10 +582,6 @@ export function AddPriceDialog({
               size="icon"
               variant="ghost"
               type="button"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                e.nativeEvent.stopImmediatePropagation();
-              }}
               onClick={(e) => {
                 e.stopPropagation();
                 isMinimizingRef.current = false;
@@ -604,10 +595,6 @@ export function AddPriceDialog({
               size="icon"
               variant="ghost"
               type="button"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                e.nativeEvent.stopImmediatePropagation();
-              }}
               onClick={(e) => {
                 e.stopPropagation();
                 handleCloseDialog();
@@ -616,8 +603,7 @@ export function AddPriceDialog({
             >
               <X className="h-4 w-4" />
             </Button>
-          </div>,
-          document.body,
+          </div>
         )}
 
         <ErrorModalComponent />
