@@ -77,7 +77,7 @@ export function AddRefuelingDialog({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[950px] h-[80vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent className="sm:max-w-[950px] h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {isCopy

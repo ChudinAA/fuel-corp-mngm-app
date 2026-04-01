@@ -82,7 +82,7 @@ export function AddRefuelingAbroadDialog({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-7xl max-h-[90vh]" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent className="max-w-7xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>

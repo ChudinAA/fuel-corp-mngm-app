@@ -568,8 +568,16 @@ export function AddPriceDialog({
         {open && isMinimized && createPortal(
           <div
             className="fixed bottom-0 right-6 z-[9991] bg-background border border-border rounded-t-md shadow-xl flex items-center px-4 py-2.5 gap-2 min-w-[260px] select-none"
-            style={{ cursor: "pointer" }}
+            style={{
+              cursor: "pointer",
+              // Radix modal dialogs set pointer-events:none on body to block the background.
+              // Elements portaled to body inherit this. We must explicitly override it so
+              // the bar remains clickable while a parent modal dialog is open.
+              pointerEvents: "auto",
+            }}
             onPointerDown={(e) => {
+              // Prevent Radix DismissableLayer from interpreting this click as
+              // "outside" the parent dialog and closing it.
               e.stopPropagation();
               e.nativeEvent.stopImmediatePropagation();
             }}
@@ -586,6 +594,7 @@ export function AddPriceDialog({
               size="icon"
               variant="ghost"
               type="button"
+              style={{ pointerEvents: "auto" }}
               onPointerDown={(e) => {
                 e.stopPropagation();
                 e.nativeEvent.stopImmediatePropagation();
@@ -603,6 +612,7 @@ export function AddPriceDialog({
               size="icon"
               variant="ghost"
               type="button"
+              style={{ pointerEvents: "auto" }}
               onPointerDown={(e) => {
                 e.stopPropagation();
                 e.nativeEvent.stopImmediatePropagation();
