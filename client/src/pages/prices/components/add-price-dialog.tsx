@@ -501,15 +501,6 @@ export function AddPriceDialog({
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    type="button"
-                    onClick={handleCloseDialog}
-                    title="Закрыть"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
                 </div>
               </div>
             </DialogHeader>
