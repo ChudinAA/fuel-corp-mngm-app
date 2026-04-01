@@ -74,7 +74,7 @@ export function AddOptDialog({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[950px] h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[950px] h-[80vh] overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
               {isCopy ? "Копирование сделки" : editOpt ? "Редактирование сделки" : "Новая сделка"}
