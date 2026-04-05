@@ -171,6 +171,7 @@ export function AdvanceCardsTab({ cardType }: AdvanceCardsTabProps) {
               onSuccess={() => {
                 setDepositCard(null);
                 queryClient.invalidateQueries({ queryKey });
+                queryClient.invalidateQueries({ queryKey: ["/api/storage-cards"] });
               }}
               onCancel={() => setDepositCard(null)}
             />

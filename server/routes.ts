@@ -35,6 +35,7 @@ import { registerCurrenciesRoutes } from "./modules/currencies/routes/currencies
 import { registerEquipmentRoutes } from "./modules/warehouses-equipment/routes/equipment";
 import { registerEquipmentMovementRoutes } from "./modules/equipment-movement/routes/equipment-movement";
 import { registerTransportationRoutes } from "./modules/transportation/routes/transportation";
+import { registerSettingsRoutes } from "./modules/settings/routes/settings";
 import { SSEService } from "./services/sse-service";
 
 export async function registerRoutes(
@@ -93,6 +94,7 @@ export async function registerRoutes(
   registerEquipmentRoutes(app);
   registerEquipmentMovementRoutes(app);
   registerTransportationRoutes(app);
+  registerSettingsRoutes(app);
 
   return httpServer;
 }

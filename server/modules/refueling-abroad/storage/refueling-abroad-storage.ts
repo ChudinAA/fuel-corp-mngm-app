@@ -20,7 +20,7 @@ import { refuelingAbroadIntermediaries } from "../entities/refueling-abroad-inte
 import { refuelingAbroadBankCommissions } from "../entities/refueling-abroad-bank-commissions";
 import { suppliers } from "../../suppliers/entities/suppliers";
 import { customers } from "../../customers/entities/customers";
-import { prices, storageCards, storageCardTransactions } from "@shared/schema";
+import { prices, storageCards, storageCardTransactions, bases } from "@shared/schema";
 import { SOURCE_TYPE, STORAGE_CARD_TRANSACTION_TYPE } from "@shared/constants";
 
 export interface IRefuelingAbroadStorage {
@@ -102,6 +102,32 @@ export class RefuelingAbroadStorage {
               AND ${customers.name} IN ${values}
             )`,
           );
+        } else if (columnId === "basis") {
+          conditions.push(
+            sql`EXISTS (
+              SELECT 1 FROM bases 
+              WHERE bases.id = ${refuelingAbroad.basisId} 
+              AND bases.name IN ${values}
+            )`,
+          );
+        } else if (columnId === "intermediary") {
+          conditions.push(
+            sql`EXISTS (
+              SELECT 1 FROM refueling_abroad_intermediaries rai
+              LEFT JOIN suppliers s ON s.id = rai.intermediary_id
+              LEFT JOIN customers c ON c.id = rai.customer_intermediary_id
+              WHERE rai.refueling_abroad_id = ${refuelingAbroad.id}
+              AND (s.name IN ${values} OR c.name IN ${values})
+            )`,
+          );
+        } else if (columnId === "bank") {
+          conditions.push(
+            sql`EXISTS (
+              SELECT 1 FROM refueling_abroad_bank_commissions rabc
+              WHERE rabc.refueling_abroad_id = ${refuelingAbroad.id}
+              AND rabc.bank_name IN ${values}
+            )`,
+          );
         }
       });
     }
@@ -120,10 +146,12 @@ export class RefuelingAbroadStorage {
         refuelingAbroad: refuelingAbroad,
         supplier: suppliers,
         buyer: customers,
+        basis: bases,
       })
       .from(refuelingAbroad)
       .leftJoin(suppliers, eq(refuelingAbroad.supplierId, suppliers.id))
       .leftJoin(customers, eq(refuelingAbroad.buyerId, customers.id))
+      .leftJoin(bases, eq(refuelingAbroad.basisId, bases.id))
       .where(where)
       .limit(limit)
       .offset(offset)
@@ -163,6 +191,7 @@ export class RefuelingAbroadStorage {
           ...row.refuelingAbroad,
           supplier: row.supplier,
           buyer: row.buyer,
+          basis: row.basis,
           intermediaries,
           bankCommissions,
         };

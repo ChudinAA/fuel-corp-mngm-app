@@ -1,5 +1,6 @@
 // ============ RE-EXPORTS FROM MODULAR SCHEMAS ============
 
+export * from "server/modules/settings/entities/settings";
 export * from "server/modules/bases/entities/bases";
 export * from "server/modules/users/entities/users";
 export * from "server/modules/movement/entities/movement";

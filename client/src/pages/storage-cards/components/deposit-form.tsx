@@ -2,7 +2,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,13 @@ export function DepositForm({
     enabled: isBuyer,
   });
 
+  // Determine if this buyer card has already been topped up (currency is locked)
+  const cardBalance = parseFloat(String(card.currentBalance || "0"));
+  const hasExistingDeposits = isBuyer && cardBalance !== 0;
+  const lockedLocalCurrencyCode = isBuyer && hasExistingDeposits ? (card.localCurrencyCode || null) : null;
+  const isLockedToUsd = isBuyer && hasExistingDeposits && !card.localCurrencyCode;
+  const currencyIsLocked = hasExistingDeposits;
+
   const form = useForm<DepositFormData>({
     resolver: zodResolver(depositSchema),
     defaultValues: {
@@ -80,6 +87,32 @@ export function DepositForm({
       notes: "",
     },
   });
+
+  // Set initial currency after currencies load
+  useEffect(() => {
+    if (!isBuyer || currencies.length === 0) return;
+
+    if (currencyIsLocked) {
+      // Card already has deposits — lock to existing currency
+      if (isLockedToUsd) {
+        form.setValue("currencyMode", "USD");
+        form.setValue("localCurrencyId", "");
+      } else if (lockedLocalCurrencyCode) {
+        const lockedCurrency = currencies.find((c) => c.code === lockedLocalCurrencyCode);
+        if (lockedCurrency) {
+          form.setValue("currencyMode", "local");
+          form.setValue("localCurrencyId", lockedCurrency.id);
+        }
+      }
+    } else {
+      // New card — default to RUB
+      const rubCurrency = currencies.find((c) => c.code === "RUB");
+      if (rubCurrency) {
+        form.setValue("currencyMode", "local");
+        form.setValue("localCurrencyId", rubCurrency.id);
+      }
+    }
+  }, [currencies, isBuyer, currencyIsLocked, isLockedToUsd, lockedLocalCurrencyCode]);
 
   const currencyMode = useWatch({ control: form.control, name: "currencyMode" });
   const localAmount = useWatch({ control: form.control, name: "localAmount" });
@@ -171,6 +204,7 @@ export function DepositForm({
                         : "local:" + form.watch("localCurrencyId")
                     }
                     onValueChange={(val) => {
+                      if (currencyIsLocked) return;
                       if (val === "USD") {
                         field.onChange("USD");
                         form.setValue("localCurrencyId", "");
@@ -186,8 +220,14 @@ export function DepositForm({
                     }}
                     placeholder="Выберите валюту..."
                     dataTestId="select-currency-mode"
+                    disabled={currencyIsLocked}
                   />
                 </FormControl>
+                {currencyIsLocked && (
+                  <p className="text-xs text-muted-foreground">
+                    Валюта зафиксирована по первому пополнению и не может быть изменена
+                  </p>
+                )}
                 <FormMessage />
               </FormItem>
             )}

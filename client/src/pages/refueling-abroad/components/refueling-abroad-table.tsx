@@ -118,6 +118,29 @@ export function RefuelingAbroadTable({
     }));
   };
 
+  const getUniqueIntermediaryOptions = () => {
+    const deals = refuelingDeals?.data || [];
+    const names = new Set<string>();
+    deals.forEach((deal: any) => {
+      deal.intermediaries?.forEach((rel: any) => {
+        const name = rel.intermediary?.name ?? rel.customerIntermediary?.name;
+        if (name) names.add(name);
+      });
+    });
+    return Array.from(names).sort().map((name) => ({ label: name, value: name }));
+  };
+
+  const getUniqueBankOptions = () => {
+    const deals = refuelingDeals?.data || [];
+    const names = new Set<string>();
+    deals.forEach((deal: any) => {
+      deal.bankCommissions?.forEach((bc: any) => {
+        if (bc.bankName) names.add(bc.bankName);
+      });
+    });
+    return Array.from(names).sort().map((name) => ({ label: name, value: name }));
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -227,11 +250,41 @@ export function RefuelingAbroadTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-center text-[13px] font-semibold p-2">
-                Посредники
+              <TableHead className="text-[13px] font-semibold p-2">
+                <div className="flex items-center justify-between gap-1">
+                  <span>Базис</span>
+                  <TableColumnFilter
+                    title="Базис"
+                    options={getUniqueOptions("basis.name")}
+                    selectedValues={columnFilters["basis"] || []}
+                    onUpdate={(values) => handleFilterUpdate("basis", values)}
+                    dataTestId="filter-basis"
+                  />
+                </div>
               </TableHead>
               <TableHead className="text-center text-[13px] font-semibold p-2">
-                Банк.комисс.
+                <div className="flex items-center justify-center gap-1">
+                  <span>Посредники</span>
+                  <TableColumnFilter
+                    title="Посредник"
+                    options={getUniqueIntermediaryOptions()}
+                    selectedValues={columnFilters["intermediary"] || []}
+                    onUpdate={(values) => handleFilterUpdate("intermediary", values)}
+                    dataTestId="filter-intermediary"
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="text-center text-[13px] font-semibold p-2">
+                <div className="flex items-center justify-center gap-1">
+                  <span>Банк.комисс.</span>
+                  <TableColumnFilter
+                    title="Банк"
+                    options={getUniqueBankOptions()}
+                    selectedValues={columnFilters["bank"] || []}
+                    onUpdate={(values) => handleFilterUpdate("bank", values)}
+                    dataTestId="filter-bank"
+                  />
+                </div>
               </TableHead>
               <TableHead className="text-right text-[13px] font-semibold p-2 w-[100px]">
                 Объем (Л / КГ)
@@ -259,13 +312,19 @@ export function RefuelingAbroadTable({
                 </TableCell>
               </TableRow>
             ) : (
-              items.map((item: any) => (
+              items.map((item: any) => {
+                const missingRate = !item.isDraft && (
+                  !item.saleExchangeRateValue || !item.purchaseExchangeRateValue
+                );
+                return (
                 <TableRow
                   key={item.id}
                   className={cn(
                     item.isDraft &&
                       "bg-muted/70 opacity-60 border-2 border-orange-200",
-                    item.needsTopUp && !item.isDraft &&
+                    missingRate &&
+                      "border-2 border-blue-300 dark:border-blue-700",
+                    item.needsTopUp && !item.isDraft && !missingRate &&
                       "bg-amber-50 dark:bg-amber-950/20 border-l-2 border-l-amber-400",
                   )}
                 >
@@ -278,6 +337,14 @@ export function RefuelingAbroadTable({
                           className="w-fit text-[9px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200"
                         >
                           Черновик
+                        </Badge>
+                      )}
+                      {missingRate && (
+                        <Badge
+                          variant="secondary"
+                          className="w-fit text-[9px] h-4 px-1 bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400"
+                        >
+                          нет курса
                         </Badge>
                       )}
                       {item.needsTopUp && !item.isDraft && (
@@ -322,6 +389,11 @@ export function RefuelingAbroadTable({
                       >
                         {item.buyer?.name || "—"}
                       </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="p-2">
+                    <div className="text-[13px]">
+                      {(item as any).basis?.name || "—"}
                     </div>
                   </TableCell>
                   <TableCell className="p-2">
@@ -469,7 +541,8 @@ export function RefuelingAbroadTable({
                     />
                   </TableCell>
                 </TableRow>
-              ))
+              );
+              })
             )}
           </TableBody>
         </Table>

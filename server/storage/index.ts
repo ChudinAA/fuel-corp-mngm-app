@@ -26,6 +26,7 @@ import { ExchangeRatesStorage } from "../modules/exchange-rates/storage/exchange
 import { StorageCardsStorage } from "../modules/storage-cards/storage/storage-cards-storage";
 import { RefuelingAbroadStorage } from "../modules/refueling-abroad/storage/refueling-abroad-storage";
 import { CurrenciesStorage } from "../modules/currencies/storage/currencies-storage";
+import { SettingsStorage } from "../modules/settings/storage/settings-storage";
 
 import { EquipmentStorage } from "../modules/warehouses-equipment/storage/equipment-storage";
 import { TransportationStorage } from "../modules/transportation/storage/transportation-storage";
@@ -65,6 +66,7 @@ export class Storage {
   public equipment: EquipmentStorage;
   public equipmentMovement: EquipmentMovementStorage;
   public transportation: TransportationStorage;
+  public settings: SettingsStorage;
 
   constructor() {
     this.users = new UserStorage();
@@ -98,6 +100,7 @@ export class Storage {
     this.equipment = new EquipmentStorage();
     this.equipmentMovement = new EquipmentMovementStorage();
     this.transportation = new TransportationStorage();
+    this.settings = new SettingsStorage();
   }
 }
 

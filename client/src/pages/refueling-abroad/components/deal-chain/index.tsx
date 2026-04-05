@@ -1,8 +1,18 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -27,6 +37,7 @@ import {
   TrendingUp,
   TrendingDown,
   AlertTriangle,
+  Pencil,
 } from "lucide-react";
 import type { Supplier, Customer } from "@shared/schema";
 import type {
@@ -155,6 +166,24 @@ export function DealChainSection({
     () => currencies.find((c) => c.code === "RUB"),
     [currencies],
   );
+
+  // Beneficiary
+  const { data: beneficiaryData } = useQuery<{ name: string }>({
+    queryKey: ["/api/settings/beneficiary"],
+  });
+  const [beneficiaryEditOpen, setBeneficiaryEditOpen] = useState(false);
+  const [beneficiaryDraft, setBeneficiaryDraft] = useState("");
+
+  const saveBeneficiaryMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await apiRequest("PUT", "/api/settings/beneficiary", { name });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings/beneficiary"] });
+      setBeneficiaryEditOpen(false);
+    },
+  });
 
   const [addingAtPosition, setAddingAtPosition] = useState<number | null>(null);
   const [addingType, setAddingType] = useState<ChainItemType | null>(null);
@@ -608,6 +637,7 @@ export function DealChainSection({
         <div className="bg-muted/20 p-4 rounded-lg border border-dashed border-primary/30 overflow-x-auto">
           <div className="flex flex-nowrap items-center gap-1 min-w-max">
             <div className="flex flex-col items-center gap-0.5 shrink-0">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Покупатель</span>
               <div className="bg-background border-2 border-primary/30 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap">
                 {buyerName || "Покупатель"}
               </div>
@@ -621,6 +651,31 @@ export function DealChainSection({
                   {new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(saleAmountRub)} ₽
                 </span>
               )}
+            </div>
+
+            <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+
+            <div className="flex flex-col items-center gap-0.5 shrink-0">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Бенефициар</span>
+              <div className="relative flex items-center gap-1 group">
+                <div className="bg-background border-2 border-amber-500/50 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap text-amber-700 dark:text-amber-400">
+                  {beneficiaryData?.name || "Не задан"}
+                </div>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => {
+                    setBeneficiaryDraft(beneficiaryData?.name || "");
+                    setBeneficiaryEditOpen(true);
+                  }}
+                  title="Редактировать бенефициара"
+                  data-testid="button-edit-beneficiary"
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              </div>
             </div>
 
             <AddItemMenu onAdd={(type) => handleAddAtPosition(0, type)} />
@@ -653,6 +708,7 @@ export function DealChainSection({
             })}
 
             <div className="flex flex-col items-center gap-0.5 shrink-0">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Продавец</span>
               <div className="bg-background border-2 border-primary/30 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap">
                 {supplierName || "Поставщик"}
               </div>
@@ -895,6 +951,44 @@ export function DealChainSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={beneficiaryEditOpen} onOpenChange={setBeneficiaryEditOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Бенефициар</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="beneficiary-name">Наименование бенефициара</Label>
+            <Input
+              id="beneficiary-name"
+              value={beneficiaryDraft}
+              onChange={(e) => setBeneficiaryDraft(e.target.value)}
+              placeholder="Название организации"
+              data-testid="input-beneficiary-name"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") saveBeneficiaryMutation.mutate(beneficiaryDraft);
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setBeneficiaryEditOpen(false)}
+            >
+              Отмена
+            </Button>
+            <Button
+              type="button"
+              onClick={() => saveBeneficiaryMutation.mutate(beneficiaryDraft)}
+              disabled={saveBeneficiaryMutation.isPending}
+              data-testid="button-save-beneficiary"
+            >
+              Сохранить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

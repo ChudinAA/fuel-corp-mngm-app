@@ -30,6 +30,7 @@ interface ComboboxProps {
   emptyMessage?: string
   className?: string
   dataTestId?: string
+  disabled?: boolean
 }
 
 export function Combobox({
@@ -40,6 +41,7 @@ export function Combobox({
   emptyMessage = "Ничего не найдено.",
   className,
   dataTestId,
+  disabled = false,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
@@ -56,7 +58,7 @@ export function Combobox({
   }, [options, search]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -65,6 +67,7 @@ export function Combobox({
           aria-expanded={open}
           className={cn("w-full justify-between font-normal min-w-0", className)}
           data-testid={dataTestId}
+          disabled={disabled}
         >
           <div className="flex items-center gap-1.5 truncate flex-1 text-left min-w-0">
             {selectedOption ? (
