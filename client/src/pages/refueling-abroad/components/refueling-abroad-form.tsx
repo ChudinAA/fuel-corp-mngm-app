@@ -427,6 +427,19 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     }
   }, [watchedValues.basisId, foreignBases]);
 
+  const prevSupplierIdRef = useRef<string | undefined>(
+    form.getValues("supplierId") || undefined
+  );
+  useEffect(() => {
+    const currentSupplierId = watchedValues.supplierId;
+    if (!currentSupplierId || currentSupplierId === prevSupplierIdRef.current) return;
+    prevSupplierIdRef.current = currentSupplierId;
+    const supplier = foreignSuppliers.find((s) => s.id === currentSupplierId);
+    if (supplier?.baseIds && supplier.baseIds.length > 0) {
+      form.setValue("basisId", supplier.baseIds[0]);
+    }
+  }, [watchedValues.supplierId, foreignSuppliers]);
+
   const selectedPurchaseExchangeRate = exchangeRates.find(
     (r) => r.id === watchedValues.purchaseExchangeRateId,
   );

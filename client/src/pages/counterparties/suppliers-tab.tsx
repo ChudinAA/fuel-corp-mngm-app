@@ -217,36 +217,47 @@ export function SuppliersTab() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="space-y-1">
+                          <div className="space-y-1.5">
                             {supplier.description && (
-                              <span className="text-sm text-muted-foreground">
+                              <span className="text-sm text-muted-foreground block">
                                 {supplier.description}
                               </span>
                             )}
-                            {(supplier.servicePrice || supplier.pvkjPrice) && (
-                              <div className="flex flex-wrap gap-2 text-xs">
-                                {supplier.servicePrice && (
-                                  <span className="text-blue-600 dark:text-blue-400">
-                                    Услуга:{" "}
-                                    {parseFloat(supplier.servicePrice).toFixed(
-                                      2,
-                                    )}{" "}
-                                    ₽/кг
-                                  </span>
-                                )}
-                                {supplier.pvkjPrice && (
-                                  <span className="text-purple-600 dark:text-purple-400">
-                                    ПВКЖ:{" "}
-                                    {parseFloat(supplier.pvkjPrice).toFixed(2)}{" "}
-                                    ₽/кг
-                                  </span>
-                                )}
+                            {supplier.basisPrices && supplier.basisPrices.length > 0 ? (
+                              <div className="space-y-1">
+                                {supplier.basisPrices.map((bp) => {
+                                  const base = bases.find((b) => b.id === bp.basisId);
+                                  const hasPrices = bp.servicePrice || bp.pvkjPrice || bp.agentFee;
+                                  if (!hasPrices) return null;
+                                  return (
+                                    <div key={bp.basisId} className="text-xs space-y-0.5">
+                                      {base && (
+                                        <span className="font-medium text-muted-foreground">{base.name}:</span>
+                                      )}
+                                      <div className="flex flex-wrap gap-2 pl-1">
+                                        {bp.servicePrice && (
+                                          <span className="text-blue-600 dark:text-blue-400">
+                                            Услуга: {parseFloat(bp.servicePrice).toFixed(2)} ₽/кг
+                                          </span>
+                                        )}
+                                        {bp.pvkjPrice && (
+                                          <span className="text-purple-600 dark:text-purple-400">
+                                            ПВКЖ: {parseFloat(bp.pvkjPrice).toFixed(2)} ₽/кг
+                                          </span>
+                                        )}
+                                        {bp.agentFee && (
+                                          <span className="text-amber-600 dark:text-amber-400">
+                                            Агент: {parseFloat(bp.agentFee).toFixed(2)} ₽/кг
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
+                            ) : (
+                              !supplier.description && <span className="text-muted-foreground text-sm">—</span>
                             )}
-                            {!supplier.description &&
-                              !supplier.servicePrice &&
-                              !supplier.pvkjPrice &&
-                              "—"}
                           </div>
                         </TableCell>
                         <TableCell>
