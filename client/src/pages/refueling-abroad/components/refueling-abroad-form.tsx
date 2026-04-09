@@ -681,7 +681,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       queryClient.invalidateQueries({
         queryKey: ["/api/refueling-abroad/contract-used"],
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/storage-cards"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/storage-cards/advances"] });
       queryClient.invalidateQueries({ queryKey: ["/api/refueling-abroad"] });
       queryClient.invalidateQueries({
         queryKey: ["/api/storage-cards/advances"],

@@ -103,7 +103,7 @@ export function AdvanceCardsTab({ cardType }: AdvanceCardsTabProps) {
                 cardType={cardType}
                 onSuccess={() => {
                   handleDialogClose();
-                  queryClient.invalidateQueries({ queryKey });
+                  queryClient.invalidateQueries({ queryKey: ["/api/storage-cards/advances"] });
                 }}
                 onCancel={handleDialogClose}
               />
@@ -170,8 +170,7 @@ export function AdvanceCardsTab({ cardType }: AdvanceCardsTabProps) {
               cardType={cardType}
               onSuccess={() => {
                 setDepositCard(null);
-                queryClient.invalidateQueries({ queryKey });
-                queryClient.invalidateQueries({ queryKey: ["/api/storage-cards"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/storage-cards/advances"] });
               }}
               onCancel={() => setDepositCard(null)}
             />

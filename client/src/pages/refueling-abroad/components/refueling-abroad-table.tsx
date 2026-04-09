@@ -207,7 +207,7 @@ export function RefuelingAbroadTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-[13px] font-semibold p-2">
+              {/* <TableHead className="text-[13px] font-semibold p-2">
                 <div className="flex items-center justify-between gap-1">
                   <span>Прод.</span>
                   <TableColumnFilter
@@ -220,7 +220,7 @@ export function RefuelingAbroadTable({
                     dataTestId="filter-product"
                   />
                 </div>
-              </TableHead>
+              </TableHead> */}
               <TableHead className="text-[13px] font-semibold p-2">
                 Аэроп. / Борт / № РТ
               </TableHead>
@@ -323,7 +323,7 @@ export function RefuelingAbroadTable({
                     item.isDraft &&
                       "bg-muted/70 opacity-60 border-2 border-orange-200",
                     missingRate &&
-                      "border-2 border-blue-300 dark:border-blue-700",
+                      "border-2 border-pink-300 dark:border-pink-700",
                     item.needsTopUp && !item.isDraft && !missingRate &&
                       "bg-amber-50 dark:bg-amber-950/20 border-l-2 border-l-amber-400",
                   )}
@@ -342,9 +342,9 @@ export function RefuelingAbroadTable({
                       {missingRate && (
                         <Badge
                           variant="secondary"
-                          className="w-fit text-[9px] h-4 px-1 bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400"
+                          className="w-fit text-[9px] h-4 px-1 bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-400"
                         >
-                          нет курса
+                          незавершена
                         </Badge>
                       )}
                       {item.needsTopUp && !item.isDraft && (
@@ -357,9 +357,9 @@ export function RefuelingAbroadTable({
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-[11px] md:text-sm p-1 md:p-2">
+                  {/* <TableCell className="text-[11px] md:text-sm p-1 md:p-2">
                     <ProductTypeBadge type={item.productType} />
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell className="p-2">
                     <div className="flex flex-col">
                       <span className="font-mono">{item.airport || "—"}</span>

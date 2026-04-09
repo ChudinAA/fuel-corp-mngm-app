@@ -657,7 +657,6 @@ export function DealChainSection({
 
             <div className="flex flex-col items-center gap-0.5 shrink-0">
               <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Бенефициар</span>
-              <div className="relative flex items-center gap-1 group">
                 <div className="bg-background border-2 border-amber-500/50 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap text-amber-700 dark:text-amber-400">
                   {beneficiaryData?.name || "Не задан"}
                 </div>
@@ -665,7 +664,7 @@ export function DealChainSection({
                   type="button"
                   size="icon"
                   variant="ghost"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="opacity-60 group-hover:opacity-100 transition-opacity"
                   onClick={() => {
                     setBeneficiaryDraft(beneficiaryData?.name || "");
                     setBeneficiaryEditOpen(true);
@@ -675,7 +674,6 @@ export function DealChainSection({
                 >
                   <Pencil className="h-3 w-3" />
                 </Button>
-              </div>
             </div>
 
             <AddItemMenu onAdd={(type) => handleAddAtPosition(0, type)} />

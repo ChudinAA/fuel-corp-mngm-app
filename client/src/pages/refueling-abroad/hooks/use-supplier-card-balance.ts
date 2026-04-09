@@ -14,7 +14,11 @@ export function useSupplierCardBalance({
   initialPurchaseAmountUsd = 0,
 }: UseSupplierCardBalanceProps) {
   const { data: storageCards = [] } = useQuery<StorageCard[]>({
-    queryKey: ["/api/storage-cards"],
+    queryKey: ["/api/storage-cards/advances", "supplier"],
+    queryFn: () =>
+      fetch("/api/storage-cards/advances?cardType=supplier", {
+        credentials: "include",
+      }).then((r) => r.json()),
   });
 
   const supplierCard = useMemo(() => {
