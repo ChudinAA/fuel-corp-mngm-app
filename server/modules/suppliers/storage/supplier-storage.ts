@@ -1,4 +1,4 @@
-import { eq, asc, sql, isNull, and } from "drizzle-orm";
+import { eq, asc, sql, isNull, and, inArray } from "drizzle-orm";
 import { db } from "server/db";
 import {
   suppliers,
@@ -25,11 +25,7 @@ export class SupplierStorage implements ISupplierStorage {
     return db
       .select()
       .from(supplierBasisPrices)
-      .where(
-        supplierIds.length === 1
-          ? eq(supplierBasisPrices.supplierId, supplierIds[0])
-          : sql`${supplierBasisPrices.supplierId} = ANY(${supplierIds})`
-      );
+      .where(inArray(supplierBasisPrices.supplierId, supplierIds));
   }
 
   async getAllSuppliers(): Promise<Supplier[]> {
