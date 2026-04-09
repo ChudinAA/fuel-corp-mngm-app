@@ -25,6 +25,7 @@ export const bases = pgTable("bases", {
   name: text("name").notNull(),
   baseType: text("base_type").notNull(), // 'wholesale', 'refueling' or 'abroad'
   location: text("location"),
+  iataCode: text("iata_code"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),

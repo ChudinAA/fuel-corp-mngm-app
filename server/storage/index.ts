@@ -31,6 +31,7 @@ import { SettingsStorage } from "../modules/settings/storage/settings-storage";
 import { EquipmentStorage } from "../modules/warehouses-equipment/storage/equipment-storage";
 import { TransportationStorage } from "../modules/transportation/storage/transportation-storage";
 import { EquipmentMovementStorage } from "../modules/equipment-movement/storage/equipment-movement-storage";
+import { AviationStorage } from "../modules/aviation/storage/aviation-storage";
 
 export * from "./types";
 
@@ -67,6 +68,7 @@ export class Storage {
   public equipmentMovement: EquipmentMovementStorage;
   public transportation: TransportationStorage;
   public settings: SettingsStorage;
+  public aviation: AviationStorage;
 
   constructor() {
     this.users = new UserStorage();
@@ -101,6 +103,7 @@ export class Storage {
     this.equipmentMovement = new EquipmentMovementStorage();
     this.transportation = new TransportationStorage();
     this.settings = new SettingsStorage();
+    this.aviation = new AviationStorage();
   }
 }
 

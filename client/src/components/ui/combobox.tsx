@@ -31,6 +31,7 @@ interface ComboboxProps {
   className?: string
   dataTestId?: string
   disabled?: boolean
+  allowCustomValue?: boolean
 }
 
 export function Combobox({
@@ -42,11 +43,13 @@ export function Combobox({
   className,
   dataTestId,
   disabled = false,
+  allowCustomValue = false,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
 
   const selectedOption = options.find((option) => option.value === value)
+  const displayValue = selectedOption ? selectedOption.label : (value || "")
 
   const filteredOptions = React.useMemo(() => {
     if (!search) return options;
@@ -70,9 +73,9 @@ export function Combobox({
           disabled={disabled}
         >
           <div className="flex items-center gap-1.5 truncate flex-1 text-left min-w-0">
-            {selectedOption ? (
+            {displayValue ? (
               <span className="truncate">
-                {selectedOption.label}
+                {displayValue}
               </span>
             ) : (
               <span className="text-muted-foreground truncate">{placeholder}</span>
@@ -89,7 +92,12 @@ export function Combobox({
             onValueChange={setSearch}
           />
           <CommandList className="max-h-[300px] overflow-y-auto overflow-x-hidden scrollbar-thin">
-            <CommandEmpty>{emptyMessage}</CommandEmpty>
+            {filteredOptions.length === 0 && !allowCustomValue && (
+              <CommandEmpty>{emptyMessage}</CommandEmpty>
+            )}
+            {filteredOptions.length === 0 && allowCustomValue && !search && (
+              <CommandEmpty>{emptyMessage}</CommandEmpty>
+            )}
             <CommandGroup>
               {filteredOptions.map((option) => (
                 <CommandItem
@@ -114,6 +122,22 @@ export function Combobox({
                   />
                 </CommandItem>
               ))}
+              {allowCustomValue && search && !filteredOptions.some(
+                (o) => o.value.toLowerCase() === search.toLowerCase()
+              ) && (
+                <CommandItem
+                  value={`__custom__${search}`}
+                  onSelect={() => {
+                    onValueChange(search);
+                    setOpen(false);
+                    setSearch("");
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <span className="text-xs text-muted-foreground">Ввести:</span>
+                  <span className="font-medium">{search}</span>
+                </CommandItem>
+              )}
             </CommandGroup>
           </CommandList>
         </Command>

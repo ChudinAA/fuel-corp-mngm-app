@@ -42,10 +42,11 @@ export function registerSuppliersRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
-        const { baseIds, ...restData } = req.body;
+        const { baseIds, basisPrices, ...restData } = req.body;
 
         // Ensure baseIds is an array
         const normalizedBaseIds = Array.isArray(baseIds) ? baseIds : [];
+        const normalizedBasisPrices = Array.isArray(basisPrices) ? basisPrices : [];
 
         const data = insertSupplierSchema.parse({
           ...restData,
@@ -56,6 +57,7 @@ export function registerSuppliersRoutes(app: Express) {
         const item = await storage.suppliers.createSupplier({
           ...data,
           baseIds: normalizedBaseIds,
+          basisPrices: normalizedBasisPrices,
           warehouseId: data.warehouseId || null,
         });
 
@@ -108,7 +110,7 @@ export function registerSuppliersRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        const { baseIds, ...restData } = req.body;
+        const { baseIds, basisPrices, ...restData } = req.body;
 
         const updateData: any = {
           ...restData,
@@ -118,6 +120,11 @@ export function registerSuppliersRoutes(app: Express) {
         // Include baseIds if provided
         if (baseIds !== undefined) {
           updateData.baseIds = Array.isArray(baseIds) ? baseIds : [];
+        }
+
+        // Include basisPrices if provided
+        if (basisPrices !== undefined) {
+          updateData.basisPrices = Array.isArray(basisPrices) ? basisPrices : [];
         }
 
         const item = await storage.suppliers.updateSupplier(id, updateData);

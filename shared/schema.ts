@@ -34,3 +34,5 @@ export * from "server/modules/currencies/entities/currencies";
 export * from "server/modules/warehouses-equipment/entities/equipment";
 export * from "server/modules/equipment-movement/entities/equipment-movement";
 export * from "server/modules/transportation/entities/transportation";
+export * from "server/modules/aviation/entities/aviation";
+export * from "server/modules/suppliers/entities/supplier-basis-prices";

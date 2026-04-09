@@ -122,6 +122,12 @@ export const insertSupplierSchema = createInsertSchema(suppliers)
 
 export type Supplier = typeof suppliers.$inferSelect & {
   baseIds?: string[];
+  basisPrices?: Array<{
+    basisId: string;
+    servicePrice?: string | null;
+    pvkjPrice?: string | null;
+    agentFee?: string | null;
+  }>;
 };
 
 export type InsertSupplier = z.infer<typeof insertSupplierSchema>;

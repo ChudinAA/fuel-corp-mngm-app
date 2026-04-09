@@ -146,6 +146,14 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     queryKey: ["/api/currencies"],
   });
 
+  const { data: aircraftList = [] } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ["/api/aircraft"],
+  });
+
+  const { data: allFlightNumbers = [] } = useQuery<{ id: string; number: string; basisId: string | null }[]>({
+    queryKey: ["/api/flight-numbers"],
+  });
+
   const { data: existingIntermediaries = [] } = useQuery<any[]>({
     queryKey: ["/api/refueling-abroad", originalId, "intermediaries"],
     queryFn: async () => {
@@ -405,6 +413,19 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
   const selectedBasis = foreignBases?.find(
     (b) => b.id === watchedValues.basisId,
   );
+
+  const filteredFlightNumbers = allFlightNumbers.filter(
+    (fn) => !watchedValues.basisId || fn.basisId === watchedValues.basisId || fn.basisId === null
+  );
+
+  useEffect(() => {
+    if (!watchedValues.basisId) return;
+    const basis = foreignBases?.find((b) => b.id === watchedValues.basisId);
+    const iataCode = (basis as any)?.iataCode;
+    if (iataCode) {
+      form.setValue("airportCode", iataCode);
+    }
+  }, [watchedValues.basisId, foreignBases]);
 
   const selectedPurchaseExchangeRate = exchangeRates.find(
     (r) => r.id === watchedValues.purchaseExchangeRateId,
@@ -796,20 +817,31 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
             <FormField
               control={form.control}
               name="airportCode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Код аэропорта</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="JFK"
-                      {...field}
-                      value={field.value || ""}
-                      data-testid="input-airport-code"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const basisIata = (selectedBasis as any)?.iataCode;
+                const isAutoFilled = !!basisIata;
+                return (
+                  <FormItem>
+                    <FormLabel>
+                      Код аэропорта
+                      {isAutoFilled && (
+                        <span className="ml-2 text-xs text-muted-foreground font-normal">(из базиса)</span>
+                      )}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="JFK"
+                        {...field}
+                        value={field.value || ""}
+                        readOnly={isAutoFilled}
+                        className={isAutoFilled ? "bg-muted" : ""}
+                        data-testid="input-airport-code"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField
@@ -819,11 +851,14 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                 <FormItem>
                   <FormLabel>Борт</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="RA-12345"
-                      {...field}
+                    <Combobox
+                      options={aircraftList.map((a) => ({ value: a.name, label: a.name }))}
                       value={field.value || ""}
-                      data-testid="input-aircraft-number"
+                      onValueChange={field.onChange}
+                      placeholder="RA-12345"
+                      allowCustomValue
+                      dataTestId="select-aircraft-number"
+                      className="w-full"
                     />
                   </FormControl>
                 </FormItem>
@@ -837,11 +872,14 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                 <FormItem>
                   <FormLabel>Номер рейса</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="SU-123"
-                      {...field}
+                    <Combobox
+                      options={filteredFlightNumbers.map((fn) => ({ value: fn.number, label: fn.number }))}
                       value={field.value || ""}
-                      data-testid="input-flight-number"
+                      onValueChange={field.onChange}
+                      placeholder="SU-123"
+                      allowCustomValue
+                      dataTestId="select-flight-number"
+                      className="w-full"
                     />
                   </FormControl>
                 </FormItem>

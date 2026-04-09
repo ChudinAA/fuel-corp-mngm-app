@@ -46,9 +46,6 @@ const supplierFormSchema = z.object({
   baseIds: z
     .array(z.string().min(1, "Выберите базис"))
     .min(1, "Добавьте хотя бы один базис"),
-  servicePrice: z.coerce.number().optional(),
-  pvkjPrice: z.coerce.number().optional(),
-  agentFee: z.coerce.number().optional(),
   isWarehouse: z.boolean().default(false),
   storageCost: z.coerce.number().optional(),
   hasSpecialConditions: z.boolean().default(false),
@@ -59,6 +56,12 @@ const supplierFormSchema = z.object({
   withVAT: z.boolean().default(false),
   isActive: z.boolean().default(true),
 });
+
+type BasisPriceEntry = {
+  servicePrice: string;
+  pvkjPrice: string;
+  agentFee: string;
+};
 
 type SupplierFormData = z.infer<typeof supplierFormSchema>;
 
@@ -86,6 +89,7 @@ export function AddSupplierDialog({
   const { showError, ErrorModalComponent } = useErrorModal();
   const [localOpen, setLocalOpen] = useState(false);
   const [addBaseOpen, setAddBaseOpen] = useState(false);
+  const [basisPricesMap, setBasisPricesMap] = useState<Record<string, BasisPriceEntry>>({});
 
   const open = isInline ? inlineOpen : localOpen;
   const setOpen = isInline ? onInlineOpenChange || setLocalOpen : setLocalOpen;
@@ -99,9 +103,6 @@ export function AddSupplierDialog({
       supplyNomenclature: "",
       description: "",
       baseIds: [""],
-      servicePrice: undefined,
-      pvkjPrice: undefined,
-      agentFee: undefined,
       isWarehouse: false,
       storageCost: undefined,
       hasSpecialConditions: false,
@@ -138,6 +139,16 @@ export function AddSupplierDialog({
       const filteredBaseIds = data.baseIds.filter(
         (id) => id && id.trim() !== "",
       );
+      const basisPricesArray = filteredBaseIds.map((basisId) => {
+        const entry = basisPricesMap[basisId] || { servicePrice: "", pvkjPrice: "", agentFee: "" };
+        return {
+          basisId,
+          servicePrice: entry.servicePrice ? entry.servicePrice : null,
+          pvkjPrice: entry.pvkjPrice ? entry.pvkjPrice : null,
+          agentFee: entry.agentFee ? entry.agentFee : null,
+        };
+      });
+
       const payload = {
         name: data.name,
         fullName: data.fullName || null,
@@ -145,9 +156,7 @@ export function AddSupplierDialog({
         supplyNomenclature: data.supplyNomenclature || null,
         description: data.description,
         baseIds: filteredBaseIds.length > 0 ? filteredBaseIds : null,
-        servicePrice: data.servicePrice ? String(data.servicePrice) : null,
-        pvkjPrice: data.pvkjPrice ? String(data.pvkjPrice) : null,
-        agentFee: data.agentFee ? String(data.agentFee) : null,
+        basisPrices: basisPricesArray,
         isWarehouse: data.isWarehouse,
         storageCost:
           data.isWarehouse && data.storageCost
@@ -188,9 +197,6 @@ export function AddSupplierDialog({
         supplyNomenclature: "",
         description: "",
         baseIds: [""],
-        servicePrice: undefined,
-        pvkjPrice: undefined,
-        agentFee: undefined,
         isWarehouse: false,
         storageCost: undefined,
         hasSpecialConditions: false,
@@ -201,6 +207,7 @@ export function AddSupplierDialog({
         withVAT: false,
         isActive: true,
       });
+      setBasisPricesMap({});
       setOpen(false);
       if (onCreated && data?.id) {
         onCreated(data.id);
@@ -228,13 +235,6 @@ export function AddSupplierDialog({
         supplyNomenclature: editItem.supplyNomenclature || "",
         description: editItem.description || "",
         baseIds: baseIdsArray,
-        servicePrice: editItem.servicePrice
-          ? parseFloat(editItem.servicePrice)
-          : undefined,
-        pvkjPrice: editItem.pvkjPrice
-          ? parseFloat(editItem.pvkjPrice)
-          : undefined,
-        agentFee: editItem.agentFee ? parseFloat(editItem.agentFee) : undefined,
         isWarehouse: editItem.isWarehouse || false,
         storageCost: editItem.storageCost
           ? parseFloat(editItem.storageCost)
@@ -249,6 +249,18 @@ export function AddSupplierDialog({
         withVAT: editItem.withVAT || false,
         isActive: editItem.isActive,
       });
+      // Load per-basis prices from editItem
+      const pricesMap: Record<string, BasisPriceEntry> = {};
+      if (editItem.basisPrices && Array.isArray(editItem.basisPrices)) {
+        editItem.basisPrices.forEach((bp: { basisId: string; servicePrice?: string | null; pvkjPrice?: string | null; agentFee?: string | null }) => {
+          pricesMap[bp.basisId] = {
+            servicePrice: bp.servicePrice || "",
+            pvkjPrice: bp.pvkjPrice || "",
+            agentFee: bp.agentFee || "",
+          };
+        });
+      }
+      setBasisPricesMap(pricesMap);
     }
   }, [editItem, form]);
 
@@ -262,9 +274,6 @@ export function AddSupplierDialog({
         supplyNomenclature: "",
         description: "",
         baseIds: [""],
-        servicePrice: undefined,
-        pvkjPrice: undefined,
-        agentFee: undefined,
         isWarehouse: false,
         storageCost: undefined,
         hasSpecialConditions: false,
@@ -275,6 +284,7 @@ export function AddSupplierDialog({
         withVAT: false,
         isActive: true,
       });
+      setBasisPricesMap({});
       if (onEditComplete) {
         onEditComplete();
       }
@@ -414,113 +424,108 @@ export function AddSupplierDialog({
                   </Button>
                 </div>
               </div>
-              {fields.map((field, index) => (
-                <div key={field.id} className="flex gap-2 items-center">
-                  <div className="flex-1 min-w-0">
-                    <Combobox
-                      options={(bases || []).map((b) => ({
-                        value: b.id,
-                        label: b.name,
-                        render: (
-                          <div className="flex items-center gap-2">
-                            {b.name}
-                            <BaseTypeBadge type={b.baseType} />
-                          </div>
-                        ),
-                      }))}
-                      value={form.watch(`baseIds.${index}`) || ""}
-                      onValueChange={(value) =>
-                        form.setValue(`baseIds.${index}`, value)
-                      }
-                      placeholder="Выберите базис"
-                      className="w-full"
-                      dataTestId={`select-base-${index}`}
-                    />
-                    {form.formState.errors.baseIds?.[index] && (
-                      <p className="text-sm text-destructive mt-1">
-                        {form.formState.errors.baseIds[index]?.message}
-                      </p>
+              {fields.map((field, index) => {
+                const currentBasisId = form.watch(`baseIds.${index}`) || "";
+                const basisPrices = basisPricesMap[currentBasisId] || { servicePrice: "", pvkjPrice: "", agentFee: "" };
+                return (
+                <div key={field.id} className="border rounded-md p-3 space-y-2">
+                  <div className="flex gap-2 items-center">
+                    <div className="flex-1 min-w-0">
+                      <Combobox
+                        options={(bases || []).map((b) => ({
+                          value: b.id,
+                          label: b.name,
+                          render: (
+                            <div className="flex items-center gap-2">
+                              {b.name}
+                              <BaseTypeBadge type={b.baseType} />
+                            </div>
+                          ),
+                        }))}
+                        value={currentBasisId}
+                        onValueChange={(value) =>
+                          form.setValue(`baseIds.${index}`, value)
+                        }
+                        placeholder="Выберите базис"
+                        className="w-full"
+                        dataTestId={`select-base-${index}`}
+                      />
+                      {form.formState.errors.baseIds?.[index] && (
+                        <p className="text-sm text-destructive mt-1">
+                          {form.formState.errors.baseIds[index]?.message}
+                        </p>
+                      )}
+                    </div>
+                    {fields.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(index)}
+                        className="shrink-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     )}
                   </div>
-                  {fields.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => remove(index)}
-                      className="shrink-0 h-9 w-9"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                  {currentBasisId && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Стоимость услуги</label>
+                        <Input
+                          placeholder="0.00"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={basisPrices.servicePrice}
+                          onChange={(e) => setBasisPricesMap(prev => ({
+                            ...prev,
+                            [currentBasisId]: { ...basisPrices, servicePrice: e.target.value }
+                          }))}
+                          data-testid={`input-service-price-${index}`}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Стоимость ПВКЖ</label>
+                        <Input
+                          placeholder="0.00"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={basisPrices.pvkjPrice}
+                          onChange={(e) => setBasisPricesMap(prev => ({
+                            ...prev,
+                            [currentBasisId]: { ...basisPrices, pvkjPrice: e.target.value }
+                          }))}
+                          data-testid={`input-pvkj-price-${index}`}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Агентские/прочие</label>
+                        <Input
+                          placeholder="0.00"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={basisPrices.agentFee}
+                          onChange={(e) => setBasisPricesMap(prev => ({
+                            ...prev,
+                            [currentBasisId]: { ...basisPrices, agentFee: e.target.value }
+                          }))}
+                          data-testid={`input-agent-fee-${index}`}
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
               {form.formState.errors.baseIds &&
                 !Array.isArray(form.formState.errors.baseIds) && (
                   <p className="text-sm text-destructive">
                     {form.formState.errors.baseIds.message}
                   </p>
                 )}
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <FormField
-                control={form.control}
-                name="servicePrice"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">Стоимость услуги</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="0.00"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="pvkjPrice"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">Стоимость ПВКЖ</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="0.00"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="agentFee"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs">Агентские/прочие</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="0.00"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
 
             <div className="flex gap-4 items-center">

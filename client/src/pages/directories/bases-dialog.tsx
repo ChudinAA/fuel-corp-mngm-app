@@ -10,13 +10,6 @@ import { useErrorModal } from "@/hooks/use-error-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Form,
   FormControl,
   FormField,
@@ -32,7 +25,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
 import { Plus, Loader2 } from "lucide-react";
 import type { Base } from "@shared/schema";
 import { BASE_TYPE, BaseType } from "@shared/constants";
@@ -46,10 +38,19 @@ const baseFormSchema = z.object({
     },
   ),
   location: z.string().optional(),
+  iataCode: z.string().optional(),
   isActive: z.boolean().default(true),
 });
 
 type BaseFormData = z.infer<typeof baseFormSchema>;
+
+const emptyDefaults: BaseFormData = {
+  name: "",
+  baseType: BASE_TYPE.WHOLESALE,
+  location: "",
+  iataCode: "",
+  isActive: true,
+};
 
 interface AddBaseDialogProps {
   editItem?: Base | null;
@@ -77,18 +78,22 @@ export function AddBaseDialog({
 
   const form = useForm<BaseFormData>({
     resolver: zodResolver(baseFormSchema),
-    defaultValues: {
-      name: "",
-      baseType: BASE_TYPE.WHOLESALE,
-      location: "",
-      isActive: true,
-    },
+    defaultValues: emptyDefaults,
   });
+
+  const watchedBaseType = form.watch("baseType");
+  const showIataField =
+    watchedBaseType === BASE_TYPE.REFUELING ||
+    watchedBaseType === BASE_TYPE.ABROAD;
 
   const createMutation = useMutation({
     mutationFn: async (data: BaseFormData) => {
       const endpoint = editItem ? `/api/bases/${editItem.id}` : "/api/bases";
-      const res = await apiRequest(editItem ? "PATCH" : "POST", endpoint, data);
+      const payload = {
+        ...data,
+        iataCode: showIataField ? (data.iataCode || null) : null,
+      };
+      const res = await apiRequest(editItem ? "PATCH" : "POST", endpoint, payload);
       return res.json();
     },
     onSuccess: (data) => {
@@ -99,12 +104,7 @@ export function AddBaseDialog({
           ? "Изменения сохранены"
           : "Новый базис сохранен в справочнике",
       });
-      form.reset({
-        name: "",
-        baseType: BASE_TYPE.WHOLESALE,
-        location: "",
-        isActive: true,
-      });
+      form.reset(emptyDefaults);
       setOpen(false);
       if (onCreated && data?.id) {
         onCreated(data.id);
@@ -125,6 +125,7 @@ export function AddBaseDialog({
         name: editItem.name,
         baseType: editItem.baseType as BaseType,
         location: editItem.location || "",
+        iataCode: (editItem as any).iataCode || "",
         isActive: editItem.isActive,
       });
     }
@@ -133,12 +134,7 @@ export function AddBaseDialog({
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      form.reset({
-        name: "",
-        baseType: BASE_TYPE.WHOLESALE,
-        location: "",
-        isActive: true,
-      });
+      form.reset(emptyDefaults);
       if (onEditComplete) {
         onEditComplete();
       }
@@ -219,6 +215,27 @@ export function AddBaseDialog({
                 </FormItem>
               )}
             />
+
+            {showIataField && (
+              <FormField
+                control={form.control}
+                name="iataCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Код IATA</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Например: SVO"
+                        data-testid="input-base-iata"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

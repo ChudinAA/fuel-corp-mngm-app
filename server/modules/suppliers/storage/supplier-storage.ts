@@ -4,13 +4,34 @@ import {
   suppliers,
   supplierBases,
   storageCards,
+  supplierBasisPrices,
   type Supplier,
   type InsertSupplier,
+  type SupplierBasisPrice,
   currencies,
 } from "@shared/schema";
 import type { ISupplierStorage } from "./types";
 
+export type SupplierBasisPriceInput = {
+  basisId: string;
+  servicePrice?: number | null;
+  pvkjPrice?: number | null;
+  agentFee?: number | null;
+};
+
 export class SupplierStorage implements ISupplierStorage {
+  private async loadBasisPrices(supplierIds: string[]): Promise<SupplierBasisPrice[]> {
+    if (supplierIds.length === 0) return [];
+    return db
+      .select()
+      .from(supplierBasisPrices)
+      .where(
+        supplierIds.length === 1
+          ? eq(supplierBasisPrices.supplierId, supplierIds[0])
+          : sql`${supplierBasisPrices.supplierId} = ANY(${supplierIds})`
+      );
+  }
+
   async getAllSuppliers(): Promise<Supplier[]> {
     const suppliersList = await db.query.suppliers.findMany({
       where: isNull(suppliers.deletedAt),
@@ -30,10 +51,19 @@ export class SupplierStorage implements ISupplierStorage {
       },
     });
 
-    // Map to include baseIds for backward compatibility
+    const allBasisPrices = await this.loadBasisPrices(suppliersList.map((s) => s.id));
+    const basisPricesBySupplier = new Map<string, SupplierBasisPrice[]>();
+    for (const bp of allBasisPrices) {
+      if (!basisPricesBySupplier.has(bp.supplierId)) {
+        basisPricesBySupplier.set(bp.supplierId, []);
+      }
+      basisPricesBySupplier.get(bp.supplierId)!.push(bp);
+    }
+
     return suppliersList.map((s) => ({
       ...s,
       baseIds: s.supplierBases?.map((sb) => sb.baseId) || [],
+      basisPrices: basisPricesBySupplier.get(s.id) || [],
     }));
   }
 
@@ -57,17 +87,19 @@ export class SupplierStorage implements ISupplierStorage {
 
     if (!supplier) return undefined;
 
-    // Map to include baseIds for backward compatibility
+    const basisPrices = await this.loadBasisPrices([id]);
+
     return {
       ...supplier,
       baseIds: supplier.supplierBases?.map((sb) => sb.baseId) || [],
+      basisPrices,
     };
   }
 
   async createSupplier(
-    data: InsertSupplier & { baseIds?: string[] },
+    data: InsertSupplier & { baseIds?: string[]; basisPrices?: SupplierBasisPriceInput[] },
   ): Promise<Supplier> {
-    const { baseIds, ...supplierData } = data;
+    const { baseIds, basisPrices, ...supplierData } = data;
 
     // Check for duplicates
     const existing = await db.query.suppliers.findFirst({
@@ -124,18 +156,35 @@ export class SupplierStorage implements ISupplierStorage {
         );
       }
 
+      // Create supplier-basis price relations
+      if (basisPrices && basisPrices.length > 0) {
+        const pricesToInsert = basisPrices
+          .filter((bp) => bp.basisId)
+          .map((bp) => ({
+            supplierId: created.id,
+            basisId: bp.basisId,
+            servicePrice: bp.servicePrice != null ? String(bp.servicePrice) : null,
+            pvkjPrice: bp.pvkjPrice != null ? String(bp.pvkjPrice) : null,
+            agentFee: bp.agentFee != null ? String(bp.agentFee) : null,
+          }));
+        if (pricesToInsert.length > 0) {
+          await tx.insert(supplierBasisPrices).values(pricesToInsert);
+        }
+      }
+
       return {
         ...created,
         baseIds: baseIds || [],
+        basisPrices: [],
       };
     });
   }
 
   async updateSupplier(
     id: string,
-    data: Partial<InsertSupplier> & { baseIds?: string[] },
+    data: Partial<InsertSupplier> & { baseIds?: string[]; basisPrices?: SupplierBasisPriceInput[] },
   ): Promise<Supplier | undefined> {
-    const { baseIds, ...supplierData } = data;
+    const { baseIds, basisPrices, ...supplierData } = data;
 
     return await db.transaction(async (tx) => {
       const currentSupplier = await tx.query.suppliers.findFirst({
@@ -199,9 +248,29 @@ export class SupplierStorage implements ISupplierStorage {
         }
       }
 
+      // Update supplier-basis price relations if basisPrices provided
+      if (basisPrices !== undefined) {
+        await tx.delete(supplierBasisPrices).where(eq(supplierBasisPrices.supplierId, id));
+        if (basisPrices.length > 0) {
+          const pricesToInsert = basisPrices
+            .filter((bp) => bp.basisId)
+            .map((bp) => ({
+              supplierId: id,
+              basisId: bp.basisId,
+              servicePrice: bp.servicePrice != null ? String(bp.servicePrice) : null,
+              pvkjPrice: bp.pvkjPrice != null ? String(bp.pvkjPrice) : null,
+              agentFee: bp.agentFee != null ? String(bp.agentFee) : null,
+            }));
+          if (pricesToInsert.length > 0) {
+            await tx.insert(supplierBasisPrices).values(pricesToInsert);
+          }
+        }
+      }
+
       return {
         ...updated,
         baseIds: baseIds || [],
+        basisPrices: [],
       };
     });
   }
