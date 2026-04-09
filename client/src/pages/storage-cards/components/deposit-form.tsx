@@ -75,11 +75,26 @@ export function DepositForm({
   const isLockedToUsd = isBuyer && hasExistingDeposits && !card.localCurrencyCode;
   const currencyIsLocked = hasExistingDeposits;
 
+  // Compute initial values synchronously (currencies may already be in cache on re-open)
+  const computeInitialValues = (): { currencyMode: "USD" | "local"; localCurrencyId: string } => {
+    if (!isBuyer) return { currencyMode: "USD", localCurrencyId: "" };
+    if (isLockedToUsd) return { currencyMode: "USD", localCurrencyId: "" };
+    // Prefer local mode for buyer cards (locked or new)
+    const targetCode = lockedLocalCurrencyCode || "RUB";
+    const matchedCurrency = currencies.find((c) => c.code === targetCode);
+    return {
+      currencyMode: "local",
+      localCurrencyId: matchedCurrency?.id || "",
+    };
+  };
+
+  const initialValues = computeInitialValues();
+
   const form = useForm<DepositFormData>({
     resolver: zodResolver(depositSchema),
     defaultValues: {
-      currencyMode: "USD",
-      localCurrencyId: "",
+      currencyMode: initialValues.currencyMode,
+      localCurrencyId: initialValues.localCurrencyId,
       localAmount: "",
       exchangeRate: "",
       rateDate: format(new Date(), "yyyy-MM-dd"),
@@ -88,31 +103,17 @@ export function DepositForm({
     },
   });
 
-  // Set initial currency after currencies load
+  // Fallback: sync form if currencies were not in cache on first mount
   useEffect(() => {
     if (!isBuyer || currencies.length === 0) return;
-
-    if (currencyIsLocked) {
-      // Card already has deposits — lock to existing currency
-      if (isLockedToUsd) {
-        form.setValue("currencyMode", "USD");
-        form.setValue("localCurrencyId", "");
-      } else if (lockedLocalCurrencyCode) {
-        const lockedCurrency = currencies.find((c) => c.code === lockedLocalCurrencyCode);
-        if (lockedCurrency) {
-          form.setValue("currencyMode", "local");
-          form.setValue("localCurrencyId", lockedCurrency.id);
-        }
-      }
-    } else {
-      // New card — default to RUB
-      const rubCurrency = currencies.find((c) => c.code === "RUB");
-      if (rubCurrency) {
-        form.setValue("currencyMode", "local");
-        form.setValue("localCurrencyId", rubCurrency.id);
-      }
+    const { currencyMode, localCurrencyId } = computeInitialValues();
+    const current = form.getValues();
+    // Only update if localCurrencyId is still empty (wasn't set by defaultValues)
+    if (current.localCurrencyId === "" && localCurrencyId !== "") {
+      form.setValue("currencyMode", currencyMode, { shouldRender: true });
+      form.setValue("localCurrencyId", localCurrencyId, { shouldRender: true });
     }
-  }, [currencies, isBuyer, currencyIsLocked, isLockedToUsd, lockedLocalCurrencyCode]);
+  }, [currencies]);
 
   const currencyMode = useWatch({ control: form.control, name: "currencyMode" });
   const localAmount = useWatch({ control: form.control, name: "localAmount" });
