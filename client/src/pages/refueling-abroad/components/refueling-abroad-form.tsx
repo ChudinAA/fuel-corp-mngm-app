@@ -436,9 +436,10 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     prevSupplierIdRef.current = currentSupplierId;
     const supplier = foreignSuppliers.find((s) => s.id === currentSupplierId);
     if (supplier?.baseIds && supplier.baseIds.length > 0) {
-      form.setValue("basisId", supplier.baseIds[0]);
+      const firstforeignBaseId = foreignBases.find(element => supplier.baseIds?.includes(element.id))?.id;
+      form.setValue("basisId", firstforeignBaseId || "");
     }
-  }, [watchedValues.supplierId, foreignSuppliers]);
+  }, [watchedValues.supplierId, foreignSuppliers, foreignBases]);
 
   const selectedPurchaseExchangeRate = exchangeRates.find(
     (r) => r.id === watchedValues.purchaseExchangeRateId,
