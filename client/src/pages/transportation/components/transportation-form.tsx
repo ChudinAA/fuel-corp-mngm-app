@@ -44,14 +44,13 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Plus, Loader2 } from "lucide-react";
 import type {
-  Supplier,
   Base,
   Customer,
   DeliveryCost,
   LogisticsCarrier,
   LogisticsDeliveryLocation,
 } from "@shared/schema";
-import { PRODUCT_TYPE, COUNTERPARTY_TYPE } from "@shared/constants";
+import { PRODUCT_TYPE } from "@shared/constants";
 import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
 import { useDuplicateCheck } from "@/pages/shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "@/pages/shared/components/duplicate-alert-dialog";
@@ -67,14 +66,13 @@ import {
   AVIA_SERVICE_CARRIER_NAME,
 } from "../constants";
 import { AddCustomerDialog } from "@/pages/counterparties/customers-dialog";
-import { AddSupplierDialog } from "@/pages/counterparties/suppliers-dialog";
 import { AddLogisticsDialog } from "@/pages/directories/logistics-dialog";
 import { AddDeliveryCostDialog } from "@/pages/delivery/components/delivery-cost-dialog";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
+import { AddBaseDialog } from "@/pages/directories/bases-dialog";
 import { CalculatedField } from "@/pages/opt/components/calculated-field";
 import { formatCurrency, formatNumber } from "@/pages/opt/utils";
 import { useAuth } from "@/hooks/use-auth";
-import { CUSTOMER_MODULE } from "@shared/constants";
 import { cn } from "@/lib/utils";
 
 export interface TransportationFormHandle {
@@ -96,23 +94,21 @@ export const TransportationForm = forwardRef<
   const { showError, ErrorModalComponent } = useErrorModal();
   const { hasPermission } = useAuth();
   const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
-  const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
-    useState<string>("");
   const [selectedSalePriceId, setSelectedSalePriceId] = useState<string>("");
   const [addCustomerOpen, setAddCustomerOpen] = useState(false);
-  const [addSupplierOpen, setAddSupplierOpen] = useState(false);
   const [addCarrierOpen, setAddCarrierOpen] = useState(false);
   const [addLocationOpen, setAddLocationOpen] = useState(false);
   const [addCostOpen, setAddCostOpen] = useState(false);
-  const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
   const [addSalePriceOpen, setAddSalePriceOpen] = useState(false);
+  const [addLoadingBasisOpen, setAddLoadingBasisOpen] = useState(false);
+  const [addDeliveryBasisOpen, setAddDeliveryBasisOpen] = useState(false);
   const isEditing = !!editData && !!editData.id;
   const initialValuesRef = useRef<TransportationFormSchema | null>(null);
 
   const form = useForm<TransportationFormSchema>({
     resolver: zodResolver(transportationFormSchema),
     defaultValues: {
-      supplierId: "",
+      supplierId: null,
       buyerId: "",
       dealDate: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
       basisId: null,
@@ -159,9 +155,6 @@ export const TransportationForm = forwardRef<
     },
   }));
 
-  const { data: suppliers } = useQuery<Supplier[]>({
-    queryKey: ["/api/suppliers"],
-  });
   const { data: allBases } = useQuery<Base[]>({ queryKey: ["/api/bases"] });
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
@@ -176,7 +169,6 @@ export const TransportationForm = forwardRef<
     queryKey: ["/api/delivery-costs"],
   });
 
-  const watchSupplierId = form.watch("supplierId") || "";
   const watchBuyerId = form.watch("buyerId") || "";
   const watchDealDate = form.watch("dealDate");
   const watchBasisId = form.watch("basisId") || "";
@@ -191,7 +183,6 @@ export const TransportationForm = forwardRef<
   const dealDateObj = watchDealDate ? new Date(watchDealDate) : null;
 
   const {
-    purchasePrices,
     salePrices,
     allBases: availableBases,
     aviaServiceCarrier,
@@ -199,7 +190,7 @@ export const TransportationForm = forwardRef<
     carriers: availableCarriers,
     deliveryLocations: availableLocations,
   } = useTransportationFilters({
-    supplierId: watchSupplierId,
+    supplierId: "",
     buyerId: watchBuyerId,
     dealDate: dealDateObj,
     basisId: watchBasisId,
@@ -215,11 +206,9 @@ export const TransportationForm = forwardRef<
   const {
     calculatedKg,
     finalKg,
-    purchasePrice,
     salePrice,
     deliveryCost,
     deliveryTariff,
-    purchaseAmount,
     saleAmount,
     profit,
   } = useTransportationCalculations({
@@ -228,9 +217,9 @@ export const TransportationForm = forwardRef<
     density: watchDensity?.toString() || "",
     quantityKg: watchQuantityKg?.toString() || "",
     basisId: watchBasisId,
-    purchasePrices,
+    purchasePrices: [],
     salePrices,
-    selectedPurchasePriceId,
+    selectedPurchasePriceId: "",
     selectedSalePriceId,
     deliveryCosts,
     carrierId: watchCarrierId,
@@ -250,7 +239,7 @@ export const TransportationForm = forwardRef<
     type: "transportation",
     getFields: () => ({
       date: dealDateObj,
-      supplierId: watchSupplierId,
+      supplierId: "",
       buyerId: watchBuyerId,
       productType: watchProductType,
       basisId: watchBasisId,
@@ -267,12 +256,10 @@ export const TransportationForm = forwardRef<
     }
   }, [aviaServiceCarrier, editData]);
 
-  // When switching to АвиаСервис, clear delivery location (irrelevant for АвиаСервис)
-  // When switching away from АвиаСервис, clear purchase price (only applicable to АвиаСервис)
+  // When switching away from АвиаСервис, clear delivery location (irrelevant for АвиаСервис)
   const prevIsAviaServiceRef = useRef<boolean | null>(null);
   useEffect(() => {
     if (prevIsAviaServiceRef.current === null) {
-      // First render — just record the value, don't touch anything
       prevIsAviaServiceRef.current = isAviaService;
       return;
     }
@@ -282,37 +269,21 @@ export const TransportationForm = forwardRef<
 
     if (isAviaService) {
       form.setValue("deliveryLocationId", null, { shouldDirty: false });
-    } else {
-      setSelectedPurchasePriceId("");
     }
   }, [isAviaService]);
 
   // Отслеживаем была ли уже инициализирована цена при редактировании
   const salePriceInitializedRef = useRef(false);
 
-  // Автовыбор цены покупки: только для АвиаСервис, при создании
-  useEffect(() => {
-    if (
-      !editData &&
-      isAviaService &&
-      purchasePrices.length > 0 &&
-      !selectedPurchasePriceId
-    ) {
-      setSelectedPurchasePriceId(`${purchasePrices[0].id}-0`);
-    }
-  }, [isAviaService, purchasePrices, editData]);
-
-  // Автовыбор цены продажи: при создании — первая доступная; при редактировании — из editData
+  // Автовыбор цены услуги: при создании — первая доступная; при редактировании — из editData
   useEffect(() => {
     if (!editData) {
-      // Создание: подставляем первую цену как только загрузится список
       if (watchBuyerId && salePrices.length > 0) {
         setSelectedSalePriceId((prev) => prev || `${salePrices[0].id}-0`);
       } else if (watchBuyerId && salePrices.length === 0) {
         setSelectedSalePriceId("");
       }
     } else {
-      // Редактирование: когда salePrices загрузятся и ref не инициализирован — восстановить
       if (!salePriceInitializedRef.current && salePrices.length > 0) {
         const salePriceCompositeId =
           editData.salePriceId !== undefined && editData.salePriceId !== null
@@ -327,15 +298,26 @@ export const TransportationForm = forwardRef<
     }
   }, [watchBuyerId, salePrices, editData]);
 
+  // Авто-подставление пункта доставки при смене базиса доставки (не в режиме редактирования)
+  const prevCustomerBasisIdRef = useRef<string>("");
+  useEffect(() => {
+    if (editData) return;
+    if (!watchCustomerBasisId) return;
+    if (prevCustomerBasisIdRef.current === watchCustomerBasisId) return;
+    prevCustomerBasisIdRef.current = watchCustomerBasisId;
+
+    if (availableLocations.length > 0) {
+      form.setValue("deliveryLocationId", availableLocations[0].id, {
+        shouldDirty: true,
+      });
+    } else {
+      form.setValue("deliveryLocationId", null, { shouldDirty: true });
+    }
+  }, [watchCustomerBasisId, availableLocations, editData]);
+
   // Load editData into form
   useEffect(() => {
     if (editData) {
-      const purchasePriceCompositeId =
-        editData.purchasePriceId &&
-        editData.purchasePriceIndex !== undefined &&
-        editData.purchasePriceIndex !== null
-          ? `${editData.purchasePriceId}-${editData.purchasePriceIndex}`
-          : editData.purchasePriceId || "";
       const salePriceCompositeId =
         editData.salePriceId &&
         editData.salePriceIndex !== undefined &&
@@ -344,7 +326,7 @@ export const TransportationForm = forwardRef<
           : editData.salePriceId || "";
 
       const resetValues: TransportationFormSchema = {
-        supplierId: editData.supplierId || "",
+        supplierId: editData.supplierId || null,
         buyerId: editData.buyerId || "",
         dealDate: editData.dealDate
           ? format(editData.dealDate, "yyyy-MM-dd'T'HH:mm:ss")
@@ -360,8 +342,8 @@ export const TransportationForm = forwardRef<
           ? parseFloat(editData.quantityKg)
           : null,
         inputMode: editData.inputMode || "kg",
-        purchasePriceId: purchasePriceCompositeId || null,
-        purchasePriceIndex: editData.purchasePriceIndex || 0,
+        purchasePriceId: null,
+        purchasePriceIndex: 0,
         salePriceId: salePriceCompositeId || null,
         salePriceIndex: editData.salePriceIndex || 0,
         carrierId: editData.carrierId || null,
@@ -371,7 +353,6 @@ export const TransportationForm = forwardRef<
       };
       initialValuesRef.current = resetValues;
       form.reset(resetValues, { keepDefaultValues: false });
-      setSelectedPurchasePriceId(purchasePriceCompositeId);
       setSelectedSalePriceId(salePriceCompositeId);
       if (editData.inputMode)
         setInputMode(editData.inputMode as "liters" | "kg");
@@ -379,11 +360,11 @@ export const TransportationForm = forwardRef<
   }, [editData]);
 
   const buildPayload = (data: TransportationFormSchema, isDraft: boolean) => {
-    const { purchasePriceId, purchasePriceIndex, salePriceId, salePriceIndex } =
+    const { salePriceId, salePriceIndex } =
       extractPriceIdsForSubmit(
-        selectedPurchasePriceId,
+        "",
         selectedSalePriceId,
-        purchasePrices,
+        [],
         salePrices,
         false,
       );
@@ -395,19 +376,18 @@ export const TransportationForm = forwardRef<
         : null,
       basisId: data.basisId || null,
       customerBasisId: data.customerBasisId || null,
-      productType: data.productType,
+      productType: PRODUCT_TYPE.KEROSENE,
       quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
       quantityLiters: data.quantityLiters || null,
       density: data.density || null,
       inputMode: data.inputMode,
-      purchasePrice: purchasePrice !== null ? purchasePrice : null,
-      purchasePriceId: purchasePriceId || null,
-      purchasePriceIndex:
-        purchasePriceIndex !== undefined ? purchasePriceIndex : null,
+      purchasePrice: null,
+      purchasePriceId: null,
+      purchasePriceIndex: null,
       salePrice: salePrice !== null ? salePrice : null,
       salePriceId: salePriceId || null,
       salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
-      purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
+      purchaseAmount: null,
       saleAmount: saleAmount !== null ? saleAmount : null,
       carrierId: data.carrierId || null,
       deliveryLocationId: data.deliveryLocationId || null,
@@ -484,7 +464,7 @@ export const TransportationForm = forwardRef<
         return;
       }
       if (salePrice === null) {
-        showError("Не указана цена продажи");
+        showError("Не указана цена услуги");
         return;
       }
     }
@@ -527,7 +507,7 @@ export const TransportationForm = forwardRef<
               <CardTitle className="text-lg">Основные данные</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-3">
                 <FormField
                   control={form.control}
                   name="dealDate"
@@ -586,80 +566,10 @@ export const TransportationForm = forwardRef<
 
                 <FormField
                   control={form.control}
-                  name="productType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Продукт</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value || ""}
-                      >
-                        <FormControl>
-                          <SelectTrigger data-testid="select-product-type">
-                            <SelectValue placeholder="Выберите продукт" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value={PRODUCT_TYPE.KEROSENE}>
-                            Керосин
-                          </SelectItem>
-                          <SelectItem value={PRODUCT_TYPE.PVKJ}>
-                            ПВКЖ
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="supplierId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Поставщик</FormLabel>
-                      <div className="flex gap-1 items-center">
-                        <FormControl>
-                          <Combobox
-                            options={
-                              suppliers?.map((s) => ({
-                                value: s.id,
-                                label: s.name,
-                              })) || []
-                            }
-                            value={field.value || ""}
-                            onValueChange={field.onChange}
-                            placeholder="Выберите поставщика"
-                            className="w-full"
-                            dataTestId="select-supplier"
-                          />
-                        </FormControl>
-                        {hasPermission("directories", "create") && (
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="outline"
-                            onClick={() => setAddSupplierOpen(true)}
-                            data-testid="button-add-supplier"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="buyerId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Покупатель</FormLabel>
+                      <FormLabel>Заказчик</FormLabel>
                       <div className="flex gap-1 items-center">
                         <FormControl>
                           <Combobox
@@ -671,7 +581,7 @@ export const TransportationForm = forwardRef<
                             }
                             value={field.value || ""}
                             onValueChange={field.onChange}
-                            placeholder="Выберите покупателя"
+                            placeholder="Выберите заказчика"
                             className="w-full"
                             dataTestId="select-buyer"
                           />
@@ -692,6 +602,9 @@ export const TransportationForm = forwardRef<
                     </FormItem>
                   )}
                 />
+
+                {/* Пустая ячейка для выравнивания сетки */}
+                <div />
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -701,25 +614,38 @@ export const TransportationForm = forwardRef<
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Базис погрузки</FormLabel>
-                      <FormControl>
-                        <Combobox
-                          options={availableBases.map((b) => ({
-                            value: b.id,
-                            label: b.name,
-                            render: (
-                              <div className="flex items-center gap-2">
-                                {b.name}
-                                <BaseTypeBadge type={b.baseType} short={true} />
-                              </div>
-                            ),
-                          }))}
-                          value={field.value || ""}
-                          onValueChange={field.onChange}
-                          placeholder="Выберите базис погрузки"
-                          className="w-full"
-                          dataTestId="select-basis"
-                        />
-                      </FormControl>
+                      <div className="flex gap-1 items-center">
+                        <FormControl>
+                          <Combobox
+                            options={availableBases.map((b) => ({
+                              value: b.id,
+                              label: b.name,
+                              render: (
+                                <div className="flex items-center gap-2">
+                                  {b.name}
+                                  <BaseTypeBadge type={b.baseType} short={true} />
+                                </div>
+                              ),
+                            }))}
+                            value={field.value || ""}
+                            onValueChange={field.onChange}
+                            placeholder="Выберите базис погрузки"
+                            className="w-full"
+                            dataTestId="select-basis"
+                          />
+                        </FormControl>
+                        {hasPermission("directories", "create") && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            onClick={() => setAddLoadingBasisOpen(true)}
+                            data-testid="button-add-loading-basis"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -731,25 +657,38 @@ export const TransportationForm = forwardRef<
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Базис доставки</FormLabel>
-                      <FormControl>
-                        <Combobox
-                          options={availableBases.map((b) => ({
-                            value: b.id,
-                            label: b.name,
-                            render: (
-                              <div className="flex items-center gap-2">
-                                {b.name}
-                                <BaseTypeBadge type={b.baseType} short={true} />
-                              </div>
-                            ),
-                          }))}
-                          value={field.value || ""}
-                          onValueChange={field.onChange}
-                          placeholder="Выберите базис доставки"
-                          className="w-full"
-                          dataTestId="select-customer-basis"
-                        />
-                      </FormControl>
+                      <div className="flex gap-1 items-center">
+                        <FormControl>
+                          <Combobox
+                            options={availableBases.map((b) => ({
+                              value: b.id,
+                              label: b.name,
+                              render: (
+                                <div className="flex items-center gap-2">
+                                  {b.name}
+                                  <BaseTypeBadge type={b.baseType} short={true} />
+                                </div>
+                              ),
+                            }))}
+                            value={field.value || ""}
+                            onValueChange={field.onChange}
+                            placeholder="Выберите базис доставки"
+                            className="w-full"
+                            dataTestId="select-customer-basis"
+                          />
+                        </FormControl>
+                        {hasPermission("directories", "create") && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            onClick={() => setAddDeliveryBasisOpen(true)}
+                            data-testid="button-add-delivery-basis"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -1006,112 +945,53 @@ export const TransportationForm = forwardRef<
               <CardTitle className="text-lg">Ценообразование</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1">
-                    <Label>Цена покупки</Label>
-                    {isAviaService && hasPermission("prices", "create") && (
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => setAddPurchasePriceOpen(true)}
-                        data-testid="button-add-purchase-price"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  {isAviaService ? (
-                    <Select
-                      value={selectedPurchasePriceId}
-                      onValueChange={setSelectedPurchasePriceId}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1">
+                  <Label>Цена услуги</Label>
+                  {hasPermission("prices", "create") && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setAddSalePriceOpen(true)}
+                      data-testid="button-add-sale-price"
                     >
-                      <SelectTrigger data-testid="select-purchase-price">
-                        <SelectValue placeholder="Выберите цену покупки" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {purchasePrices
-                          .flatMap((p) => formatPriceOption(p))
-                          .map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <CalculatedField
-                      label="Перевозчик не АвиаСервис"
-                      value={"0"}
-                    />
+                      <Plus className="h-4 w-4" />
+                    </Button>
                   )}
                 </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1">
-                    <Label>Цена продажи</Label>
-                    {hasPermission("prices", "create") && (
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => setAddSalePriceOpen(true)}
-                        data-testid="button-add-sale-price"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <Select
-                    value={selectedSalePriceId}
-                    onValueChange={setSelectedSalePriceId}
-                  >
-                    <SelectTrigger data-testid="select-sale-price">
-                      <SelectValue placeholder="Выберите цену продажи" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {salePrices
-                        .flatMap((p) => formatPriceOption(p))
-                        .map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Select
+                  value={selectedSalePriceId}
+                  onValueChange={setSelectedSalePriceId}
+                >
+                  <SelectTrigger data-testid="select-sale-price">
+                    <SelectValue placeholder="Выберите цену услуги" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {salePrices
+                      .flatMap((p) => formatPriceOption(p))
+                      .map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
+              <div
+                className={
+                  profit !== null
+                    ? profit >= 0
+                      ? "text-green-600"
+                      : "text-red-600"
+                    : ""
+                }
+              >
                 <CalculatedField
-                  label="Сумма закупки"
-                  value={
-                    purchaseAmount !== null
-                      ? formatCurrency(purchaseAmount)
-                      : !isAviaService
-                        ? "0"
-                        : "—"
-                  }
+                  label="Прибыль"
+                  value={profit !== null ? formatCurrency(profit) : "—"}
                 />
-                <CalculatedField
-                  label="Сумма продажи"
-                  value={saleAmount !== null ? formatCurrency(saleAmount) : "—"}
-                />
-                <div
-                  className={
-                    profit !== null
-                      ? profit >= 0
-                        ? "text-green-600"
-                        : "text-red-600"
-                      : ""
-                  }
-                >
-                  <CalculatedField
-                    label="Прибыль"
-                    value={profit !== null ? formatCurrency(profit) : "—"}
-                  />
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -1160,7 +1040,7 @@ export const TransportationForm = forwardRef<
                   form.handleSubmit(
                     (data) => onSubmit(data, true),
                     (errors) => {
-                      showError(getReadableZodError(errors, "Для сохранения черновика необходимо выбрать поставщика и покупателя."));
+                      showError(getReadableZodError(errors, "Для сохранения черновика необходимо выбрать заказчика."));
                     },
                   )();
                 }}
@@ -1204,13 +1084,6 @@ export const TransportationForm = forwardRef<
         onInlineOpenChange={setAddCustomerOpen}
         onCreated={(id) => form.setValue("buyerId", id)}
       />
-      <AddSupplierDialog
-        bases={allBases || []}
-        isInline
-        inlineOpen={addSupplierOpen}
-        onInlineOpenChange={setAddSupplierOpen}
-        onCreated={(id) => form.setValue("supplierId", id)}
-      />
       <AddLogisticsDialog
         carriers={carriers || []}
         isInline
@@ -1236,16 +1109,6 @@ export const TransportationForm = forwardRef<
           onInlineOpenChange={setAddCostOpen}
         />
       )}
-      {addPurchasePriceOpen && (
-        <AddPriceDialog
-          isInline
-          inlineOpen={addPurchasePriceOpen}
-          onInlineOpenChange={setAddPurchasePriceOpen}
-          onCreated={(id) => {
-            queryClient.invalidateQueries({ queryKey: ["/api/prices"] });
-          }}
-        />
-      )}
       {addSalePriceOpen && (
         <AddPriceDialog
           isInline
@@ -1256,6 +1119,26 @@ export const TransportationForm = forwardRef<
           }}
         />
       )}
+
+      <AddBaseDialog
+        isInline
+        inlineOpen={addLoadingBasisOpen}
+        onInlineOpenChange={setAddLoadingBasisOpen}
+        onCreated={(id) => {
+          queryClient.invalidateQueries({ queryKey: ["/api/bases"] });
+          form.setValue("basisId", id);
+        }}
+      />
+      <AddBaseDialog
+        isInline
+        inlineOpen={addDeliveryBasisOpen}
+        onInlineOpenChange={setAddDeliveryBasisOpen}
+        onCreated={(id) => {
+          queryClient.invalidateQueries({ queryKey: ["/api/bases"] });
+          form.setValue("customerBasisId", id);
+        }}
+      />
+
       <ErrorModalComponent />
     </>
   );

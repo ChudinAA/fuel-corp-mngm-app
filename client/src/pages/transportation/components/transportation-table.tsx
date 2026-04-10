@@ -182,18 +182,13 @@ export function TransportationTable({
 
   const exportData = allDeals.map((d) => ({
     Дата: d.dealDate ? format(new Date(d.dealDate), "dd.MM.yyyy") : "",
-    Поставщик: d.supplier?.name || "",
-    Покупатель: d.buyer?.name || "",
+    Заказчик: d.buyer?.name || "",
     "Базис погрузки": d.basis || "",
     "Базис доставки": d.customerBasis || "",
     Перевозчик: d.carrier?.name || "",
     "Пункт доставки": d.deliveryLocation?.name || "",
-    Продукт: getProductLabel(d.productType),
     Кг: d.quantityKg || "",
-    "Цена покупки": d.purchasePrice || "",
-    "Цена продажи": d.salePrice || "",
-    "Сумма покупки": d.purchaseAmount || "",
-    "Сумма продажи": d.saleAmount || "",
+    "Цена услуги": d.salePrice || "",
     "Стоимость доставки": d.deliveryCost || "",
     Прибыль: d.profit || "",
     Примечание: d.notes || "",
@@ -222,7 +217,7 @@ export function TransportationTable({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             ref={searchInputRef}
-            placeholder="Поиск по поставщику, покупателю..."
+            placeholder="Поиск по заказчику, перевозчику..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="pl-9"
@@ -267,11 +262,9 @@ export function TransportationTable({
                     <span className="truncate max-w-[80px]">{col.label}</span>
                     {[
                       "date",
-                      "supplier",
                       "buyer",
                       "carrier",
                       "deliveryLocation",
-                      "productType",
                     ].includes(col.id) && (
                       <TableColumnFilter
                         title={col.label}
@@ -334,11 +327,6 @@ export function TransportationTable({
                       </div>
                     </TableCell>
                   )}
-                  {isColumnVisible("supplier") && (
-                    <TableCell className="text-xs py-1.5 px-1 max-w-[100px]">
-                      <span className="truncate block">{deal.supplier?.name || "—"}</span>
-                    </TableCell>
-                  )}
                   {isColumnVisible("buyer") && (
                     <TableCell className="text-xs py-1.5 px-1 max-w-[100px]">
                       <span className="truncate block">{deal.buyer?.name || "—"}</span>
@@ -364,34 +352,14 @@ export function TransportationTable({
                       <span className="truncate block">{deal.deliveryLocation?.name || "—"}</span>
                     </TableCell>
                   )}
-                  {isColumnVisible("productType") && (
-                    <TableCell className="py-1.5 px-1">
-                      <ProductTypeBadge type={deal.productType} />
-                    </TableCell>
-                  )}
                   {isColumnVisible("quantityKg") && (
                     <TableCell className="text-right text-xs py-1.5 px-1">
                       {formatNumberForTable(deal.quantityKg)}
                     </TableCell>
                   )}
-                  {isColumnVisible("purchasePrice") && (
-                    <TableCell className="text-right text-xs py-1.5 px-1">
-                      {formatNumberForTable(deal.purchasePrice)}
-                    </TableCell>
-                  )}
                   {isColumnVisible("salePrice") && (
                     <TableCell className="text-right text-xs py-1.5 px-1">
                       {formatNumberForTable(deal.salePrice)}
-                    </TableCell>
-                  )}
-                  {isColumnVisible("purchaseAmount") && (
-                    <TableCell className="text-right text-xs py-1.5 px-1">
-                      {formatCurrencyForTable(deal.purchaseAmount)}
-                    </TableCell>
-                  )}
-                  {isColumnVisible("saleAmount") && (
-                    <TableCell className="text-right text-xs py-1.5 px-1">
-                      {formatCurrencyForTable(deal.saleAmount)}
                     </TableCell>
                   )}
                   {isColumnVisible("deliveryCost") && (

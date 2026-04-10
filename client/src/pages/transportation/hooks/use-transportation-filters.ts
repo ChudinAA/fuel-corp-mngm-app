@@ -88,6 +88,15 @@ export function useTransportationFilters({
     [allBases],
   );
 
+  // Фильтруем пункты доставки по выбранному базису доставки
+  const filteredDeliveryLocations = useMemo(() => {
+    if (!deliveryLocations) return [];
+    if (!customerBasisId) return deliveryLocations.filter((l) => l.isActive !== false);
+    return deliveryLocations.filter(
+      (l) => l.baseId === customerBasisId && l.isActive !== false,
+    );
+  }, [deliveryLocations, customerBasisId]);
+
   return {
     purchasePrices,
     salePrices,
@@ -95,6 +104,6 @@ export function useTransportationFilters({
     aviaServiceCarrier,
     isAviaService,
     carriers: carriers || [],
-    deliveryLocations: deliveryLocations || [],
+    deliveryLocations: filteredDeliveryLocations,
   };
 }

@@ -24,7 +24,6 @@ export const transportation = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     supplierId: uuid("supplier_id")
-      .notNull()
       .references(() => suppliers.id),
     buyerId: uuid("buyer_id")
       .notNull()

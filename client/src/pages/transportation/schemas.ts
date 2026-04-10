@@ -30,19 +30,10 @@ export const transportationFormSchema = z
     isDraft: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
-    // Поставщик и покупатель обязательны всегда — даже для черновика.
-    // Колонки supplier_id и buyer_id в БД имеют NOT NULL constraint.
-    if (!data.supplierId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Выберите поставщика",
-        path: ["supplierId"],
-      });
-    }
     if (!data.buyerId) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Выберите покупателя",
+        message: "Выберите заказчика",
         path: ["buyerId"],
       });
     }

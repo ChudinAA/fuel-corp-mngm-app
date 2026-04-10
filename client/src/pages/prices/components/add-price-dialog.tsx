@@ -233,6 +233,14 @@ export function AddPriceDialog({
     }
   }, [watchCounterpartyId, contractors, allBases, form, watchBasis, editPrice, isTransportation]);
 
+  // При выборе типа сделки "Перевозка" — фиксируем роль "Покупатель" и продукт "Керосин"
+  useEffect(() => {
+    if (!editPrice && watchCounterpartyType === COUNTERPARTY_TYPE.TRANSPORTATION) {
+      form.setValue("counterpartyRole", COUNTERPARTY_ROLE.BUYER);
+      form.setValue("productType", PRODUCT_TYPE.KEROSENE);
+    }
+  }, [watchCounterpartyType, editPrice, form]);
+
   // Установка валюты по умолчанию при смене типа сделки
   useEffect(() => {
     if (!editPrice && currencies) {

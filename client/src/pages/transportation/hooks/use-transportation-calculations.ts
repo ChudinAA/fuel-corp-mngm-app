@@ -44,7 +44,7 @@ export function useTransportationCalculations({
     quantityKg,
   });
 
-  const { purchasePrice: extractedPurchasePrice, salePrice: extractedSalePrice } =
+  const { salePrice: extractedSalePrice } =
     usePriceExtraction({
       purchasePrices,
       salePrices,
@@ -54,11 +54,6 @@ export function useTransportationCalculations({
       supplierWarehouse: undefined,
       productType,
     });
-
-  const purchasePrice = useMemo(() => {
-    if (!isAviaService) return 0;
-    return extractedPurchasePrice;
-  }, [isAviaService, extractedPurchasePrice]);
 
   const salePrice = extractedSalePrice;
 
@@ -93,12 +88,6 @@ export function useTransportationCalculations({
     return deliveryCost / finalKg;
   }, [deliveryCost, finalKg]);
 
-  const purchaseAmount = useMemo(() => {
-    if (!isAviaService) return null;
-    if (purchasePrice !== null && finalKg > 0) return purchasePrice * finalKg;
-    return null;
-  }, [isAviaService, purchasePrice, finalKg]);
-
   const saleAmount = useMemo(() => {
     if (salePrice !== null && finalKg > 0) return salePrice * finalKg;
     return null;
@@ -106,26 +95,22 @@ export function useTransportationCalculations({
 
   const profit = useMemo(() => {
     if (isAviaService) {
-      if (saleAmount !== null && purchaseAmount !== null) {
-        return saleAmount - purchaseAmount;
-      }
-      return null;
+      // Для АвиаСервис прибыль = цена услуги × кг (чисто стоимость доставки)
+      return saleAmount;
     } else {
       if (saleAmount !== null && deliveryCost !== null) {
         return saleAmount - deliveryCost;
       }
       return null;
     }
-  }, [isAviaService, saleAmount, purchaseAmount, deliveryCost]);
+  }, [isAviaService, saleAmount, deliveryCost]);
 
   return {
     calculatedKg,
     finalKg,
-    purchasePrice,
     salePrice,
     deliveryCost,
     deliveryTariff,
-    purchaseAmount,
     saleAmount,
     profit,
   };

@@ -181,7 +181,11 @@ export function PriceFormFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Роль контрагента</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value}
+                disabled={counterpartyType === COUNTERPARTY_TYPE.TRANSPORTATION}
+              >
                 <FormControl>
                   <SelectTrigger data-testid="select-counterparty-role">
                     <SelectValue />
@@ -273,7 +277,11 @@ export function PriceFormFields({
           render={({ field }) => (
             <FormItem className="col-span-1 min-w-0">
               <FormLabel>Тип продукта</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value}
+                disabled={counterpartyType === COUNTERPARTY_TYPE.TRANSPORTATION}
+              >
                 <FormControl>
                   <SelectTrigger data-testid="select-product-type">
                     <SelectValue />
