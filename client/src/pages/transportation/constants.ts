@@ -5,8 +5,8 @@ export const TRANSPORTATION_QUERY_KEY = "/api/transportation";
 export const TRANSPORTATION_TABLE_COLUMNS = [
   { id: "date", label: "Дата" },
   { id: "buyer", label: "Заказчик" },
-  { id: "basis", label: "Базис погр." },
-  { id: "customerBasis", label: "Базис дос." },
+  { id: "basis", label: "Базис погрузки" },
+  { id: "customerBasis", label: "Базис доставки" },
   { id: "carrier", label: "Перевозч." },
   { id: "deliveryLocation", label: "Пункт дос." },
   { id: "quantityKg", label: "КГ" },
