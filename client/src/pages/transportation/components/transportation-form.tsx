@@ -360,14 +360,13 @@ export const TransportationForm = forwardRef<
   }, [editData]);
 
   const buildPayload = (data: TransportationFormSchema, isDraft: boolean) => {
-    const { salePriceId, salePriceIndex } =
-      extractPriceIdsForSubmit(
-        "",
-        selectedSalePriceId,
-        [],
-        salePrices,
-        false,
-      );
+    const { salePriceId, salePriceIndex } = extractPriceIdsForSubmit(
+      "",
+      selectedSalePriceId,
+      [],
+      salePrices,
+      false,
+    );
     return {
       supplierId: data.supplierId || null,
       buyerId: data.buyerId || null,
@@ -496,7 +495,12 @@ export const TransportationForm = forwardRef<
           onSubmit={form.handleSubmit(
             (data) => onSubmit(data, false),
             (errors) => {
-              showError(getReadableZodError(errors, "Заполните все обязательные поля перед созданием сделки."));
+              showError(
+                getReadableZodError(
+                  errors,
+                  "Заполните все обязательные поля перед созданием сделки.",
+                ),
+              );
             },
           )}
           className="space-y-6"
@@ -623,7 +627,10 @@ export const TransportationForm = forwardRef<
                               render: (
                                 <div className="flex items-center gap-2">
                                   {b.name}
-                                  <BaseTypeBadge type={b.baseType} short={true} />
+                                  <BaseTypeBadge
+                                    type={b.baseType}
+                                    short={true}
+                                  />
                                 </div>
                               ),
                             }))}
@@ -666,7 +673,10 @@ export const TransportationForm = forwardRef<
                               render: (
                                 <div className="flex items-center gap-2">
                                   {b.name}
-                                  <BaseTypeBadge type={b.baseType} short={true} />
+                                  <BaseTypeBadge
+                                    type={b.baseType}
+                                    short={true}
+                                  />
                                 </div>
                               ),
                             }))}
@@ -945,53 +955,55 @@ export const TransportationForm = forwardRef<
               <CardTitle className="text-lg">Ценообразование</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-1">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-0">
                   <Label>Цена услуги</Label>
-                  {hasPermission("prices", "create") && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => setAddSalePriceOpen(true)}
-                      data-testid="button-add-sale-price"
+                  <div className="flex gap-1 items-center">
+                    <Select
+                      value={selectedSalePriceId}
+                      onValueChange={setSelectedSalePriceId}
                     >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  )}
+                      <SelectTrigger data-testid="select-sale-price">
+                        <SelectValue placeholder="Выберите цену услуги" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {salePrices
+                          .flatMap((p) => formatPriceOption(p))
+                          .map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    {hasPermission("prices", "create") && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        onClick={() => setAddSalePriceOpen(true)}
+                        data-testid="button-add-sale-price"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <Select
-                  value={selectedSalePriceId}
-                  onValueChange={setSelectedSalePriceId}
-                >
-                  <SelectTrigger data-testid="select-sale-price">
-                    <SelectValue placeholder="Выберите цену услуги" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {salePrices
-                      .flatMap((p) => formatPriceOption(p))
-                      .map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
-              <div
-                className={
-                  profit !== null
-                    ? profit >= 0
-                      ? "text-green-600"
-                      : "text-red-600"
-                    : ""
-                }
-              >
-                <CalculatedField
-                  label="Прибыль"
-                  value={profit !== null ? formatCurrency(profit) : "—"}
-                />
+                <div
+                  className={
+                    profit !== null
+                      ? profit >= 0
+                        ? "text-green-600"
+                        : "text-red-600"
+                      : ""
+                  }
+                >
+                  <CalculatedField
+                    label="Прибыль"
+                    value={profit !== null ? formatCurrency(profit) : "—"}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1040,7 +1052,12 @@ export const TransportationForm = forwardRef<
                   form.handleSubmit(
                     (data) => onSubmit(data, true),
                     (errors) => {
-                      showError(getReadableZodError(errors, "Для сохранения черновика необходимо выбрать заказчика."));
+                      showError(
+                        getReadableZodError(
+                          errors,
+                          "Для сохранения черновика необходимо выбрать заказчика.",
+                        ),
+                      );
                     },
                   )();
                 }}
