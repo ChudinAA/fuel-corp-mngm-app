@@ -561,6 +561,11 @@ export class RefuelingAbroadStorage {
             .where(
               eq(storageCardTransactions.id, currentRefueling.transactionId),
             );
+        } else {
+          // Количество не изменилось, но пересчитываем needsTopUp по актуальному балансу карты.
+          // currentBalance уже содержит уже списанную сумму — если баланс >= 0, флаг сбрасываем.
+          const currentBalance = parseFloat(storageCard.currentBalance || "0");
+          data.needsTopUp = currentBalance < 0;
         }
       }
 
