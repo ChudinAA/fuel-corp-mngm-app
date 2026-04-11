@@ -86,6 +86,10 @@ export const ENTITY_TYPES = {
   EQUIPMENT: 'equipment',
   EQUIPMENT_MOVEMENT: 'equipment_movement',
   TRANSPORTATION: 'transportation',
+  RAILWAY_STATION: 'railway_stations',
+  RAILWAY_TARIFF: 'railway_tariffs',
+  EXCHANGE_DEAL: 'exchange_deals',
+  EXCHANGE_ADVANCE: 'exchange_advance_cards',
 } as const;
 
 export type EntityType = typeof ENTITY_TYPES[keyof typeof ENTITY_TYPES];

@@ -29,6 +29,8 @@ import OptPage from "@/pages/opt-page";
 import RefuelingPage from "@/pages/refueling-page";
 import EquipmentsPage from "@/pages/warehouses-equipment/equipment-page";
 import ExchangePage from "@/pages/exchange-page";
+import ExchangeDealsPage from "@/pages/exchange-deals-page";
+import ExchangeAdvancesPage from "@/pages/exchange-advances-page";
 import MovementPage from "@/pages/movement-page";
 import WarehousesPage from "@/pages/warehouses-page";
 import PricesPage from "@/pages/prices-page";
@@ -192,6 +194,18 @@ function Router() {
       <Route path="/exchange">
         <AppLayout>
           <ProtectedRoute component={InDevelopmentPage} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/exchange-deals">
+        <AppLayout>
+          <ProtectedRoute component={ExchangeDealsPage} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/exchange-advances">
+        <AppLayout>
+          <ProtectedRoute component={ExchangeAdvancesPage} />
         </AppLayout>
       </Route>
 

@@ -32,6 +32,9 @@ import { EquipmentStorage } from "../modules/warehouses-equipment/storage/equipm
 import { TransportationStorage } from "../modules/transportation/storage/transportation-storage";
 import { EquipmentMovementStorage } from "../modules/equipment-movement/storage/equipment-movement-storage";
 import { AviationStorage } from "../modules/aviation/storage/aviation-storage";
+import { RailwayStorage } from "../modules/railway/storage/railway-storage";
+import { ExchangeDealsStorage } from "../modules/exchange-deals/storage/exchange-deals-storage";
+import { ExchangeAdvancesStorage } from "../modules/exchange-advances/storage/exchange-advances-storage";
 
 export * from "./types";
 
@@ -69,6 +72,9 @@ export class Storage {
   public transportation: TransportationStorage;
   public settings: SettingsStorage;
   public aviation: AviationStorage;
+  public railway: RailwayStorage;
+  public exchangeDeals: ExchangeDealsStorage;
+  public exchangeAdvances: ExchangeAdvancesStorage;
 
   constructor() {
     this.users = new UserStorage();
@@ -104,6 +110,9 @@ export class Storage {
     this.transportation = new TransportationStorage();
     this.settings = new SettingsStorage();
     this.aviation = new AviationStorage();
+    this.railway = new RailwayStorage();
+    this.exchangeDeals = new ExchangeDealsStorage();
+    this.exchangeAdvances = new ExchangeAdvancesStorage();
   }
 }
 

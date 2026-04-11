@@ -384,6 +384,10 @@ export class RollbackService {
       equipment: () => storage.equipment.getEquipment(entityId),
       equipment_movement: () => (storage as any).equipmentMovement.getMovement(entityId),
       transportation: () => (storage as any).transportation.getTransportation(entityId),
+      railway_stations: () => (storage as any).railway.getStation(entityId),
+      railway_tariffs: () => (storage as any).railway.getTariff(entityId),
+      exchange_deals: () => (storage as any).exchangeDeals.getDeal(entityId),
+      exchange_advance_cards: () => (storage as any).exchangeAdvances.getCard(entityId),
     };
 
     const getter = storageMap[entityType];
@@ -428,6 +432,10 @@ export class RollbackService {
       equipment: (id, data, userId) => storage.equipment.updateEquipment(id, { ...data, updatedById: userId }),
       equipment_movement: (id, data, userId) => (storage as any).equipmentMovement.updateMovement(id, { ...data, updatedById: userId }),
       transportation: (id, data, userId) => (storage as any).transportation.updateTransportation(id, { ...data, updatedById: userId }),
+      railway_stations: (id, data, userId) => (storage as any).railway.updateStation(id, data, userId),
+      railway_tariffs: (id, data, userId) => (storage as any).railway.updateTariff(id, data, userId),
+      exchange_deals: (id, data, userId) => (storage as any).exchangeDeals.updateDeal(id, data, userId),
+      exchange_advance_cards: (id, data, userId) => (storage as any).exchangeAdvances.updateCard(id, data, userId),
     };
 
     const updater = storageMap[entityType];
@@ -472,6 +480,10 @@ export class RollbackService {
       equipment: (id, userId) => storage.equipment.deleteEquipment(id, userId!),
       equipment_movement: (id, userId) => (storage as any).equipmentMovement.deleteMovement(id, userId),
       transportation: (id, userId) => (storage as any).transportation.deleteTransportation(id, userId),
+      railway_stations: (id, userId) => (storage as any).railway.deleteStation(id, userId),
+      railway_tariffs: (id, userId) => (storage as any).railway.deleteTariff(id, userId),
+      exchange_deals: (id, userId) => (storage as any).exchangeDeals.deleteDeal(id, userId),
+      exchange_advance_cards: (id, userId) => (storage as any).exchangeAdvances.deleteCard(id, userId),
     };
 
     const deleter = storageMap[entityType];
@@ -518,6 +530,10 @@ export class RollbackService {
       equipment: (id, oldData, userId) => storage.equipment.restoreEquipment(id, userId!),
       equipment_movement: (id, oldData, userId) => (storage as any).equipmentMovement.restoreMovement(id, oldData, userId),
       transportation: (id, oldData, userId) => (storage as any).transportation.restoreTransportation(id, oldData, userId),
+      railway_stations: (id, oldData, userId) => (storage as any).railway.restoreStation(id, oldData),
+      railway_tariffs: (id, oldData, userId) => (storage as any).railway.restoreTariff(id, oldData),
+      exchange_deals: (id, oldData, userId) => (storage as any).exchangeDeals.restoreDeal(id, oldData),
+      exchange_advance_cards: (id, oldData, userId) => (storage as any).exchangeAdvances.updateCard(id, { ...oldData, deletedAt: null }, userId),
     };
 
     const restorer = storageMap[entityType];
