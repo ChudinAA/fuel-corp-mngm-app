@@ -633,20 +633,29 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
           <Button variant="outline" onClick={onClose}>
             Отмена
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => handleSubmit(true)}
-            disabled={mutation.isPending}
-            data-testid="button-save-draft"
-          >
-            Сохранить как черновик
-          </Button>
+
+          {/* Show "Save as draft" only when creating new, copying, or editing a draft */}
+          {(!deal || isCopy || deal?.isDraft) && (
+            <Button
+              variant="secondary"
+              onClick={() => handleSubmit(true)}
+              disabled={mutation.isPending}
+              data-testid="button-save-draft"
+            >
+              Сохранить черновик
+            </Button>
+          )}
+
           <Button
             onClick={() => handleSubmit(false)}
             disabled={mutation.isPending}
             data-testid="button-save-deal"
           >
-            {mutation.isPending ? "Сохранение..." : (deal && !isCopy ? "Сохранить" : "Создать")}
+            {mutation.isPending
+              ? "Сохранение..."
+              : deal && !isCopy && !deal.isDraft
+                ? "Сохранить изменения"
+                : "Создать сделку"}
           </Button>
         </DialogFooter>
       </DialogContent>

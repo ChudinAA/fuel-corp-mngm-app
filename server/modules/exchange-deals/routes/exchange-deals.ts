@@ -99,9 +99,10 @@ export function registerExchangeDealsRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
+        const validatedData = insertExchangeDealSchema.partial().parse(req.body);
         const deal = await storage.exchangeDeals.updateDeal(
           req.params.id,
-          req.body,
+          validatedData,
           req.session.userId,
         );
         if (!deal) return res.status(404).json({ message: "Сделка не найдена" });
@@ -116,6 +117,7 @@ export function registerExchangeDealsRoutes(app: Express) {
 
         res.json(deal);
       } catch (error: any) {
+        console.error("Error updating exchange deal:", error);
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
         }
