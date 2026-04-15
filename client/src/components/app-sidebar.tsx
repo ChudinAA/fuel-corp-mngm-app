@@ -159,6 +159,12 @@ const getExchangeMenuItems = (hasPermission: (p: string) => boolean) =>
       icon: WalletCards,
       permission: "exchange-advances.view",
     },
+    {
+      title: "Справочники Биржи",
+      url: "/exchange-directories",
+      icon: BookOpen,
+      permission: "directories.view",
+    },
   ].filter((item) => !item.permission || hasPermission(item.permission));
 
 const getDataMenuItems = (hasPermission: (p: string) => boolean) =>

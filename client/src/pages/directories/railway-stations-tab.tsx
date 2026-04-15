@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -29,11 +29,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Pencil, Trash2, History } from "lucide-react";
+import { Search, Plus, Pencil, Trash2 } from "lucide-react";
 import { EntityActionsMenu, type EntityAction } from "@/components/entity-actions-menu";
 import { useAuth } from "@/hooks/use-auth";
-import { AuditPanel } from "@/components/audit-panel";
-import { ENTITY_TYPES } from "@shared/schema";
 
 interface RailwayStation {
   id: string;
@@ -63,6 +61,15 @@ function StationDialog({
     name: station?.name || "",
     code: station?.code || "",
   });
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        name: station?.name || "",
+        code: station?.code || "",
+      });
+    }
+  }, [open, station]);
 
   const mutation = useMutation({
     mutationFn: async (data: StationFormData) => {
@@ -139,7 +146,6 @@ export function RailwayStationsTab() {
   const [editingStation, setEditingStation] = useState<RailwayStation | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
-  const [auditEntityId, setAuditEntityId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const { data: stations = [], isLoading } = useQuery<RailwayStation[]>({
@@ -240,12 +246,6 @@ export function RailwayStationsTab() {
                             permission: { module: "directories", action: "delete" },
                             separatorAfter: true,
                           },
-                          {
-                            id: "history",
-                            label: "История изменений",
-                            icon: History,
-                            onClick: () => setAuditEntityId(station.id),
-                          },
                         ] satisfies EntityAction[]}
                         audit={{ entityType: "railway_stations", entityId: station.id, entityName: station.name }}
                       />
@@ -273,13 +273,6 @@ export function RailwayStationsTab() {
         description={`Вы уверены, что хотите удалить станцию "${toDelete?.name}"?`}
       />
 
-      <AuditPanel
-        entityType="railway_stations"
-        entityId={auditEntityId || ""}
-        entityName="ЖД Станция"
-        open={!!auditEntityId}
-        onOpenChange={(o) => { if (!o) setAuditEntityId(null); }}
-      />
     </Card>
   );
 }

@@ -21,21 +21,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Wallet, Plus, TrendingUp, TrendingDown, History } from "lucide-react";
-import { AuditPanel } from "@/components/audit-panel";
+import { Wallet, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 function formatMoney(val: string | number | null | undefined) {
   const num = parseFloat(String(val || "0"));
@@ -55,18 +45,35 @@ function formatDate(val: string | null | undefined) {
   }
 }
 
+function getTxTypeLabel(tx: any): string {
+  if (tx.transactionType === "income") return "Пополнение";
+  if (tx.transactionType === "expense" && tx.relatedDealId) return "Списание по сделке";
+  return "Списание вручную";
+}
+
 interface TransactionDialogProps {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   cardId: string;
   sellerName: string;
   type: "deposit" | "withdraw";
+  currentBalance: number;
 }
 
-function TransactionDialog({ open, onOpenChange, cardId, sellerName, type }: TransactionDialogProps) {
+function TransactionDialog({
+  open,
+  onOpenChange,
+  cardId,
+  sellerName,
+  type,
+  currentBalance,
+}: TransactionDialogProps) {
   const { toast } = useToast();
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
+
+  const amountNum = parseFloat(amount || "0");
+  const isOverdraft = type === "withdraw" && amountNum > 0 && amountNum > currentBalance;
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -88,8 +95,14 @@ function TransactionDialog({ open, onOpenChange, cardId, sellerName, type }: Tra
     },
   });
 
+  const handleClose = () => {
+    setAmount("");
+    setDescription("");
+    onOpenChange(false);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>
@@ -98,17 +111,33 @@ function TransactionDialog({ open, onOpenChange, cardId, sellerName, type }: Tra
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">Продавец: {sellerName}</p>
+          {type === "withdraw" && (
+            <div className="flex items-center justify-between py-2 px-3 rounded-md bg-muted">
+              <span className="text-sm text-muted-foreground">Остаток на карте:</span>
+              <span className="text-sm font-semibold">{formatMoney(currentBalance)}</span>
+            </div>
+          )}
           <div className="space-y-1">
             <label className="text-sm font-medium">Сумма, руб</label>
             <Input
               type="number"
               step="0.01"
+              min="0"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
               data-testid="input-transaction-amount"
+              className={isOverdraft ? "border-destructive" : ""}
             />
           </div>
+          {isOverdraft && (
+            <div className="flex items-center gap-2 text-destructive text-sm">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              <span>
+                Сумма превышает остаток ({formatMoney(currentBalance)}). Операция недоступна.
+              </span>
+            </div>
+          )}
           <div className="space-y-1">
             <label className="text-sm font-medium">Описание</label>
             <Input
@@ -120,10 +149,12 @@ function TransactionDialog({ open, onOpenChange, cardId, sellerName, type }: Tra
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
+          <Button variant="outline" onClick={handleClose}>
+            Отмена
+          </Button>
           <Button
             onClick={() => mutation.mutate()}
-            disabled={!amount || mutation.isPending}
+            disabled={!amount || mutation.isPending || isOverdraft}
             data-testid="button-confirm-transaction"
           >
             {mutation.isPending ? "Сохранение..." : "Подтвердить"}
@@ -140,19 +171,19 @@ interface ExchangeAdvanceCardProps {
 
 export function ExchangeAdvanceCard({ card }: ExchangeAdvanceCardProps) {
   const { hasPermission } = useAuth();
-  const { toast } = useToast();
   const [depositOpen, setDepositOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [auditOpen, setAuditOpen] = useState(false);
 
   const balance = parseFloat(card.currentBalance || "0");
   const isNegative = balance < 0;
 
-  const { data: transactions = [] } = useQuery<any[]>({
+  const { data: transactions = [], isLoading: txLoading } = useQuery<any[]>({
     queryKey: ["/api/exchange-advances", card.id, "transactions"],
     queryFn: async () => {
-      const res = await fetch(`/api/exchange-advances/${card.id}/transactions`, { credentials: "include" });
+      const res = await fetch(`/api/exchange-advances/${card.id}/transactions`, {
+        credentials: "include",
+      });
       if (!res.ok) return [];
       return res.json();
     },
@@ -161,7 +192,11 @@ export function ExchangeAdvanceCard({ card }: ExchangeAdvanceCardProps) {
 
   return (
     <>
-      <Card data-testid={`card-advance-${card.id}`}>
+      <Card
+        data-testid={`card-advance-${card.id}`}
+        className="hover-elevate cursor-pointer"
+        onClick={() => setHistoryOpen(true)}
+      >
         <CardHeader className="pb-2 flex flex-row items-start justify-between gap-4 space-y-0 flex-wrap">
           <div>
             <CardTitle className="text-base">{card.sellerName || "Продавец"}</CardTitle>
@@ -175,14 +210,17 @@ export function ExchangeAdvanceCard({ card }: ExchangeAdvanceCardProps) {
           <div className="flex items-center gap-2">
             <Wallet className="h-5 w-5 text-muted-foreground" />
             <span
-              className={isNegative ? "text-destructive font-semibold text-lg" : "font-semibold text-lg"}
+              className={cn(
+                "font-semibold text-lg",
+                isNegative && "text-destructive",
+              )}
               data-testid={`balance-${card.id}`}
             >
               {formatMoney(balance)}
             </span>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
             {hasPermission("exchange-advances", "edit") && (
               <>
                 <Button
@@ -205,15 +243,6 @@ export function ExchangeAdvanceCard({ card }: ExchangeAdvanceCardProps) {
                 </Button>
               </>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setHistoryOpen(true)}
-              data-testid={`button-history-${card.id}`}
-            >
-              <History className="h-4 w-4 mr-1" />
-              История
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -224,6 +253,7 @@ export function ExchangeAdvanceCard({ card }: ExchangeAdvanceCardProps) {
         cardId={card.id}
         sellerName={card.sellerName || ""}
         type="deposit"
+        currentBalance={balance}
       />
       <TransactionDialog
         open={withdrawOpen}
@@ -231,65 +261,75 @@ export function ExchangeAdvanceCard({ card }: ExchangeAdvanceCardProps) {
         cardId={card.id}
         sellerName={card.sellerName || ""}
         type="withdraw"
+        currentBalance={balance}
       />
 
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>История транзакций — {card.sellerName}</DialogTitle>
           </DialogHeader>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Дата</TableHead>
-                <TableHead>Тип</TableHead>
-                <TableHead className="text-right">Сумма</TableHead>
-                <TableHead>Описание</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {transactions.length === 0 ? (
+          <div className="flex items-center justify-between py-2 px-3 rounded-md bg-muted mb-2 shrink-0">
+            <span className="text-sm text-muted-foreground">Текущий остаток:</span>
+            <span className={cn("text-sm font-semibold", isNegative && "text-destructive")}>
+              {formatMoney(balance)}
+            </span>
+          </div>
+          <div className="overflow-y-auto flex-1">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">Нет транзакций</TableCell>
+                  <TableHead className="text-xs">Дата</TableHead>
+                  <TableHead className="text-xs">Тип</TableHead>
+                  <TableHead className="text-right text-xs">Сумма</TableHead>
+                  <TableHead className="text-xs">Описание</TableHead>
                 </TableRow>
-              ) : (
-                transactions.map((tx: any) => (
-                  <TableRow key={tx.id}>
-                    <TableCell className="text-sm">{formatDate(tx.createdAt)}</TableCell>
-                    <TableCell>
-                      <Badge variant={tx.type === "deposit" ? "secondary" : "outline"}>
-                        {tx.type === "deposit" ? "Пополнение" : "Списание"}
-                      </Badge>
+              </TableHeader>
+              <TableBody>
+                {txLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground text-sm">
+                      Загрузка...
                     </TableCell>
-                    <TableCell className={cn("text-right", tx.type === "withdraw" && "text-destructive")}>
-                      {tx.type === "withdraw" ? "-" : ""}{formatMoney(tx.amount)}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{tx.description || "—"}</TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-          <div className="pt-2 flex justify-end">
-            <Button variant="outline" size="sm" onClick={() => { setHistoryOpen(false); setAuditOpen(true); }}>
-              <History className="h-4 w-4 mr-1" />
-              История аудита
-            </Button>
+                ) : transactions.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground text-sm">
+                      Нет транзакций
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  transactions.map((tx: any) => {
+                    const isIncome = tx.transactionType === "income";
+                    return (
+                      <TableRow key={tx.id}>
+                        <TableCell className="text-sm">{formatDate(tx.createdAt)}</TableCell>
+                        <TableCell>
+                          <Badge variant={isIncome ? "secondary" : "outline"}>
+                            {getTxTypeLabel(tx)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            "text-right text-sm",
+                            !isIncome && "text-destructive",
+                          )}
+                        >
+                          {!isIncome ? "-" : "+"}
+                          {formatMoney(tx.amount)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {tx.description || "—"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
           </div>
         </DialogContent>
       </Dialog>
-
-      <AuditPanel
-        open={auditOpen}
-        onOpenChange={setAuditOpen}
-        entityType="exchange_advances"
-        entityId={card.id}
-        entityName={`Аванс продавца ${card.sellerName}`}
-      />
     </>
   );
-}
-
-function cn(...args: (string | boolean | undefined)[]) {
-  return args.filter(Boolean).join(" ");
 }

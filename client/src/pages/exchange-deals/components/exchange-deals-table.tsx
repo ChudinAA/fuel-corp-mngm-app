@@ -1,7 +1,4 @@
-import { useState, useRef, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -17,26 +14,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Plus, Loader2, Pencil, Copy, Trash2, History } from "lucide-react";
+import { Search, Plus, Loader2, Pencil, Copy, Trash2 } from "lucide-react";
 import { EntityActionsMenu, type EntityAction } from "@/components/entity-actions-menu";
-import { AuditPanel } from "@/components/audit-panel";
 import { TableColumnFilter } from "@/components/ui/table-column-filter";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-
-const PAGE_SIZE = 20;
-
-function formatMoney(val: string | number | null | undefined) {
-  if (!val) return "—";
-  return new Intl.NumberFormat("ru-RU", {
-    style: "currency",
-    currency: "RUB",
-    maximumFractionDigits: 2,
-  }).format(Number(val));
-}
+import { useExchangeDealsTable } from "../hooks/use-exchange-deals-table";
 
 function formatNum(val: string | number | null | undefined, decimals = 3) {
-  if (!val) return "—";
+  if (!val || val === "0") return "—";
   return Number(val).toFixed(decimals);
 }
 
@@ -49,6 +35,11 @@ function formatDate(val: string | null | undefined) {
   }
 }
 
+function formatCompact(val: number) {
+  if (!val || val === 0) return "—";
+  return val.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+}
+
 interface ExchangeDealsTableProps {
   onEdit: (deal: any) => void;
   onCopy: (deal: any) => void;
@@ -56,93 +47,111 @@ interface ExchangeDealsTableProps {
   onDelete?: () => void;
 }
 
+interface DealActionsProps {
+  deal: any;
+  onEdit: () => void;
+  onCopy: () => void;
+  onDelete: () => void;
+}
+
+function DealActions({ deal, onEdit, onCopy, onDelete }: DealActionsProps) {
+  const actions: EntityAction[] = [
+    {
+      id: "copy",
+      label: "Создать копию",
+      icon: Copy,
+      onClick: onCopy,
+      permission: { module: "exchange-deals", action: "create" },
+    },
+    {
+      id: "edit",
+      label: "Редактировать",
+      icon: Pencil,
+      onClick: onEdit,
+      permission: { module: "exchange-deals", action: "edit" },
+    },
+    {
+      id: "delete",
+      label: "Удалить",
+      icon: Trash2,
+      onClick: onDelete,
+      variant: "destructive" as const,
+      permission: { module: "exchange-deals", action: "delete" },
+      separatorAfter: true,
+    },
+  ];
+
+  return (
+    <EntityActionsMenu
+      actions={actions}
+      audit={{
+        entityType: "exchange_deals",
+        entityId: deal.id,
+        entityName: deal.dealNumber || `Сделка ${formatDate(deal.dealDate)}`,
+      }}
+    />
+  );
+}
+
 export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: ExchangeDealsTableProps) {
   const { hasPermission } = useAuth();
-  const { toast } = useToast();
-  const [search, setSearch] = useState("");
-  const [offset, setOffset] = useState(0);
-  const [allDeals, setAllDeals] = useState<any[]>([]);
-  const [hasMore, setHasMore] = useState(true);
-  const [filters, setFilters] = useState<Record<string, string[]>>({});
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
-  const [auditDeal, setAuditDeal] = useState<any | null>(null);
-  const isFirstLoad = useRef(true);
+  const {
+    search,
+    setSearch,
+    dealsData,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    columnFilters,
+    setColumnFilters,
+    handleDelete,
+  } = useExchangeDealsTable();
 
-  const queryParams = new URLSearchParams({
-    offset: String(offset),
-    pageSize: String(PAGE_SIZE),
-    ...(search ? { search } : {}),
-  });
-  Object.entries(filters).forEach(([k, v]) => {
-    if (v.length) queryParams.set(`filter_${k}`, v.join(","));
-  });
+  const deals = useMemo(
+    () => dealsData?.pages.flatMap((page: any) => page.data) || [],
+    [dealsData],
+  );
 
-  const { data, isLoading, isFetching } = useQuery<{ data: any[]; total: number }>({
-    queryKey: ["/api/exchange-deals", offset, search, filters],
-    queryFn: async () => {
-      const res = await fetch(`/api/exchange-deals?${queryParams}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Ошибка загрузки");
-      return res.json();
-    },
-  });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [dealToDelete, setDealToDelete] = useState<any>(null);
+  const [searchInput, setSearchInput] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const cursorPositionRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!data) return;
-    if (offset === 0) {
-      setAllDeals(data.data);
-    } else {
-      setAllDeals((prev) => [...prev, ...data.data]);
+    const timer = setTimeout(() => setSearch(searchInput), 500);
+    return () => clearTimeout(timer);
+  }, [searchInput, setSearch]);
+
+  useEffect(() => {
+    if (searchInputRef.current && searchInput) {
+      const input = searchInputRef.current;
+      input.focus();
+      input.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current);
     }
-    setHasMore(data.data.length === PAGE_SIZE);
-  }, [data, offset]);
+  }, [deals]);
 
-  useEffect(() => {
-    setOffset(0);
-    setAllDeals([]);
-  }, [search, filters]);
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => apiRequest("DELETE", `/api/exchange-deals/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/exchange-deals"] });
-      toast({ title: "Сделка удалена" });
-      setDeleteOpen(false);
-      onDelete?.();
-    },
-    onError: (err: any) => {
-      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
-    },
-  });
-
-  const copyMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await apiRequest("POST", `/api/exchange-deals/${id}/copy`);
-      return res;
-    },
-    onSuccess: (copy: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/exchange-deals"] });
-      toast({ title: "Сделка скопирована", description: "Черновик создан" });
-      onEdit(copy);
-    },
-    onError: (err: any) => {
-      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
-    },
-  });
-
-  const handleLoadMore = () => {
-    setOffset((prev) => prev + PAGE_SIZE);
+  const handleFilterUpdate = (key: string, values: string[]) => {
+    setColumnFilters((prev) => ({ ...prev, [key]: values }));
   };
 
-  // Get unique filter values from loaded data
-  const getFilterValues = (field: string) => {
-    const vals = allDeals.map((d) => d[field]).filter(Boolean);
+  const getUniqueOptions = (field: string) => {
+    const vals = deals
+      .map((d: any) => (field === "dealDate" ? formatDate(d.dealDate) : d[field]))
+      .filter(Boolean);
     return Array.from(new Set(vals)).map((v) => ({ value: String(v), label: String(v) }));
   };
 
-  const setFilter = (key: string, values: string[]) => {
-    setFilters((prev) => ({ ...prev, [key]: values }));
-  };
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -150,9 +159,13 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
+            ref={searchInputRef}
             placeholder="Поиск по номеру, контрагенту..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => {
+              cursorPositionRef.current = e.target.selectionStart || 0;
+              setSearchInput(e.target.value);
+            }}
             className="pl-9"
             data-testid="input-search-deals"
           />
@@ -165,157 +178,205 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-md border">
+      <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-28">
-                <TableColumnFilter
-                  title="№ сделки"
-                  options={getFilterValues("dealNumber")}
-                  selectedValues={filters.dealNumber || []}
-                  onUpdate={(v) => setFilter("dealNumber", v)}
-                />
+              <TableHead className="text-xs font-semibold p-1 w-[90px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span>Дата</span>
+                  <TableColumnFilter
+                    title="Дата"
+                    options={getUniqueOptions("dealDate")}
+                    selectedValues={columnFilters["date"] || []}
+                    onUpdate={(v) => handleFilterUpdate("date", v)}
+                    dataTestId="filter-date"
+                  />
+                </div>
               </TableHead>
-              <TableHead className="min-w-28">
-                <TableColumnFilter
-                  title="Дата"
-                  options={getFilterValues("dealDate").map((v) => ({
-                    value: v.value,
-                    label: formatDate(v.value),
-                  }))}
-                  selectedValues={filters.date || []}
-                  onUpdate={(v) => setFilter("date", v)}
-                />
+              <TableHead className="text-xs font-semibold p-1 w-[90px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span>№ сделки</span>
+                  <TableColumnFilter
+                    title="Номер"
+                    options={getUniqueOptions("dealNumber")}
+                    selectedValues={columnFilters["dealNumber"] || []}
+                    onUpdate={(v) => handleFilterUpdate("dealNumber", v)}
+                    dataTestId="filter-deal-number"
+                  />
+                </div>
               </TableHead>
-              <TableHead className="min-w-32">Ст. отправления</TableHead>
-              <TableHead className="min-w-32">Ст. назначения</TableHead>
-              <TableHead className="min-w-36">
-                <TableColumnFilter
-                  title="Покупатель"
-                  options={getFilterValues("buyerName")}
-                  selectedValues={filters.buyer || []}
-                  onUpdate={(v) => setFilter("buyer", v)}
-                />
+              <TableHead className="text-xs font-semibold p-1 w-[100px]">Ст. отпр.</TableHead>
+              <TableHead className="text-xs font-semibold p-1 w-[100px]">Ст. назн.</TableHead>
+              <TableHead className="text-xs font-semibold p-1 w-[110px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="truncate max-w-[75px]">Покупатель</span>
+                  <TableColumnFilter
+                    title="Покупатель"
+                    options={getUniqueOptions("buyerName")}
+                    selectedValues={columnFilters["buyer"] || []}
+                    onUpdate={(v) => handleFilterUpdate("buyer", v)}
+                    dataTestId="filter-buyer"
+                  />
+                </div>
               </TableHead>
-              <TableHead className="min-w-28">Дата оплаты</TableHead>
-              <TableHead className="min-w-28 text-right">Цена/тн, руб</TableHead>
-              <TableHead className="min-w-24 text-right">Вес, тн</TableHead>
-              <TableHead className="min-w-24 text-right">Вес факт., тн</TableHead>
-              <TableHead className="min-w-32 text-right">Сумма закупки</TableHead>
-              <TableHead className="min-w-32">Тариф доставки</TableHead>
-              <TableHead className="min-w-32 text-right">Доставка всего</TableHead>
-              <TableHead className="min-w-32 text-right">Себест. с доставкой</TableHead>
-              <TableHead className="min-w-28 text-right">Себест./тн</TableHead>
-              <TableHead className="min-w-28">Дата выхода</TableHead>
-              <TableHead className="min-w-28">Дата поставки</TableHead>
-              <TableHead className="min-w-36">
-                <TableColumnFilter
-                  title="Продавец"
-                  options={getFilterValues("sellerName")}
-                  selectedValues={filters.seller || []}
-                  onUpdate={(v) => setFilter("seller", v)}
-                />
+              <TableHead className="text-xs font-semibold p-1 w-[90px]">Дата опл.</TableHead>
+              <TableHead className="text-right text-xs font-semibold p-1 w-[75px]">
+                Цена/тн
               </TableHead>
-              <TableHead className="min-w-40">Вагоны / Накладная</TableHead>
-              <TableHead className="min-w-28 text-right">Зарезерв. (5%)</TableHead>
-              <TableHead className="w-12"></TableHead>
+              <TableHead className="text-right text-xs font-semibold p-1 w-[60px]">Вес</TableHead>
+              <TableHead className="text-right text-xs font-semibold p-1 w-[65px]">Вес ф.</TableHead>
+              <TableHead className="text-right text-xs font-semibold p-1 w-[90px]">
+                Сумма пок.
+              </TableHead>
+              <TableHead className="text-xs font-semibold p-1 w-[95px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="truncate max-w-[60px]">Тариф</span>
+                  <TableColumnFilter
+                    title="Тариф"
+                    options={getUniqueOptions("tariffZoneName")}
+                    selectedValues={columnFilters["tariff"] || []}
+                    onUpdate={(v) => handleFilterUpdate("tariff", v)}
+                    dataTestId="filter-tariff"
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="text-right text-xs font-semibold p-1 w-[85px]">
+                Доставка
+              </TableHead>
+              <TableHead className="text-right text-xs font-semibold p-1 w-[85px]">Итого</TableHead>
+              <TableHead className="text-right text-xs font-semibold p-1 w-[80px]">
+                Цена ит.
+              </TableHead>
+              <TableHead className="text-xs font-semibold p-1 w-[90px]">Отпр. ваг.</TableHead>
+              <TableHead className="text-xs font-semibold p-1 w-[90px]">Пл. дост.</TableHead>
+              <TableHead className="text-xs font-semibold p-1 w-[105px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="truncate max-w-[70px]">Продавец</span>
+                  <TableColumnFilter
+                    title="Продавец"
+                    options={getUniqueOptions("sellerName")}
+                    selectedValues={columnFilters["seller"] || []}
+                    onUpdate={(v) => handleFilterUpdate("seller", v)}
+                    dataTestId="filter-seller"
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="text-xs font-semibold p-1 w-[90px]">Вагоны</TableHead>
+              <TableHead className="text-right text-xs font-semibold p-1 w-[80px]">
+                Резерв 5%
+              </TableHead>
+              <TableHead className="w-[32px] p-1 sticky right-0 bg-background z-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && offset === 0 ? (
-              [...Array(5)].map((_, i) => (
-                <TableRow key={i}>
-                  {[...Array(20)].map((_, j) => (
-                    <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : allDeals.length === 0 ? (
+            {deals.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={20} className="text-center text-muted-foreground py-8">
-                  Нет данных
+                <TableCell
+                  colSpan={20}
+                  className="text-center py-8 text-muted-foreground text-xs"
+                >
+                  Нет данных для отображения
                 </TableCell>
               </TableRow>
             ) : (
-              allDeals.map((deal) => {
-                const pricePerTon = parseFloat(deal.pricePerTon || "0");
-                const weightTon = parseFloat(deal.weightTon || "0");
-                const tariffPrice = parseFloat(deal.tariffPricePerTon || "0");
-                const purchaseAmount = weightTon * pricePerTon;
+              deals.map((deal: any) => {
+                const pricePerTon = Number(deal.pricePerTon || 0);
+                const weightTon = Number(deal.weightTon || 0);
+                const tariffPrice = Number(deal.tariffPricePerTon || 0);
+                const purchaseAmount = pricePerTon * weightTon;
                 const deliveryCostTotal = tariffPrice * weightTon;
                 const totalCost = purchaseAmount + deliveryCostTotal;
                 const costPerTon = weightTon > 0 ? totalCost / weightTon : 0;
-                const reserved = purchaseAmount * 0.05;
+                const reserved = totalCost * 0.05;
 
                 return (
                   <TableRow
                     key={deal.id}
                     data-testid={`row-deal-${deal.id}`}
-                    className={cn(deal.isDraft && "opacity-60 italic")}
+                    className={cn(
+                      deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200",
+                    )}
                   >
-                    <TableCell className="font-medium">
-                      {deal.dealNumber || "—"}
-                      {deal.isDraft && <Badge variant="outline" className="ml-1 text-xs">Черновик</Badge>}
+                    <TableCell className="text-[10px] py-1.5 px-1">
+                      <div className="flex flex-col gap-0.5">
+                        <span>{formatDate(deal.dealDate)}</span>
+                        {deal.isDraft && (
+                          <Badge
+                            variant="secondary"
+                            className="w-fit text-[9px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200"
+                          >
+                            Черновик
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell>{formatDate(deal.dealDate)}</TableCell>
-                    <TableCell>{deal.departureName || "—"}</TableCell>
-                    <TableCell>{deal.destinationName || "—"}</TableCell>
-                    <TableCell>{deal.buyerName || "—"}</TableCell>
-                    <TableCell>{formatDate(deal.paymentDate)}</TableCell>
-                    <TableCell className="text-right">{formatMoney(deal.pricePerTon)}</TableCell>
-                    <TableCell className="text-right">{formatNum(deal.weightTon)}</TableCell>
-                    <TableCell className="text-right">{formatNum(deal.actualWeightTon)}</TableCell>
-                    <TableCell className="text-right">{formatMoney(purchaseAmount)}</TableCell>
-                    <TableCell>{deal.tariffZoneName || "—"}</TableCell>
-                    <TableCell className="text-right">{formatMoney(deliveryCostTotal)}</TableCell>
-                    <TableCell className="text-right">{formatMoney(totalCost)}</TableCell>
-                    <TableCell className="text-right">{formatMoney(costPerTon)}</TableCell>
-                    <TableCell>{formatDate(deal.wagonDepartureDate)}</TableCell>
-                    <TableCell>{formatDate(deal.plannedDeliveryDate)}</TableCell>
-                    <TableCell>{deal.sellerName || "—"}</TableCell>
-                    <TableCell className="max-w-40 truncate">{deal.wagonNumbers || "—"}</TableCell>
-                    <TableCell className="text-right">{formatMoney(reserved)}</TableCell>
-                    <TableCell>
-                      <EntityActionsMenu
-                        actions={[
-                          {
-                            id: "edit",
-                            label: "Редактировать",
-                            icon: Pencil,
-                            onClick: () => onEdit(deal),
-                            permission: { module: "exchange-deals", action: "edit" },
-                          },
-                          {
-                            id: "copy",
-                            label: "Копировать",
-                            icon: Copy,
-                            onClick: () => copyMutation.mutate(deal.id),
-                            permission: { module: "exchange-deals", action: "create" },
-                          },
-                          {
-                            id: "delete",
-                            label: "Удалить",
-                            icon: Trash2,
-                            variant: "destructive",
-                            onClick: () => {
-                              setToDelete({ id: deal.id, name: deal.dealNumber || "Сделка" });
-                              setDeleteOpen(true);
-                            },
-                            permission: { module: "exchange-deals", action: "delete" },
-                            separatorAfter: true,
-                          },
-                          {
-                            id: "history",
-                            label: "История изменений",
-                            icon: History,
-                            onClick: () => setAuditDeal(deal),
-                          },
-                        ] satisfies EntityAction[]}
-                        audit={{
-                          entityType: "exchange_deals",
-                          entityId: deal.id,
-                          entityName: deal.dealNumber || "Сделка",
+                    <TableCell className="text-[10px] py-1.5 px-1 font-medium">
+                      {deal.dealNumber || "—"}
+                    </TableCell>
+                    <TableCell className="text-[10px] py-1.5 px-1">
+                      <span className="truncate max-w-[90px] block">{deal.departureName || "—"}</span>
+                    </TableCell>
+                    <TableCell className="text-[10px] py-1.5 px-1">
+                      <span className="truncate max-w-[90px] block">
+                        {deal.destinationName || "—"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-[10px] py-1.5 px-1">
+                      <span className="truncate max-w-[90px] block">{deal.buyerName || "—"}</span>
+                    </TableCell>
+                    <TableCell className="text-[10px] py-1.5 px-1">
+                      {formatDate(deal.paymentDate)}
+                    </TableCell>
+                    <TableCell className="text-right text-[10px] py-1.5 px-1">
+                      {pricePerTon > 0 ? pricePerTon.toLocaleString("ru-RU") : "—"}
+                    </TableCell>
+                    <TableCell className="text-right text-[10px] py-1.5 px-1">
+                      {formatNum(deal.weightTon)}
+                    </TableCell>
+                    <TableCell className="text-right text-[10px] py-1.5 px-1">
+                      {formatNum(deal.actualWeightTon)}
+                    </TableCell>
+                    <TableCell className="text-right text-[10px] py-1.5 px-1">
+                      {formatCompact(purchaseAmount)}
+                    </TableCell>
+                    <TableCell className="text-[10px] py-1.5 px-1">
+                      <span className="truncate max-w-[85px] block">
+                        {deal.tariffZoneName || "—"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right text-[10px] py-1.5 px-1">
+                      {formatCompact(deliveryCostTotal)}
+                    </TableCell>
+                    <TableCell className="text-right text-[10px] py-1.5 px-1">
+                      {formatCompact(totalCost)}
+                    </TableCell>
+                    <TableCell className="text-right text-[10px] py-1.5 px-1">
+                      {formatCompact(costPerTon)}
+                    </TableCell>
+                    <TableCell className="text-[10px] py-1.5 px-1">
+                      {formatDate(deal.wagonDepartureDate)}
+                    </TableCell>
+                    <TableCell className="text-[10px] py-1.5 px-1">
+                      {formatDate(deal.plannedDeliveryDate)}
+                    </TableCell>
+                    <TableCell className="text-[10px] py-1.5 px-1">
+                      <span className="truncate max-w-[90px] block">{deal.sellerName || "—"}</span>
+                    </TableCell>
+                    <TableCell className="text-[10px] py-1.5 px-1">
+                      <span className="truncate max-w-[80px] block">{deal.wagonNumbers || "—"}</span>
+                    </TableCell>
+                    <TableCell className="text-right text-[10px] py-1.5 px-1">
+                      {formatCompact(reserved)}
+                    </TableCell>
+                    <TableCell className="py-1.5 px-1 sticky right-0 bg-background z-10">
+                      <DealActions
+                        deal={deal}
+                        onEdit={() => onEdit(deal)}
+                        onCopy={() => onCopy(deal)}
+                        onDelete={() => {
+                          setDealToDelete(deal);
+                          setDeleteDialogOpen(true);
                         }}
                       />
                     </TableCell>
@@ -327,28 +388,39 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
         </Table>
       </div>
 
-      {hasMore && !isLoading && (
+      {hasNextPage && (
         <div className="flex justify-center pt-2">
-          <Button variant="outline" onClick={handleLoadMore} disabled={isFetching} data-testid="button-load-more">
-            {isFetching ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Загрузка...</> : "Загрузить ещё"}
+          <Button
+            variant="outline"
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            data-testid="button-load-more"
+          >
+            {isFetchingNextPage ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Загрузка...
+              </>
+            ) : (
+              "Загрузить ещё"
+            )}
           </Button>
         </div>
       )}
 
       <DeleteConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        onConfirm={() => { if (toDelete) deleteMutation.mutate(toDelete.id); }}
-        title="Удалить сделку"
-        description={`Удалить сделку "${toDelete?.name}"?`}
-      />
-
-      <AuditPanel
-        entityType="exchange_deals"
-        entityId={auditDeal?.id || ""}
-        entityName={auditDeal ? `Сделка ${auditDeal.dealNumber || auditDeal.id}` : ""}
-        open={!!auditDeal}
-        onOpenChange={(o) => { if (!o) setAuditDeal(null); }}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={() => {
+          if (dealToDelete) {
+            handleDelete(dealToDelete.id);
+            onDelete?.();
+          }
+          setDeleteDialogOpen(false);
+          setDealToDelete(null);
+        }}
+        title="Удалить сделку?"
+        description={`Удалить сделку "${dealToDelete?.dealNumber || formatDate(dealToDelete?.dealDate)}"? Это действие нельзя отменить.`}
       />
     </div>
   );

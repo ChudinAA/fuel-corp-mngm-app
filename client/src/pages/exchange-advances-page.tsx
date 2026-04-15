@@ -73,7 +73,7 @@ export default function ExchangeAdvancesPage() {
       <AuditPanel
         open={auditOpen}
         onOpenChange={setAuditOpen}
-        entityType="exchange_advances"
+        entityType="exchange_advance_cards"
         entityId=""
         entityName="Все авансы Биржи"
       />

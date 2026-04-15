@@ -1,13 +1,11 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Building2, Car, Container, User, DollarSign, Plane, Train, Banknote } from "lucide-react";
+import { MapPin, Building2, Car, Container, User, DollarSign, Plane } from "lucide-react";
 import { BasesTab } from "./directories/bases-tab";
 import { GenericLogisticsTab } from "./directories/generic-logistics-tab";
 import { ExchangeRatesTab } from "./directories/exchange-rates-tab";
 import { AviationTab } from "./directories/aviation-tab";
-import { RailwayStationsTab } from "./directories/railway-stations-tab";
-import { RailwayTariffsTab } from "./directories/railway-tariffs-tab";
 
 export default function DirectoriesPage() {
   const [activeTab, setActiveTab] = useState<string>("bases");
@@ -52,14 +50,6 @@ export default function DirectoriesPage() {
           <TabsTrigger value="aviation" className="flex items-center gap-2">
             <Plane className="h-4 w-4" />
             Авиация
-          </TabsTrigger>
-          <TabsTrigger value="railway_stations" className="flex items-center gap-2">
-            <Train className="h-4 w-4" />
-            ЖД Станции
-          </TabsTrigger>
-          <TabsTrigger value="railway_tariffs" className="flex items-center gap-2">
-            <Banknote className="h-4 w-4" />
-            Тарифы ЖД
           </TabsTrigger>
         </TabsList>
 
@@ -118,14 +108,6 @@ export default function DirectoriesPage() {
 
         <TabsContent value="aviation">
           <AviationTab />
-        </TabsContent>
-
-        <TabsContent value="railway_stations">
-          <RailwayStationsTab />
-        </TabsContent>
-
-        <TabsContent value="railway_tariffs">
-          <RailwayTariffsTab />
         </TabsContent>
       </Tabs>
     </div>

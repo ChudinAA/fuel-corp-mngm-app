@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -29,10 +29,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Pencil, Trash2, History } from "lucide-react";
+import { Search, Plus, Pencil, Trash2 } from "lucide-react";
 import { EntityActionsMenu, type EntityAction } from "@/components/entity-actions-menu";
 import { useAuth } from "@/hooks/use-auth";
-import { AuditPanel } from "@/components/audit-panel";
 
 interface RailwayTariff {
   id: string;
@@ -62,6 +61,15 @@ function TariffDialog({
     zoneName: tariff?.zoneName || "",
     pricePerTon: tariff?.pricePerTon || "",
   });
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        zoneName: tariff?.zoneName || "",
+        pricePerTon: tariff?.pricePerTon || "",
+      });
+    }
+  }, [open, tariff]);
 
   const mutation = useMutation({
     mutationFn: async (data: TariffFormData) => {
@@ -144,7 +152,6 @@ export function RailwayTariffsTab() {
   const [editingTariff, setEditingTariff] = useState<RailwayTariff | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
-  const [auditEntityId, setAuditEntityId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const { data: tariffs = [], isLoading } = useQuery<RailwayTariff[]>({
@@ -248,12 +255,6 @@ export function RailwayTariffsTab() {
                             permission: { module: "directories", action: "delete" },
                             separatorAfter: true,
                           },
-                          {
-                            id: "history",
-                            label: "История изменений",
-                            icon: History,
-                            onClick: () => setAuditEntityId(tariff.id),
-                          },
                         ] satisfies EntityAction[]}
                         audit={{ entityType: "railway_tariffs", entityId: tariff.id, entityName: tariff.zoneName }}
                       />
@@ -281,13 +282,6 @@ export function RailwayTariffsTab() {
         description={`Вы уверены, что хотите удалить тариф "${toDelete?.name}"?`}
       />
 
-      <AuditPanel
-        entityType="railway_tariffs"
-        entityId={auditEntityId || ""}
-        entityName="Тариф ЖД доставки"
-        open={!!auditEntityId}
-        onOpenChange={(o) => { if (!o) setAuditEntityId(null); }}
-      />
     </Card>
   );
 }
