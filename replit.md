@@ -89,8 +89,8 @@ The application follows a monorepo pattern with shared code:
 
 1. **OPT (Wholesale Trading)** - Records wholesale fuel sales with automatic price lookups and cost calculations for purchase, sale, and delivery
 2. **Aircraft Refueling** - Tracks all refueling operations with automated pricing for kerosene, refueling services, agent fees, PVKJ (anti-icing fluid), and storage
-3. **Exchange** - Manages exchange transactions with automatic warehouse updates
-4. **Movement** - Tracks fuel and PVKJ deliveries to storage facilities and internal transfers between warehouses
+3. **Exchange Deals (Биржа)** - Manages exchange transactions. When the buyer is set to "our warehouse" (buyerSupplierId), and the user confirms receipt (isReceivedAtWarehouse=true), a Movement record is automatically created with fromExchange=true and a warehouse transaction is created via WarehouseTransactionService. The deal stores a movementId reference. If the deal is later edited (quantity/price/date changes), the movement and warehouse transaction are updated with recalculation. Deleting the deal also soft-deletes the movement and reverts the warehouse transaction. The dialog has two separate fields for wagonNumbers and railwayInvoice.
+4. **Movement** - Tracks fuel and PVKJ deliveries to storage facilities and internal transfers between warehouses. Records with fromExchange=true are read-only (no edit/delete UI) and are managed via the Exchange Deals module.
 5. **Warehouses** - Maintains inventory with averaged cost basis when volumes merge, daily transaction tracking
 6. **Prices** - Central pricing repository for purchase/sale prices by counterparty, product, and date range
 7. **Delivery Costs** - Rate tables for carriers, routes, and tariffs

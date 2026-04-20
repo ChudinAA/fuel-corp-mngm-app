@@ -34,6 +34,7 @@ export const exchangeDeals = pgTable(
     plannedDeliveryDate: date("planned_delivery_date"),
     sellerId: uuid("seller_id").references(() => suppliers.id),
     wagonNumbers: text("wagon_numbers"),
+    railwayInvoice: text("railway_invoice"),
     isDraft: boolean("is_draft").default(false),
     notes: text("notes"),
     // Поставщик-склад как покупатель (мы закупаем топливо себе на склад)
@@ -110,6 +111,7 @@ export const insertExchangeDealSchema = createInsertSchema(exchangeDeals)
     plannedDeliveryDate: z.string().nullable().optional(),
     sellerId: z.string().uuid().nullable().optional(),
     wagonNumbers: z.string().nullable().optional(),
+    railwayInvoice: z.string().nullable().optional(),
     isDraft: z.boolean().default(false),
     notes: z.string().nullable().optional(),
     buyerSupplierId: z.string().uuid().nullable().optional(),

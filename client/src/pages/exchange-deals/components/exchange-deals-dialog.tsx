@@ -25,23 +25,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from "@/components/ui/command";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { Combobox } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { CalendarIcon, ChevronsUpDown, Check, Wallet, Warehouse } from "lucide-react";
+import { CalendarIcon, Wallet, Warehouse } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const formSchema = z.object({
@@ -50,6 +44,7 @@ const formSchema = z.object({
   departureStationId: z.string().uuid().nullable().optional(),
   destinationStationId: z.string().uuid().nullable().optional(),
   buyerId: z.string().uuid().nullable().optional(),
+  buyerSupplierId: z.string().uuid().nullable().optional(),
   paymentDate: z.string().nullable().optional(),
   pricePerTon: z.string().nullable().optional(),
   weightTon: z.string().nullable().optional(),
@@ -59,9 +54,9 @@ const formSchema = z.object({
   plannedDeliveryDate: z.string().nullable().optional(),
   sellerId: z.string().uuid().nullable().optional(),
   wagonNumbers: z.string().nullable().optional(),
+  railwayInvoice: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   isDraft: z.boolean().default(false),
-  buyerSupplierId: z.string().uuid().nullable().optional(),
   isReceivedAtWarehouse: z.boolean().default(false),
 });
 
@@ -72,83 +67,6 @@ interface ExchangeDealsDialogProps {
   onClose: () => void;
   deal?: any | null;
   isCopy?: boolean;
-}
-
-function ComboboxField({
-  label,
-  value,
-  onChange,
-  options,
-  placeholder = "Выбрать...",
-  testId,
-}: {
-  label: string;
-  value: string | null | undefined;
-  onChange: (val: string | null) => void;
-  options: { id: string; label: string; sub?: string }[];
-  placeholder?: string;
-  testId?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-
-  const selected = options.find((o) => o.id === value);
-  const filtered = options.filter((o) =>
-    o.label.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  return (
-    <div className="space-y-1">
-      <label className="text-sm font-medium">{label}</label>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            data-testid={testId}
-            className="w-full justify-between font-normal"
-          >
-            {selected ? selected.label : <span className="text-muted-foreground">{placeholder}</span>}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-80 p-0" align="start">
-          <Command>
-            <CommandInput
-              placeholder="Поиск..."
-              value={search}
-              onValueChange={setSearch}
-            />
-            <CommandEmpty>Ничего не найдено</CommandEmpty>
-            <CommandGroup>
-              <ScrollArea className="max-h-48">
-                <CommandItem
-                  value="__clear__"
-                  onSelect={() => { onChange(null); setOpen(false); setSearch(""); }}
-                  className="text-muted-foreground"
-                >
-                  — Не выбрано
-                </CommandItem>
-                {filtered.map((o) => (
-                  <CommandItem
-                    key={o.id}
-                    value={o.id}
-                    onSelect={() => { onChange(o.id); setOpen(false); setSearch(""); }}
-                  >
-                    <Check className={cn("mr-2 h-4 w-4", value === o.id ? "opacity-100" : "opacity-0")} />
-                    <div>
-                      <div>{o.label}</div>
-                      {o.sub && <div className="text-xs text-muted-foreground">{o.sub}</div>}
-                    </div>
-                  </CommandItem>
-                ))}
-              </ScrollArea>
-            </CommandGroup>
-          </Command>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
 }
 
 function DatePickerField({
@@ -208,6 +126,8 @@ function DatePickerField({
   );
 }
 
+const WAREHOUSE_BUYER_PREFIX = "ws:";
+
 export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDealsDialogProps) {
   const { toast } = useToast();
 
@@ -219,6 +139,7 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
       departureStationId: null,
       destinationStationId: null,
       buyerId: null,
+      buyerSupplierId: null,
       paymentDate: null,
       pricePerTon: "",
       weightTon: "",
@@ -228,9 +149,9 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
       plannedDeliveryDate: null,
       sellerId: null,
       wagonNumbers: "",
+      railwayInvoice: "",
       notes: "",
       isDraft: false,
-      buyerSupplierId: null,
       isReceivedAtWarehouse: false,
     },
   });
@@ -242,6 +163,13 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
   const watchSellerId = form.watch("sellerId");
   const watchBuyerSupplierId = form.watch("buyerSupplierId");
   const watchIsReceived = form.watch("isReceivedAtWarehouse");
+
+  // Текущее значение объединённого поля Покупатель:
+  // если buyerSupplierId — храним как "ws:<id>", иначе — UUID покупателя
+  const buyerId = form.watch("buyerId");
+  const combinedBuyerValue = watchBuyerSupplierId
+    ? `${WAREHOUSE_BUYER_PREFIX}${watchBuyerSupplierId}`
+    : buyerId || "";
 
   const { data: stations = [] } = useQuery<any[]>({
     queryKey: ["/api/railway/stations"],
@@ -256,7 +184,6 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
     queryKey: ["/api/suppliers"],
   });
 
-  // Seller advance card
   const { data: sellerCard } = useQuery<any>({
     queryKey: ["/api/exchange-advances/by-seller", watchSellerId],
     enabled: !!watchSellerId,
@@ -285,11 +212,59 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
   const formatMoney = (val: number) =>
     new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 2 }).format(val);
 
-  // Поставщики-склады (у кого есть склад)
   const warehouseSuppliers = (suppliers as any[]).filter((s: any) => s.isWarehouse && s.warehouseId);
-
-  // Уже есть перемещение для этой сделки
   const hasExistingMovement = !isCopy && deal?.movementId;
+
+  // Опции для объединённого поля Покупатель
+  const customerOptions = (customers as any[]).map((c: any) => ({
+    value: c.id,
+    label: c.name,
+  }));
+  const warehouseSupplierOptions = warehouseSuppliers.map((s: any) => ({
+    value: `${WAREHOUSE_BUYER_PREFIX}${s.id}`,
+    label: s.name,
+    render: (
+      <div>
+        <span>{s.name}</span>
+        <span className="ml-2 text-xs text-muted-foreground">Наш склад</span>
+      </div>
+    ),
+  }));
+  const allBuyerOptions = [...customerOptions, ...warehouseSupplierOptions];
+
+  const stationOptions = stations.map((s: any) => ({ value: s.id, label: s.name, render: (
+    <div>
+      <span>{s.name}</span>
+      {s.code && <span className="ml-2 text-xs text-muted-foreground">{s.code}</span>}
+    </div>
+  ) }));
+  const tariffOptions = tariffs.map((t: any) => ({
+    value: t.id,
+    label: t.zoneName,
+    render: (
+      <div>
+        <span>{t.zoneName}</span>
+        <span className="ml-2 text-xs text-muted-foreground">{formatMoney(parseFloat(t.pricePerTon))}/тн</span>
+      </div>
+    ),
+  }));
+  const supplierOptions = (suppliers as any[]).map((s: any) => ({ value: s.id, label: s.name }));
+
+  const handleBuyerChange = (val: string) => {
+    if (!val) {
+      form.setValue("buyerId", null);
+      form.setValue("buyerSupplierId", null);
+      form.setValue("isReceivedAtWarehouse", false);
+    } else if (val.startsWith(WAREHOUSE_BUYER_PREFIX)) {
+      const supplierId = val.slice(WAREHOUSE_BUYER_PREFIX.length);
+      form.setValue("buyerSupplierId", supplierId);
+      form.setValue("buyerId", null);
+    } else {
+      form.setValue("buyerId", val);
+      form.setValue("buyerSupplierId", null);
+      form.setValue("isReceivedAtWarehouse", false);
+    }
+  };
 
   useEffect(() => {
     if (deal) {
@@ -298,7 +273,8 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
         dealDate: deal.dealDate || null,
         departureStationId: deal.departureStationId || null,
         destinationStationId: deal.destinationStationId || null,
-        buyerId: deal.buyerId || null,
+        buyerId: isCopy ? deal.buyerId || null : deal.buyerId || null,
+        buyerSupplierId: isCopy ? null : (deal.buyerSupplierId || null),
         paymentDate: deal.paymentDate || null,
         pricePerTon: deal.pricePerTon || "",
         weightTon: deal.weightTon || "",
@@ -308,9 +284,9 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
         plannedDeliveryDate: deal.plannedDeliveryDate || null,
         sellerId: deal.sellerId || null,
         wagonNumbers: deal.wagonNumbers || "",
+        railwayInvoice: deal.railwayInvoice || "",
         notes: deal.notes || "",
         isDraft: isCopy ? true : (deal.isDraft || false),
-        buyerSupplierId: isCopy ? null : (deal.buyerSupplierId || null),
         isReceivedAtWarehouse: isCopy ? false : (deal.isReceivedAtWarehouse || false),
       });
     } else {
@@ -320,6 +296,7 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
         departureStationId: null,
         destinationStationId: null,
         buyerId: null,
+        buyerSupplierId: null,
         paymentDate: null,
         pricePerTon: "",
         weightTon: "",
@@ -329,9 +306,9 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
         plannedDeliveryDate: null,
         sellerId: null,
         wagonNumbers: "",
+        railwayInvoice: "",
         notes: "",
         isDraft: false,
-        buyerSupplierId: null,
         isReceivedAtWarehouse: false,
       });
     }
@@ -361,16 +338,6 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
     mutation.mutate({ ...values, isDraft });
   };
 
-  const stationOptions = stations.map((s: any) => ({ id: s.id, label: s.name, sub: s.code }));
-  const tariffOptions = tariffs.map((t: any) => ({
-    id: t.id,
-    label: t.zoneName,
-    sub: `${formatMoney(parseFloat(t.pricePerTon))}/тн`,
-  }));
-  const customerOptions = customers.map((c: any) => ({ id: c.id, label: c.name }));
-  const supplierOptions = suppliers.map((s: any) => ({ id: s.id, label: s.name }));
-  const warehouseSupplierOptions = warehouseSuppliers.map((s: any) => ({ id: s.id, label: s.name, sub: "Наш склад" }));
-
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -382,7 +349,7 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
 
         <Form {...form}>
           <form className="space-y-4">
-            {/* Row 1: Deal number and date */}
+            {/* Номер сделки и дата */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -413,50 +380,78 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
             <Separator />
             <p className="text-sm font-medium text-muted-foreground">Маршрут</p>
 
-            {/* Stations */}
             <div className="grid grid-cols-2 gap-4">
-              <ComboboxField
-                label="Ст. отправления"
-                value={form.watch("departureStationId")}
-                onChange={(v) => form.setValue("departureStationId", v)}
-                options={stationOptions}
-                placeholder="Выберите станцию..."
-                testId="select-departure-station"
+              <FormField
+                control={form.control}
+                name="departureStationId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ст. отправления</FormLabel>
+                    <Combobox
+                      options={stationOptions}
+                      value={field.value || ""}
+                      onValueChange={(v) => field.onChange(v || null)}
+                      placeholder="Выберите станцию..."
+                      dataTestId="select-departure-station"
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              <ComboboxField
-                label="Ст. назначения"
-                value={form.watch("destinationStationId")}
-                onChange={(v) => form.setValue("destinationStationId", v)}
-                options={stationOptions}
-                placeholder="Выберите станцию..."
-                testId="select-destination-station"
+              <FormField
+                control={form.control}
+                name="destinationStationId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ст. назначения</FormLabel>
+                    <Combobox
+                      options={stationOptions}
+                      value={field.value || ""}
+                      onValueChange={(v) => field.onChange(v || null)}
+                      placeholder="Выберите станцию..."
+                      dataTestId="select-destination-station"
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
 
             <Separator />
             <p className="text-sm font-medium text-muted-foreground">Контрагенты</p>
 
-            {/* Buyer (customer), Seller */}
+            {/* Покупатель (клиенты + поставщики-склады) и Продавец */}
             <div className="grid grid-cols-2 gap-4">
-              <ComboboxField
-                label="Покупатель"
-                value={form.watch("buyerId")}
-                onChange={(v) => form.setValue("buyerId", v)}
-                options={customerOptions}
-                placeholder="Выберите покупателя..."
-                testId="select-buyer"
-              />
-              <ComboboxField
-                label="Продавец"
-                value={form.watch("sellerId")}
-                onChange={(v) => form.setValue("sellerId", v)}
-                options={supplierOptions}
-                placeholder="Выберите продавца..."
-                testId="select-seller"
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Покупатель</label>
+                <Combobox
+                  options={allBuyerOptions}
+                  value={combinedBuyerValue}
+                  onValueChange={handleBuyerChange}
+                  placeholder="Выберите покупателя..."
+                  dataTestId="select-buyer"
+                />
+              </div>
+              <FormField
+                control={form.control}
+                name="sellerId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Продавец</FormLabel>
+                    <Combobox
+                      options={supplierOptions}
+                      value={field.value || ""}
+                      onValueChange={(v) => field.onChange(v || null)}
+                      placeholder="Выберите продавца..."
+                      dataTestId="select-seller"
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
 
-            {/* Seller advance card balance */}
+            {/* Информация о балансе продавца */}
             {watchSellerId && sellerCard && (
               <div className="flex items-center gap-2 p-3 rounded-md bg-muted">
                 <Wallet className="h-4 w-4 text-muted-foreground" />
@@ -472,64 +467,27 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
               </div>
             )}
 
-            <Separator />
-            <p className="text-sm font-medium text-muted-foreground">Закупка на наш склад</p>
-
-            {/* Buyer-Supplier (our warehouse) */}
-            <div className="grid grid-cols-2 gap-4">
-              <ComboboxField
-                label="Наш склад-покупатель"
-                value={form.watch("buyerSupplierId")}
-                onChange={(v) => {
-                  form.setValue("buyerSupplierId", v);
-                  if (!v) form.setValue("isReceivedAtWarehouse", false);
-                }}
-                options={warehouseSupplierOptions}
-                placeholder="Если топливо закупается на наш склад..."
-                testId="select-buyer-supplier"
-              />
-              {watchBuyerSupplierId && (
-                <div className="flex flex-col justify-end pb-1">
-                  <div className="flex items-center gap-2">
-                    <FormField
-                      control={form.control}
-                      name="isReceivedAtWarehouse"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center gap-2 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              disabled={hasExistingMovement}
-                              data-testid="checkbox-is-received"
-                            />
-                          </FormControl>
-                          <FormLabel className="cursor-pointer font-normal">
-                            Подтвердить получение на складе
-                          </FormLabel>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  {hasExistingMovement && (
-                    <div className="flex items-center gap-1 mt-1">
-                      <Warehouse className="h-3 w-3 text-blue-600" />
-                      <span className="text-xs text-blue-600">Перемещение создано</span>
-                    </div>
-                  )}
-                  {watchIsReceived && !hasExistingMovement && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      При сохранении будет автоматически создано Перемещение
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
+            {/* Индикатор: выбранный покупатель — наш склад */}
+            {watchBuyerSupplierId && (
+              <div className="flex items-center gap-2 p-3 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
+                <Warehouse className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm text-blue-700 dark:text-blue-300">
+                  Топливо закупается на наш склад
+                </span>
+                {hasExistingMovement && (
+                  <Badge
+                    variant="secondary"
+                    className="ml-auto text-[10px] h-5 px-2 bg-blue-100 text-blue-800 border-blue-200"
+                  >
+                    Перемещение создано
+                  </Badge>
+                )}
+              </div>
+            )}
 
             <Separator />
             <p className="text-sm font-medium text-muted-foreground">Финансы</p>
 
-            {/* Prices and weights */}
             <div className="grid grid-cols-3 gap-4">
               <FormField
                 control={form.control}
@@ -593,15 +551,23 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
               />
             </div>
 
-            {/* Delivery tariff */}
             <div className="grid grid-cols-2 gap-4">
-              <ComboboxField
-                label="Доставка за тонну (тариф)"
-                value={form.watch("deliveryTariffId")}
-                onChange={(v) => form.setValue("deliveryTariffId", v)}
-                options={tariffOptions}
-                placeholder="Выберите тариф..."
-                testId="select-delivery-tariff"
+              <FormField
+                control={form.control}
+                name="deliveryTariffId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Доставка за тонну (тариф)</FormLabel>
+                    <Combobox
+                      options={tariffOptions}
+                      value={field.value || ""}
+                      onValueChange={(v) => field.onChange(v || null)}
+                      placeholder="Выберите тариф..."
+                      dataTestId="select-delivery-tariff"
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
               <DatePickerField
                 label="Дата оплаты"
@@ -611,7 +577,7 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
               />
             </div>
 
-            {/* Calculated fields */}
+            {/* Расчётные поля */}
             {(pricePerTon > 0 || weightTon > 0) && (
               <div className="grid grid-cols-2 gap-3 p-3 rounded-md bg-muted text-sm">
                 <div>
@@ -640,7 +606,6 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
             <Separator />
             <p className="text-sm font-medium text-muted-foreground">Логистика</p>
 
-            {/* Dates */}
             <div className="grid grid-cols-2 gap-4">
               <DatePickerField
                 label="Дата выхода вагона"
@@ -656,27 +621,47 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
               />
             </div>
 
-            {/* Wagon numbers */}
-            <FormField
-              control={form.control}
-              name="wagonNumbers"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Номера вагонов / ЖД накладная</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      value={field.value ?? ""}
-                      placeholder="Номера вагонов или номер накладной"
-                      data-testid="input-wagon-numbers"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Два отдельных поля: Номера вагонов и ЖД накладная */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="wagonNumbers"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Номера вагонов</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value ?? ""}
+                        placeholder="Номера вагонов"
+                        data-testid="input-wagon-numbers"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="railwayInvoice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>ЖД накладная</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value ?? ""}
+                        placeholder="Номер накладной"
+                        data-testid="input-railway-invoice"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-            {/* Notes */}
+            {/* Примечания */}
             <FormField
               control={form.control}
               name="notes"
@@ -695,6 +680,41 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
                 </FormItem>
               )}
             />
+
+            {/* Чекбокс "Подтвердить получение на складе" — только если покупатель наш склад, под Примечаниями */}
+            {watchBuyerSupplierId && (
+              <div className="p-3 rounded-md border border-border bg-muted/40 space-y-1">
+                <FormField
+                  control={form.control}
+                  name="isReceivedAtWarehouse"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={hasExistingMovement}
+                          data-testid="checkbox-is-received"
+                        />
+                      </FormControl>
+                      <FormLabel className="cursor-pointer font-normal">
+                        Подтвердить получение на складе
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+                {!hasExistingMovement && watchIsReceived && (
+                  <p className="text-xs text-muted-foreground pl-6">
+                    При сохранении будет создано Перемещение и обновлён баланс склада
+                  </p>
+                )}
+                {hasExistingMovement && (
+                  <p className="text-xs text-blue-600 pl-6">
+                    Перемещение уже создано. Изменения количества/цены обновят его автоматически.
+                  </p>
+                )}
+              </div>
+            )}
           </form>
         </Form>
 

@@ -262,7 +262,7 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-xs font-semibold p-1 w-[90px]">Вагоны</TableHead>
+              <TableHead className="text-xs font-semibold p-1 w-[120px]">Вагоны / Накладная</TableHead>
               <TableHead className="text-right text-xs font-semibold p-1 w-[80px]">
                 Резерв 5%
               </TableHead>
@@ -296,6 +296,8 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
                     data-testid={`row-deal-${deal.id}`}
                     className={cn(
                       deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200",
+                      deal.buyerSupplierId && !deal.isReceivedAtWarehouse && !deal.isDraft &&
+                        "bg-orange-50/60 dark:bg-orange-950/20 border-l-2 border-l-orange-300 dark:border-l-orange-700",
                     )}
                   >
                     <TableCell className="text-[10px] py-1.5 px-1">
@@ -312,15 +314,15 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
                         {deal.buyerSupplierId && !deal.isReceivedAtWarehouse && (
                           <Badge
                             variant="secondary"
-                            className="w-fit text-[9px] h-4 px-1 bg-blue-50 text-blue-700 border-blue-200"
+                            className="w-fit text-[9px] h-4 px-1 bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700"
                           >
-                            На склад
+                            не получен на складе
                           </Badge>
                         )}
                         {deal.isReceivedAtWarehouse && (
                           <Badge
                             variant="secondary"
-                            className="w-fit text-[9px] h-4 px-1 bg-green-50 text-green-700 border-green-200"
+                            className="w-fit text-[9px] h-4 px-1 bg-green-50 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700"
                           >
                             Получено
                           </Badge>
@@ -339,7 +341,14 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
                       </span>
                     </TableCell>
                     <TableCell className="text-[10px] py-1.5 px-1">
-                      <span className="truncate max-w-[90px] block">{deal.buyerName || "—"}</span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="truncate max-w-[90px] block">
+                          {deal.buyerName || deal.buyerSupplierName || "—"}
+                        </span>
+                        {deal.buyerSupplierName && (
+                          <span className="text-[9px] text-blue-600 dark:text-blue-400">склад</span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-[10px] py-1.5 px-1">
                       {formatDate(deal.paymentDate)}
@@ -380,7 +389,17 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
                       <span className="truncate max-w-[90px] block">{deal.sellerName || "—"}</span>
                     </TableCell>
                     <TableCell className="text-[10px] py-1.5 px-1">
-                      <span className="truncate max-w-[80px] block">{deal.wagonNumbers || "—"}</span>
+                      <div className="flex flex-col gap-0.5">
+                        {deal.wagonNumbers && (
+                          <span className="truncate max-w-[110px] block">{deal.wagonNumbers}</span>
+                        )}
+                        {deal.railwayInvoice && (
+                          <span className="truncate max-w-[110px] block text-muted-foreground">
+                            {deal.railwayInvoice}
+                          </span>
+                        )}
+                        {!deal.wagonNumbers && !deal.railwayInvoice && "—"}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right text-[10px] py-1.5 px-1">
                       {formatCompact(reserved)}
