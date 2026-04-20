@@ -10,7 +10,7 @@ export function registerTransportationRoutes(app: Express) {
   app.get(
     "/api/transportation",
     requireAuth,
-    requirePermission("opt", "view"),
+    requirePermission("transportation", "view"),
     async (req, res) => {
       const offset = parseInt(req.query.offset as string) || 0;
       const pageSize = parseInt(req.query.pageSize as string) || 20;
@@ -38,7 +38,7 @@ export function registerTransportationRoutes(app: Express) {
   app.get(
     "/api/transportation/:id",
     requireAuth,
-    requirePermission("opt", "view"),
+    requirePermission("transportation", "view"),
     async (req, res) => {
       const id = req.params.id;
       const item = await (storage as any).transportation.getTransportation(id);
@@ -66,7 +66,7 @@ export function registerTransportationRoutes(app: Express) {
   app.post(
     "/api/transportation",
     requireAuth,
-    requirePermission("opt", "create"),
+    requirePermission("transportation", "create"),
     auditLog({
       entityType: ENTITY_TYPES.TRANSPORTATION,
       operation: AUDIT_OPERATIONS.CREATE,
@@ -101,7 +101,7 @@ export function registerTransportationRoutes(app: Express) {
   app.patch(
     "/api/transportation/:id",
     requireAuth,
-    requirePermission("opt", "edit"),
+    requirePermission("transportation", "edit"),
     auditLog({
       entityType: ENTITY_TYPES.TRANSPORTATION,
       operation: AUDIT_OPERATIONS.UPDATE,
@@ -131,7 +131,7 @@ export function registerTransportationRoutes(app: Express) {
   app.delete(
     "/api/transportation/:id",
     requireAuth,
-    requirePermission("opt", "delete"),
+    requirePermission("transportation", "delete"),
     auditLog({
       entityType: ENTITY_TYPES.TRANSPORTATION,
       operation: AUDIT_OPERATIONS.DELETE,

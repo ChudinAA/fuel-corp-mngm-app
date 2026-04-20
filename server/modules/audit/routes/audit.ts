@@ -3,10 +3,12 @@ import { Router, type Express } from "express";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { AuditService } from "../services/audit-service";
 import { RollbackService } from "../services/rollback-service";
-import { ENTITY_TYPES } from "../entities/audit";
+import { ENTITY_TYPES, auditLog } from "../entities/audit";
 import { z } from "zod";
 import { getAuditContext } from "../middleware/audit-middleware";
 import { storage } from "server/storage";
+import { db } from "../../../db";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -128,6 +130,39 @@ router.get(
   }
 );
 
+// Map entity types to permission modules for restore checks
+const ENTITY_TYPE_TO_MODULE: Record<string, string> = {
+  opt: "opt",
+  aircraft_refueling: "refueling",
+  aircraft_refueling_abroad: "abroad",
+  movement: "movement",
+  exchange: "exchange",
+  warehouses: "warehouses",
+  prices: "prices",
+  suppliers: "directories",
+  customers: "directories",
+  bases: "directories",
+  logistics_carriers: "directories",
+  logistics_delivery_locations: "directories",
+  logistics_vehicles: "directories",
+  logistics_trailers: "directories",
+  logistics_drivers: "directories",
+  delivery_cost: "delivery",
+  cashflow_transactions: "finance",
+  payment_calendar: "finance",
+  price_calculations: "finance",
+  users: "users",
+  roles: "roles",
+  equipment: "equipment",
+  equipment_movement: "equipment",
+  transportation: "transportation",
+  railway_stations: "directories",
+  railway_tariffs: "directories",
+  exchange_deals: "exchange-deals",
+  exchange_advance_cards: "exchange-advances",
+  storage_cards: "storage-cards",
+};
+
 /**
  * Rollback a specific audit entry
  * POST /api/audit/rollback/:auditLogId
@@ -142,12 +177,30 @@ router.post(
       // Get audit context
       const context = getAuditContext(req);
       
-      // Enrich with user data
+      // Enrich with user data and check restore permission
       if (context.userId) {
         const user = await storage.users.getUser(context.userId);
         if (user) {
           context.userName = `${user.firstName} ${user.lastName}`;
           context.userEmail = user.email;
+        }
+
+        // Check restore permission based on entity type
+        const role = user?.roleId ? await storage.roles.getRole(user.roleId) : null;
+        const isAdmin = role?.name === "Админ" || role?.name === "Ген.дир";
+        if (!isAdmin) {
+          // Look up the audit entry to determine entity type
+          const auditEntry = await db.query.auditLog.findFirst({
+            where: eq(auditLog.id, auditLogId),
+          });
+          if (auditEntry) {
+            const permModule = ENTITY_TYPE_TO_MODULE[auditEntry.entityType] || auditEntry.entityType;
+            const requiredPermission = `${permModule}.restore`;
+            const hasRestorePermission = role?.permissions?.includes(requiredPermission);
+            if (!hasRestorePermission) {
+              return res.status(403).json({ success: false, message: "Недостаточно прав для восстановления записей" });
+            }
+          }
         }
       }
 

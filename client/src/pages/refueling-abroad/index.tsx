@@ -49,7 +49,7 @@ export default function RefuelingAbroadPage() {
             Учет зурубежных заправок воздушных судов
           </p>
         </div>
-        {hasPermission("refueling", "create") && (
+        {hasPermission("abroad", "create") && (
           <Button onClick={handleOpenDialog} data-testid="button-add-refueling-abroad">
             <Plus className="mr-2 h-4 w-4" />
             Новая заправка

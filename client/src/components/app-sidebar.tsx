@@ -97,13 +97,13 @@ const getOperationsMenuItems = (hasPermission: (p: string) => boolean) =>
       title: "Аренда СЗ",
       url: "/rent",
       icon: CarFrontIcon,
-      permission: "movement.view",
+      permission: "rent.view",
     },
     {
       title: "Перевозка",
       url: "/transportation",
       icon: TruckIcon,
-      permission: "movement.view",
+      permission: "transportation.view",
     },
   ].filter((item) => !item.permission || hasPermission(item.permission));
 
@@ -125,7 +125,7 @@ const getLikMenuItems = (hasPermission: (p: string) => boolean) =>
       title: "Средства Заправки",
       url: "/lik/equipment",
       icon: Truck,
-      permission: "movement.view",
+      permission: "equipment.view",
     },
   ].filter((item) => !item.permission || hasPermission(item.permission));
 
@@ -135,7 +135,7 @@ const gеtAbroadMenuItems = (hasPermission: (p: string) => boolean) =>
       title: "Заправка ВС Зарубеж",
       url: "/abroad",
       icon: Plane,
-      permission: "refueling.view",
+      permission: "abroad.view",
     },
     {
       title: "Авансы",
@@ -265,13 +265,13 @@ const getPlanningMenuItems = (hasPermission: (p: string) => boolean) =>
       title: "Ежемесячный план",
       url: "/reports/monthly-plan",
       icon: Calendar1,
-      permission: "reports.view",
+      permission: "planning.view",
     },
     {
       title: "БДР",
       url: "/reports/budget",
       icon: Wallet,
-      permission: "reports.view",
+      permission: "planning.view",
     },
   ].filter((item) => !item.permission || hasPermission(item.permission));
 
@@ -293,11 +293,13 @@ const getAdminMenuItems = (hasPermission: (p: string) => boolean) =>
       title: "Виджеты",
       url: "/admin/widgets",
       icon: Fullscreen,
+      permission: "widgets.view",
     },
     {
       title: "Настройки",
       url: "/admin/settings",
       icon: Settings,
+      permission: "settings.view",
     },
   ].filter((item) => !item.permission || hasPermission(item.permission));
 

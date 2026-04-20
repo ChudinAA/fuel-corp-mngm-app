@@ -39,18 +39,37 @@ import {
 import type { Role } from "@shared/schema";
 
 const PERMISSION_MODULES = {
-  opt: { name: "ОПТ", permissions: ["view", "create", "edit", "delete"] },
-  refueling: { name: "Заправка ВС", permissions: ["view", "create", "edit", "delete"] },
-  exchange: { name: "Биржа", permissions: ["view", "create", "edit", "delete"] },
-  movement: { name: "Перемещение", permissions: ["view", "create", "edit", "delete"] },
-  warehouses: { name: "Склады", permissions: ["view", "create", "edit", "delete"] },
-  prices: { name: "Цены", permissions: ["view", "create", "edit", "delete"] },
-  delivery: { name: "Доставка", permissions: ["view", "create", "edit", "delete"] },
-  directories: { name: "Справочники", permissions: ["view", "create", "edit", "delete"] },
-  users: { name: "Пользователи", permissions: ["view", "create", "edit", "delete"] },
-  roles: { name: "Роли", permissions: ["view", "create", "edit", "delete"] },
+  // Операции
+  opt: { name: "ОПТ", permissions: ["view", "create", "edit", "delete", "restore"] },
+  refueling: { name: "Заправка ВС", permissions: ["view", "create", "edit", "delete", "restore"] },
+  movement: { name: "Перемещение", permissions: ["view", "create", "edit", "delete", "restore"] },
+  rent: { name: "Аренда СЗ", permissions: ["view", "create", "edit", "delete", "restore"] },
+  transportation: { name: "Перевозка", permissions: ["view", "create", "edit", "delete", "restore"] },
+  // ЛИК
+  equipment: { name: "Средства Заправки (ЛИК)", permissions: ["view", "create", "edit", "delete", "restore"] },
+  // Зарубеж
+  abroad: { name: "Заправка ВС Зарубеж", permissions: ["view", "create", "edit", "delete", "restore"] },
+  "storage-cards": { name: "Авансы (Зарубеж)", permissions: ["view", "create", "edit", "delete", "restore"] },
+  // Биржа
+  exchange: { name: "Биржа", permissions: ["view", "create", "edit", "delete", "restore"] },
+  "exchange-deals": { name: "Сделки Биржи", permissions: ["view", "create", "edit", "delete", "restore"] },
+  "exchange-advances": { name: "Авансы Биржи", permissions: ["view", "create", "edit", "delete", "restore"] },
+  // Данные
+  warehouses: { name: "Склады", permissions: ["view", "create", "edit", "delete", "restore"] },
+  prices: { name: "Цены", permissions: ["view", "create", "edit", "delete", "restore"] },
+  delivery: { name: "Доставка", permissions: ["view", "create", "edit", "delete", "restore"] },
+  directories: { name: "Справочники", permissions: ["view", "create", "edit", "delete", "restore"] },
+  // Финансы
+  finance: { name: "Финансы", permissions: ["view", "create", "edit", "delete", "restore"] },
+  // Отчеты и Планирование
   reports: { name: "Отчеты", permissions: ["view", "export"] },
+  planning: { name: "Планирование", permissions: ["view", "create", "edit", "delete"] },
+  // Администрирование
+  users: { name: "Пользователи", permissions: ["view", "create", "edit", "delete", "restore"] },
+  roles: { name: "Роли", permissions: ["view", "create", "edit", "delete", "restore"] },
+  widgets: { name: "Виджеты", permissions: ["view", "edit"] },
   settings: { name: "Настройки", permissions: ["view", "edit"] },
+  audit: { name: "Аудит", permissions: ["view", "restore"] },
 };
 
 const PERMISSION_LABELS: Record<string, { icon: React.ElementType; label: string }> = {
@@ -58,6 +77,7 @@ const PERMISSION_LABELS: Record<string, { icon: React.ElementType; label: string
   create: { icon: PlusIcon, label: "Создание" },
   edit: { icon: Edit3, label: "Редактирование" },
   delete: { icon: Trash, label: "Удаление" },
+  restore: { icon: History, label: "Восстановление" },
   export: { icon: Eye, label: "Экспорт" },
 };
 

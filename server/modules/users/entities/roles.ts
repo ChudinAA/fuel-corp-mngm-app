@@ -53,19 +53,30 @@ export const MODULES = [
   "refueling",
   "exchange",
   "movement",
+  "rent",
+  "transportation",
+  "equipment",
+  "abroad",
+  "storage-cards",
+  "exchange-deals",
+  "exchange-advances",
   "warehouses",
   "prices",
   "delivery",
   "directories",
+  "finance",
+  "planning",
   "audit",
   "admin",
-  "finance",
   "reports",
   "export",
-  "equipment",
+  "widgets",
+  "users",
+  "roles",
+  "settings",
 ] as const;
 
-export const ACTIONS = ["view", "create", "edit", "delete"] as const;
+export const ACTIONS = ["view", "create", "edit", "delete", "restore"] as const;
 
 // Default roles
 export const DEFAULT_ROLES = [

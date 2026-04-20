@@ -515,14 +515,14 @@ export function RefuelingAbroadTable({
                           label: "Копировать",
                           icon: Copy,
                           onClick: () => onCopy(item),
-                          permission: { module: "refueling", action: "create" },
+                          permission: { module: "abroad", action: "create" },
                         },
                         {
                           id: "edit",
                           label: "Редактировать",
                           icon: Pencil,
                           onClick: () => onEdit(item),
-                          permission: { module: "refueling", action: "edit" },
+                          permission: { module: "abroad", action: "edit" },
                         },
                         {
                           id: "delete",
@@ -530,7 +530,7 @@ export function RefuelingAbroadTable({
                           icon: Trash2,
                           onClick: () => setDeleteId(item.id),
                           variant: "destructive",
-                          permission: { module: "refueling", action: "delete" },
+                          permission: { module: "abroad", action: "delete" },
                         },
                       ]}
                       audit={{

@@ -16,7 +16,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.get(
     "/api/refueling-abroad",
     requireAuth,
-    requirePermission("refueling", "view"),
+    requirePermission("abroad", "view"),
     async (req, res) => {
       try {
         const offset = parseInt(req.query.offset as string) || 0;
@@ -51,7 +51,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.get(
     "/api/refueling-abroad/contract-used/:priceId",
     requireAuth,
-    requirePermission("refueling", "view"),
+    requirePermission("abroad", "view"),
     async (req, res) => {
       try {
         const { priceId } = req.params;
@@ -70,7 +70,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.get(
     "/api/refueling-abroad/drafts",
     requireAuth,
-    requirePermission("refueling", "view"),
+    requirePermission("abroad", "view"),
     async (req, res) => {
       try {
         const drafts = await refuelingAbroadStorage.getDrafts();
@@ -85,7 +85,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.get(
     "/api/refueling-abroad/:id",
     requireAuth,
-    requirePermission("refueling", "view"),
+    requirePermission("abroad", "view"),
     async (req, res) => {
       try {
         const item = await refuelingAbroadStorage.getById(req.params.id);
@@ -103,7 +103,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.post(
     "/api/refueling-abroad",
     requireAuth,
-    requirePermission("refueling", "create"),
+    requirePermission("abroad", "create"),
     auditLog({
       entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
       operation: AUDIT_OPERATIONS.CREATE,
@@ -130,7 +130,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.patch(
     "/api/refueling-abroad/:id",
     requireAuth,
-    requirePermission("refueling", "edit"),
+    requirePermission("abroad", "edit"),
     auditLog({
       entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
       operation: AUDIT_OPERATIONS.UPDATE,
@@ -167,7 +167,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.delete(
     "/api/refueling-abroad/:id",
     requireAuth,
-    requirePermission("refueling", "delete"),
+    requirePermission("abroad", "delete"),
     auditLog({
       entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
       operation: AUDIT_OPERATIONS.DELETE,
@@ -196,7 +196,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.get(
     "/api/refueling-abroad/by-supplier/:supplierId",
     requireAuth,
-    requirePermission("refueling", "view"),
+    requirePermission("abroad", "view"),
     async (req, res) => {
       try {
         const items = await refuelingAbroadStorage.getBySupplierId(
@@ -213,7 +213,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.get(
     "/api/refueling-abroad/by-buyer/:buyerId",
     requireAuth,
-    requirePermission("refueling", "view"),
+    requirePermission("abroad", "view"),
     async (req, res) => {
       try {
         const items = await refuelingAbroadStorage.getByBuyerId(
@@ -230,7 +230,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.get(
     "/api/refueling-abroad/by-storage-card/:storageCardId",
     requireAuth,
-    requirePermission("refueling", "view"),
+    requirePermission("abroad", "view"),
     async (req, res) => {
       try {
         const items = await refuelingAbroadStorage.getByStorageCardId(
@@ -247,7 +247,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.get(
     "/api/refueling-abroad/:id/intermediaries",
     requireAuth,
-    requirePermission("refueling", "view"),
+    requirePermission("abroad", "view"),
     async (req, res) => {
       try {
         const items =
@@ -265,7 +265,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.put(
     "/api/refueling-abroad/:id/intermediaries",
     requireAuth,
-    requirePermission("refueling", "edit"),
+    requirePermission("abroad", "edit"),
     async (req, res) => {
       try {
         const intermediariesSchema = z.array(
@@ -295,7 +295,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.post(
     "/api/refueling-abroad/:id/intermediaries",
     requireAuth,
-    requirePermission("refueling", "edit"),
+    requirePermission("abroad", "edit"),
     async (req, res) => {
       try {
         const validatedData = insertRefuelingAbroadIntermediarySchema
@@ -321,7 +321,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.delete(
     "/api/refueling-abroad/:refuelingId/intermediaries/:id",
     requireAuth,
-    requirePermission("refueling", "edit"),
+    requirePermission("abroad", "edit"),
     async (req, res) => {
       try {
         const success = await refuelingAbroadIntermediariesStorage.delete(
@@ -342,7 +342,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.get(
     "/api/refueling-abroad/:id/chain-exchange-rates",
     requireAuth,
-    requirePermission("refueling", "view"),
+    requirePermission("abroad", "view"),
     async (req, res) => {
       try {
         const items = await refuelingAbroadExchangeRatesStorage.getByRefuelingId(req.params.id);
@@ -357,7 +357,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.put(
     "/api/refueling-abroad/:id/chain-exchange-rates",
     requireAuth,
-    requirePermission("refueling", "edit"),
+    requirePermission("abroad", "edit"),
     async (req, res) => {
       try {
         const items = z.array(insertRefuelingAbroadExchangeRateSchema.omit({ refuelingAbroadId: true })).parse(req.body);
@@ -377,7 +377,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.get(
     "/api/refueling-abroad/:id/chain-bank-commissions",
     requireAuth,
-    requirePermission("refueling", "view"),
+    requirePermission("abroad", "view"),
     async (req, res) => {
       try {
         const items = await refuelingAbroadBankCommissionsStorage.getByRefuelingId(req.params.id);
@@ -392,7 +392,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.put(
     "/api/refueling-abroad/:id/chain-bank-commissions",
     requireAuth,
-    requirePermission("refueling", "edit"),
+    requirePermission("abroad", "edit"),
     async (req, res) => {
       try {
         const items = z.array(insertRefuelingAbroadBankCommissionSchema.omit({ refuelingAbroadId: true })).parse(req.body);
@@ -411,7 +411,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.get(
     "/api/refueling-abroad-deleted",
     requireAuth,
-    requirePermission("refueling", "view"),
+    requirePermission("abroad", "view"),
     async (req, res) => {
       try {
         const items = await refuelingAbroadStorage.getDeleted();
@@ -426,7 +426,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
   app.post(
     "/api/refueling-abroad/:id/restore",
     requireAuth,
-    requirePermission("refueling", "edit"),
+    requirePermission("abroad", "edit"),
     auditLog({
       entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
       operation: AUDIT_OPERATIONS.UPDATE,

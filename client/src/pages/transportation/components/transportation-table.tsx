@@ -207,7 +207,7 @@ export function TransportationTable({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
-        {onCreate && hasPermission("opt", "create") && (
+        {onCreate && hasPermission("transportation", "create") && (
           <Button onClick={onCreate} data-testid="button-add-transportation">
             <Plus className="mr-2 h-4 w-4" />
             Новая перевозка
@@ -402,7 +402,7 @@ export function TransportationTable({
                           label: "Создать копию",
                           icon: Copy,
                           onClick: () => onCopy(deal),
-                          permission: { module: "opt", action: "create" },
+                          permission: { module: "transportation", action: "create" },
                         },
                         {
                           id: "audit",
@@ -415,7 +415,7 @@ export function TransportationTable({
                           label: "Редактировать",
                           icon: Pencil,
                           onClick: () => onEdit(deal),
-                          permission: { module: "opt", action: "edit" },
+                          permission: { module: "transportation", action: "edit" },
                         },
                         {
                           id: "delete",
@@ -423,7 +423,7 @@ export function TransportationTable({
                           icon: Trash2,
                           onClick: () => setDeleteId(deal.id),
                           variant: "destructive" as const,
-                          permission: { module: "opt", action: "delete" },
+                          permission: { module: "transportation", action: "delete" },
                         },
                       ]}
                     />

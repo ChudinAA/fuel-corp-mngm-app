@@ -112,6 +112,7 @@ function AuditEntryItem({
     const moduleMap: Record<string, string> = {
       'opt': 'opt',
       'aircraft_refueling': 'refueling',
+      'aircraft_refueling_abroad': 'abroad',
       'movement': 'movement',
       'exchange': 'exchange',
       'warehouses': 'warehouses',
@@ -125,13 +126,24 @@ function AuditEntryItem({
       'logistics_trailers': 'directories',
       'logistics_drivers': 'directories',
       'delivery_cost': 'delivery',
+      'cashflow_transactions': 'finance',
+      'payment_calendar': 'finance',
+      'price_calculations': 'finance',
       'users': 'users',
       'roles': 'roles',
+      'equipment': 'equipment',
+      'equipment_movement': 'equipment',
+      'transportation': 'transportation',
+      'railway_stations': 'directories',
+      'railway_tariffs': 'directories',
+      'exchange_deals': 'exchange-deals',
+      'exchange_advance_cards': 'exchange-advances',
+      'storage_cards': 'storage-cards',
     };
     return moduleMap[entityType] || entityType;
   };
 
-  const hasEditPermission = hasPermission(getPermissionModule(entityType), 'edit');
+  const hasRestorePermission = hasPermission(getPermissionModule(entityType), 'restore');
 
   const handleRollback = () => {
     setShowRollbackDialog(false);
@@ -240,7 +252,7 @@ function AuditEntryItem({
                 </span>
               </div>
             </div>
-            {(canRollback && hasEditPermission) && (
+            {(canRollback && hasRestorePermission) && (
               <Button
                 variant="outline"
                 size="sm"
