@@ -298,7 +298,7 @@ function RoleFormDialog({
             </div>
 
             <div className="flex justify-end gap-4 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Отмена</Button>
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Отмена</Button>
               <Button type="submit" disabled={mutation.isPending} data-testid="button-save-role">
                 {mutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : editRole ? "Сохранить" : "Создать"}
               </Button>
