@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { storage } from "../../../storage/index";
 import { insertCustomerSchema } from "@shared/schema";
 import { z } from "zod";
-import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import { requireAuth, requirePermission, requireAnyPermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 
@@ -10,7 +10,7 @@ export function registerCustomersRoutes(app: Express) {
   app.get(
     "/api/customers",
     requireAuth,
-    requirePermission("directories", "view"),
+    requireAnyPermission(["directories", "counterparties"], "view"),
     async (req, res) => {
       const module = req.query.module as string | undefined;
       const data = await storage.customers.getAllCustomers(module);
@@ -21,7 +21,7 @@ export function registerCustomersRoutes(app: Express) {
   app.get(
     "/api/customers/:id",
     requireAuth,
-    requirePermission("directories", "view"),
+    requireAnyPermission(["directories", "counterparties"], "view"),
     async (req, res) => {
       const id = req.params.id;
       const customer = await storage.customers.getCustomer(id);
@@ -35,7 +35,7 @@ export function registerCustomersRoutes(app: Express) {
   app.post(
     "/api/customers",
     requireAuth,
-    requirePermission("directories", "create"),
+    requireAnyPermission(["directories", "counterparties"], "create"),
     auditLog({
       entityType: ENTITY_TYPES.CUSTOMER,
       operation: AUDIT_OPERATIONS.CREATE,
@@ -72,7 +72,7 @@ export function registerCustomersRoutes(app: Express) {
   app.patch(
     "/api/customers/:id",
     requireAuth,
-    requirePermission("directories", "edit"),
+    requireAnyPermission(["directories", "counterparties"], "edit"),
     auditLog({
       entityType: ENTITY_TYPES.CUSTOMER,
       operation: AUDIT_OPERATIONS.UPDATE,
@@ -110,7 +110,7 @@ export function registerCustomersRoutes(app: Express) {
   app.delete(
     "/api/customers/:id",
     requireAuth,
-    requirePermission("directories", "delete"),
+    requireAnyPermission(["directories", "counterparties"], "delete"),
     auditLog({
       entityType: ENTITY_TYPES.CUSTOMER,
       operation: AUDIT_OPERATIONS.DELETE,

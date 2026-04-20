@@ -121,7 +121,7 @@ export function SuppliersTab() {
                 data-testid="input-search-suppliers"
               />
             </div>
-            {hasPermission("directories", "create") && (
+            {hasPermission("counterparties", "create") && (
               <AddSupplierDialog
                 bases={bases}
                 editItem={editingItem}
@@ -300,7 +300,7 @@ export function SuppliersTab() {
                                 icon: Pencil,
                                 onClick: () => setEditingItem(supplier),
                                 permission: {
-                                  module: "directories",
+                                  module: "counterparties",
                                   action: "edit",
                                 },
                               },
@@ -318,7 +318,7 @@ export function SuppliersTab() {
                                 },
                                 variant: "destructive" as const,
                                 permission: {
-                                  module: "directories",
+                                  module: "counterparties",
                                   action: "delete",
                                 },
                                 separatorAfter: true,

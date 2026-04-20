@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { storage } from "../../../storage/index";
 import { insertAircraftRefuelingSchema } from "@shared/schema";
 import { z } from "zod";
-import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import { requireAuth, requirePermission, requireAnyPermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 
@@ -10,7 +10,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
   app.get(
     "/api/refueling",
     requireAuth,
-    requirePermission("refueling", "view"),
+    requireAnyPermission(["refueling", "lik-refueling"], "view"),
     async (req, res) => {
       const offset = parseInt(req.query.offset as string) || 0;
       const pageSize = parseInt(req.query.pageSize as string) || 20;
@@ -39,7 +39,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
   app.get(
     "/api/refueling/contract-used/:priceId",
     requireAuth,
-    requirePermission("refueling", "view"),
+    requireAnyPermission(["refueling", "lik-refueling"], "view"),
     async (req, res) => {
       try {
         const { priceId } = req.params;
@@ -55,7 +55,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
   app.get(
     "/api/refueling/:id",
     requireAuth,
-    requirePermission("refueling", "view"),
+    requireAnyPermission(["refueling", "lik-refueling"], "view"),
     async (req, res) => {
       const id = req.params.id;
       const item = await storage.aircraftRefueling.getRefueling(id);
@@ -83,7 +83,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
   app.post(
     "/api/refueling",
     requireAuth,
-    requirePermission("refueling", "create"),
+    requireAnyPermission(["refueling", "lik-refueling"], "create"),
     auditLog({
       entityType: ENTITY_TYPES.AIRCRAFT_REFUELING,
       operation: AUDIT_OPERATIONS.CREATE,
@@ -109,7 +109,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
   app.patch(
     "/api/refueling/:id",
     requireAuth,
-    requirePermission("refueling", "edit"),
+    requireAnyPermission(["refueling", "lik-refueling"], "edit"),
     auditLog({
       entityType: ENTITY_TYPES.AIRCRAFT_REFUELING,
       operation: AUDIT_OPERATIONS.UPDATE,
@@ -140,7 +140,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
   app.delete(
     "/api/refueling/:id",
     requireAuth,
-    requirePermission("refueling", "delete"),
+    requireAnyPermission(["refueling", "lik-refueling"], "delete"),
     auditLog({
       entityType: ENTITY_TYPES.AIRCRAFT_REFUELING,
       operation: AUDIT_OPERATIONS.DELETE,

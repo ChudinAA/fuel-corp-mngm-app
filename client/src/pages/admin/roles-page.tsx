@@ -46,17 +46,20 @@ const PERMISSION_MODULES = {
   rent: { name: "Аренда СЗ", permissions: ["view", "create", "edit", "delete", "restore"] },
   transportation: { name: "Перевозка", permissions: ["view", "create", "edit", "delete", "restore"] },
   // ЛИК
-  equipment: { name: "Средства Заправки (ЛИК)", permissions: ["view", "create", "edit", "delete", "restore"] },
+  "lik-refueling": { name: "Заправка ВС ЛИК", permissions: ["view", "create", "edit", "delete", "restore"] },
+  "lik-movement": { name: "Перемещение ЛИК", permissions: ["view", "create", "edit", "delete", "restore"] },
+  equipment: { name: "Средства Заправки", permissions: ["view", "create", "edit", "delete", "restore"] },
   // Зарубеж
   abroad: { name: "Заправка ВС Зарубеж", permissions: ["view", "create", "edit", "delete", "restore"] },
   "storage-cards": { name: "Авансы (Зарубеж)", permissions: ["view", "create", "edit", "delete", "restore"] },
   // Биржа
-  exchange: { name: "Биржа", permissions: ["view", "create", "edit", "delete", "restore"] },
   "exchange-deals": { name: "Сделки Биржи", permissions: ["view", "create", "edit", "delete", "restore"] },
   "exchange-advances": { name: "Авансы Биржи", permissions: ["view", "create", "edit", "delete", "restore"] },
+  exchange: { name: "Справочники Биржи", permissions: ["view", "create", "edit", "delete"] },
   // Данные
   warehouses: { name: "Склады", permissions: ["view", "create", "edit", "delete", "restore"] },
   prices: { name: "Цены", permissions: ["view", "create", "edit", "delete", "restore"] },
+  counterparties: { name: "Контрагенты", permissions: ["view", "create", "edit", "delete"] },
   delivery: { name: "Доставка", permissions: ["view", "create", "edit", "delete", "restore"] },
   directories: { name: "Справочники", permissions: ["view", "create", "edit", "delete", "restore"] },
   // Финансы
@@ -71,6 +74,18 @@ const PERMISSION_MODULES = {
   settings: { name: "Настройки", permissions: ["view", "edit"] },
   audit: { name: "Аудит", permissions: ["view", "restore"] },
 };
+
+const PERMISSION_SECTIONS = [
+  { title: "Операции", modules: ["opt", "refueling", "movement", "rent", "transportation"] },
+  { title: "ЛИК", modules: ["lik-refueling", "lik-movement", "equipment"] },
+  { title: "Зарубеж", modules: ["abroad", "storage-cards"] },
+  { title: "Биржа", modules: ["exchange-deals", "exchange-advances", "exchange"] },
+  { title: "Данные", modules: ["warehouses", "prices", "counterparties", "delivery", "directories"] },
+  { title: "Финансы", modules: ["finance"] },
+  { title: "Отчеты", modules: ["reports"] },
+  { title: "Планирование", modules: ["planning"] },
+  { title: "Администрирование", modules: ["users", "roles", "widgets", "settings", "audit"] },
+];
 
 const PERMISSION_LABELS: Record<string, { icon: React.ElementType; label: string }> = {
   view: { icon: Eye, label: "Просмотр" },
@@ -228,46 +243,56 @@ function RoleFormDialog({
             <div className="space-y-4">
               <Label className="text-base font-medium">Права доступа</Label>
               <Accordion type="multiple" className="w-full">
-                {Object.entries(PERMISSION_MODULES).map(([moduleKey, module]) => (
-                  <AccordionItem key={moduleKey} value={moduleKey}>
-                    <AccordionTrigger className="hover:no-underline">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          checked={isModuleFullyChecked(moduleKey)}
-                          onCheckedChange={(checked) => toggleModuleAll(moduleKey, !!checked)}
-                          onClick={(e) => e.stopPropagation()}
-                          className={isModulePartiallyChecked(moduleKey) ? "opacity-50" : ""}
-                        />
-                        <span>{module.name}</span>
-                        <Badge variant="outline" className="ml-2 text-xs">
-                          {form.watch("permissions").filter(p => p.startsWith(`${moduleKey}.`)).length}/{module.permissions.length}
-                        </Badge>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pl-8 py-2">
-                        {module.permissions.map((perm) => {
-                          const permKey = `${moduleKey}.${perm}`;
-                          const { icon: Icon, label } = PERMISSION_LABELS[perm] || { icon: Eye, label: perm };
-                          const isChecked = form.watch("permissions").includes(permKey);
-                          
-                          return (
-                            <div key={permKey} className="flex items-center gap-2">
+                {PERMISSION_SECTIONS.map((section) => (
+                  <div key={section.title}>
+                    <div className="px-1 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border mb-1 mt-2">
+                      {section.title}
+                    </div>
+                    {section.modules.map((moduleKey) => {
+                      const module = PERMISSION_MODULES[moduleKey as keyof typeof PERMISSION_MODULES];
+                      if (!module) return null;
+                      return (
+                        <AccordionItem key={moduleKey} value={moduleKey}>
+                          <AccordionTrigger className="hover:no-underline">
+                            <div className="flex items-center gap-3">
                               <Checkbox
-                                id={permKey}
-                                checked={isChecked}
-                                onCheckedChange={() => togglePermission(permKey)}
+                                checked={isModuleFullyChecked(moduleKey)}
+                                onCheckedChange={(checked) => toggleModuleAll(moduleKey, !!checked)}
+                                onClick={(e) => e.stopPropagation()}
+                                className={isModulePartiallyChecked(moduleKey) ? "opacity-50" : ""}
                               />
-                              <Label htmlFor={permKey} className="flex items-center gap-1.5 text-sm font-normal cursor-pointer">
-                                <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                                {label}
-                              </Label>
+                              <span>{module.name}</span>
+                              <Badge variant="outline" className="ml-2 text-xs">
+                                {form.watch("permissions").filter(p => p.startsWith(`${moduleKey}.`)).length}/{module.permissions.length}
+                              </Badge>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pl-8 py-2">
+                              {module.permissions.map((perm) => {
+                                const permKey = `${moduleKey}.${perm}`;
+                                const { icon: Icon, label } = PERMISSION_LABELS[perm] || { icon: Eye, label: perm };
+                                const isChecked = form.watch("permissions").includes(permKey);
+                                return (
+                                  <div key={permKey} className="flex items-center gap-2">
+                                    <Checkbox
+                                      id={permKey}
+                                      checked={isChecked}
+                                      onCheckedChange={() => togglePermission(permKey)}
+                                    />
+                                    <Label htmlFor={permKey} className="flex items-center gap-1.5 text-sm font-normal cursor-pointer">
+                                      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                                      {label}
+                                    </Label>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      );
+                    })}
+                  </div>
                 ))}
               </Accordion>
             </div>

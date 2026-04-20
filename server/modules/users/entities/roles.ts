@@ -51,6 +51,8 @@ export type InsertRole = z.infer<typeof insertRoleSchema>;
 export const MODULES = [
   "opt",
   "refueling",
+  "lik-refueling",
+  "lik-movement",
   "exchange",
   "movement",
   "rent",
@@ -62,6 +64,7 @@ export const MODULES = [
   "exchange-advances",
   "warehouses",
   "prices",
+  "counterparties",
   "delivery",
   "directories",
   "finance",

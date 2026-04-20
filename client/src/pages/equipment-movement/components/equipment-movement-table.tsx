@@ -78,7 +78,7 @@ export function EquipmentMovementTable({
   return (
     <div className="space-y-4 px-4 md:px-6 pb-5">
       <div className="flex items-center gap-2 flex-wrap">
-        {onCreate && hasPermission("equipment", "create") && (
+        {onCreate && hasPermission("lik-movement", "create") && (
           <Button onClick={onCreate} data-testid="button-add-equipment-movement">
             <Plus className="mr-2 h-4 w-4" />
             Новое перемещение

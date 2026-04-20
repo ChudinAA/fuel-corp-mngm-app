@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { storage } from "../../../storage/index";
 import { insertSupplierSchema } from "@shared/schema";
 import { z } from "zod";
-import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import { requireAuth, requirePermission, requireAnyPermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 
@@ -10,7 +10,7 @@ export function registerSuppliersRoutes(app: Express) {
   app.get(
     "/api/suppliers",
     requireAuth,
-    requirePermission("directories", "view"),
+    requireAnyPermission(["directories", "counterparties"], "view"),
     async (req, res) => {
       const data = await storage.suppliers.getAllSuppliers();
       res.json(data);
@@ -20,7 +20,7 @@ export function registerSuppliersRoutes(app: Express) {
   app.get(
     "/api/suppliers/:id",
     requireAuth,
-    requirePermission("directories", "view"),
+    requireAnyPermission(["directories", "counterparties"], "view"),
     async (req, res) => {
       const id = req.params.id;
       const supplier = await storage.suppliers.getSupplier(id);
@@ -34,7 +34,7 @@ export function registerSuppliersRoutes(app: Express) {
   app.post(
     "/api/suppliers",
     requireAuth,
-    requirePermission("directories", "create"),
+    requireAnyPermission(["directories", "counterparties"], "create"),
     auditLog({
       entityType: ENTITY_TYPES.SUPPLIER,
       operation: AUDIT_OPERATIONS.CREATE,
@@ -98,7 +98,7 @@ export function registerSuppliersRoutes(app: Express) {
   app.patch(
     "/api/suppliers/:id",
     requireAuth,
-    requirePermission("directories", "edit"),
+    requireAnyPermission(["directories", "counterparties"], "edit"),
     auditLog({
       entityType: ENTITY_TYPES.SUPPLIER,
       operation: AUDIT_OPERATIONS.UPDATE,
@@ -142,7 +142,7 @@ export function registerSuppliersRoutes(app: Express) {
   app.delete(
     "/api/suppliers/:id",
     requireAuth,
-    requirePermission("directories", "delete"),
+    requireAnyPermission(["directories", "counterparties"], "delete"),
     auditLog({
       entityType: ENTITY_TYPES.SUPPLIER,
       operation: AUDIT_OPERATIONS.DELETE,

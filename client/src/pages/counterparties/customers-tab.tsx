@@ -98,7 +98,7 @@ export function CustomersTab() {
                 data-testid="input-search-customers"
               />
             </div>
-            {hasPermission("directories", "create") && (
+            {hasPermission("counterparties", "create") && (
               <AddCustomerDialog
                 bases={bases}
                 editCustomer={editingCustomer}
@@ -228,7 +228,7 @@ export function CustomersTab() {
                                 icon: Pencil,
                                 onClick: () => setEditingCustomer(item),
                                 permission: {
-                                  module: "directories",
+                                  module: "counterparties",
                                   action: "edit",
                                 },
                               },
@@ -242,7 +242,7 @@ export function CustomersTab() {
                                 },
                                 variant: "destructive" as const,
                                 permission: {
-                                  module: "directories",
+                                  module: "counterparties",
                                   action: "delete",
                                 },
                                 separatorAfter: true,

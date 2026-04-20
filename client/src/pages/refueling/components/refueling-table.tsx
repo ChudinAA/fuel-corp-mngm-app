@@ -66,6 +66,7 @@ interface RefuelingDealActionsProps {
   onEdit: () => void;
   onCopy: () => void;
   onDelete: () => void;
+  permModule?: string;
 }
 
 function RefuelingDealActions({
@@ -73,6 +74,7 @@ function RefuelingDealActions({
   onEdit,
   onCopy,
   onDelete,
+  permModule = "refueling",
 }: RefuelingDealActionsProps) {
   const actions: EntityAction[] = [
     {
@@ -80,14 +82,14 @@ function RefuelingDealActions({
       label: "Создать копию",
       icon: Copy,
       onClick: onCopy,
-      permission: { module: "refueling", action: "create" },
+      permission: { module: permModule, action: "create" },
     },
     {
       id: "edit",
       label: "Редактировать",
       icon: Pencil,
       onClick: onEdit,
-      permission: { module: "refueling", action: "edit" },
+      permission: { module: permModule, action: "edit" },
     },
     {
       id: "delete",
@@ -95,7 +97,7 @@ function RefuelingDealActions({
       icon: Trash2,
       onClick: onDelete,
       variant: "destructive" as const,
-      permission: { module: "refueling", action: "delete" },
+      permission: { module: permModule, action: "delete" },
       separatorAfter: true,
     },
   ];
@@ -129,6 +131,7 @@ export function RefuelingTable({
 }: RefuelingTableProps) {
   const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
   const { hasPermission } = useAuth();
+  const permModule = equipmentType === EQUIPMENT_TYPE.LIK ? "lik-refueling" : "refueling";
   const {
     refuelingDeals,
     isLoading,
@@ -226,7 +229,7 @@ export function RefuelingTable({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
-        {onAdd && hasPermission("refueling", "create") && (
+        {onAdd && hasPermission(permModule, "create") && (
           <Button onClick={onAdd} data-testid="button-add-refueling">
             <Plus className="mr-2 h-4 w-4" />
             Новая заправка
@@ -525,6 +528,7 @@ export function RefuelingTable({
                           setDealToDelete(deal);
                           setDeleteDialogOpen(true);
                         }}
+                        permModule={permModule}
                       />
                     )}
                   </TableCell>

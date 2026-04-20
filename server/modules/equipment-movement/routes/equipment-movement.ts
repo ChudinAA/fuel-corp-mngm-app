@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "../../../storage/index";
-import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import { requireAuth, requirePermission, requireAnyPermission } from "../../../middleware/middleware";
 import { insertEquipmentMovementSchema } from "@shared/schema";
 import { z } from "zod";
 import { auditLog } from "../../audit/middleware/audit-middleware";
@@ -10,7 +10,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
   app.get(
     "/api/equipment-movement",
     requireAuth,
-    requirePermission("equipment", "view"),
+    requireAnyPermission(["equipment", "lik-movement"], "view"),
     async (req, res) => {
       const offset = parseInt(req.query.offset as string) || 0;
       const pageSize = parseInt(req.query.pageSize as string) || 20;
@@ -23,7 +23,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
   app.get(
     "/api/equipment-movement/:id",
     requireAuth,
-    requirePermission("equipment", "view"),
+    requireAnyPermission(["equipment", "lik-movement"], "view"),
     async (req, res) => {
       const item = await (storage as any).equipmentMovement.getMovement(req.params.id);
       if (!item) return res.status(404).json({ message: "Запись не найдена" });
@@ -34,7 +34,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
   app.post(
     "/api/equipment-movement",
     requireAuth,
-    requirePermission("equipment", "create"),
+    requireAnyPermission(["equipment", "lik-movement"], "create"),
     auditLog({
       entityType: ENTITY_TYPES.EQUIPMENT_MOVEMENT,
       operation: AUDIT_OPERATIONS.CREATE,
@@ -73,7 +73,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
   app.patch(
     "/api/equipment-movement/:id",
     requireAuth,
-    requirePermission("equipment", "edit"),
+    requireAnyPermission(["equipment", "lik-movement"], "edit"),
     auditLog({
       entityType: ENTITY_TYPES.EQUIPMENT_MOVEMENT,
       operation: AUDIT_OPERATIONS.UPDATE,
@@ -115,7 +115,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
   app.delete(
     "/api/equipment-movement/:id",
     requireAuth,
-    requirePermission("equipment", "delete"),
+    requireAnyPermission(["equipment", "lik-movement"], "delete"),
     auditLog({
       entityType: ENTITY_TYPES.EQUIPMENT_MOVEMENT,
       operation: AUDIT_OPERATIONS.DELETE,

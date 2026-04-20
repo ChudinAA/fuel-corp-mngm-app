@@ -113,13 +113,13 @@ const getLikMenuItems = (hasPermission: (p: string) => boolean) =>
       title: "Заправка ВС ЛИК",
       url: "/lik/refueling",
       icon: Plane,
-      permission: "refueling.view",
+      permission: "lik-refueling.view",
     },
     {
       title: "Перемещение ЛИК",
       url: "/lik/movement",
       icon: ArrowLeftRight,
-      permission: "movement.view",
+      permission: "lik-movement.view",
     },
     {
       title: "Средства Заправки",
@@ -163,7 +163,7 @@ const getExchangeMenuItems = (hasPermission: (p: string) => boolean) =>
       title: "Справочники Биржи",
       url: "/exchange-directories",
       icon: BookOpen,
-      permission: "directories.view",
+      permission: "exchange.view",
     },
   ].filter((item) => !item.permission || hasPermission(item.permission));
 
@@ -185,7 +185,7 @@ const getDataMenuItems = (hasPermission: (p: string) => boolean) =>
       title: "Контрагенты",
       url: "/counterparties",
       icon: Users,
-      permission: "directories.view",
+      permission: "counterparties.view",
     },
     {
       title: "Доставка",
