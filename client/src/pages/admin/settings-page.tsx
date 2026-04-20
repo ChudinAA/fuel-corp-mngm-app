@@ -68,9 +68,9 @@ export default function SettingsPage() {
                     {user ? `${user.lastName} ${user.firstName}`.trim() : "Гость"}
                   </h3>
                   <p className="text-sm text-muted-foreground">{user?.email}</p>
-                  <Badge variant="outline">Роль: Администратор</Badge>
+                  <Badge variant="outline">Роль: {user?.role.name}</Badge>
                 </div>
-                <Button variant="outline">Изменить фото</Button>
+                {/* <Button variant="outline">Изменить фото</Button> */}
               </div>
 
               <Separator />
@@ -132,7 +132,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5" />
@@ -171,7 +171,7 @@ export default function SettingsPage() {
                 />
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
 
         <div className="space-y-6">
@@ -217,7 +217,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Database className="h-5 w-5" />
@@ -240,9 +240,9 @@ export default function SettingsPage() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
@@ -262,7 +262,7 @@ export default function SettingsPage() {
                 </Button>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
       </div>
     </div>
