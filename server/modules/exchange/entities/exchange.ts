@@ -17,6 +17,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
 import { warehouses } from "../../warehouses/entities/warehouses";
+import { suppliers } from "../../suppliers/entities/suppliers";
 
 export const exchange = pgTable("exchange", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -29,6 +30,12 @@ export const exchange = pgTable("exchange", {
   totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
   warehouseId: uuid("warehouse_id").references(() => warehouses.id),
   notes: text("notes"),
+  // Покупатель — наш поставщик-склад (если выбран, значит мы покупаем топливо себе на склад)
+  buyerSupplierId: uuid("buyer_supplier_id").references(() => suppliers.id),
+  // Флаг: подтверждено получение на складе
+  isReceivedAtWarehouse: boolean("is_received_at_warehouse").default(false),
+  // Ссылка на созданное Перемещение (если isReceivedAtWarehouse=true)
+  movementId: uuid("movement_id"),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
   createdById: uuid("created_by_id").references(() => users.id),
@@ -39,6 +46,7 @@ export const exchange = pgTable("exchange", {
   dealDateIdx: index("exchange_deal_date_idx").on(table.dealDate),
   warehouseIdx: index("exchange_warehouse_idx").on(table.warehouseId),
   productTypeIdx: index("exchange_product_type_idx").on(table.productType),
+  buyerSupplierIdx: index("exchange_buyer_supplier_idx").on(table.buyerSupplierId),
 }));
 
 // ============ RELATIONS ============
@@ -47,6 +55,10 @@ export const exchangeRelations = relations(exchange, ({ one }) => ({
   warehouse: one(warehouses, {
     fields: [exchange.warehouseId],
     references: [warehouses.id],
+  }),
+  buyerSupplier: one(suppliers, {
+    fields: [exchange.buyerSupplierId],
+    references: [suppliers.id],
   }),
   createdBy: one(users, {
     fields: [exchange.createdById],

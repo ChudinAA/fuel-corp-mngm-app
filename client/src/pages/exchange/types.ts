@@ -1,8 +1,9 @@
 
-import type { Exchange, Warehouse } from "@shared/schema";
+import type { Exchange, Warehouse, Supplier } from "@shared/schema";
 
 export interface ExchangeDialogProps {
   warehouses: Warehouse[];
+  supplierWarehouses: Supplier[];
   editExchange: Exchange | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;

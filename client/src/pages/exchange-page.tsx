@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, Search, Filter, Plus, History } from "lucide-react";
 import { AuditPanel } from "@/components/audit-panel";
-import type { Exchange, Warehouse } from "@shared/schema";
+import type { Exchange, Warehouse, Supplier } from "@shared/schema";
 import { ExchangeDialog } from "./exchange/components/exchange-dialog";
 import { ExchangeTable } from "./exchange/components/exchange-table";
 import { useAuth } from "@/hooks/use-auth";
@@ -28,6 +28,11 @@ export default function ExchangePage() {
   const { data: warehouses } = useQuery<Warehouse[]>({
     queryKey: ["/api/warehouses"],
   });
+
+  const { data: allSuppliers } = useQuery<Supplier[]>({
+    queryKey: ["/api/suppliers"],
+  });
+  const supplierWarehouses = allSuppliers?.filter((s) => s.isWarehouse) ?? [];
 
   const { data: exchanges, isLoading } = useQuery<{ data: Exchange[]; total: number }>({
     queryKey: ["/api/exchange?page=1&pageSize=1000"],
@@ -86,6 +91,7 @@ export default function ExchangePage() {
 
       <ExchangeDialog
         warehouses={warehouses || []}
+        supplierWarehouses={supplierWarehouses || []}
         editExchange={editingExchange}
         open={isDialogOpen}
         onOpenChange={(open) => !open && handleCloseDialog()}

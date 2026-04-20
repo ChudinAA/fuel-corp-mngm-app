@@ -315,6 +315,14 @@ export function MovementTable({
                             Черновик
                           </Badge>
                         )}
+                        {item.fromExchange && (
+                          <Badge
+                            variant="secondary"
+                            className="w-fit text-[9px] h-4 px-1 bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700"
+                          >
+                            Биржа
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="py-1.5 px-1">
@@ -354,7 +362,7 @@ export function MovementTable({
                     <TableCell className="text-xs py-1.5 px-1 max-w-[100px]">
                       {item.carrierName ? (
                         <span className="truncate block">{item.carrierName}</span>
-                      ) : item.movementType === MOVEMENT_TYPE.SUPPLY && !item.isDraft ? (
+                      ) : item.movementType === MOVEMENT_TYPE.SUPPLY && !item.isDraft && !item.fromExchange ? (
                         <span className="flex items-center gap-1 text-destructive">
                           <AlertTriangle className="h-3 w-3 shrink-0" />
                           <span className="text-[10px] font-medium">Не указан</span>
@@ -373,58 +381,62 @@ export function MovementTable({
                       {formatNumber(costPerKg)}
                     </TableCell>
                     <TableCell className="py-1.5 px-1 sticky right-0 bg-background">
-                      <EntityActionsMenu
-                        actions={[
-                          {
-                            id: "edit",
-                            label: "Редактировать",
-                            icon: Pencil,
-                            onClick: () => onEdit(item),
-                            permission: { module: "movement", action: "edit" },
-                          },
-                          {
-                            id: "copy",
-                            label: "Создать копию",
-                            icon: Copy,
-                            onClick: () =>
-                              onEdit({ ...item, id: undefined } as any),
-                            permission: {
-                              module: "movement",
-                              action: "create",
+                      {item.fromExchange ? (
+                        <div className="w-8" />
+                      ) : (
+                        <EntityActionsMenu
+                          actions={[
+                            {
+                              id: "edit",
+                              label: "Редактировать",
+                              icon: Pencil,
+                              onClick: () => onEdit(item),
+                              permission: { module: "movement", action: "edit" },
                             },
-                          },
-                          {
-                            id: "notes",
-                            label: "Примечание",
-                            icon: FileText,
-                            onClick: () => {
-                              setSelectedNotes(item.notes || "");
-                              setNotesDialogOpen(true);
+                            {
+                              id: "copy",
+                              label: "Создать копию",
+                              icon: Copy,
+                              onClick: () =>
+                                onEdit({ ...item, id: undefined } as any),
+                              permission: {
+                                module: "movement",
+                                action: "create",
+                              },
                             },
-                            condition: !!item.notes,
-                          },
-                          {
-                            id: "delete",
-                            label: "Удалить",
-                            icon: Trash2,
-                            onClick: () => {
-                              setItemToDelete(item);
-                              setDeleteDialogOpen(true);
+                            {
+                              id: "notes",
+                              label: "Примечание",
+                              icon: FileText,
+                              onClick: () => {
+                                setSelectedNotes(item.notes || "");
+                                setNotesDialogOpen(true);
+                              },
+                              condition: !!item.notes,
                             },
-                            variant: "destructive" as const,
-                            permission: {
-                              module: "movement",
-                              action: "delete",
+                            {
+                              id: "delete",
+                              label: "Удалить",
+                              icon: Trash2,
+                              onClick: () => {
+                                setItemToDelete(item);
+                                setDeleteDialogOpen(true);
+                              },
+                              variant: "destructive" as const,
+                              permission: {
+                                module: "movement",
+                                action: "delete",
+                              },
+                              separatorAfter: true,
                             },
-                            separatorAfter: true,
-                          },
-                        ]}
-                        audit={{
-                          entityType: "movement",
-                          entityId: item.id,
-                          entityName: `Перемещение от ${formatDate(item.movementDate)}`,
-                        }}
-                      />
+                          ]}
+                          audit={{
+                            entityType: "movement",
+                            entityId: item.id,
+                            entityName: `Перемещение от ${formatDate(item.movementDate)}`,
+                          }}
+                        />
+                      )}
                     </TableCell>
                   </TableRow>
                 );

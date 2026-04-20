@@ -10,6 +10,10 @@ export const exchangeFormSchema = z.object({
   pricePerKg: z.string().min(1, "Укажите цену"),
   warehouseId: z.string().optional(),
   notes: z.string().optional(),
+  // Покупатель-склад: id поставщика-склада (если выбран наш склад как покупатель)
+  buyerSupplierId: z.string().optional().nullable(),
+  // Подтверждение получения на складе
+  isReceivedAtWarehouse: z.boolean().default(false),
 });
 
 export type ExchangeFormData = z.infer<typeof exchangeFormSchema>;

@@ -67,6 +67,10 @@ export const movement = pgTable(
     deletedAt: timestamp("deleted_at", { mode: "string" }),
     deletedById: uuid("deleted_by_id").references(() => users.id),
     isDraft: boolean("is_draft").default(false),
+    // Признак: запись создана со стороны сделки Биржи
+    fromExchange: boolean("from_exchange").default(false),
+    // Ссылка на сделку Биржи, которая создала это перемещение
+    exchangeId: uuid("exchange_id"),
   },
   (table) => ({
     movementDateIdx: index("movement_date_idx").on(table.movementDate),
