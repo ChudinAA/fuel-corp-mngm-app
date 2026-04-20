@@ -20,7 +20,7 @@ import { suppliers } from "../../suppliers/entities/suppliers";
 import { opt } from "../../opt/entities/opt";
 import { aircraftRefueling } from "../../refueling/entities/refueling";
 import { movement } from "../../movement/entities/movement";
-import { exchange } from "../../exchange/entities/exchange";
+import { exchangeDeals } from "../../exchange-deals/entities/exchange-deals";
 import { bases } from "../../bases/entities/bases";
 
 export const warehouses = pgTable(
@@ -147,7 +147,7 @@ export const warehousesRelations = relations(warehouses, ({ many, one }) => ({
   refuelings: many(aircraftRefueling),
   movementsFrom: many(movement, { relationName: "fromWarehouse" }),
   movementsTo: many(movement, { relationName: "toWarehouse" }),
-  exchangeDeals: many(exchange),
+  exchangeDeals: many(exchangeDeals),
   createdBy: one(users, {
     fields: [warehouses.createdById],
     references: [users.id],

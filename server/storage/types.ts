@@ -3,7 +3,6 @@ export * from "server/modules/users/storage/types";
 export * from "server/modules/movement/storage/types";
 export * from "server/modules/refueling/storage/types";
 export * from "server/modules/opt/storage/types";
-export * from "server/modules/exchange/storage/types";
 export * from "server/modules/warehouses/storage/types";
 export * from "server/modules/suppliers/storage/types";
 export * from "server/modules/customers/storage/types";

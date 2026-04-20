@@ -6,7 +6,6 @@ export * from "server/modules/users/entities/users";
 export * from "server/modules/movement/entities/movement";
 export * from "server/modules/refueling/entities/refueling";
 export * from "server/modules/opt/entities/opt";
-export * from "server/modules/exchange/entities/exchange";
 export * from "server/modules/warehouses/entities/warehouses";
 export * from "server/modules/suppliers/entities/suppliers";
 export * from "server/modules/customers/entities/customers";

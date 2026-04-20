@@ -6,7 +6,7 @@ import { opt } from "../../opt/entities/opt";
 import { aircraftRefueling } from "../../refueling/entities/refueling";
 import { warehouseTransactions } from "../../warehouses/entities/warehouses";
 import { movement } from "../../movement/entities/movement";
-import { exchange } from "../../exchange/entities/exchange";
+import { exchangeDeals } from "../../exchange-deals/entities/exchange-deals";
 import { cashflowTransactions } from "../../finance/entities/finance";
 import { governmentContracts } from "../../gov-contracts/entities/gov-contracts";
 import { deliveryCost } from "../../delivery/entities/delivery";
@@ -179,12 +179,12 @@ export class ManagementReportStorage implements IManagementReportStorage {
       .select({
         count: sql<number>`CAST(COUNT(*) AS INTEGER)`,
       })
-      .from(exchange)
+      .from(exchangeDeals)
       .where(
         and(
-          gte(exchange.exchangeDate, periodStart),
-          lte(exchange.exchangeDate, periodEnd),
-          isNull(exchange.deletedAt)
+          gte(exchangeDeals.dealDate, periodStart),
+          lte(exchangeDeals.dealDate, periodEnd),
+          isNull(exchangeDeals.deletedAt)
         )
       );
 

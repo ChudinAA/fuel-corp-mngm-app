@@ -5,7 +5,7 @@ import { savedReports } from "../entities/reports";
 import { opt } from "../../opt/entities/opt";
 import { aircraftRefueling } from "../../refueling/entities/refueling";
 import { movement } from "../../movement/entities/movement";
-import { exchange } from "../../exchange/entities/exchange";
+import { exchangeDeals } from "../../exchange-deals/entities/exchange-deals";
 import type { SavedReport, InsertSavedReport, IReportsStorage } from "./types";
 
 export class ReportsStorage implements IReportsStorage {
@@ -130,11 +130,11 @@ export class ReportsStorage implements IReportsStorage {
           });
           break;
         case "exchange":
-          results.exchange = await db.query.exchange.findMany({
+          results.exchange = await db.query.exchangeDeals.findMany({
             where: and(
-              gte(exchange.exchangeDate, startDate),
-              lte(exchange.exchangeDate, endDate),
-              isNull(exchange.deletedAt)
+              gte(exchangeDeals.dealDate, startDate),
+              lte(exchangeDeals.dealDate, endDate),
+              isNull(exchangeDeals.deletedAt)
             ),
             with: {
               sourceWarehouse: true,

@@ -7,7 +7,6 @@ import { BaseStorage } from "../modules/bases/storage/base-storage";
 import { SupplierStorage } from "../modules/suppliers/storage/supplier-storage";
 import { LogisticsStorage } from "../modules/logistics/storage/logistics-storage";
 import { WarehouseStorage } from "../modules/warehouses/storage/warehouse-storage";
-import { ExchangeStorage } from "../modules/exchange/storage/exchange-storage";
 import { MovementStorage } from "../modules/movement/storage/movement-storage";
 import { OptStorage } from "../modules/opt/storage/opt-storage";
 import { AircraftRefuelingStorage } from "../modules/refueling/storage/aircraft-refueling-storage";
@@ -85,7 +84,6 @@ export class Storage {
     this.logistics = new LogisticsStorage();
     this.prices = new PriceStorage();
     this.warehouses = new WarehouseStorage();
-    this.exchange = new ExchangeStorage();
     this.movement = new MovementStorage();
     this.opt = new OptStorage();
     this.aircraftRefueling = new AircraftRefuelingStorage();

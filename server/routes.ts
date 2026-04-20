@@ -10,7 +10,6 @@ import { registerBasesRoutes } from "./modules/bases/routes/bases";
 import { registerCustomersRoutes } from "./modules/customers/routes/customers";
 import { registerLogisticsRoutes } from "./modules/logistics/routes/logistics";
 import { registerWarehousesOperationsRoutes } from "./modules/warehouses/routes/warehouses";
-import { registerExchangeRoutes } from "./modules/exchange/routes/exchange";
 import { registerMovementRoutes } from "./modules/movement/routes/movement";
 import { registerOptRoutes } from "./modules/opt/routes/opt";
 import { registerRefuelingOperationsRoutes } from "./modules/refueling/routes/refueling";
@@ -74,7 +73,6 @@ export async function registerRoutes(
   registerPricesRoutes(app);
   registerDeliveryRoutes(app);
   registerWarehousesOperationsRoutes(app);
-  registerExchangeRoutes(app);
   registerMovementRoutes(app);
   registerAuditRoutes(app);
   registerOptRoutes(app);
