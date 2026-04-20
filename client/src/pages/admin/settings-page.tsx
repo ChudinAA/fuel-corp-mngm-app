@@ -1,7 +1,12 @@
-import { useState } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/components/theme-provider";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,34 +15,113 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
+import {
   Settings,
   User,
-  Bell,
   Shield,
-  Database,
   Moon,
   Sun,
   Save,
   Key,
-  Mail,
-  Smartphone,
-  Globe
+  Globe,
+  Loader2,
 } from "lucide-react";
+
+const profileSchema = z.object({
+  firstName: z.string().min(1, "Имя обязательно"),
+  lastName: z.string().min(1, "Фамилия обязательна"),
+  email: z.string().email("Некорректный email"),
+});
+
+const passwordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Введите текущий пароль"),
+    newPassword: z.string().min(6, "Пароль должен быть не менее 6 символов"),
+    confirmPassword: z.string().min(1, "Подтвердите пароль"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Пароли не совпадают",
+    path: ["confirmPassword"],
+  });
+
+type ProfileFormValues = z.infer<typeof profileSchema>;
+type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 export default function SettingsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { theme, toggleTheme } = useTheme();
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [browserNotifications, setBrowserNotifications] = useState(false);
 
-  const getInitials = (firstName: string, lastName: string) => 
+  const getInitials = (firstName: string, lastName: string) =>
     `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 
-  const handleSave = () => {
-    toast({ title: "Настройки сохранены", description: "Изменения успешно применены" });
-  };
+  const profileForm = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      firstName: user?.firstName ?? "",
+      lastName: user?.lastName ?? "",
+      email: user?.email ?? "",
+    },
+  });
+
+  useEffect(() => {
+    if (user) {
+      profileForm.reset({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+      });
+    }
+  }, [user]);
+
+  const passwordForm = useForm<PasswordFormValues>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
+  const profileMutation = useMutation({
+    mutationFn: async (data: ProfileFormValues) => {
+      const res = await apiRequest("PATCH", "/api/auth/profile", data);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Ошибка обновления профиля");
+      }
+      return res.json();
+    },
+    onSuccess: (updatedUser) => {
+      queryClient.setQueryData(["/api/auth/user"], updatedUser);
+      toast({ title: "Профиль обновлён", description: "Изменения успешно сохранены" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const passwordMutation = useMutation({
+    mutationFn: async (data: PasswordFormValues) => {
+      const res = await apiRequest("PATCH", "/api/auth/change-password", data);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Ошибка смены пароля");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      passwordForm.reset();
+      toast({ title: "Пароль изменён", description: "Новый пароль успешно установлен" });
+    },
+    onError: (error: Error) => {
+      if (error.message.includes("Текущий пароль")) {
+        passwordForm.setError("currentPassword", { message: error.message });
+      } else {
+        toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+      }
+    },
+  });
 
   return (
     <div className="space-y-6">
@@ -48,6 +132,8 @@ export default function SettingsPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
+
+          {/* ── Профиль ── */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -68,37 +154,78 @@ export default function SettingsPage() {
                     {user ? `${user.lastName} ${user.firstName}`.trim() : "Гость"}
                   </h3>
                   <p className="text-sm text-muted-foreground">{user?.email}</p>
-                  <Badge variant="outline">Роль: {user?.role.name}</Badge>
+                  <Badge variant="outline">Роль: {user?.role?.name}</Badge>
                 </div>
-                {/* <Button variant="outline">Изменить фото</Button> */}
               </div>
 
               <Separator />
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Имя</Label>
-                  <Input defaultValue={user?.firstName} data-testid="input-settings-firstname" />
+              <form
+                onSubmit={profileForm.handleSubmit((data) => profileMutation.mutate(data))}
+                className="space-y-4"
+              >
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">Имя</Label>
+                    <Input
+                      id="firstName"
+                      {...profileForm.register("firstName")}
+                      data-testid="input-settings-firstname"
+                    />
+                    {profileForm.formState.errors.firstName && (
+                      <p className="text-sm text-destructive">
+                        {profileForm.formState.errors.firstName.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Фамилия</Label>
+                    <Input
+                      id="lastName"
+                      {...profileForm.register("lastName")}
+                      data-testid="input-settings-lastname"
+                    />
+                    {profileForm.formState.errors.lastName && (
+                      <p className="text-sm text-destructive">
+                        {profileForm.formState.errors.lastName.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      {...profileForm.register("email")}
+                      data-testid="input-settings-email"
+                    />
+                    {profileForm.formState.errors.email && (
+                      <p className="text-sm text-destructive">
+                        {profileForm.formState.errors.email.message}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Фамилия</Label>
-                  <Input defaultValue={user?.lastName} data-testid="input-settings-lastname" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input type="email" defaultValue={user?.email} data-testid="input-settings-email" />
-                </div>
-              </div>
 
-              <div className="flex justify-end">
-                <Button onClick={handleSave} data-testid="button-save-profile">
-                  <Save className="mr-2 h-4 w-4" />
-                  Сохранить изменения
-                </Button>
-              </div>
+                <div className="flex justify-end">
+                  <Button
+                    type="submit"
+                    disabled={profileMutation.isPending}
+                    data-testid="button-save-profile"
+                  >
+                    {profileMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    Сохранить изменения
+                  </Button>
+                </div>
+              </form>
             </CardContent>
           </Card>
 
+          {/* ── Безопасность ── */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -108,70 +235,77 @@ export default function SettingsPage() {
               <CardDescription>Управление паролем и безопасностью</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Текущий пароль</Label>
-                  <Input type="password" placeholder="••••••••" data-testid="input-current-password" />
+              <form
+                onSubmit={passwordForm.handleSubmit((data) => passwordMutation.mutate(data))}
+                className="space-y-4"
+              >
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="currentPassword">Текущий пароль</Label>
+                    <Input
+                      id="currentPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      {...passwordForm.register("currentPassword")}
+                      data-testid="input-current-password"
+                    />
+                    {passwordForm.formState.errors.currentPassword && (
+                      <p className="text-sm text-destructive">
+                        {passwordForm.formState.errors.currentPassword.message}
+                      </p>
+                    )}
+                  </div>
+                  <div />
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword">Новый пароль</Label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      {...passwordForm.register("newPassword")}
+                      data-testid="input-new-password"
+                    />
+                    {passwordForm.formState.errors.newPassword && (
+                      <p className="text-sm text-destructive">
+                        {passwordForm.formState.errors.newPassword.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Подтвердите пароль</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="••••••••"
+                      {...passwordForm.register("confirmPassword")}
+                      data-testid="input-confirm-password"
+                    />
+                    {passwordForm.formState.errors.confirmPassword && (
+                      <p className="text-sm text-destructive">
+                        {passwordForm.formState.errors.confirmPassword.message}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div></div>
-                <div className="space-y-2">
-                  <Label>Новый пароль</Label>
-                  <Input type="password" placeholder="••••••••" data-testid="input-new-password" />
+
+                <div className="flex justify-end">
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={passwordMutation.isPending}
+                    data-testid="button-change-password"
+                  >
+                    {passwordMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Key className="mr-2 h-4 w-4" />
+                    )}
+                    Изменить пароль
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label>Подтвердите пароль</Label>
-                  <Input type="password" placeholder="••••••••" data-testid="input-confirm-password" />
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <Button variant="outline" data-testid="button-change-password">
-                  <Key className="mr-2 h-4 w-4" />
-                  Изменить пароль
-                </Button>
-              </div>
+              </form>
             </CardContent>
           </Card>
-
-          {/* <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Уведомления
-              </CardTitle>
-              <CardDescription>Настройки уведомлений и оповещений</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Mail className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">Email-уведомления</p>
-                    <p className="text-sm text-muted-foreground">Получать уведомления на почту</p>
-                  </div>
-                </div>
-                <Switch
-                  checked={emailNotifications}
-                  onCheckedChange={setEmailNotifications}
-                  data-testid="switch-email-notifications"
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Smartphone className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">Push-уведомления</p>
-                    <p className="text-sm text-muted-foreground">Уведомления в браузере</p>
-                  </div>
-                </div>
-                <Switch
-                  checked={browserNotifications}
-                  onCheckedChange={setBrowserNotifications}
-                  data-testid="switch-browser-notifications"
-                />
-              </div>
-            </CardContent>
-          </Card> */}
         </div>
 
         <div className="space-y-6">
@@ -183,7 +317,7 @@ export default function SettingsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-1">
                 <div className="flex items-center gap-3">
                   {theme === "light" ? (
                     <Sun className="h-5 w-5 text-yellow-500" />
@@ -204,7 +338,7 @@ export default function SettingsPage() {
                 />
               </div>
               <Separator />
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-1">
                 <div className="flex items-center gap-3">
                   <Globe className="h-5 w-5 text-muted-foreground" />
                   <div>
@@ -216,53 +350,6 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
-
-          {/* <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5" />
-                Система
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Версия</span>
-                  <span className="font-medium">1.0.0</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">База данных</span>
-                  <Badge variant="outline" className="text-green-600 border-green-600">Подключена</Badge>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Последнее обновление</span>
-                  <span className="font-medium">01.12.2025</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card> */}
-
-          {/* <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Сессия
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Вы вошли в систему как {user?.email}
-              </p>
-              <div className="space-y-2">
-                <Button variant="outline" className="w-full" data-testid="button-logout-all">
-                  Выйти со всех устройств
-                </Button>
-                <Button variant="destructive" className="w-full" data-testid="button-delete-account">
-                  Удалить аккаунт
-                </Button>
-              </div>
-            </CardContent>
-          </Card> */}
         </div>
       </div>
     </div>
