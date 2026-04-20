@@ -309,6 +309,22 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
                             Черновик
                           </Badge>
                         )}
+                        {deal.buyerSupplierId && !deal.isReceivedAtWarehouse && (
+                          <Badge
+                            variant="secondary"
+                            className="w-fit text-[9px] h-4 px-1 bg-blue-50 text-blue-700 border-blue-200"
+                          >
+                            На склад
+                          </Badge>
+                        )}
+                        {deal.isReceivedAtWarehouse && (
+                          <Badge
+                            variant="secondary"
+                            className="w-fit text-[9px] h-4 px-1 bg-green-50 text-green-700 border-green-200"
+                          >
+                            Получено
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-[10px] py-1.5 px-1 font-medium">

@@ -8,6 +8,8 @@ import {
 import { suppliers } from "../../suppliers/entities/suppliers";
 import { customers } from "../../customers/entities/customers";
 import { railwayStations, railwayTariffs } from "../../railway/entities/railway";
+import { movement } from "../../movement/entities/movement";
+import { MOVEMENT_TYPE } from "@shared/constants";
 
 export class ExchangeDealsStorage {
   async getDeal(id: string): Promise<any | undefined> {
@@ -22,6 +24,7 @@ export class ExchangeDealsStorage {
         destinationCode: sql<string>`dest.code`,
         tariffZoneName: railwayTariffs.zoneName,
         tariffPricePerTon: railwayTariffs.pricePerTon,
+        buyerSupplierName: sql<string>`bs.name`,
       })
       .from(exchangeDeals)
       .leftJoin(suppliers, eq(exchangeDeals.sellerId, suppliers.id))
@@ -29,6 +32,7 @@ export class ExchangeDealsStorage {
       .leftJoin(sql`railway_stations ds`, sql`ds.id = ${exchangeDeals.departureStationId}`)
       .leftJoin(sql`railway_stations dest`, sql`dest.id = ${exchangeDeals.destinationStationId}`)
       .leftJoin(railwayTariffs, eq(exchangeDeals.deliveryTariffId, railwayTariffs.id))
+      .leftJoin(sql`suppliers bs`, sql`bs.id = ${exchangeDeals.buyerSupplierId}`)
       .where(and(eq(exchangeDeals.id, id), isNull(exchangeDeals.deletedAt)))
       .limit(1);
 
@@ -44,6 +48,7 @@ export class ExchangeDealsStorage {
       destinationCode: row.destinationCode,
       tariffZoneName: row.tariffZoneName,
       tariffPricePerTon: row.tariffPricePerTon,
+      buyerSupplierName: row.buyerSupplierName,
     };
   }
 
@@ -101,6 +106,7 @@ export class ExchangeDealsStorage {
         destinationCode: sql<string>`dest.code`,
         tariffZoneName: railwayTariffs.zoneName,
         tariffPricePerTon: railwayTariffs.pricePerTon,
+        buyerSupplierName: sql<string>`bs.name`,
       })
       .from(exchangeDeals)
       .leftJoin(suppliers, eq(exchangeDeals.sellerId, suppliers.id))
@@ -108,6 +114,7 @@ export class ExchangeDealsStorage {
       .leftJoin(sql`railway_stations ds`, sql`ds.id = ${exchangeDeals.departureStationId}`)
       .leftJoin(sql`railway_stations dest`, sql`dest.id = ${exchangeDeals.destinationStationId}`)
       .leftJoin(railwayTariffs, eq(exchangeDeals.deliveryTariffId, railwayTariffs.id))
+      .leftJoin(sql`suppliers bs`, sql`bs.id = ${exchangeDeals.buyerSupplierId}`)
       .where(whereClause)
       .orderBy(desc(exchangeDeals.createdAt))
       .limit(pageSize)
@@ -132,6 +139,7 @@ export class ExchangeDealsStorage {
       destinationCode: row.destinationCode,
       tariffZoneName: row.tariffZoneName,
       tariffPricePerTon: row.tariffPricePerTon,
+      buyerSupplierName: row.buyerSupplierName,
     }));
 
     return { data, total };
@@ -139,16 +147,83 @@ export class ExchangeDealsStorage {
 
   async createDeal(data: InsertExchangeDeal): Promise<ExchangeDeal> {
     const [deal] = await db.insert(exchangeDeals).values(data).returning();
+
+    // Если указан наш склад-покупатель и подтверждено получение — создать Перемещение
+    if (deal.isReceivedAtWarehouse && deal.buyerSupplierId && !deal.movementId) {
+      await this._createMovementForDeal(deal);
+    }
+
     return deal;
   }
 
   async updateDeal(id: string, data: Partial<InsertExchangeDeal>, updatedById?: string): Promise<ExchangeDeal | undefined> {
+    const existing = await db.query.exchangeDeals.findFirst({
+      where: and(eq(exchangeDeals.id, id), isNull(exchangeDeals.deletedAt)),
+    });
+    if (!existing) return undefined;
+
     const [deal] = await db
       .update(exchangeDeals)
       .set({ ...data, updatedAt: new Date().toISOString(), updatedById })
       .where(and(eq(exchangeDeals.id, id), isNull(exchangeDeals.deletedAt)))
       .returning();
+
+    // Создать Перемещение если isReceivedAtWarehouse стало true и ещё не было создано
+    const wasReceived = existing.isReceivedAtWarehouse;
+    const nowReceived = deal.isReceivedAtWarehouse;
+    if (nowReceived && !wasReceived && deal.buyerSupplierId && !deal.movementId) {
+      await this._createMovementForDeal(deal);
+    }
+
     return deal;
+  }
+
+  private async _createMovementForDeal(deal: ExchangeDeal): Promise<void> {
+    if (!deal.buyerSupplierId) return;
+
+    // Получить склад поставщика
+    const supplier = await db.query.suppliers.findFirst({
+      where: eq(suppliers.id, deal.buyerSupplierId),
+    });
+
+    if (!supplier?.warehouseId) return;
+
+    // Количество в кг (фактический вес или плановый)
+    const weightTon = parseFloat(String(deal.actualWeightTon || deal.weightTon || "0")) || 0;
+    const quantityKg = weightTon * 1000;
+    if (quantityKg <= 0) return;
+
+    // Стоимость
+    const pricePerTon = parseFloat(String(deal.pricePerTon || "0")) || 0;
+    const totalAmount = pricePerTon * weightTon;
+    const purchasePricePerKg = quantityKg > 0 ? totalAmount / quantityKg : 0;
+
+    const [createdMovement] = await db
+      .insert(movement)
+      .values({
+        movementDate: deal.dealDate
+          ? new Date(deal.dealDate).toISOString()
+          : new Date().toISOString(),
+        movementType: MOVEMENT_TYPE.SUPPLY,
+        toWarehouseId: supplier.warehouseId,
+        quantityKg: String(quantityKg),
+        totalCost: String(totalAmount),
+        purchasePrice: String(purchasePricePerKg),
+        isDraft: false,
+        fromExchange: true,
+        exchangeId: deal.id,
+        notes: deal.notes || null,
+        createdById: deal.createdById || null,
+      })
+      .returning();
+
+    // Обновить сделку со ссылкой на перемещение
+    if (createdMovement) {
+      await db
+        .update(exchangeDeals)
+        .set({ movementId: createdMovement.id })
+        .where(eq(exchangeDeals.id, deal.id));
+    }
   }
 
   async deleteDeal(id: string, deletedById?: string): Promise<boolean> {
@@ -178,13 +253,14 @@ export class ExchangeDealsStorage {
     });
     if (!original) return undefined;
 
-    const { id: _id, createdAt, updatedAt, deletedAt, deletedById, ...rest } = original;
+    const { id: _id, createdAt, updatedAt, deletedAt, deletedById, movementId, ...rest } = original;
     const [copy] = await db
       .insert(exchangeDeals)
       .values({
         ...rest,
         dealNumber: rest.dealNumber ? `${rest.dealNumber} (копия)` : null,
         isDraft: true,
+        isReceivedAtWarehouse: false,
         createdById,
         createdAt: new Date().toISOString(),
       })

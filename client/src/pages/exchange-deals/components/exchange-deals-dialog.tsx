@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Command,
   CommandEmpty,
@@ -40,7 +41,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { CalendarIcon, ChevronsUpDown, Check, Wallet } from "lucide-react";
+import { CalendarIcon, ChevronsUpDown, Check, Wallet, Warehouse } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const formSchema = z.object({
@@ -60,6 +61,8 @@ const formSchema = z.object({
   wagonNumbers: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   isDraft: z.boolean().default(false),
+  buyerSupplierId: z.string().uuid().nullable().optional(),
+  isReceivedAtWarehouse: z.boolean().default(false),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -227,6 +230,8 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
       wagonNumbers: "",
       notes: "",
       isDraft: false,
+      buyerSupplierId: null,
+      isReceivedAtWarehouse: false,
     },
   });
 
@@ -235,8 +240,9 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
   const watchActualWeightTon = form.watch("actualWeightTon");
   const watchDeliveryTariffId = form.watch("deliveryTariffId");
   const watchSellerId = form.watch("sellerId");
+  const watchBuyerSupplierId = form.watch("buyerSupplierId");
+  const watchIsReceived = form.watch("isReceivedAtWarehouse");
 
-  // Load data
   const { data: stations = [] } = useQuery<any[]>({
     queryKey: ["/api/railway/stations"],
   });
@@ -262,11 +268,9 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
     },
   });
 
-  // Selected tariff for price
   const selectedTariff = tariffs.find((t: any) => t.id === watchDeliveryTariffId);
   const tariffPrice = selectedTariff ? parseFloat(selectedTariff.pricePerTon) : 0;
 
-  // Calculations
   const pricePerTon = parseFloat(watchPricePerTon || "0") || 0;
   const weightTon = parseFloat(watchWeightTon || "0") || 0;
   const actualWeightTon = parseFloat(watchActualWeightTon || "0") || 0;
@@ -281,7 +285,12 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
   const formatMoney = (val: number) =>
     new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 2 }).format(val);
 
-  // Populate form when editing
+  // Поставщики-склады (у кого есть склад)
+  const warehouseSuppliers = (suppliers as any[]).filter((s: any) => s.isWarehouse && s.warehouseId);
+
+  // Уже есть перемещение для этой сделки
+  const hasExistingMovement = !isCopy && deal?.movementId;
+
   useEffect(() => {
     if (deal) {
       form.reset({
@@ -301,6 +310,8 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
         wagonNumbers: deal.wagonNumbers || "",
         notes: deal.notes || "",
         isDraft: isCopy ? true : (deal.isDraft || false),
+        buyerSupplierId: isCopy ? null : (deal.buyerSupplierId || null),
+        isReceivedAtWarehouse: isCopy ? false : (deal.isReceivedAtWarehouse || false),
       });
     } else {
       form.reset({
@@ -320,6 +331,8 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
         wagonNumbers: "",
         notes: "",
         isDraft: false,
+        buyerSupplierId: null,
+        isReceivedAtWarehouse: false,
       });
     }
   }, [deal, isCopy, form]);
@@ -334,6 +347,7 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/exchange-deals"] });
       queryClient.invalidateQueries({ queryKey: ["/api/exchange-advances"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/movement"] });
       toast({ title: deal && !isCopy ? "Сделка обновлена" : "Сделка создана" });
       onClose();
     },
@@ -355,6 +369,7 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
   }));
   const customerOptions = customers.map((c: any) => ({ id: c.id, label: c.name }));
   const supplierOptions = suppliers.map((s: any) => ({ id: s.id, label: s.name }));
+  const warehouseSupplierOptions = warehouseSuppliers.map((s: any) => ({ id: s.id, label: s.name, sub: "Наш склад" }));
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -398,7 +413,7 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
             <Separator />
             <p className="text-sm font-medium text-muted-foreground">Маршрут</p>
 
-            {/* Row 2: Stations */}
+            {/* Stations */}
             <div className="grid grid-cols-2 gap-4">
               <ComboboxField
                 label="Ст. отправления"
@@ -421,7 +436,7 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
             <Separator />
             <p className="text-sm font-medium text-muted-foreground">Контрагенты</p>
 
-            {/* Row 3: Buyer, Seller */}
+            {/* Buyer (customer), Seller */}
             <div className="grid grid-cols-2 gap-4">
               <ComboboxField
                 label="Покупатель"
@@ -458,9 +473,63 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
             )}
 
             <Separator />
+            <p className="text-sm font-medium text-muted-foreground">Закупка на наш склад</p>
+
+            {/* Buyer-Supplier (our warehouse) */}
+            <div className="grid grid-cols-2 gap-4">
+              <ComboboxField
+                label="Наш склад-покупатель"
+                value={form.watch("buyerSupplierId")}
+                onChange={(v) => {
+                  form.setValue("buyerSupplierId", v);
+                  if (!v) form.setValue("isReceivedAtWarehouse", false);
+                }}
+                options={warehouseSupplierOptions}
+                placeholder="Если топливо закупается на наш склад..."
+                testId="select-buyer-supplier"
+              />
+              {watchBuyerSupplierId && (
+                <div className="flex flex-col justify-end pb-1">
+                  <div className="flex items-center gap-2">
+                    <FormField
+                      control={form.control}
+                      name="isReceivedAtWarehouse"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center gap-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={hasExistingMovement}
+                              data-testid="checkbox-is-received"
+                            />
+                          </FormControl>
+                          <FormLabel className="cursor-pointer font-normal">
+                            Подтвердить получение на складе
+                          </FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  {hasExistingMovement && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <Warehouse className="h-3 w-3 text-blue-600" />
+                      <span className="text-xs text-blue-600">Перемещение создано</span>
+                    </div>
+                  )}
+                  {watchIsReceived && !hasExistingMovement && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      При сохранении будет автоматически создано Перемещение
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <Separator />
             <p className="text-sm font-medium text-muted-foreground">Финансы</p>
 
-            {/* Row 4: Prices and weights */}
+            {/* Prices and weights */}
             <div className="grid grid-cols-3 gap-4">
               <FormField
                 control={form.control}
@@ -524,7 +593,7 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
               />
             </div>
 
-            {/* Row 5: Delivery tariff */}
+            {/* Delivery tariff */}
             <div className="grid grid-cols-2 gap-4">
               <ComboboxField
                 label="Доставка за тонну (тариф)"
@@ -571,7 +640,7 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
             <Separator />
             <p className="text-sm font-medium text-muted-foreground">Логистика</p>
 
-            {/* Row 6: Dates */}
+            {/* Dates */}
             <div className="grid grid-cols-2 gap-4">
               <DatePickerField
                 label="Дата выхода вагона"
@@ -587,7 +656,7 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
               />
             </div>
 
-            {/* Row 7: Wagon numbers */}
+            {/* Wagon numbers */}
             <FormField
               control={form.control}
               name="wagonNumbers"
@@ -634,7 +703,6 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
             Отмена
           </Button>
 
-          {/* Show "Save as draft" only when creating new, copying, or editing a draft */}
           {(!deal || isCopy || deal?.isDraft) && (
             <Button
               variant="secondary"

@@ -36,6 +36,12 @@ export const exchangeDeals = pgTable(
     wagonNumbers: text("wagon_numbers"),
     isDraft: boolean("is_draft").default(false),
     notes: text("notes"),
+    // Поставщик-склад как покупатель (мы закупаем топливо себе на склад)
+    buyerSupplierId: uuid("buyer_supplier_id").references(() => suppliers.id),
+    // Подтверждение получения на складе
+    isReceivedAtWarehouse: boolean("is_received_at_warehouse").default(false),
+    // Ссылка на созданное Перемещение
+    movementId: uuid("movement_id"),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
     createdById: uuid("created_by_id").references(() => users.id),
@@ -49,6 +55,7 @@ export const exchangeDeals = pgTable(
     buyerIdIdx: index("exchange_deals_buyer_id_idx").on(table.buyerId),
     isDraftIdx: index("exchange_deals_is_draft_idx").on(table.isDraft),
     deletedAtIdx: index("exchange_deals_deleted_at_idx").on(table.deletedAt),
+    buyerSupplierIdx: index("exchange_deals_buyer_supplier_idx").on(table.buyerSupplierId),
   }),
 );
 
@@ -60,6 +67,11 @@ export const exchangeDealsRelations = relations(exchangeDeals, ({ one }) => ({
   seller: one(suppliers, {
     fields: [exchangeDeals.sellerId],
     references: [suppliers.id],
+  }),
+  buyerSupplier: one(suppliers, {
+    fields: [exchangeDeals.buyerSupplierId],
+    references: [suppliers.id],
+    relationName: "buyerSupplier",
   }),
   departureStation: one(railwayStations, {
     fields: [exchangeDeals.departureStationId],
@@ -100,6 +112,9 @@ export const insertExchangeDealSchema = createInsertSchema(exchangeDeals)
     wagonNumbers: z.string().nullable().optional(),
     isDraft: z.boolean().default(false),
     notes: z.string().nullable().optional(),
+    buyerSupplierId: z.string().uuid().nullable().optional(),
+    isReceivedAtWarehouse: z.boolean().default(false),
+    movementId: z.string().uuid().nullable().optional(),
   });
 
 export type ExchangeDeal = typeof exchangeDeals.$inferSelect;

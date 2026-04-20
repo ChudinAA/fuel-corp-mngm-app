@@ -28,7 +28,6 @@ import CustomizableDashboard from "@/pages/dashboard/index";
 import OptPage from "@/pages/opt-page";
 import RefuelingPage from "@/pages/refueling-page";
 import EquipmentsPage from "@/pages/warehouses-equipment/equipment-page";
-import ExchangePage from "@/pages/exchange-page";
 import ExchangeDealsPage from "@/pages/exchange-deals-page";
 import ExchangeAdvancesPage from "@/pages/exchange-advances-page";
 import ExchangeDirectoriesPage from "@/pages/exchange-directories-page";
