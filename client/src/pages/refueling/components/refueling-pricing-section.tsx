@@ -82,6 +82,12 @@ export function RefuelingPricingSection({
   const watchBasisId = form.watch("basisId");
   const watchBasis = form.watch("basis");
 
+  const basisSpecificPrice = watchBasisId
+    ? selectedSupplier?.basisPrices?.find((bp) => bp.basisId === watchBasisId)
+        ?.servicePrice
+    : undefined;
+  const effectiveServicePrice = basisSpecificPrice || selectedSupplier?.servicePrice;
+
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
   const handlePurchasePriceCreated = (id: string) => {
     form.setValue("selectedPurchasePriceId", id);
@@ -97,13 +103,15 @@ export function RefuelingPricingSection({
       {productType === PRODUCT_TYPE.SERVICE && (
         <div className="mb-4 flex items-center justify-between rounded-md border p-3 bg-accent/5">
           <div className="flex items-center gap-4">
-            {selectedSupplier?.servicePrice && (
+            {effectiveServicePrice && (
               <div className="flex flex-col">
                 <span className="text-xs text-muted-foreground leading-none mb-1">
-                  Цена, установленная поставщиком
+                  {basisSpecificPrice
+                    ? "Цена по базису поставщика"
+                    : "Цена, установленная поставщиком"}
                 </span>
                 <span className="text-sm font-medium">
-                  {formatNumber(selectedSupplier.servicePrice)} ₽/кг
+                  {formatNumber(effectiveServicePrice)} ₽/кг
                 </span>
               </div>
             )}
@@ -131,8 +139,8 @@ export function RefuelingPricingSection({
       <div className="grid gap-3 md:grid-cols-4">
         {!isWarehouseSupplier &&
         purchasePrices.length > 0 &&
-        (selectedSupplier?.servicePrice === undefined ||
-          selectedSupplier?.servicePrice === null) ? (
+        (effectiveServicePrice === undefined ||
+          effectiveServicePrice === null) ? (
           <FormField
             control={form.control}
             name="selectedPurchasePriceId"
@@ -211,7 +219,7 @@ export function RefuelingPricingSection({
               );
             }}
           />
-        ) : selectedSupplier?.servicePrice &&
+        ) : effectiveServicePrice &&
           productType === PRODUCT_TYPE.SERVICE ? (
           <CalculatedField
             label="Покупка"

@@ -37,6 +37,7 @@ import { registerTransportationRoutes } from "./modules/transportation/routes/tr
 import { registerSettingsRoutes } from "./modules/settings/routes/settings";
 import { registerAviationRoutes } from "./modules/aviation/routes/aviation-routes";
 import { registerRailwayRoutes } from "./modules/railway/routes/railway";
+import { registerBaseDeliveryTariffsRoutes } from "./modules/opt/routes/base-delivery-tariffs";
 import { registerExchangeDealsRoutes } from "./modules/exchange-deals/routes/exchange-deals";
 import { registerExchangeAdvancesRoutes } from "./modules/exchange-advances/routes/exchange-advances";
 import { SSEService } from "./services/sse-service";
@@ -99,6 +100,7 @@ export async function registerRoutes(
   registerSettingsRoutes(app);
   registerAviationRoutes(app);
   registerRailwayRoutes(app);
+  registerBaseDeliveryTariffsRoutes(app);
   registerExchangeDealsRoutes(app);
   registerExchangeAdvancesRoutes(app);
 

@@ -204,6 +204,7 @@ export const RefuelingForm = forwardRef<
     isWarehouseSupplier,
     supplierWarehouse,
     selectedBasis,
+    basisId: watchBasisId,
     purchasePrices,
     salePrices,
     selectedPurchasePriceId,
@@ -346,6 +347,15 @@ export const RefuelingForm = forwardRef<
         }
       }
 
+      const resolvedBasisName =
+        editData.basis ||
+        (editData.basisId ? allBases.find((b) => b.id === editData.basisId)?.name : "") ||
+        "";
+      const resolvedCustomerBasisName =
+        editData.customerBasis ||
+        (editData.customerBasisId ? allBases.find((b) => b.id === editData.customerBasisId)?.name : "") ||
+        "";
+
       const resetValues = {
         refuelingDate: new Date(editData.refuelingDate),
         productType: editData.productType,
@@ -365,10 +375,10 @@ export const RefuelingForm = forwardRef<
         isPriceRecharge: editData.isPriceRecharge || false,
         selectedPurchasePriceId: purchasePriceCompositeId,
         selectedSalePriceId: salePriceCompositeId,
-        basis: editData.basis || "",
-        basisId: editData.basisId || "",
-        customerBasis: editData.customerBasis || "",
-        customerBasisId: editData.customerBasisId || "",
+        basis: resolvedBasisName,
+        basisId: editData.basisId || null,
+        customerBasis: resolvedCustomerBasisName,
+        customerBasisId: editData.customerBasisId || null,
         isDraft: editData.isDraft || false,
       };
 

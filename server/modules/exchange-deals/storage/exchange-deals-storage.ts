@@ -50,7 +50,7 @@ export class ExchangeDealsStorage {
         departureCode: sql<string>`ds.code`,
         destinationName: sql<string>`dest.name`,
         destinationCode: sql<string>`dest.code`,
-        tariffZoneName: railwayTariffs.zoneName,
+        tariffZoneName: sql<string>`CASE WHEN tfs.name IS NOT NULL AND tts.name IS NOT NULL THEN tfs.name || ' → ' || tts.name ELSE ${railwayTariffs.zoneName} END`,
         tariffPricePerTon: railwayTariffs.pricePerTon,
         buyerSupplierName: sql<string>`bs.name`,
       })
@@ -60,6 +60,8 @@ export class ExchangeDealsStorage {
       .leftJoin(sql`railway_stations ds`, sql`ds.id = ${exchangeDeals.departureStationId}`)
       .leftJoin(sql`railway_stations dest`, sql`dest.id = ${exchangeDeals.destinationStationId}`)
       .leftJoin(railwayTariffs, eq(exchangeDeals.deliveryTariffId, railwayTariffs.id))
+      .leftJoin(sql`railway_stations tfs`, sql`tfs.id = ${railwayTariffs.fromStationId}`)
+      .leftJoin(sql`railway_stations tts`, sql`tts.id = ${railwayTariffs.toStationId}`)
       .leftJoin(sql`suppliers bs`, sql`bs.id = ${exchangeDeals.buyerSupplierId}`)
       .where(and(eq(exchangeDeals.id, id), isNull(exchangeDeals.deletedAt)))
       .limit(1);
@@ -132,7 +134,7 @@ export class ExchangeDealsStorage {
         departureCode: sql<string>`ds.code`,
         destinationName: sql<string>`dest.name`,
         destinationCode: sql<string>`dest.code`,
-        tariffZoneName: railwayTariffs.zoneName,
+        tariffZoneName: sql<string>`CASE WHEN tfs.name IS NOT NULL AND tts.name IS NOT NULL THEN tfs.name || ' → ' || tts.name ELSE ${railwayTariffs.zoneName} END`,
         tariffPricePerTon: railwayTariffs.pricePerTon,
         buyerSupplierName: sql<string>`bs.name`,
       })
@@ -142,6 +144,8 @@ export class ExchangeDealsStorage {
       .leftJoin(sql`railway_stations ds`, sql`ds.id = ${exchangeDeals.departureStationId}`)
       .leftJoin(sql`railway_stations dest`, sql`dest.id = ${exchangeDeals.destinationStationId}`)
       .leftJoin(railwayTariffs, eq(exchangeDeals.deliveryTariffId, railwayTariffs.id))
+      .leftJoin(sql`railway_stations tfs`, sql`tfs.id = ${railwayTariffs.fromStationId}`)
+      .leftJoin(sql`railway_stations tts`, sql`tts.id = ${railwayTariffs.toStationId}`)
       .leftJoin(sql`suppliers bs`, sql`bs.id = ${exchangeDeals.buyerSupplierId}`)
       .where(whereClause)
       .orderBy(desc(exchangeDeals.createdAt))

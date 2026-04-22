@@ -248,16 +248,21 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
       {s.code && <span className="ml-2 text-xs text-muted-foreground">{s.code}</span>}
     </div>
   ) }));
-  const tariffOptions = tariffs.map((t: any) => ({
-    value: t.id,
-    label: t.zoneName,
-    render: (
-      <div>
-        <span>{t.zoneName}</span>
-        <span className="ml-2 text-xs text-muted-foreground">{formatMoney(parseFloat(t.pricePerTon))}/тн</span>
-      </div>
-    ),
-  }));
+  const tariffOptions = tariffs.map((t: any) => {
+    const tariffLabel = t.fromStation && t.toStation
+      ? `${t.fromStation.name} → ${t.toStation.name}`
+      : (t.zoneName || "—");
+    return {
+      value: t.id,
+      label: tariffLabel,
+      render: (
+        <div>
+          <span>{tariffLabel}</span>
+          <span className="ml-2 text-xs text-muted-foreground">{formatMoney(parseFloat(t.pricePerTon))}/тн</span>
+        </div>
+      ),
+    };
+  });
   const supplierOptions = (suppliers as any[]).map((s: any) => ({ value: s.id, label: s.name }));
 
   const handleBuyerChange = (val: string) => {

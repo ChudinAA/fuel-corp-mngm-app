@@ -260,4 +260,41 @@ The system includes a specialized module for international fuel operations:
 - Modified: `client/src/pages/shared/hooks/use-auto-price-selection.ts`
 - Modified: `client/src/pages/transportation/components/transportation-form.tsx`
 - Carrier switching now properly triggers field cleanup and state synchronization
+
+## Major Feature Batch (April 2026)
+
+### 1. Fix: basis not reset when copying OPT deals
+- `opt-form.tsx`: `basisId` is excluded from copied deal defaults so it always resets to empty when duplicating.
+
+### 2. Service price auto-fill (Aircraft Refueling - Заправка ВС)
+- When selecting a supplier basis, the service cost is automatically filled from `supplier_basis_prices` table.
+- Modified: refueling form (serviceCost auto-populated from basisPrices).
+
+### 3. Counterparties column in Bases directory
+- `bases-tab.tsx`: Added "Контрагенты" column showing all suppliers linked to each basis and their service prices.
+- Data fetched from `/api/suppliers` joined with `basis_prices`.
+
+### 4. Base-to-base delivery tariffs in OPT module
+- New entity: `base_delivery_tariffs` (fromBaseId, toBaseId, pricePerTon) — `server/modules/opt/entities/base-delivery-tariffs.ts`
+- Storage + routes: `GET /api/base-delivery-tariffs`, `POST`, `DELETE`, `GET /api/base-delivery-tariffs/lookup?fromBaseId=&toBaseId=`
+- OPT form: new `destinationBaseId` field (saved to DB), auto-lookup of tariff from the new table.
+- `LogisticsSection`: "Базис назначения" select + display of tariff and computed cost.
+- When delivery location cost is absent, `deliveryCost`/`deliveryTariff` are computed from base-delivery-tariff and saved to the deal.
+- New Directories tab: "Тарифы доставки" — `client/src/pages/directories/base-delivery-tariffs-tab.tsx`.
+
+### 5. Flight numbers for Заправка ВС
+- Added `flightNumber` field to aircraft refueling entity and form.
+
+### 6. INN field for counterparties
+- Added `inn` field to suppliers/buyers entities and forms.
+
+### 7. Railway station code limited to 6 characters
+- Input field for station code has `maxLength={6}` enforced in UI and schema validation.
+
+### 8. Station pairs instead of zones in railway tariffs
+- `railway-tariffs-tab.tsx` rewritten to use Select-based station pair creation (fromStation/toStation).
+- Storage uses SQL CASE for generating the pair label; exchange-deals-dialog uses pairs for tariff selection.
+
+### 9–10. 6 decimal places in prices and service costs
+- All price input fields and service cost fields use `step` and formatting with 6 decimal precision.
 - Form validation works correctly across all carrier types

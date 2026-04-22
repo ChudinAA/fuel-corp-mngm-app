@@ -168,6 +168,8 @@ interface LogisticsSectionProps {
   deliveryLocations?: LogisticsDeliveryLocation[];
   bases?: Base[];
   deliveryCost: number | null;
+  baseDeliveryTariff?: { pricePerTon: string } | null;
+  baseDeliveryTariffCost?: number | null;
 }
 
 export function LogisticsSection({
@@ -176,6 +178,8 @@ export function LogisticsSection({
   deliveryLocations,
   bases,
   deliveryCost,
+  baseDeliveryTariff,
+  baseDeliveryTariffCost,
 }: LogisticsSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -331,9 +335,41 @@ export function LogisticsSection({
             )}
           />
 
+          <FormField
+            control={form.control}
+            name="destinationBaseId"
+            render={({ field }) => (
+              <FormItem className="col-span-1 min-w-0">
+                <FormLabel>Базис назначения</FormLabel>
+                <FormControl>
+                  <Combobox
+                    options={(bases || []).filter(b => b.isActive).map((base) => ({
+                      value: base.id,
+                      label: base.name,
+                    }))}
+                    value={field.value || ""}
+                    onValueChange={(v) => field.onChange(v || null)}
+                    placeholder="Базис назначения..."
+                    className="w-full"
+                    dataTestId="select-destination-base"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <CalculatedField
             label="Доставка"
-            value={deliveryCost !== null ? formatCurrency(deliveryCost) : "—"}
+            value={
+              deliveryCost !== null
+                ? formatCurrency(deliveryCost)
+                : baseDeliveryTariffCost !== null && baseDeliveryTariffCost !== undefined
+                ? `${formatCurrency(baseDeliveryTariffCost)} (тариф)`
+                : baseDeliveryTariff
+                ? `${Number(baseDeliveryTariff.pricePerTon).toLocaleString("ru-RU")} ₽/тн`
+                : "—"
+            }
           />
         </div>
       </CardContent>

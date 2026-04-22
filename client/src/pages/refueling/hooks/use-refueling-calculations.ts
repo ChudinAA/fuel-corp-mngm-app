@@ -17,6 +17,7 @@ interface UseRefuelingCalculationsProps {
   isWarehouseSupplier: boolean;
   supplierWarehouse: Warehouse | undefined;
   selectedBasis: string;
+  basisId?: string | null;
   purchasePrices: Price[];
   salePrices: Price[];
   selectedPurchasePriceId: string;
@@ -41,6 +42,7 @@ export function useRefuelingCalculations({
   isWarehouseSupplier,
   supplierWarehouse,
   selectedBasis,
+  basisId,
   purchasePrices,
   salePrices,
   selectedPurchasePriceId,
@@ -113,6 +115,7 @@ export function useRefuelingCalculations({
     salePrices,
     selectedPurchasePriceId,
     selectedSalePriceId,
+    basisId,
     isWarehouseSupplier,
     supplierWarehouse,
     selectedSupplier,

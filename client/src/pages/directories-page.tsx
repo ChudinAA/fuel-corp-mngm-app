@@ -1,11 +1,12 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Building2, Car, Container, User, DollarSign, Plane } from "lucide-react";
+import { MapPin, Building2, Car, Container, User, DollarSign, Plane, Truck } from "lucide-react";
 import { BasesTab } from "./directories/bases-tab";
 import { GenericLogisticsTab } from "./directories/generic-logistics-tab";
 import { ExchangeRatesTab } from "./directories/exchange-rates-tab";
 import { AviationTab } from "./directories/aviation-tab";
+import { BaseDeliveryTariffsTab } from "./directories/base-delivery-tariffs-tab";
 
 export default function DirectoriesPage() {
   const [activeTab, setActiveTab] = useState<string>("bases");
@@ -50,6 +51,10 @@ export default function DirectoriesPage() {
           <TabsTrigger value="aviation" className="flex items-center gap-2">
             <Plane className="h-4 w-4" />
             Авиация
+          </TabsTrigger>
+          <TabsTrigger value="delivery_tariffs" className="flex items-center gap-2">
+            <Truck className="h-4 w-4" />
+            Тарифы доставки
           </TabsTrigger>
         </TabsList>
 
@@ -108,6 +113,10 @@ export default function DirectoriesPage() {
 
         <TabsContent value="aviation">
           <AviationTab />
+        </TabsContent>
+
+        <TabsContent value="delivery_tariffs">
+          <BaseDeliveryTariffsTab />
         </TabsContent>
       </Tabs>
     </div>
