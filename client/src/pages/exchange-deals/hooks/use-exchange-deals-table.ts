@@ -42,6 +42,7 @@ export function useExchangeDealsTable() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/exchange-deals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/movement"] });
       toast({ title: "Сделка удалена" });
     },
     onError: (error: Error) => {
