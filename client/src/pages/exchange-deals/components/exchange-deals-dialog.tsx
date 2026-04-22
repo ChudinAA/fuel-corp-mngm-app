@@ -128,6 +128,13 @@ function DatePickerField({
 
 const WAREHOUSE_BUYER_PREFIX = "ws:";
 
+// Текущая дата в локальном часовом поясе, формат YYYY-MM-DD
+function todayLocalDate(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
 export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDealsDialogProps) {
   const { toast } = useToast();
 
@@ -135,7 +142,7 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
     resolver: zodResolver(formSchema),
     defaultValues: {
       dealNumber: "",
-      dealDate: null,
+      dealDate: todayLocalDate(),
       departureStationId: null,
       destinationStationId: null,
       buyerId: null,
@@ -202,10 +209,13 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
   const weightTon = parseFloat(watchWeightTon || "0") || 0;
   const actualWeightTon = parseFloat(watchActualWeightTon || "0") || 0;
 
-  const purchaseAmount = weightTon * pricePerTon;
-  const deliveryCostTotal = tariffPrice * weightTon;
+  // Приоритет: фактический вес → плановый вес
+  const effectiveWeightTon = actualWeightTon > 0 ? actualWeightTon : weightTon;
+
+  const purchaseAmount = effectiveWeightTon * pricePerTon;
+  const deliveryCostTotal = tariffPrice * effectiveWeightTon;
   const totalCostWithDelivery = purchaseAmount + deliveryCostTotal;
-  const costPerTon = weightTon > 0 ? totalCostWithDelivery / weightTon : 0;
+  const costPerTon = effectiveWeightTon > 0 ? totalCostWithDelivery / effectiveWeightTon : 0;
   const reservedFunds = purchaseAmount * 0.05;
   const sellerRemainder = sellerCard ? parseFloat(sellerCard.currentBalance || "0") : 0;
 
@@ -292,7 +302,7 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
     } else {
       form.reset({
         dealNumber: "",
-        dealDate: null,
+        dealDate: todayLocalDate(),
         departureStationId: null,
         destinationStationId: null,
         buyerId: null,

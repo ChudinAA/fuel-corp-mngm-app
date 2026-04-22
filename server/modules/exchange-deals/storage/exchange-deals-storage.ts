@@ -16,6 +16,29 @@ import {
 import { MOVEMENT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { WarehouseTransactionService } from "../../warehouses/services/warehouse-transaction-service";
 
+// ——— Утилиты для работы с датами без смещения часового пояса ———
+
+/**
+ * Получить movementDate для перемещения:
+ * приоритет — plannedDeliveryDate, затем dealDate, иначе — текущая дата (локальная).
+ */
+function getMovementDate(deal: ExchangeDeal): string {
+  const raw = deal.plannedDeliveryDate || deal.dealDate;
+  if (raw) return raw as string; // date-строка "YYYY-MM-DD", Postgres сам преобразует в timestamp
+  // Текущая дата в локальном формате без toISOString()
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+/**
+ * Безопасный null для UUID-полей: пустую строку заменяем null.
+ */
+function safeUuid(val: any): string | null {
+  if (!val || typeof val !== "string" || val.trim() === "") return null;
+  return val;
+}
+
 export class ExchangeDealsStorage {
   async getDeal(id: string): Promise<any | undefined> {
     const result = await db
@@ -172,7 +195,7 @@ export class ExchangeDealsStorage {
 
     const [deal] = await db
       .update(exchangeDeals)
-      .set({ ...data, updatedAt: new Date().toISOString(), updatedById })
+      .set({ ...data, updatedAt: sql`NOW()`, updatedById })
       .where(and(eq(exchangeDeals.id, id), isNull(exchangeDeals.deletedAt)))
       .returning();
 
@@ -181,14 +204,19 @@ export class ExchangeDealsStorage {
     const nowReceived = deal.isReceivedAtWarehouse;
 
     if (nowReceived && !wasReceived && deal.buyerSupplierId && !deal.movementId) {
+      // Только что подтвердили получение — создать перемещение
       await this._createMovementForDeal(deal);
     } else if (nowReceived && deal.movementId) {
+      // Перемещение уже есть — проверить, изменились ли данные
       const fieldsChanged =
         existing.weightTon !== deal.weightTon ||
         existing.actualWeightTon !== deal.actualWeightTon ||
         existing.pricePerTon !== deal.pricePerTon ||
         existing.dealDate !== deal.dealDate ||
-        existing.deliveryTariffId !== deal.deliveryTariffId;
+        existing.plannedDeliveryDate !== deal.plannedDeliveryDate ||
+        existing.deliveryTariffId !== deal.deliveryTariffId ||
+        existing.sellerId !== deal.sellerId ||
+        existing.notes !== deal.notes;
 
       if (fieldsChanged) {
         await this._updateMovementForDeal(deal, existing, updatedById);
@@ -209,7 +237,7 @@ export class ExchangeDealsStorage {
     return deal;
   }
 
-  // ——— Вычисление значений перемещения ———
+  // ——— Вычисление значений для перемещения ———
   private async _computeMovementValues(deal: ExchangeDeal): Promise<{
     weightTon: number;
     quantityKg: number;
@@ -220,6 +248,7 @@ export class ExchangeDealsStorage {
     purchasePricePerKg: number;
     movementDate: string;
   }> {
+    // Приоритет: actualWeightTon → weightTon
     const weightTon = parseFloat(String(deal.actualWeightTon || deal.weightTon || "0")) || 0;
     const quantityKg = weightTon * 1000;
     const pricePerTon = parseFloat(String(deal.pricePerTon || "0")) || 0;
@@ -238,22 +267,21 @@ export class ExchangeDealsStorage {
     }
 
     const totalAmount = purchaseAmount + deliveryCostTotal;
+    // Себестоимость = (закупка + доставка) / кг
     const purchasePricePerKg = quantityKg > 0 ? totalAmount / quantityKg : 0;
-    const movementDate = deal.dealDate
-      ? new Date(deal.dealDate).toISOString()
-      : new Date().toISOString();
+    const movementDate = getMovementDate(deal);
 
     return { weightTon, quantityKg, pricePerTon, purchaseAmount, deliveryCostTotal, totalAmount, purchasePricePerKg, movementDate };
   }
 
-  // ——— Сумма закупки у продавца (без доставки) ———
+  // ——— Сумма закупки у продавца (без доставки) для аванса ———
   private _computePurchaseAmount(deal: ExchangeDeal): number {
     const weightTon = parseFloat(String(deal.actualWeightTon || deal.weightTon || "0")) || 0;
     const pricePerTon = parseFloat(String(deal.pricePerTon || "0")) || 0;
     return pricePerTon * weightTon;
   }
 
-  // ——— Перемещения ———
+  // ——— Создать перемещение при подтверждении получения на складе ———
   private async _createMovementForDeal(deal: ExchangeDeal): Promise<void> {
     if (!deal.buyerSupplierId) return;
 
@@ -262,10 +290,15 @@ export class ExchangeDealsStorage {
     });
     if (!supplier?.warehouseId) return;
 
-    const { quantityKg, totalAmount, purchasePricePerKg, movementDate } =
+    const { quantityKg, totalAmount, purchasePricePerKg, deliveryCostTotal, movementDate } =
       await this._computeMovementValues(deal);
 
     if (quantityKg <= 0) return;
+
+    // deliveryCost в перемещении — в рублях за тонну (не за кг)
+    const deliveryCostPerTon = deal.deliveryTariffId
+      ? await this._getDeliveryTariffPerTon(deal.deliveryTariffId)
+      : 0;
 
     await db.transaction(async (tx) => {
       const [createdMovement] = await tx
@@ -280,6 +313,7 @@ export class ExchangeDealsStorage {
           totalCost: String(totalAmount),
           purchasePrice: String(purchasePricePerKg),
           costPerKg: String(purchasePricePerKg),
+          deliveryCost: String(deliveryCostPerTon),
           isDraft: false,
           fromExchange: true,
           exchangeId: deal.id,
@@ -313,6 +347,15 @@ export class ExchangeDealsStorage {
     });
   }
 
+  private async _getDeliveryTariffPerTon(tariffId: string): Promise<number> {
+    const [tariff] = await db
+      .select()
+      .from(railwayTariffs)
+      .where(eq(railwayTariffs.id, tariffId))
+      .limit(1);
+    return tariff ? parseFloat(String(tariff.pricePerTon || "0")) : 0;
+  }
+
   private async _updateMovementForDeal(
     deal: ExchangeDeal,
     existing: ExchangeDeal,
@@ -330,25 +373,28 @@ export class ExchangeDealsStorage {
 
     if (newValues.quantityKg <= 0) return;
 
+    const deliveryCostPerTon = deal.deliveryTariffId
+      ? await this._getDeliveryTariffPerTon(deal.deliveryTariffId)
+      : 0;
+
     await db.transaction(async (tx) => {
       const currentMovement = await tx.query.movement.findFirst({
         where: and(eq(movement.id, deal.movementId!), isNull(movement.deletedAt)),
       });
       if (!currentMovement) return;
 
-      const movementDate = newValues.movementDate;
-
       await tx
         .update(movement)
         .set({
-          movementDate,
+          movementDate: newValues.movementDate,
           supplierId: deal.sellerId || null,
           quantityKg: String(newValues.quantityKg),
           totalCost: String(newValues.totalAmount),
           purchasePrice: String(newValues.purchasePricePerKg),
           costPerKg: String(newValues.purchasePricePerKg),
+          deliveryCost: String(deliveryCostPerTon),
           notes: deal.notes || null,
-          updatedAt: new Date().toISOString(),
+          updatedAt: sql`NOW()`,
           updatedById: updatedById || null,
         })
         .where(eq(movement.id, deal.movementId!));
@@ -364,7 +410,7 @@ export class ExchangeDealsStorage {
           newValues.totalAmount,
           PRODUCT_TYPE.KEROSENE,
           updatedById,
-          movementDate,
+          newValues.movementDate,
         );
       } else {
         const { transaction } = await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
@@ -377,7 +423,7 @@ export class ExchangeDealsStorage {
           newValues.quantityKg,
           newValues.totalAmount,
           updatedById,
-          movementDate,
+          newValues.movementDate,
         );
         await tx
           .update(movement)
@@ -389,17 +435,12 @@ export class ExchangeDealsStorage {
 
   // ——— Авансы продавца ———
 
-  /**
-   * Создаёт транзакцию расхода (expense) по карте аванса продавца.
-   * Сумма = стоимость закупки топлива (без доставки).
-   */
   private async _createAdvanceExpense(deal: ExchangeDeal, createdById?: string): Promise<void> {
     if (!deal.sellerId) return;
 
     const purchaseAmount = this._computePurchaseAmount(deal);
     if (purchaseAmount <= 0) return;
 
-    // Найти карту аванса для продавца
     const card = await db.query.exchangeAdvanceCards.findFirst({
       where: and(
         eq(exchangeAdvanceCards.sellerId, deal.sellerId),
@@ -419,24 +460,16 @@ export class ExchangeDealsStorage {
       balanceAfter: String(newBalance),
       relatedDealId: deal.id,
       description: `Закупка по сделке ${deal.dealNumber || deal.id}`,
-      transactionDate: deal.dealDate
-        ? new Date(deal.dealDate).toISOString()
-        : new Date().toISOString(),
+      transactionDate: deal.dealDate || null,
       createdById: (createdById || deal.createdById) ?? null,
     });
 
     await db
       .update(exchangeAdvanceCards)
-      .set({
-        currentBalance: String(newBalance),
-        updatedAt: new Date().toISOString(),
-      })
+      .set({ currentBalance: String(newBalance), updatedAt: sql`NOW()` })
       .where(eq(exchangeAdvanceCards.id, card.id));
   }
 
-  /**
-   * Удаляет (аннулирует) транзакцию расхода по сделке, восстанавливая баланс.
-   */
   private async _deleteAdvanceExpense(dealId: string, deletedById?: string): Promise<void> {
     const txn = await db.query.exchangeAdvanceTransactions.findFirst({
       where: and(
@@ -447,22 +480,14 @@ export class ExchangeDealsStorage {
     });
     if (!txn) return;
 
-    // Восстановить баланс карты к значению до транзакции
     await db
       .update(exchangeAdvanceCards)
-      .set({
-        currentBalance: txn.balanceBefore,
-        updatedAt: new Date().toISOString(),
-      })
+      .set({ currentBalance: txn.balanceBefore, updatedAt: sql`NOW()` })
       .where(eq(exchangeAdvanceCards.id, txn.cardId));
 
-    // Мягкое удаление транзакции
     await db
       .update(exchangeAdvanceTransactions)
-      .set({
-        deletedAt: new Date().toISOString(),
-        deletedById: deletedById ?? null,
-      })
+      .set({ deletedAt: sql`NOW()`, deletedById: deletedById ?? null })
       .where(eq(exchangeAdvanceTransactions.id, txn.id));
   }
 
@@ -490,21 +515,17 @@ export class ExchangeDealsStorage {
 
           await tx
             .update(movement)
-            .set({
-              deletedAt: sql`NOW()`,
-              deletedById: deletedById || null,
-            })
+            .set({ deletedAt: sql`NOW()`, deletedById: deletedById || null })
             .where(eq(movement.id, existing.movementId));
         }
       }
 
       await tx
         .update(exchangeDeals)
-        .set({ deletedAt: new Date().toISOString(), deletedById })
+        .set({ deletedAt: sql`NOW()`, deletedById })
         .where(and(eq(exchangeDeals.id, id), isNull(exchangeDeals.deletedAt)));
     });
 
-    // Удалить транзакцию аванса (вне основной транзакции, т.к. не критично)
     if (!existing?.isDraft && existing?.sellerId) {
       await this._deleteAdvanceExpense(id, deletedById);
     }
@@ -513,12 +534,28 @@ export class ExchangeDealsStorage {
   }
 
   async restoreDeal(id: string, data: any): Promise<ExchangeDeal | undefined> {
+    // Очищаем UUID-поля от пустых строк, чтобы не было "invalid input syntax for type uuid"
+    const cleanData = {
+      ...data,
+      departureStationId: safeUuid(data.departureStationId),
+      destinationStationId: safeUuid(data.destinationStationId),
+      buyerId: safeUuid(data.buyerId),
+      buyerSupplierId: safeUuid(data.buyerSupplierId),
+      deliveryTariffId: safeUuid(data.deliveryTariffId),
+      sellerId: safeUuid(data.sellerId),
+      movementId: safeUuid(data.movementId),
+      createdById: safeUuid(data.createdById),
+      updatedById: safeUuid(data.updatedById),
+      deletedById: null,
+      deletedAt: null,
+    };
+
     const [deal] = await db
       .insert(exchangeDeals)
-      .values({ ...data, id, deletedAt: null })
+      .values({ ...cleanData, id })
       .onConflictDoUpdate({
         target: exchangeDeals.id,
-        set: { ...data, deletedAt: null, updatedAt: new Date().toISOString() },
+        set: { ...cleanData, updatedAt: sql`NOW()` },
       })
       .returning();
 
@@ -538,7 +575,7 @@ export class ExchangeDealsStorage {
             await WarehouseTransactionService.restoreTransactionAndRecalculateWarehouse(
               tx,
               relatedMovement.transactionId,
-              data.updatedById,
+              cleanData.updatedById,
             );
           }
         }
@@ -546,7 +583,7 @@ export class ExchangeDealsStorage {
     }
 
     if (!deal.isDraft && deal.sellerId) {
-      await this._createAdvanceExpense(deal, data.updatedById);
+      await this._createAdvanceExpense(deal, cleanData.updatedById);
     }
 
     return deal;
@@ -567,7 +604,6 @@ export class ExchangeDealsStorage {
         isDraft: true,
         isReceivedAtWarehouse: false,
         createdById,
-        createdAt: new Date().toISOString(),
       })
       .returning();
     return copy;
