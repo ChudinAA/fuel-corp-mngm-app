@@ -324,6 +324,7 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/exchange-deals"] });
       queryClient.invalidateQueries({ queryKey: ["/api/exchange-advances"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/exchange-advances/by-seller"] });
       queryClient.invalidateQueries({ queryKey: ["/api/movement"] });
       toast({ title: deal && !isCopy ? "Сделка обновлена" : "Сделка создана" });
       onClose();
@@ -453,12 +454,31 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
 
             {/* Информация о балансе продавца */}
             {watchSellerId && sellerCard && (
-              <div className="flex items-center gap-2 p-3 rounded-md bg-muted">
-                <Wallet className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">
-                  Баланс аванса продавца:&nbsp;
-                  <span className="font-semibold">{formatMoney(sellerRemainder)}</span>
-                </span>
+              <div className="p-3 rounded-md bg-muted space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm text-muted-foreground">Баланс аванса продавца</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pl-6 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Текущий</p>
+                    <p className="font-semibold">{formatMoney(sellerRemainder)}</p>
+                  </div>
+                  {purchaseAmount > 0 && (
+                    <>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Сумма сделки</p>
+                        <p className="font-semibold text-destructive">−{formatMoney(purchaseAmount)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">После сделки</p>
+                        <p className={cn("font-semibold", sellerRemainder - purchaseAmount < 0 ? "text-destructive" : "text-green-600 dark:text-green-400")}>
+                          {formatMoney(sellerRemainder - purchaseAmount)}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             )}
             {watchSellerId && !sellerCard && (

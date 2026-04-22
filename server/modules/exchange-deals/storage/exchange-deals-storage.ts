@@ -9,6 +9,10 @@ import { suppliers } from "../../suppliers/entities/suppliers";
 import { customers } from "../../customers/entities/customers";
 import { railwayStations, railwayTariffs } from "../../railway/entities/railway";
 import { movement, warehouseTransactions } from "@shared/schema";
+import {
+  exchangeAdvanceCards,
+  exchangeAdvanceTransactions,
+} from "../../exchange-advances/entities/exchange-advances";
 import { MOVEMENT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { WarehouseTransactionService } from "../../warehouses/services/warehouse-transaction-service";
 
@@ -153,6 +157,10 @@ export class ExchangeDealsStorage {
       await this._createMovementForDeal(deal);
     }
 
+    if (!deal.isDraft && deal.sellerId) {
+      await this._createAdvanceExpense(deal);
+    }
+
     return deal;
   }
 
@@ -168,17 +176,13 @@ export class ExchangeDealsStorage {
       .where(and(eq(exchangeDeals.id, id), isNull(exchangeDeals.deletedAt)))
       .returning();
 
+    // ——— Перемещение ———
     const wasReceived = existing.isReceivedAtWarehouse;
     const nowReceived = deal.isReceivedAtWarehouse;
 
-    // Новое получение на складе — создать перемещение
     if (nowReceived && !wasReceived && deal.buyerSupplierId && !deal.movementId) {
       await this._createMovementForDeal(deal);
-      return deal;
-    }
-
-    // Если уже есть перемещение и изменились финансовые/количественные данные — обновить
-    if (nowReceived && deal.movementId) {
+    } else if (nowReceived && deal.movementId) {
       const fieldsChanged =
         existing.weightTon !== deal.weightTon ||
         existing.actualWeightTon !== deal.actualWeightTon ||
@@ -191,9 +195,21 @@ export class ExchangeDealsStorage {
       }
     }
 
+    // ——— Авансы продавца ———
+    const wasNotDraft = !existing.isDraft && !!existing.sellerId;
+    const isNotDraft = !deal.isDraft && !!deal.sellerId;
+
+    if (wasNotDraft) {
+      await this._deleteAdvanceExpense(deal.id, updatedById);
+    }
+    if (isNotDraft) {
+      await this._createAdvanceExpense(deal, updatedById);
+    }
+
     return deal;
   }
 
+  // ——— Вычисление значений перемещения ———
   private async _computeMovementValues(deal: ExchangeDeal): Promise<{
     weightTon: number;
     quantityKg: number;
@@ -230,6 +246,14 @@ export class ExchangeDealsStorage {
     return { weightTon, quantityKg, pricePerTon, purchaseAmount, deliveryCostTotal, totalAmount, purchasePricePerKg, movementDate };
   }
 
+  // ——— Сумма закупки у продавца (без доставки) ———
+  private _computePurchaseAmount(deal: ExchangeDeal): number {
+    const weightTon = parseFloat(String(deal.actualWeightTon || deal.weightTon || "0")) || 0;
+    const pricePerTon = parseFloat(String(deal.pricePerTon || "0")) || 0;
+    return pricePerTon * weightTon;
+  }
+
+  // ——— Перемещения ———
   private async _createMovementForDeal(deal: ExchangeDeal): Promise<void> {
     if (!deal.buyerSupplierId) return;
 
@@ -251,9 +275,11 @@ export class ExchangeDealsStorage {
           movementType: MOVEMENT_TYPE.SUPPLY,
           productType: PRODUCT_TYPE.KEROSENE,
           toWarehouseId: supplier.warehouseId!,
+          supplierId: deal.sellerId || null,
           quantityKg: String(quantityKg),
           totalCost: String(totalAmount),
           purchasePrice: String(purchasePricePerKg),
+          costPerKg: String(purchasePricePerKg),
           isDraft: false,
           fromExchange: true,
           exchangeId: deal.id,
@@ -316,9 +342,11 @@ export class ExchangeDealsStorage {
         .update(movement)
         .set({
           movementDate,
+          supplierId: deal.sellerId || null,
           quantityKg: String(newValues.quantityKg),
           totalCost: String(newValues.totalAmount),
           purchasePrice: String(newValues.purchasePricePerKg),
+          costPerKg: String(newValues.purchasePricePerKg),
           notes: deal.notes || null,
           updatedAt: new Date().toISOString(),
           updatedById: updatedById || null,
@@ -339,7 +367,6 @@ export class ExchangeDealsStorage {
           movementDate,
         );
       } else {
-        // Транзакции ещё нет — создаём
         const { transaction } = await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
           tx,
           supplier.warehouseId!,
@@ -360,13 +387,93 @@ export class ExchangeDealsStorage {
     });
   }
 
+  // ——— Авансы продавца ———
+
+  /**
+   * Создаёт транзакцию расхода (expense) по карте аванса продавца.
+   * Сумма = стоимость закупки топлива (без доставки).
+   */
+  private async _createAdvanceExpense(deal: ExchangeDeal, createdById?: string): Promise<void> {
+    if (!deal.sellerId) return;
+
+    const purchaseAmount = this._computePurchaseAmount(deal);
+    if (purchaseAmount <= 0) return;
+
+    // Найти карту аванса для продавца
+    const card = await db.query.exchangeAdvanceCards.findFirst({
+      where: and(
+        eq(exchangeAdvanceCards.sellerId, deal.sellerId),
+        isNull(exchangeAdvanceCards.deletedAt),
+      ),
+    });
+    if (!card) return;
+
+    const currentBalance = parseFloat(card.currentBalance ?? "0");
+    const newBalance = currentBalance - purchaseAmount;
+
+    await db.insert(exchangeAdvanceTransactions).values({
+      cardId: card.id,
+      transactionType: "expense",
+      amount: String(purchaseAmount),
+      balanceBefore: String(currentBalance),
+      balanceAfter: String(newBalance),
+      relatedDealId: deal.id,
+      description: `Закупка по сделке ${deal.dealNumber || deal.id}`,
+      transactionDate: deal.dealDate
+        ? new Date(deal.dealDate).toISOString()
+        : new Date().toISOString(),
+      createdById: (createdById || deal.createdById) ?? null,
+    });
+
+    await db
+      .update(exchangeAdvanceCards)
+      .set({
+        currentBalance: String(newBalance),
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(exchangeAdvanceCards.id, card.id));
+  }
+
+  /**
+   * Удаляет (аннулирует) транзакцию расхода по сделке, восстанавливая баланс.
+   */
+  private async _deleteAdvanceExpense(dealId: string, deletedById?: string): Promise<void> {
+    const txn = await db.query.exchangeAdvanceTransactions.findFirst({
+      where: and(
+        eq(exchangeAdvanceTransactions.relatedDealId, dealId),
+        eq(exchangeAdvanceTransactions.transactionType, "expense"),
+        isNull(exchangeAdvanceTransactions.deletedAt),
+      ),
+    });
+    if (!txn) return;
+
+    // Восстановить баланс карты к значению до транзакции
+    await db
+      .update(exchangeAdvanceCards)
+      .set({
+        currentBalance: txn.balanceBefore,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(exchangeAdvanceCards.id, txn.cardId));
+
+    // Мягкое удаление транзакции
+    await db
+      .update(exchangeAdvanceTransactions)
+      .set({
+        deletedAt: new Date().toISOString(),
+        deletedById: deletedById ?? null,
+      })
+      .where(eq(exchangeAdvanceTransactions.id, txn.id));
+  }
+
+  // ——— CRUD ———
+
   async deleteDeal(id: string, deletedById?: string): Promise<boolean> {
     const existing = await db.query.exchangeDeals.findFirst({
       where: and(eq(exchangeDeals.id, id), isNull(exchangeDeals.deletedAt)),
     });
 
     await db.transaction(async (tx) => {
-      // Если есть связанное перемещение — откатить его и транзакцию склада
       if (existing?.movementId) {
         const relatedMovement = await tx.query.movement.findFirst({
           where: and(eq(movement.id, existing.movementId), isNull(movement.deletedAt)),
@@ -397,6 +504,11 @@ export class ExchangeDealsStorage {
         .where(and(eq(exchangeDeals.id, id), isNull(exchangeDeals.deletedAt)));
     });
 
+    // Удалить транзакцию аванса (вне основной транзакции, т.к. не критично)
+    if (!existing?.isDraft && existing?.sellerId) {
+      await this._deleteAdvanceExpense(id, deletedById);
+    }
+
     return true;
   }
 
@@ -410,7 +522,6 @@ export class ExchangeDealsStorage {
       })
       .returning();
 
-    // Если есть связанное перемещение — восстановить его и транзакцию склада
     if (deal.movementId) {
       await db.transaction(async (tx) => {
         const relatedMovement = await tx.query.movement.findFirst({
@@ -432,6 +543,10 @@ export class ExchangeDealsStorage {
           }
         }
       });
+    }
+
+    if (!deal.isDraft && deal.sellerId) {
+      await this._createAdvanceExpense(deal, data.updatedById);
     }
 
     return deal;
