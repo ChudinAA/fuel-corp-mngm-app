@@ -28,7 +28,6 @@ export const suppliers = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     name: text("name").notNull(),
     fullName: text("full_name"),
-    inn: text("inn"),
     supplyNomenclature: text("supply_nomenclature"),
     iata: text("iata"),
     description: text("description"),

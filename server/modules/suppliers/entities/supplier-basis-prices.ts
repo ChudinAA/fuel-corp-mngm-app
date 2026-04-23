@@ -22,9 +22,9 @@ export const supplierBasisPrices = pgTable(
     basisId: uuid("basis_id")
       .notNull()
       .references(() => bases.id, { onDelete: "cascade" }),
-    servicePrice: decimal("service_price", { precision: 15, scale: 6 }),
-    pvkjPrice: decimal("pvkj_price", { precision: 15, scale: 6 }),
-    agentFee: decimal("agent_fee", { precision: 15, scale: 6 }),
+    servicePrice: decimal("service_price", { precision: 12, scale: 2 }),
+    pvkjPrice: decimal("pvkj_price", { precision: 12, scale: 2 }),
+    agentFee: decimal("agent_fee", { precision: 12, scale: 2 }),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
     createdById: uuid("created_by_id").references(() => users.id),

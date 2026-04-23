@@ -67,19 +67,6 @@ export function BasesTab() {
     queryKey: ["/api/bases"],
   });
 
-  const { data: suppliers = [] } = useQuery<any[]>({
-    queryKey: ["/api/suppliers"],
-  });
-
-  const getCounterpartiesForBase = (baseId: string): { name: string; servicePrice?: string | null }[] => {
-    return (suppliers as any[])
-      .filter((s) => s.basisPrices?.some((bp: any) => bp.basisId === baseId))
-      .map((s) => {
-        const bp = s.basisPrices?.find((bp: any) => bp.basisId === baseId);
-        return { name: s.name, servicePrice: bp?.servicePrice };
-      });
-  };
-
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await apiRequest("DELETE", `/api/bases/${id}`);
@@ -176,7 +163,6 @@ export function BasesTab() {
                     <TableHead>Название</TableHead>
                     <TableHead>Тип</TableHead>
                     <TableHead>Местоположение</TableHead>
-                    <TableHead>Контрагенты</TableHead>
                     <TableHead>Статус</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
@@ -185,7 +171,7 @@ export function BasesTab() {
                   {filteredBases.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={5}
                         className="text-center py-8 text-muted-foreground"
                       >
                         <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -193,9 +179,7 @@ export function BasesTab() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredBases.map((base) => {
-                      const counterparties = getCounterpartiesForBase(base.id);
-                      return (
+                    filteredBases.map((base) => (
                       <TableRow
                         key={base.id}
                         data-testid={`row-base-${base.id}`}
@@ -208,24 +192,6 @@ export function BasesTab() {
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {base.location || "—"}
-                        </TableCell>
-                        <TableCell>
-                          {counterparties.length === 0 ? (
-                            <span className="text-muted-foreground text-sm">—</span>
-                          ) : (
-                            <div className="flex flex-col gap-0.5">
-                              {counterparties.map((cp, i) => (
-                                <div key={i} className="flex items-center gap-1 text-sm">
-                                  <span>{cp.name}</span>
-                                  {cp.servicePrice && (
-                                    <span className="text-muted-foreground text-xs">
-                                      ({Number(cp.servicePrice).toLocaleString("ru-RU")} ₽/тн)
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
                         </TableCell>
                         <TableCell>
                           {base.isActive ? (
@@ -284,8 +250,7 @@ export function BasesTab() {
                           />
                         </TableCell>
                       </TableRow>
-                      );
-                    })
+                    ))
                   )}
                 </TableBody>
               </Table>

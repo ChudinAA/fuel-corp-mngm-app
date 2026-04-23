@@ -100,21 +100,6 @@ export function RefuelingMainFields({
     enabled: isLik,
   });
 
-  interface FlightNumber {
-    id: string;
-    number: string;
-    basisId: string | null;
-    isActive: boolean;
-  }
-
-  const watchBasisId = form.watch("basisId");
-  const { data: allFlightNumbers = [] } = useQuery<FlightNumber[]>({
-    queryKey: ["/api/flight-numbers"],
-  });
-  const flightNumbers = allFlightNumbers.filter(
-    (fn) => fn.isActive && (!fn.basisId || fn.basisId === watchBasisId),
-  );
-
   useEffect(() => {
     if (isLik && selectedEquipmentId && likEquipmentList) {
       const equipment = likEquipmentList.find((e) => e.id === selectedEquipmentId);
@@ -229,37 +214,13 @@ export function RefuelingMainFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Номер рейса</FormLabel>
-              {flightNumbers.length > 0 ? (
-                <Select
-                  onValueChange={(val) =>
-                    field.onChange(val === "__clear__" ? "" : val)
-                  }
-                  value={field.value || ""}
-                >
-                  <FormControl>
-                    <SelectTrigger data-testid="select-flight-number">
-                      <SelectValue placeholder="Выберите рейс" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="__clear__">— Не выбрано —</SelectItem>
-                    {flightNumbers.map((fn) => (
-                      <SelectItem key={fn.id} value={fn.number}>
-                        {fn.number}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <FormControl>
-                  <Input
-                    placeholder="SU-123"
-                    data-testid="input-flight-number"
-                    {...field}
-                    value={field.value ?? ""}
-                  />
-                </FormControl>
-              )}
+              <FormControl>
+                <Input
+                  placeholder="SU-123"
+                  data-testid="input-order-number"
+                  {...field}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

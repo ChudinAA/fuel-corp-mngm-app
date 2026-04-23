@@ -65,7 +65,6 @@ export const opt = pgTable(
     deliveryLocationId: uuid("delivery_location_id").references(
       () => logisticsDeliveryLocations.id,
     ),
-    destinationBaseId: uuid("destination_base_id"),
     deliveryTariff: decimal("delivery_tariff", { precision: 19, scale: 5 }),
     deliveryCost: decimal("delivery_cost", { precision: 15, scale: 2 }),
     profit: decimal("profit", { precision: 15, scale: 2 }),
@@ -161,7 +160,6 @@ export const insertOptSchema = z
     saleAmount: z.number().nullable().optional(),
     carrierId: z.string().nullable().optional(),
     deliveryLocationId: z.string().nullable().optional(),
-    destinationBaseId: z.string().nullable().optional(),
     deliveryTariff: z.number().nullable().optional(),
     deliveryCost: z.number().nullable().optional(),
     profit: z.number().nullable().optional(),

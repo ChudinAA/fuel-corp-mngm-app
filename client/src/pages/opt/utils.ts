@@ -3,7 +3,7 @@ import { PRODUCT_TYPES } from "./constants";
 export const formatNumber = (value: number | string | null) => {
   if (value === null) return null;
   const num = typeof value === "string" ? parseFloat(value) : value;
-  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 6 }).format(
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(
     num,
   );
 };
@@ -14,7 +14,6 @@ export const formatCurrency = (value: number | string | null) => {
   return new Intl.NumberFormat("ru-RU", {
     style: "currency",
     currency: "RUB",
-    maximumFractionDigits: 6,
   }).format(num);
 };
 

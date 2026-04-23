@@ -82,7 +82,6 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         quantityKg: "",
         carrierId: "",
         deliveryLocationId: "",
-        destinationBaseId: "",
         notes: "",
         isApproxVolume: false,
         isDraft: editData?.isDraft || false,
@@ -153,20 +152,6 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       queryKey: ["/api/delivery-costs"],
     });
 
-    const { data: baseDeliveryTariff } = useQuery<{ pricePerTon: string } | null>({
-      queryKey: ["/api/base-delivery-tariffs/lookup", watchBasisId, watchDestinationBaseId],
-      queryFn: async () => {
-        if (!watchBasisId || !watchDestinationBaseId) return null;
-        const res = await fetch(
-          `/api/base-delivery-tariffs/lookup?fromBaseId=${watchBasisId}&toBaseId=${watchDestinationBaseId}`,
-          { credentials: "include" },
-        );
-        if (!res.ok) return null;
-        return res.json();
-      },
-      enabled: !!watchBasisId && !!watchDestinationBaseId,
-    });
-
     const watchSupplierId = form.watch("supplierId");
     const watchBuyerId = form.watch("buyerId");
     const watchDealDate = form.watch("dealDate");
@@ -175,7 +160,6 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
     const watchKg = form.watch("quantityKg");
     const watchCarrierId = form.watch("carrierId");
     const watchDeliveryLocationId = form.watch("deliveryLocationId");
-    const watchDestinationBaseId = form.watch("destinationBaseId");
     const watchProductType = form.watch("productType");
     const watchBasisId = form.watch("basisId");
     const watchCustomerBasisId = form.watch("customerBasisId");
@@ -356,15 +340,6 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           // Логика перенесена в хук useOptWarehouseBalance
         }
 
-        const resolvedBasisName =
-          editData.basis ||
-          (editData.basisId ? allBases.find((b) => b.id === editData.basisId)?.name : "") ||
-          "";
-        const resolvedCustomerBasisName =
-          editData.customerBasis ||
-          (editData.customerBasisId ? allBases.find((b) => b.id === editData.customerBasisId)?.name : "") ||
-          "";
-
         const resetValues = {
           dealDate: new Date(editData.dealDate),
           supplierId: supplier?.id || "",
@@ -376,14 +351,13 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           quantityKg: editData.quantityKg?.toString() || "",
           carrierId: editData.carrierId || "",
           deliveryLocationId: editData.deliveryLocationId || "",
-          destinationBaseId: (editData as any).destinationBaseId || "",
           notes: editData.notes || "",
           isApproxVolume: editData.isApproxVolume || false,
           inputMode: (editData.inputMode as "liters" | "kg") || "kg",
-          basis: resolvedBasisName,
-          basisId: editData.basisId || null,
-          customerBasis: resolvedCustomerBasisName,
-          customerBasisId: editData.customerBasisId || null,
+          basis: editData.basis || "",
+          basisId: editData.basisId || "",
+          customerBasis: editData.customerBasis || "",
+          customerBasisId: editData.customerBasisId || "",
           selectedPurchasePriceId: purchasePriceCompositeId,
           selectedSalePriceId: salePriceCompositeId,
           isDraft: editData.isDraft || false,
@@ -442,7 +416,6 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           customerBasisId: data.customerBasisId || null,
           carrierId: data.carrierId || null,
           deliveryLocationId: data.deliveryLocationId || null,
-          destinationBaseId: data.destinationBaseId || null,
           dealDate: data.dealDate
             ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss")
             : null,
@@ -460,16 +433,8 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
           purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
           saleAmount: saleAmount !== null ? saleAmount : null,
-          deliveryCost: deliveryCost !== null
-            ? deliveryCost
-            : (baseDeliveryTariff && finalKg > 0)
-              ? Number(baseDeliveryTariff.pricePerTon) * finalKg / 1000
-              : null,
-          deliveryTariff: deliveryTariff !== null
-            ? deliveryTariff
-            : (baseDeliveryTariff && finalKg > 0)
-              ? Number(baseDeliveryTariff.pricePerTon) / 1000
-              : null,
+          deliveryCost: deliveryCost !== null ? deliveryCost : null,
+          deliveryTariff: deliveryTariff !== null ? deliveryTariff : null,
           profit: profit !== null ? profit : null,
         };
         const res = await apiRequest("POST", "/api/opt", payload);
@@ -552,7 +517,6 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           customerBasisId: data.customerBasisId || null,
           carrierId: data.carrierId || null,
           deliveryLocationId: data.deliveryLocationId || null,
-          destinationBaseId: data.destinationBaseId || null,
           dealDate: data.dealDate
             ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss")
             : null,
@@ -570,16 +534,8 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
           purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
           saleAmount: saleAmount !== null ? saleAmount : null,
-          deliveryCost: deliveryCost !== null
-            ? deliveryCost
-            : (baseDeliveryTariff && finalKg > 0)
-              ? Number(baseDeliveryTariff.pricePerTon) * finalKg / 1000
-              : null,
-          deliveryTariff: deliveryTariff !== null
-            ? deliveryTariff
-            : (baseDeliveryTariff && finalKg > 0)
-              ? Number(baseDeliveryTariff.pricePerTon) / 1000
-              : null,
+          deliveryCost: deliveryCost !== null ? deliveryCost : null,
+          deliveryTariff: deliveryTariff !== null ? deliveryTariff : null,
           profit: profit !== null ? profit : null,
         };
         const res = await apiRequest("PATCH", `/api/opt/${data.id}`, payload);
@@ -737,12 +693,6 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
               deliveryLocations={availableLocations}
               bases={allBases}
               deliveryCost={deliveryCost}
-              baseDeliveryTariff={baseDeliveryTariff ?? null}
-              baseDeliveryTariffCost={
-                baseDeliveryTariff && finalKg > 0
-                  ? Number(baseDeliveryTariff.pricePerTon) * finalKg / 1000
-                  : null
-              }
             />
 
             <OptPricingSection

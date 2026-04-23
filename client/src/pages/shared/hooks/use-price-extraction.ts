@@ -12,7 +12,6 @@ interface UsePriceExtractionProps {
   supplierWarehouse?: Warehouse;
   selectedSupplier?: Supplier;
   productType?: string;
-  basisId?: string | null;
 }
 
 export function usePriceExtraction({
@@ -24,19 +23,10 @@ export function usePriceExtraction({
   supplierWarehouse,
   selectedSupplier,
   productType,
-  basisId,
 }: UsePriceExtractionProps) {
   const purchasePrice = useMemo((): number | null => {
-    // Для услуги заправки - сначала проверяем basis-specific service_price, затем глобальный
+    // Для услуги заправки - сначала проверяем service_price у поставщика
     if (productType === PRODUCT_TYPE.SERVICE) {
-      if (basisId && selectedSupplier?.basisPrices) {
-        const basisPrice = selectedSupplier.basisPrices.find(
-          (bp) => bp.basisId === basisId,
-        );
-        if (basisPrice?.servicePrice) {
-          return parseFloat(basisPrice.servicePrice);
-        }
-      }
       if (selectedSupplier?.servicePrice) {
         return parseFloat(selectedSupplier.servicePrice);
       }

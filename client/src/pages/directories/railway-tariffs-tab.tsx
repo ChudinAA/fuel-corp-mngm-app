@@ -28,39 +28,20 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Pencil, Trash2, ArrowRight } from "lucide-react";
+import { Search, Plus, Pencil, Trash2 } from "lucide-react";
 import { EntityActionsMenu, type EntityAction } from "@/components/entity-actions-menu";
 import { useAuth } from "@/hooks/use-auth";
 
-interface RailwayStation {
-  id: string;
-  name: string;
-  code: string | null;
-  isActive: boolean;
-}
-
 interface RailwayTariff {
   id: string;
-  zoneName?: string | null;
-  fromStationId?: string | null;
-  toStationId?: string | null;
-  fromStation?: { id: string; name: string; code: string | null } | null;
-  toStation?: { id: string; name: string; code: string | null } | null;
+  zoneName: string;
   pricePerTon: string;
   isActive?: boolean;
 }
 
 interface TariffFormData {
-  fromStationId: string;
-  toStationId: string;
+  zoneName: string;
   pricePerTon: string;
 }
 
@@ -68,27 +49,23 @@ function TariffDialog({
   open,
   onClose,
   tariff,
-  stations,
   onSuccess,
 }: {
   open: boolean;
   onClose: () => void;
   tariff?: RailwayTariff | null;
-  stations: RailwayStation[];
   onSuccess: () => void;
 }) {
   const { toast } = useToast();
   const [form, setForm] = useState<TariffFormData>({
-    fromStationId: tariff?.fromStationId || "",
-    toStationId: tariff?.toStationId || "",
+    zoneName: tariff?.zoneName || "",
     pricePerTon: tariff?.pricePerTon || "",
   });
 
   useEffect(() => {
     if (open) {
       setForm({
-        fromStationId: tariff?.fromStationId || "",
-        toStationId: tariff?.toStationId || "",
+        zoneName: tariff?.zoneName || "",
         pricePerTon: tariff?.pricePerTon || "",
       });
     }
@@ -96,21 +73,10 @@ function TariffDialog({
 
   const mutation = useMutation({
     mutationFn: async (data: TariffFormData) => {
-      const fromStation = stations.find((s) => s.id === data.fromStationId);
-      const toStation = stations.find((s) => s.id === data.toStationId);
-      const zoneName = fromStation && toStation
-        ? `${fromStation.name} → ${toStation.name}`
-        : null;
-      const payload = {
-        fromStationId: data.fromStationId || null,
-        toStationId: data.toStationId || null,
-        zoneName,
-        pricePerTon: data.pricePerTon,
-      };
       if (tariff) {
-        return apiRequest("PATCH", `/api/railway/tariffs/${tariff.id}`, payload);
+        return apiRequest("PATCH", `/api/railway/tariffs/${tariff.id}`, data);
       }
-      return apiRequest("POST", "/api/railway/tariffs", payload);
+      return apiRequest("POST", "/api/railway/tariffs", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/railway/tariffs"] });
@@ -125,12 +91,8 @@ function TariffDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.fromStationId) {
-      toast({ title: "Выберите станцию отправления", variant: "destructive" });
-      return;
-    }
-    if (!form.toStationId) {
-      toast({ title: "Выберите станцию назначения", variant: "destructive" });
+    if (!form.zoneName.trim()) {
+      toast({ title: "Введите название зоны", variant: "destructive" });
       return;
     }
     if (!form.pricePerTon || isNaN(Number(form.pricePerTon))) {
@@ -140,8 +102,6 @@ function TariffDialog({
     mutation.mutate(form);
   };
 
-  const activeStations = stations.filter((s) => s.isActive);
-
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
@@ -150,40 +110,14 @@ function TariffDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>Станция отправления *</Label>
-            <Select
-              value={form.fromStationId}
-              onValueChange={(v) => setForm({ ...form, fromStationId: v })}
-            >
-              <SelectTrigger data-testid="select-tariff-from-station">
-                <SelectValue placeholder="Выберите станцию..." />
-              </SelectTrigger>
-              <SelectContent>
-                {activeStations.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}{s.code ? ` (${s.code})` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Станция назначения *</Label>
-            <Select
-              value={form.toStationId}
-              onValueChange={(v) => setForm({ ...form, toStationId: v })}
-            >
-              <SelectTrigger data-testid="select-tariff-to-station">
-                <SelectValue placeholder="Выберите станцию..." />
-              </SelectTrigger>
-              <SelectContent>
-                {activeStations.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}{s.code ? ` (${s.code})` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="zoneName">Зона / Название *</Label>
+            <Input
+              id="zoneName"
+              data-testid="input-tariff-zone"
+              value={form.zoneName}
+              onChange={(e) => setForm({ ...form, zoneName: e.target.value })}
+              placeholder="Например: Зона 1 — Москва"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="pricePerTon">Тариф (руб/тн) *</Label>
@@ -211,13 +145,6 @@ function TariffDialog({
   );
 }
 
-function getTariffDisplayName(tariff: RailwayTariff): string {
-  if (tariff.fromStation && tariff.toStation) {
-    return `${tariff.fromStation.name} → ${tariff.toStation.name}`;
-  }
-  return tariff.zoneName || "—";
-}
-
 export function RailwayTariffsTab() {
   const { hasPermission } = useAuth();
   const [search, setSearch] = useState("");
@@ -237,15 +164,6 @@ export function RailwayTariffsTab() {
     },
   });
 
-  const { data: stations = [] } = useQuery<RailwayStation[]>({
-    queryKey: ["/api/railway/stations"],
-    queryFn: async () => {
-      const res = await fetch("/api/railway/stations", { credentials: "include" });
-      if (!res.ok) throw new Error("Ошибка загрузки станций");
-      return res.json();
-    },
-  });
-
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => apiRequest("DELETE", `/api/railway/tariffs/${id}`),
     onSuccess: () => {
@@ -261,20 +179,13 @@ export function RailwayTariffsTab() {
   const formatPrice = (price: string) =>
     new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 2 }).format(Number(price));
 
-  const filteredTariffs = search
-    ? tariffs.filter((t) => {
-        const name = getTariffDisplayName(t).toLowerCase();
-        return name.includes(search.toLowerCase());
-      })
-    : tariffs;
-
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <CardTitle>Тарифы ЖД доставки</CardTitle>
-            <CardDescription>Тарифы на доставку по парам станций</CardDescription>
+            <CardDescription>Зоны и тарифы на цистерны по железной дороге</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -308,36 +219,22 @@ export function RailwayTariffsTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Станция отправления</TableHead>
-                <TableHead className="w-8"></TableHead>
-                <TableHead>Станция назначения</TableHead>
+                <TableHead>Зона / Название</TableHead>
                 <TableHead>Тариф (руб/тн)</TableHead>
                 <TableHead className="w-16"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredTariffs.length === 0 ? (
+              {tariffs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
                     Нет данных
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredTariffs.map((tariff) => (
+                tariffs.map((tariff) => (
                   <TableRow key={tariff.id} data-testid={`row-tariff-${tariff.id}`}>
-                    <TableCell className="font-medium">
-                      {tariff.fromStation
-                        ? `${tariff.fromStation.name}${tariff.fromStation.code ? ` (${tariff.fromStation.code})` : ""}`
-                        : (tariff.zoneName || "—")}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      <ArrowRight className="h-4 w-4" />
-                    </TableCell>
-                    <TableCell>
-                      {tariff.toStation
-                        ? `${tariff.toStation.name}${tariff.toStation.code ? ` (${tariff.toStation.code})` : ""}`
-                        : "—"}
-                    </TableCell>
+                    <TableCell className="font-medium">{tariff.zoneName}</TableCell>
                     <TableCell>{formatPrice(tariff.pricePerTon)}</TableCell>
                     <TableCell>
                       <EntityActionsMenu
@@ -354,15 +251,12 @@ export function RailwayTariffsTab() {
                             label: "Удалить",
                             icon: Trash2,
                             variant: "destructive",
-                            onClick: () => {
-                              setToDelete({ id: tariff.id, name: getTariffDisplayName(tariff) });
-                              setDeleteOpen(true);
-                            },
+                            onClick: () => { setToDelete({ id: tariff.id, name: tariff.zoneName }); setDeleteOpen(true); },
                             permission: { module: "directories", action: "delete" },
                             separatorAfter: true,
                           },
                         ] satisfies EntityAction[]}
-                        audit={{ entityType: "railway_tariffs", entityId: tariff.id, entityName: getTariffDisplayName(tariff) }}
+                        audit={{ entityType: "railway_tariffs", entityId: tariff.id, entityName: tariff.zoneName }}
                       />
                     </TableCell>
                   </TableRow>
@@ -377,7 +271,6 @@ export function RailwayTariffsTab() {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         tariff={editingTariff}
-        stations={stations}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ["/api/railway/tariffs"] })}
       />
 

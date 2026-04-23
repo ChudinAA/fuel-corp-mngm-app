@@ -11,7 +11,6 @@ export const optFormSchema = z.object({
   quantityKg: z.string().optional().nullable(),
   carrierId: z.string().optional().nullable(),
   deliveryLocationId: z.string().optional().nullable(),
-  destinationBaseId: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   isApproxVolume: z.boolean().default(false),
   selectedPurchasePriceId: z.string().optional().nullable(),
@@ -21,9 +20,9 @@ export const optFormSchema = z.object({
   isDraft: z.boolean().default(false),
   inputMode: z.enum(["liters", "kg"]).default("kg"),
   basis: z.string().optional().nullable(),
-  basisId: z.string().optional().nullable(),
+  basisId: z.string().uuid().optional().nullable(),
   customerBasis: z.string().optional().nullable(),
-  customerBasisId: z.string().optional().nullable(),
+  customerBasisId: z.string().uuid().optional().nullable(),
 });
 
 export type OptFormData = z.infer<typeof optFormSchema>;

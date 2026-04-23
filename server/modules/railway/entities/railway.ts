@@ -55,9 +55,7 @@ export const railwayTariffs = pgTable(
   "railway_tariffs",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    zoneName: text("zone_name"),
-    fromStationId: uuid("from_station_id").references(() => railwayStations.id),
-    toStationId: uuid("to_station_id").references(() => railwayStations.id),
+    zoneName: text("zone_name").notNull(),
     pricePerTon: decimal("price_per_ton", { precision: 15, scale: 2 }).notNull(),
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -68,9 +66,8 @@ export const railwayTariffs = pgTable(
     deletedById: uuid("deleted_by_id").references(() => users.id),
   },
   (table) => ({
+    zoneNameIdx: index("railway_tariffs_zone_name_idx").on(table.zoneName),
     isActiveIdx: index("railway_tariffs_is_active_idx").on(table.isActive),
-    fromStationIdx: index("railway_tariffs_from_station_idx").on(table.fromStationId),
-    toStationIdx: index("railway_tariffs_to_station_idx").on(table.toStationId),
   }),
 );
 
@@ -79,29 +76,14 @@ export const railwayTariffsRelations = relations(railwayTariffs, ({ one }) => ({
     fields: [railwayTariffs.createdById],
     references: [users.id],
   }),
-  fromStation: one(railwayStations, {
-    fields: [railwayTariffs.fromStationId],
-    references: [railwayStations.id],
-    relationName: "fromStation",
-  }),
-  toStation: one(railwayStations, {
-    fields: [railwayTariffs.toStationId],
-    references: [railwayStations.id],
-    relationName: "toStation",
-  }),
 }));
 
 export const insertRailwayTariffSchema = createInsertSchema(railwayTariffs)
   .omit({ id: true, createdAt: true })
   .extend({
-    zoneName: z.string().nullable().optional(),
-    fromStationId: z.string().uuid().nullable().optional(),
-    toStationId: z.string().uuid().nullable().optional(),
+    zoneName: z.string().min(1, "Название зоны обязательно"),
     pricePerTon: z.union([z.string(), z.number()]).transform(v => String(v)),
   });
 
-export type RailwayTariff = typeof railwayTariffs.$inferSelect & {
-  fromStation?: { id: string; name: string; code: string | null } | null;
-  toStation?: { id: string; name: string; code: string | null } | null;
-};
+export type RailwayTariff = typeof railwayTariffs.$inferSelect;
 export type InsertRailwayTariff = z.infer<typeof insertRailwayTariffSchema>;

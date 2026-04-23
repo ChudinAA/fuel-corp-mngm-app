@@ -38,4 +38,3 @@ export * from "server/modules/suppliers/entities/supplier-basis-prices";
 export * from "server/modules/railway/entities/railway";
 export * from "server/modules/exchange-deals/entities/exchange-deals";
 export * from "server/modules/exchange-advances/entities/exchange-advances";
-export * from "server/modules/opt/entities/base-delivery-tariffs";
