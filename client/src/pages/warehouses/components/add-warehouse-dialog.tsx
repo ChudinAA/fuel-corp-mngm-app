@@ -247,6 +247,7 @@ export function AddWarehouseDialog({
                       placeholder="Стоимость хранения" 
                       type="number"
                       min="0"
+                      step="0.01"
                       data-testid="input-storage-cost" 
                       {...field} 
                     />
