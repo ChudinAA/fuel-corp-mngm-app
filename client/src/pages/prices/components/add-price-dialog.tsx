@@ -83,7 +83,12 @@ export function AddPriceDialog({
     name: "priceValues",
   });
 
+  const prevEditPriceRef = useRef<typeof editPrice>(undefined);
+
   useEffect(() => {
+    const prevEditPrice = prevEditPriceRef.current;
+    prevEditPriceRef.current = editPrice;
+
     if (editPrice) {
       let parsedPriceValues = [{ price: "" }];
       if (editPrice.priceValues && editPrice.priceValues.length > 0) {
@@ -119,8 +124,31 @@ export function AddPriceDialog({
       } as PriceFormData);
       setOpen(true);
       setDateCheckPassed(false);
+    } else if (prevEditPrice && !editPrice) {
+      // editPrice was cleared (edit completed/cancelled) — reset form to defaults
+      form.reset({
+        dateFrom: new Date(),
+        dateTo: getDefaultDateTo(),
+        counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
+        counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
+        counterpartyId: "",
+        productType: PRODUCT_TYPE.KEROSENE,
+        basis: "",
+        basisId: undefined,
+        loadingBasisId: undefined,
+        currency: "RUB",
+        currencyId: undefined,
+        volume: "",
+        priceValues: [{ price: "" }],
+        contractNumber: "",
+        contractAppendix: "",
+        notes: "",
+        priceUnit: "kg" as "kg" | "liter",
+      });
+      dateCheck.setResult(null);
+      setDateCheckPassed(false);
     }
-  }, [editPrice, form]);
+  }, [editPrice]);
 
   // Сброс свернутого состояния при открытии
   useEffect(() => {
@@ -184,36 +212,50 @@ export function AddPriceDialog({
 
   const watchContractNumber = form.watch("contractNumber");
 
-  // Auto-fill contract number and next appendix from last price when counterparty changes (new price only)
-  const { data: lastContractInfo } = useQuery<{ contractNumber: string | null; nextAppendix: string | null }>({
-    queryKey: ["/api/prices/last-contract-info", watchCounterpartyId, watchCounterpartyType, watchCounterpartyRole],
+  // Fetch last contract info with proper query params (not joined path)
+  const { data: contractInfo } = useQuery<{ contractNumber: string | null; nextAppendix: string | null }>({
+    queryKey: [
+      "/api/prices/last-contract-info",
+      watchCounterpartyId,
+      watchCounterpartyType,
+      watchCounterpartyRole,
+      watchContractNumber || "",
+    ],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        counterpartyId: watchCounterpartyId,
+        counterpartyType: watchCounterpartyType,
+        counterpartyRole: watchCounterpartyRole,
+      });
+      if (watchContractNumber) params.set("contractNumber", watchContractNumber);
+      const res = await fetch(`/api/prices/last-contract-info?${params}`, {
+        credentials: "include",
+      });
+      if (!res.ok) return { contractNumber: null, nextAppendix: null };
+      return res.json();
+    },
     enabled: !editPrice && !!watchCounterpartyId && !!watchCounterpartyType && !!watchCounterpartyRole,
   });
 
+  // Auto-fill contractNumber and contractAppendix — only when counterparty is actually selected
   useEffect(() => {
-    if (!editPrice && lastContractInfo) {
-      const currentContract = form.getValues("contractNumber");
-      const currentAppendix = form.getValues("contractAppendix");
-      if (!currentContract && lastContractInfo.contractNumber) {
-        form.setValue("contractNumber", lastContractInfo.contractNumber);
-      }
-      if (!currentAppendix && lastContractInfo.nextAppendix) {
-        form.setValue("contractAppendix", lastContractInfo.nextAppendix);
+    if (!editPrice && contractInfo && watchCounterpartyId) {
+      if (!watchContractNumber) {
+        // No contract typed yet — fill from last price
+        const currentContract = form.getValues("contractNumber");
+        const currentAppendix = form.getValues("contractAppendix");
+        if (!currentContract && contractInfo.contractNumber) {
+          form.setValue("contractNumber", contractInfo.contractNumber);
+        }
+        if (!currentAppendix && contractInfo.nextAppendix) {
+          form.setValue("contractAppendix", contractInfo.nextAppendix);
+        }
+      } else if (contractInfo.nextAppendix) {
+        // Contract number is set — always update appendix
+        form.setValue("contractAppendix", contractInfo.nextAppendix);
       }
     }
-  }, [lastContractInfo, editPrice]);
-
-  // Auto-update appendix when contract number changes manually (new price only)
-  const { data: appendixInfo } = useQuery<{ contractNumber: string | null; nextAppendix: string | null }>({
-    queryKey: ["/api/prices/last-contract-info", watchCounterpartyId, watchCounterpartyType, watchCounterpartyRole, watchContractNumber],
-    enabled: !editPrice && !!watchCounterpartyId && !!watchContractNumber,
-  });
-
-  useEffect(() => {
-    if (!editPrice && appendixInfo?.nextAppendix && watchContractNumber) {
-      form.setValue("contractAppendix", appendixInfo.nextAppendix);
-    }
-  }, [appendixInfo, editPrice, watchContractNumber]);
+  }, [contractInfo, editPrice, watchCounterpartyId]);
 
   const { data: bases } = useQuery<Base[]>({ queryKey: ["/api/bases"] });
   const { data: suppliers } = useQuery<Supplier[]>({

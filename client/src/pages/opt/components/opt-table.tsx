@@ -170,7 +170,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
         if (!raw) { setLastCreatedDealId(null); return; }
         const { id, timestamp } = JSON.parse(raw);
         const elapsed = Date.now() - timestamp;
-        const fiveMin = 5 * 60 * 1000;
+        const fiveMin = 2 * 60 * 1000;
         if (elapsed < fiveMin) {
           setLastCreatedDealId(id);
           if (clearTimer) clearTimeout(clearTimer);
