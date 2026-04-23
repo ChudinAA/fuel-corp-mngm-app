@@ -363,7 +363,7 @@ export function RefuelingPricingSection({
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Агентское вознаграждение: {formatCurrency(agentFee)}
+            Агентское вознаграждение: {formatPrice(agentFee)} ₽/кг
           </AlertDescription>
         </Alert>
       )}

@@ -69,7 +69,7 @@ export const aircraftRefueling = pgTable(
     salePriceIndex: integer("sale_price_index").default(0),
     purchaseAmount: decimal("purchase_amount", { precision: 15, scale: 2 }),
     saleAmount: decimal("sale_amount", { precision: 15, scale: 2 }),
-    agentFee: decimal("agent_fee", { precision: 15, scale: 2 }),
+    agentFee: decimal("agent_fee", { precision: 15, scale: 6 }),
     profit: decimal("profit", { precision: 15, scale: 2 }),
     contractNumber: text("contract_number"),
     notes: text("notes"),
