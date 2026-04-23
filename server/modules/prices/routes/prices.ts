@@ -216,8 +216,12 @@ export function registerPricesRoutes(app: Express) {
       try {
         const body = req.body;
 
-        if (!body.volume) {
+        const limitType = body.limitType || "volume";
+        if (limitType !== "amount" && !body.volume) {
           return res.status(400).json({ message: "Укажите объем по договору" });
+        }
+        if (limitType === "amount" && !body.maxDealAmount) {
+          return res.status(400).json({ message: "Укажите максимальную сумму сделки" });
         }
 
         // Валидация пересечения дат перед созданием
@@ -243,7 +247,8 @@ export function registerPricesRoutes(app: Express) {
           priceValues: body.priceValues?.map((pv: { price: string }) =>
             JSON.stringify({ price: parseFloat(pv.price) }),
           ),
-          volume: body.volume ? String(body.volume) : null,
+          volume: limitType !== "amount" && body.volume ? String(body.volume) : null,
+          maxDealAmount: limitType === "amount" && body.maxDealAmount ? String(body.maxDealAmount) : null,
           counterpartyId: body.counterpartyId,
           notes: body.notes || null,
           createdById: req.session.userId,
@@ -309,12 +314,14 @@ export function registerPricesRoutes(app: Express) {
         }
 
         // Process priceValues if they exist
+        const patchLimitType = body.limitType || "volume";
         const processedData = {
           ...body,
           priceValues: body.priceValues?.map((pv: { price: string }) =>
             JSON.stringify({ price: parseFloat(pv.price) }),
           ),
-          volume: body.volume ? String(body.volume) : null,
+          volume: patchLimitType !== "amount" && body.volume ? String(body.volume) : null,
+          maxDealAmount: patchLimitType === "amount" && body.maxDealAmount ? String(body.maxDealAmount) : null,
           notes: body.notes || null,
           updatedById: req.session.userId,
         };
