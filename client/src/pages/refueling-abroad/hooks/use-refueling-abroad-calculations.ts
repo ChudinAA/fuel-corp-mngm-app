@@ -174,6 +174,8 @@ export function useRefuelingAbroadCalculations({
     currentQuantityKg: finalKg,
     initialQuantityKg: initialQuantityKg,
     mode: "refueling-abroad",
+    currentDealAmount: saleAmountUsd ?? 0,
+    initialDealAmount: (salePrice ?? 0) * initialQuantityKg,
   });
 
   // Логика проверки объема по договору поставщика
@@ -182,6 +184,8 @@ export function useRefuelingAbroadCalculations({
     currentQuantityKg: finalKg,
     initialQuantityKg: initialQuantityKg,
     mode: "refueling-abroad",
+    currentDealAmount: purchaseAmountUsd ?? 0,
+    initialDealAmount: (purchasePrice ?? 0) * initialQuantityKg,
   });
 
   return {

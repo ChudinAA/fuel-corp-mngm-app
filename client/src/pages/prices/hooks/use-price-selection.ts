@@ -23,9 +23,13 @@ export function usePriceSelection() {
       const res = await apiRequest("GET", `/api/prices/calculate-selection?${params}`);
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data, price) => {
       queryClient.invalidateQueries({ queryKey: ["/api/prices/list"] });
-      toast({ title: "Выборка рассчитана", description: `Общий объем: ${data.totalVolume} кг` });
+      const isAmountLimit = (price as any).limitType === "amount";
+      const description = isAmountLimit
+        ? `Общая сумма: ${data.totalAmount} ₽`
+        : `Общий объем: ${data.totalVolume} кг`;
+      toast({ title: "Выборка рассчитана", description });
       setCalculatingPriceId(null);
     },
     onError: () => {

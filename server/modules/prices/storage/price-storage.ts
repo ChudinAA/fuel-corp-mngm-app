@@ -192,82 +192,126 @@ export class PriceStorage {
     dateFrom: string,
     dateTo: string,
     priceId?: string,
-  ): Promise<number> {
+  ): Promise<{ totalVolume: number; totalAmount: number }> {
     let totalVolume = 0;
+    let totalAmount = 0;
 
     if (!priceId) {
-      return 0;
+      return { totalVolume: 0, totalAmount: 0 };
     }
 
-    // Получаем цену для определения роли контрагента
+    // Получаем цену для определения роли контрагента и типа ограничения
     const [price] = await db
       .select()
       .from(prices)
       .where(eq(prices.id, priceId))
       .limit(1);
     if (!price) {
-      return 0;
+      return { totalVolume: 0, totalAmount: 0 };
     }
+
+    const isAmountLimit = price.limitType === "amount";
+    const isSupplier = price.counterpartyRole === "supplier";
 
     if (counterpartyType === COUNTERPARTY_TYPE.WHOLESALE) {
-      const [optVolume] = await db
-        .select({
-          total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`,
-        })
-        .from(opt)
-        .where(
-          and(
-            or(eq(opt.salePriceId, priceId), eq(opt.purchasePriceId, priceId)),
-            isNull(opt.deletedAt),
-            eq(opt.isDraft, false),
-          ),
-        );
-
-      const [movementVolume] = await db
-        .select({
-          total: sql<string>`COALESCE(SUM(${movement.quantityKg}), 0)`,
-        })
-        .from(movement)
-        .where(
-          and(
-            eq(movement.purchasePriceId, priceId),
-            isNull(movement.deletedAt),
-          ),
-        );
-
-      totalVolume =
-        parseFloat(optVolume.total || "0") +
-        parseFloat(movementVolume.total || "0");
-    } else if (counterpartyType === COUNTERPARTY_TYPE.REFUELING) {
-      const [result] = await db
-        .select({
-          total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`,
-        })
-        .from(aircraftRefueling)
-        .where(
-          and(
-            or(
-              eq(aircraftRefueling.salePriceId, priceId),
-              eq(aircraftRefueling.purchasePriceId, priceId),
+      if (isAmountLimit) {
+        // Суммируем суммы сделок в зависимости от роли цены
+        const [optAmount] = await db
+          .select({
+            total: isSupplier
+              ? sql<string>`COALESCE(SUM(${opt.purchaseAmount}), 0)`
+              : sql<string>`COALESCE(SUM(${opt.saleAmount}), 0)`,
+          })
+          .from(opt)
+          .where(
+            and(
+              isSupplier
+                ? eq(opt.purchasePriceId, priceId)
+                : eq(opt.salePriceId, priceId),
+              isNull(opt.deletedAt),
+              eq(opt.isDraft, false),
             ),
-            isNull(aircraftRefueling.deletedAt),
-            eq(aircraftRefueling.isDraft, false),
-          ),
-        );
-      totalVolume = parseFloat(result?.total || "0");
+          );
+        totalAmount = parseFloat(optAmount.total || "0");
+      } else {
+        const [optVolume] = await db
+          .select({
+            total: sql<string>`COALESCE(SUM(${opt.quantityKg}), 0)`,
+          })
+          .from(opt)
+          .where(
+            and(
+              or(eq(opt.salePriceId, priceId), eq(opt.purchasePriceId, priceId)),
+              isNull(opt.deletedAt),
+              eq(opt.isDraft, false),
+            ),
+          );
+
+        const [movementVolume] = await db
+          .select({
+            total: sql<string>`COALESCE(SUM(${movement.quantityKg}), 0)`,
+          })
+          .from(movement)
+          .where(
+            and(
+              eq(movement.purchasePriceId, priceId),
+              isNull(movement.deletedAt),
+            ),
+          );
+
+        totalVolume =
+          parseFloat(optVolume.total || "0") +
+          parseFloat(movementVolume.total || "0");
+      }
+    } else if (counterpartyType === COUNTERPARTY_TYPE.REFUELING) {
+      if (isAmountLimit) {
+        const [result] = await db
+          .select({
+            total: isSupplier
+              ? sql<string>`COALESCE(SUM(${aircraftRefueling.purchaseAmount}), 0)`
+              : sql<string>`COALESCE(SUM(${aircraftRefueling.saleAmount}), 0)`,
+          })
+          .from(aircraftRefueling)
+          .where(
+            and(
+              isSupplier
+                ? eq(aircraftRefueling.purchasePriceId, priceId)
+                : eq(aircraftRefueling.salePriceId, priceId),
+              isNull(aircraftRefueling.deletedAt),
+              eq(aircraftRefueling.isDraft, false),
+            ),
+          );
+        totalAmount = parseFloat(result?.total || "0");
+      } else {
+        const [result] = await db
+          .select({
+            total: sql<string>`COALESCE(SUM(${aircraftRefueling.quantityKg}), 0)`,
+          })
+          .from(aircraftRefueling)
+          .where(
+            and(
+              or(
+                eq(aircraftRefueling.salePriceId, priceId),
+                eq(aircraftRefueling.purchasePriceId, priceId),
+              ),
+              isNull(aircraftRefueling.deletedAt),
+              eq(aircraftRefueling.isDraft, false),
+            ),
+          );
+        totalVolume = parseFloat(result?.total || "0");
+      }
     }
 
-    // Обновляем значение в базе данных
-    if (priceId) {
-      await db
-        .update(prices)
-        .set({
-          soldVolume: totalVolume.toString(),
-        })
-        .where(eq(prices.id, priceId));
-    }
+    // Обновляем значения в базе данных
+    await db
+      .update(prices)
+      .set({
+        soldVolume: totalVolume.toString(),
+        soldAmount: totalAmount.toString(),
+      })
+      .where(eq(prices.id, priceId));
 
-    return totalVolume;
+    return { totalVolume, totalAmount };
   }
 
   async checkPriceDateOverlaps(

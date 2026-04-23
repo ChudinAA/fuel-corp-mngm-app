@@ -43,6 +43,9 @@ export const prices = pgTable(
     soldVolume: decimal("sold_volume", { precision: 15, scale: 2 }).default(
       "0",
     ),
+    soldAmount: decimal("sold_amount", { precision: 15, scale: 2 }).default(
+      "0",
+    ),
     dateCheckWarning: text("date_check_warning"),
     currency: text("currency").default("RUB"),
     currencyId: uuid("currency_id").references(() => currencies.id),

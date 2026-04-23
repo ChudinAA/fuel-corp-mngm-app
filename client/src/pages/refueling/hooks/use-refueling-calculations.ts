@@ -249,6 +249,8 @@ export function useRefuelingCalculations({
     currentQuantityKg: finalKg,
     initialQuantityKg: initialQuantityKg,
     mode: "refueling",
+    currentDealAmount: saleAmount ?? 0,
+    initialDealAmount: (salePrice ?? 0) * initialQuantityKg,
   });
 
   // Логика проверки объема по договору поставщика
@@ -257,6 +259,8 @@ export function useRefuelingCalculations({
     currentQuantityKg: finalKg,
     initialQuantityKg: initialQuantityKg,
     mode: "refueling",
+    currentDealAmount: purchaseAmount ?? 0,
+    initialDealAmount: (purchasePrice ?? 0) * initialQuantityKg,
   });
 
   return {

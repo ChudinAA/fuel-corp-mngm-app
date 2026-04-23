@@ -185,6 +185,8 @@ export function useOptCalculations({
     currentQuantityKg: finalKg,
     initialQuantityKg: initialQuantityKg,
     mode: "opt",
+    currentDealAmount: saleAmount ?? 0,
+    initialDealAmount: (salePrice ?? 0) * initialQuantityKg,
   });
 
   // Логика проверки объема по договору поставщика
@@ -193,6 +195,8 @@ export function useOptCalculations({
     currentQuantityKg: finalKg,
     initialQuantityKg: initialQuantityKg,
     mode: "opt",
+    currentDealAmount: purchaseAmount ?? 0,
+    initialDealAmount: (purchasePrice ?? 0) * initialQuantityKg,
   });
 
   return {

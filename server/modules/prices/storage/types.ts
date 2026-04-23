@@ -28,7 +28,7 @@ export interface IPriceStorage {
     dateFrom: string,
     dateTo: string,
     priceId?: string
-  ): Promise<number>;
+  ): Promise<{ totalVolume: number; totalAmount: number }>;
   checkPriceDateOverlaps(
     counterpartyId: string,
     counterpartyType: string,

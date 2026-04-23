@@ -408,8 +408,8 @@ export function PricesTable({
                 </div>
               </TableHead>
               <TableHead className="text-right">Цена</TableHead>
-              <TableHead className="text-center">Объем (кг)</TableHead>
-              <TableHead className="text-center">Выборка (кг)</TableHead>
+              <TableHead className="text-center">Объем/Сумма</TableHead>
+              <TableHead className="text-center">Выборка</TableHead>
               <TableHead className="w-[10px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -518,16 +518,24 @@ export function PricesTable({
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      {price.volume
-                        ? `${formatNumberForTable(price.volume)}`
-                        : "—"}
+                      {(price as any).limitType === "amount"
+                        ? (price as any).maxDealAmount
+                          ? `${formatNumberForTable((price as any).maxDealAmount)} ₽`
+                          : "—"
+                        : price.volume
+                          ? `${formatNumberForTable(price.volume)} кг`
+                          : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <span>
-                          {price.soldVolume && parseFloat(price.soldVolume) > 0
-                            ? `${formatNumberForTable(price.soldVolume)}`
-                            : "—"}
+                          {(price as any).limitType === "amount"
+                            ? (price as any).soldAmount && parseFloat((price as any).soldAmount) > 0
+                              ? `${formatNumberForTable((price as any).soldAmount)} ₽`
+                              : "—"
+                            : price.soldVolume && parseFloat(price.soldVolume) > 0
+                              ? `${formatNumberForTable(price.soldVolume)} кг`
+                              : "—"}
                         </span>
                         <Tooltip>
                           <TooltipTrigger asChild>
