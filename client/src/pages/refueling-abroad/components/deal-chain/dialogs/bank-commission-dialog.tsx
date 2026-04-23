@@ -58,7 +58,7 @@ export function BankCommissionDialog({
               Название банка
             </Label>
             <Input
-              placeholder="Название банка (необязательно)"
+              placeholder="Название банка"
               value={form.bankName}
               onChange={(e) =>
                 setForm((f) => ({ ...f, bankName: e.target.value }))

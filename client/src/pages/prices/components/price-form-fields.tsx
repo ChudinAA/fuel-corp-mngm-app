@@ -564,7 +564,7 @@ export function PriceFormFields({
           name="contractNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Номер договора (опционально)</FormLabel>
+              <FormLabel>Номер договора</FormLabel>
               <FormControl>
                 <Input
                   placeholder="№ договора"
@@ -582,7 +582,7 @@ export function PriceFormFields({
           name="contractAppendix"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>№ приложения (опционально)</FormLabel>
+              <FormLabel>№ приложения</FormLabel>
               <FormControl>
                 <Input
                   placeholder="№ приложения"
