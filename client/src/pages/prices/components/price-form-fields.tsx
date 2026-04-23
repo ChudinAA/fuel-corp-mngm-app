@@ -68,6 +68,7 @@ export function PriceFormFields({
   const [addBaseOpen, setAddBaseOpen] = useState(false);
 
   const counterpartyType = useWatch({ control, name: "counterpartyType" });
+  const limitType = useWatch({ control, name: "limitType" });
 
   return (
     <>
@@ -488,7 +489,7 @@ export function PriceFormFields({
               </FormItem>
             )}
           />
-          {useWatch({ control, name: "limitType" }) !== "amount" ? (
+          {limitType !== "amount" ? (
             <FormField
               control={control}
               name="volume"
