@@ -647,6 +647,7 @@ export function AddPriceDialog({
               >
                 <PriceFormFields
                   control={form.control}
+                  setValue={form.setValue}
                   contractors={contractors}
                   availableBases={availableBases}
                   currencies={currencies || []}
@@ -820,6 +821,7 @@ export function AddPriceDialog({
           >
             <PriceFormFields
               control={form.control}
+              setValue={form.setValue}
               contractors={contractors}
               availableBases={availableBases}
               currencies={currencies || []}

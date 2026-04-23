@@ -30,6 +30,7 @@ import type {
   FieldArrayWithId,
   UseFieldArrayRemove,
   UseFieldArrayAppend,
+  UseFormSetValue,
 } from "react-hook-form";
 import { useWatch } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
@@ -47,6 +48,7 @@ import { BaseTypeBadge } from "@/components/base-type-badge";
 
 interface PriceFormFieldsProps {
   control: Control<PriceFormData>;
+  setValue: UseFormSetValue<PriceFormData>;
   contractors: Array<Supplier | Customer>;
   availableBases: Base[];
   currencies: Currency[];
@@ -57,6 +59,7 @@ interface PriceFormFieldsProps {
 
 export function PriceFormFields({
   control,
+  setValue,
   contractors,
   availableBases,
   currencies,
@@ -462,7 +465,10 @@ export function PriceFormFields({
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => field.onChange("volume")}
+                    onClick={() => {
+                      field.onChange("volume");
+                      setValue("maxDealAmount", "");
+                    }}
                     className={`px-2 py-1 text-xs rounded-md border transition-colors ${
                       (field.value ?? "volume") === "volume"
                         ? "bg-primary text-primary-foreground border-primary"
@@ -474,7 +480,10 @@ export function PriceFormFields({
                   </button>
                   <button
                     type="button"
-                    onClick={() => field.onChange("amount")}
+                    onClick={() => {
+                      field.onChange("amount");
+                      setValue("volume", "");
+                    }}
                     className={`px-2 py-1 text-xs rounded-md border transition-colors ${
                       field.value === "amount"
                         ? "bg-primary text-primary-foreground border-primary"
@@ -489,49 +498,48 @@ export function PriceFormFields({
               </FormItem>
             )}
           />
-          {limitType !== "amount" ? (
-            <FormField
-              control={control}
-              name="volume"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Объем по договору (кг)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="Объем поставки"
-                      data-testid="input-volume"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          ) : (
-            <FormField
-              control={control}
-              name="maxDealAmount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Максимальная сумма сделки</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="Максимальная сумма"
-                      data-testid="input-max-deal-amount"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
+          <FormField
+            control={control}
+            name="volume"
+            render={({ field }) => (
+              <FormItem className={limitType === "amount" ? "opacity-40 pointer-events-none" : ""}>
+                <FormLabel>Объем по договору (кг)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Объем поставки"
+                    data-testid="input-volume"
+                    disabled={limitType === "amount"}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name="maxDealAmount"
+            render={({ field }) => (
+              <FormItem className={limitType !== "amount" ? "opacity-40 pointer-events-none" : ""}>
+                <FormLabel>Максимальная сумма сделки</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Максимальная сумма"
+                    data-testid="input-max-deal-amount"
+                    disabled={limitType !== "amount"}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
       </div>
 
