@@ -72,20 +72,29 @@ export class RailwayStorage {
 
   // ===== RAILWAY TARIFFS =====
 
-  async getAllTariffs(search?: string): Promise<RailwayTariff[]> {
+  async getAllTariffs(search?: string): Promise<any[]> {
     const conditions: any[] = [isNull(railwayTariffs.deletedAt)];
     if (search && search.trim()) {
-      conditions.push(ilike(railwayTariffs.zoneName, `%${search.trim()}%`));
+      const pattern = `%${search.trim()}%`;
+      conditions.push(ilike(railwayTariffs.zoneName, pattern));
     }
     return db.query.railwayTariffs.findMany({
       where: and(...conditions),
       orderBy: [desc(railwayTariffs.createdAt)],
+      with: {
+        fromStation: true,
+        toStation: true,
+      },
     });
   }
 
-  async getTariff(id: string): Promise<RailwayTariff | undefined> {
+  async getTariff(id: string): Promise<any | undefined> {
     return db.query.railwayTariffs.findFirst({
       where: and(eq(railwayTariffs.id, id), isNull(railwayTariffs.deletedAt)),
+      with: {
+        fromStation: true,
+        toStation: true,
+      },
     });
   }
 

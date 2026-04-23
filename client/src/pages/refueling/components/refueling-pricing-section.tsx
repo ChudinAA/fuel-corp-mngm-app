@@ -18,7 +18,7 @@ import type { UseFormReturn } from "react-hook-form";
 import type { Price, Supplier } from "@shared/schema";
 import type { RefuelingFormData } from "../schemas";
 import { CalculatedField } from "../calculated-field";
-import { formatNumber, formatCurrency } from "../utils";
+import { formatNumber, formatPrice, formatCurrency } from "../utils";
 import { EQUIPMENT_TYPE, PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
@@ -103,7 +103,7 @@ export function RefuelingPricingSection({
                   Цена, установленная поставщиком
                 </span>
                 <span className="text-sm font-medium">
-                  {formatNumber(selectedSupplier.servicePrice)} ₽/кг
+                  {formatPrice(selectedSupplier.servicePrice)} ₽/кг
                 </span>
               </div>
             )}
@@ -184,7 +184,7 @@ export function RefuelingPricingSection({
                                   key={`${price.id}-${idx}`}
                                   value={`${price.id}-${idx}`}
                                 >
-                                  {formatNumber(priceVal)} ₽/кг
+                                  {formatPrice(priceVal)} ₽/кг
                                 </SelectItem>
                               );
                             } catch {
@@ -215,7 +215,7 @@ export function RefuelingPricingSection({
           productType === PRODUCT_TYPE.SERVICE ? (
           <CalculatedField
             label="Покупка"
-            value={purchasePrice !== null ? formatNumber(purchasePrice) : "—"}
+            value={purchasePrice !== null ? formatPrice(purchasePrice) : "—"}
             suffix={purchasePrice !== null ? " ₽/кг" : ""}
             status="ok"
           />
@@ -238,7 +238,7 @@ export function RefuelingPricingSection({
           <CalculatedField
             label="Покупка"
             value={
-              purchasePrice !== null ? formatNumber(purchasePrice) : "Нет цены!"
+              purchasePrice !== null ? formatPrice(purchasePrice) : "Нет цены!"
             }
             suffix={purchasePrice !== null ? " ₽/кг" : ""}
             status={purchasePrice !== null ? "ok" : "error"}
@@ -300,7 +300,7 @@ export function RefuelingPricingSection({
                                   key={`${price.id}-${idx}`}
                                   value={`${price.id}-${idx}`}
                                 >
-                                  {formatNumber(priceVal)} ₽/кг
+                                  {formatPrice(priceVal)} ₽/кг
                                 </SelectItem>
                               );
                             } catch {
@@ -331,7 +331,7 @@ export function RefuelingPricingSection({
           productType === PRODUCT_TYPE.SERVICE ? (
           <CalculatedField
             label="Продажа"
-            value={purchasePrice !== null ? formatNumber(purchasePrice) : "—"}
+            value={purchasePrice !== null ? formatPrice(purchasePrice) : "—"}
             suffix={purchasePrice !== null ? " ₽/кг" : ""}
             status="ok"
           />

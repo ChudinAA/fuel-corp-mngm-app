@@ -9,6 +9,13 @@ export const formatNumber = (value: string | number | null | undefined): string 
   return num.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+export const formatPrice = (value: string | number | null | undefined): string => {
+  if (value === null || value === undefined || value === "") return "0";
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  if (isNaN(num)) return "0";
+  return num.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 6 });
+};
+
 export const formatNumberForTable = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === "") return "0";
   const num = typeof value === "string" ? parseFloat(value) : value;

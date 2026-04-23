@@ -17,7 +17,7 @@ import type { Price, Warehouse } from "@shared/schema";
 import type { OptFormData } from "../schemas";
 import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, PRODUCT_TYPE } from "@shared/constants";
 import { CalculatedField } from "./calculated-field";
-import { formatNumber, formatCurrency } from "../utils";
+import { formatNumber, formatPrice, formatCurrency } from "../utils";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useState } from "react";
@@ -184,7 +184,7 @@ export function OptPricingSection({
                                   key={`${price.id}-${idx}`}
                                   value={`${price.id}-${idx}`}
                                 >
-                                  {formatNumber(priceVal)} ₽/кг
+                                  {formatPrice(priceVal)} ₽/кг
                                 </SelectItem>
                               );
                             } catch {
@@ -231,7 +231,7 @@ export function OptPricingSection({
             label="Покупка"
             value={
               purchasePrice !== null
-                ? formatNumber(purchasePrice)
+                ? formatPrice(purchasePrice)
                 : isWarehouseSupplier && isWarehouseBalanceLoading
                   ? "Загрузка..."
                   : "Нет цены!"
@@ -304,7 +304,7 @@ export function OptPricingSection({
                                   key={`${price.id}-${idx}`}
                                   value={`${price.id}-${idx}`}
                                 >
-                                  {formatNumber(priceVal)} ₽/кг
+                                  {formatPrice(priceVal)} ₽/кг
                                 </SelectItem>
                               );
                             } catch {

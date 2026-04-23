@@ -116,13 +116,14 @@ function StationDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="code">Код станции</Label>
+            <Label htmlFor="code">Код станции (макс. 6 символов)</Label>
             <Input
               id="code"
               data-testid="input-station-code"
               value={form.code}
-              onChange={(e) => setForm({ ...form, code: e.target.value })}
+              onChange={(e) => setForm({ ...form, code: e.target.value.slice(0, 6) })}
               placeholder="Например: 060001"
+              maxLength={6}
             />
           </div>
           <DialogFooter>

@@ -248,17 +248,37 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
       {s.code && <span className="ml-2 text-xs text-muted-foreground">{s.code}</span>}
     </div>
   ) }));
-  const tariffOptions = tariffs.map((t: any) => ({
-    value: t.id,
-    label: t.zoneName,
-    render: (
-      <div>
-        <span>{t.zoneName}</span>
-        <span className="ml-2 text-xs text-muted-foreground">{formatMoney(parseFloat(t.pricePerTon))}/тн</span>
-      </div>
-    ),
-  }));
+  const tariffOptions = tariffs.map((t: any) => {
+    const label = t.fromStation && t.toStation
+      ? `${t.fromStation.name} → ${t.toStation.name}`
+      : (t.zoneName || "—");
+    return {
+      value: t.id,
+      label,
+      render: (
+        <div>
+          <span>{label}</span>
+          <span className="ml-2 text-xs text-muted-foreground">{formatMoney(parseFloat(t.pricePerTon))}/тн</span>
+        </div>
+      ),
+    };
+  });
   const supplierOptions = (suppliers as any[]).map((s: any) => ({ value: s.id, label: s.name }));
+
+  const watchDepartureStationId = form.watch("departureStationId");
+  const watchDestinationStationId = form.watch("destinationStationId");
+
+  useEffect(() => {
+    if (!watchDepartureStationId || !watchDestinationStationId) return;
+    const matched = (tariffs as any[]).find(
+      (t: any) =>
+        t.fromStationId === watchDepartureStationId &&
+        t.toStationId === watchDestinationStationId
+    );
+    if (matched) {
+      form.setValue("deliveryTariffId", matched.id);
+    }
+  }, [watchDepartureStationId, watchDestinationStationId, tariffs]);
 
   const handleBuyerChange = (val: string) => {
     if (!val) {

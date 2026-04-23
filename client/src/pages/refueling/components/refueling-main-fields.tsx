@@ -94,6 +94,20 @@ export function RefuelingMainFields({
   const refuelingBases =
     allBases?.filter((b) => b.baseType === BASE_TYPE.REFUELING) || [];
 
+  const watchBasisId = form.watch("basisId");
+
+  const { data: flightNumbersList = [] } = useQuery<{ id: string; number: string }[]>({
+    queryKey: ["/api/flight-numbers", watchBasisId],
+    queryFn: async () => {
+      const url = watchBasisId
+        ? `/api/flight-numbers?basisId=${watchBasisId}`
+        : "/api/flight-numbers";
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
   // Fetch ALL equipment globally (not per-warehouse) since СЗ are independent
   const { data: likEquipmentList } = useQuery<Equipment[]>({
     queryKey: ["/api/warehouses-equipment"],
@@ -214,13 +228,26 @@ export function RefuelingMainFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Номер рейса</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="SU-123"
-                  data-testid="input-order-number"
-                  {...field}
+              {flightNumbersList.length > 0 ? (
+                <Combobox
+                  options={flightNumbersList.map((fn) => ({
+                    value: fn.number,
+                    label: fn.number,
+                  }))}
+                  value={field.value || ""}
+                  onValueChange={(v) => field.onChange(v || "")}
+                  placeholder="Выберите рейс"
+                  dataTestId="select-flight-number"
                 />
-              </FormControl>
+              ) : (
+                <FormControl>
+                  <Input
+                    placeholder="SU-123"
+                    data-testid="input-flight-number"
+                    {...field}
+                  />
+                </FormControl>
+              )}
               <FormMessage />
             </FormItem>
           )}

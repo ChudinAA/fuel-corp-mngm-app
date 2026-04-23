@@ -8,6 +8,12 @@ export const formatNumber = (value: number | string | null) => {
   );
 };
 
+export const formatPrice = (value: number | string | null) => {
+  if (value === null) return null;
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 6 }).format(num);
+};
+
 export const formatCurrency = (value: number | string | null) => {
   if (value === null) return null;
   const num = typeof value === "string" ? parseFloat(value) : value;

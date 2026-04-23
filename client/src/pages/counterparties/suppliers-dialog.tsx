@@ -41,6 +41,7 @@ const supplierFormSchema = z.object({
   name: z.string().min(1, "Укажите название"),
   fullName: z.string().optional(),
   iata: z.string().optional(),
+  inn: z.string().optional(),
   supplyNomenclature: z.string().optional(),
   description: z.string().optional(),
   baseIds: z
@@ -100,6 +101,7 @@ export function AddSupplierDialog({
       name: "",
       fullName: "",
       iata: "",
+      inn: "",
       supplyNomenclature: "",
       description: "",
       baseIds: [""],
@@ -153,6 +155,7 @@ export function AddSupplierDialog({
         name: data.name,
         fullName: data.fullName || null,
         iata: data.iata || null,
+        inn: data.inn || null,
         supplyNomenclature: data.supplyNomenclature || null,
         description: data.description,
         baseIds: filteredBaseIds.length > 0 ? filteredBaseIds : null,
@@ -194,6 +197,7 @@ export function AddSupplierDialog({
         name: "",
         fullName: "",
         iata: "",
+        inn: "",
         supplyNomenclature: "",
         description: "",
         baseIds: [""],
@@ -232,6 +236,7 @@ export function AddSupplierDialog({
         name: editItem.name,
         fullName: editItem.fullName || "",
         iata: editItem.iata || "",
+        inn: (editItem as any).inn || "",
         supplyNomenclature: editItem.supplyNomenclature || "",
         description: editItem.description || "",
         baseIds: baseIdsArray,
@@ -271,6 +276,7 @@ export function AddSupplierDialog({
         name: "",
         fullName: "",
         iata: "",
+        inn: "",
         supplyNomenclature: "",
         description: "",
         baseIds: [""],
@@ -382,6 +388,25 @@ export function AddSupplierDialog({
 
             <FormField
               control={form.control}
+              name="inn"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>ИНН</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="ИНН организации"
+                      data-testid="input-supplier-inn"
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="supplyNomenclature"
               render={({ field }) => (
                 <FormItem>
@@ -473,10 +498,10 @@ export function AddSupplierDialog({
                       <div className="space-y-1">
                         <label className="text-xs text-muted-foreground">Стоимость услуги</label>
                         <Input
-                          placeholder="0.00"
+                          placeholder="0.000000"
                           type="number"
                           min="0"
-                          step="0.01"
+                          step="0.000001"
                           value={basisPrices.servicePrice}
                           onChange={(e) => setBasisPricesMap(prev => ({
                             ...prev,
@@ -488,10 +513,10 @@ export function AddSupplierDialog({
                       <div className="space-y-1">
                         <label className="text-xs text-muted-foreground">Стоимость ПВКЖ</label>
                         <Input
-                          placeholder="0.00"
+                          placeholder="0.000000"
                           type="number"
                           min="0"
-                          step="0.01"
+                          step="0.000001"
                           value={basisPrices.pvkjPrice}
                           onChange={(e) => setBasisPricesMap(prev => ({
                             ...prev,
@@ -503,10 +528,10 @@ export function AddSupplierDialog({
                       <div className="space-y-1">
                         <label className="text-xs text-muted-foreground">Агентские/прочие</label>
                         <Input
-                          placeholder="0.00"
+                          placeholder="0.000000"
                           type="number"
                           min="0"
-                          step="0.01"
+                          step="0.000001"
                           value={basisPrices.agentFee}
                           onChange={(e) => setBasisPricesMap(prev => ({
                             ...prev,

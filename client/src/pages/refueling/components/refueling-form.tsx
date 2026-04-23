@@ -204,6 +204,7 @@ export const RefuelingForm = forwardRef<
     isWarehouseSupplier,
     supplierWarehouse,
     selectedBasis,
+    selectedBasisId: watchBasisId || undefined,
     purchasePrices,
     salePrices,
     selectedPurchasePriceId,
@@ -346,11 +347,17 @@ export const RefuelingForm = forwardRef<
         }
       }
 
+      const basisBase = allBases.find((b) => b.id === editData.basisId);
+      const resolvedBasisName = basisBase?.name || editData.basis || "";
+      const customerBasisBase = allBases.find((b) => b.id === editData.customerBasisId);
+      const resolvedCustomerBasisName = customerBasisBase?.name || editData.customerBasis || "";
+
       const resetValues = {
         refuelingDate: new Date(editData.refuelingDate),
         productType: editData.productType,
         aircraftNumber: editData.aircraftNumber || "",
         orderNumber: editData.orderNumber || "",
+        flightNumber: editData.flightNumber || "",
         supplierId: supplier?.id || "",
         buyerId: buyer?.id || "",
         warehouseId: editData.warehouseId || "",
@@ -365,9 +372,9 @@ export const RefuelingForm = forwardRef<
         isPriceRecharge: editData.isPriceRecharge || false,
         selectedPurchasePriceId: purchasePriceCompositeId,
         selectedSalePriceId: salePriceCompositeId,
-        basis: editData.basis || "",
+        basis: resolvedBasisName,
         basisId: editData.basisId || "",
-        customerBasis: editData.customerBasis || "",
+        customerBasis: resolvedCustomerBasisName,
         customerBasisId: editData.customerBasisId || "",
         isDraft: editData.isDraft || false,
       };
@@ -383,19 +390,8 @@ export const RefuelingForm = forwardRef<
           : 0,
       );
 
-      if (editData.customerBasisId) {
-        const base = allBases.find((b) => b.id === editData.customerBasisId);
-        if (base) setCustomerBasis(base.name);
-      } else if (editData.customerBasis) {
-        setCustomerBasis(editData.customerBasis);
-      }
-
-      if (editData.basisId) {
-        const base = allBases.find((b) => b.id === editData.basisId);
-        if (base) setSelectedBasis(base.name);
-      } else if (editData.basis) {
-        setSelectedBasis(editData.basis);
-      }
+      setCustomerBasis(resolvedCustomerBasisName);
+      setSelectedBasis(resolvedBasisName);
 
       if (editData.quantityLiters && !editData.inputMode) {
         setInputMode("liters");

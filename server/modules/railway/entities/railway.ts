@@ -55,7 +55,9 @@ export const railwayTariffs = pgTable(
   "railway_tariffs",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    zoneName: text("zone_name").notNull(),
+    zoneName: text("zone_name"),
+    fromStationId: uuid("from_station_id").references(() => railwayStations.id),
+    toStationId: uuid("to_station_id").references(() => railwayStations.id),
     pricePerTon: decimal("price_per_ton", { precision: 15, scale: 2 }).notNull(),
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -76,12 +78,22 @@ export const railwayTariffsRelations = relations(railwayTariffs, ({ one }) => ({
     fields: [railwayTariffs.createdById],
     references: [users.id],
   }),
+  fromStation: one(railwayStations, {
+    fields: [railwayTariffs.fromStationId],
+    references: [railwayStations.id],
+  }),
+  toStation: one(railwayStations, {
+    fields: [railwayTariffs.toStationId],
+    references: [railwayStations.id],
+  }),
 }));
 
 export const insertRailwayTariffSchema = createInsertSchema(railwayTariffs)
   .omit({ id: true, createdAt: true })
   .extend({
-    zoneName: z.string().min(1, "Название зоны обязательно"),
+    zoneName: z.string().nullable().optional(),
+    fromStationId: z.string().uuid().nullable().optional(),
+    toStationId: z.string().uuid().nullable().optional(),
     pricePerTon: z.union([z.string(), z.number()]).transform(v => String(v)),
   });
 

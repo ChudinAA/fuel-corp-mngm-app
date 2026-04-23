@@ -21,6 +21,18 @@ The "Заправка ВС Зарубеж" (Foreign Aircraft Refueling) module f
 - Each item has a `chainPosition`/`orderIndex` that preserves its position in the visual chain
 - On save, all three lists are sent to their respective PUT endpoints
 
+## Recent Improvements (April 2026)
+
+1. **Базис validation fix** — Copy/edit in Заправки ВС no longer triggers "Базис обязателен" error; basis name is resolved from allBases by basisId before form reset.
+2. **Basis-specific prices auto-population** — When a supplier with basis-specific prices (basisPrices) is selected and a basis is chosen, service/PVKJ/agentFee prices auto-fill from that basis entry.
+3. **Supplier-price info column in bases list** — Bases tab now shows which suppliers are associated with each base and their service/PVKJ prices.
+4. **Flight numbers linked to bases** — In the refueling form, the flight number field becomes a combobox populated from the flight_numbers table filtered by the selected basisId.
+5. **INN field for suppliers** — Added ИНН input field to the supplier dialog (maps to the `inn` DB column).
+6. **Railway station code max 6 chars** — Station code input in the railway stations tab is limited to 6 characters.
+7. **Railway tariffs with station pairs** — Tariffs now use departure/destination station dropdowns instead of a zone name. Exchange-deals dialog auto-populates the delivery tariff when both stations match an existing tariff.
+8. **No 2-decimal rounding on auto-populated prices** — Per-kg prices in the pricing sections display up to 6 decimal places.
+9. **6 decimal places in supplier basis price fields** — Price inputs in the suppliers dialog use step="0.000001".
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

@@ -17,6 +17,7 @@ interface UseRefuelingCalculationsProps {
   isWarehouseSupplier: boolean;
   supplierWarehouse: Warehouse | undefined;
   selectedBasis: string;
+  selectedBasisId?: string;
   purchasePrices: Price[];
   salePrices: Price[];
   selectedPurchasePriceId: string;
@@ -41,6 +42,7 @@ export function useRefuelingCalculations({
   isWarehouseSupplier,
   supplierWarehouse,
   selectedBasis,
+  selectedBasisId,
   purchasePrices,
   salePrices,
   selectedPurchasePriceId,
@@ -117,6 +119,7 @@ export function useRefuelingCalculations({
     supplierWarehouse,
     selectedSupplier,
     productType,
+    basisId: selectedBasisId,
   });
 
   // Equipment (СЗ) average cost at the refueling date
@@ -150,9 +153,15 @@ export function useRefuelingCalculations({
   const saleAmount =
     salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
 
-  const agentFee = selectedSupplier?.agentFee
-    ? parseFloat(selectedSupplier.agentFee)
-    : 0;
+  const agentFee = useMemo(() => {
+    if (selectedBasisId && selectedSupplier?.basisPrices) {
+      const basisPrice = selectedSupplier.basisPrices.find(
+        (bp) => bp.basisId === selectedBasisId
+      );
+      if (basisPrice?.agentFee) return parseFloat(basisPrice.agentFee);
+    }
+    return selectedSupplier?.agentFee ? parseFloat(selectedSupplier.agentFee) : 0;
+  }, [selectedSupplier, selectedBasisId]);
 
   const profit =
     purchaseAmount !== null && saleAmount !== null

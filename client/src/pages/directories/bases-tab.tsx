@@ -47,6 +47,21 @@ import { BASE_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 
+interface SupplierInfo {
+  id: string;
+  name: string;
+  servicePrice?: string | null;
+  pvkjPrice?: string | null;
+  agentFee?: string | null;
+}
+
+function formatPriceCompact(val: string | null | undefined): string {
+  if (!val) return "";
+  const n = parseFloat(val);
+  if (isNaN(n)) return "";
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(n);
+}
+
 export function BasesTab() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | string>("all");
@@ -66,6 +81,25 @@ export function BasesTab() {
   const { data: bases, isLoading } = useQuery<Base[]>({
     queryKey: ["/api/bases"],
   });
+
+  const { data: suppliers = [] } = useQuery<any[]>({
+    queryKey: ["/api/suppliers"],
+  });
+
+  const getBaseSuppliers = (baseId: string): SupplierInfo[] => {
+    return (suppliers as any[])
+      .filter((s: any) => s.baseIds && s.baseIds.includes(baseId))
+      .map((s: any) => {
+        const bp = s.basisPrices?.find((b: any) => b.basisId === baseId);
+        return {
+          id: s.id,
+          name: s.name,
+          servicePrice: bp?.servicePrice,
+          pvkjPrice: bp?.pvkjPrice,
+          agentFee: bp?.agentFee,
+        };
+      });
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -163,6 +197,7 @@ export function BasesTab() {
                     <TableHead>Название</TableHead>
                     <TableHead>Тип</TableHead>
                     <TableHead>Местоположение</TableHead>
+                    <TableHead>Поставщики / Цены</TableHead>
                     <TableHead>Статус</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
@@ -171,7 +206,7 @@ export function BasesTab() {
                   {filteredBases.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={5}
+                        colSpan={6}
                         className="text-center py-8 text-muted-foreground"
                       >
                         <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -179,7 +214,9 @@ export function BasesTab() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredBases.map((base) => (
+                    filteredBases.map((base) => {
+                      const baseSuppliers = getBaseSuppliers(base.id);
+                      return (
                       <TableRow
                         key={base.id}
                         data-testid={`row-base-${base.id}`}
@@ -192,6 +229,30 @@ export function BasesTab() {
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {base.location || "—"}
+                        </TableCell>
+                        <TableCell>
+                          {baseSuppliers.length === 0 ? (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          ) : (
+                            <div className="space-y-1">
+                              {baseSuppliers.map((s) => (
+                                <div key={s.id} className="text-sm">
+                                  <span className="font-medium">{s.name}</span>
+                                  {(s.servicePrice || s.pvkjPrice) && (
+                                    <span className="ml-2 text-xs text-muted-foreground">
+                                      {s.servicePrice && (
+                                        <span>С: {formatPriceCompact(s.servicePrice)}</span>
+                                      )}
+                                      {s.servicePrice && s.pvkjPrice && <span> · </span>}
+                                      {s.pvkjPrice && (
+                                        <span>ПВКЖ: {formatPriceCompact(s.pvkjPrice)}</span>
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           {base.isActive ? (
@@ -250,7 +311,8 @@ export function BasesTab() {
                           />
                         </TableCell>
                       </TableRow>
-                    ))
+                    );
+                    })
                   )}
                 </TableBody>
               </Table>

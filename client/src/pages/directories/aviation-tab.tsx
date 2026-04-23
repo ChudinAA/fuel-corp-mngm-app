@@ -79,13 +79,13 @@ export function AviationTab() {
     queryKey: ["/api/flight-numbers"],
   });
 
-  const { data: abroadBases = [] } = useQuery<Base[]>({
-    queryKey: ["/api/bases", { baseType: "abroad" }],
-    queryFn: async () => {
-      const res = await fetch("/api/bases?baseType=abroad");
-      return res.json();
-    },
+  const { data: allFlightBases = [] } = useQuery<Base[]>({
+    queryKey: ["/api/bases"],
   });
+
+  const abroadBases = allFlightBases.filter(
+    (b) => b.baseType === "abroad" || b.baseType === "refueling"
+  );
 
   // Aircraft mutations
   const createAircraftMutation = useMutation({
