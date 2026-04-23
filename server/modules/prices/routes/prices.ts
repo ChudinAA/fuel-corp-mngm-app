@@ -216,6 +216,7 @@ export function registerPricesRoutes(app: Express) {
       try {
         const body = req.body;
 
+        console.log("[PRICE CREATE DEBUG] body.limitType:", body.limitType, "body.volume:", body.volume, "body.maxDealAmount:", body.maxDealAmount);
         const limitType = body.limitType || "volume";
         if (limitType !== "amount" && !body.volume) {
           return res.status(400).json({ message: "Укажите объем по договору" });
