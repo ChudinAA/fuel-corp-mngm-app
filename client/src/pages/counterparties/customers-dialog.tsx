@@ -371,6 +371,24 @@ export function AddCustomerDialog({
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="inn"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>ИНН</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="7712345678"
+                      data-testid="input-customer-inn"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <FormLabel>Базисы</FormLabel>

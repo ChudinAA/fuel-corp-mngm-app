@@ -34,11 +34,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Loader2, Plane, Navigation } from "lucide-react";
-import type { Base } from "@shared/schema";
+import type { Base, Customer } from "@shared/schema";
 
 interface Aircraft {
   id: string;
   name: string;
+  customerId: string | null;
   isActive: boolean;
 }
 
@@ -58,10 +59,15 @@ export function AviationTab() {
   const canEdit = hasPermission("directories", "edit");
   const canDelete = hasPermission("directories", "delete");
 
+  const { data: customers = [] } = useQuery<Customer[]>({
+    queryKey: ["/api/customers"],
+  });
+
   // Aircraft state
   const [aircraftDialogOpen, setAircraftDialogOpen] = useState(false);
   const [editingAircraft, setEditingAircraft] = useState<Aircraft | null>(null);
   const [aircraftName, setAircraftName] = useState("");
+  const [aircraftCustomerId, setAircraftCustomerId] = useState<string>("");
   const [deletingAircraftId, setDeletingAircraftId] = useState<string | null>(null);
 
   // Flight numbers state
@@ -89,11 +95,11 @@ export function AviationTab() {
 
   // Aircraft mutations
   const createAircraftMutation = useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async (data: { name: string; customerId: string | null }) => {
       if (editingAircraft) {
-        return apiRequest("PATCH", `/api/aircraft/${editingAircraft.id}`, { name });
+        return apiRequest("PATCH", `/api/aircraft/${editingAircraft.id}`, data);
       }
-      return apiRequest("POST", "/api/aircraft", { name });
+      return apiRequest("POST", "/api/aircraft", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/aircraft"] });
@@ -141,6 +147,7 @@ export function AviationTab() {
 
   function resetAircraftForm() {
     setAircraftName("");
+    setAircraftCustomerId("");
     setEditingAircraft(null);
     setAircraftDialogOpen(false);
   }
@@ -155,6 +162,7 @@ export function AviationTab() {
   function openEditAircraft(item: Aircraft) {
     setEditingAircraft(item);
     setAircraftName(item.name);
+    setAircraftCustomerId(item.customerId || "");
     setAircraftDialogOpen(true);
   }
 
@@ -171,7 +179,10 @@ export function AviationTab() {
       showError("Укажите бортовой номер");
       return;
     }
-    createAircraftMutation.mutate(aircraftName.trim());
+    createAircraftMutation.mutate({
+      name: aircraftName.trim(),
+      customerId: aircraftCustomerId || null,
+    });
   }
 
   function handleFlightSubmit(e: React.FormEvent) {
@@ -228,15 +239,21 @@ export function AviationTab() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Бортовой номер</TableHead>
+                    <TableHead>Авиакомпания</TableHead>
                     {(canEdit || canDelete) && (
                       <TableHead className="w-24 text-right">Действия</TableHead>
                     )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {aircraftList.map((item) => (
+                  {aircraftList.map((item) => {
+                    const linkedCustomer = customers.find(c => c.id === item.customerId);
+                    return (
                     <TableRow key={item.id} data-testid={`row-aircraft-${item.id}`}>
                       <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {linkedCustomer ? linkedCustomer.name : <span className="opacity-50">—</span>}
+                      </TableCell>
                       {(canEdit || canDelete) && (
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
@@ -264,7 +281,8 @@ export function AviationTab() {
                         </TableCell>
                       )}
                     </TableRow>
-                  ))}
+                  );
+                  })}
                 </TableBody>
               </Table>
             )}
@@ -361,7 +379,7 @@ export function AviationTab() {
 
       {/* Aircraft dialog */}
       <Dialog open={aircraftDialogOpen} onOpenChange={(open) => { if (!open) resetAircraftForm(); else setAircraftDialogOpen(true); }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{editingAircraft ? "Редактировать борт" : "Добавить борт"}</DialogTitle>
           </DialogHeader>
@@ -373,6 +391,19 @@ export function AviationTab() {
                 value={aircraftName}
                 onChange={(e) => setAircraftName(e.target.value)}
                 data-testid="input-aircraft-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Авиакомпания (покупатель)</Label>
+              <Combobox
+                options={[
+                  { value: "", label: "Не привязан" },
+                  ...customers.map((c) => ({ value: c.id, label: c.name })),
+                ]}
+                value={aircraftCustomerId}
+                onValueChange={setAircraftCustomerId}
+                placeholder="Выберите авиакомпанию..."
+                dataTestId="select-aircraft-customer"
               />
             </div>
             <div className="flex justify-end gap-2">
@@ -406,7 +437,7 @@ export function AviationTab() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Базис (зарубеж)</Label>
+              <Label>Базис</Label>
               <Combobox
                 options={[{ value: "", label: "Без базиса" }, ...basisOptions]}
                 value={flightBasisId}

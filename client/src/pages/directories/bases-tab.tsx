@@ -59,7 +59,7 @@ function formatPriceCompact(val: string | null | undefined): string {
   if (!val) return "";
   const n = parseFloat(val);
   if (isNaN(n)) return "";
-  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(n);
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 6 }).format(n);
 }
 
 export function BasesTab() {
@@ -238,14 +238,18 @@ export function BasesTab() {
                               {baseSuppliers.map((s) => (
                                 <div key={s.id} className="text-sm">
                                   <span className="font-medium">{s.name}</span>
-                                  {(s.servicePrice || s.pvkjPrice) && (
+                                  {(s.servicePrice || s.pvkjPrice || s.agentFee) && (
                                     <span className="ml-2 text-xs text-muted-foreground">
                                       {s.servicePrice && (
-                                        <span>С: {formatPriceCompact(s.servicePrice)}</span>
+                                        <span>Услуга: {formatPriceCompact(s.servicePrice)}</span>
                                       )}
                                       {s.servicePrice && s.pvkjPrice && <span> · </span>}
                                       {s.pvkjPrice && (
                                         <span>ПВКЖ: {formatPriceCompact(s.pvkjPrice)}</span>
+                                      )}
+                                      {(s.servicePrice || s.pvkjPrice) && s.agentFee && <span> · </span>}
+                                      {s.agentFee && (
+                                        <span>Агент.: {formatPriceCompact(s.agentFee)}</span>
                                       )}
                                     </span>
                                   )}

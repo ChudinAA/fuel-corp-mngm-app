@@ -152,9 +152,8 @@ export function SuppliersTab() {
                     <TableHead>Название</TableHead>
                     <TableHead>Базисы</TableHead>
                     <TableHead>Описание</TableHead>
-                    <TableHead>Посредник</TableHead>
-                    <TableHead>Зарубеж</TableHead>
-                    <TableHead>Статус</TableHead>
+                    <TableHead>Тип</TableHead>
+                    <TableHead>Доп. информация</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -162,7 +161,7 @@ export function SuppliersTab() {
                   {filteredSuppliers.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={7}
+                        colSpan={6}
                         className="text-center py-8 text-muted-foreground"
                       >
                         <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -237,17 +236,17 @@ export function SuppliersTab() {
                                       <div className="flex flex-wrap gap-2 pl-1">
                                         {bp.servicePrice && (
                                           <span className="text-blue-600 dark:text-blue-400">
-                                            Услуга: {parseFloat(bp.servicePrice).toFixed(2)} ₽/кг
+                                            Услуга: {parseFloat(bp.servicePrice)} ₽/кг
                                           </span>
                                         )}
                                         {bp.pvkjPrice && (
                                           <span className="text-purple-600 dark:text-purple-400">
-                                            ПВКЖ: {parseFloat(bp.pvkjPrice).toFixed(2)} ₽/кг
+                                            ПВКЖ: {parseFloat(bp.pvkjPrice)} ₽/кг
                                           </span>
                                         )}
                                         {bp.agentFee && (
                                           <span className="text-amber-600 dark:text-amber-400">
-                                            Агент: {parseFloat(bp.agentFee).toFixed(2)} ₽/кг
+                                            Агентские: {parseFloat(bp.agentFee)} ₽/кг
                                           </span>
                                         )}
                                       </div>
@@ -261,35 +260,29 @@ export function SuppliersTab() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {supplier.isIntermediary ? (
-                            <Badge variant="secondary">Посредник</Badge>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">—</span>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            {supplier.isIntermediary && (
+                              <Badge variant="secondary" className="w-fit">Посредник</Badge>
+                            )}
+                            {supplier.isForeign && (
+                              <Badge variant="outline" className="w-fit">Зарубеж</Badge>
+                            )}
+                            {!supplier.isIntermediary && !supplier.isForeign && (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
-                          {supplier.isForeign ? (
-                            <Badge variant="secondary">Зарубеж</Badge>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {supplier.isActive ? (
-                            <Badge
-                              variant="outline"
-                              className="text-green-600 border-green-600"
-                            >
-                              Активен
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="text-muted-foreground"
-                            >
-                              Неактивен
-                            </Badge>
-                          )}
+                          <div className="text-xs space-y-0.5">
+                            {(supplier as any).inn && (
+                              <div className="text-muted-foreground">
+                                ИНН: <span className="font-mono">{(supplier as any).inn}</span>
+                              </div>
+                            )}
+                            {!(supplier as any).inn && (
+                              <span className="text-muted-foreground/50">—</span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <EntityActionsMenu

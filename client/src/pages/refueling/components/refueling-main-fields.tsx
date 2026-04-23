@@ -29,7 +29,7 @@ import type { Supplier, Customer, Base, Warehouse, Equipment } from "@shared/sch
 import type { RefuelingFormData } from "../schemas";
 import { PRODUCT_TYPES } from "../constants";
 import { BASE_TYPE, CUSTOMER_MODULE, EQUIPMENT_TYPE } from "@shared/constants";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AddSupplierDialog } from "@/pages/counterparties/suppliers-dialog";
 import { AddCustomerDialog } from "@/pages/counterparties/customers-dialog";
@@ -95,6 +95,8 @@ export function RefuelingMainFields({
     allBases?.filter((b) => b.baseType === BASE_TYPE.REFUELING) || [];
 
   const watchBasisId = form.watch("basisId");
+  const watchedAircraftNumber = form.watch("aircraftNumber");
+  const watchedBuyerId = form.watch("buyerId");
 
   const { data: flightNumbersList = [] } = useQuery<{ id: string; number: string }[]>({
     queryKey: ["/api/flight-numbers", watchBasisId],
@@ -107,6 +109,45 @@ export function RefuelingMainFields({
       return res.json();
     },
   });
+
+  const { data: aircraftList = [] } = useQuery<{ id: string; name: string; customerId: string | null }[]>({
+    queryKey: ["/api/aircraft"],
+  });
+
+  const skipNextAircraftEffect = useRef(false);
+  const skipNextBuyerEffect = useRef(false);
+
+  useEffect(() => {
+    if (skipNextAircraftEffect.current) {
+      skipNextAircraftEffect.current = false;
+      return;
+    }
+    if (!watchedAircraftNumber || aircraftList.length === 0) return;
+    const foundAircraft = aircraftList.find((a) => a.name === watchedAircraftNumber);
+    if (foundAircraft?.customerId) {
+      const currentBuyerId = form.getValues("buyerId");
+      if (currentBuyerId !== foundAircraft.customerId) {
+        skipNextBuyerEffect.current = true;
+        form.setValue("buyerId", foundAircraft.customerId);
+      }
+    }
+  }, [watchedAircraftNumber, aircraftList]);
+
+  useEffect(() => {
+    if (skipNextBuyerEffect.current) {
+      skipNextBuyerEffect.current = false;
+      return;
+    }
+    if (!watchedBuyerId || aircraftList.length === 0) return;
+    const foundAircraft = aircraftList.find((a) => a.customerId === watchedBuyerId);
+    if (foundAircraft) {
+      const currentAircraftNumber = form.getValues("aircraftNumber");
+      if (currentAircraftNumber !== foundAircraft.name) {
+        skipNextAircraftEffect.current = true;
+        form.setValue("aircraftNumber", foundAircraft.name);
+      }
+    }
+  }, [watchedBuyerId, aircraftList]);
 
   // Fetch ALL equipment globally (not per-warehouse) since СЗ are independent
   const { data: likEquipmentList } = useQuery<Equipment[]>({
@@ -192,13 +233,15 @@ export function RefuelingMainFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Бортовой номер</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="RA-12345"
-                  data-testid="input-aircraft-number"
-                  {...field}
-                />
-              </FormControl>
+              <Combobox
+                options={aircraftList.map((a) => ({ value: a.name, label: a.name }))}
+                value={field.value || ""}
+                onValueChange={(v) => field.onChange(v || "")}
+                placeholder="RA-12345"
+                allowCustomValue
+                dataTestId="select-aircraft-number"
+                className="w-full"
+              />
               <FormMessage />
             </FormItem>
           )}

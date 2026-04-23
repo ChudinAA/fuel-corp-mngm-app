@@ -129,9 +129,8 @@ export function CustomersTab() {
                     <TableHead>Название</TableHead>
                     <TableHead>Модуль</TableHead>
                     <TableHead>Базисы</TableHead>
-                    <TableHead>Посредник</TableHead>
-                    <TableHead>Зарубеж</TableHead>
-                    <TableHead>Статус</TableHead>
+                    <TableHead>Тип</TableHead>
+                    <TableHead>Доп. информация</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -139,7 +138,7 @@ export function CustomersTab() {
                   {filteredItems.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={8}
+                        colSpan={6}
                         className="text-center py-8 text-muted-foreground"
                       >
                         <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -189,35 +188,34 @@ export function CustomersTab() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {item.isIntermediary ? (
-                            <Badge variant="secondary">Посредник</Badge>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">—</span>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            {item.isIntermediary && (
+                              <Badge variant="secondary" className="w-fit">Посредник</Badge>
+                            )}
+                            {item.isForeign && (
+                              <Badge variant="outline" className="w-fit">Зарубеж</Badge>
+                            )}
+                            {!item.isIntermediary && !item.isForeign && (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
-                          {item.isForeign ? (
-                            <Badge variant="secondary">Зарубеж</Badge>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {item.isActive ? (
-                            <Badge
-                              variant="outline"
-                              className="text-green-600 border-green-600"
-                            >
-                              Активен
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="text-muted-foreground"
-                            >
-                              Неактивен
-                            </Badge>
-                          )}
+                          <div className="text-xs space-y-0.5">
+                            {item.iata && (
+                              <div className="text-muted-foreground">
+                                IATA: <span className="font-mono font-medium">{item.iata}</span>
+                              </div>
+                            )}
+                            {(item as any).inn && (
+                              <div className="text-muted-foreground">
+                                ИНН: <span className="font-mono">{(item as any).inn}</span>
+                              </div>
+                            )}
+                            {!item.iata && !(item as any).inn && (
+                              <span className="text-muted-foreground/50">—</span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <EntityActionsMenu

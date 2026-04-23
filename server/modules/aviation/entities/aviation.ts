@@ -11,12 +11,14 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
 import { bases } from "../../bases/entities/bases";
+import { customers } from "../../customers/entities/customers";
 
 export const aircraft = pgTable(
   "aircraft",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     name: text("name").notNull(),
+    customerId: uuid("customer_id").references(() => customers.id, { onDelete: "set null" }),
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -53,6 +55,10 @@ export const flightNumbers = pgTable(
 );
 
 export const aircraftRelations = relations(aircraft, ({ one }) => ({
+  customer: one(customers, {
+    fields: [aircraft.customerId],
+    references: [customers.id],
+  }),
   createdBy: one(users, {
     fields: [aircraft.createdById],
     references: [users.id],
@@ -86,6 +92,7 @@ export const insertAircraftSchema = createInsertSchema(aircraft)
   .omit({ id: true, createdAt: true })
   .extend({
     name: z.string().min(1, "Укажите бортовой номер"),
+    customerId: z.string().uuid().nullable().optional(),
   });
 
 export const insertFlightNumberSchema = createInsertSchema(flightNumbers)

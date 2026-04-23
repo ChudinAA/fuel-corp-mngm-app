@@ -146,7 +146,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
     queryKey: ["/api/currencies"],
   });
 
-  const { data: aircraftList = [] } = useQuery<{ id: string; name: string }[]>({
+  const { data: aircraftList = [] } = useQuery<{ id: string; name: string; customerId: string | null }[]>({
     queryKey: ["/api/aircraft"],
   });
 
@@ -440,6 +440,43 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       form.setValue("basisId", firstforeignBaseId || "");
     }
   }, [watchedValues.supplierId, foreignSuppliers, foreignBases]);
+
+  const skipNextAircraftAbroadEffect = useRef(false);
+  const skipNextBuyerAbroadEffect = useRef(false);
+
+  useEffect(() => {
+    if (skipNextAircraftAbroadEffect.current) {
+      skipNextAircraftAbroadEffect.current = false;
+      return;
+    }
+    const currentAircraft = watchedValues.aircraftNumber;
+    if (!currentAircraft || aircraftList.length === 0) return;
+    const foundAircraft = aircraftList.find((a) => a.name === currentAircraft);
+    if (foundAircraft?.customerId) {
+      const currentBuyerId = form.getValues("buyerId");
+      if (currentBuyerId !== foundAircraft.customerId) {
+        skipNextBuyerAbroadEffect.current = true;
+        form.setValue("buyerId", foundAircraft.customerId);
+      }
+    }
+  }, [watchedValues.aircraftNumber, aircraftList]);
+
+  useEffect(() => {
+    if (skipNextBuyerAbroadEffect.current) {
+      skipNextBuyerAbroadEffect.current = false;
+      return;
+    }
+    const currentBuyerId = watchedValues.buyerId;
+    if (!currentBuyerId || aircraftList.length === 0) return;
+    const foundAircraft = aircraftList.find((a) => a.customerId === currentBuyerId);
+    if (foundAircraft) {
+      const currentAircraftNumber = form.getValues("aircraftNumber");
+      if (currentAircraftNumber !== foundAircraft.name) {
+        skipNextAircraftAbroadEffect.current = true;
+        form.setValue("aircraftNumber", foundAircraft.name);
+      }
+    }
+  }, [watchedValues.buyerId, aircraftList]);
 
   const selectedPurchaseExchangeRate = exchangeRates.find(
     (r) => r.id === watchedValues.purchaseExchangeRateId,
