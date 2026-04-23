@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -97,6 +98,8 @@ export function AddCustomerDialog({
   const { showError, ErrorModalComponent } = useErrorModal();
   const [localOpen, setLocalOpen] = useState(false);
   const [addBaseOpen, setAddBaseOpen] = useState(false);
+  const [newlyAddedBasisIndex, setNewlyAddedBasisIndex] = useState<number | null>(null);
+  const newBasisRef = useRef<HTMLDivElement | null>(null);
 
   const open = isInline ? inlineOpen : localOpen;
   const setOpen = isInline ? onInlineOpenChange || setLocalOpen : setLocalOpen;
@@ -136,6 +139,15 @@ export function AddCustomerDialog({
       append("");
     }
   }, [fields.length, append]);
+
+  // Auto-scroll to newly added basis and clear highlight after 3 seconds
+  useEffect(() => {
+    if (newlyAddedBasisIndex !== null && newBasisRef.current) {
+      newBasisRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      const timer = setTimeout(() => setNewlyAddedBasisIndex(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [newlyAddedBasisIndex, fields.length]);
 
   const isForeign = form.watch("isForeign");
   const hasSpecialConditions = form.watch("hasSpecialConditions");
@@ -409,14 +421,25 @@ export function AddCustomerDialog({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => append("")}
+                    onClick={() => {
+                      const newIndex = fields.length;
+                      append("");
+                      setNewlyAddedBasisIndex(newIndex);
+                    }}
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
               {fields.map((field, index) => (
-                <div key={field.id} className="flex gap-2 items-center">
+                <div
+                  key={field.id}
+                  ref={index === newlyAddedBasisIndex ? newBasisRef : undefined}
+                  className={cn(
+                    "flex gap-2 items-center rounded-md p-1 transition-all duration-300",
+                    index === newlyAddedBasisIndex && "ring-2 ring-primary bg-primary/5",
+                  )}
+                >
                   <div className="flex-1 min-w-0">
                     <Combobox
                       options={bases.map((b) => ({

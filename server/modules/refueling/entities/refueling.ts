@@ -75,6 +75,7 @@ export const aircraftRefueling = pgTable(
     notes: text("notes"),
     isPriceRecharge: boolean("is_price_recharge").default(false),
     isApproxVolume: boolean("is_approx_volume").default(false),
+    isPlannedDeal: boolean("is_planned_deal").default(false),
     purchasePriceModified: boolean("purchase_price_modified").default(false),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -196,6 +197,7 @@ export const insertAircraftRefuelingSchema = createInsertSchema(
     notes: z.string().nullable().optional(),
     isPriceRecharge: z.boolean().optional(),
     isApproxVolume: z.boolean().optional(),
+    isPlannedDeal: z.boolean().optional(),
     isDraft: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {

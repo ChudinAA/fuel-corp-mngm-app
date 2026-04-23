@@ -72,6 +72,7 @@ export function AddPriceDialog({
       volume: "",
       priceValues: [{ price: "" }],
       contractNumber: "",
+      contractAppendix: "",
       notes: "",
       priceUnit: "kg" as "kg" | "liter",
     },
@@ -112,6 +113,7 @@ export function AddPriceDialog({
         volume: editPrice.volume || "",
         priceValues: parsedPriceValues,
         contractNumber: editPrice.contractNumber || "",
+        contractAppendix: (editPrice as any).contractAppendix || "",
         notes: editPrice.notes || "",
         priceUnit: (editPrice.priceUnit as "kg" | "liter") || "kg",
       } as PriceFormData);
@@ -145,6 +147,7 @@ export function AddPriceDialog({
         volume: "",
         priceValues: [{ price: "" }],
         contractNumber: "",
+        contractAppendix: "",
         notes: "",
         priceUnit: "kg" as "kg" | "liter",
         ...inlineDefaults,
@@ -178,6 +181,39 @@ export function AddPriceDialog({
     watchDateFrom,
     watchDateTo,
   ]);
+
+  const watchContractNumber = form.watch("contractNumber");
+
+  // Auto-fill contract number and next appendix from last price when counterparty changes (new price only)
+  const { data: lastContractInfo } = useQuery<{ contractNumber: string | null; nextAppendix: string | null }>({
+    queryKey: ["/api/prices/last-contract-info", watchCounterpartyId, watchCounterpartyType, watchCounterpartyRole],
+    enabled: !editPrice && !!watchCounterpartyId && !!watchCounterpartyType && !!watchCounterpartyRole,
+  });
+
+  useEffect(() => {
+    if (!editPrice && lastContractInfo) {
+      const currentContract = form.getValues("contractNumber");
+      const currentAppendix = form.getValues("contractAppendix");
+      if (!currentContract && lastContractInfo.contractNumber) {
+        form.setValue("contractNumber", lastContractInfo.contractNumber);
+      }
+      if (!currentAppendix && lastContractInfo.nextAppendix) {
+        form.setValue("contractAppendix", lastContractInfo.nextAppendix);
+      }
+    }
+  }, [lastContractInfo, editPrice]);
+
+  // Auto-update appendix when contract number changes manually (new price only)
+  const { data: appendixInfo } = useQuery<{ contractNumber: string | null; nextAppendix: string | null }>({
+    queryKey: ["/api/prices/last-contract-info", watchCounterpartyId, watchCounterpartyType, watchCounterpartyRole, watchContractNumber],
+    enabled: !editPrice && !!watchCounterpartyId && !!watchContractNumber,
+  });
+
+  useEffect(() => {
+    if (!editPrice && appendixInfo?.nextAppendix && watchContractNumber) {
+      form.setValue("contractAppendix", appendixInfo.nextAppendix);
+    }
+  }, [appendixInfo, editPrice, watchContractNumber]);
 
   const { data: bases } = useQuery<Base[]>({ queryKey: ["/api/bases"] });
   const { data: suppliers } = useQuery<Supplier[]>({
@@ -312,6 +348,7 @@ export function AddPriceDialog({
         dateFrom: format(data.dateFrom, "yyyy-MM-dd"),
         dateTo: format(data.dateTo, "yyyy-MM-dd"),
         contractNumber: data.contractNumber || null,
+        contractAppendix: data.contractAppendix || null,
         notes: data.notes || null,
         priceUnit: data.priceUnit || "kg",
       };
@@ -357,6 +394,7 @@ export function AddPriceDialog({
         volume: "",
         priceValues: [{ price: "" }],
         contractNumber: "",
+        contractAppendix: "",
         notes: "",
         priceUnit: "kg" as "kg" | "liter",
       });
@@ -459,6 +497,7 @@ export function AddPriceDialog({
         volume: "",
         priceValues: [{ price: "" }],
         contractNumber: "",
+        contractAppendix: "",
         notes: "",
       });
       dateCheck.setResult(null);
@@ -653,6 +692,7 @@ export function AddPriceDialog({
             volume: "",
             priceValues: [{ price: "" }],
             contractNumber: "",
+            contractAppendix: "",
             notes: "",
           });
           dateCheck.setResult(null);

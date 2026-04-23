@@ -336,4 +336,66 @@ export class PriceStorage {
       message: "Пересечений не обнаружено",
     };
   }
+
+  async getLastContractInfo(
+    counterpartyId: string,
+    counterpartyType: string,
+    counterpartyRole: string,
+    contractNumber?: string,
+  ): Promise<{ contractNumber: string | null; nextAppendix: string | null }> {
+    const whereConditions = [
+      eq(prices.counterpartyId, counterpartyId),
+      eq(prices.counterpartyType, counterpartyType as any),
+      eq(prices.counterpartyRole, counterpartyRole as any),
+      isNull(prices.deletedAt),
+    ];
+
+    if (contractNumber) {
+      // Get next appendix number for this counterparty + contract
+      const rows = await db
+        .select({ contractAppendix: prices.contractAppendix })
+        .from(prices)
+        .where(and(...whereConditions, eq(prices.contractNumber, contractNumber)))
+        .orderBy(desc(prices.createdAt));
+
+      let maxNum = 0;
+      for (const row of rows) {
+        if (row.contractAppendix) {
+          const num = parseInt(row.contractAppendix, 10);
+          if (!isNaN(num) && num > maxNum) maxNum = num;
+        }
+      }
+      const nextAppendix = String(maxNum + 1);
+      return { contractNumber, nextAppendix };
+    } else {
+      // Get last used contract number for this counterparty
+      const row = await db
+        .select({ contractNumber: prices.contractNumber })
+        .from(prices)
+        .where(and(...whereConditions))
+        .orderBy(desc(prices.createdAt))
+        .limit(1);
+
+      const lastContract = row[0]?.contractNumber || null;
+
+      if (lastContract) {
+        const appendixRows = await db
+          .select({ contractAppendix: prices.contractAppendix })
+          .from(prices)
+          .where(and(...whereConditions, eq(prices.contractNumber, lastContract)))
+          .orderBy(desc(prices.createdAt));
+
+        let maxNum = 0;
+        for (const r of appendixRows) {
+          if (r.contractAppendix) {
+            const num = parseInt(r.contractAppendix, 10);
+            if (!isNaN(num) && num > maxNum) maxNum = num;
+          }
+        }
+        return { contractNumber: lastContract, nextAppendix: String(maxNum + 1) };
+      }
+
+      return { contractNumber: null, nextAppendix: null };
+    }
+  }
 }

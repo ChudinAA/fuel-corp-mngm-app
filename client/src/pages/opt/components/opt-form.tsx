@@ -84,6 +84,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         deliveryLocationId: "",
         notes: "",
         isApproxVolume: false,
+        isPlannedDeal: false,
         isDraft: editData?.isDraft || false,
         productType: editData?.productType || PRODUCT_TYPE.KEROSENE,
         selectedPurchasePriceId: "",
@@ -353,6 +354,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           deliveryLocationId: editData.deliveryLocationId || "",
           notes: editData.notes || "",
           isApproxVolume: editData.isApproxVolume || false,
+          isPlannedDeal: editData.isPlannedDeal || false,
           inputMode: (editData.inputMode as "liters" | "kg") || "kg",
           basis: editData.basis || "",
           basisId: editData.basisId || "",
@@ -440,7 +442,11 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         const res = await apiRequest("POST", "/api/opt", payload);
         return res.json();
       },
-      onSuccess: () => {
+      onSuccess: (data) => {
+        if (data?.id && !data?.isDraft) {
+          localStorage.setItem("lastCreatedDeal_opt", JSON.stringify({ id: data.id, timestamp: Date.now() }));
+          window.dispatchEvent(new CustomEvent("dealCreated", { detail: { type: "opt", id: data.id } }));
+        }
         queryClient.invalidateQueries({ queryKey: ["/api/opt/contract-used"] });
         queryClient.invalidateQueries({
           predicate: (query) => {
@@ -471,6 +477,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           deliveryLocationId: "",
           notes: "",
           isApproxVolume: false,
+          isPlannedDeal: false,
           selectedPurchasePriceId: "",
           selectedSalePriceId: "",
           basis: "",
@@ -572,6 +579,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           deliveryLocationId: "",
           notes: "",
           isApproxVolume: false,
+          isPlannedDeal: false,
           selectedPurchasePriceId: "",
           selectedSalePriceId: "",
           basis: "",
@@ -738,24 +746,44 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="isApproxVolume"
-                render={({ field }) => (
-                  <FormItem className="flex items-center gap-2 space-y-0 pb-2">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="checkbox-approx-volume"
-                      />
-                    </FormControl>
-                    <FormLabel className="text-sm font-normal cursor-pointer">
-                      Примерный объем (требует уточнения)
-                    </FormLabel>
-                  </FormItem>
-                )}
-              />
+              <div className="flex flex-col gap-2 pb-2">
+                <FormField
+                  control={form.control}
+                  name="isApproxVolume"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="checkbox-approx-volume"
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-normal cursor-pointer">
+                        Примерный объем (требует уточнения)
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="isPlannedDeal"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="checkbox-planned-deal"
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-normal cursor-pointer">
+                        Планируемая сделка
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

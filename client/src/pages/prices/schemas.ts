@@ -39,6 +39,7 @@ export const priceFormSchema = z.object({
     )
     .min(1, "Добавьте хотя бы одну цену"),
   contractNumber: z.string().optional(),
+  contractAppendix: z.string().optional(),
   notes: z.string().optional(),
   currency: z.string().optional().default("RUB"),
   currencyId: z.string().optional(),

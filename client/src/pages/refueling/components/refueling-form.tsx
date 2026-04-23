@@ -99,6 +99,7 @@ export const RefuelingForm = forwardRef<
       quantityKg: editData?.quantityKg?.toString() || "",
       notes: editData?.notes || "",
       isApproxVolume: editData?.isApproxVolume || false,
+      isPlannedDeal: editData?.isPlannedDeal || false,
       isPriceRecharge: editData?.isPriceRecharge || false,
       isDraft: editData?.isDraft || false,
       selectedPurchasePriceId: "",
@@ -369,6 +370,7 @@ export const RefuelingForm = forwardRef<
         quantityKg: editData.quantityKg?.toString() || "",
         notes: editData.notes || "",
         isApproxVolume: editData.isApproxVolume || false,
+        isPlannedDeal: editData.isPlannedDeal || false,
         isPriceRecharge: editData.isPriceRecharge || false,
         selectedPurchasePriceId: purchasePriceCompositeId,
         selectedSalePriceId: salePriceCompositeId,
@@ -471,7 +473,12 @@ export const RefuelingForm = forwardRef<
       const res = await apiRequest("POST", "/api/refueling", payload);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data?.id && !data?.isDraft) {
+        const lsKey = equipmentType === EQUIPMENT_TYPE.LIK ? "lastCreatedDeal_lik" : "lastCreatedDeal_refueling";
+        localStorage.setItem(lsKey, JSON.stringify({ id: data.id, timestamp: Date.now() }));
+        window.dispatchEvent(new CustomEvent("dealCreated", { detail: { type: equipmentType === EQUIPMENT_TYPE.LIK ? "lik" : "refueling", id: data.id } }));
+      }
       queryClient.invalidateQueries({
         queryKey: ["/api/refueling/contract-used"],
       });
@@ -748,24 +755,44 @@ export const RefuelingForm = forwardRef<
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="isApproxVolume"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2 space-y-0 pb-2">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="checkbox-approx-volume"
-                    />
-                  </FormControl>
-                  <FormLabel className="text-sm font-normal cursor-pointer">
-                    Примерный объем (требует уточнения)
-                  </FormLabel>
-                </FormItem>
-              )}
-            />
+            <div className="flex flex-col gap-2 pb-2">
+              <FormField
+                control={form.control}
+                name="isApproxVolume"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-2 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-approx-volume"
+                      />
+                    </FormControl>
+                    <FormLabel className="text-sm font-normal cursor-pointer">
+                      Примерный объем (требует уточнения)
+                    </FormLabel>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="isPlannedDeal"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-2 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-planned-deal"
+                      />
+                    </FormControl>
+                    <FormLabel className="text-sm font-normal cursor-pointer">
+                      Планируемая сделка
+                    </FormLabel>
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">

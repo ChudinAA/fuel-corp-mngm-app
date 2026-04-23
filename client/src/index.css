@@ -297,3 +297,32 @@
     inset: -1px;
   }
 }
+
+@keyframes approx-volume-pulse {
+  0%, 100% {
+    color: hsl(var(--foreground));
+    text-shadow: none;
+  }
+  50% {
+    color: hsl(25 95% 55%);
+    text-shadow: 0 0 6px hsl(25 95% 65% / 0.5);
+  }
+}
+
+@keyframes new-deal-flash {
+  0%, 100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: hsl(var(--primary) / 0.08);
+  }
+}
+
+.approx-volume-animated {
+  animation: approx-volume-pulse 2s ease-in-out infinite;
+  font-weight: 600;
+}
+
+.new-deal-flash {
+  animation: new-deal-flash 1.5s ease-in-out infinite;
+}

@@ -18,6 +18,7 @@ export interface PriceFormData {
   volume?: string;
   priceValues: Array<{ price: string }>;
   contractNumber?: string;
+  contractAppendix?: string;
   notes?: string;
   currency?: string;
   currencyId?: string;

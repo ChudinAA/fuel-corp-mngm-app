@@ -1,5 +1,6 @@
 import { Combobox } from "@/components/ui/combobox";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -91,6 +92,8 @@ export function AddSupplierDialog({
   const [localOpen, setLocalOpen] = useState(false);
   const [addBaseOpen, setAddBaseOpen] = useState(false);
   const [basisPricesMap, setBasisPricesMap] = useState<Record<string, BasisPriceEntry>>({});
+  const [newlyAddedBasisIndex, setNewlyAddedBasisIndex] = useState<number | null>(null);
+  const newBasisRef = useRef<HTMLDivElement | null>(null);
 
   const open = isInline ? inlineOpen : localOpen;
   const setOpen = isInline ? onInlineOpenChange || setLocalOpen : setLocalOpen;
@@ -128,6 +131,15 @@ export function AddSupplierDialog({
       append("");
     }
   }, [fields.length, append]);
+
+  // Auto-scroll to newly added basis and clear highlight after 3 seconds
+  useEffect(() => {
+    if (newlyAddedBasisIndex !== null && newBasisRef.current) {
+      newBasisRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      const timer = setTimeout(() => setNewlyAddedBasisIndex(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [newlyAddedBasisIndex, fields.length]);
 
   const isWarehouse = form.watch("isWarehouse");
   const isForeign = form.watch("isForeign");
@@ -443,7 +455,11 @@ export function AddSupplierDialog({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => append("")}
+                    onClick={() => {
+                      const newIndex = fields.length;
+                      append("");
+                      setNewlyAddedBasisIndex(newIndex);
+                    }}
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -453,7 +469,14 @@ export function AddSupplierDialog({
                 const currentBasisId = form.watch(`baseIds.${index}`) || "";
                 const basisPrices = basisPricesMap[currentBasisId] || { servicePrice: "", pvkjPrice: "", agentFee: "" };
                 return (
-                <div key={field.id} className="border rounded-md p-3 space-y-2">
+                <div
+                  key={field.id}
+                  ref={index === newlyAddedBasisIndex ? newBasisRef : undefined}
+                  className={cn(
+                    "border rounded-md p-3 space-y-2 transition-all duration-300",
+                    index === newlyAddedBasisIndex && "ring-2 ring-primary border-primary bg-primary/5",
+                  )}
+                >
                   <div className="flex gap-2 items-center">
                     <div className="flex-1 min-w-0">
                       <Combobox

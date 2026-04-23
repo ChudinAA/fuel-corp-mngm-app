@@ -558,23 +558,43 @@ export function PriceFormFields({
         ))}
       </div>
 
-      <FormField
-        control={control}
-        name="contractNumber"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Номер договора (опционально)</FormLabel>
-            <FormControl>
-              <Input
-                placeholder="№ договора"
-                data-testid="input-contract-number"
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <div className="grid grid-cols-2 gap-3">
+        <FormField
+          control={control}
+          name="contractNumber"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Номер договора (опционально)</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="№ договора"
+                  data-testid="input-contract-number"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="contractAppendix"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>№ приложения (опционально)</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="№ приложения"
+                  data-testid="input-contract-appendix"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
 
       <FormField
         control={control}

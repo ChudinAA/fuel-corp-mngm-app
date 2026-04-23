@@ -21,7 +21,6 @@ import {
   Search,
   Filter,
   Warehouse,
-  AlertCircle,
   History,
   Copy,
   Loader2,
@@ -154,6 +153,44 @@ export function RefuelingTable({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const cursorPositionRef = useRef<number>(0);
   const [deletedDealsAuditOpen, setDeletedDealsAuditOpen] = useState(false);
+  const [lastCreatedDealId, setLastCreatedDealId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const lsKey = equipmentType === EQUIPMENT_TYPE.LIK ? "lastCreatedDeal_lik" : "lastCreatedDeal_refueling";
+    const dealType = equipmentType === EQUIPMENT_TYPE.LIK ? "lik" : "refueling";
+    let clearTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const checkAndApply = () => {
+      try {
+        const raw = localStorage.getItem(lsKey);
+        if (!raw) { setLastCreatedDealId(null); return; }
+        const { id, timestamp } = JSON.parse(raw);
+        const elapsed = Date.now() - timestamp;
+        const fiveMin = 5 * 60 * 1000;
+        if (elapsed < fiveMin) {
+          setLastCreatedDealId(id);
+          if (clearTimer) clearTimeout(clearTimer);
+          const remaining = fiveMin - elapsed;
+          clearTimer = setTimeout(() => { setLastCreatedDealId(null); localStorage.removeItem(lsKey); }, remaining);
+        } else {
+          localStorage.removeItem(lsKey);
+          setLastCreatedDealId(null);
+        }
+      } catch { setLastCreatedDealId(null); }
+    };
+
+    const onDealCreated = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.type === dealType) checkAndApply();
+    };
+
+    checkAndApply();
+    window.addEventListener("dealCreated", onDealCreated);
+    return () => {
+      window.removeEventListener("dealCreated", onDealCreated);
+      if (clearTimer) clearTimeout(clearTimer);
+    };
+  }, [equipmentType]);
 
   // Генерируем опции для фильтров на основе данных
   const getUniqueOptions = (key: string) => {
@@ -390,6 +427,7 @@ export function RefuelingTable({
                   className={cn(
                     deal.isDraft &&
                       "bg-muted/70 opacity-60 border-2 border-orange-200",
+                    !deal.isDraft && lastCreatedDealId === deal.id && "new-deal-flash",
                   )}
                 >
                   <TableCell className="text-[10px] py-1.5 px-1">
@@ -401,6 +439,14 @@ export function RefuelingTable({
                           className="w-fit text-[9px] h-4 px-1 bg-yellow-100 text-yellow-800 border-yellow-200"
                         >
                           Черновик
+                        </Badge>
+                      )}
+                      {!deal.isDraft && deal.isPlannedDeal && (
+                        <Badge
+                          variant="secondary"
+                          className="w-fit text-[9px] h-4 px-1 bg-blue-100 text-blue-700 border-blue-200"
+                        >
+                          Планируемая
                         </Badge>
                       )}
                     </div>
@@ -472,19 +518,18 @@ export function RefuelingTable({
                   </TableCell>
                   <TableCell className="text-right font-medium text-xs py-1.5 px-1">
                     <TooltipProvider>
-                      <div className="flex items-center justify-end gap-1">
-                        <span>{formatNumberForTable(deal.quantityKg)}</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className={cn(deal.isApproxVolume && "approx-volume-animated cursor-help")}>
+                            {formatNumberForTable(deal.quantityKg)}
+                          </span>
+                        </TooltipTrigger>
                         {deal.isApproxVolume && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <AlertCircle className="h-3 w-3 text-red-300 flex-shrink-0 cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Примерный объем</p>
-                            </TooltipContent>
-                          </Tooltip>
+                          <TooltipContent>
+                            <p>Примерный объем (требует уточнения)</p>
+                          </TooltipContent>
                         )}
-                      </div>
+                      </Tooltip>
                     </TooltipProvider>
                   </TableCell>
                   <TableCell className="text-right text-xs py-1.5 px-1">

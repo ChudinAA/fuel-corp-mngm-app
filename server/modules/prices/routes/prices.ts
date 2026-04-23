@@ -52,6 +52,30 @@ export function registerPricesRoutes(app: Express) {
   );
 
   app.get(
+    "/api/prices/last-contract-info",
+    requireAuth,
+    requirePermission("prices", "view"),
+    async (req, res) => {
+      try {
+        const { counterpartyId, counterpartyType, counterpartyRole, contractNumber } = req.query;
+        if (!counterpartyId || !counterpartyType || !counterpartyRole) {
+          return res.status(400).json({ message: "Не указаны обязательные параметры" });
+        }
+        const result = await storage.prices.getLastContractInfo(
+          String(counterpartyId),
+          String(counterpartyType),
+          String(counterpartyRole),
+          contractNumber ? String(contractNumber) : undefined,
+        );
+        res.json(result);
+      } catch (error) {
+        console.error("Last contract info error:", error);
+        res.status(500).json({ message: "Ошибка получения информации о договоре" });
+      }
+    },
+  );
+
+  app.get(
     "/api/prices/check-date-overlaps",
     requireAuth,
     requirePermission("prices", "view"),
