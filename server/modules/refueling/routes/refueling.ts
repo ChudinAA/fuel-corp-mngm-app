@@ -53,6 +53,22 @@ export function registerRefuelingOperationsRoutes(app: Express) {
   );
 
   app.get(
+    "/api/refueling/contract-used-amount/:priceId",
+    requireAuth,
+    requireAnyPermission(["refueling", "lik-refueling"], "view"),
+    async (req, res) => {
+      try {
+        const { priceId } = req.params;
+        const usedAmount = await storage.aircraftRefueling.getUsedAmountByPrice(priceId);
+        res.json({ usedAmount });
+      } catch (error) {
+        console.error("Error getting used amount:", error);
+        res.status(500).json({ message: "Ошибка получения использованной суммы" });
+      }
+    }
+  );
+
+  app.get(
     "/api/refueling/:id",
     requireAuth,
     requireAnyPermission(["refueling", "lik-refueling"], "view"),

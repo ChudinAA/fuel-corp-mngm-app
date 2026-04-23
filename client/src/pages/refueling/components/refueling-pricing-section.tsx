@@ -42,6 +42,7 @@ interface RefuelingPricingSectionProps {
   saleAmount: number | null;
   profit: number | null;
   agentFee: number;
+  otherServiceFee?: number;
   warehouseStatus: { status: "ok" | "warning" | "error"; message: string };
   contractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
   supplierContractVolumeStatus: {
@@ -68,6 +69,7 @@ export function RefuelingPricingSection({
   saleAmount,
   profit,
   agentFee,
+  otherServiceFee = 0,
   warehouseStatus,
   contractVolumeStatus,
   supplierContractVolumeStatus,
@@ -367,6 +369,14 @@ export function RefuelingPricingSection({
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             Агентское вознаграждение: {formatPrice(agentFee)} ₽/кг
+          </AlertDescription>
+        </Alert>
+      )}
+      {otherServiceFee > 0 && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Прочие услуги: {formatCurrency(otherServiceFee)} ₽
           </AlertDescription>
         </Alert>
       )}

@@ -451,26 +451,87 @@ export function PriceFormFields({
         />
         )}
 
-        <FormField
-          control={control}
-          name="volume"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Объем по договору (кг)</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Объем поставки"
-                  data-testid="input-volume"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+        <div className="space-y-2">
+          <FormField
+            control={control}
+            name="limitType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Ограничение по договору</FormLabel>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => field.onChange("volume")}
+                    className={`px-2 py-1 text-xs rounded-md border transition-colors ${
+                      (field.value ?? "volume") === "volume"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-input hover-elevate"
+                    }`}
+                    data-testid="button-limit-type-volume"
+                  >
+                    По объёму (кг)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => field.onChange("amount")}
+                    className={`px-2 py-1 text-xs rounded-md border transition-colors ${
+                      field.value === "amount"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-input hover-elevate"
+                    }`}
+                    data-testid="button-limit-type-amount"
+                  >
+                    По сумме
+                  </button>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          {useWatch({ control, name: "limitType" }) !== "amount" ? (
+            <FormField
+              control={control}
+              name="volume"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Объем по договору (кг)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Объем поставки"
+                      data-testid="input-volume"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : (
+            <FormField
+              control={control}
+              name="maxDealAmount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Максимальная сумма сделки</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Максимальная сумма"
+                      data-testid="input-max-deal-amount"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           )}
-        />
+        </div>
       </div>
 
       <div className="space-y-3">

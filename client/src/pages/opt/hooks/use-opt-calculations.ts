@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { Price, Warehouse, DeliveryCost, Base } from "@shared/schema";
+import type { Price, Warehouse, DeliveryCost, Base, Supplier } from "@shared/schema";
 import { DELIVERY_ENTITY_TYPE } from "@shared/constants";
 import { useQuantityCalculation } from "../../shared/hooks/use-quantity-calculation";
 import { usePriceExtraction } from "../../shared/hooks/use-price-extraction";
@@ -26,6 +26,7 @@ interface UseOptCalculationsProps {
   initialQuantityKg?: number;
   dealDate?: Date;
   productType: string;
+  selectedSupplier?: Supplier;
 }
 
 export function useOptCalculations({
@@ -47,6 +48,7 @@ export function useOptCalculations({
   initialQuantityKg = 0,
   dealDate,
   productType,
+  selectedSupplier,
 }: UseOptCalculationsProps) {
   const { calculatedKg, finalKg } = useQuantityCalculation({
     inputMode,
@@ -147,19 +149,32 @@ export function useOptCalculations({
   const saleAmount =
     salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
 
+  const otherServiceFee = useMemo(() => {
+    if (basisId && selectedSupplier?.basisPrices && finalKg > 0) {
+      const bp = selectedSupplier.basisPrices.find((b) => b.basisId === basisId);
+      if (!bp?.otherServiceType || !bp?.otherServiceValue) return 0;
+      const val = parseFloat(bp.otherServiceValue);
+      if (isNaN(val) || val <= 0) return 0;
+      if (bp.otherServiceType === "royalty_per_ton") return val * (finalKg / 1000);
+      if (bp.otherServiceType === "percent_of_amount" && saleAmount !== null) return saleAmount * val / 100;
+      if (bp.otherServiceType === "fixed") return val;
+    }
+    return 0;
+  }, [selectedSupplier, basisId, finalKg, saleAmount]);
+
   const profit = useMemo(() => {
     if (
       purchaseAmount !== null &&
       saleAmount !== null &&
       deliveryCost !== null
     ) {
-      return saleAmount - purchaseAmount - deliveryCost;
+      return saleAmount - purchaseAmount - deliveryCost - otherServiceFee;
     }
     if (purchaseAmount !== null && saleAmount !== null) {
-      return saleAmount - purchaseAmount;
+      return saleAmount - purchaseAmount - otherServiceFee;
     }
     return null;
-  }, [purchaseAmount, saleAmount, deliveryCost]);
+  }, [purchaseAmount, saleAmount, deliveryCost, otherServiceFee]);
 
   const deliveryTariff =
     deliveryCost && finalKg > 0 ? deliveryCost / finalKg : null;
@@ -189,6 +204,7 @@ export function useOptCalculations({
     purchaseAmount,
     saleAmount,
     profit,
+    otherServiceFee,
     deliveryTariff,
     contractVolumeStatus,
     supplierContractVolumeStatus,

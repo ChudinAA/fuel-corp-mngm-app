@@ -30,7 +30,9 @@ export const priceFormSchema = z.object({
   ]),
   basis: z.string().min(1, "Выберите базис"),
   basisId: z.string().optional(),
-  volume: z.string().min(1, "Укажите объем по договору"),
+  limitType: z.enum(["volume", "amount"]).default("volume"),
+  volume: z.string().optional(),
+  maxDealAmount: z.string().optional(),
   priceValues: z
     .array(
       z.object({

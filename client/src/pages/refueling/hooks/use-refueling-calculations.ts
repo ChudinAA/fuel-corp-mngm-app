@@ -163,9 +163,22 @@ export function useRefuelingCalculations({
     return 0;
   }, [selectedSupplier, selectedBasisId]);
 
+  const otherServiceFee = useMemo(() => {
+    if (selectedBasisId && selectedSupplier?.basisPrices && finalKg > 0) {
+      const bp = selectedSupplier.basisPrices.find((b) => b.basisId === selectedBasisId);
+      if (!bp?.otherServiceType || !bp?.otherServiceValue) return 0;
+      const val = parseFloat(bp.otherServiceValue);
+      if (isNaN(val) || val <= 0) return 0;
+      if (bp.otherServiceType === "royalty_per_ton") return val * (finalKg / 1000);
+      if (bp.otherServiceType === "percent_of_amount" && saleAmount !== null) return saleAmount * val / 100;
+      if (bp.otherServiceType === "fixed") return val;
+    }
+    return 0;
+  }, [selectedSupplier, selectedBasisId, finalKg, saleAmount]);
+
   const profit =
     purchaseAmount !== null && saleAmount !== null
-      ? (isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) ? 0 : saleAmount - purchaseAmount - agentFee
+      ? (isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) ? 0 : saleAmount - purchaseAmount - agentFee - otherServiceFee
       : null;
 
   const getWarehouseStatus = (): {
@@ -254,6 +267,7 @@ export function useRefuelingCalculations({
     purchaseAmount,
     saleAmount,
     agentFee,
+    otherServiceFee,
     profit,
     warehouseStatus,
     contractVolumeStatus,

@@ -15,7 +15,9 @@ export interface PriceFormData {
   productType: ProductType;
   basis: string;
   basisId?: string;
+  limitType?: "volume" | "amount";
   volume?: string;
+  maxDealAmount?: string;
   priceValues: Array<{ price: string }>;
   contractNumber?: string;
   contractAppendix?: string;

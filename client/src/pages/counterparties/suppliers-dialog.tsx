@@ -28,6 +28,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Loader2, X, CalendarIcon } from "lucide-react";
 import type { Supplier, Base } from "@shared/schema";
 import { BaseTypeBadge } from "@/components/base-type-badge";
@@ -63,6 +70,8 @@ type BasisPriceEntry = {
   servicePrice: string;
   pvkjPrice: string;
   agentFee: string;
+  otherServiceType: string;
+  otherServiceValue: string;
 };
 
 type SupplierFormData = z.infer<typeof supplierFormSchema>;
@@ -91,6 +100,7 @@ export function AddSupplierDialog({
   const { showError, ErrorModalComponent } = useErrorModal();
   const [localOpen, setLocalOpen] = useState(false);
   const [addBaseOpen, setAddBaseOpen] = useState(false);
+  const defaultBasisPriceEntry = (): BasisPriceEntry => ({ servicePrice: "", pvkjPrice: "", agentFee: "", otherServiceType: "", otherServiceValue: "" });
   const [basisPricesMap, setBasisPricesMap] = useState<Record<string, BasisPriceEntry>>({});
   const [newlyAddedBasisIndex, setNewlyAddedBasisIndex] = useState<number | null>(null);
   const newBasisRef = useRef<HTMLDivElement | null>(null);
@@ -154,12 +164,14 @@ export function AddSupplierDialog({
         (id) => id && id.trim() !== "",
       );
       const basisPricesArray = filteredBaseIds.map((basisId) => {
-        const entry = basisPricesMap[basisId] || { servicePrice: "", pvkjPrice: "", agentFee: "" };
+        const entry = basisPricesMap[basisId] || defaultBasisPriceEntry();
         return {
           basisId,
           servicePrice: entry.servicePrice ? entry.servicePrice : null,
           pvkjPrice: entry.pvkjPrice ? entry.pvkjPrice : null,
           agentFee: entry.agentFee ? entry.agentFee : null,
+          otherServiceType: entry.otherServiceType || null,
+          otherServiceValue: entry.otherServiceValue ? entry.otherServiceValue : null,
         };
       });
 
@@ -269,11 +281,13 @@ export function AddSupplierDialog({
       // Load per-basis prices from editItem
       const pricesMap: Record<string, BasisPriceEntry> = {};
       if (editItem.basisPrices && Array.isArray(editItem.basisPrices)) {
-        editItem.basisPrices.forEach((bp: { basisId: string; servicePrice?: string | null; pvkjPrice?: string | null; agentFee?: string | null }) => {
+        editItem.basisPrices.forEach((bp: { basisId: string; servicePrice?: string | null; pvkjPrice?: string | null; agentFee?: string | null; otherServiceType?: string | null; otherServiceValue?: string | null }) => {
           pricesMap[bp.basisId] = {
             servicePrice: bp.servicePrice || "",
             pvkjPrice: bp.pvkjPrice || "",
             agentFee: bp.agentFee || "",
+            otherServiceType: bp.otherServiceType || "",
+            otherServiceValue: bp.otherServiceValue || "",
           };
         });
       }
@@ -467,7 +481,7 @@ export function AddSupplierDialog({
               </div>
               {fields.map((field, index) => {
                 const currentBasisId = form.watch(`baseIds.${index}`) || "";
-                const basisPrices = basisPricesMap[currentBasisId] || { servicePrice: "", pvkjPrice: "", agentFee: "" };
+                const basisPrices = basisPricesMap[currentBasisId] || defaultBasisPriceEntry();
                 return (
                 <div
                   key={field.id}
@@ -517,51 +531,94 @@ export function AddSupplierDialog({
                     )}
                   </div>
                   {currentBasisId && (
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="space-y-1">
-                        <label className="text-xs text-muted-foreground">Стоимость услуги</label>
-                        <Input
-                          placeholder="0.000000"
-                          type="number"
-                          min="0"
-                          step="0.000001"
-                          value={basisPrices.servicePrice}
-                          onChange={(e) => setBasisPricesMap(prev => ({
-                            ...prev,
-                            [currentBasisId]: { ...basisPrices, servicePrice: e.target.value }
-                          }))}
-                          data-testid={`input-service-price-${index}`}
-                        />
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground">Стоимость услуги</label>
+                          <Input
+                            placeholder="0.000000"
+                            type="number"
+                            min="0"
+                            step="0.000001"
+                            value={basisPrices.servicePrice}
+                            onChange={(e) => setBasisPricesMap(prev => ({
+                              ...prev,
+                              [currentBasisId]: { ...basisPrices, servicePrice: e.target.value }
+                            }))}
+                            data-testid={`input-service-price-${index}`}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground">Стоимость ПВКЖ</label>
+                          <Input
+                            placeholder="0.000000"
+                            type="number"
+                            min="0"
+                            step="0.000001"
+                            value={basisPrices.pvkjPrice}
+                            onChange={(e) => setBasisPricesMap(prev => ({
+                              ...prev,
+                              [currentBasisId]: { ...basisPrices, pvkjPrice: e.target.value }
+                            }))}
+                            data-testid={`input-pvkj-price-${index}`}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground">Агентские</label>
+                          <Input
+                            placeholder="0.000000"
+                            type="number"
+                            min="0"
+                            step="0.000001"
+                            value={basisPrices.agentFee}
+                            onChange={(e) => setBasisPricesMap(prev => ({
+                              ...prev,
+                              [currentBasisId]: { ...basisPrices, agentFee: e.target.value }
+                            }))}
+                            data-testid={`input-agent-fee-${index}`}
+                          />
+                        </div>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs text-muted-foreground">Стоимость ПВКЖ</label>
-                        <Input
-                          placeholder="0.000000"
-                          type="number"
-                          min="0"
-                          step="0.000001"
-                          value={basisPrices.pvkjPrice}
-                          onChange={(e) => setBasisPricesMap(prev => ({
-                            ...prev,
-                            [currentBasisId]: { ...basisPrices, pvkjPrice: e.target.value }
-                          }))}
-                          data-testid={`input-pvkj-price-${index}`}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs text-muted-foreground">Агентские/прочие</label>
-                        <Input
-                          placeholder="0.000000"
-                          type="number"
-                          min="0"
-                          step="0.000001"
-                          value={basisPrices.agentFee}
-                          onChange={(e) => setBasisPricesMap(prev => ({
-                            ...prev,
-                            [currentBasisId]: { ...basisPrices, agentFee: e.target.value }
-                          }))}
-                          data-testid={`input-agent-fee-${index}`}
-                        />
+                        <label className="text-xs text-muted-foreground">Прочие услуги</label>
+                        <div className="flex gap-2">
+                          <Select
+                            value={basisPrices.otherServiceType || ""}
+                            onValueChange={(val) => setBasisPricesMap(prev => ({
+                              ...prev,
+                              [currentBasisId]: { ...basisPrices, otherServiceType: val, otherServiceValue: "" }
+                            }))}
+                          >
+                            <SelectTrigger className="w-48" data-testid={`select-other-service-type-${index}`}>
+                              <SelectValue placeholder="Не указано" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="royalty_per_ton">Роялти с тонны</SelectItem>
+                              <SelectItem value="percent_of_amount">Процент от суммы</SelectItem>
+                              <SelectItem value="fixed">Фиксированная сумма</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {basisPrices.otherServiceType && (
+                            <Input
+                              placeholder={
+                                basisPrices.otherServiceType === "royalty_per_ton"
+                                  ? "₽ / тонну"
+                                  : basisPrices.otherServiceType === "percent_of_amount"
+                                  ? "% от суммы"
+                                  : "Фикс. сумма (₽)"
+                              }
+                              type="number"
+                              min="0"
+                              step="0.000001"
+                              value={basisPrices.otherServiceValue}
+                              onChange={(e) => setBasisPricesMap(prev => ({
+                                ...prev,
+                                [currentBasisId]: { ...basisPrices, otherServiceValue: e.target.value }
+                              }))}
+                              data-testid={`input-other-service-value-${index}`}
+                            />
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}

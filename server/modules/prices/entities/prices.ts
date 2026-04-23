@@ -33,6 +33,8 @@ export const prices = pgTable(
     loadingBasisId: uuid("loading_basis_id").references(() => bases.id),
     priceValues: text("price_values").array(),
     volume: decimal("volume", { precision: 15, scale: 2 }),
+    limitType: text("limit_type").default("volume"),
+    maxDealAmount: decimal("max_deal_amount", { precision: 15, scale: 2 }),
     dateFrom: date("date_from").notNull(),
     dateTo: date("date_to").notNull(),
     contractNumber: text("contract_number"),

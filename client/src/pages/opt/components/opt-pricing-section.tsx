@@ -18,6 +18,8 @@ import type { OptFormData } from "../schemas";
 import { COUNTERPARTY_TYPE, COUNTERPARTY_ROLE, PRODUCT_TYPE } from "@shared/constants";
 import { CalculatedField } from "./calculated-field";
 import { formatNumber, formatPrice, formatCurrency } from "../utils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useState } from "react";
@@ -38,6 +40,7 @@ interface OptPricingSectionProps {
   purchaseAmount: number | null;
   saleAmount: number | null;
   profit: number | null;
+  otherServiceFee?: number;
   supplierWarehouse: Warehouse | undefined;
   finalKg: number;
   isEditing: boolean;
@@ -65,6 +68,7 @@ export function OptPricingSection({
   purchaseAmount,
   saleAmount,
   profit,
+  otherServiceFee = 0,
   supplierWarehouse,
   finalKg,
   isEditing,
@@ -392,6 +396,15 @@ export function OptPricingSection({
           }
         />
       </div>
+
+      {otherServiceFee > 0 && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Прочие услуги: {formatCurrency(otherServiceFee)} ₽
+          </AlertDescription>
+        </Alert>
+      )}
 
       <AddPriceDialog
         isInline

@@ -207,6 +207,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       purchaseAmount,
       saleAmount,
       profit,
+      otherServiceFee,
       deliveryTariff,
       contractVolumeStatus,
       supplierContractVolumeStatus,
@@ -232,6 +233,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       initialQuantityKg: initialQuantityKg,
       dealDate: watchDealDate,
       productType: watchProductType || PRODUCT_TYPE.KEROSENE,
+      selectedSupplier,
     });
 
     const {
@@ -717,6 +719,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
               purchaseAmount={purchaseAmount}
               saleAmount={saleAmount}
               profit={profit}
+              otherServiceFee={otherServiceFee}
               supplierWarehouse={supplierWarehouse}
               finalKg={finalKg}
               isEditing={isEditing}

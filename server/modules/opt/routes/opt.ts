@@ -47,6 +47,21 @@ export function registerOptRoutes(app: Express) {
   );
 
   app.get(
+    "/api/opt/contract-used-amount/:priceId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { priceId } = req.params;
+        const usedAmount = await storage.opt.getUsedAmountByPrice(priceId);
+        res.json({ usedAmount });
+      } catch (error) {
+        console.error("Error getting used amount:", error);
+        res.status(500).json({ message: "Ошибка получения использованной суммы" });
+      }
+    }
+  );
+
+  app.get(
     "/api/opt/:id",
     requireAuth,
     requirePermission("opt", "view"),

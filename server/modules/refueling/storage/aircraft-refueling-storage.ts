@@ -403,6 +403,38 @@ export class AircraftRefuelingStorage {
     return parseFloat(result?.total || "0");
   }
 
+  async getUsedAmountByPrice(priceId: string): Promise<number> {
+    const [saleResult] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${aircraftRefueling.saleAmount}), 0)`,
+      })
+      .from(aircraftRefueling)
+      .where(
+        and(
+          eq(aircraftRefueling.salePriceId, priceId),
+          isNull(aircraftRefueling.deletedAt),
+          eq(aircraftRefueling.isDraft, false),
+        ),
+      );
+
+    const [purchaseResult] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${aircraftRefueling.purchaseAmount}), 0)`,
+      })
+      .from(aircraftRefueling)
+      .where(
+        and(
+          eq(aircraftRefueling.purchasePriceId, priceId),
+          isNull(aircraftRefueling.deletedAt),
+          eq(aircraftRefueling.isDraft, false),
+        ),
+      );
+
+    const saleTotal = parseFloat(saleResult?.total || "0");
+    const purchaseTotal = parseFloat(purchaseResult?.total || "0");
+    return Math.max(saleTotal, purchaseTotal);
+  }
+
   async checkDuplicate(data: {
     refuelingDate: string;
     supplierId: string;

@@ -345,6 +345,38 @@ export class OptStorage {
     return total;
   }
 
+  async getUsedAmountByPrice(priceId: string): Promise<number> {
+    const [saleResult] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${opt.saleAmount}), 0)`,
+      })
+      .from(opt)
+      .where(
+        and(
+          eq(opt.salePriceId, priceId),
+          isNull(opt.deletedAt),
+          eq(opt.isDraft, false),
+        ),
+      );
+
+    const [purchaseResult] = await db
+      .select({
+        total: sql<string>`COALESCE(SUM(${opt.purchaseAmount}), 0)`,
+      })
+      .from(opt)
+      .where(
+        and(
+          eq(opt.purchasePriceId, priceId),
+          isNull(opt.deletedAt),
+          eq(opt.isDraft, false),
+        ),
+      );
+
+    const saleTotal = parseFloat(saleResult?.total || "0");
+    const purchaseTotal = parseFloat(purchaseResult?.total || "0");
+    return Math.max(saleTotal, purchaseTotal);
+  }
+
   async checkDuplicate(data: {
     dealDate: string;
     supplierId: string;

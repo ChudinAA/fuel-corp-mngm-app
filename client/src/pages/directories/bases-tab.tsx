@@ -53,6 +53,8 @@ interface SupplierInfo {
   servicePrice?: string | null;
   pvkjPrice?: string | null;
   agentFee?: string | null;
+  otherServiceType?: string | null;
+  otherServiceValue?: string | null;
 }
 
 function formatPriceCompact(val: string | null | undefined): string {
@@ -97,6 +99,8 @@ export function BasesTab() {
           servicePrice: bp?.servicePrice,
           pvkjPrice: bp?.pvkjPrice,
           agentFee: bp?.agentFee,
+          otherServiceType: bp?.otherServiceType,
+          otherServiceValue: bp?.otherServiceValue,
         };
       });
   };
@@ -238,7 +242,7 @@ export function BasesTab() {
                               {baseSuppliers.map((s) => (
                                 <div key={s.id} className="text-sm">
                                   <span className="font-medium">{s.name}</span>
-                                  {(s.servicePrice || s.pvkjPrice || s.agentFee) && (
+                                  {(s.servicePrice || s.pvkjPrice || s.agentFee || s.otherServiceType) && (
                                     <span className="ml-2 text-xs text-muted-foreground">
                                       {s.servicePrice && (
                                         <span>Услуга: {formatPriceCompact(s.servicePrice)}</span>
@@ -250,6 +254,10 @@ export function BasesTab() {
                                       {(s.servicePrice || s.pvkjPrice) && s.agentFee && <span> · </span>}
                                       {s.agentFee && (
                                         <span>Агент.: {formatPriceCompact(s.agentFee)}</span>
+                                      )}
+                                      {(s.servicePrice || s.pvkjPrice || s.agentFee) && s.otherServiceType && <span> · </span>}
+                                      {s.otherServiceType && s.otherServiceValue && (
+                                        <span>Прочие: {formatPriceCompact(s.otherServiceValue)}{s.otherServiceType === "percent_of_amount" ? "%" : " ₽"}</span>
                                       )}
                                     </span>
                                   )}

@@ -6,6 +6,8 @@ interface UseContractVolumeProps {
   currentQuantityKg: number;
   initialQuantityKg: number;
   mode: "opt" | "refueling" | "refueling-abroad";
+  currentDealAmount?: number;
+  initialDealAmount?: number;
 }
 
 export function useContractVolume({
@@ -13,6 +15,8 @@ export function useContractVolume({
   currentQuantityKg,
   initialQuantityKg,
   mode,
+  currentDealAmount = 0,
+  initialDealAmount = 0,
 }: UseContractVolumeProps) {
   const { data: price, isLoading: isLoadingPrice } = useQuery<Price>({
     queryKey: ["/api/prices", priceId],
@@ -23,14 +27,21 @@ export function useContractVolume({
     usedVolume: number;
   }>({
     queryKey: [`/api/${mode}/contract-used`, priceId],
-    enabled: !!priceId,
+    enabled: !!priceId && (price as any)?.limitType !== "amount",
+  });
+
+  const { data: usedAmountData, isLoading: isLoadingUsedAmount } = useQuery<{
+    usedAmount: number;
+  }>({
+    queryKey: [`/api/${mode}/contract-used-amount`, priceId],
+    enabled: !!priceId && (price as any)?.limitType === "amount",
   });
 
   if (!priceId) {
     return { remaining: 0, status: "ok" as const, message: "—" };
   }
 
-  if (isLoadingPrice || isLoadingUsed) {
+  if (isLoadingPrice || isLoadingUsed || isLoadingUsedAmount) {
     return { remaining: 0, status: "ok" as const, message: "Загрузка..." };
   }
 
@@ -43,6 +54,33 @@ export function useContractVolume({
   }
 
   try {
+    const limitType = (price as any).limitType || "volume";
+
+    if (limitType === "amount") {
+      const maxAmount = parseFloat((price as any).maxDealAmount || "0");
+
+      if (maxAmount <= 0) {
+        return { remaining: 0, status: "ok" as const, message: "Безлимит" };
+      }
+
+      const usedAmount = usedAmountData?.usedAmount || 0;
+      const remaining = maxAmount - usedAmount + (initialDealAmount - currentDealAmount);
+
+      if (remaining >= 0) {
+        return {
+          remaining,
+          status: "ok" as const,
+          message: `ОК: ${remaining.toFixed(2)} ₽`,
+        };
+      } else {
+        return {
+          remaining,
+          status: "error" as const,
+          message: `Превышен! Остаток: ${(maxAmount - usedAmount + initialDealAmount).toFixed(2)} ₽`,
+        };
+      }
+    }
+
     const totalVolume = parseFloat(price.volume || "0");
 
     if (totalVolume <= 0) {
@@ -50,12 +88,6 @@ export function useContractVolume({
     }
 
     const usedVolume = usedData?.usedVolume || 0;
-
-    // Remaining = Total - UsedVolume - (if NEW then currentQuantityKg)
-    // When editing, usedVolume already contains the current deal volume in the DB.
-    // So if isEditing, we just compare totalVolume vs usedVolume (which reflects saved state).
-    // If the user is MANIPULATING the quantity field while editing, they expect real-time feedback.
-    // We'd need the ORIGINAL quantity of this deal to properly show "Total - (UsedByOthers) - CurrentInput".
 
     const remaining =
       totalVolume - usedVolume + (initialQuantityKg - currentQuantityKg);

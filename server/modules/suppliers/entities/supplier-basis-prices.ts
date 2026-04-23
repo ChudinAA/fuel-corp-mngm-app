@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import {
   pgTable,
   decimal,
+  text,
   timestamp,
   uuid,
   index,
@@ -25,6 +26,8 @@ export const supplierBasisPrices = pgTable(
     servicePrice: decimal("service_price", { precision: 12, scale: 6 }),
     pvkjPrice: decimal("pvkj_price", { precision: 12, scale: 6 }),
     agentFee: decimal("agent_fee", { precision: 12, scale: 6 }),
+    otherServiceType: text("other_service_type"),
+    otherServiceValue: decimal("other_service_value", { precision: 15, scale: 6 }),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
     createdById: uuid("created_by_id").references(() => users.id),
@@ -64,6 +67,8 @@ export const insertSupplierBasisPriceSchema = createInsertSchema(supplierBasisPr
     servicePrice: z.coerce.number().optional().nullable(),
     pvkjPrice: z.coerce.number().optional().nullable(),
     agentFee: z.coerce.number().optional().nullable(),
+    otherServiceType: z.string().optional().nullable(),
+    otherServiceValue: z.coerce.number().optional().nullable(),
   });
 
 export type SupplierBasisPrice = typeof supplierBasisPrices.$inferSelect;

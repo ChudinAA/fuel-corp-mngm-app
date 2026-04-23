@@ -125,6 +125,8 @@ export type Supplier = typeof suppliers.$inferSelect & {
     servicePrice?: string | null;
     pvkjPrice?: string | null;
     agentFee?: string | null;
+    otherServiceType?: string | null;
+    otherServiceValue?: string | null;
   }>;
 };
 

@@ -226,8 +226,15 @@ export function SuppliersTab() {
                               <div className="space-y-1">
                                 {supplier.basisPrices.map((bp) => {
                                   const base = bases.find((b) => b.id === bp.basisId);
-                                  const hasPrices = bp.servicePrice || bp.pvkjPrice || bp.agentFee;
+                                  const hasPrices = bp.servicePrice || bp.pvkjPrice || bp.agentFee || bp.otherServiceType;
                                   if (!hasPrices) return null;
+                                  const otherServiceLabel = bp.otherServiceType === "royalty_per_ton"
+                                    ? "Роялти"
+                                    : bp.otherServiceType === "percent_of_amount"
+                                    ? "% от суммы"
+                                    : bp.otherServiceType === "fixed"
+                                    ? "Фиксир."
+                                    : null;
                                   return (
                                     <div key={bp.basisId} className="text-xs space-y-0.5">
                                       {base && (
@@ -247,6 +254,11 @@ export function SuppliersTab() {
                                         {bp.agentFee && (
                                           <span className="text-amber-600 dark:text-amber-400">
                                             Агентские: {parseFloat(bp.agentFee)} ₽/кг
+                                          </span>
+                                        )}
+                                        {otherServiceLabel && bp.otherServiceValue && (
+                                          <span className="text-green-600 dark:text-green-400">
+                                            {otherServiceLabel}: {parseFloat(bp.otherServiceValue)}{bp.otherServiceType === "percent_of_amount" ? "%" : " ₽"}
                                           </span>
                                         )}
                                       </div>
