@@ -212,7 +212,33 @@ export function AddPriceDialog({
 
   const watchContractNumber = form.watch("contractNumber");
 
-  // Fetch last contract info with proper query params (not joined path)
+  // When counterparty identity changes in create mode — clear contract fields so auto-fill can populate them fresh
+  const prevCounterpartyKeyRef = useRef<string>("");
+  useEffect(() => {
+    if (editPrice) return;
+    const key = `${watchCounterpartyId}|${watchCounterpartyType}|${watchCounterpartyRole}`;
+    if (prevCounterpartyKeyRef.current && prevCounterpartyKeyRef.current !== key) {
+      form.setValue("contractNumber", "");
+      form.setValue("contractAppendix", "");
+    }
+    prevCounterpartyKeyRef.current = key;
+  }, [watchCounterpartyId, watchCounterpartyType, watchCounterpartyRole, editPrice]);
+
+  // When contractNumber changes (user edits it) — clear appendix so it gets re-calculated
+  const prevContractNumberRef = useRef<string>("");
+  const isAutoFillingRef = useRef(false);
+  useEffect(() => {
+    if (editPrice) return;
+    const prev = prevContractNumberRef.current;
+    const current = watchContractNumber || "";
+    prevContractNumberRef.current = current;
+    // Clear appendix when user changes contract number (not from auto-fill)
+    if (prev !== current && !isAutoFillingRef.current) {
+      form.setValue("contractAppendix", "");
+    }
+  }, [watchContractNumber, editPrice]);
+
+  // Fetch last contract info — staleTime:0 so it always re-fetches on queryKey change
   const { data: contractInfo } = useQuery<{ contractNumber: string | null; nextAppendix: string | null }>({
     queryKey: [
       "/api/prices/last-contract-info",
@@ -235,25 +261,24 @@ export function AddPriceDialog({
       return res.json();
     },
     enabled: !editPrice && !!watchCounterpartyId && !!watchCounterpartyType && !!watchCounterpartyRole,
+    staleTime: 0,
+    gcTime: 0,
   });
 
-  // Auto-fill contractNumber and contractAppendix — only when counterparty is actually selected
+  // Auto-fill contractNumber and contractAppendix from fetched data
   useEffect(() => {
     if (!editPrice && contractInfo && watchCounterpartyId) {
-      if (!watchContractNumber) {
-        // No contract typed yet — fill from last price
-        const currentContract = form.getValues("contractNumber");
-        const currentAppendix = form.getValues("contractAppendix");
-        if (!currentContract && contractInfo.contractNumber) {
-          form.setValue("contractNumber", contractInfo.contractNumber);
-        }
-        if (!currentAppendix && contractInfo.nextAppendix) {
-          form.setValue("contractAppendix", contractInfo.nextAppendix);
-        }
-      } else if (contractInfo.nextAppendix) {
-        // Contract number is set — always update appendix
+      const currentContract = form.getValues("contractNumber");
+      const currentAppendix = form.getValues("contractAppendix");
+      isAutoFillingRef.current = true;
+      if (!currentContract && contractInfo.contractNumber) {
+        form.setValue("contractNumber", contractInfo.contractNumber);
+      }
+      if (!currentAppendix && contractInfo.nextAppendix) {
         form.setValue("contractAppendix", contractInfo.nextAppendix);
       }
+      // Reset flag after React has processed the setValue calls
+      setTimeout(() => { isAutoFillingRef.current = false; }, 0);
     }
   }, [contractInfo, editPrice, watchCounterpartyId]);
 
@@ -412,6 +437,8 @@ export function AddPriceDialog({
       queryClient.invalidateQueries({
         queryKey: ["/api/storage-cards/advances"],
       });
+      // Invalidate contract info cache so the next form open fetches fresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/prices/last-contract-info"] });
       if (data.id) {
         queryClient.invalidateQueries({ queryKey: ["/api/prices", data.id] });
       }
