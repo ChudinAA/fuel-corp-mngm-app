@@ -160,7 +160,7 @@ export function useRefuelingCalculations({
       );
       if (basisPrice?.agentFee) return parseFloat(basisPrice.agentFee);
     }
-    return selectedSupplier?.agentFee ? parseFloat(selectedSupplier.agentFee) : 0;
+    return 0;
   }, [selectedSupplier, selectedBasisId]);
 
   const profit =

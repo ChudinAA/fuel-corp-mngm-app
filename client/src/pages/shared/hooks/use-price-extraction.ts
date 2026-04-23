@@ -37,9 +37,7 @@ export function usePriceExtraction({
           return parseFloat(basisPrice.servicePrice);
         }
       }
-      if (selectedSupplier?.servicePrice) {
-        return parseFloat(selectedSupplier.servicePrice);
-      }
+      return null;
     }
 
     // Для ПВКЖ со склада

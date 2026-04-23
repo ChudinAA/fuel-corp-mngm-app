@@ -23,6 +23,14 @@ The "Заправка ВС Зарубеж" (Foreign Aircraft Refueling) module f
 
 ## Recent Improvements (April 2026)
 
+### Supplier Price Fields Cleanup
+- **Removed deprecated price fields from `suppliers` table**: `servicePrice` (`service_price`), `pvkjPrice` (`pvkj_price`), `agentFee` (`agent_fee`) were deleted from both the DB schema and Drizzle entity. These fields were superseded by the `supplier_basis_prices` table, which stores per-basis prices.
+- **Deal logic updated**: All price extraction and agentFee lookup in refueling deals now exclusively uses `supplier_basis_prices` (via `selectedSupplier.basisPrices`). No fallback to the old supplier-level fields.
+- **UI updated**: The refueling form's pricing section now derives `servicePrice` from the matched basis entry (`basisPrices.find(bp => bp.basisId === selectedBasisId)`), not from the supplier root.
+- **Migration 0063** applied: `ALTER TABLE suppliers DROP COLUMN service_price/pvkj_price/agent_fee`.
+
+
+
 1. **Базис validation fix** — Copy/edit in Заправки ВС no longer triggers "Базис обязателен" error; basis name is resolved from allBases by basisId before form reset.
 2. **Basis-specific prices auto-population** — When a supplier with basis-specific prices (basisPrices) is selected and a basis is chosen, service/PVKJ/agentFee prices auto-fill from that basis entry.
 3. **Supplier-price info column in bases list** — Bases tab now shows which suppliers are associated with each base and their service/PVKJ prices.
