@@ -24,6 +24,7 @@ import {
   Loader2,
   AlertTriangle,
   Plus,
+  Globe,
 } from "lucide-react";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import {
@@ -340,11 +341,27 @@ export function MovementTable({
                         type={item.productType || PRODUCT_TYPE.KEROSENE}
                       />
                     </TableCell>
-                    <TableCell className="text-xs py-1.5 px-1 truncate max-w-[100px]">
-                      {item.fromName || "—"}
+                    <TableCell className="text-xs py-1.5 px-1 max-w-[100px]">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="truncate">{item.fromName || "—"}</span>
+                        {item.fromIsExport && (
+                          <Globe
+                            className="h-3 w-3 shrink-0 text-blue-500 dark:text-blue-400"
+                            title="Без НДС (экспорт)"
+                          />
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell className="text-xs py-1.5 px-1 truncate max-w-[100px]">
-                      {item.toName || "—"}
+                    <TableCell className="text-xs py-1.5 px-1 max-w-[100px]">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="truncate">{item.toName || "—"}</span>
+                        {item.toIsExport && (
+                          <Globe
+                            className="h-3 w-3 shrink-0 text-blue-500 dark:text-blue-400"
+                            title="Без НДС (экспорт)"
+                          />
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right font-medium text-xs py-1.5 px-1">
                       {formatNumberWithK(item.quantityKg)}

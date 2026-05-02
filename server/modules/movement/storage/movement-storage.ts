@@ -147,12 +147,14 @@ export class MovementStorage implements IMovementStorage {
           columns: {
             id: true,
             name: true,
+            isExport: true,
           },
         },
         toWarehouse: {
           columns: {
             id: true,
             name: true,
+            isExport: true,
           },
         },
         carrier: {
@@ -172,6 +174,8 @@ export class MovementStorage implements IMovementStorage {
           : (mov.fromWarehouse as any)?.name || null,
       toName: (mov.toWarehouse as any)?.name || mov.toWarehouseId,
       carrierName: (mov.carrier as any)?.name || null,
+      fromIsExport: (mov.fromWarehouse as any)?.isExport ?? false,
+      toIsExport: (mov.toWarehouse as any)?.isExport ?? false,
     }));
 
     const [countResult] = await db

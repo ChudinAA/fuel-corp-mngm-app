@@ -277,40 +277,52 @@ export function useMovementCalculations({
     mode: "opt",
   });
 
-  // VAT adjustment logic for internal movements between export/non-export warehouses
+  // VAT adjustment logic:
+  // - INTERNAL: non-export→export → deduct 20%; export→non-export → add 20%
+  // - SUPPLY: destination is export warehouse → deduct 20%
   const vatAdjustment = useMemo((): VatAdjustment => {
-    if (watchMovementType !== MOVEMENT_TYPE.INTERNAL) return null;
-    if (!watchFromWarehouseId || !watchToWarehouseId) return null;
-
-    const fromWarehouse = warehouses.find((w) => w.id === watchFromWarehouseId);
-    const toWarehouse = warehouses.find((w) => w.id === watchToWarehouseId);
-
-    if (!fromWarehouse || !toWarehouse) return null;
-
-    const fromIsExport = fromWarehouse.isExport ?? false;
-    const toIsExport = toWarehouse.isExport ?? false;
-
-    if (fromIsExport === toIsExport) return null;
-
     const rawTotal = purchaseAmount + storageCost + deliveryCost + warehouseServicesCost;
 
-    if (!fromIsExport && toIsExport) {
-      // non-export → export: deduct VAT 20%
+    if (watchMovementType === MOVEMENT_TYPE.SUPPLY) {
+      if (!watchToWarehouseId) return null;
+      const toWarehouse = warehouses.find((w) => w.id === watchToWarehouseId);
+      if (!toWarehouse || !toWarehouse.isExport) return null;
       return {
         type: "deduct",
-        description: "Перемещение на экспортный склад — НДС 20% будет вычтен из себестоимости",
+        description: "Покупка на экспортный склад — НДС 20% будет вычтен из себестоимости",
         rawTotal,
         adjustedTotal: rawTotal / 1.2,
       };
-    } else {
-      // export → non-export: add VAT 20%
-      return {
-        type: "add",
-        description: "Перемещение с экспортного склада — НДС 20% будет добавлен к себестоимости",
-        rawTotal,
-        adjustedTotal: rawTotal * 1.2,
-      };
     }
+
+    if (watchMovementType === MOVEMENT_TYPE.INTERNAL) {
+      if (!watchFromWarehouseId || !watchToWarehouseId) return null;
+      const fromWarehouse = warehouses.find((w) => w.id === watchFromWarehouseId);
+      const toWarehouse = warehouses.find((w) => w.id === watchToWarehouseId);
+      if (!fromWarehouse || !toWarehouse) return null;
+
+      const fromIsExport = fromWarehouse.isExport ?? false;
+      const toIsExport = toWarehouse.isExport ?? false;
+      if (fromIsExport === toIsExport) return null;
+
+      if (!fromIsExport && toIsExport) {
+        return {
+          type: "deduct",
+          description: "Перемещение на экспортный склад — НДС 20% будет вычтен из себестоимости",
+          rawTotal,
+          adjustedTotal: rawTotal / 1.2,
+        };
+      } else {
+        return {
+          type: "add",
+          description: "Перемещение с экспортного склада — НДС 20% будет добавлен к себестоимости",
+          rawTotal,
+          adjustedTotal: rawTotal * 1.2,
+        };
+      }
+    }
+
+    return null;
   }, [
     watchMovementType,
     watchFromWarehouseId,

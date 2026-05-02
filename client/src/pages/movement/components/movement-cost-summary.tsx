@@ -65,9 +65,9 @@ export function MovementCostSummary({
 
   const costLabel = vatAdjustment
     ? vatAdjustment.type === "deduct"
-      ? "Себестоимость (−НДС)"
-      : "Себестоимость (+НДС)"
-    : "Себестоимость";
+      ? "Себест-ть (−НДС)"
+      : "Себест-ть (+НДС)"
+    : "Себест-ть";
 
   return (
     <div className="space-y-3">
