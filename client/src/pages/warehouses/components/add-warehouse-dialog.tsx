@@ -132,7 +132,10 @@ export function AddWarehouseDialog({
         ...(data.storageCost && { storageCost: data.storageCost }),
         equipmentType: data.isBase ? EQUIPMENT_TYPE.LIK : EQUIPMENT_TYPE.COMMON,
         isExport: data.isExport,
-        services: data.services,
+        services: data.services.map(s => ({
+          ...s,
+          serviceValue: String(s.serviceValue),
+        })),
       };
       const url = isEditing ? `/api/warehouses/${warehouseToEdit?.id}` : "/api/warehouses";
       const method = isEditing ? "PATCH" : "POST";
