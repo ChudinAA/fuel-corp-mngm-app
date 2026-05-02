@@ -181,6 +181,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       wholesaleBases,
       availableCarriers,
       availableLocations,
+      autoDetectedTariff,
     } = useOptFilters({
       supplierId: watchSupplierId,
       buyerId: watchBuyerId,
@@ -223,6 +224,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       isWarehouseSupplier,
       supplierWarehouse,
       basisId: watchBasisId || "",
+      customerBasisId: watchCustomerBasisId || "",
       purchasePrices,
       salePrices,
       selectedPurchasePriceId,
@@ -258,17 +260,23 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       }),
     });
 
+    // Есть ли тариф без точки поставки (базис→базис или склад→базис)
+    const hasBaseTariff =
+      autoDetectedTariff?.tariffType === "base_to_base" ||
+      autoDetectedTariff?.tariffType === "warehouse_to_base";
+
     // Мягкое предупреждение о незаполненной логистике (только для новых сделок)
     const deliveryError = useMemo(() => {
       if (isEditing) return null;
       // Не показываем пока оба поля пустые
       if (!watchCarrierId && !watchDeliveryLocationId) return null;
-      if (!watchDeliveryLocationId) return "Не выбрана точка поставки";
+      // Если тариф базис→базис найден — точка поставки не обязательна
+      if (!watchDeliveryLocationId && !hasBaseTariff) return "Не выбрана точка поставки";
       if (!watchCarrierId) return "Не выбран перевозчик";
       if (deliveryCost === null && finalKg > 0)
         return "Тариф доставки не найден для выбранного маршрута";
       return null;
-    }, [isEditing, watchCarrierId, watchDeliveryLocationId, deliveryCost, finalKg]);
+    }, [isEditing, watchCarrierId, watchDeliveryLocationId, hasBaseTariff, deliveryCost, finalKg]);
 
     // Автоматический выбор базиса при выборе поставщика
     useEffect(() => {
@@ -300,6 +308,33 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         }
       }
     }, [watchSupplierId, suppliers, allBases, warehouses, form, isEditing]);
+
+    // Авто-выбор перевозчика и точки доставки по данным сделки
+    useEffect(() => {
+      // Только при создании новой сделки (не при редактировании)
+      if (isEditing) return;
+      if (!autoDetectedTariff) return;
+
+      // Авто-устанавливаем перевозчика, если он ещё не выбран
+      if (!watchCarrierId && autoDetectedTariff.carrierId) {
+        form.setValue("carrierId", autoDetectedTariff.carrierId, { shouldDirty: true });
+      }
+
+      // Авто-устанавливаем точку доставки, если тариф через точку и точка ещё не выбрана
+      if (
+        !watchDeliveryLocationId &&
+        autoDetectedTariff.tariffType === "via_location" &&
+        autoDetectedTariff.deliveryLocationId
+      ) {
+        form.setValue("deliveryLocationId", autoDetectedTariff.deliveryLocationId, { shouldDirty: true });
+      }
+    }, [
+      autoDetectedTariff,
+      watchCarrierId,
+      watchDeliveryLocationId,
+      isEditing,
+      form,
+    ]);
 
     // Используем общий хук для автоматического выбора цен
     useAutoPriceSelection({
@@ -654,7 +689,8 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           const carrierId = data.carrierId;
           const deliveryLocationId = data.deliveryLocationId;
 
-          if (!deliveryLocationId) {
+          // Точка поставки обязательна только если нет тарифа базис→базис или склад→базис
+          if (!deliveryLocationId && !hasBaseTariff) {
             showError("Не выбрана точка поставки. Заполните раздел «Логистика» перед сохранением сделки.");
             return;
           }
@@ -736,6 +772,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
               bases={allBases}
               deliveryCost={deliveryCost}
               deliveryError={deliveryError}
+              autoTariffType={autoDetectedTariff?.tariffType}
             />
 
             <OptPricingSection

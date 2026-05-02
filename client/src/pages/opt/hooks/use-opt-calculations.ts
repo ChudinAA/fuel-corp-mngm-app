@@ -15,6 +15,7 @@ interface UseOptCalculationsProps {
   isWarehouseSupplier: boolean;
   supplierWarehouse: Warehouse | undefined;
   basisId: string;
+  customerBasisId: string;
   purchasePrices: Price[];
   salePrices: Price[];
   selectedPurchasePriceId: string;
@@ -37,6 +38,7 @@ export function useOptCalculations({
   isWarehouseSupplier,
   supplierWarehouse,
   basisId,
+  customerBasisId,
   purchasePrices,
   salePrices,
   selectedPurchasePriceId,
@@ -89,49 +91,79 @@ export function useOptCalculations({
 
   const salePrice = extractedSalePrice;
 
-  // Получение стоимости доставки
+  // Получение стоимости доставки с гибким поиском тарифа по приоритету:
+  // 1. Точка поставки → delivery_location (если выбрана)
+  // 2. Базис поставщика → базис покупателя (base → base)
+  // 3. Склад поставщика → базис покупателя (warehouse → base)
   const deliveryCost = useMemo((): number | null => {
-    if (
-      !deliveryLocationId ||
-      !carrierId ||
-      !deliveryCosts ||
-      !finalKg ||
-      finalKg <= 0
-    ) {
+    if (!carrierId || !deliveryCosts || !finalKg || finalKg <= 0) {
       return null;
     }
 
     const baseId = basisId;
     const warehouse = supplierWarehouse;
 
-    const cost = deliveryCosts.find((dc) => {
-      const matchesCarrier = dc.carrierId === carrierId;
-      const matchesDestination =
-        dc.toEntityType === DELIVERY_ENTITY_TYPE.DELIVERY_LOCATION &&
-        dc.toEntityId === deliveryLocationId;
+    // Приоритет 1: тариф через конкретную точку поставки
+    if (deliveryLocationId) {
+      const cost = deliveryCosts.find((dc) => {
+        const matchesCarrier = dc.carrierId === carrierId;
+        const matchesDestination =
+          dc.toEntityType === DELIVERY_ENTITY_TYPE.DELIVERY_LOCATION &&
+          dc.toEntityId === deliveryLocationId;
 
-      let matchesSource = false;
-      if (
-        warehouse &&
-        dc.fromEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE &&
-        dc.fromEntityId === warehouse.id
-      ) {
-        matchesSource = true;
-      } else if (
-        baseId &&
-        dc.fromEntityType === DELIVERY_ENTITY_TYPE.BASE &&
-        dc.fromEntityId === baseId
-      ) {
-        matchesSource = true;
+        let matchesSource = false;
+        if (
+          warehouse &&
+          dc.fromEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE &&
+          dc.fromEntityId === warehouse.id
+        ) {
+          matchesSource = true;
+        } else if (
+          baseId &&
+          dc.fromEntityType === DELIVERY_ENTITY_TYPE.BASE &&
+          dc.fromEntityId === baseId
+        ) {
+          matchesSource = true;
+        }
+
+        return matchesCarrier && matchesDestination && matchesSource && dc.isActive;
+      });
+
+      if (cost?.costPerKg) {
+        return parseFloat(cost.costPerKg) * finalKg;
       }
+    }
 
-      return (
-        matchesCarrier && matchesDestination && matchesSource && dc.isActive
+    // Приоритет 2: тариф базис поставщика → базис покупателя
+    if (baseId && customerBasisId) {
+      const cost = deliveryCosts.find((dc) =>
+        dc.carrierId === carrierId &&
+        dc.isActive &&
+        dc.fromEntityType === DELIVERY_ENTITY_TYPE.BASE &&
+        dc.fromEntityId === baseId &&
+        dc.toEntityType === DELIVERY_ENTITY_TYPE.BASE &&
+        dc.toEntityId === customerBasisId
       );
-    });
 
-    if (cost?.costPerKg) {
-      return parseFloat(cost.costPerKg) * finalKg;
+      if (cost?.costPerKg) {
+        return parseFloat(cost.costPerKg) * finalKg;
+      }
+    }
+
+    // Приоритет 3: тариф склад поставщика → базис покупателя
+    if (warehouse && customerBasisId) {
+      const cost = deliveryCosts.find((dc) =>
+        dc.carrierId === carrierId &&
+        dc.isActive &&
+        dc.fromEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE &&
+        dc.fromEntityId === warehouse.id &&
+        dc.toEntityType === DELIVERY_ENTITY_TYPE.BASE &&
+        dc.toEntityId === customerBasisId
+      );
+
+      if (cost?.costPerKg) {
+        return parseFloat(cost.costPerKg) * finalKg;
+      }
     }
 
     return null;
@@ -141,6 +173,7 @@ export function useOptCalculations({
     deliveryCosts,
     finalKg,
     basisId,
+    customerBasisId,
     supplierWarehouse,
   ]);
 

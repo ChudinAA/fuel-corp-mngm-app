@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Plus, AlertCircle } from "lucide-react";
+import { Plus, AlertCircle, Info } from "lucide-react";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import type { UseFormReturn } from "react-hook-form";
 import type {
@@ -169,6 +169,7 @@ interface LogisticsSectionProps {
   bases?: Base[];
   deliveryCost: number | null;
   deliveryError?: string | null;
+  autoTariffType?: "base_to_base" | "warehouse_to_base" | "via_location";
 }
 
 export function LogisticsSection({
@@ -178,6 +179,7 @@ export function LogisticsSection({
   bases,
   deliveryCost,
   deliveryError,
+  autoTariffType,
 }: LogisticsSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -339,6 +341,18 @@ export function LogisticsSection({
           />
         </div>
 
+        {autoTariffType === "base_to_base" && (
+          <div className="flex items-center gap-2 mt-3 px-1 text-sm text-muted-foreground animate-in fade-in duration-200">
+            <Info className="h-4 w-4 shrink-0 text-blue-500" />
+            <span>Тариф найден по маршруту базис → базис. Точка поставки не обязательна.</span>
+          </div>
+        )}
+        {autoTariffType === "warehouse_to_base" && (
+          <div className="flex items-center gap-2 mt-3 px-1 text-sm text-muted-foreground animate-in fade-in duration-200">
+            <Info className="h-4 w-4 shrink-0 text-blue-500" />
+            <span>Тариф найден по маршруту склад → базис. Точка поставки не обязательна.</span>
+          </div>
+        )}
         {deliveryError && (
           <div className="flex items-center gap-2 mt-3 px-1 text-sm text-destructive">
             <AlertCircle className="h-4 w-4 shrink-0" />
