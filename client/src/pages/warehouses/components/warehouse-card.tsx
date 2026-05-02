@@ -19,13 +19,12 @@ import {
 import {
   Pencil,
   Trash2,
-  TrendingUp,
-  TrendingDown,
   Warehouse as WarehouseIcon,
   Droplets,
   Fuel,
   Loader2,
   Plane,
+  Globe2,
 } from "lucide-react";
 import {
   EntityActionsMenu,
@@ -113,7 +112,7 @@ export function WarehouseCard({
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1">
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
               <WarehouseIcon className="h-4 w-4 text-sky-400" />
               {isBase && <Plane className="h-4 w-4 text-green-400" />}
               {warehouse.name}
@@ -127,6 +126,25 @@ export function WarehouseCard({
                 </Badge>
               )}
               {isInactive && <Badge variant="destructive">Неактивен</Badge>}
+              {warehouse.isExport && (
+                <>
+                  <Badge
+                    variant="outline"
+                    className="flex items-center gap-1 text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-950 dark:border-blue-700 dark:text-blue-300"
+                    data-testid={`badge-no-vat-${warehouse.id}`}
+                  >
+                    <Globe2 className="h-3 w-3" />
+                    Без НДС
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className="flex items-center gap-1 text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-950 dark:border-blue-700 dark:text-blue-300"
+                    data-testid={`badge-export-${warehouse.id}`}
+                  >
+                    Экспорт
+                  </Badge>
+                </>
+              )}
             </CardTitle>
             {warehouse.baseIds && warehouse.baseIds.length > 0 && allBases && (
               <CardDescription className="flex items-center gap-2 mt-1 flex-wrap">

@@ -15,10 +15,17 @@ export interface WarehouseTransaction {
   createdAt: string;
 }
 
+export interface WarehouseServiceEntry {
+  serviceType: string;
+  serviceValue: string;
+}
+
 export interface NewWarehouseFormValues {
   name: string;
   bases: { baseId: string }[];
   storageCost: string;
   createSupplier: boolean;
   isBase: boolean;
+  isExport: boolean;
+  services: WarehouseServiceEntry[];
 }

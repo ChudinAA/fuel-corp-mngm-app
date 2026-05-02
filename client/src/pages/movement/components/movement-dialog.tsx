@@ -220,10 +220,13 @@ export function MovementDialog({
     purchasePriceIndex,
     purchaseAmount,
     storageCost,
+    warehouseServicesCost,
     deliveryCost,
     totalCost,
+    rawTotalCost,
     costPerKg,
     supplierContractVolumeStatus,
+    vatAdjustment,
   } = useMovementCalculations({
     form,
     watchMovementType: watchMovementType || MOVEMENT_TYPE.SUPPLY,
@@ -473,11 +476,14 @@ export function MovementDialog({
                 purchasePrice={purchasePrice}
                 purchaseAmount={purchaseAmount}
                 storageCost={storageCost}
+                warehouseServicesCost={warehouseServicesCost}
                 deliveryCost={deliveryCost}
                 costPerKg={costPerKg}
                 watchMovementType={watchMovementType || MOVEMENT_TYPE.SUPPLY}
                 selectedPurchasePriceId={selectedPurchasePriceId}
                 setSelectedPurchasePriceId={setSelectedPurchasePriceId}
+                vatAdjustment={vatAdjustment}
+                rawTotalCost={rawTotalCost}
               />
 
               <FormField

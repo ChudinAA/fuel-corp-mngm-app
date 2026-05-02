@@ -43,20 +43,27 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
-        const { createSupplier, bases, ...warehouseData } = req.body;
+        const { createSupplier, bases, services, ...warehouseData } = req.body;
 
         // Extract baseIds from bases array or use empty array
         const baseIds = Array.isArray(bases)
           ? bases.map((b: { baseId: string }) => b.baseId).filter(Boolean)
           : [];
 
+        // Parse services array
+        const parsedServices = Array.isArray(services)
+          ? services.filter((s: any) => s.serviceType && s.serviceValue)
+          : [];
+
         const data = {
           ...warehouseData,
           baseIds,
+          services: parsedServices,
           createdById: req.session.userId,
           supplierId: warehouseData.supplierId || null,
           storageCost:
             warehouseData.storageCost === "" ? null : warehouseData.storageCost,
+          isExport: warehouseData.isExport ?? false,
         };
 
         const item = await storage.warehouses.createWarehouse(data);
@@ -124,7 +131,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        const { bases, ...warehouseData } = req.body;
+        const { bases, services, ...warehouseData } = req.body;
 
         // Extract baseIds from bases array if provided
         const updateData: any = {
@@ -146,6 +153,12 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         if (bases !== undefined) {
           updateData.baseIds = Array.isArray(bases)
             ? bases.map((b: { baseId: string }) => b.baseId).filter(Boolean)
+            : [];
+        }
+
+        if (services !== undefined) {
+          updateData.services = Array.isArray(services)
+            ? services.filter((s: any) => s.serviceType && s.serviceValue)
             : [];
         }
 

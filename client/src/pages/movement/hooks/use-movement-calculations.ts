@@ -39,6 +39,11 @@ interface UseMovementCalculationsProps {
   initialQuantityKg: number;
 }
 
+export type VatAdjustment =
+  | { type: "deduct"; description: string; rawTotal: number; adjustedTotal: number }
+  | { type: "add"; description: string; rawTotal: number; adjustedTotal: number }
+  | null;
+
 export function useMovementCalculations({
   form,
   watchMovementType,
@@ -181,6 +186,29 @@ export function useMovementCalculations({
     return (storageCostPerTon / 1000) * kgNum;
   }, [watchToWarehouseId, kgNum, warehouses]);
 
+  // Get warehouse services cost
+  const warehouseServicesCost = useMemo((): number => {
+    if (!watchToWarehouseId || kgNum <= 0) return 0;
+
+    const warehouse = warehouses.find((w) => w.id === watchToWarehouseId);
+    if (!warehouse || !warehouse.services || warehouse.services.length === 0) return 0;
+
+    let total = 0;
+    for (const service of warehouse.services) {
+      const value = parseFloat(service.serviceValue || "0");
+      if (isNaN(value) || value <= 0) continue;
+
+      if (service.serviceType === "royalty_per_ton") {
+        total += value * (kgNum / 1000);
+      } else if (service.serviceType === "percent_of_amount") {
+        total += purchaseAmount * (value / 100);
+      } else if (service.serviceType === "fixed") {
+        total += value;
+      }
+    }
+    return total;
+  }, [watchToWarehouseId, kgNum, warehouses, purchaseAmount]);
+
   // Get delivery cost
   const deliveryCost = useMemo((): number => {
     if (!watchToWarehouseId || !watchCarrierId || kgNum <= 0) return 0;
@@ -249,10 +277,61 @@ export function useMovementCalculations({
     mode: "opt",
   });
 
-  const totalCost = useMemo(
-    () => purchaseAmount + storageCost + deliveryCost,
-    [purchaseAmount, storageCost, deliveryCost],
+  // VAT adjustment logic for internal movements between export/non-export warehouses
+  const vatAdjustment = useMemo((): VatAdjustment => {
+    if (watchMovementType !== MOVEMENT_TYPE.INTERNAL) return null;
+    if (!watchFromWarehouseId || !watchToWarehouseId) return null;
+
+    const fromWarehouse = warehouses.find((w) => w.id === watchFromWarehouseId);
+    const toWarehouse = warehouses.find((w) => w.id === watchToWarehouseId);
+
+    if (!fromWarehouse || !toWarehouse) return null;
+
+    const fromIsExport = fromWarehouse.isExport ?? false;
+    const toIsExport = toWarehouse.isExport ?? false;
+
+    if (fromIsExport === toIsExport) return null;
+
+    const rawTotal = purchaseAmount + storageCost + deliveryCost + warehouseServicesCost;
+
+    if (!fromIsExport && toIsExport) {
+      // non-export → export: deduct VAT 20%
+      return {
+        type: "deduct",
+        description: "Перемещение на экспортный склад — НДС 20% будет вычтен из себестоимости",
+        rawTotal,
+        adjustedTotal: rawTotal / 1.2,
+      };
+    } else {
+      // export → non-export: add VAT 20%
+      return {
+        type: "add",
+        description: "Перемещение с экспортного склада — НДС 20% будет добавлен к себестоимости",
+        rawTotal,
+        adjustedTotal: rawTotal * 1.2,
+      };
+    }
+  }, [
+    watchMovementType,
+    watchFromWarehouseId,
+    watchToWarehouseId,
+    warehouses,
+    purchaseAmount,
+    storageCost,
+    deliveryCost,
+    warehouseServicesCost,
+  ]);
+
+  const rawTotalCost = useMemo(
+    () => purchaseAmount + storageCost + deliveryCost + warehouseServicesCost,
+    [purchaseAmount, storageCost, deliveryCost, warehouseServicesCost],
   );
+
+  const totalCost = useMemo(() => {
+    if (vatAdjustment) return vatAdjustment.adjustedTotal;
+    return rawTotalCost;
+  }, [rawTotalCost, vatAdjustment]);
+
   const costPerKg = useMemo(
     () => (kgNum > 0 ? totalCost / kgNum : 0),
     [totalCost, kgNum],
@@ -282,9 +361,12 @@ export function useMovementCalculations({
     purchasePriceIndex,
     purchaseAmount,
     storageCost,
+    warehouseServicesCost,
     deliveryCost,
     totalCost,
+    rawTotalCost,
     costPerKg,
     supplierContractVolumeStatus,
+    vatAdjustment,
   };
 }

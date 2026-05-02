@@ -5,6 +5,7 @@ import {
   warehouses,
   warehouseBases,
   warehouseTransactions,
+  warehouseServices,
   type Warehouse,
   type InsertWarehouse,
   type WarehouseTransaction,
@@ -29,13 +30,18 @@ export class WarehouseStorage {
             base: true,
           },
         },
+        warehouseServices: true,
       },
     });
 
-    // Map to include baseIds for backward compatibility
     return warehousesList.map((w) => ({
       ...w,
       baseIds: w.warehouseBases?.map((wb) => wb.baseId) || [],
+      services: w.warehouseServices?.map((s) => ({
+        id: s.id,
+        serviceType: s.serviceType,
+        serviceValue: s.serviceValue,
+      })) || [],
     }));
   }
 
@@ -54,22 +60,27 @@ export class WarehouseStorage {
             base: true,
           },
         },
+        warehouseServices: true,
       },
     });
 
     if (!warehouse) return undefined;
 
-    // Map to include baseIds for backward compatibility
     return {
       ...warehouse,
       baseIds: warehouse.warehouseBases?.map((wb) => wb.baseId) || [],
+      services: warehouse.warehouseServices?.map((s) => ({
+        id: s.id,
+        serviceType: s.serviceType,
+        serviceValue: s.serviceValue,
+      })) || [],
     };
   }
 
   async createWarehouse(
-    data: InsertWarehouse & { baseIds?: string[] },
+    data: InsertWarehouse & { baseIds?: string[]; services?: Array<{ serviceType: string; serviceValue: string }> },
   ): Promise<Warehouse> {
-    const { baseIds, ...warehouseData } = data;
+    const { baseIds, services, ...warehouseData } = data;
 
     // Check for duplicates
     const existing = await db.query.warehouses.findFirst({
@@ -84,13 +95,11 @@ export class WarehouseStorage {
     }
 
     return await db.transaction(async (tx) => {
-      // Create warehouse
       const [created] = await tx
         .insert(warehouses)
         .values(warehouseData)
         .returning();
 
-      // Create warehouse-base relations
       if (baseIds && baseIds.length > 0) {
         await tx.insert(warehouseBases).values(
           baseIds.map((baseId) => ({
@@ -100,21 +109,31 @@ export class WarehouseStorage {
         );
       }
 
+      if (services && services.length > 0) {
+        await tx.insert(warehouseServices).values(
+          services.map((s) => ({
+            warehouseId: created.id,
+            serviceType: s.serviceType,
+            serviceValue: s.serviceValue,
+          })),
+        );
+      }
+
       return {
         ...created,
         baseIds: baseIds || [],
+        services: services?.map((s, i) => ({ id: "", ...s })) || [],
       };
     });
   }
 
   async updateWarehouse(
     id: string,
-    data: Partial<InsertWarehouse> & { baseIds?: string[] },
+    data: Partial<InsertWarehouse> & { baseIds?: string[]; services?: Array<{ serviceType: string; serviceValue: string }> },
   ): Promise<Warehouse | undefined> {
-    const { baseIds, ...warehouseData } = data;
+    const { baseIds, services, ...warehouseData } = data;
 
     return await db.transaction(async (tx) => {
-      // Update warehouse
       const [updated] = await tx
         .update(warehouses)
         .set({
@@ -126,14 +145,11 @@ export class WarehouseStorage {
 
       if (!updated) return undefined;
 
-      // Update warehouse-base relations if baseIds provided
       if (baseIds !== undefined) {
-        // Delete existing relations
         await tx
           .delete(warehouseBases)
           .where(eq(warehouseBases.warehouseId, id));
 
-        // Create new relations
         if (baseIds.length > 0) {
           await tx.insert(warehouseBases).values(
             baseIds.map((baseId) => ({
@@ -144,8 +160,23 @@ export class WarehouseStorage {
         }
       }
 
-      // Fetch the updated warehouse with bases
-      const warehouseWithBases = await tx.query.warehouses.findFirst({
+      if (services !== undefined) {
+        await tx
+          .delete(warehouseServices)
+          .where(eq(warehouseServices.warehouseId, id));
+
+        if (services.length > 0) {
+          await tx.insert(warehouseServices).values(
+            services.map((s) => ({
+              warehouseId: id,
+              serviceType: s.serviceType,
+              serviceValue: s.serviceValue,
+            })),
+          );
+        }
+      }
+
+      const warehouseWithRelations = await tx.query.warehouses.findFirst({
         where: eq(warehouses.id, id),
         with: {
           warehouseBases: {
@@ -153,21 +184,27 @@ export class WarehouseStorage {
               base: true,
             },
           },
+          warehouseServices: true,
         },
       });
 
-      if (!warehouseWithBases) return undefined;
+      if (!warehouseWithRelations) return undefined;
 
       return {
-        ...warehouseWithBases,
+        ...warehouseWithRelations,
         baseIds:
-          warehouseWithBases.warehouseBases?.map((wb) => wb.baseId) || [],
+          warehouseWithRelations.warehouseBases?.map((wb) => wb.baseId) || [],
+        services:
+          warehouseWithRelations.warehouseServices?.map((s) => ({
+            id: s.id,
+            serviceType: s.serviceType,
+            serviceValue: s.serviceValue,
+          })) || [],
       };
     });
   }
 
   async deleteWarehouse(id: string, userId?: string): Promise<boolean> {
-    // Soft delete
     await db
       .update(warehouses)
       .set({
@@ -180,7 +217,6 @@ export class WarehouseStorage {
 
   async restoreWarehouse(id: string, userId?: string): Promise<boolean> {
     await db.transaction(async (tx) => {
-      // Restore the warehouse
       await tx
         .update(warehouses)
         .set({
@@ -188,9 +224,6 @@ export class WarehouseStorage {
           deletedById: null,
         })
         .where(eq(warehouses.id, id));
-
-      // Note: warehouse-base relations are not deleted on soft delete,
-      // so no need to restore them
     });
     return true;
   }

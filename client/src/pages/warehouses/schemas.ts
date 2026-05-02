@@ -16,6 +16,11 @@ export const newWarehouseFormSchema = z.object({
   storageCost: z.string().optional(),
   createSupplier: z.boolean(),
   isBase: z.boolean().default(false),
+  isExport: z.boolean().default(false),
+  services: z.array(z.object({
+    serviceType: z.string().min(1, "Выберите тип услуги"),
+    serviceValue: z.string().min(1, "Укажите значение"),
+  })).default([]),
 });
 
 export type WarehouseFormData = z.infer<typeof warehouseFormSchema>;

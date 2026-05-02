@@ -22,6 +22,7 @@ import { aircraftRefueling } from "../../refueling/entities/refueling";
 import { movement } from "../../movement/entities/movement";
 import { exchangeDeals } from "../../exchange-deals/entities/exchange-deals";
 import { bases } from "../../bases/entities/bases";
+import { warehouseServices } from "./warehouse-services";
 
 export const warehouses = pgTable(
   "warehouses",
@@ -45,6 +46,7 @@ export const warehouses = pgTable(
       scale: 4,
     }).default("0"),
     storageCost: decimal("storage_cost", { precision: 12, scale: 2 }),
+    isExport: boolean("is_export").default(false),
     isRecalculating: boolean("is_recalculating").default(false),
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
@@ -143,6 +145,7 @@ export const warehousesRelations = relations(warehouses, ({ many, one }) => ({
     references: [suppliers.id],
   }),
   warehouseBases: many(warehouseBases),
+  warehouseServices: many(warehouseServices),
   optDeals: many(opt),
   refuelings: many(aircraftRefueling),
   movementsFrom: many(movement, { relationName: "fromWarehouse" }),
@@ -197,9 +200,14 @@ export const insertWarehouseSchema = z.object({
   storageCost: z.string().optional().nullable(),
   pvkjBalance: z.string().optional().nullable(),
   pvkjAverageCost: z.string().optional().nullable(),
+  isExport: z.boolean().optional().default(false),
   isActive: z.boolean().optional(),
   createdById: z.string().uuid(),
   baseIds: z.array(z.string().uuid()).optional(),
+  services: z.array(z.object({
+    serviceType: z.string(),
+    serviceValue: z.string(),
+  })).optional(),
 });
 
 export const insertWarehouseTransactionSchema = createInsertSchema(
@@ -210,6 +218,7 @@ export const insertWarehouseTransactionSchema = createInsertSchema(
 
 export type Warehouse = typeof warehouses.$inferSelect & {
   baseIds?: string[];
+  services?: Array<{ id: string; serviceType: string; serviceValue: string }>;
 };
 export type InsertWarehouse = z.infer<typeof insertWarehouseSchema>;
 

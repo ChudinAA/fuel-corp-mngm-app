@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Loader2, X, Building2 } from "lucide-react";
+import { Plus, Loader2, X, Building2, Globe2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
@@ -29,6 +29,18 @@ interface AddWarehouseDialogProps {
   onOpenChange?: (open: boolean) => void;
 }
 
+const SERVICE_TYPE_OPTIONS = [
+  { value: "royalty_per_ton", label: "Роялти с тонны" },
+  { value: "percent_of_amount", label: "Процент от суммы" },
+  { value: "fixed", label: "Фиксированная сумма" },
+];
+
+const SERVICE_TYPE_PLACEHOLDER: Record<string, string> = {
+  royalty_per_ton: "₽ / тонну",
+  percent_of_amount: "% от суммы",
+  fixed: "Фикс. сумма (₽)",
+};
+
 export function AddWarehouseDialog({ 
   warehouseToEdit, 
   onSave, 
@@ -41,7 +53,6 @@ export function AddWarehouseDialog({
   const { showError, ErrorModalComponent } = useErrorModal();
   const [internalOpen, setInternalOpen] = useState(false);
   const [addBaseOpen, setAddBaseOpen] = useState(false);
-
 
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = externalOnOpenChange || setInternalOpen;
@@ -63,12 +74,23 @@ export function AddWarehouseDialog({
       storageCost: "",
       createSupplier: false,
       isBase: false,
+      isExport: false,
+      services: [],
     },
   });
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "bases",
+  });
+
+  const {
+    fields: serviceFields,
+    append: appendService,
+    remove: removeService,
+  } = useFieldArray({
+    control: form.control,
+    name: "services",
   });
 
   React.useEffect(() => {
@@ -83,6 +105,11 @@ export function AddWarehouseDialog({
         storageCost: warehouseToEdit.storageCost || "",
         createSupplier: !!warehouseToEdit.supplierId,
         isBase: warehouseToEdit.equipmentType === EQUIPMENT_TYPE.LIK,
+        isExport: warehouseToEdit.isExport ?? false,
+        services: (warehouseToEdit.services || []).map(s => ({
+          serviceType: s.serviceType,
+          serviceValue: s.serviceValue,
+        })),
       });
     } else {
       form.reset({
@@ -91,6 +118,8 @@ export function AddWarehouseDialog({
         storageCost: "",
         createSupplier: false,
         isBase: false,
+        isExport: false,
+        services: [],
       });
     }
   }, [warehouseToEdit, form]);
@@ -102,6 +131,8 @@ export function AddWarehouseDialog({
         baseIds: data.bases.map(b => b.baseId),
         ...(data.storageCost && { storageCost: data.storageCost }),
         equipmentType: data.isBase ? EQUIPMENT_TYPE.LIK : EQUIPMENT_TYPE.COMMON,
+        isExport: data.isExport,
+        services: data.services,
       };
       const url = isEditing ? `/api/warehouses/${warehouseToEdit?.id}` : "/api/warehouses";
       const method = isEditing ? "PATCH" : "POST";
@@ -129,7 +160,7 @@ export function AddWarehouseDialog({
   return (
     <>
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Редактирование склада" : "Новый склад"}
@@ -236,12 +267,13 @@ export function AddWarehouseDialog({
                 </p>
               )}
             </div>
+
             <FormField
               control={form.control}
               name="storageCost"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Стоимость хранения (₽)</FormLabel>
+                  <FormLabel>Стоимость хранения (₽/т)</FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="Стоимость хранения" 
@@ -256,6 +288,114 @@ export function AddWarehouseDialog({
                 </FormItem>
               )}
             />
+
+            {/* Warehouse Services */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <FormLabel>Услуги склада</FormLabel>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => appendService({ serviceType: "", serviceValue: "" })}
+                  data-testid="button-add-warehouse-service"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Добавить услугу
+                </Button>
+              </div>
+              {serviceFields.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Дополнительные услуги не добавлены
+                </p>
+              )}
+              {serviceFields.map((field, index) => {
+                const currentType = form.watch(`services.${index}.serviceType`);
+                return (
+                  <div key={field.id} className="border rounded-md p-3 space-y-2">
+                    <div className="flex gap-2 items-start">
+                      <div className="flex-1 space-y-1">
+                        <label className="text-xs text-muted-foreground">Тип услуги</label>
+                        <Select
+                          value={form.watch(`services.${index}.serviceType`) || ""}
+                          onValueChange={(val) => {
+                            form.setValue(`services.${index}.serviceType`, val);
+                            form.setValue(`services.${index}.serviceValue`, "");
+                          }}
+                        >
+                          <SelectTrigger data-testid={`select-service-type-${index}`}>
+                            <SelectValue placeholder="Выберите тип" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SERVICE_TYPE_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {form.formState.errors.services?.[index]?.serviceType && (
+                          <p className="text-sm text-destructive">
+                            {form.formState.errors.services[index]?.serviceType?.message}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <label className="text-xs text-muted-foreground">Значение</label>
+                        <Input
+                          placeholder={currentType ? SERVICE_TYPE_PLACEHOLDER[currentType] : "Значение"}
+                          type="number"
+                          min="0"
+                          step="0.000001"
+                          {...form.register(`services.${index}.serviceValue`)}
+                          data-testid={`input-service-value-${index}`}
+                          disabled={!currentType}
+                        />
+                        {form.formState.errors.services?.[index]?.serviceValue && (
+                          <p className="text-sm text-destructive">
+                            {form.formState.errors.services[index]?.serviceValue?.message}
+                          </p>
+                        )}
+                      </div>
+                      <div className="pt-5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeService(index)}
+                          className="shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <FormField
+              control={form.control}
+              name="isExport"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2 space-y-0">
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="switch-is-export"
+                    />
+                  </FormControl>
+                  <div className="flex items-center gap-1">
+                    <Globe2 className="h-4 w-4 text-blue-500" />
+                    <FormLabel className="font-normal cursor-pointer">
+                      Без НДС (экспорт)
+                    </FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="isBase"
