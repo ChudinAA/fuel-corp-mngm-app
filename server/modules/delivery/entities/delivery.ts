@@ -29,7 +29,7 @@ export const deliveryCost = pgTable("delivery_cost", {
   toEntityType: text("to_entity_type").notNull(), // "base", "warehouse", "delivery_location"
   toEntityId: uuid("to_entity_id").notNull(),
   toLocation: text("to_location").notNull(),
-  costPerKg: decimal("cost_per_kg", { precision: 12, scale: 4 }).notNull(),
+  costPerKg: decimal("cost_per_kg", { precision: 15, scale: 6 }).notNull(),
   distance: decimal("distance", { precision: 10, scale: 2 }),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),

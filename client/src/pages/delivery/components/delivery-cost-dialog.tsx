@@ -466,8 +466,8 @@ export function AddDeliveryCostDialog({
                       <Input
                         type="number"
                         min="0"
-                        step="0.0001"
-                        placeholder="0.0000"
+                        step="0.000001"
+                        placeholder="0.000000"
                         data-testid="input-cost-per-kg"
                         {...field}
                       />

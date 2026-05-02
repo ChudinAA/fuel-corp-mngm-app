@@ -35,7 +35,7 @@ export const suppliers = pgTable(
     storageCardId: uuid("storage_card_id"),
     isWarehouse: boolean("is_warehouse").default(false),
     warehouseId: uuid("warehouse_id").references(() => warehouses.id),
-    storageCost: decimal("storage_cost", { precision: 12, scale: 2 }),
+    storageCost: decimal("storage_cost", { precision: 15, scale: 6 }),
     hasSpecialConditions: boolean("has_special_conditions").default(false),
     specialConditions: text("special_conditions"),
     specialConditionsExpiresAt: date("special_conditions_expires_at"),

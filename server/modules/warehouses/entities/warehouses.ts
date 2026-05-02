@@ -45,7 +45,7 @@ export const warehouses = pgTable(
       precision: 12,
       scale: 4,
     }).default("0"),
-    storageCost: decimal("storage_cost", { precision: 12, scale: 2 }),
+    storageCost: decimal("storage_cost", { precision: 15, scale: 6 }),
     isExport: boolean("is_export").default(false),
     isRecalculating: boolean("is_recalculating").default(false),
     isActive: boolean("is_active").default(true),

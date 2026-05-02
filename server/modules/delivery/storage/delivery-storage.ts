@@ -69,10 +69,22 @@ export class DeliveryStorage implements IDeliveryStorage {
     data: Partial<InsertDeliveryCost>,
     userId?: string
   ): Promise<DeliveryCost | undefined> {
+    const updateFields: Record<string, any> = {};
+    if (data.carrierId !== undefined) updateFields.carrierId = data.carrierId;
+    if (data.fromEntityType !== undefined) updateFields.fromEntityType = data.fromEntityType;
+    if (data.fromEntityId !== undefined) updateFields.fromEntityId = data.fromEntityId;
+    if (data.fromLocation !== undefined) updateFields.fromLocation = data.fromLocation;
+    if (data.toEntityType !== undefined) updateFields.toEntityType = data.toEntityType;
+    if (data.toEntityId !== undefined) updateFields.toEntityId = data.toEntityId;
+    if (data.toLocation !== undefined) updateFields.toLocation = data.toLocation;
+    if (data.costPerKg !== undefined) updateFields.costPerKg = data.costPerKg !== null ? String(data.costPerKg) : null;
+    if (data.distance !== undefined) updateFields.distance = data.distance !== null ? String(data.distance) : null;
+    if (data.isActive !== undefined) updateFields.isActive = data.isActive;
+
     const [updated] = await db
       .update(deliveryCost)
       .set({
-        ...data,
+        ...updateFields,
         updatedAt: sql`NOW()`,
         updatedById: userId,
       })
