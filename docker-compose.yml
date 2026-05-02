@@ -1,0 +1,96 @@
+version: "3.9"
+
+################################################################################
+# Aviation Fuel Management System — Docker Compose
+# Для запуска: docker compose up -d
+################################################################################
+
+services:
+
+  # ─── PostgreSQL ─────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: avfuel_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-avfuel}
+      POSTGRES_USER: ${POSTGRES_USER:-avfuel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:5432:5432"          # только localhost; убрать 127.0.0.1: если нужен внешний доступ
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-avfuel} -d ${POSTGRES_DB:-avfuel}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - backend
+
+  # ─── Application ────────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: avfuel_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-avfuel}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-avfuel}?sslmode=disable
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      DEBUG_NETWORK: ${DEBUG_NETWORK:-false}
+    ports:
+      - "${APP_PORT:-5000}:5000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - backend
+      - frontend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ─── Backup (cron-контейнер) ─────────────────────────────────────────────────
+  backup:
+    image: postgres:16-alpine
+    container_name: avfuel_backup
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-avfuel}
+      POSTGRES_USER: ${POSTGRES_USER:-avfuel}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: db
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 2 * * *}
+    volumes:
+      - ./backups:/backups
+      - ./docker/backup/backup.sh:/backup.sh:ro
+    entrypoint: ["sh", "-c", "chmod +x /backup.sh && crond -f -l 8 & /backup.sh schedule"]
+    networks:
+      - backend
+
+volumes:
+  db_data:
+    driver: local
+
+networks:
+  backend:
+    internal: true
+  frontend:
+    driver: bridge

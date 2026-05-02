@@ -45,8 +45,13 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Trust proxy - required for Replit deployment
+  // Trust proxy - required for Replit deployment and reverse proxies
   app.set("trust proxy", 1);
+
+  // Health check endpoint (used by Docker HEALTHCHECK and load balancers)
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
 
   await seedDefaultRoles();
 

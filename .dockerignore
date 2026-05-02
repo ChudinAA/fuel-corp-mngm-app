@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+
+# Node
+node_modules
+npm-debug.log*
+
+# Build output (rebuilt inside Docker)
+dist
+
+# Development / Replit specific
+.replit
+.local
+.cache
+.config
+.upm
+.agents
+replit.md
+
+# Backups
+backups/
+
+# Docs (optional, comment out if you want them in the image)
+# docs/
+
+# Test files
+*.test.ts
+*.spec.ts
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# Env files (secrets should come from environment, not baked into image)
+.env
+.env.local
+.env.production

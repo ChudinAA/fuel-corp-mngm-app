@@ -4,3 +4,22 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Secrets — никогда не коммитить!
+.env
+.env.local
+.env.production
+
+# Бэкапы — хранить локально, не в Git
+backups/*.sql
+backups/*.sql.gz
+backups/full/
+backups/archive/
+backups/schema/
+
+# Neon дамп при экспорте
+neon_export_*.sql
+neon_export_*.sql.gz
+
+# Резервная копия Neon-драйвера (при переключении)
+server/db.neon.ts
