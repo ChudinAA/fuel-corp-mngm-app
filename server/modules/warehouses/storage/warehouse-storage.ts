@@ -114,7 +114,7 @@ export class WarehouseStorage {
           services.map((s) => ({
             warehouseId: created.id,
             serviceType: s.serviceType,
-            serviceValue: s.serviceValue,
+            serviceValue: String(s.serviceValue),
           })),
         );
       }
@@ -170,7 +170,7 @@ export class WarehouseStorage {
             services.map((s) => ({
               warehouseId: id,
               serviceType: s.serviceType,
-              serviceValue: s.serviceValue,
+              serviceValue: String(s.serviceValue),
             })),
           );
         }

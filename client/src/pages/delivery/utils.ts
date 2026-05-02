@@ -3,7 +3,7 @@ import { DELIVERY_ENTITY_TYPE } from "@shared/constants";
 export const formatNumber = (value: string | number | null) => {
   if (value === null || value === undefined) return "—";
   const num = typeof value === "string" ? parseFloat(value) : value;
-  return new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
+  return new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 6 }).format(num);
 };
 
 export const getEntitiesByType = (
