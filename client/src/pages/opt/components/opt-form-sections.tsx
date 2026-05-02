@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Plus } from "lucide-react";
+import { Plus, AlertCircle } from "lucide-react";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import type { UseFormReturn } from "react-hook-form";
 import type {
@@ -168,6 +168,7 @@ interface LogisticsSectionProps {
   deliveryLocations?: LogisticsDeliveryLocation[];
   bases?: Base[];
   deliveryCost: number | null;
+  deliveryError?: string | null;
 }
 
 export function LogisticsSection({
@@ -176,6 +177,7 @@ export function LogisticsSection({
   deliveryLocations,
   bases,
   deliveryCost,
+  deliveryError,
 }: LogisticsSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -336,6 +338,13 @@ export function LogisticsSection({
             value={deliveryCost !== null ? formatCurrency(deliveryCost) : "—"}
           />
         </div>
+
+        {deliveryError && (
+          <div className="flex items-center gap-2 mt-3 px-1 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{deliveryError}</span>
+          </div>
+        )}
       </CardContent>
 
       <AddLogisticsDialog

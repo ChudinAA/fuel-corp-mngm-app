@@ -1,6 +1,7 @@
 import {
   useState,
   useEffect,
+  useMemo,
   forwardRef,
   useImperativeHandle,
   useRef,
@@ -256,6 +257,18 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         quantityKg: calculatedKg ? parseFloat(calculatedKg) : 0,
       }),
     });
+
+    // Мягкое предупреждение о незаполненной логистике (только для новых сделок)
+    const deliveryError = useMemo(() => {
+      if (isEditing) return null;
+      // Не показываем пока оба поля пустые
+      if (!watchCarrierId && !watchDeliveryLocationId) return null;
+      if (!watchDeliveryLocationId) return "Не выбрана точка поставки";
+      if (!watchCarrierId) return "Не выбран перевозчик";
+      if (deliveryCost === null && finalKg > 0)
+        return "Тариф доставки не найден для выбранного маршрута";
+      return null;
+    }, [isEditing, watchCarrierId, watchDeliveryLocationId, deliveryCost, finalKg]);
 
     // Автоматический выбор базиса при выборе поставщика
     useEffect(() => {
@@ -636,6 +649,25 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           }
         }
 
+        // Проверяем наличие рассчитанной доставки (только при создании новой сделки)
+        if (!isEditing) {
+          const carrierId = data.carrierId;
+          const deliveryLocationId = data.deliveryLocationId;
+
+          if (!deliveryLocationId) {
+            showError("Не выбрана точка поставки. Заполните раздел «Логистика» перед сохранением сделки.");
+            return;
+          }
+          if (!carrierId) {
+            showError("Не выбран перевозчик. Заполните раздел «Логистика» перед сохранением сделки.");
+            return;
+          }
+          if (deliveryCost === null) {
+            showError("Не найден тариф доставки для выбранного маршрута. Проверьте настройки логистики или обратитесь к администратору.");
+            return;
+          }
+        }
+
         if (contractVolumeStatus.status === "error") {
           showError(contractVolumeStatus.message);
           return;
@@ -703,6 +735,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
               deliveryLocations={availableLocations}
               bases={allBases}
               deliveryCost={deliveryCost}
+              deliveryError={deliveryError}
             />
 
             <OptPricingSection
