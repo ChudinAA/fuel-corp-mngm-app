@@ -1,0 +1,67 @@
+################################################################################
+# Prometheus — конфигурация сбора метрик
+# Собирает метрики с: App Server, DB Server, себя (Server 3)
+################################################################################
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  external_labels:
+    environment: 'production'
+    project: 'avfuel'
+
+# Файл с правилами алертов
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+# Alertmanager
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+
+  # ─── Сам Prometheus ──────────────────────────────────────────
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ─── Node Exporter (Server 3 — этот сервер) ──────────────────
+  - job_name: 'node_exporter_monitoring'
+    static_configs:
+      - targets: ['node_exporter:9100']
+        labels:
+          server: 'monitoring'
+
+  # ─── Node Exporter (Server 1 — App Server) ───────────────────
+  # Установите node_exporter на App Server и откройте порт 9100
+  - job_name: 'node_exporter_app'
+    static_configs:
+      - targets: ['${APP_SERVER_IP}:9100']
+        labels:
+          server: 'app'
+
+  # ─── Node Exporter (Server 2 — DB Server) ────────────────────
+  # Установите node_exporter на DB Server и откройте порт 9100
+  - job_name: 'node_exporter_db'
+    static_configs:
+      - targets: ['${DB_SERVER_IP}:9100']
+        labels:
+          server: 'db'
+
+  # ─── Postgres Exporter (Server 2 — DB Server) ────────────────
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['${DB_SERVER_IP}:9187']
+        labels:
+          server: 'db'
+
+  # ─── Application Health Check (Server 1) ─────────────────────
+  - job_name: 'avfuel_app'
+    metrics_path: '/api/health'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['${APP_SERVER_IP}:5000']
+        labels:
+          server: 'app'

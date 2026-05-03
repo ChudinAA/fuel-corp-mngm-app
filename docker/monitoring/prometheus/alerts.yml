@@ -1,0 +1,116 @@
+################################################################################
+# Prometheus — правила алертов
+################################################################################
+
+groups:
+
+  # ─── Приложение ──────────────────────────────────────────────────────────────
+  - name: application
+    rules:
+      - alert: AppDown
+        expr: up{job="avfuel_app"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Приложение недоступно"
+          description: "AvFuel App не отвечает более 2 минут"
+
+      - alert: AppHighResponseTime
+        expr: probe_duration_seconds{job="avfuel_app"} > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Медленный ответ приложения"
+          description: "Время ответа > 5 секунд в течение 5 минут"
+
+  # ─── База данных ─────────────────────────────────────────────────────────────
+  - name: database
+    rules:
+      - alert: PostgresDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL недоступен"
+          description: "Postgres Exporter не отвечает"
+
+      - alert: PostgresTooManyConnections
+        expr: pg_stat_activity_count > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Много подключений к PostgreSQL"
+          description: "Активных соединений: {{ $value }} (лимит: 100)"
+
+      - alert: PostgresSlowQueries
+        expr: rate(pg_stat_activity_max_tx_duration[5m]) > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Медленные запросы в PostgreSQL"
+          description: "Запросы выполняются более 30 секунд"
+
+      - alert: PostgresDeadlocks
+        expr: rate(pg_stat_database_deadlocks_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Дедлоки в PostgreSQL"
+          description: "Обнаружены дедлоки в базе данных"
+
+  # ─── Сервер (ресурсы) ────────────────────────────────────────────────────────
+  - name: infrastructure
+    rules:
+      - alert: HighCPU
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Высокая нагрузка CPU: {{ $labels.instance }}"
+          description: "CPU > 90% в течение 5 минут: {{ $value | printf \"%.1f\" }}%"
+
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Мало места на диске: {{ $labels.instance }}"
+          description: "Свободно менее 15% на {{ $labels.mountpoint }}: {{ $value | printf \"%.1f\" }}%"
+
+      - alert: CriticalDiskSpace
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 5
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "КРИТИЧНО: Диск почти заполнен {{ $labels.instance }}"
+          description: "Свободно менее 5%: {{ $value | printf \"%.1f\" }}%"
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Высокое использование памяти: {{ $labels.instance }}"
+          description: "RAM > 90%: {{ $value | printf \"%.1f\" }}%"
+
+  # ─── Бэкапы ──────────────────────────────────────────────────────────────────
+  - name: backups
+    rules:
+      - alert: BackupDiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/backups"} / node_filesystem_size_bytes{mountpoint="/backups"}) * 100 < 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Мало места для бэкапов"
+          description: "На диске бэкапов < 20% свободного места"

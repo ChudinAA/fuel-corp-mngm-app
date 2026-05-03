@@ -1,0 +1,120 @@
+################################################################################
+# PRODUCTION — Server 2: Database Server
+# Запускается ТОЛЬКО на сервере базы данных.
+# Приложение на Server 1 подключается сюда по DATABASE_URL.
+#
+# Использование:
+#   docker compose -f docker-compose.prod-db.yml up -d
+#
+# ВАЖНО: После первого старта откройте firewall только для IP Server 1:
+#   ufw allow from <APP_SERVER_IP> to any port 5432
+################################################################################
+version: "3.9"
+
+services:
+
+  # ─── PostgreSQL ──────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: avfuel_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-avfuel}
+      POSTGRES_USER: ${POSTGRES_USER:-avfuel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      # Настройки производительности (переопределяют postgresql.conf)
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./docker/postgres/conf/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./backups:/backups  # локальные бэкапы на сервере БД
+    ports:
+      # Открываем только для конкретного IP сервера приложения
+      # (дополнительно защищается через firewall — см. документацию)
+      - "${DB_BIND_IP:-0.0.0.0}:5432:5432"
+    command: >
+      postgres
+        -c config_file=/etc/postgresql/postgresql.conf
+        -c log_min_duration_statement=1000
+        -c log_connections=on
+        -c log_disconnections=on
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-avfuel} -d ${POSTGRES_DB:-avfuel}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - db_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+        reservations:
+          memory: 1G
+
+  # ─── Postgres Exporter (для Prometheus/Grafana мониторинга) ──────────────────
+  postgres_exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: avfuel_pg_exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-avfuel}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-avfuel}?sslmode=disable"
+      PG_EXPORTER_DISABLE_DEFAULT_METRICS: "false"
+      PG_EXPORTER_DISABLE_SETTINGS_METRICS: "false"
+    ports:
+      # Метрики доступны только с сервера мониторинга (Server 3)
+      # Настройте firewall: ufw allow from <MON_SERVER_IP> to any port 9187
+      - "${METRICS_BIND_IP:-0.0.0.0}:9187:9187"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - db_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── DB Backup (локальный cron на сервере БД) ────────────────────────────────
+  db_backup:
+    image: postgres:16-alpine
+    container_name: avfuel_db_backup
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_USER: ${POSTGRES_USER:-avfuel}
+      POSTGRES_DB: ${POSTGRES_DB:-avfuel}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}   # на DB-сервере хранить меньше
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 1 * * *}
+      # SSH параметры для отправки бэкапов на сервер мониторинга/бэкапов
+      BACKUP_REMOTE_HOST: ${BACKUP_REMOTE_HOST:-}          # IP Server 3
+      BACKUP_REMOTE_USER: ${BACKUP_REMOTE_USER:-backup}
+      BACKUP_REMOTE_PATH: ${BACKUP_REMOTE_PATH:-/backups/avfuel}
+    volumes:
+      - ./backups:/backups
+      - ./docker/db-server/db-backup.sh:/db-backup.sh:ro
+      - ${SSH_KEY_PATH:-./docker/db-server/id_rsa}:/root/.ssh/id_rsa:ro
+    entrypoint: ["sh", "-c", "chmod 600 /root/.ssh/id_rsa 2>/dev/null; sh /db-backup.sh schedule"]
+    networks:
+      - db_net
+
+volumes:
+  db_data:
+    driver: local
+
+networks:
+  db_net:
+    driver: bridge

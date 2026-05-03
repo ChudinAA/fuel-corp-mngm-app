@@ -1,0 +1,160 @@
+################################################################################
+# PRODUCTION — Server 3: Backup + Monitoring Server
+# Запускается ТОЛЬКО на сервере мониторинга и бэкапов.
+#
+# Сервисы:
+#   - Uptime Kuma     — HTTP/TCP/DNS мониторинг с алертами (порт 3001)
+#   - Prometheus      — сбор метрик (порт 9090)
+#   - Grafana         — дашборды (порт 3000)
+#   - node-exporter   — метрики хоста
+#   - Backup Receiver — получает бэкапы с DB Server по rsync/SSH
+#   - rclone          — отправка архивов в холодное хранилище
+#   - verify-backup   — еженедельная автоматическая проверка бэкапов
+#
+# Использование:
+#   docker compose -f docker-compose.prod-monitoring.yml up -d
+################################################################################
+version: "3.9"
+
+services:
+
+  # ─── Uptime Kuma — мониторинг и алерты ───────────────────────────────────────
+  uptime_kuma:
+    image: louislam/uptime-kuma:1
+    container_name: avfuel_uptime_kuma
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - uptime_kuma_data:/app/data
+    networks:
+      - monitoring_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ─── Prometheus — сбор метрик ─────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: avfuel_prometheus
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9090:9090"    # только localhost — через Grafana или nginx
+    volumes:
+      - ./docker/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=90d'
+      - '--web.enable-lifecycle'
+    networks:
+      - monitoring_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ─── Grafana — дашборды ───────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: avfuel_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is required}
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      GF_SMTP_ENABLED: ${SMTP_ENABLED:-false}
+      GF_SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com:587}
+      GF_SMTP_USER: ${SMTP_USER:-}
+      GF_SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      GF_SMTP_FROM_ADDRESS: ${SMTP_FROM:-alerts@company.com}
+      GF_ALERTING_ENABLED: "true"
+      GF_UNIFIED_ALERTING_ENABLED: "true"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ─── Node Exporter — метрики хоста (Server 3) ────────────────────────────────
+  node_exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: avfuel_node_exporter
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - monitoring_net
+
+  # ─── Backup Receiver + rclone (холодное хранилище) ───────────────────────────
+  backup_manager:
+    image: instrumentisto/rsync:alpine
+    container_name: avfuel_backup_manager
+    restart: unless-stopped
+    environment:
+      RCLONE_REMOTE: ${RCLONE_REMOTE:-s3-cold}       # имя remote из rclone.conf
+      RCLONE_BUCKET: ${RCLONE_BUCKET:-avfuel-backups}
+      COLD_STORAGE_SYNC_HOUR: ${COLD_STORAGE_SYNC_HOUR:-3}  # час синхронизации в cold
+      ARCHIVE_OLDER_THAN_DAYS: ${ARCHIVE_OLDER_THAN_DAYS:-30}
+      BACKUP_VERIFY_DAY: ${BACKUP_VERIFY_DAY:-0}     # 0=воскресенье
+    volumes:
+      - ./backups:/backups
+      - ./docker/monitoring/backup-manager/backup-manager.sh:/backup-manager.sh:ro
+      - ./docker/monitoring/backup-manager/verify-backup.sh:/verify-backup.sh:ro
+      - ./docker/monitoring/rclone/rclone.conf:/root/.config/rclone/rclone.conf:ro
+      - ${BACKUP_SSH_KEY:-./docker/monitoring/backup-manager/id_rsa}:/root/.ssh/id_rsa:ro
+      # SSH authorized_keys от DB Server (для rsync pull)
+      - ./docker/monitoring/backup-manager/authorized_keys:/root/.ssh/authorized_keys:ro
+    entrypoint: ["sh", "-c", "chmod 600 /root/.ssh/id_rsa 2>/dev/null; sh /backup-manager.sh"]
+    networks:
+      - monitoring_net
+
+  # ─── Webhook алерт-приёмник (для Alertmanager → Telegram/Email) ──────────────
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: avfuel_alertmanager
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - ./docker/monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - monitoring_net
+
+volumes:
+  uptime_kuma_data:
+  prometheus_data:
+  grafana_data:
+  alertmanager_data:
+
+networks:
+  monitoring_net:
+    driver: bridge

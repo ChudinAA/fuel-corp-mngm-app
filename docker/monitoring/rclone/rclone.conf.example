@@ -1,0 +1,49 @@
+# =============================================================================
+# rclone конфигурация для холодного хранилища
+# Скопируйте этот файл в docker/monitoring/rclone/rclone.conf
+# и заполните данные вашего провайдера.
+#
+# Поддерживаемые провайдеры (выберите один):
+# =============================================================================
+
+# ─── Вариант 1: AWS S3 ───────────────────────────────────────────────────────
+[s3-cold]
+type = s3
+provider = AWS
+access_key_id = YOUR_ACCESS_KEY
+secret_access_key = YOUR_SECRET_KEY
+region = eu-central-1
+storage_class = GLACIER_IR     # Instant Retrieval Glacier (~$0.004/GB/мес)
+# Для стандартного хранения: storage_class = STANDARD_IA
+
+# ─── Вариант 2: Yandex Cloud Object Storage ──────────────────────────────────
+# [s3-cold]
+# type = s3
+# provider = Other
+# access_key_id = YOUR_ACCESS_KEY
+# secret_access_key = YOUR_SECRET_KEY
+# endpoint = storage.yandexcloud.net
+# region = ru-central1
+# storage_class = COLD
+
+# ─── Вариант 3: Backblaze B2 (самый дешёвый: $0.006/GB/мес) ─────────────────
+# [s3-cold]
+# type = b2
+# account = YOUR_ACCOUNT_ID
+# key = YOUR_APPLICATION_KEY
+
+# ─── Вариант 4: MinIO (self-hosted, бесплатно) ───────────────────────────────
+# [s3-cold]
+# type = s3
+# provider = Minio
+# access_key_id = minio_admin
+# secret_access_key = minio_password
+# endpoint = http://minio.company.local:9000
+# region = us-east-1
+
+# =============================================================================
+# Bucket lifecycle policy (настраивается в веб-консоли провайдера):
+# - Архивы audit_log (archive/audit_log/): удалять через 365 дней
+# - Полные бэкапы (full/): удалять через 90 дней
+# - Это позволяет избежать ручного управления старыми файлами
+# =============================================================================

@@ -1,0 +1,67 @@
+################################################################################
+# Alertmanager — конфигурация маршрутизации алертов
+# Поддерживает: Telegram, Email, Webhook
+################################################################################
+
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'severity']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'default'
+
+  routes:
+    # Критические алерты — немедленно
+    - match:
+        severity: critical
+      receiver: 'critical'
+      group_wait: 10s
+      repeat_interval: 1h
+
+    # Предупреждения — обычный цикл
+    - match:
+        severity: warning
+      receiver: 'default'
+      repeat_interval: 4h
+
+receivers:
+
+  # ─── Telegram алерты ─────────────────────────────────────────
+  - name: 'default'
+    telegram_configs:
+      - api_url: 'https://api.telegram.org'
+        bot_token: '${TELEGRAM_BOT_TOKEN}'
+        chat_id: ${TELEGRAM_CHAT_ID}
+        message: |
+          🔔 *[AvFuel] {{ .GroupLabels.alertname }}*
+          Сервер: {{ range .Alerts }}{{ .Labels.instance }}{{ end }}
+          Статус: {{ .Status | toUpper }}
+          {{ range .Alerts }}{{ .Annotations.description }}{{ end }}
+        parse_mode: 'Markdown'
+
+  - name: 'critical'
+    telegram_configs:
+      - api_url: 'https://api.telegram.org'
+        bot_token: '${TELEGRAM_BOT_TOKEN}'
+        chat_id: ${TELEGRAM_CHAT_ID}
+        message: |
+          🚨 *КРИТИЧНО [AvFuel]*
+          *{{ .GroupLabels.alertname }}*
+          {{ range .Alerts }}
+          Сервер: {{ .Labels.instance }}
+          {{ .Annotations.description }}
+          {{ end }}
+        parse_mode: 'Markdown'
+
+  # ─── Email алерты (опционально) ──────────────────────────────
+  # - name: 'email'
+  #   email_configs:
+  #     - to: 'admin@company.com'
+  #       from: 'alerts@company.com'
+  #       smarthost: 'smtp.company.com:587'
+  #       auth_username: 'alerts@company.com'
+  #       auth_password: 'smtp_password'
+  #       require_tls: true

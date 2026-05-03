@@ -1,0 +1,55 @@
+################################################################################
+# PRODUCTION — Server 1: Application Server
+# Запускается ТОЛЬКО на сервере приложения.
+# БД находится на отдельном сервере (Server 2).
+#
+# Использование:
+#   docker compose -f docker-compose.prod-app.yml up -d
+################################################################################
+version: "3.9"
+
+services:
+
+  # ─── Application ─────────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: avfuel_app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      # DATABASE_URL указывает на ОТДЕЛЬНЫЙ сервер БД (Server 2)
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required (e.g. postgresql://user:pass@DB_SERVER_IP:5432/avfuel)}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      DEBUG_NETWORK: ${DEBUG_NETWORK:-false}
+      # IP сервера мониторинга для метрик (опционально)
+      MONITORING_SERVER: ${MONITORING_SERVER:-}
+    ports:
+      - "127.0.0.1:5000:5000"   # только localhost — Nginx проксирует снаружи
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - app_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+    # Ограничения ресурсов (настройте под реальный сервер)
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          memory: 512M
+
+networks:
+  app_net:
+    driver: bridge
