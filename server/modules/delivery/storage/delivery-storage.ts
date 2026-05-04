@@ -77,8 +77,8 @@ export class DeliveryStorage implements IDeliveryStorage {
     if (data.toEntityType !== undefined) updateFields.toEntityType = data.toEntityType;
     if (data.toEntityId !== undefined) updateFields.toEntityId = data.toEntityId;
     if (data.toLocation !== undefined) updateFields.toLocation = data.toLocation;
-    if (data.costPerKg !== undefined) updateFields.costPerKg = data.costPerKg !== null ? String(data.costPerKg) : null;
-    if (data.distance !== undefined) updateFields.distance = data.distance !== null ? String(data.distance) : null;
+    if (data.costPerKg !== undefined) updateFields.costPerKg = (data.costPerKg !== null && data.costPerKg !== "") ? String(data.costPerKg) : null;
+    if (data.distance !== undefined) updateFields.distance = (data.distance !== null && data.distance !== "") ? String(data.distance) : null;
     if (data.isActive !== undefined) updateFields.isActive = data.isActive;
 
     const [updated] = await db

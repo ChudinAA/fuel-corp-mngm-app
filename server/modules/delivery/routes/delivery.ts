@@ -90,7 +90,12 @@ export function registerDeliveryRoutes(app: Express) {
     async (req: Request, res: Response) => {
       try {
         const id = req.params.id;
-        const data = insertDeliveryCostSchema.partial().parse(req.body);
+        const rawData = insertDeliveryCostSchema.partial().parse(req.body);
+        const data = {
+          ...rawData,
+          costPerKg: rawData.costPerKg === "" ? null : rawData.costPerKg,
+          distance: rawData.distance === "" ? null : rawData.distance,
+        };
 
         const updated = await storage.delivery.updateDeliveryCost(
           id,
