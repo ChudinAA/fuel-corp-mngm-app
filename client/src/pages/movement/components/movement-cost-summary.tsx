@@ -85,8 +85,6 @@ export function MovementCostSummary({
   const gridClass = hasServices
     ? "grid gap-2 items-start md:grid-cols-2 lg:grid-cols-6"
     : "grid gap-2 items-start md:grid-cols-2 lg:grid-cols-5";
-
-  const purchasePriceClass = watchMovementType === MOVEMENT_TYPE.SUPPLY && availablePrices.length > 0 ? "flex items-end gap-1" : "flex items-start gap-1"
   
   const costLabel = vatAdjustment
     ? vatAdjustment.type === "deduct"
@@ -97,7 +95,7 @@ export function MovementCostSummary({
   return (
     <div className="space-y-3">
       <div className={gridClass}>
-        <div className={purchasePriceClass}>
+        <div className="flex items-end gap-1">
           {watchMovementType === MOVEMENT_TYPE.SUPPLY && availablePrices.length > 0 ? (
             <FormField
               control={form.control}
