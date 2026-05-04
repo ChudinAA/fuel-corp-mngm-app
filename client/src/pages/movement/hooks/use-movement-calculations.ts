@@ -364,6 +364,12 @@ export function useMovementCalculations({
     });
   }, [availablePurchasePrices]);
 
+  const destinationWarehouseServices = useMemo(() => {
+    if (!watchToWarehouseId) return [];
+    const warehouse = warehouses.find((w) => w.id === watchToWarehouseId);
+    return warehouse?.services || [];
+  }, [watchToWarehouseId, warehouses]);
+
   return {
     calculatedKg,
     kgNum,
@@ -374,6 +380,7 @@ export function useMovementCalculations({
     purchaseAmount,
     storageCost,
     warehouseServicesCost,
+    destinationWarehouseServices,
     deliveryCost,
     totalCost,
     rawTotalCost,

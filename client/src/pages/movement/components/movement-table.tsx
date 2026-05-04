@@ -14,6 +14,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Pencil,
   Trash2,
   FileText,
@@ -45,11 +51,22 @@ import { ProductTypeBadge } from "@/components/product-type-badge";
 
 const formatNumberWithK = (value: string | number) => {
   const num = typeof value === "string" ? parseFloat(value) : value;
-  // if (num >= 1000) {
-  //   return `${(num / 1000).toFixed(1)}к`;
-  // }
   return formatNumber(num);
 };
+
+function getServiceTypeShort(serviceType: string): string {
+  if (serviceType === "royalty_per_ton") return "Р/т";
+  if (serviceType === "percent_of_amount") return "%";
+  if (serviceType === "fixed") return "Ф";
+  return serviceType;
+}
+
+function getServiceTypeLabel(serviceType: string): string {
+  if (serviceType === "royalty_per_ton") return "Роялти/т";
+  if (serviceType === "percent_of_amount") return "% от суммы";
+  if (serviceType === "fixed") return "Фикс.";
+  return serviceType;
+}
 
 export function MovementTable({
   onEdit,
@@ -263,6 +280,9 @@ export function MovementTable({
                 Хран.
               </TableHead>
               <TableHead className="text-right w-[70px] text-xs font-semibold px-1 py-1">
+                Услуги
+              </TableHead>
+              <TableHead className="text-right w-[70px] text-xs font-semibold px-1 py-1">
                 Себест.
               </TableHead>
               <TableHead className="w-[10px] px-1 py-1 sticky right-0 bg-background z-10"></TableHead>
@@ -272,7 +292,7 @@ export function MovementTable({
             {data.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={13}
+                  colSpan={14}
                   className="text-center py-8 text-muted-foreground text-xs"
                 >
                   Нет данных
@@ -292,9 +312,14 @@ export function MovementTable({
                   ? parseFloat(item.deliveryCost)
                   : 0;
                 const storageCost = parseFloat(item.storageCost || "0");
+                const warehouseServicesCost = item.warehouseServicesCost
+                  ? parseFloat(item.warehouseServicesCost)
+                  : null;
                 const costPerKg = item.costPerKg
                   ? parseFloat(item.costPerKg)
                   : 0;
+                const serviceTypes: Array<{ serviceType: string; serviceValue: string }> =
+                  item.warehouseServiceTypes || [];
 
                 return (
                   <TableRow
@@ -393,6 +418,45 @@ export function MovementTable({
                     </TableCell>
                     <TableCell className="text-right text-xs py-1.5 px-1">
                       {formatNumberWithK(storageCost)}
+                    </TableCell>
+                    <TableCell className="text-right text-xs py-1.5 px-1">
+                      {warehouseServicesCost !== null && warehouseServicesCost > 0 ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex flex-col items-end gap-0.5 cursor-default">
+                                <span>{formatNumberWithK(warehouseServicesCost)}</span>
+                                {serviceTypes.length > 0 && (
+                                  <div className="flex gap-0.5 flex-wrap justify-end">
+                                    {serviceTypes.map((svc, idx) => (
+                                      <Badge
+                                        key={idx}
+                                        variant="secondary"
+                                        className="text-[9px] px-1 py-0 h-3.5 font-normal leading-none"
+                                      >
+                                        {getServiceTypeShort(svc.serviceType)}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </TooltipTrigger>
+                            {serviceTypes.length > 0 && (
+                              <TooltipContent side="left" className="text-xs">
+                                <div className="space-y-0.5">
+                                  {serviceTypes.map((svc, idx) => (
+                                    <div key={idx}>
+                                      {getServiceTypeLabel(svc.serviceType)}
+                                    </div>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right font-bold text-xs py-1.5 px-1">
                       {formatNumber(costPerKg)}

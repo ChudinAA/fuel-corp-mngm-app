@@ -156,6 +156,9 @@ export class MovementStorage implements IMovementStorage {
             name: true,
             isExport: true,
           },
+          with: {
+            warehouseServices: true,
+          },
         },
         carrier: {
           columns: {
@@ -176,6 +179,10 @@ export class MovementStorage implements IMovementStorage {
       carrierName: (mov.carrier as any)?.name || null,
       fromIsExport: (mov.fromWarehouse as any)?.isExport ?? false,
       toIsExport: (mov.toWarehouse as any)?.isExport ?? false,
+      warehouseServiceTypes: ((mov.toWarehouse as any)?.warehouseServices || []).map((s: any) => ({
+        serviceType: s.serviceType,
+        serviceValue: s.serviceValue,
+      })),
     }));
 
     const [countResult] = await db

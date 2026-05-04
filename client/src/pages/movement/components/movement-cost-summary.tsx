@@ -2,6 +2,7 @@ import { CalculatedField } from "./calculated-field";
 import { formatNumber, formatCurrency } from "../utils";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { Plus, AlertTriangle } from "lucide-react";
 import { MOVEMENT_TYPE } from "@shared/constants";
@@ -23,6 +24,11 @@ import type { UseFormReturn } from "react-hook-form";
 import type { MovementFormData } from "../schemas";
 import type { VatAdjustment } from "../hooks/use-movement-calculations";
 
+interface WarehouseService {
+  serviceType: string;
+  serviceValue: string;
+}
+
 interface MovementCostSummaryProps {
   form: UseFormReturn<MovementFormData>;
   availablePrices: any[];
@@ -30,6 +36,7 @@ interface MovementCostSummaryProps {
   purchaseAmount: number;
   storageCost: number;
   warehouseServicesCost?: number;
+  destinationWarehouseServices?: WarehouseService[];
   deliveryCost: number;
   costPerKg: number;
   watchMovementType: string;
@@ -39,6 +46,21 @@ interface MovementCostSummaryProps {
   rawTotalCost?: number;
 }
 
+function getServiceTypeLabel(serviceType: string): string {
+  if (serviceType === "royalty_per_ton") return "Роялти/т";
+  if (serviceType === "percent_of_amount") return "% от суммы";
+  if (serviceType === "fixed") return "Фикс.";
+  return serviceType;
+}
+
+function getServiceTypeDescription(service: WarehouseService): string {
+  const value = parseFloat(service.serviceValue || "0");
+  if (service.serviceType === "royalty_per_ton") return `${formatNumber(value)} ₽/т`;
+  if (service.serviceType === "percent_of_amount") return `${formatNumber(value)}%`;
+  if (service.serviceType === "fixed") return `${formatNumber(value)} ₽`;
+  return service.serviceValue;
+}
+
 export function MovementCostSummary({
   form,
   availablePrices,
@@ -46,6 +68,7 @@ export function MovementCostSummary({
   purchaseAmount,
   storageCost,
   warehouseServicesCost = 0,
+  destinationWarehouseServices = [],
   deliveryCost,
   costPerKg,
   watchMovementType,
@@ -140,10 +163,26 @@ export function MovementCostSummary({
         />
         <CalculatedField label="Хранение" value={formatCurrency(storageCost)} />
         {hasServices && (
-          <CalculatedField
-            label="Услуги склада"
-            value={formatCurrency(warehouseServicesCost)}
-          />
+          <div className="flex flex-col gap-1">
+            <CalculatedField
+              label="Услуги склада"
+              value={formatCurrency(warehouseServicesCost)}
+            />
+            {destinationWarehouseServices.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {destinationWarehouseServices.map((svc, idx) => (
+                  <Badge
+                    key={idx}
+                    variant="secondary"
+                    className="text-[10px] px-1.5 py-0 h-4 font-normal"
+                    title={getServiceTypeDescription(svc)}
+                  >
+                    {getServiceTypeLabel(svc.serviceType)}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
         )}
         <CalculatedField label="Доставка" value={formatCurrency(deliveryCost)} />
         <CalculatedField
@@ -153,7 +192,6 @@ export function MovementCostSummary({
         />
       </div>
 
-      {/* VAT Adjustment Info Block */}
       {vatAdjustment && (
         <div
           className={`rounded-md border p-3 space-y-1.5 ${

@@ -48,6 +48,21 @@ interface WarehouseCardProps {
   isBase?: boolean;
 }
 
+function getServiceTypeLabel(serviceType: string): string {
+  if (serviceType === "royalty_per_ton") return "Роялти/т";
+  if (serviceType === "percent_of_amount") return "% от суммы";
+  if (serviceType === "fixed") return "Фиксированная";
+  return serviceType;
+}
+
+function formatServiceValue(serviceType: string, serviceValue: string): string {
+  const value = parseFloat(serviceValue || "0");
+  if (serviceType === "royalty_per_ton") return `${formatNumber(value)} ₽/т`;
+  if (serviceType === "percent_of_amount") return `${formatNumber(value)}%`;
+  if (serviceType === "fixed") return `${formatNumber(value)} ₽`;
+  return serviceValue;
+}
+
 export function WarehouseCard({
   warehouse,
   onEdit,
@@ -64,6 +79,13 @@ export function WarehouseCard({
   const pvkjCost = parseFloat(warehouse.pvkjAverageCost || "0");
   const isInactive = !warehouse.isActive;
   const { hasPermission } = useAuth();
+
+  const storageCostValue = warehouse.storageCost
+    ? parseFloat(warehouse.storageCost)
+    : 0;
+  const hasStorageCost = storageCostValue > 0;
+  const services = warehouse.services || [];
+  const hasServices = services.length > 0;
 
   const { data: allBases } = useQuery<Base[]>({
     queryKey: ["/api/bases"],
@@ -289,6 +311,39 @@ export function WarehouseCard({
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {(hasStorageCost || hasServices) && (
+          <div className="pt-2 border-t space-y-1.5">
+            {hasStorageCost && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Хранение:</span>
+                <span className="font-medium">
+                  {formatNumber(storageCostValue)} ₽/т
+                </span>
+              </div>
+            )}
+            {hasServices && (
+              <div className="space-y-1">
+                <span className="text-xs text-muted-foreground">Услуги склада:</span>
+                <div className="flex flex-col gap-1">
+                  {services.map((svc, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-xs">
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] px-1.5 py-0 h-4 font-normal"
+                      >
+                        {getServiceTypeLabel(svc.serviceType)}
+                      </Badge>
+                      <span className="font-medium text-foreground">
+                        {formatServiceValue(svc.serviceType, svc.serviceValue)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

@@ -97,6 +97,10 @@ export function registerMovementRoutes(app: Express) {
             data.deliveryCost !== null && data.deliveryCost !== undefined
               ? data.deliveryCost.toString()
               : null,
+          warehouseServicesCost:
+            data.warehouseServicesCost !== null && data.warehouseServicesCost !== undefined
+              ? data.warehouseServicesCost.toString()
+              : null,
           totalCost:
             data.totalCost !== null && data.totalCost !== undefined
               ? data.totalCost.toString()
@@ -164,6 +168,11 @@ export function registerMovementRoutes(app: Express) {
             req.body.deliveryCost !== null &&
             req.body.deliveryCost !== undefined
               ? req.body.deliveryCost.toString()
+              : null,
+          warehouseServicesCost:
+            req.body.warehouseServicesCost !== null &&
+            req.body.warehouseServicesCost !== undefined
+              ? req.body.warehouseServicesCost.toString()
               : null,
           totalCost:
             req.body.totalCost !== null && req.body.totalCost !== undefined

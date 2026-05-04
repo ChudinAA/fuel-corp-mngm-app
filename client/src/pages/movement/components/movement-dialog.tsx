@@ -221,6 +221,7 @@ export function MovementDialog({
     purchaseAmount,
     storageCost,
     warehouseServicesCost,
+    destinationWarehouseServices,
     deliveryCost,
     totalCost,
     rawTotalCost,
@@ -340,6 +341,7 @@ export function MovementDialog({
           deliveryCost > 0 && kgNum > 0 ? deliveryCost / kgNum : null,
         deliveryCost: deliveryCost,
         storageCost: storageCost,
+        warehouseServicesCost: warehouseServicesCost,
         totalCost: totalCost,
         costPerKg: costPerKg,
         notes: data.notes || null,
@@ -477,6 +479,7 @@ export function MovementDialog({
                 purchaseAmount={purchaseAmount}
                 storageCost={storageCost}
                 warehouseServicesCost={warehouseServicesCost}
+                destinationWarehouseServices={destinationWarehouseServices}
                 deliveryCost={deliveryCost}
                 costPerKg={costPerKg}
                 watchMovementType={watchMovementType || MOVEMENT_TYPE.SUPPLY}
