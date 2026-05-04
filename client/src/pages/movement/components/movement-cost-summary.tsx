@@ -83,10 +83,10 @@ export function MovementCostSummary({
   const hasServices = warehouseServicesCost > 0;
   const colCount = hasServices ? 6 : 5;
   const gridClass = hasServices
-    ? "grid gap-2 md:grid-cols-2 lg:grid-cols-6"
-    : "grid gap-2 md:grid-cols-2 lg:grid-cols-5";
+    ? "grid gap-2 items-start md:grid-cols-2 lg:grid-cols-6"
+    : "grid gap-2 items-start md:grid-cols-2 lg:grid-cols-5";
 
-  const purchasePriceClass = "flex items-end gap-1"
+  const purchasePriceClass = watchMovementType === MOVEMENT_TYPE.SUPPLY && availablePrices.length > 0 ? "flex items-end gap-1" : "flex items-start gap-1"
   
   const costLabel = vatAdjustment
     ? vatAdjustment.type === "deduct"
