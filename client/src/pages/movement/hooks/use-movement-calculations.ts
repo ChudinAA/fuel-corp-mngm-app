@@ -231,8 +231,12 @@ export function useMovementCalculations({
         if (supplierWarehouse) fromEntityId = supplierWarehouse.id;
       } else {
         fromEntityType = DELIVERY_ENTITY_TYPE.BASE;
-        if (supplier.baseIds && supplier.baseIds.length > 0)
+        // Используем выбранный в форме базис, иначе — первый из базисов поставщика
+        if (watchBasisId) {
+          fromEntityId = watchBasisId;
+        } else if (supplier.baseIds && supplier.baseIds.length > 0) {
           fromEntityId = supplier.baseIds[0];
+        }
       }
     } else if (
       watchMovementType === MOVEMENT_TYPE.INTERNAL &&
@@ -262,6 +266,7 @@ export function useMovementCalculations({
     kgNum,
     watchMovementType,
     watchSupplierId,
+    watchBasisId,
     watchFromWarehouseId,
     warehouses,
     suppliers,

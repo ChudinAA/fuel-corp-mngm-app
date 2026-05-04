@@ -253,6 +253,7 @@ export function MovementDialog({
   const availableCarriers = useAvailableCarriers({
     watchMovementType: watchMovementType || MOVEMENT_TYPE.SUPPLY,
     watchSupplierId: watchSupplierId || "",
+    watchBasisId: watchBasisId || "",
     watchFromWarehouseId: watchFromWarehouseId || "",
     watchToWarehouseId: watchToWarehouseId || "",
     warehouses,

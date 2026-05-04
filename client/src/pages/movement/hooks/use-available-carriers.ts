@@ -6,6 +6,7 @@ import type { AllSupplier } from "../types";
 interface UseAvailableCarriersProps {
   watchMovementType: string;
   watchSupplierId: string;
+  watchBasisId?: string;
   watchFromWarehouseId: string;
   watchToWarehouseId: string;
   warehouses: any[];
@@ -17,6 +18,7 @@ interface UseAvailableCarriersProps {
 export function useAvailableCarriers({
   watchMovementType,
   watchSupplierId,
+  watchBasisId,
   watchFromWarehouseId,
   watchToWarehouseId,
   warehouses,
@@ -61,8 +63,11 @@ export function useAvailableCarriers({
           }
         }
       } else {
-        // Use bases from supplier
-        if (supplier.baseIds && supplier.baseIds.length > 0) {
+        // Если выбран конкретный базис — используем только его,
+        // иначе добавляем все базисы поставщика (поведение по умолчанию)
+        if (watchBasisId) {
+          fromEntities.push({ type: DELIVERY_ENTITY_TYPE.BASE, id: watchBasisId });
+        } else if (supplier.baseIds && supplier.baseIds.length > 0) {
           supplier.baseIds.forEach((baseId: string) => {
             fromEntities.push({ type: DELIVERY_ENTITY_TYPE.BASE, id: baseId });
           });
@@ -96,5 +101,5 @@ export function useAvailableCarriers({
     );
 
     return carriers?.filter(c => availableCarrierIds.has(c.id)) || [];
-  }, [watchMovementType, watchSupplierId, watchFromWarehouseId, watchToWarehouseId, warehouses, suppliers, carriers, deliveryCosts]);
+  }, [watchMovementType, watchSupplierId, watchBasisId, watchFromWarehouseId, watchToWarehouseId, warehouses, suppliers, carriers, deliveryCosts]);
 }
