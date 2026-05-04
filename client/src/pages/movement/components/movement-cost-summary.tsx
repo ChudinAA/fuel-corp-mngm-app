@@ -86,6 +86,8 @@ export function MovementCostSummary({
     ? "grid gap-2 md:grid-cols-2 lg:grid-cols-6"
     : "grid gap-2 md:grid-cols-2 lg:grid-cols-5";
 
+  const purchasePriceClass = "flex items-end gap-1"
+  
   const costLabel = vatAdjustment
     ? vatAdjustment.type === "deduct"
       ? "Себест-ть (−НДС)"
@@ -95,14 +97,14 @@ export function MovementCostSummary({
   return (
     <div className="space-y-3">
       <div className={gridClass}>
-        <div className="flex items-end gap-1">
+        <div className={purchasePriceClass}>
           {watchMovementType === MOVEMENT_TYPE.SUPPLY && availablePrices.length > 0 ? (
             <FormField
               control={form.control}
               name="selectedPurchasePriceId"
               render={({ field }) => (
-                <FormItem className="flex-1">
-                  <FormLabel>Цена закупки</FormLabel>
+                <FormItem className="flex-1 space-y-1">
+                  <FormLabel className="text-xs text-muted-foreground flex items-center gap-1">Цена закупки</FormLabel>
                   <Select
                     onValueChange={(value) => {
                       setSelectedPurchasePriceId(value);
