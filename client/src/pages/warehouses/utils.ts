@@ -13,6 +13,18 @@ export const formatCurrency = (value: string | number) => {
   }).format(num);
 };
 
+// For per-kg cost/price — up to 6 decimal places, no trailing zeros
+export const formatCost = (value: string | number) => {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return '0';
+  return new Intl.NumberFormat('ru-RU', {
+    style: 'currency',
+    currency: 'RUB',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 6,
+  }).format(num);
+};
+
 export const getTransactionTypeLabel = (type: string) => {
   const types: Record<string, string> = {
     receipt: "Поступление",

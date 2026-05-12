@@ -42,7 +42,7 @@ import {
 } from "lucide-react";
 import type { Warehouse, Base } from "@shared/schema";
 import type { WarehouseTransaction } from "../types";
-import { formatNumber, formatCurrency } from "../utils";
+import { formatNumber, formatCurrency, formatCost } from "../utils";
 import {
   BASE_TYPE,
   PRODUCT_TYPE,
@@ -266,7 +266,7 @@ export function WarehouseDetailsDialog({
             </CardHeader>
             <CardContent>
               <p className="text-xl font-semibold">
-                {formatCurrency(warehouse.averageCost || "0")}/кг
+                {formatCost(warehouse.averageCost || "0")}/кг
               </p>
             </CardContent>
           </Card>
@@ -290,7 +290,7 @@ export function WarehouseDetailsDialog({
             </CardHeader>
             <CardContent>
               <p className="text-xl font-semibold">
-                {formatCurrency(warehouse.pvkjAverageCost || "0")}/кг
+                {formatCost(warehouse.pvkjAverageCost || "0")}/кг
               </p>
             </CardContent>
           </Card>
@@ -485,10 +485,10 @@ function DailyRowGroup({
                   {formatNumber(p.balance)} кг
                 </div>
                 <div className="w-[12.5%] min-w-[100px] shrink-0 text-right px-4 truncate">
-                  {p.avgPrice > 0 ? formatCurrency(p.avgPrice) : "0"}
+                  {p.avgPrice > 0 ? formatCost(p.avgPrice) : "0"}
                 </div>
                 <div className="w-[12.5%] min-w-[100px] shrink-0 text-right px-4 font-semibold truncate">
-                  {formatCurrency(p.avgCost)}
+                  {formatCost(p.avgCost)}
                 </div>
               </div>
             ))}
@@ -565,7 +565,7 @@ function DailyRowGroup({
                           {tx.sum ? formatCurrency(tx.sum) : "—"}
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {tx.price ? formatCurrency(tx.price) : "—"}
+                          {tx.price ? formatCost(tx.price) : "—"}
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
                           {formatNumber(tx.balanceBefore)} кг
@@ -574,10 +574,10 @@ function DailyRowGroup({
                           {formatNumber(tx.balanceAfter)} кг
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {formatCurrency(tx.averageCostBefore)}
+                          {formatCost(tx.averageCostBefore)}
                         </TableCell>
                         <TableCell className="text-right py-1 text-xs">
-                          {formatCurrency(tx.averageCostAfter)}
+                          {formatCost(tx.averageCostAfter)}
                         </TableCell>
                       </TableRow>
                     ))}

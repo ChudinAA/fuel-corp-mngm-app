@@ -395,11 +395,11 @@ export class WarehouseStorage {
           sourceId: warehouseId,
           quantity: transactionQuantity.toFixed(2),
           sum: deltaCost.toFixed(2),
-          price: absQuantity > 0 ? (Math.abs(deltaCost) / absQuantity).toFixed(4) : "0",
+          price: absQuantity > 0 ? (Math.abs(deltaCost) / absQuantity).toFixed(6) : "0",
           balanceBefore: currentBalance.toFixed(2),
           balanceAfter: targetBalance.toFixed(2),
-          averageCostBefore: currentAverageCost.toFixed(4),
-          averageCostAfter: targetAverageCost.toFixed(4),
+          averageCostBefore: currentAverageCost.toFixed(6),
+          averageCostAfter: targetAverageCost.toFixed(6),
           transactionDate: txDate,
           createdById: userId,
         });
@@ -410,7 +410,7 @@ export class WarehouseStorage {
           .update(warehouses)
           .set({
             pvkjBalance: targetBalance.toFixed(2),
-            pvkjAverageCost: targetAverageCost.toFixed(4),
+            pvkjAverageCost: targetAverageCost.toFixed(6),
             updatedAt: sql`NOW()`,
             updatedById: userId,
           })
@@ -420,7 +420,7 @@ export class WarehouseStorage {
           .update(warehouses)
           .set({
             currentBalance: targetBalance.toFixed(2),
-            averageCost: targetAverageCost.toFixed(4),
+            averageCost: targetAverageCost.toFixed(6),
             updatedAt: sql`NOW()`,
             updatedById: userId,
           })

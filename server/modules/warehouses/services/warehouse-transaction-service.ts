@@ -102,7 +102,7 @@ export class WarehouseTransactionService {
         .update(warehouses)
         .set({
           pvkjBalance: newBalance.toFixed(2),
-          pvkjAverageCost: newAverageCost.toFixed(4),
+          pvkjAverageCost: newAverageCost.toFixed(6),
           updatedAt: sql`NOW()`,
           updatedById: createdById,
         })
@@ -112,7 +112,7 @@ export class WarehouseTransactionService {
         .update(warehouses)
         .set({
           currentBalance: newBalance.toFixed(2),
-          averageCost: newAverageCost.toFixed(4),
+          averageCost: newAverageCost.toFixed(6),
           updatedAt: sql`NOW()`,
           updatedById: createdById,
         })
@@ -249,7 +249,7 @@ export class WarehouseTransactionService {
         .update(warehouses)
         .set({
           pvkjBalance: newBalance.toFixed(2),
-          pvkjAverageCost: newAverageCost.toFixed(4),
+          pvkjAverageCost: newAverageCost.toFixed(6),
           updatedAt: sql`NOW()`,
           updatedById,
         })
@@ -259,7 +259,7 @@ export class WarehouseTransactionService {
         .update(warehouses)
         .set({
           currentBalance: newBalance.toFixed(2),
-          averageCost: newAverageCost.toFixed(4),
+          averageCost: newAverageCost.toFixed(6),
           updatedAt: sql`NOW()`,
           updatedById,
         })
@@ -282,7 +282,7 @@ export class WarehouseTransactionService {
         sum: sum.toString(),
         price: price.toString(),
         balanceAfter: newBalance.toString(),
-        averageCostAfter: newAverageCost.toFixed(4),
+        averageCostAfter: newAverageCost.toFixed(6),
         updatedAt: sql`NOW()`,
         updatedById,
         transactionDate: effectiveDate,
@@ -354,7 +354,7 @@ export class WarehouseTransactionService {
         .update(warehouses)
         .set({
           pvkjBalance: newBalance.toFixed(2),
-          pvkjAverageCost: newAverageCost.toFixed(4),
+          pvkjAverageCost: newAverageCost.toFixed(6),
           updatedAt: sql`NOW()`,
           updatedById: updatedById,
         })
@@ -364,7 +364,7 @@ export class WarehouseTransactionService {
         .update(warehouses)
         .set({
           currentBalance: newBalance.toFixed(2),
-          averageCost: newAverageCost.toFixed(4),
+          averageCost: newAverageCost.toFixed(6),
           updatedAt: sql`NOW()`,
           updatedById: updatedById,
         })
@@ -452,7 +452,7 @@ export class WarehouseTransactionService {
         .update(warehouses)
         .set({
           pvkjBalance: newBalance.toFixed(2),
-          pvkjAverageCost: newAverageCost.toFixed(4),
+          pvkjAverageCost: newAverageCost.toFixed(6),
           updatedAt: sql`NOW()`,
           updatedById: updatedById,
         })
@@ -462,7 +462,7 @@ export class WarehouseTransactionService {
         .update(warehouses)
         .set({
           currentBalance: newBalance.toFixed(2),
-          averageCost: newAverageCost.toFixed(4),
+          averageCost: newAverageCost.toFixed(6),
           updatedAt: sql`NOW()`,
           updatedById: updatedById,
         })

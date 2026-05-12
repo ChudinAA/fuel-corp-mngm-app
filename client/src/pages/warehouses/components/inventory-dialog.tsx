@@ -33,7 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import type { Warehouse } from "@shared/schema";
 import { PRODUCT_TYPE } from "@shared/constants";
-import { formatNumber, formatCurrency } from "../utils";
+import { formatNumber, formatCost } from "../utils";
 
 const inventorySchema = z.object({
   productType: z.string().min(1, "Выберите тип продукта"),
@@ -211,7 +211,7 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
                       </div>
                       <div>
                         <span className="text-muted-foreground text-xs">Себестоимость:</span>
-                        <p className="font-semibold">{formatCurrency(currentCost)}/кг</p>
+                        <p className="font-semibold">{formatCost(currentCost)}/кг</p>
                       </div>
                     </div>
                   )}
@@ -249,7 +249,7 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
                       <Input
                         type="number"
                         min="0"
-                        step="0.0001"
+                        step="0.000001"
                         placeholder="Желаемая себестоимость на дату"
                         data-testid="input-inventory-target-cost"
                         {...field}

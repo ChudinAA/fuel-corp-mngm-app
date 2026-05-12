@@ -189,7 +189,7 @@ export class WarehouseRecalculationService {
           .update(warehouseTransactions)
           .set({
             balanceBefore: currentBalance.toFixed(2),
-            averageCostBefore: currentAverageCost.toFixed(4),
+            averageCostBefore: currentAverageCost.toFixed(6),
             // balanceAfter and averageCostAfter are preserved as user-set values
             sum: newSum.toFixed(2),
             price: newPrice.toFixed(4),
@@ -229,8 +229,8 @@ export class WarehouseRecalculationService {
           .set({
             balanceBefore: currentBalance.toString(),
             balanceAfter: newBalance.toString(),
-            averageCostBefore: currentAverageCost.toFixed(4),
-            averageCostAfter: newAverageCost.toFixed(4),
+            averageCostBefore: currentAverageCost.toFixed(6),
+            averageCostAfter: newAverageCost.toFixed(6),
             sum: newSum.toFixed(2),
             price: newPrice.toFixed(4),
             updatedAt: sql`NOW()`,
@@ -256,8 +256,8 @@ export class WarehouseRecalculationService {
           .set({
             balanceBefore: currentBalance.toString(),
             balanceAfter: newBalance.toString(),
-            averageCostBefore: currentAverageCost.toFixed(4),
-            averageCostAfter: newAverageCost.toFixed(4),
+            averageCostBefore: currentAverageCost.toFixed(6),
+            averageCostAfter: newAverageCost.toFixed(6),
             sum: newSum.toFixed(2),
             price: newPrice.toFixed(4),
             updatedAt: sql`NOW()`,
@@ -327,10 +327,10 @@ export class WarehouseRecalculationService {
 
     if (isPvkj) {
       updateData.pvkjBalance = currentBalance.toFixed(2);
-      updateData.pvkjAverageCost = currentAverageCost.toFixed(4);
+      updateData.pvkjAverageCost = currentAverageCost.toFixed(6);
     } else {
       updateData.currentBalance = currentBalance.toFixed(2);
-      updateData.averageCost = currentAverageCost.toFixed(4);
+      updateData.averageCost = currentAverageCost.toFixed(6);
     }
 
     await tx
@@ -512,9 +512,9 @@ export class WarehouseRecalculationService {
       await tx
         .update(movement)
         .set({
-          purchasePrice: newSourceAverageCost.toFixed(4),
+          purchasePrice: newSourceAverageCost.toFixed(6),
           totalCost: newTotalCost.toFixed(2),
-          costPerKg: costPerKg.toFixed(4),
+          costPerKg: costPerKg.toFixed(6),
           updatedAt: sql`NOW()`,
         })
         .where(eq(movement.id, movementId));
@@ -666,7 +666,7 @@ export class WarehouseRecalculationService {
         });
 
         console.log("        ОПТ сделка после обновления:", {
-          purchasePrice: newAverageCost.toFixed(4),
+          purchasePrice: newAverageCost.toFixed(6),
           purchaseAmount: purchaseAmount.toFixed(2),
           profit: profit.toFixed(2),
         });
@@ -674,7 +674,7 @@ export class WarehouseRecalculationService {
         await tx
           .update(opt)
           .set({
-            purchasePrice: newAverageCost.toFixed(4),
+            purchasePrice: newAverageCost.toFixed(6),
             purchaseAmount: purchaseAmount.toFixed(2),
             profit: profit.toFixed(2),
             purchasePriceModified: true,
@@ -705,7 +705,7 @@ export class WarehouseRecalculationService {
         });
 
         console.log("        Заправка после обновления:", {
-          purchasePrice: newAverageCost.toFixed(4),
+          purchasePrice: newAverageCost.toFixed(6),
           purchaseAmount: purchaseAmount.toFixed(2),
           profit: profit.toFixed(2),
         });
@@ -713,7 +713,7 @@ export class WarehouseRecalculationService {
         await tx
           .update(aircraftRefueling)
           .set({
-            purchasePrice: newAverageCost.toFixed(4),
+            purchasePrice: newAverageCost.toFixed(6),
             purchaseAmount: purchaseAmount.toFixed(2),
             profit: profit.toFixed(2),
             purchasePriceModified: true,

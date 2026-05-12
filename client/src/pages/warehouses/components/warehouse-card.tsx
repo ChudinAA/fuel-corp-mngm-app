@@ -49,7 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import type { Warehouse, Base } from "@shared/schema";
 import type { WarehouseTransaction } from "../types";
-import { formatNumber, formatCurrency } from "../utils";
+import { formatNumber, formatCurrency, formatCost } from "../utils";
 import { BASE_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
 import { ProductTypeBadge } from "@/components/product-type-badge";
@@ -382,7 +382,7 @@ export function WarehouseCard({
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>
                 Себестоимость:{" "}
-                <span className="font-medium">{formatCurrency(cost)}/кг</span>
+                <span className="font-medium">{formatCost(cost)}/кг</span>
               </span>
               <div className="flex flex-col items-end text-xs gap-0.5">
                 <span className="text-muted-foreground text-[12px]">
@@ -418,7 +418,7 @@ export function WarehouseCard({
                 <span>
                   Себестоимость:{" "}
                   <span className="font-medium">
-                    {formatCurrency(pvkjCost)}/кг
+                    {formatCost(pvkjCost)}/кг
                   </span>
                 </span>
                 <div className="flex flex-col items-end text-xs gap-0.5">
