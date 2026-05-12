@@ -356,6 +356,81 @@ export class WarehouseStorage {
     };
   }
 
+  async createInventoryTransaction(params: {
+    warehouseId: string;
+    productType: string;
+    targetDate: string;
+    targetBalance: number;
+    targetAverageCost: number;
+    userId?: string;
+  }): Promise<{ message: string; limitExpiresAt?: string }> {
+    const { warehouseId, productType, targetDate, targetBalance, targetAverageCost, userId } = params;
+    const dateObj = new Date(targetDate);
+    const balanceAtDate = await this.getWarehouseBalanceAtDate(warehouseId, dateObj, productType);
+
+    const currentBalance = parseFloat(balanceAtDate.balance);
+    const currentAverageCost = parseFloat(balanceAtDate.averageCost);
+
+    const delta = targetBalance - currentBalance;
+    const deltaCost = targetBalance * targetAverageCost - currentBalance * currentAverageCost;
+    const absQuantity = Math.abs(delta);
+    const transactionQuantity = delta >= 0 ? absQuantity : -absQuantity;
+
+    const { format } = await import("date-fns");
+    const txDate = format(
+      new Date(new Date(targetDate).setHours(23, 59, 0, 0)),
+      "yyyy-MM-dd'T'HH:mm:ss",
+    );
+
+    const { PRODUCT_TYPE: PT, TRANSACTION_TYPE: TT } = await import("@shared/constants");
+
+    await db.transaction(async (tx) => {
+      await tx
+        .insert(warehouseTransactions)
+        .values({
+          warehouseId,
+          transactionType: TT.INVENTORY,
+          productType,
+          sourceType: "inventory",
+          sourceId: warehouseId,
+          quantity: transactionQuantity.toFixed(2),
+          sum: deltaCost.toFixed(2),
+          price: absQuantity > 0 ? (Math.abs(deltaCost) / absQuantity).toFixed(4) : "0",
+          balanceBefore: currentBalance.toFixed(2),
+          balanceAfter: targetBalance.toFixed(2),
+          averageCostBefore: currentAverageCost.toFixed(4),
+          averageCostAfter: targetAverageCost.toFixed(4),
+          transactionDate: txDate,
+          createdById: userId,
+        });
+
+      const isPvkj = productType === PT.PVKJ;
+      if (isPvkj) {
+        await tx
+          .update(warehouses)
+          .set({
+            pvkjBalance: targetBalance.toFixed(2),
+            pvkjAverageCost: targetAverageCost.toFixed(4),
+            updatedAt: sql`NOW()`,
+            updatedById: userId,
+          })
+          .where(eq(warehouses.id, warehouseId));
+      } else {
+        await tx
+          .update(warehouses)
+          .set({
+            currentBalance: targetBalance.toFixed(2),
+            averageCost: targetAverageCost.toFixed(4),
+            updatedAt: sql`NOW()`,
+            updatedById: userId,
+          })
+          .where(eq(warehouses.id, warehouseId));
+      }
+    });
+
+    return { message: "Инвентаризация выполнена успешно" };
+  }
+
   async getWarehouseStatsForDashboard(): Promise<any[]> {
     const warehousesList = await db.query.warehouses.findMany({
       where: and(eq(warehouses.isActive, true), isNull(warehouses.deletedAt)),

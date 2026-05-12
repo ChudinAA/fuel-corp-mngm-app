@@ -1,6 +1,16 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -89,6 +99,7 @@ export function WarehouseCard({
   const [confirmMessage, setConfirmMessage] = useState("");
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [limitOpen, setLimitOpen] = useState(false);
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
   const balance = parseFloat(warehouse.currentBalance || "0");
   const cost = parseFloat(warehouse.averageCost || "0");
   const pvkjBalance = parseFloat(warehouse.pvkjBalance || "0");
@@ -169,13 +180,7 @@ export function WarehouseCard({
 
   const handlePinClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const isPinned = !!warehouse.isPinned;
-    const message = isPinned
-      ? "Открепить склад?"
-      : "Закрепить склад сверху?";
-    if (window.confirm(message)) {
-      pinMutation.mutate(!isPinned);
-    }
+    setPinDialogOpen(true);
   };
 
   return (
@@ -487,6 +492,33 @@ export function WarehouseCard({
         />
         <ErrorModalComponent />
       </Card>
+
+      {/* Pin confirm dialog */}
+      <AlertDialog open={pinDialogOpen} onOpenChange={setPinDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {warehouse.isPinned ? "Открепить склад?" : "Закрепить склад сверху?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {warehouse.isPinned
+                ? `Склад «${warehouse.name}» будет убран из закреплённых и перемещён в обычный список.`
+                : `Склад «${warehouse.name}» будет закреплён и будет всегда отображаться в верхней части страницы.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                pinMutation.mutate(!warehouse.isPinned);
+                setPinDialogOpen(false);
+              }}
+            >
+              {warehouse.isPinned ? "Открепить" : "Закрепить"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Dialogs outside the Card to avoid nesting issues */}
       <InventoryDialog

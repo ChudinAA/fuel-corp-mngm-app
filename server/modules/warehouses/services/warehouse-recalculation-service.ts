@@ -152,11 +152,13 @@ export class WarehouseRecalculationService {
       const isReceipt =
         transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
         transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
+      const isInventory =
+        transaction.transactionType === TRANSACTION_TYPE.INVENTORY;
 
       console.log(
         "      Quantity:",
         quantity,
-        isReceipt ? "(приход)" : "(расход)",
+        isInventory ? "(инвентаризация — checkpoint)" : isReceipt ? "(приход)" : "(расход)",
       );
       console.log("      До пересчета:", {
         balance: currentBalance,
@@ -168,7 +170,34 @@ export class WarehouseRecalculationService {
       let newSum: number;
       let newPrice: number;
 
-      if (isReceipt) {
+      if (isInventory) {
+        // Inventory is a checkpoint: its balanceAfter/averageCostAfter are the
+        // user-specified target values and must NOT be recalculated from running state.
+        // We only update balanceBefore/averageCostBefore to the current running values.
+        newBalance = parseFloat(transaction.balanceAfter || "0");
+        newAverageCost = parseFloat(transaction.averageCostAfter || "0");
+        const delta = newBalance - currentBalance;
+        newSum = delta * newAverageCost;
+        newPrice = newAverageCost;
+
+        console.log(
+          "      INVENTORY checkpoint: сохраняем balanceAfter=", newBalance,
+          " averageCostAfter=", newAverageCost,
+        );
+
+        await tx
+          .update(warehouseTransactions)
+          .set({
+            balanceBefore: currentBalance.toFixed(2),
+            averageCostBefore: currentAverageCost.toFixed(4),
+            // balanceAfter and averageCostAfter are preserved as user-set values
+            sum: newSum.toFixed(2),
+            price: newPrice.toFixed(4),
+            updatedAt: sql`NOW()`,
+            updatedById,
+          })
+          .where(eq(warehouseTransactions.id, transaction.id));
+      } else if (isReceipt) {
         newBalance = currentBalance + quantity;
 
         const incomingCost = await this.getTransactionIncomingCost(
@@ -187,34 +216,55 @@ export class WarehouseRecalculationService {
 
         newSum = incomingCost;
         newPrice = quantity > 0 ? incomingCost / quantity : 0;
+
+        console.log("      После пересчета:", {
+          balance: newBalance,
+          averageCost: newAverageCost,
+          sum: newSum,
+          price: newPrice,
+        });
+
+        await tx
+          .update(warehouseTransactions)
+          .set({
+            balanceBefore: currentBalance.toString(),
+            balanceAfter: newBalance.toString(),
+            averageCostBefore: currentAverageCost.toFixed(4),
+            averageCostAfter: newAverageCost.toFixed(4),
+            sum: newSum.toFixed(2),
+            price: newPrice.toFixed(4),
+            updatedAt: sql`NOW()`,
+            updatedById,
+          })
+          .where(eq(warehouseTransactions.id, transaction.id));
       } else {
         newBalance = Math.max(0, currentBalance - quantity);
         newAverageCost = currentAverageCost;
 
         newSum = quantity * currentAverageCost;
         newPrice = currentAverageCost;
+
+        console.log("      После пересчета:", {
+          balance: newBalance,
+          averageCost: newAverageCost,
+          sum: newSum,
+          price: newPrice,
+        });
+
+        await tx
+          .update(warehouseTransactions)
+          .set({
+            balanceBefore: currentBalance.toString(),
+            balanceAfter: newBalance.toString(),
+            averageCostBefore: currentAverageCost.toFixed(4),
+            averageCostAfter: newAverageCost.toFixed(4),
+            sum: newSum.toFixed(2),
+            price: newPrice.toFixed(4),
+            updatedAt: sql`NOW()`,
+            updatedById,
+          })
+          .where(eq(warehouseTransactions.id, transaction.id));
       }
-
-      console.log("      После пересчета:", {
-        balance: newBalance,
-        averageCost: newAverageCost,
-        sum: newSum,
-        price: newPrice,
-      });
-
-      await tx
-        .update(warehouseTransactions)
-        .set({
-          balanceBefore: currentBalance.toString(),
-          balanceAfter: newBalance.toString(),
-          averageCostBefore: currentAverageCost.toFixed(4),
-          averageCostAfter: newAverageCost.toFixed(4),
-          sum: newSum.toFixed(2),
-          price: newPrice.toFixed(4),
-          updatedAt: sql`NOW()`,
-          updatedById,
-        })
-        .where(eq(warehouseTransactions.id, transaction.id));
 
       console.log("      ✓ Транзакция обновлена в БД");
 

@@ -7,8 +7,8 @@ import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 import { SSEService } from "../../../services/sse-service";
 import { db } from "../../../db";
-import { warehouses, warehouseTransactions } from "@shared/schema";
-import { eq, sql, isNull, and, desc } from "drizzle-orm";
+import { warehouses } from "@shared/schema";
+import { eq, sql } from "drizzle-orm";
 import { RecalculationQueueService } from "../services/recalculation-queue-service";
 import { format } from "date-fns";
 
@@ -304,73 +304,21 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           return res.status(400).json({ message: "Не указаны обязательные параметры" });
         }
 
-        const dateObj = new Date(targetDate);
-        const balanceAtDate = await storage.warehouses.getWarehouseBalanceAtDate(
+        const result = await storage.warehouses.createInventoryTransaction({
           warehouseId,
-          dateObj,
           productType,
-        );
+          targetDate,
+          targetBalance: parseFloat(targetBalance),
+          targetAverageCost: parseFloat(targetAverageCost),
+          userId,
+        });
 
-        const currentBalance = parseFloat(balanceAtDate.balance);
-        const currentAverageCost = parseFloat(balanceAtDate.averageCost);
-        const tgtBalance = parseFloat(targetBalance);
-        const tgtCost = parseFloat(targetAverageCost);
-
-        const delta = tgtBalance - currentBalance;
-        const deltaCost = tgtBalance * tgtCost - currentBalance * currentAverageCost;
-        const absQuantity = Math.abs(delta);
-        const transactionQuantity = delta >= 0 ? absQuantity : -absQuantity;
-
+        // Determine txDate for recalculation queue (same as used in storage)
         const txDate = format(
           new Date(new Date(targetDate).setHours(23, 59, 0, 0)),
           "yyyy-MM-dd'T'HH:mm:ss",
         );
 
-        await db.transaction(async (tx) => {
-          await tx
-            .insert(warehouseTransactions)
-            .values({
-              warehouseId,
-              transactionType: TRANSACTION_TYPE.INVENTORY,
-              productType,
-              sourceType: "inventory",
-              sourceId: warehouseId,
-              quantity: transactionQuantity.toFixed(2),
-              sum: deltaCost.toFixed(2),
-              price: absQuantity > 0 ? (Math.abs(deltaCost) / absQuantity).toFixed(4) : "0",
-              balanceBefore: currentBalance.toFixed(2),
-              balanceAfter: tgtBalance.toFixed(2),
-              averageCostBefore: currentAverageCost.toFixed(4),
-              averageCostAfter: tgtCost.toFixed(4),
-              transactionDate: txDate,
-              createdById: userId,
-            });
-
-          const isPvkj = productType === PRODUCT_TYPE.PVKJ;
-          if (isPvkj) {
-            await tx
-              .update(warehouses)
-              .set({
-                pvkjBalance: tgtBalance.toFixed(2),
-                pvkjAverageCost: tgtCost.toFixed(4),
-                updatedAt: sql`NOW()`,
-                updatedById: userId,
-              })
-              .where(eq(warehouses.id, warehouseId));
-          } else {
-            await tx
-              .update(warehouses)
-              .set({
-                currentBalance: tgtBalance.toFixed(2),
-                averageCost: tgtCost.toFixed(4),
-                updatedAt: sql`NOW()`,
-                updatedById: userId,
-              })
-              .where(eq(warehouses.id, warehouseId));
-          }
-        });
-
-        // Queue recalculation for all transactions after the inventory date
         await RecalculationQueueService.addToQueue(
           warehouseId,
           productType,
@@ -379,7 +327,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           1,
         );
 
-        res.json({ message: "Инвентаризация выполнена успешно" });
+        res.json(result);
       } catch (error: any) {
         console.error("Inventory error:", error);
         res.status(500).json({ message: "Ошибка инвентаризации", error: error.message });

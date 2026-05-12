@@ -25,6 +25,7 @@ import type { MovementFormData } from "../schemas";
 import type { VatAdjustment } from "../hooks/use-movement-calculations";
 
 interface WarehouseService {
+  serviceName?: string | null;
   serviceType: string;
   serviceValue: string;
 }
@@ -46,11 +47,12 @@ interface MovementCostSummaryProps {
   rawTotalCost?: number;
 }
 
-function getServiceTypeLabel(serviceType: string): string {
-  if (serviceType === "royalty_per_ton") return "Роялти/т";
-  if (serviceType === "percent_of_amount") return "% от суммы";
-  if (serviceType === "fixed") return "Фикс.";
-  return serviceType;
+function getServiceTypeLabel(service: WarehouseService): string {
+  if (service.serviceName && service.serviceName.trim()) return service.serviceName.trim();
+  if (service.serviceType === "royalty_per_ton") return "Роялти/т";
+  if (service.serviceType === "percent_of_amount") return "% от суммы";
+  if (service.serviceType === "fixed") return "Фикс.";
+  return service.serviceType;
 }
 
 function getServiceTypeDescription(service: WarehouseService): string {
@@ -177,7 +179,7 @@ export function MovementCostSummary({
                     className="text-[10px] px-1.5 py-0 h-4 font-normal"
                     title={getServiceTypeDescription(svc)}
                   >
-                    {getServiceTypeLabel(svc.serviceType)}
+                    {getServiceTypeLabel(svc)}
                   </Badge>
                 ))}
               </div>
