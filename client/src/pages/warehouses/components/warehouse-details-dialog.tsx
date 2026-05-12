@@ -166,6 +166,15 @@ export function WarehouseDetailsDialog({
         if (price > 0) {
           pData.avgPrice = price;
         }
+      } else if (tx.transactionType === TRANSACTION_TYPE.INVENTORY) {
+        // Inventory transaction: can be positive or negative delta
+        if (qty >= 0) {
+          pData.receiptKg += qty;
+          pData.receiptSum += Math.max(0, sum);
+        } else {
+          pData.expenseKg += Math.abs(qty);
+          pData.expenseSum += Math.abs(sum);
+        }
       } else {
         pData.expenseKg += Math.abs(qty);
         pData.expenseSum += sum;
@@ -187,6 +196,9 @@ export function WarehouseDetailsDialog({
     ) {
       return <ArrowUpCircle className="h-5 w-5 text-green-600" />;
     }
+    if (type === TRANSACTION_TYPE.INVENTORY) {
+      return <Package className="h-5 w-5 text-blue-500" />;
+    }
     return <ArrowDownCircle className="h-5 w-5 text-red-600" />;
   };
 
@@ -201,6 +213,8 @@ export function WarehouseDetailsDialog({
         return "Перемещение (приход)";
       case TRANSACTION_TYPE.TRANSFER_OUT:
         return "Перемещение (расход)";
+      case TRANSACTION_TYPE.INVENTORY:
+        return "Инв.";
       case TRANSACTION_TYPE.SALE:
         if (sourceType === SOURCE_TYPE.REFUELING)
           return "Продажа (Заправка ВС)";

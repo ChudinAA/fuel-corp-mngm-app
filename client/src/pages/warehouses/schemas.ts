@@ -18,6 +18,7 @@ export const newWarehouseFormSchema = z.object({
   isBase: z.boolean().default(false),
   isExport: z.boolean().default(false),
   services: z.array(z.object({
+    serviceName: z.string().optional().default(""),
     serviceType: z.string().min(1, "Выберите тип услуги"),
     serviceValue: z.union([z.string(), z.number()])
       .transform(v => String(v))

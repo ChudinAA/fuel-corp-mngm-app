@@ -49,6 +49,10 @@ export const warehouses = pgTable(
     isExport: boolean("is_export").default(false),
     isRecalculating: boolean("is_recalculating").default(false),
     isActive: boolean("is_active").default(true),
+    isPinned: boolean("is_pinned").default(false),
+    limitVolume: decimal("limit_volume", { precision: 15, scale: 2 }),
+    limitProductType: text("limit_product_type"),
+    limitExpiresAt: date("limit_expires_at"),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
     createdById: uuid("created_by_id").references(() => users.id),
@@ -202,9 +206,14 @@ export const insertWarehouseSchema = z.object({
   pvkjAverageCost: z.string().optional().nullable(),
   isExport: z.boolean().optional().default(false),
   isActive: z.boolean().optional(),
+  isPinned: z.boolean().optional().default(false),
+  limitVolume: z.string().optional().nullable(),
+  limitProductType: z.string().optional().nullable(),
+  limitExpiresAt: z.string().optional().nullable(),
   createdById: z.string().uuid(),
   baseIds: z.array(z.string().uuid()).optional(),
   services: z.array(z.object({
+    serviceName: z.string().optional().nullable(),
     serviceType: z.string(),
     serviceValue: z.string(),
   })).optional(),
@@ -218,7 +227,7 @@ export const insertWarehouseTransactionSchema = createInsertSchema(
 
 export type Warehouse = typeof warehouses.$inferSelect & {
   baseIds?: string[];
-  services?: Array<{ id: string; serviceType: string; serviceValue: string }>;
+  services?: Array<{ id: string; serviceName?: string | null; serviceType: string; serviceValue: string }>;
 };
 export type InsertWarehouse = z.infer<typeof insertWarehouseSchema>;
 

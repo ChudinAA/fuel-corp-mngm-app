@@ -20,6 +20,7 @@ export const TRANSACTION_TYPE = {
   RECEIPT: "receipt",
   TRANSFER_IN: "transfer_in",
   TRANSFER_OUT: "transfer_out",
+  INVENTORY: "inventory",
 } as const;
 
 // Transaction source types for warehouse operations

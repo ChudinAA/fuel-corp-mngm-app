@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Warehouse, History, Globe, Plane } from "lucide-react";
+import { Plus, Search, Warehouse, History, Globe, Plane, Pin } from "lucide-react";
 import { ExportButton } from "@/components/export/export-button";
 import { AuditPanel } from "@/components/audit-panel";
 import type { Warehouse as WarehouseType } from "@shared/schema";
@@ -37,10 +37,13 @@ export default function WarehousesPage() {
       return matchesSearch;
     }) || [];
 
-  const commonWarehouses = filteredWarehouses.filter(
+  const pinnedWarehouses = filteredWarehouses.filter((w) => !!w.isPinned);
+  const unpinnedWarehouses = filteredWarehouses.filter((w) => !w.isPinned);
+
+  const commonWarehouses = unpinnedWarehouses.filter(
     (w) => w.equipmentType !== EQUIPMENT_TYPE.LIK,
   );
-  const baseWarehouses = filteredWarehouses.filter(
+  const baseWarehouses = unpinnedWarehouses.filter(
     (w) => w.equipmentType === EQUIPMENT_TYPE.LIK,
   );
 
@@ -130,6 +133,27 @@ export default function WarehousesPage() {
           </Card>
         ) : (
           <div className="space-y-8">
+            {/* Pinned warehouses section */}
+            {pinnedWarehouses.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                  <Pin className="h-4 w-4 fill-current" />
+                  Закреплённые
+                </h2>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {pinnedWarehouses.map((warehouse) => (
+                    <WarehouseCard
+                      key={warehouse.id}
+                      warehouse={warehouse}
+                      onEdit={handleEdit}
+                      onViewDetails={handleViewDetails}
+                      isBase={warehouse.equipmentType === EQUIPMENT_TYPE.LIK}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {commonWarehouses.length > 0 && (
               <div className="space-y-3">
                 <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">

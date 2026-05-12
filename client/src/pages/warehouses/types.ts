@@ -16,6 +16,7 @@ export interface WarehouseTransaction {
 }
 
 export interface WarehouseServiceEntry {
+  serviceName: string;
   serviceType: string;
   serviceValue: string;
 }

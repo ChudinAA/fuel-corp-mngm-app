@@ -11,6 +11,7 @@ export const warehouseServices = pgTable(
     warehouseId: uuid("warehouse_id")
       .notNull()
       .references(() => warehouses.id, { onDelete: "cascade" }),
+    serviceName: text("service_name"),
     serviceType: text("service_type").notNull(),
     serviceValue: decimal("service_value", { precision: 15, scale: 6 }).notNull(),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),

@@ -4,8 +4,13 @@ import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
-import { PRODUCT_TYPE } from "@shared/constants";
+import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 import { SSEService } from "../../../services/sse-service";
+import { db } from "../../../db";
+import { warehouses, warehouseTransactions } from "@shared/schema";
+import { eq, sql, isNull, and, desc } from "drizzle-orm";
+import { RecalculationQueueService } from "../services/recalculation-queue-service";
+import { format } from "date-fns";
 
 export function registerWarehousesOperationsRoutes(app: Express) {
   app.get(
@@ -45,12 +50,10 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       try {
         const { createSupplier, bases, services, ...warehouseData } = req.body;
 
-        // Extract baseIds from bases array or use empty array
         const baseIds = Array.isArray(bases)
           ? bases.map((b: { baseId: string }) => b.baseId).filter(Boolean)
           : [];
 
-        // Parse services array
         const parsedServices = Array.isArray(services)
           ? services.filter((s: any) => s.serviceType && s.serviceValue)
           : [];
@@ -68,7 +71,6 @@ export function registerWarehousesOperationsRoutes(app: Express) {
 
         const item = await storage.warehouses.createWarehouse(data);
 
-        // Automatically create supplier if requested
         if (createSupplier && baseIds.length > 0) {
           try {
             const supplierData: any = {
@@ -96,7 +98,6 @@ export function registerWarehousesOperationsRoutes(app: Express) {
               "Failed to auto-create supplier for warehouse:",
               suppError,
             );
-            // Don't fail warehouse creation if auto-supplier fails (e.g. dupe)
           }
         }
 
@@ -133,22 +134,14 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         const id = req.params.id;
         const { bases, services, ...warehouseData } = req.body;
 
-        // Extract baseIds from bases array if provided
         const updateData: any = {
           ...warehouseData,
           updatedById: req.session.userId,
         };
 
-        // Convert empty strings to null for numeric fields
-        if (updateData.storageCost === "") {
-          updateData.storageCost = null;
-        }
-        if (updateData.pvkjBalance === "") {
-          updateData.pvkjBalance = null;
-        }
-        if (updateData.pvkjAverageCost === "") {
-          updateData.pvkjAverageCost = null;
-        }
+        if (updateData.storageCost === "") updateData.storageCost = null;
+        if (updateData.pvkjBalance === "") updateData.pvkjBalance = null;
+        if (updateData.pvkjAverageCost === "") updateData.pvkjAverageCost = null;
 
         if (bases !== undefined) {
           updateData.baseIds = Array.isArray(bases)
@@ -189,14 +182,12 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       try {
         const id = req.params.id;
 
-        // Get warehouse to check if it's linked to a supplier
         const warehouse = await storage.warehouses.getWarehouse(id);
 
         if (!warehouse) {
           return res.status(404).json({ message: "Склад не найден" });
         }
 
-        // Update supplier if warehouse is linked to one
         if (warehouse.supplierId) {
           try {
             await storage.suppliers.updateSupplier(warehouse.supplierId, {
@@ -209,7 +200,6 @@ export function registerWarehousesOperationsRoutes(app: Express) {
               "Error updating supplier during warehouse deletion:",
               supplierError,
             );
-            // Continue with warehouse deletion even if supplier update fails
           }
         }
 
@@ -226,6 +216,173 @@ export function registerWarehousesOperationsRoutes(app: Express) {
             message: "Ошибка удаления склада",
             error: error?.message || String(error),
           });
+      }
+    },
+  );
+
+  // ===== PIN WAREHOUSE =====
+  app.patch(
+    "/api/warehouses/:id/pin",
+    requireAuth,
+    requirePermission("warehouses", "edit"),
+    async (req, res) => {
+      try {
+        const warehouseId = req.params.id;
+        const { isPinned } = req.body;
+        const userId = req.session.userId ? String(req.session.userId) : undefined;
+
+        await db
+          .update(warehouses)
+          .set({
+            isPinned: isPinned ?? true,
+            updatedAt: sql`NOW()`,
+            updatedById: userId,
+          })
+          .where(eq(warehouses.id, warehouseId));
+
+        const updated = await storage.warehouses.getWarehouse(warehouseId);
+        if (!updated) return res.status(404).json({ message: "Склад не найден" });
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Pin warehouse error:", error);
+        res.status(500).json({ message: "Ошибка закрепления склада", error: error.message });
+      }
+    },
+  );
+
+  // ===== SET LIMIT =====
+  app.post(
+    "/api/warehouses/:id/set-limit",
+    requireAuth,
+    requirePermission("warehouses", "edit"),
+    async (req, res) => {
+      try {
+        const warehouseId = req.params.id;
+        const { limitVolume, limitProductType } = req.body;
+        const userId = req.session.userId ? String(req.session.userId) : undefined;
+
+        let limitExpiresAt: string | null = null;
+        if (limitVolume) {
+          const now = new Date();
+          const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+          limitExpiresAt = format(nextMonth, "yyyy-MM-dd");
+        }
+
+        await db
+          .update(warehouses)
+          .set({
+            limitVolume: limitVolume ? String(limitVolume) : null,
+            limitProductType: limitVolume ? (limitProductType || PRODUCT_TYPE.KEROSENE) : null,
+            limitExpiresAt: limitExpiresAt,
+            updatedAt: sql`NOW()`,
+            updatedById: userId,
+          })
+          .where(eq(warehouses.id, warehouseId));
+
+        const updated = await storage.warehouses.getWarehouse(warehouseId);
+        if (!updated) return res.status(404).json({ message: "Склад не найден" });
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Set limit error:", error);
+        res.status(500).json({ message: "Ошибка установки лимита", error: error.message });
+      }
+    },
+  );
+
+  // ===== INVENTORY =====
+  app.post(
+    "/api/warehouses/:id/inventory",
+    requireAuth,
+    requirePermission("warehouses", "edit"),
+    async (req, res) => {
+      try {
+        const warehouseId = req.params.id;
+        const { productType, targetDate, targetBalance, targetAverageCost } = req.body;
+        const userId = req.session.userId ? String(req.session.userId) : undefined;
+
+        if (!productType || !targetDate || targetBalance === undefined || targetAverageCost === undefined) {
+          return res.status(400).json({ message: "Не указаны обязательные параметры" });
+        }
+
+        const dateObj = new Date(targetDate);
+        const balanceAtDate = await storage.warehouses.getWarehouseBalanceAtDate(
+          warehouseId,
+          dateObj,
+          productType,
+        );
+
+        const currentBalance = parseFloat(balanceAtDate.balance);
+        const currentAverageCost = parseFloat(balanceAtDate.averageCost);
+        const tgtBalance = parseFloat(targetBalance);
+        const tgtCost = parseFloat(targetAverageCost);
+
+        const delta = tgtBalance - currentBalance;
+        const deltaCost = tgtBalance * tgtCost - currentBalance * currentAverageCost;
+        const absQuantity = Math.abs(delta);
+        const transactionQuantity = delta >= 0 ? absQuantity : -absQuantity;
+
+        const txDate = format(
+          new Date(new Date(targetDate).setHours(23, 59, 0, 0)),
+          "yyyy-MM-dd'T'HH:mm:ss",
+        );
+
+        await db.transaction(async (tx) => {
+          await tx
+            .insert(warehouseTransactions)
+            .values({
+              warehouseId,
+              transactionType: TRANSACTION_TYPE.INVENTORY,
+              productType,
+              sourceType: "inventory",
+              sourceId: warehouseId,
+              quantity: transactionQuantity.toFixed(2),
+              sum: deltaCost.toFixed(2),
+              price: absQuantity > 0 ? (Math.abs(deltaCost) / absQuantity).toFixed(4) : "0",
+              balanceBefore: currentBalance.toFixed(2),
+              balanceAfter: tgtBalance.toFixed(2),
+              averageCostBefore: currentAverageCost.toFixed(4),
+              averageCostAfter: tgtCost.toFixed(4),
+              transactionDate: txDate,
+              createdById: userId,
+            });
+
+          const isPvkj = productType === PRODUCT_TYPE.PVKJ;
+          if (isPvkj) {
+            await tx
+              .update(warehouses)
+              .set({
+                pvkjBalance: tgtBalance.toFixed(2),
+                pvkjAverageCost: tgtCost.toFixed(4),
+                updatedAt: sql`NOW()`,
+                updatedById: userId,
+              })
+              .where(eq(warehouses.id, warehouseId));
+          } else {
+            await tx
+              .update(warehouses)
+              .set({
+                currentBalance: tgtBalance.toFixed(2),
+                averageCost: tgtCost.toFixed(4),
+                updatedAt: sql`NOW()`,
+                updatedById: userId,
+              })
+              .where(eq(warehouses.id, warehouseId));
+          }
+        });
+
+        // Queue recalculation for all transactions after the inventory date
+        await RecalculationQueueService.addToQueue(
+          warehouseId,
+          productType,
+          txDate,
+          userId,
+          1,
+        );
+
+        res.json({ message: "Инвентаризация выполнена успешно" });
+      } catch (error: any) {
+        console.error("Inventory error:", error);
+        res.status(500).json({ message: "Ошибка инвентаризации", error: error.message });
       }
     },
   );

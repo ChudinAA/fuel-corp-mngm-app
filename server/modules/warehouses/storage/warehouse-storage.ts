@@ -17,7 +17,7 @@ export class WarehouseStorage {
   async getAllWarehouses(): Promise<Warehouse[]> {
     const warehousesList = await db.query.warehouses.findMany({
       where: isNull(warehouses.deletedAt),
-      orderBy: (warehouses, { asc }) => [asc(warehouses.name)],
+      orderBy: (warehouses, { asc, desc }) => [desc(warehouses.isPinned), asc(warehouses.name)],
       with: {
         supplier: {
           columns: {
@@ -39,6 +39,7 @@ export class WarehouseStorage {
       baseIds: w.warehouseBases?.map((wb) => wb.baseId) || [],
       services: w.warehouseServices?.map((s) => ({
         id: s.id,
+        serviceName: s.serviceName,
         serviceType: s.serviceType,
         serviceValue: s.serviceValue,
       })) || [],
@@ -71,6 +72,7 @@ export class WarehouseStorage {
       baseIds: warehouse.warehouseBases?.map((wb) => wb.baseId) || [],
       services: warehouse.warehouseServices?.map((s) => ({
         id: s.id,
+        serviceName: s.serviceName,
         serviceType: s.serviceType,
         serviceValue: s.serviceValue,
       })) || [],
@@ -78,7 +80,7 @@ export class WarehouseStorage {
   }
 
   async createWarehouse(
-    data: InsertWarehouse & { baseIds?: string[]; services?: Array<{ serviceType: string; serviceValue: string }> },
+    data: InsertWarehouse & { baseIds?: string[]; services?: Array<{ serviceName?: string | null; serviceType: string; serviceValue: string }> },
   ): Promise<Warehouse> {
     const { baseIds, services, ...warehouseData } = data;
 
@@ -113,6 +115,7 @@ export class WarehouseStorage {
         await tx.insert(warehouseServices).values(
           services.map((s) => ({
             warehouseId: created.id,
+            serviceName: s.serviceName || null,
             serviceType: s.serviceType,
             serviceValue: String(s.serviceValue),
           })),
@@ -122,14 +125,14 @@ export class WarehouseStorage {
       return {
         ...created,
         baseIds: baseIds || [],
-        services: services?.map((s, i) => ({ id: "", ...s })) || [],
+        services: services?.map((s, i) => ({ id: "", serviceName: s.serviceName || null, ...s })) || [],
       };
     });
   }
 
   async updateWarehouse(
     id: string,
-    data: Partial<InsertWarehouse> & { baseIds?: string[]; services?: Array<{ serviceType: string; serviceValue: string }> },
+    data: Partial<InsertWarehouse> & { baseIds?: string[]; services?: Array<{ serviceName?: string | null; serviceType: string; serviceValue: string }> },
   ): Promise<Warehouse | undefined> {
     const { baseIds, services, ...warehouseData } = data;
 
@@ -169,6 +172,7 @@ export class WarehouseStorage {
           await tx.insert(warehouseServices).values(
             services.map((s) => ({
               warehouseId: id,
+              serviceName: s.serviceName || null,
               serviceType: s.serviceType,
               serviceValue: String(s.serviceValue),
             })),
@@ -197,6 +201,7 @@ export class WarehouseStorage {
         services:
           warehouseWithRelations.warehouseServices?.map((s) => ({
             id: s.id,
+            serviceName: s.serviceName,
             serviceType: s.serviceType,
             serviceValue: s.serviceValue,
           })) || [],
@@ -347,7 +352,7 @@ export class WarehouseStorage {
 
     return {
       balance: lastTransaction?.balanceAfter || "0",
-      averageCost: lastTransaction.averageCostAfter || "0",
+      averageCost: lastTransaction?.averageCostAfter || "0",
     };
   }
 

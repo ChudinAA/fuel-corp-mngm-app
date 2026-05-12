@@ -14,7 +14,7 @@ import { Plus, Loader2, X, Building2, Globe2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
-import type { Warehouse } from "@shared/schema";
+import type { Warehouse, Base } from "@shared/schema";
 import { EQUIPMENT_TYPE } from "@shared/constants";
 import { newWarehouseFormSchema } from "../schemas";
 import type { NewWarehouseFormValues } from "../types";
@@ -59,12 +59,12 @@ export function AddWarehouseDialog({
 
   const isEditing = !!warehouseToEdit;
 
-  const { data: bases } = useQuery({
+  const { data: bases } = useQuery<Base[]>({
     queryKey: ["/api/bases"],
   });
 
-  const allBases = (bases?.map(b => ({ id: b.id, name: b.name, baseType: b.baseType })) || [])
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const allBases = (bases?.map((b) => ({ id: b.id, name: b.name, baseType: b.baseType })) || [])
+    .sort((a: any, b: any) => a.name.localeCompare(b.name));
 
   const form = useForm<NewWarehouseFormValues>({
     resolver: zodResolver(newWarehouseFormSchema),
@@ -107,6 +107,7 @@ export function AddWarehouseDialog({
         isBase: warehouseToEdit.equipmentType === EQUIPMENT_TYPE.LIK,
         isExport: warehouseToEdit.isExport ?? false,
         services: (warehouseToEdit.services || []).map(s => ({
+          serviceName: s.serviceName || "",
           serviceType: s.serviceType,
           serviceValue: s.serviceValue,
         })),
@@ -133,7 +134,8 @@ export function AddWarehouseDialog({
         equipmentType: data.isBase ? EQUIPMENT_TYPE.LIK : EQUIPMENT_TYPE.COMMON,
         isExport: data.isExport,
         services: data.services.map(s => ({
-          ...s,
+          serviceName: s.serviceName || null,
+          serviceType: s.serviceType,
           serviceValue: String(s.serviceValue),
         })),
       };
@@ -229,7 +231,7 @@ export function AddWarehouseDialog({
                 <div key={field.id} className="flex gap-2 items-center">
                   <div className="flex-1 min-w-0">
                     <Combobox
-                      options={allBases.map((base) => ({
+                      options={allBases.map((base: any) => ({
                         value: base.id,
                         label: base.name,
                         render: (
@@ -300,7 +302,7 @@ export function AddWarehouseDialog({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => appendService({ serviceType: "", serviceValue: "" })}
+                  onClick={() => appendService({ serviceName: "", serviceType: "", serviceValue: "" })}
                   data-testid="button-add-warehouse-service"
                 >
                   <Plus className="h-4 w-4 mr-1" />
@@ -317,6 +319,14 @@ export function AddWarehouseDialog({
                 return (
                   <div key={field.id} className="border rounded-md p-3 space-y-2">
                     <div className="flex gap-2 items-start">
+                      <div className="flex-1 space-y-1">
+                        <label className="text-xs text-muted-foreground">Название услуги</label>
+                        <Input
+                          placeholder="Например: Роялти ТЗК-1"
+                          {...form.register(`services.${index}.serviceName`)}
+                          data-testid={`input-service-name-${index}`}
+                        />
+                      </div>
                       <div className="flex-1 space-y-1">
                         <label className="text-xs text-muted-foreground">Тип услуги</label>
                         <Select
@@ -343,6 +353,8 @@ export function AddWarehouseDialog({
                           </p>
                         )}
                       </div>
+                    </div>
+                    <div className="flex gap-2 items-start">
                       <div className="flex-1 space-y-1">
                         <label className="text-xs text-muted-foreground">Значение</label>
                         <Input
