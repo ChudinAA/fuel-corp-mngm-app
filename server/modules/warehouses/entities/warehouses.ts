@@ -34,7 +34,7 @@ export const warehouses = pgTable(
       precision: 15,
       scale: 2,
     }).default("0"),
-    averageCost: decimal("average_cost", { precision: 12, scale: 4 }).default(
+    averageCost: decimal("average_cost", { precision: 15, scale: 6 }).default(
       "0",
     ),
     equipmentType: text("equipment_type").default("common").notNull(),
@@ -42,8 +42,8 @@ export const warehouses = pgTable(
       "0",
     ),
     pvkjAverageCost: decimal("pvkj_average_cost", {
-      precision: 12,
-      scale: 4,
+      precision: 15,
+      scale: 6,
     }).default("0"),
     storageCost: decimal("storage_cost", { precision: 15, scale: 6 }),
     isExport: boolean("is_export").default(false),
@@ -104,15 +104,15 @@ export const warehouseTransactions = pgTable(
     balanceBefore: decimal("balance_before", { precision: 15, scale: 2 }),
     balanceAfter: decimal("balance_after", { precision: 15, scale: 2 }),
     averageCostBefore: decimal("average_cost_before", {
-      precision: 12,
-      scale: 4,
+      precision: 15,
+      scale: 6,
     }),
     averageCostAfter: decimal("average_cost_after", {
-      precision: 12,
-      scale: 4,
+      precision: 15,
+      scale: 6,
     }),
     sum: decimal("sum", { precision: 15, scale: 2 }),
-    price: decimal("price", { precision: 12, scale: 4 }),
+    price: decimal("price", { precision: 15, scale: 6 }),
     transactionDate: timestamp("transaction_date", { mode: "string" }),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),

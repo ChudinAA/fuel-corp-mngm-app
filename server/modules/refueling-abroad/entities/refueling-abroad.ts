@@ -46,7 +46,7 @@ export const refuelingAbroad = pgTable(
     intermediaryCommissionFormula: text("intermediary_commission_formula"),
     intermediaryCommissionUsd: decimal("intermediary_commission_usd", {
       precision: 15,
-      scale: 4,
+      scale: 6,
     }),
     intermediaryCommissionRub: decimal("intermediary_commission_rub", {
       precision: 15,
@@ -60,7 +60,7 @@ export const refuelingAbroad = pgTable(
     exchangeRateId: uuid("exchange_rate_id").references(() => exchangeRates.id),
     exchangeRateValue: decimal("exchange_rate_value", {
       precision: 15,
-      scale: 4,
+      scale: 6,
     }),
     transactionId: uuid("transaction_id").references(
       () => storageCardTransactions.id,
@@ -70,29 +70,29 @@ export const refuelingAbroad = pgTable(
     ),
     purchaseExchangeRateValue: decimal("purchase_exchange_rate_value", {
       precision: 15,
-      scale: 4,
+      scale: 6,
     }),
     saleExchangeRateId: uuid("sale_exchange_rate_id").references(
       () => exchangeRates.id,
     ),
     saleExchangeRateValue: decimal("sale_exchange_rate_value", {
       precision: 15,
-      scale: 4,
+      scale: 6,
     }),
     saleExchangeRateDate: text("sale_exchange_rate_date"),
     purchaseExchangeRateDate: text("purchase_exchange_rate_date"),
     purchasePriceUsd: decimal("purchase_price_usd", {
-      precision: 12,
-      scale: 4,
+      precision: 15,
+      scale: 6,
     }),
     purchasePriceRub: decimal("purchase_price_rub", {
-      precision: 12,
-      scale: 4,
+      precision: 15,
+      scale: 6,
     }),
     purchasePriceId: uuid("purchase_price_id").references(() => prices.id),
     purchasePriceIndex: integer("purchase_price_index").default(0),
-    salePriceUsd: decimal("sale_price_usd", { precision: 12, scale: 4 }),
-    salePriceRub: decimal("sale_price_rub", { precision: 12, scale: 4 }),
+    salePriceUsd: decimal("sale_price_usd", { precision: 15, scale: 6 }),
+    salePriceRub: decimal("sale_price_rub", { precision: 15, scale: 6 }),
     salePriceId: uuid("sale_price_id").references(() => prices.id),
     salePriceIndex: integer("sale_price_index").default(0),
     purchaseAmountUsd: decimal("purchase_amount_usd", {
@@ -107,8 +107,8 @@ export const refuelingAbroad = pgTable(
     saleAmountRub: decimal("sale_amount_rub", { precision: 15, scale: 2 }),
     profitUsd: decimal("profit_usd", { precision: 15, scale: 2 }),
     profitRub: decimal("profit_rub", { precision: 15, scale: 2 }),
-    bankCommissionUsd: decimal("bank_commission_usd", { precision: 15, scale: 4 }),
-    bankCommissionRub: decimal("bank_commission_rub", { precision: 15, scale: 4 }),
+    bankCommissionUsd: decimal("bank_commission_usd", { precision: 15, scale: 6 }),
+    bankCommissionRub: decimal("bank_commission_rub", { precision: 15, scale: 6 }),
     contractNumber: text("contract_number"),
     notes: text("notes"),
     isApproxVolume: boolean("is_approx_volume").default(false),

@@ -32,7 +32,7 @@ export const storageCards = pgTable(
     }).default("0"),
     supplierId: uuid("supplier_id").references(() => suppliers.id),
     buyerId: uuid("buyer_id").references(() => customers.id),
-    averageCost: decimal("average_cost", { precision: 12, scale: 5 }).default(
+    averageCost: decimal("average_cost", { precision: 15, scale: 6 }).default(
       "0",
     ),
     weightedAverageRate: decimal("weighted_average_rate", {
@@ -67,18 +67,18 @@ export const storageCardTransactions = pgTable(
       .references(() => storageCards.id),
     transactionType: text("transaction_type").notNull(),
     quantity: decimal("quantity", { precision: 15, scale: 2 }).notNull(),
-    price: decimal("price", { precision: 12, scale: 4 }),
+    price: decimal("price", { precision: 15, scale: 6 }),
     currency: text("currency").default("USD"),
     currencySymbol: text("currency_symbol").default("$"),
     balanceBefore: decimal("balance_before", { precision: 15, scale: 2 }),
     balanceAfter: decimal("balance_after", { precision: 15, scale: 2 }),
     averageCostBefore: decimal("average_cost_before", {
-      precision: 12,
-      scale: 4,
+      precision: 15,
+      scale: 6,
     }),
     averageCostAfter: decimal("average_cost_after", {
-      precision: 12,
-      scale: 4,
+      precision: 15,
+      scale: 6,
     }),
     localCurrencyId: uuid("local_currency_id").references(() => currencies.id),
     localCurrencyAmount: decimal("local_currency_amount", {

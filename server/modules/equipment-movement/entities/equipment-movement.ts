@@ -36,7 +36,7 @@ export const equipmentMovement = pgTable(
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
     inputMode: text("input_mode"),
-    costPerKg: decimal("cost_per_kg", { precision: 19, scale: 5 }),
+    costPerKg: decimal("cost_per_kg", { precision: 19, scale: 6 }),
     totalCost: decimal("total_cost", { precision: 15, scale: 2 }),
     basis: text("basis"),
     basisId: uuid("basis_id").references(() => bases.id),
