@@ -110,13 +110,13 @@ const getOperationsMenuItems = (hasPermission: (p: string) => boolean) =>
 const getLikMenuItems = (hasPermission: (p: string) => boolean) =>
   [
     {
-      title: "Заправка ВС ЛИК",
+      title: "Заправка ВС ОП",
       url: "/lik/refueling",
       icon: Plane,
       permission: "lik-refueling.view",
     },
     {
-      title: "Перемещение ЛИК",
+      title: "Перемещение ОП",
       url: "/lik/movement",
       icon: ArrowLeftRight,
       permission: "lik-movement.view",
@@ -407,9 +407,9 @@ export function AppSidebar() {
                 <Collapsible asChild defaultOpen className="group/collapsible">
                   <SidebarMenuItem>
                     <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip="ЛИК">
+                      <SidebarMenuButton tooltip="ОП">
                         <Building2 className="h-4 w-4" />
-                        <span>ЛИК</span>
+                        <span>Обособлен. подраздел.</span>
                         <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>

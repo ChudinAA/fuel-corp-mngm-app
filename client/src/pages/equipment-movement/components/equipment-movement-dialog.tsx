@@ -301,8 +301,8 @@ export function EquipmentMovementDialog({
           <DialogHeader>
             <DialogTitle>
               {isEditing
-                ? "Редактирование перемещения ЛИК"
-                : "Новое перемещение ЛИК"}
+                ? "Редактирование перемещения ОП"
+                : "Новое перемещение ОП"}
             </DialogTitle>
             <DialogDescription>
               Локальное распределение топлива между базовыми складами и СЗ

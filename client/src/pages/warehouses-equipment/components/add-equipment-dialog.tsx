@@ -92,7 +92,7 @@ export function AddEquipmentDialog({
             {isEditing ? "Редактирование СЗ" : "Новое средство заправки (СЗ)"}
           </DialogTitle>
           <DialogDescription>
-            Укажите название и привяжите к складу ЛИК
+            Укажите название
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

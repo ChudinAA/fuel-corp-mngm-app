@@ -82,14 +82,14 @@ export function AddRefuelingDialog({
             <DialogTitle>
               {isCopy
                 ? equipmentType === EQUIPMENT_TYPE.LIK
-                  ? "Копирование заправки ЛИК"
+                  ? "Копирование заправки ОП"
                   : "Копирование заправки"
                 : editRefueling
                   ? equipmentType === EQUIPMENT_TYPE.LIK
                     ? "Редактирование заправки ЛИК"
                     : "Редактирование заправки"
                   : equipmentType === EQUIPMENT_TYPE.LIK
-                    ? "Новая заправка ЛИК"
+                    ? "Новая заправка ОП"
                     : "Новая заправка ВС"}
             </DialogTitle>
             <DialogDescription>

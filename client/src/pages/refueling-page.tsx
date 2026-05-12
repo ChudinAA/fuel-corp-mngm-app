@@ -58,10 +58,10 @@ export default function RefuelingPage({ equipmentType = EQUIPMENT_TYPE.COMMON }:
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">
-          {equipmentType === EQUIPMENT_TYPE.LIK ? "Заправка ВС ЛИК" : "Заправка ВС"}
+          {equipmentType === EQUIPMENT_TYPE.LIK ? "Заправка ВС ОП" : "Заправка ВС"}
         </h1>
         <p className="text-muted-foreground">
-          {equipmentType === EQUIPMENT_TYPE.LIK ? "Учет заправок ЛИК" : "Учет заправок воздушных судов"}
+          {equipmentType === EQUIPMENT_TYPE.LIK ? "Учет заправок ВС ОП" : "Учет заправок воздушных судов"}
         </p>
       </div>
 

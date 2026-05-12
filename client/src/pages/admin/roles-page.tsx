@@ -46,8 +46,8 @@ const PERMISSION_MODULES = {
   rent: { name: "Аренда СЗ", permissions: ["view", "create", "edit", "delete", "restore"] },
   transportation: { name: "Перевозка", permissions: ["view", "create", "edit", "delete", "restore"] },
   // ЛИК
-  "lik-refueling": { name: "Заправка ВС ЛИК", permissions: ["view", "create", "edit", "delete", "restore"] },
-  "lik-movement": { name: "Перемещение ЛИК", permissions: ["view", "create", "edit", "delete", "restore"] },
+  "lik-refueling": { name: "Заправка ВС ОП", permissions: ["view", "create", "edit", "delete", "restore"] },
+  "lik-movement": { name: "Перемещение ОП", permissions: ["view", "create", "edit", "delete", "restore"] },
   equipment: { name: "Средства Заправки", permissions: ["view", "create", "edit", "delete", "restore"] },
   // Зарубеж
   abroad: { name: "Заправка ВС Зарубеж", permissions: ["view", "create", "edit", "delete", "restore"] },
