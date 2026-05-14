@@ -31,6 +31,7 @@ interface MovementDestinationSectionProps {
     message: string;
     status: "ok" | "error" | "warning";
   };
+  sameBasis?: boolean;
 }
 
 export function MovementDestinationSection({
@@ -43,6 +44,7 @@ export function MovementDestinationSection({
   availableCarriers,
   warehouseBalance,
   supplierContractVolumeStatus,
+  sameBasis = false,
 }: MovementDestinationSectionProps) {
   const { hasPermission } = useAuth();
   const [addDeliveryCostOpen, setAddDeliveryCostOpen] = useState(false);
@@ -101,6 +103,9 @@ export function MovementDestinationSection({
           <FormItem className="col-span-1 min-w-0">
             <FormLabel className="flex items-center gap-2">
               Перевозчик
+              {sameBasis && (
+                <span className="text-xs font-normal text-muted-foreground">(тот же базис)</span>
+              )}
             </FormLabel>
             <div className="flex gap-1 items-center w-full">
               <FormControl>
@@ -112,13 +117,14 @@ export function MovementDestinationSection({
                     }))}
                     value={field.value || ""}
                     onValueChange={field.onChange}
-                    placeholder="Выберите перевозчика"
+                    placeholder={sameBasis ? "Не требуется" : "Выберите перевозчика"}
                     className="w-full"
                     dataTestId="select-movement-carrier"
+                    disabled={sameBasis}
                   />
                 </div>
               </FormControl>
-              {hasPermission("delivery", "create") && (
+              {hasPermission("delivery", "create") && !sameBasis && (
                 <Button
                   type="button"
                   size="icon"

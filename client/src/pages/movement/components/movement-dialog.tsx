@@ -485,6 +485,7 @@ export function MovementDialog({
                 availableCarriers={availableCarriers}
                 warehouseBalance={warehouseBalance}
                 supplierContractVolumeStatus={supplierContractVolumeStatus}
+                sameBasis={sameBasis}
               />
 
               <VolumeInputSection
