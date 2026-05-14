@@ -37,6 +37,7 @@ interface UseMovementCalculationsProps {
   selectedPurchasePriceId: string;
   setSelectedPurchasePriceId: (id: string) => void;
   initialQuantityKg: number;
+  initialPurchaseAmount?: number;
 }
 
 export type VatAdjustment =
@@ -64,6 +65,7 @@ export function useMovementCalculations({
   selectedPurchasePriceId,
   setSelectedPurchasePriceId,
   initialQuantityKg,
+  initialPurchaseAmount = 0,
 }: UseMovementCalculationsProps) {
   const watchSelectedPurchasePriceId =
     selectedPurchasePriceId || form?.watch("selectedPurchasePriceId") || "";
@@ -280,6 +282,8 @@ export function useMovementCalculations({
     currentQuantityKg: kgNum,
     initialQuantityKg: initialQuantityKg,
     mode: "opt",
+    currentDealAmount: purchaseAmount,
+    initialDealAmount: initialPurchaseAmount,
   });
 
   // VAT adjustment logic:

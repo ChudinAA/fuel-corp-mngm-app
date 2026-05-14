@@ -248,6 +248,9 @@ export function MovementDialog({
     selectedPurchasePriceId,
     setSelectedPurchasePriceId,
     initialQuantityKg,
+    initialPurchaseAmount: editMovement && !isCopy
+      ? parseFloat(editMovement.purchasePrice || "0") * parseFloat(editMovement.quantityKg || "0")
+      : 0,
   });
 
   const availableCarriers = useAvailableCarriers({
@@ -375,6 +378,7 @@ export function MovementDialog({
       queryClient.invalidateQueries({ queryKey: ["/api/movement"] });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/opt/contract-used"] });
+      queryClient.invalidateQueries({ predicate: (q) => typeof q.queryKey[0] === "string" && (q.queryKey[0] as string).includes("/monthly-stats") });
       toast({
         title: variables.isDraft
           ? "Черновик сохранен"

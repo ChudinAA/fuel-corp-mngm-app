@@ -245,7 +245,7 @@ export function WarehouseCard({
                           {limitExceeded ? (
                             <span>Превышен на {formatNumber(Math.abs(limitRemaining))} кг</span>
                           ) : (
-                            <span>Лимит: {formatNumber(limitRemaining)} кг</span>
+                            <span>Лимит: {formatNumber(limitVolume)} / ост. {formatNumber(limitRemaining)} кг</span>
                           )}
                         </Badge>
                       </TooltipTrigger>

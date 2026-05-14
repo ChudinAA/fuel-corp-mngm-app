@@ -116,38 +116,52 @@ export function RefuelingPricingSection({
             <FormField
               control={form.control}
               name="isPriceRecharge"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="checkbox-reprice-service"
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>Перевыставить услугу</FormLabel>
-                  </div>
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const setSalePriceZeroVal = form.watch("setSalePriceZero");
+                return (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(v) => {
+                          field.onChange(v);
+                          if (v) form.setValue("setSalePriceZero", false);
+                        }}
+                        disabled={!!setSalePriceZeroVal}
+                        data-testid="checkbox-reprice-service"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className={setSalePriceZeroVal ? "text-muted-foreground" : ""}>Перевыставить услугу</FormLabel>
+                    </div>
+                  </FormItem>
+                );
+              }}
             />
             <FormField
               control={form.control}
               name="setSalePriceZero"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="checkbox-set-sale-price-zero"
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>Выставить цену продажи 0</FormLabel>
-                  </div>
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const isPriceRechargeVal = form.watch("isPriceRecharge");
+                return (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(v) => {
+                          field.onChange(v);
+                          if (v) form.setValue("isPriceRecharge", false);
+                        }}
+                        disabled={!!isPriceRechargeVal}
+                        data-testid="checkbox-set-sale-price-zero"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className={isPriceRechargeVal ? "text-muted-foreground" : ""}>Выставить цену продажи 0</FormLabel>
+                    </div>
+                  </FormItem>
+                );
+              }}
             />
           </div>
         </div>

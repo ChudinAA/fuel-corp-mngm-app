@@ -558,7 +558,7 @@ export function RefuelingTable({
                   <TableCell className="text-right text-xs py-1.5 px-1">
                     {formatCurrencyForTable(deal.saleAmount)}
                   </TableCell>
-                  <TableCell className="text-right text-green-600 font-medium text-xs py-1.5 px-1">
+                  <TableCell className={`text-right font-medium text-xs py-1.5 px-1 ${deal.profit !== null && parseFloat(deal.profit) < 0 ? "text-destructive" : "text-green-600"}`}>
                     {formatCurrencyForTable(deal.profit)}
                   </TableCell>
                   <TableCell className="p-1 sticky right-0 bg-background">
