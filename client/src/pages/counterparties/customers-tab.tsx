@@ -82,7 +82,7 @@ export function CustomersTab() {
           Справочник Покупатели
         </CardTitle>
         <CardDescription>
-          Единый справочник покупателей для ОПТ и Заправки ВС
+          Единый справочник покупателей для ОПТ, Заправки ВС, Зарубеж
         </CardDescription>
       </CardHeader>
       <CardContent>
