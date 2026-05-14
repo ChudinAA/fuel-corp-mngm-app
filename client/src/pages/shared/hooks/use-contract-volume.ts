@@ -53,6 +53,11 @@ export function useContractVolume({
     };
   }
 
+  // Если ограничения по договору отключены — показываем "Нет лимита"
+  if ((price as any).contractLimitEnabled === false) {
+    return { remaining: Infinity, status: "ok" as const, message: "Нет лимита" };
+  }
+
   try {
     const limitType = (price as any).limitType || "volume";
 

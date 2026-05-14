@@ -47,4 +47,5 @@ export const priceFormSchema = z.object({
   currencyId: z.string().optional(),
   loadingBasisId: z.string().optional(),
   priceUnit: z.enum(["kg", "liter"]).default("kg"),
+  contractLimitEnabled: z.boolean().default(true),
 });

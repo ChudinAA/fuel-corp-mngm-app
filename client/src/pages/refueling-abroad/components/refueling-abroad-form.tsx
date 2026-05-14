@@ -31,13 +31,8 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Loader2, Plane, DollarSign, CalendarIcon, Plus } from "lucide-react";
+import { DateInput } from "@/components/ui/date-input";
+import { Loader2, Plane, DollarSign, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -805,33 +800,13 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Дата заправки</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal"
-                          data-testid="input-refueling-date"
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {field.value
-                            ? format(field.value, "yyyy-MM-dd", {
-                                locale: ru,
-                              })
-                            : "Выберите дату"}
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value || undefined}
-                        onSelect={field.onChange}
-                        locale={ru}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <FormControl>
+                    <DateInput
+                      value={field.value ?? undefined}
+                      onChange={field.onChange}
+                      data-testid="input-refueling-date"
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -1528,45 +1503,13 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Дата фиксации</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  className="w-full justify-start text-left font-normal"
-                                  data-testid="input-sale-exchange-rate-date"
-                                >
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {field.value
-                                    ? format(
-                                        new Date(field.value + "T00:00:00"),
-                                        "yyyy-MM-dd",
-                                      )
-                                    : "Выберите дату"}
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              className="w-auto p-0"
-                              align="start"
-                            >
-                              <Calendar
-                                mode="single"
-                                selected={
-                                  field.value
-                                    ? new Date(field.value + "T00:00:00")
-                                    : undefined
-                                }
-                                onSelect={(date) =>
-                                  field.onChange(
-                                    date ? format(date, "yyyy-MM-dd") : "",
-                                  )
-                                }
-                                locale={ru}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
+                          <FormControl>
+                            <DateInput
+                              value={field.value ? new Date(field.value + "T00:00:00") : undefined}
+                              onChange={(d) => field.onChange(d ? format(d, "yyyy-MM-dd") : "")}
+                              data-testid="input-sale-exchange-rate-date"
+                            />
+                          </FormControl>
                         </FormItem>
                       )}
                     />
@@ -1642,45 +1585,13 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Дата фиксации</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  className="w-full justify-start text-left font-normal"
-                                  data-testid="input-purchase-exchange-rate-date"
-                                >
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {field.value
-                                    ? format(
-                                        new Date(field.value + "T00:00:00"),
-                                        "yyyy-MM-dd",
-                                      )
-                                    : "Выберите дату"}
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              className="w-auto p-0"
-                              align="start"
-                            >
-                              <Calendar
-                                mode="single"
-                                selected={
-                                  field.value
-                                    ? new Date(field.value + "T00:00:00")
-                                    : undefined
-                                }
-                                onSelect={(date) =>
-                                  field.onChange(
-                                    date ? format(date, "yyyy-MM-dd") : "",
-                                  )
-                                }
-                                locale={ru}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
+                          <FormControl>
+                            <DateInput
+                              value={field.value ? new Date(field.value + "T00:00:00") : undefined}
+                              onChange={(d) => field.onChange(d ? format(d, "yyyy-MM-dd") : "")}
+                              data-testid="input-purchase-exchange-rate-date"
+                            />
+                          </FormControl>
                         </FormItem>
                       )}
                     />

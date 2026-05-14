@@ -36,13 +36,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Plus, Loader2 } from "lucide-react";
+import { DateInput } from "@/components/ui/date-input";
+import { Plus, Loader2 } from "lucide-react";
 import type {
   Base,
   Customer,
@@ -518,51 +513,13 @@ export const TransportationForm = forwardRef<
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Дата сделки</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className="w-full justify-start text-left font-normal"
-                              data-testid="input-deal-date"
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {field.value
-                                ? format(new Date(field.value), "dd.MM.yyyy", {
-                                    locale: ru,
-                                  })
-                                : "Выберите дату"}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={
-                              field.value ? new Date(field.value) : undefined
-                            }
-                            onSelect={(date) => {
-                              if (date) {
-                                const now = new Date();
-                                const combined = new Date(
-                                  date.getFullYear(),
-                                  date.getMonth(),
-                                  date.getDate(),
-                                  now.getHours(),
-                                  now.getMinutes(),
-                                  now.getSeconds(),
-                                );
-                                field.onChange(
-                                  format(combined, "yyyy-MM-dd'T'HH:mm:ss"),
-                                );
-                              } else {
-                                field.onChange("");
-                              }
-                            }}
-                            locale={ru}
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <FormControl>
+                        <DateInput
+                          value={field.value ? new Date(field.value) : undefined}
+                          onChange={(d) => field.onChange(d ? format(d, "yyyy-MM-dd'T'HH:mm:ss") : "")}
+                          data-testid="input-deal-date"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

@@ -77,6 +77,7 @@ export function AddPriceDialog({
       contractAppendix: "",
       notes: "",
       priceUnit: "kg" as "kg" | "liter",
+      contractLimitEnabled: true,
     },
   });
 
@@ -125,6 +126,7 @@ export function AddPriceDialog({
         contractAppendix: (editPrice as any).contractAppendix || "",
         notes: editPrice.notes || "",
         priceUnit: (editPrice.priceUnit as "kg" | "liter") || "kg",
+        contractLimitEnabled: (editPrice as any).contractLimitEnabled !== false,
       } as PriceFormData);
       setOpen(true);
       setDateCheckPassed(false);
@@ -150,6 +152,7 @@ export function AddPriceDialog({
         contractAppendix: "",
         notes: "",
         priceUnit: "kg" as "kg" | "liter",
+        contractLimitEnabled: true,
       });
       dateCheck.setResult(null);
       setDateCheckPassed(false);
@@ -186,6 +189,7 @@ export function AddPriceDialog({
         contractAppendix: "",
         notes: "",
         priceUnit: "kg" as "kg" | "liter",
+        contractLimitEnabled: true,
         ...inlineDefaults,
       };
       form.reset(defaults as PriceFormData);
@@ -419,8 +423,8 @@ export function AddPriceDialog({
         currency: data.currency,
         currencyId: data.currencyId || null,
         limitType: data.limitType || "volume",
-        volume: data.limitType === "amount" ? null : (data.volume || null),
-        maxDealAmount: data.limitType === "amount" ? (data.maxDealAmount || null) : null,
+        volume: (!data.contractLimitEnabled || data.limitType === "amount") ? null : (data.volume || null),
+        maxDealAmount: (!data.contractLimitEnabled || data.limitType !== "amount") ? null : (data.maxDealAmount || null),
         priceValues: data.priceValues,
         dateFrom: format(data.dateFrom, "yyyy-MM-dd"),
         dateTo: format(data.dateTo, "yyyy-MM-dd"),
@@ -428,6 +432,7 @@ export function AddPriceDialog({
         contractAppendix: data.contractAppendix || null,
         notes: data.notes || null,
         priceUnit: data.priceUnit || "kg",
+        contractLimitEnabled: data.contractLimitEnabled !== false,
       };
       if (editPrice) {
         const res = await apiRequest(
@@ -478,6 +483,7 @@ export function AddPriceDialog({
         contractAppendix: "",
         notes: "",
         priceUnit: "kg" as "kg" | "liter",
+        contractLimitEnabled: true,
       });
       dateCheck.setResult(null);
       setDateCheckPassed(false);
@@ -584,6 +590,7 @@ export function AddPriceDialog({
         contractNumber: "",
         contractAppendix: "",
         notes: "",
+        contractLimitEnabled: true,
       });
       dateCheck.setResult(null);
       setDateCheckPassed(false);

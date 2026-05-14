@@ -26,6 +26,7 @@ export interface PriceFormData {
   currencyId?: string;
   loadingBasisId?: string;
   priceUnit?: "kg" | "liter";
+  contractLimitEnabled?: boolean;
 }
 
 export interface PriceDialogProps {

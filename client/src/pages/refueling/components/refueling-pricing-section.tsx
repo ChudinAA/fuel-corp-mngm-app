@@ -131,6 +131,24 @@ export function RefuelingPricingSection({
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="setSalePriceZero"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="checkbox-set-sale-price-zero"
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Выставить цену продажи 0</FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
           </div>
         </div>
       )}

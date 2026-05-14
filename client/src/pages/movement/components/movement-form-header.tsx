@@ -5,13 +5,7 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { DateInput } from "@/components/ui/date-input";
 import {
   Select,
   SelectContent,
@@ -19,9 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-import { ru } from "date-fns/locale";
 import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import type { UseFormReturn } from "react-hook-form";
 import type { MovementFormData } from "../schemas";
@@ -39,30 +30,13 @@ export function MovementFormHeader({ form }: MovementFormHeaderProps) {
         render={({ field }) => (
           <FormItem>
             <FormLabel>Дата</FormLabel>
-            <Popover>
-              <PopoverTrigger asChild>
-                <FormControl>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                    data-testid="input-movement-date"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {field.value
-                      ? format(field.value, "dd.MM.yyyy", { locale: ru })
-                      : "Выберите дату"}
-                  </Button>
-                </FormControl>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={field.value}
-                  onSelect={field.onChange}
-                  locale={ru}
-                />
-              </PopoverContent>
-            </Popover>
+            <FormControl>
+              <DateInput
+                value={field.value ?? undefined}
+                onChange={field.onChange}
+                data-testid="input-movement-date"
+              />
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}

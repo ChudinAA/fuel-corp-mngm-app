@@ -218,6 +218,7 @@ export const RefuelingForm = forwardRef<
     initialWarehouseBalance,
     refuelingDate: watchRefuelingDate,
     isPriceRecharge: watchIsPriceRecharge,
+    setSalePriceZero: form.watch("setSalePriceZero"),
     equipmentType,
     selectedEquipmentId,
     equipmentBalance,

@@ -9,12 +9,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DateInput } from "@/components/ui/date-input";
 import {
   Select,
   SelectContent,
@@ -22,9 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon, X, Plus } from "lucide-react";
-import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { X, Plus } from "lucide-react";
 import type {
   Control,
   FieldArrayWithId,
@@ -32,7 +26,7 @@ import type {
   UseFieldArrayAppend,
   UseFormSetValue,
 } from "react-hook-form";
-import { useWatch } from "react-hook-form";
+import { useWatch, useController } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import type { PriceFormData } from "../types";
 import type { Base, Supplier, Customer, Currency } from "@shared/schema";
@@ -72,6 +66,8 @@ export function PriceFormFields({
 
   const counterpartyType = useWatch({ control, name: "counterpartyType" });
   const limitType = useWatch({ control, name: "limitType" });
+  const contractLimitEnabled = useWatch({ control, name: "contractLimitEnabled" });
+  const isLimitEnabled = contractLimitEnabled !== false;
 
   return (
     <>
@@ -82,30 +78,13 @@ export function PriceFormFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Срок действия ОТ</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
-                      data-testid="input-date-from"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {field.value
-                        ? format(field.value, "dd.MM.yyyy", { locale: ru })
-                        : "Выберите"}
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    locale={ru}
-                  />
-                </PopoverContent>
-              </Popover>
+              <FormControl>
+                <DateInput
+                  value={field.value}
+                  onChange={field.onChange}
+                  data-testid="input-date-from"
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -116,30 +95,13 @@ export function PriceFormFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Срок действия ДО</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
-                      data-testid="input-date-to"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {field.value
-                        ? format(field.value, "dd.MM.yyyy", { locale: ru })
-                        : "Выберите"}
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    locale={ru}
-                  />
-                </PopoverContent>
-              </Popover>
+              <FormControl>
+                <DateInput
+                  value={field.value}
+                  onChange={field.onChange}
+                  data-testid="input-date-to"
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -461,8 +423,25 @@ export function PriceFormFields({
             name="limitType"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Ограничение по договору</FormLabel>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
+                  <FormLabel className="mb-0">Ограничение по договору</FormLabel>
+                  <FormField
+                    control={control}
+                    name="contractLimitEnabled"
+                    render={({ field: checkField }) => (
+                      <FormItem className="flex items-center space-x-1 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={checkField.value !== false}
+                            onCheckedChange={checkField.onChange}
+                            data-testid="checkbox-contract-limit-enabled"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className={`flex items-center gap-1 ${!isLimitEnabled ? "opacity-40 pointer-events-none" : ""}`}>
                   <button
                     type="button"
                     onClick={() => {
@@ -502,7 +481,7 @@ export function PriceFormFields({
             control={control}
             name="volume"
             render={({ field }) => (
-              <FormItem className={limitType === "amount" ? "opacity-40 pointer-events-none" : ""}>
+              <FormItem className={(!isLimitEnabled || limitType === "amount") ? "opacity-40 pointer-events-none" : ""}>
                 <FormLabel>Объем по договору (кг)</FormLabel>
                 <FormControl>
                   <Input
@@ -511,7 +490,7 @@ export function PriceFormFields({
                     min="0"
                     placeholder="Объем поставки"
                     data-testid="input-volume"
-                    disabled={limitType === "amount"}
+                    disabled={!isLimitEnabled || limitType === "amount"}
                     {...field}
                   />
                 </FormControl>
@@ -523,7 +502,7 @@ export function PriceFormFields({
             control={control}
             name="maxDealAmount"
             render={({ field }) => (
-              <FormItem className={limitType !== "amount" ? "opacity-40 pointer-events-none" : ""}>
+              <FormItem className={(!isLimitEnabled || limitType !== "amount") ? "opacity-40 pointer-events-none" : ""}>
                 <FormLabel>Максимальная сумма сделки</FormLabel>
                 <FormControl>
                   <Input
@@ -532,7 +511,7 @@ export function PriceFormFields({
                     min="0"
                     placeholder="Максимальная сумма"
                     data-testid="input-max-deal-amount"
-                    disabled={limitType !== "amount"}
+                    disabled={!isLimitEnabled || limitType !== "amount"}
                     {...field}
                   />
                 </FormControl>

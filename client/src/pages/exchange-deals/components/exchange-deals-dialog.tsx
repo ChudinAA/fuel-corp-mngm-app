@@ -25,17 +25,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Combobox } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { CalendarIcon, Wallet, Warehouse } from "lucide-react";
+import { Wallet, Warehouse } from "lucide-react";
+import { DateInput } from "@/components/ui/date-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const formSchema = z.object({
@@ -80,48 +75,15 @@ function DatePickerField({
   onChange: (val: string | null) => void;
   testId?: string;
 }) {
-  const [open, setOpen] = useState(false);
   const date = value ? new Date(value) : undefined;
-
   return (
     <div className="space-y-1">
       <label className="text-sm font-medium">{label}</label>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            data-testid={testId}
-            className={cn("w-full justify-start text-left font-normal", !value && "text-muted-foreground")}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {date ? format(date, "dd.MM.yyyy", { locale: ru }) : "Выбрать дату"}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            selected={date}
-            onSelect={(d) => {
-              onChange(d ? format(d, "yyyy-MM-dd") : null);
-              setOpen(false);
-            }}
-            locale={ru}
-            initialFocus
-          />
-          {value && (
-            <div className="p-2 border-t">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full"
-                onClick={() => { onChange(null); setOpen(false); }}
-              >
-                Очистить
-              </Button>
-            </div>
-          )}
-        </PopoverContent>
-      </Popover>
+      <DateInput
+        value={date}
+        onChange={(d) => onChange(d ? format(d, "yyyy-MM-dd") : null)}
+        data-testid={testId}
+      />
     </div>
   );
 }

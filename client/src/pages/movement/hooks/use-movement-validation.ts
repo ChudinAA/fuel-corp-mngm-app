@@ -14,6 +14,7 @@ interface UseMovementValidationProps {
     status: "ok" | "error" | "warning";
   };
   toast: any;
+  sameBasis?: boolean;
 }
 
 export function useMovementValidation({
@@ -27,6 +28,7 @@ export function useMovementValidation({
   warehouses,
   supplierContractVolumeStatus,
   toast,
+  sameBasis = false,
 }: UseMovementValidationProps) {
   const validateForm = (): boolean => {
     // Check quantity
@@ -68,8 +70,8 @@ export function useMovementValidation({
       }
     }
 
-    // Check carrier
-    if (!watchCarrierId) {
+    // Check carrier (skip if same basis — delivery not needed)
+    if (!watchCarrierId && !sameBasis) {
       throw new Error("Выберите перевозчика");
     }
 

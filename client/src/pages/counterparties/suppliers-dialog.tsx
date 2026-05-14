@@ -35,13 +35,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Loader2, X, CalendarIcon } from "lucide-react";
+import { Plus, Loader2, X } from "lucide-react";
 import type { Supplier, Base } from "@shared/schema";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import { useAuth } from "@/hooks/use-auth";
 import { AddBaseDialog } from "../directories/bases-dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { DateInput } from "@/components/ui/date-input";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -781,43 +780,13 @@ export function AddSupplierDialog({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-sm">Действует до (необязательно)</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className="w-full justify-start text-left font-normal"
-                                data-testid="input-supplier-special-conditions-expires"
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {field.value
-                                  ? format(field.value, "dd.MM.yyyy", { locale: ru })
-                                  : "Без срока действия"}
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value ?? undefined}
-                              onSelect={(date) => field.onChange(date ?? null)}
-                              locale={ru}
-                            />
-                            {field.value && (
-                              <div className="p-2 border-t">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="w-full"
-                                  onClick={() => field.onChange(null)}
-                                >
-                                  Сбросить дату
-                                </Button>
-                              </div>
-                            )}
-                          </PopoverContent>
-                        </Popover>
+                        <FormControl>
+                          <DateInput
+                            value={field.value ?? undefined}
+                            onChange={(d) => field.onChange(d ?? null)}
+                            data-testid="input-supplier-special-conditions-expires"
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}

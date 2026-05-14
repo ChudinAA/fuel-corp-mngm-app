@@ -5,14 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
 import { Lock, ArrowRight } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { DateInput } from "@/components/ui/date-input";
 import {
   Dialog,
   DialogContent,
@@ -270,37 +264,10 @@ export function ExchangeRateDialog({
             </div>
             <div>
               <Label className="text-sm font-medium mb-1 block">Дата</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {form.rateDate
-                      ? format(new Date(form.rateDate + "T00:00:00"), "dd.MM.yyyy")
-                      : "Выберите дату"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={
-                      form.rateDate
-                        ? new Date(form.rateDate + "T00:00:00")
-                        : undefined
-                    }
-                    onSelect={(date) =>
-                      setForm((f) => ({
-                        ...f,
-                        rateDate: date ? format(date, "yyyy-MM-dd") : "",
-                      }))
-                    }
-                    locale={ru}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <DateInput
+                value={form.rateDate ? new Date(form.rateDate + "T00:00:00") : undefined}
+                onChange={(d) => setForm((f) => ({ ...f, rateDate: d ? format(d, "yyyy-MM-dd") : "" }))}
+              />
             </div>
           </div>
 

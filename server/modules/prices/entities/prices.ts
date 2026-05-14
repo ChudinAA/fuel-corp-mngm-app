@@ -51,6 +51,7 @@ export const prices = pgTable(
     currencyId: uuid("currency_id").references(() => currencies.id),
     exchangeRateId: uuid("exchange_rate_id").references(() => exchangeRates.id),
     priceUnit: text("price_unit").default("kg"),
+    contractLimitEnabled: boolean("contract_limit_enabled").default(true),
     isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),

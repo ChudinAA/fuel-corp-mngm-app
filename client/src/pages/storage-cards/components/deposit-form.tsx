@@ -15,15 +15,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { DateInput } from "@/components/ui/date-input";
 import { format, parseISO } from "date-fns";
-import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { STORAGE_CARD_TRANSACTION_TYPE } from "@shared/constants";
 import { Combobox } from "@/components/ui/combobox";
@@ -292,40 +285,13 @@ export function DepositForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Дата пополнения</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !field.value && "text-muted-foreground",
-                          )}
-                          data-testid="button-rate-date"
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {field.value
-                            ? format(parseISO(field.value), "dd MMMM yyyy", {
-                                locale: ru,
-                              })
-                            : "Выберите дату"}
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value ? parseISO(field.value) : undefined}
-                        onSelect={(date) =>
-                          field.onChange(
-                            date ? format(date, "yyyy-MM-dd") : "",
-                          )
-                        }
-                        locale={ru}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <FormControl>
+                    <DateInput
+                      value={field.value ? parseISO(field.value) : undefined}
+                      onChange={(d) => field.onChange(d ? format(d, "yyyy-MM-dd") : "")}
+                      data-testid="button-rate-date"
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

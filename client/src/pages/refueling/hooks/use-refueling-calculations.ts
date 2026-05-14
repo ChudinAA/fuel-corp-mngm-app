@@ -29,6 +29,7 @@ interface UseRefuelingCalculationsProps {
   initialWarehouseBalance: number;
   refuelingDate?: Date;
   isPriceRecharge?: boolean;
+  setSalePriceZero?: boolean;
   equipmentType?: string;
   selectedEquipmentId?: string;
   equipmentBalance?: number;
@@ -54,6 +55,7 @@ export function useRefuelingCalculations({
   initialWarehouseBalance,
   refuelingDate,
   isPriceRecharge = false,
+  setSalePriceZero = false,
   equipmentType = EQUIPMENT_TYPE.COMMON,
   selectedEquipmentId,
   equipmentBalance = 0,
@@ -142,11 +144,14 @@ export function useRefuelingCalculations({
   }, [isLikMode, isWarehouseSupplier, productType, equipmentPriceAtDate, warehousePriceAtDate, extractedPurchasePrice]);
 
   const salePrice = useMemo(() => {
+    if (setSalePriceZero && productType === PRODUCT_TYPE.SERVICE) {
+      return 0;
+    }
     if (isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) {
       return purchasePrice;
     }
     return extractedSalePrice;
-  }, [isPriceRecharge, productType, purchasePrice, extractedSalePrice]);
+  }, [setSalePriceZero, isPriceRecharge, productType, purchasePrice, extractedSalePrice]);
 
   const purchaseAmount =
     purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;

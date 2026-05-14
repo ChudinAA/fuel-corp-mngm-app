@@ -273,6 +273,21 @@ export function MovementDialog({
     watchMovementDate: watchMovementDate || new Date(),
   });
 
+  // Same-basis detection: if supplier basis matches destination warehouse basis — no delivery needed
+  const destinationWarehouse = warehouses?.find((w) => w.id === watchToWarehouseId);
+  const sameBasis = Boolean(
+    watchBasisId &&
+    watchMovementType === MOVEMENT_TYPE.SUPPLY &&
+    destinationWarehouse?.baseIds?.includes(watchBasisId),
+  );
+
+  // Auto-zero logistics when same basis
+  useEffect(() => {
+    if (sameBasis) {
+      if (watchCarrierId) form.setValue("carrierId", "");
+    }
+  }, [sameBasis]);
+
   const { validateForm } = useMovementValidation({
     watchMovementType,
     watchProductType,
@@ -284,6 +299,7 @@ export function MovementDialog({
     warehouses,
     supplierContractVolumeStatus,
     toast,
+    sameBasis,
   });
 
   const createMutation = useMutation({

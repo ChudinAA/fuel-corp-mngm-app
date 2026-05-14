@@ -41,10 +41,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, CalendarIcon, DollarSign, Loader2, ArrowRight } from "lucide-react";
+import { Plus, Pencil, Trash2, DollarSign, Loader2, ArrowRight } from "lucide-react";
+import { DateInput } from "@/components/ui/date-input";
 import { useErrorModal } from "@/hooks/use-error-modal";
 
 interface ExchangeRate {
@@ -351,26 +350,11 @@ export function ExchangeRatesTab() {
 
                   <div className="space-y-2">
                     <Label>Дата курса</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal"
-                          data-testid="input-rate-date"
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {format(formData.rateDate, "dd.MM.yyyy", { locale: ru })}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={formData.rateDate}
-                          onSelect={(date) => date && setFormData({ ...formData, rateDate: date })}
-                          locale={ru}
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <DateInput
+                      value={formData.rateDate}
+                      onChange={(d) => d && setFormData({ ...formData, rateDate: d })}
+                      data-testid="input-rate-date"
+                    />
                   </div>
 
                   <div className="space-y-2">
