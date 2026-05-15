@@ -141,6 +141,7 @@ export default function EquipmentsPage() {
                       onEdit={handleEditWarehouse}
                       onViewDetails={handleViewWarehouseDetails}
                       isBase
+                      showPinButton={false}
                     />
                   ))}
                 </div>

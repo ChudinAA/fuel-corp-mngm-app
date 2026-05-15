@@ -61,6 +61,7 @@ interface WarehouseCardProps {
   onEdit: (warehouse: Warehouse) => void;
   onViewDetails: (warehouse: Warehouse) => void;
   isBase?: boolean;
+  showPinButton?: boolean;
 }
 
 function getServiceLabel(svc: { serviceName?: string | null; serviceType: string }): string {
@@ -92,6 +93,7 @@ export function WarehouseCard({
   onEdit,
   onViewDetails,
   isBase = false,
+  showPinButton = true,
 }: WarehouseCardProps) {
   const { toast } = useToast();
   const { showError, ErrorModalComponent } = useErrorModal();
@@ -289,31 +291,33 @@ export function WarehouseCard({
             </div>
             <div className="flex items-center gap-1 shrink-0">
               {/* Pin button */}
-              <div onClick={(e) => e.stopPropagation()}>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handlePinClick}
-                        disabled={pinMutation.isPending}
-                        data-testid={`button-pin-${warehouse.id}`}
-                        className={warehouse.isPinned ? "text-primary" : "text-muted-foreground"}
-                      >
-                        {pinMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Pin className={`h-4 w-4 ${warehouse.isPinned ? "fill-primary" : ""}`} />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{warehouse.isPinned ? "Открепить склад" : "Закрепить сверху"}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
+              {showPinButton && (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={handlePinClick}
+                          disabled={pinMutation.isPending}
+                          data-testid={`button-pin-${warehouse.id}`}
+                          className={warehouse.isPinned ? "text-primary" : "text-muted-foreground"}
+                        >
+                          {pinMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Pin className={`h-4 w-4 ${warehouse.isPinned ? "fill-primary" : ""}`} />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{warehouse.isPinned ? "Открепить склад" : "Закрепить сверху"}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              )}
               <div onClick={(e) => e.stopPropagation()}>
                 <EntityActionsMenu
                   actions={[

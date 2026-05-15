@@ -608,9 +608,10 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         intermediaryCommissionFormula: null,
         intermediaryCommissionUsd: calculations.totalIntermediaryCommissionUsd,
         intermediaryCommissionRub: calculations.totalIntermediaryCommissionRub,
-        quantityLiters: data.quantityLiters
-          ? parseFloat(data.quantityLiters)
-          : null,
+        quantityLiters:
+          data.inputMode === "liters" && data.quantityLiters
+            ? parseFloat(data.quantityLiters)
+            : null,
         density: data.density ? parseFloat(data.density) : null,
         quantityKg: calculations.finalKg || 0,
         purchasePriceId: purchasePriceId || null,

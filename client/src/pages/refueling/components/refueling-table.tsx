@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,7 @@ import { cn } from "@/lib/utils";
 
 import { TableColumnFilter } from "@/components/ui/table-column-filter";
 import { ProductTypeBadge } from "@/components/product-type-badge";
+import { StatCell } from "@/components/ui/stat-cell";
 
 interface RefuelingDealActionsProps {
   deal: any;
@@ -411,6 +412,60 @@ export function RefuelingTable({
             </TableRow>
           </TableHeader>
           <TableBody>
+            {deals.length > 0 && (
+              <TableRow className="bg-muted/30 hover:bg-muted/40 border-b-2">
+                {/* Дата, Прод., Борт, Поставщик, Базис */}
+                <TableCell className="py-1 px-1" colSpan={5} />
+                {/* СЗ - только для LIK */}
+                {equipmentType === EQUIPMENT_TYPE.LIK && (
+                  <TableCell className="py-1 px-1" />
+                )}
+                {/* Покупатель */}
+                <TableCell className="py-1 px-1" />
+                {/* Лит. */}
+                <TableCell className="py-1 px-1">
+                  <StatCell
+                    values={deals.map((d: any) => d.quantityLiters)}
+                    formatFn={(v) => formatNumberForTable(v)}
+                  />
+                </TableCell>
+                {/* Пл. (плотность) — пропуск */}
+                <TableCell className="py-1 px-1" />
+                {/* КГ */}
+                <TableCell className="py-1 px-1">
+                  <StatCell
+                    values={deals.map((d: any) => d.quantityKg)}
+                    formatFn={(v) => formatNumberForTable(v)}
+                  />
+                </TableCell>
+                {/* Цена пок. — пропуск */}
+                <TableCell className="py-1 px-1" />
+                {/* Покупка */}
+                <TableCell className="py-1 px-1">
+                  <StatCell
+                    values={deals.map((d: any) => d.purchaseAmount)}
+                    formatFn={(v) => formatCurrencyForTable(v)}
+                  />
+                </TableCell>
+                {/* Цена пр. — пропуск */}
+                <TableCell className="py-1 px-1" />
+                {/* Продажа */}
+                <TableCell className="py-1 px-1">
+                  <StatCell
+                    values={deals.map((d: any) => d.saleAmount)}
+                    formatFn={(v) => formatCurrencyForTable(v)}
+                  />
+                </TableCell>
+                {/* Прибыль */}
+                <TableCell className="py-1 px-1">
+                  <StatCell
+                    values={deals.map((d: any) => d.profit)}
+                    formatFn={(v) => formatCurrencyForTable(v)}
+                  />
+                </TableCell>
+                <TableCell className="py-1 px-1 sticky right-0 bg-muted/30" />
+              </TableRow>
+            )}
             {deals.length === 0 ? (
               <TableRow>
                 <TableCell

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { StatCell } from "@/components/ui/stat-cell";
 import {
   Table,
   TableBody,
@@ -433,6 +434,45 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
+            {dealsToDisplay.length > 0 && (
+              <TableRow className="bg-muted/30 hover:bg-muted/40 border-b-2">
+                <TableCell className="py-1 px-1" colSpan={4} />
+                <TableCell className="py-1 px-1">
+                  <StatCell
+                    values={dealsToDisplay.map((d: any) => d.quantityKg)}
+                    formatFn={(v) => formatNumberForTable(v)}
+                  />
+                </TableCell>
+                <TableCell className="py-1 px-1" />
+                <TableCell className="py-1 px-1">
+                  <StatCell
+                    values={dealsToDisplay.map((d: any) => d.purchaseAmount)}
+                    formatFn={(v) => formatCurrencyForTable(v)}
+                  />
+                </TableCell>
+                <TableCell className="py-1 px-1" />
+                <TableCell className="py-1 px-1">
+                  <StatCell
+                    values={dealsToDisplay.map((d: any) => d.saleAmount)}
+                    formatFn={(v) => formatCurrencyForTable(v)}
+                  />
+                </TableCell>
+                <TableCell className="py-1 px-1" colSpan={2} />
+                <TableCell className="py-1 px-1">
+                  <StatCell
+                    values={dealsToDisplay.map((d: any) => d.deliveryCost)}
+                    formatFn={(v) => formatCurrencyForTable(v)}
+                  />
+                </TableCell>
+                <TableCell className="py-1 px-1">
+                  <StatCell
+                    values={dealsToDisplay.map((d: any) => d.profit)}
+                    formatFn={(v) => formatCurrencyForTable(v)}
+                  />
+                </TableCell>
+                <TableCell className="py-1 px-1 sticky right-0 bg-muted/30" />
+              </TableRow>
+            )}
             {dealsToDisplay.length === 0 ? (
               <TableRow>
                 <TableCell
