@@ -1,7 +1,7 @@
 import { Combobox } from "@/components/ui/combobox";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -35,8 +35,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Loader2, X } from "lucide-react";
+import { Plus, Loader2, X, Warehouse } from "lucide-react";
 import type { Supplier, Base } from "@shared/schema";
+import type { Warehouse as WarehouseType } from "@shared/schema";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import { useAuth } from "@/hooks/use-auth";
 import { AddBaseDialog } from "../directories/bases-dialog";
@@ -54,8 +55,10 @@ const supplierFormSchema = z.object({
   baseIds: z
     .array(z.string().min(1, "Выберите базис"))
     .min(1, "Добавьте хотя бы один базис"),
-  isWarehouse: z.boolean().default(false),
-  storageCost: z.coerce.number().optional(),
+  warehouseLinkMode: z.enum(["none", "existing", "create"]).default("none"),
+  linkedWarehouseId: z.string().optional(),
+  newWarehouseName: z.string().optional(),
+  newWarehouseStorageCost: z.string().optional(),
   hasSpecialConditions: z.boolean().default(false),
   specialConditions: z.string().optional(),
   specialConditionsExpiresAt: z.date().optional().nullable(),
@@ -107,6 +110,11 @@ export function AddSupplierDialog({
   const open = isInline ? inlineOpen : localOpen;
   const setOpen = isInline ? onInlineOpenChange || setLocalOpen : setLocalOpen;
 
+  const { data: allWarehouses = [] } = useQuery<WarehouseType[]>({
+    queryKey: ["/api/warehouses"],
+    enabled: open,
+  });
+
   const form = useForm<SupplierFormData>({
     resolver: zodResolver(supplierFormSchema),
     defaultValues: {
@@ -117,8 +125,10 @@ export function AddSupplierDialog({
       supplyNomenclature: "",
       description: "",
       baseIds: [""],
-      isWarehouse: false,
-      storageCost: undefined,
+      warehouseLinkMode: "none",
+      linkedWarehouseId: "",
+      newWarehouseName: "",
+      newWarehouseStorageCost: "",
       hasSpecialConditions: false,
       specialConditions: "",
       specialConditionsExpiresAt: null,
@@ -134,14 +144,12 @@ export function AddSupplierDialog({
     name: "baseIds",
   });
 
-  // Ensure at least one field is always present
   useEffect(() => {
     if (fields.length === 0) {
       append("");
     }
   }, [fields.length, append]);
 
-  // Auto-scroll to newly added basis and clear highlight after 3 seconds
   useEffect(() => {
     if (newlyAddedBasisIndex !== null && newBasisRef.current) {
       newBasisRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -150,9 +158,15 @@ export function AddSupplierDialog({
     }
   }, [newlyAddedBasisIndex, fields.length]);
 
-  const isWarehouse = form.watch("isWarehouse");
+  const warehouseLinkMode = form.watch("warehouseLinkMode");
   const isForeign = form.watch("isForeign");
   const hasSpecialConditions = form.watch("hasSpecialConditions");
+  const watchedBaseIds = form.watch("baseIds");
+
+  // Filter warehouses: unlinked ones + currently linked one (for edit)
+  const freeWarehouses = allWarehouses.filter(
+    (w) => !w.supplierId || (editItem && w.supplierId === editItem.id)
+  );
 
   const createMutation = useMutation({
     mutationFn: async (data: SupplierFormData) => {
@@ -174,6 +188,32 @@ export function AddSupplierDialog({
         };
       });
 
+      // Build warehouse action
+      let warehouseAction: string | undefined;
+      let warehouseIdParam: string | undefined;
+      let newWarehouseData: any;
+
+      if (data.warehouseLinkMode === "existing" && data.linkedWarehouseId) {
+        // Check if we're re-linking to the same warehouse (no action needed) vs a new one
+        const currentWarehouseId = (editItem as any)?.warehouseId;
+        if (data.linkedWarehouseId !== currentWarehouseId) {
+          warehouseAction = "link";
+          warehouseIdParam = data.linkedWarehouseId;
+        }
+      } else if (data.warehouseLinkMode === "create") {
+        warehouseAction = "create";
+        newWarehouseData = {
+          name: data.newWarehouseName || data.name,
+          baseIds: filteredBaseIds,
+          storageCost: data.newWarehouseStorageCost || null,
+        };
+      } else if (data.warehouseLinkMode === "none") {
+        // If previously had a warehouse, unlink it
+        if ((editItem as any)?.warehouseId) {
+          warehouseAction = "unlink";
+        }
+      }
+
       const payload = {
         name: data.name,
         fullName: data.fullName || null,
@@ -183,11 +223,7 @@ export function AddSupplierDialog({
         description: data.description,
         baseIds: filteredBaseIds.length > 0 ? filteredBaseIds : null,
         basisPrices: basisPricesArray,
-        isWarehouse: data.isWarehouse,
-        storageCost:
-          data.isWarehouse && data.storageCost
-            ? String(data.storageCost)
-            : null,
+        isWarehouse: data.warehouseLinkMode !== "none",
         hasSpecialConditions: data.hasSpecialConditions,
         specialConditions: data.hasSpecialConditions ? (data.specialConditions || null) : null,
         specialConditionsExpiresAt: data.hasSpecialConditions && data.specialConditionsExpiresAt
@@ -197,6 +233,9 @@ export function AddSupplierDialog({
         isForeign: data.isForeign,
         withVAT: data.isForeign ? data.withVAT : false,
         isActive: data.isActive,
+        ...(warehouseAction && { warehouseAction }),
+        ...(warehouseIdParam && { warehouseId: warehouseIdParam }),
+        ...(newWarehouseData && { newWarehouseData }),
       };
 
       const res = await apiRequest(
@@ -224,8 +263,10 @@ export function AddSupplierDialog({
         supplyNomenclature: "",
         description: "",
         baseIds: [""],
-        isWarehouse: false,
-        storageCost: undefined,
+        warehouseLinkMode: "none",
+        linkedWarehouseId: "",
+        newWarehouseName: "",
+        newWarehouseStorageCost: "",
         hasSpecialConditions: false,
         specialConditions: "",
         specialConditionsExpiresAt: null,
@@ -255,6 +296,8 @@ export function AddSupplierDialog({
         editItem.baseIds && editItem.baseIds.length > 0
           ? editItem.baseIds
           : [""];
+
+      const existingWarehouseId = (editItem as any).warehouseId;
       form.reset({
         name: editItem.name,
         fullName: editItem.fullName || "",
@@ -263,10 +306,10 @@ export function AddSupplierDialog({
         supplyNomenclature: editItem.supplyNomenclature || "",
         description: editItem.description || "",
         baseIds: baseIdsArray,
-        isWarehouse: editItem.isWarehouse || false,
-        storageCost: editItem.storageCost
-          ? parseFloat(editItem.storageCost)
-          : undefined,
+        warehouseLinkMode: existingWarehouseId ? "existing" : "none",
+        linkedWarehouseId: existingWarehouseId || "",
+        newWarehouseName: editItem.name,
+        newWarehouseStorageCost: "",
         hasSpecialConditions: editItem.hasSpecialConditions || false,
         specialConditions: editItem.specialConditions || "",
         specialConditionsExpiresAt: editItem.specialConditionsExpiresAt
@@ -277,7 +320,6 @@ export function AddSupplierDialog({
         withVAT: editItem.withVAT || false,
         isActive: editItem.isActive,
       });
-      // Load per-basis prices from editItem
       const pricesMap: Record<string, BasisPriceEntry> = {};
       if (editItem.basisPrices && Array.isArray(editItem.basisPrices)) {
         editItem.basisPrices.forEach((bp: { basisId: string; servicePrice?: string | null; pvkjPrice?: string | null; agentFee?: string | null; otherServiceType?: string | null; otherServiceValue?: string | null }) => {
@@ -294,6 +336,14 @@ export function AddSupplierDialog({
     }
   }, [editItem, form]);
 
+  // When supplier name changes, update the default new warehouse name
+  const watchedName = form.watch("name");
+  useEffect(() => {
+    if (!editItem) {
+      form.setValue("newWarehouseName", watchedName);
+    }
+  }, [watchedName, editItem, form]);
+
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
@@ -305,8 +355,10 @@ export function AddSupplierDialog({
         supplyNomenclature: "",
         description: "",
         baseIds: [""],
-        isWarehouse: false,
-        storageCost: undefined,
+        warehouseLinkMode: "none",
+        linkedWarehouseId: "",
+        newWarehouseName: "",
+        newWarehouseStorageCost: "",
         hasSpecialConditions: false,
         specialConditions: "",
         specialConditionsExpiresAt: null,
@@ -691,47 +743,121 @@ export function AddSupplierDialog({
               )}
             </div>
 
-            <FormField
-              control={form.control}
-              name="isWarehouse"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2 space-y-0">
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="switch-is-warehouse"
-                    />
-                  </FormControl>
-                  <FormLabel className="font-normal cursor-pointer">
-                    Этот поставщик является складом
-                  </FormLabel>
-                </FormItem>
-              )}
-            />
-
-            {isWarehouse && (
+            {/* Warehouse linking section */}
+            <div className="space-y-3 border rounded-md p-3">
+              <div className="flex items-center gap-2">
+                <Warehouse className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Связанный склад</span>
+              </div>
               <FormField
                 control={form.control}
-                name="storageCost"
+                name="warehouseLinkMode"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Стоимость хранения на складе (₽)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.000001"
-                        placeholder="0.000000"
-                        data-testid="input-storage-cost"
-                        {...field}
-                      />
-                    </FormControl>
+                    <Select
+                      value={field.value}
+                      onValueChange={(val) => {
+                        field.onChange(val);
+                        if (val === "create") {
+                          const currentName = form.getValues("name");
+                          form.setValue("newWarehouseName", currentName || "");
+                        }
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-warehouse-link-mode">
+                          <SelectValue placeholder="Выберите режим" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">Без склада</SelectItem>
+                        <SelectItem value="existing">Привязать существующий склад</SelectItem>
+                        <SelectItem value="create">Создать новый склад</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            )}
+
+              {warehouseLinkMode === "existing" && (
+                <FormField
+                  control={form.control}
+                  name="linkedWarehouseId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">Склад</FormLabel>
+                      <FormControl>
+                        <Combobox
+                          options={freeWarehouses.map((w) => ({
+                            value: w.id,
+                            label: w.name,
+                          }))}
+                          value={field.value || ""}
+                          onValueChange={field.onChange}
+                          placeholder="Выберите склад"
+                          className="w-full"
+                          dataTestId="select-linked-warehouse"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                      {freeWarehouses.length === 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Нет свободных складов (все привязаны к другим поставщикам)
+                        </p>
+                      )}
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {warehouseLinkMode === "create" && (
+                <div className="space-y-3 bg-muted/30 rounded-md p-3">
+                  <p className="text-xs text-muted-foreground font-medium">Данные нового склада</p>
+                  <FormField
+                    control={form.control}
+                    name="newWarehouseName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm">Название склада</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Название склада"
+                            data-testid="input-new-warehouse-name"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="newWarehouseStorageCost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm">Стоимость хранения (₽/т)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.000001"
+                            placeholder="0.000000"
+                            data-testid="input-new-warehouse-storage-cost"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Базисы нового склада будут совпадать с базисами поставщика.
+                    Все остальные настройки можно изменить после создания.
+                  </p>
+                </div>
+              )}
+            </div>
 
             <div className="space-y-3">
               <FormField
@@ -813,25 +939,6 @@ export function AddSupplierDialog({
                 </FormItem>
               )}
             />
-
-            {/* <FormField
-              control={form.control}
-              name="isActive"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2 space-y-0">
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="switch-supplier-active"
-                    />
-                  </FormControl>
-                  <FormLabel className="font-normal cursor-pointer">
-                    Активен
-                  </FormLabel>
-                </FormItem>
-              )}
-            /> */}
 
             <div className="flex justify-end gap-4 pt-4">
               <Button

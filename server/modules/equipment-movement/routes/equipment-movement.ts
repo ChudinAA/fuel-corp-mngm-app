@@ -59,6 +59,8 @@ export function registerEquipmentMovementRoutes(app: Express) {
           ...body,
           totalCost: body.totalCost?.toString(),
           costPerKg: body.costPerKg?.toString(),
+          quantityLiters: body.quantityLiters != null ? String(body.quantityLiters) : null,
+          density: body.density != null ? String(body.density) : null,
           createdById: req.session.userId,
         });
         const record = await (storage as any).equipmentMovement.createMovement(data);
@@ -99,6 +101,8 @@ export function registerEquipmentMovementRoutes(app: Express) {
           ...body,
           totalCost: body.totalCost?.toString(),
           costPerKg: body.costPerKg?.toString(),
+          quantityLiters: body.quantityLiters != null ? String(body.quantityLiters) : null,
+          density: body.density != null ? String(body.density) : null,
           updatedById: req.session.userId,
         });
 

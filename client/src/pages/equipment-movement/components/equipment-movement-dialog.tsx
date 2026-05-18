@@ -202,10 +202,8 @@ export function EquipmentMovementDialog({
         ...data,
         movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),
         quantityKg: calculatedKg?.toString() || "0",
-        quantityLiters: data.quantityLiters
-          ? parseFloat(data.quantityLiters)
-          : null,
-        density: data.density ? parseFloat(data.density) : null,
+        quantityLiters: data.quantityLiters ? data.quantityLiters : null,
+        density: data.density ? data.density : null,
         totalCost: purchaseAmount,
         costPerKg: averageCost,
         isDraft: !!isDraft,

@@ -42,9 +42,15 @@ export function registerSuppliersRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
-        const { baseIds, basisPrices, ...restData } = req.body;
+        const {
+          baseIds,
+          basisPrices,
+          warehouseAction,
+          warehouseId: targetWarehouseId,
+          newWarehouseData,
+          ...restData
+        } = req.body;
 
-        // Ensure baseIds is an array
         const normalizedBaseIds = Array.isArray(baseIds) ? baseIds : [];
         const normalizedBasisPrices = Array.isArray(basisPrices) ? basisPrices : [];
 
@@ -53,20 +59,45 @@ export function registerSuppliersRoutes(app: Express) {
           createdById: req.session.userId,
         });
 
-        // First, create the supplier with baseIds
         const item = await storage.suppliers.createSupplier({
           ...data,
           baseIds: normalizedBaseIds,
           basisPrices: normalizedBasisPrices,
-          warehouseId: data.warehouseId || null,
+          warehouseId: null,
         });
 
-        // Then create warehouse if supplier is marked as warehouse and doesn't have one
-        if (
-          data.isWarehouse &&
-          !data.warehouseId &&
-          normalizedBaseIds.length > 0
-        ) {
+        // Handle warehouse linking
+        if (warehouseAction === "link" && targetWarehouseId) {
+          // Link existing warehouse
+          const targetWarehouse = await storage.warehouses.getWarehouse(targetWarehouseId);
+          if (targetWarehouse?.supplierId && targetWarehouse.supplierId !== item.id) {
+            return res.status(400).json({ message: "Этот склад уже привязан к другому поставщику" });
+          }
+          await storage.suppliers.updateSupplier(item.id, {
+            warehouseId: targetWarehouseId,
+            isWarehouse: true,
+          });
+          await storage.warehouses.updateWarehouse(targetWarehouseId, {
+            supplierId: item.id,
+            updatedById: req.session.userId ? String(req.session.userId) : null,
+          } as any);
+        } else if (warehouseAction === "create" && newWarehouseData) {
+          // Create new warehouse and link
+          const warehouse = await storage.warehouses.createWarehouse({
+            name: newWarehouseData.name || data.name,
+            baseIds: newWarehouseData.baseIds || normalizedBaseIds,
+            storageCost: newWarehouseData.storageCost || null,
+            supplierId: item.id,
+            isActive: data.isActive ?? true,
+            createdById: req.session.userId,
+          });
+          await storage.suppliers.updateSupplier(item.id, {
+            warehouseId: warehouse.id,
+            isWarehouse: true,
+            storageCost: newWarehouseData.storageCost || null,
+          });
+        } else if (data.isWarehouse && !targetWarehouseId && normalizedBaseIds.length > 0) {
+          // Legacy: auto-create warehouse if isWarehouse is true without explicit action
           const warehouse = await storage.warehouses.createWarehouse({
             name: data.name,
             baseIds: normalizedBaseIds,
@@ -75,7 +106,6 @@ export function registerSuppliersRoutes(app: Express) {
             isActive: data.isActive ?? true,
             createdById: req.session.userId,
           });
-          // Link warehouse back to supplier
           await storage.suppliers.updateSupplier(item.id, {
             warehouseId: warehouse.id,
           });
@@ -110,21 +140,82 @@ export function registerSuppliersRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        const { baseIds, basisPrices, ...restData } = req.body;
+        const {
+          baseIds,
+          basisPrices,
+          warehouseAction,
+          warehouseId: targetWarehouseId,
+          newWarehouseData,
+          ...restData
+        } = req.body;
 
         const updateData: any = {
           ...restData,
           updatedById: req.session.userId,
         };
 
-        // Include baseIds if provided
         if (baseIds !== undefined) {
           updateData.baseIds = Array.isArray(baseIds) ? baseIds : [];
         }
 
-        // Include basisPrices if provided
         if (basisPrices !== undefined) {
           updateData.basisPrices = Array.isArray(basisPrices) ? basisPrices : [];
+        }
+
+        // Handle warehouse linking actions
+        if (warehouseAction === "link" && targetWarehouseId) {
+          // Check warehouse is not already linked to another supplier
+          const targetWarehouse = await storage.warehouses.getWarehouse(targetWarehouseId);
+          if (targetWarehouse?.supplierId && targetWarehouse.supplierId !== id) {
+            return res.status(400).json({ message: "Этот склад уже привязан к другому поставщику" });
+          }
+          // Unlink old warehouse if different
+          const current = await storage.suppliers.getSupplier(id);
+          if (current?.warehouseId && current.warehouseId !== targetWarehouseId) {
+            await storage.warehouses.updateWarehouse(current.warehouseId, {
+              supplierId: null,
+              updatedById: req.session.userId ? String(req.session.userId) : null,
+            } as any);
+          }
+          updateData.warehouseId = targetWarehouseId;
+          updateData.isWarehouse = true;
+          await storage.warehouses.updateWarehouse(targetWarehouseId, {
+            supplierId: id,
+            updatedById: req.session.userId ? String(req.session.userId) : null,
+          } as any);
+        } else if (warehouseAction === "unlink") {
+          const current = await storage.suppliers.getSupplier(id);
+          if (current?.warehouseId) {
+            await storage.warehouses.updateWarehouse(current.warehouseId, {
+              supplierId: null,
+              updatedById: req.session.userId ? String(req.session.userId) : null,
+            } as any);
+          }
+          updateData.warehouseId = null;
+          updateData.isWarehouse = false;
+        } else if (warehouseAction === "create" && newWarehouseData) {
+          // Unlink old warehouse first
+          const current = await storage.suppliers.getSupplier(id);
+          if (current?.warehouseId) {
+            await storage.warehouses.updateWarehouse(current.warehouseId, {
+              supplierId: null,
+              updatedById: req.session.userId ? String(req.session.userId) : null,
+            } as any);
+          }
+          const warehouseBaseIds = updateData.baseIds || current?.baseIds || [];
+          const warehouse = await storage.warehouses.createWarehouse({
+            name: newWarehouseData.name,
+            baseIds: newWarehouseData.baseIds || warehouseBaseIds,
+            storageCost: newWarehouseData.storageCost || null,
+            supplierId: id,
+            isActive: true,
+            createdById: req.session.userId,
+          });
+          updateData.warehouseId = warehouse.id;
+          updateData.isWarehouse = true;
+          if (newWarehouseData.storageCost) {
+            updateData.storageCost = newWarehouseData.storageCost;
+          }
         }
 
         const item = await storage.suppliers.updateSupplier(id, updateData);
@@ -154,7 +245,6 @@ export function registerSuppliersRoutes(app: Express) {
       try {
         const id = req.params.id;
 
-        // Check if supplier has a warehouse
         const supplier = await storage.suppliers.getSupplier(id);
         if (supplier?.warehouseId) {
           await storage.warehouses.updateWarehouse(supplier.warehouseId, {

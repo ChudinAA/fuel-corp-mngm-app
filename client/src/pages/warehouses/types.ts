@@ -25,7 +25,11 @@ export interface NewWarehouseFormValues {
   name: string;
   bases: { baseId: string }[];
   storageCost: string;
-  createSupplier: boolean;
+  supplierLinkMode: "none" | "existing" | "create";
+  linkedSupplierId?: string;
+  newSupplierName?: string;
+  newSupplierFullName?: string;
+  newSupplierInn?: string;
   isBase: boolean;
   isExport: boolean;
   services: WarehouseServiceEntry[];

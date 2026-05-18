@@ -48,7 +48,15 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
-        const { createSupplier, bases, services, ...warehouseData } = req.body;
+        const {
+          supplierLinkMode,
+          linkedSupplierId,
+          newSupplierData,
+          createSupplier,
+          bases,
+          services,
+          ...warehouseData
+        } = req.body;
 
         const baseIds = Array.isArray(bases)
           ? bases.map((b: { baseId: string }) => b.baseId).filter(Boolean)
@@ -71,33 +79,52 @@ export function registerWarehousesOperationsRoutes(app: Express) {
 
         const item = await storage.warehouses.createWarehouse(data);
 
-        if (createSupplier && baseIds.length > 0) {
+        // Determine effective link mode (support both new and legacy field)
+        const effectiveLinkMode = supplierLinkMode || (createSupplier ? "create" : "none");
+
+        if (effectiveLinkMode === "link" && linkedSupplierId) {
+          // Link existing supplier
           try {
+            const targetSupplier = await storage.suppliers.getSupplier(linkedSupplierId);
+            if (targetSupplier?.warehouseId && targetSupplier.warehouseId !== item.id) {
+              // Supplier already linked, just skip silently or log
+              console.warn("Supplier already linked to another warehouse, skipping");
+            } else {
+              await storage.warehouses.updateWarehouse(item.id, {
+                supplierId: linkedSupplierId,
+                updatedById: req.session.userId ? String(req.session.userId) : null,
+              } as any);
+              await storage.suppliers.updateSupplier(linkedSupplierId, {
+                isWarehouse: true,
+                warehouseId: item.id,
+              });
+            }
+          } catch (e) {
+            console.error("Failed to link supplier for warehouse:", e);
+          }
+        } else if (effectiveLinkMode === "create") {
+          // Create new supplier and link
+          try {
+            const supplierName = newSupplierData?.name || data.name;
             const supplierData: any = {
-              name: data.name,
+              name: supplierName,
+              fullName: newSupplierData?.fullName || null,
+              inn: newSupplierData?.inn || null,
               baseIds: baseIds,
               isWarehouse: true,
               warehouseId: item.id,
               storageCost: data.storageCost || null,
               isActive: true,
-              createdById: req.session.userId
-                ? String(req.session.userId)
-                : null,
+              createdById: req.session.userId ? String(req.session.userId) : null,
             };
 
-            const supplier =
-              await storage.suppliers.createSupplier(supplierData);
+            const supplier = await storage.suppliers.createSupplier(supplierData);
             await storage.warehouses.updateWarehouse(item.id, {
               supplierId: supplier.id,
-              updatedById: req.session.userId
-                ? String(req.session.userId)
-                : null,
+              updatedById: req.session.userId ? String(req.session.userId) : null,
             } as any);
           } catch (suppError: any) {
-            console.error(
-              "Failed to auto-create supplier for warehouse:",
-              suppError,
-            );
+            console.error("Failed to auto-create supplier for warehouse:", suppError);
           }
         }
 
@@ -132,7 +159,14 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
-        const { bases, services, ...warehouseData } = req.body;
+        const {
+          supplierLinkMode,
+          linkedSupplierId,
+          newSupplierData,
+          bases,
+          services,
+          ...warehouseData
+        } = req.body;
 
         const updateData: any = {
           ...warehouseData,
@@ -153,6 +187,58 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           updateData.services = Array.isArray(services)
             ? services.filter((s: any) => s.serviceType && s.serviceValue)
             : [];
+        }
+
+        // Handle supplier linking actions
+        if (supplierLinkMode === "link" && linkedSupplierId) {
+          // Check supplier is not already linked to another warehouse
+          const targetSupplier = await storage.suppliers.getSupplier(linkedSupplierId);
+          if (targetSupplier?.warehouseId && targetSupplier.warehouseId !== id) {
+            return res.status(400).json({ message: "Этот поставщик уже привязан к другому складу" });
+          }
+          // Unlink old supplier if different
+          const current = await storage.warehouses.getWarehouse(id);
+          if (current?.supplierId && current.supplierId !== linkedSupplierId) {
+            await storage.suppliers.updateSupplier(current.supplierId, {
+              isWarehouse: false,
+              warehouseId: null,
+            });
+          }
+          updateData.supplierId = linkedSupplierId;
+          await storage.suppliers.updateSupplier(linkedSupplierId, {
+            isWarehouse: true,
+            warehouseId: id,
+          });
+        } else if (supplierLinkMode === "unlink") {
+          const current = await storage.warehouses.getWarehouse(id);
+          if (current?.supplierId) {
+            await storage.suppliers.updateSupplier(current.supplierId, {
+              isWarehouse: false,
+              warehouseId: null,
+            });
+          }
+          updateData.supplierId = null;
+        } else if (supplierLinkMode === "create" && newSupplierData) {
+          // Unlink old supplier first
+          const current = await storage.warehouses.getWarehouse(id);
+          if (current?.supplierId) {
+            await storage.suppliers.updateSupplier(current.supplierId, {
+              isWarehouse: false,
+              warehouseId: null,
+            });
+          }
+          const warehouseBaseIds = updateData.baseIds || current?.baseIds || [];
+          const supplier = await storage.suppliers.createSupplier({
+            name: newSupplierData.name,
+            fullName: newSupplierData.fullName || null,
+            inn: newSupplierData.inn || null,
+            baseIds: warehouseBaseIds,
+            isWarehouse: true,
+            warehouseId: id,
+            isActive: true,
+            createdById: req.session.userId,
+          } as any);
+          updateData.supplierId = supplier.id;
         }
 
         const item = await storage.warehouses.updateWarehouse(id, updateData);
@@ -313,7 +399,6 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           userId,
         });
 
-        // Determine txDate for recalculation queue (same as used in storage)
         const txDate = format(
           new Date(new Date(targetDate).setHours(23, 59, 0, 0)),
           "yyyy-MM-dd'T'HH:mm:ss",

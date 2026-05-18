@@ -14,7 +14,11 @@ export const newWarehouseFormSchema = z.object({
     })
   ).min(1, "Добавьте хотя бы один базис"),
   storageCost: z.string().optional(),
-  createSupplier: z.boolean(),
+  supplierLinkMode: z.enum(["none", "existing", "create"]).default("none"),
+  linkedSupplierId: z.string().optional(),
+  newSupplierName: z.string().optional(),
+  newSupplierFullName: z.string().optional(),
+  newSupplierInn: z.string().optional(),
   isBase: z.boolean().default(false),
   isExport: z.boolean().default(false),
   services: z.array(z.object({
