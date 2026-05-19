@@ -125,7 +125,8 @@ export function EquipmentMovementDialog({
         toWarehouseId: editMovement.toWarehouseId || "",
         fromEquipmentId: editMovement.fromEquipmentId || "",
         toEquipmentId: editMovement.toEquipmentId || "",
-        inputMode: (editMovement.inputMode as "liters" | "kg") || "kg",
+        inputMode: ((editMovement.inputMode as "liters" | "kg") ||
+          (editMovement.quantityLiters ? "liters" : "kg")),
         quantityLiters: editMovement.quantityLiters?.toString() || "",
         density: editMovement.density?.toString() || "",
         quantityKg: editMovement.quantityKg?.toString() || "",

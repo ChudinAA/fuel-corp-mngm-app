@@ -161,6 +161,8 @@ export function EquipmentMovementTable({
                 </div>
               </TableHead>
               <TableHead className="text-right">КГ</TableHead>
+              <TableHead className="text-right">Литры</TableHead>
+              <TableHead className="text-right">Плотность</TableHead>
               <TableHead className="text-right">Себест.</TableHead>
               <TableHead className="w-[50px] sticky right-0 bg-background z-10"></TableHead>
             </TableRow>
@@ -169,7 +171,7 @@ export function EquipmentMovementTable({
             {movements.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={9}
                   className="text-center py-8 text-muted-foreground"
                 >
                   Нет данных
@@ -211,6 +213,16 @@ export function EquipmentMovementTable({
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatNumber(item?.quantityKg)}
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {item?.quantityLiters
+                      ? formatNumber(item.quantityLiters)
+                      : "—"}
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {item?.density
+                      ? formatNumber(item.density)
+                      : "—"}
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatNumber(item?.costPerKg)}
