@@ -20,12 +20,16 @@ export class EquipmentMovementStorage {
       .select({
         id: equipmentMovement.id,
         movementDate: equipmentMovement.movementDate,
+        movementType: equipmentMovement.movementType,
         productType: equipmentMovement.productType,
         fromWarehouseId: equipmentMovement.fromWarehouseId,
         toWarehouseId: equipmentMovement.toWarehouseId,
         fromEquipmentId: equipmentMovement.fromEquipmentId,
         toEquipmentId: equipmentMovement.toEquipmentId,
         quantityKg: equipmentMovement.quantityKg,
+        quantityLiters: equipmentMovement.quantityLiters,
+        density: equipmentMovement.density,
+        inputMode: equipmentMovement.inputMode,
         costPerKg: equipmentMovement.costPerKg,
         totalCost: equipmentMovement.totalCost,
         notes: equipmentMovement.notes,
@@ -34,6 +38,11 @@ export class EquipmentMovementStorage {
         fromEquipmentName: sql<string>`(SELECT name FROM equipments WHERE id = ${equipmentMovement.fromEquipmentId})`,
         toEquipmentName: sql<string>`(SELECT name FROM equipments WHERE id = ${equipmentMovement.toEquipmentId})`,
         isDraft: equipmentMovement.isDraft,
+        basisId: equipmentMovement.basisId,
+        transactionId: equipmentMovement.transactionId,
+        sourceTransactionId: equipmentMovement.sourceTransactionId,
+        warehouseTransactionId: equipmentMovement.warehouseTransactionId,
+        sourceWarehouseTransactionId: equipmentMovement.sourceWarehouseTransactionId,
       })
       .from(equipmentMovement)
       .where(
