@@ -28,6 +28,7 @@ interface UseOptCalculationsProps {
   dealDate?: Date;
   productType: string;
   selectedSupplier?: Supplier;
+  noDeliveryRequired?: boolean;
 }
 
 export function useOptCalculations({
@@ -51,6 +52,7 @@ export function useOptCalculations({
   dealDate,
   productType,
   selectedSupplier,
+  noDeliveryRequired = false,
 }: UseOptCalculationsProps) {
   const { calculatedKg, finalKg } = useQuantityCalculation({
     inputMode,
@@ -92,10 +94,14 @@ export function useOptCalculations({
   const salePrice = extractedSalePrice;
 
   // Получение стоимости доставки с гибким поиском тарифа по приоритету:
-  // 1. Точка поставки → delivery_location (если выбрана)
-  // 2. Базис поставщика → базис покупателя (base → base)
-  // 3. Склад поставщика → базис покупателя (warehouse → base)
+  // 1. Самовывоз (noDeliveryRequired) → 0
+  // 2. Точка поставки → delivery_location (если выбрана)
+  // 3. Базис поставщика → базис покупателя (base → base)
+  // 4. Склад поставщика → базис покупателя (warehouse → base)
   const deliveryCost = useMemo((): number | null => {
+    if (noDeliveryRequired) {
+      return 0;
+    }
     if (!carrierId || !deliveryCosts || !finalKg || finalKg <= 0) {
       return null;
     }
@@ -168,6 +174,7 @@ export function useOptCalculations({
 
     return null;
   }, [
+    noDeliveryRequired,
     deliveryLocationId,
     carrierId,
     deliveryCosts,

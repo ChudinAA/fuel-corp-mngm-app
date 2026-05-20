@@ -2,6 +2,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -170,6 +171,8 @@ interface LogisticsSectionProps {
   deliveryCost: number | null;
   deliveryError?: string | null;
   autoTariffType?: "base_to_base" | "warehouse_to_base" | "via_location";
+  noDeliveryRequired: boolean;
+  onNoDeliveryRequiredChange: (value: boolean) => void;
 }
 
 export function LogisticsSection({
@@ -180,6 +183,8 @@ export function LogisticsSection({
   deliveryCost,
   deliveryError,
   autoTariffType,
+  noDeliveryRequired,
+  onNoDeliveryRequiredChange,
 }: LogisticsSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -215,19 +220,42 @@ export function LogisticsSection({
   return (
     <Card>
       <CardHeader className="pb-4">
-        <div className="flex items-center gap-6">
-          <CardTitle className="text-lg">Логистика</CardTitle>
-          {selectedLocationBase && (
-            <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-right-1 duration-200">
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {selectedLocationBase.name}
-              </span>
-              <BaseTypeBadge
-                type={selectedLocationBase.baseType}
-                short={true}
-              />
-            </div>
-          )}
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-6">
+            <CardTitle className="text-lg">Логистика</CardTitle>
+            {!noDeliveryRequired && selectedLocationBase && (
+              <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-right-1 duration-200">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {selectedLocationBase.name}
+                </span>
+                <BaseTypeBadge
+                  type={selectedLocationBase.baseType}
+                  short={true}
+                />
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="no-delivery-required"
+              checked={noDeliveryRequired}
+              onCheckedChange={(checked) => {
+                const val = checked === true;
+                onNoDeliveryRequiredChange(val);
+                if (val) {
+                  form.setValue("deliveryLocationId", "");
+                  form.setValue("carrierId", "");
+                }
+              }}
+              data-testid="checkbox-no-delivery-required"
+            />
+            <label
+              htmlFor="no-delivery-required"
+              className="text-sm text-muted-foreground cursor-pointer select-none"
+            >
+              Не требуется доставка
+            </label>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -272,10 +300,11 @@ export function LogisticsSection({
                         placeholder="Выберите место"
                         className="w-full"
                         dataTestId="select-delivery-location"
+                        disabled={noDeliveryRequired}
                       />
                     </div>
                   </FormControl>
-                  {hasPermission("directories", "create") && (
+                  {hasPermission("directories", "create") && !noDeliveryRequired && (
                     <Button
                       type="button"
                       size="icon"
@@ -314,10 +343,11 @@ export function LogisticsSection({
                         placeholder="Выберите перевозчика"
                         className="w-full"
                         dataTestId="select-carrier"
+                        disabled={noDeliveryRequired}
                       />
                     </div>
                   </FormControl>
-                  {hasPermission("delivery", "create") && (
+                  {hasPermission("delivery", "create") && !noDeliveryRequired && (
                     <Button
                       type="button"
                       size="icon"
@@ -337,23 +367,23 @@ export function LogisticsSection({
 
           <CalculatedField
             label="Доставка"
-            value={deliveryCost !== null ? formatCurrency(deliveryCost) : "—"}
+            value={noDeliveryRequired ? formatCurrency(0) : (deliveryCost !== null ? formatCurrency(deliveryCost) : "—")}
           />
         </div>
 
-        {autoTariffType === "base_to_base" && (
+        {!noDeliveryRequired && autoTariffType === "base_to_base" && (
           <div className="flex items-center gap-2 mt-3 px-1 text-sm text-muted-foreground animate-in fade-in duration-200">
             <Info className="h-4 w-4 shrink-0 text-blue-500" />
             <span>Тариф найден по маршруту базис → базис. Точка поставки не обязательна.</span>
           </div>
         )}
-        {autoTariffType === "warehouse_to_base" && (
+        {!noDeliveryRequired && autoTariffType === "warehouse_to_base" && (
           <div className="flex items-center gap-2 mt-3 px-1 text-sm text-muted-foreground animate-in fade-in duration-200">
             <Info className="h-4 w-4 shrink-0 text-blue-500" />
             <span>Тариф найден по маршруту склад → базис. Точка поставки не обязательна.</span>
           </div>
         )}
-        {deliveryError && (
+        {!noDeliveryRequired && deliveryError && (
           <div className="flex items-center gap-2 mt-3 px-1 text-sm text-destructive">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{deliveryError}</span>

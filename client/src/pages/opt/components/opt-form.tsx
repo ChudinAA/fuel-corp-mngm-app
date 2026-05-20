@@ -61,6 +61,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
     const { toast } = useToast();
     const { showError, ErrorModalComponent } = useErrorModal();
     const [inputMode, setInputMode] = useState<"liters" | "kg">("kg");
+    const [noDeliveryRequired, setNoDeliveryRequired] = useState<boolean>(false);
     const [selectedBasis, setSelectedBasis] = useState<string>("");
     const [customerBasis, setCustomerBasis] = useState<string>("");
     const [selectedPurchasePriceId, setSelectedPurchasePriceId] =
@@ -237,6 +238,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       dealDate: watchDealDate,
       productType: watchProductType || PRODUCT_TYPE.KEROSENE,
       selectedSupplier,
+      noDeliveryRequired,
     });
 
     const {
@@ -418,6 +420,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         initialValuesRef.current = resetValues;
         form.reset(resetValues, { keepDefaultValues: false });
 
+        setNoDeliveryRequired((editData as any).isNoDeliveryRequired || false);
         setSelectedPurchasePriceId(purchasePriceCompositeId);
         setSelectedSalePriceId(salePriceCompositeId);
         setInitialQuantityKg(
@@ -456,6 +459,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           supplierId: data.supplierId || null,
           buyerId: data.buyerId || null,
           isDraft: data.isDraft || false,
+          isNoDeliveryRequired: noDeliveryRequired,
           inputMode: data.inputMode || inputMode,
           warehouseId:
             isWarehouseSupplier && supplierWarehouse
@@ -466,8 +470,8 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           basisId: data.basisId || null,
           customerBasis: data.customerBasis || null,
           customerBasisId: data.customerBasisId || null,
-          carrierId: data.carrierId || null,
-          deliveryLocationId: data.deliveryLocationId || null,
+          carrierId: noDeliveryRequired ? null : (data.carrierId || null),
+          deliveryLocationId: noDeliveryRequired ? null : (data.deliveryLocationId || null),
           dealDate: data.dealDate
             ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss")
             : null,
@@ -485,8 +489,8 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
           purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
           saleAmount: saleAmount !== null ? saleAmount : null,
-          deliveryCost: deliveryCost !== null ? deliveryCost : null,
-          deliveryTariff: deliveryTariff !== null ? deliveryTariff : null,
+          deliveryCost: noDeliveryRequired ? 0 : (deliveryCost !== null ? deliveryCost : null),
+          deliveryTariff: noDeliveryRequired ? 0 : (deliveryTariff !== null ? deliveryTariff : null),
           profit: profit !== null ? profit : null,
         };
         const res = await apiRequest("POST", "/api/opt", payload);
@@ -514,6 +518,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         setSelectedSalePriceId("");
         setSelectedBasis("");
         setCustomerBasis("");
+        setNoDeliveryRequired(false);
         form.reset({
           dealDate: new Date(),
           supplierId: "",
@@ -528,6 +533,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           notes: "",
           isApproxVolume: false,
           isPlannedDeal: false,
+          isNoDeliveryRequired: false,
           selectedPurchasePriceId: "",
           selectedSalePriceId: "",
           basis: "",
@@ -562,6 +568,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           supplierId: data.supplierId || null,
           buyerId: data.buyerId || null,
           isDraft: data.isDraft || false,
+          isNoDeliveryRequired: noDeliveryRequired,
           inputMode: data.inputMode || inputMode,
           warehouseId:
             isWarehouseSupplier && supplierWarehouse
@@ -572,8 +579,8 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           basisId: data.basisId || null,
           customerBasis: data.customerBasis || null,
           customerBasisId: data.customerBasisId || null,
-          carrierId: data.carrierId || null,
-          deliveryLocationId: data.deliveryLocationId || null,
+          carrierId: noDeliveryRequired ? null : (data.carrierId || null),
+          deliveryLocationId: noDeliveryRequired ? null : (data.deliveryLocationId || null),
           dealDate: data.dealDate
             ? format(data.dealDate, "yyyy-MM-dd'T'HH:mm:ss")
             : null,
@@ -591,8 +598,8 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
           purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
           saleAmount: saleAmount !== null ? saleAmount : null,
-          deliveryCost: deliveryCost !== null ? deliveryCost : null,
-          deliveryTariff: deliveryTariff !== null ? deliveryTariff : null,
+          deliveryCost: noDeliveryRequired ? 0 : (deliveryCost !== null ? deliveryCost : null),
+          deliveryTariff: noDeliveryRequired ? 0 : (deliveryTariff !== null ? deliveryTariff : null),
           profit: profit !== null ? profit : null,
         };
         const res = await apiRequest("PATCH", `/api/opt/${data.id}`, payload);
@@ -616,6 +623,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         setSelectedSalePriceId("");
         setSelectedBasis("");
         setCustomerBasis("");
+        setNoDeliveryRequired(false);
         form.reset({
           dealDate: new Date(),
           supplierId: "",
@@ -630,6 +638,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           notes: "",
           isApproxVolume: false,
           isPlannedDeal: false,
+          isNoDeliveryRequired: false,
           selectedPurchasePriceId: "",
           selectedSalePriceId: "",
           basis: "",
@@ -684,8 +693,8 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           }
         }
 
-        // Проверяем наличие рассчитанной доставки (только при создании новой сделки)
-        if (!isEditing) {
+        // Проверяем наличие рассчитанной доставки (только при создании новой сделки и если доставка нужна)
+        if (!isEditing && !noDeliveryRequired) {
           const carrierId = data.carrierId;
           const deliveryLocationId = data.deliveryLocationId;
 
@@ -773,6 +782,8 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
               deliveryCost={deliveryCost}
               deliveryError={deliveryError}
               autoTariffType={autoDetectedTariff?.tariffType}
+              noDeliveryRequired={noDeliveryRequired}
+              onNoDeliveryRequiredChange={setNoDeliveryRequired}
             />
 
             <OptPricingSection

@@ -14,6 +14,7 @@ export const optFormSchema = z.object({
   notes: z.string().optional().nullable(),
   isApproxVolume: z.boolean().default(false),
   isPlannedDeal: z.boolean().default(false),
+  isNoDeliveryRequired: z.boolean().default(false),
   selectedPurchasePriceId: z.string().optional().nullable(),
   selectedSalePriceId: z.string().optional().nullable(),
   purchasePriceIndex: z.number().optional().nullable(),

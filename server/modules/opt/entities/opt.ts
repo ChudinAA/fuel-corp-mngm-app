@@ -80,6 +80,7 @@ export const opt = pgTable(
     deletedAt: timestamp("deleted_at", { mode: "string" }),
     deletedById: uuid("deleted_by_id").references(() => users.id),
     isDraft: boolean("is_draft").default(false).notNull(),
+    isNoDeliveryRequired: boolean("is_no_delivery_required").default(false).notNull(),
   },
   (table) => ({
     dealDateIdx: index("opt_deal_date_idx").on(table.dealDate),
@@ -169,6 +170,7 @@ export const insertOptSchema = z
     isApproxVolume: z.boolean().optional(),
     isPlannedDeal: z.boolean().optional(),
     isDraft: z.boolean().default(false),
+    isNoDeliveryRequired: z.boolean().optional(),
     createdById: z.string().nullable().optional(),
     updatedById: z.string().nullable().optional(),
   })
