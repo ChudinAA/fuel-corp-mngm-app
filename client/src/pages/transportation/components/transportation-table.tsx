@@ -190,6 +190,7 @@ export function TransportationTable({
     "Пункт доставки": d.deliveryLocation?.name || "",
     Кг: d.quantityKg || "",
     "Цена услуги": d.salePrice || "",
+    "Сумма услуги (₽)": d.saleAmount || "",
     "Стоимость доставки": d.deliveryCost || "",
     Прибыль: d.profit || "",
     Примечание: d.notes || "",
@@ -361,6 +362,11 @@ export function TransportationTable({
                   {isColumnVisible("salePrice") && (
                     <TableCell className="text-right text-xs py-1.5 px-1">
                       {formatPrice(deal.salePrice) ?? "—"}
+                    </TableCell>
+                  )}
+                  {isColumnVisible("saleAmount") && (
+                    <TableCell className="text-right text-xs py-1.5 px-1">
+                      {formatPrice(deal.saleAmount) ?? "—"}
                     </TableCell>
                   )}
                   {isColumnVisible("deliveryCost") && (

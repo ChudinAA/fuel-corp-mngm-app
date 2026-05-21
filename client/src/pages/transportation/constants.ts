@@ -11,6 +11,7 @@ export const TRANSPORTATION_TABLE_COLUMNS = [
   { id: "deliveryLocation", label: "Пункт дос." },
   { id: "quantityKg", label: "КГ" },
   { id: "salePrice", label: "Цена услуги" },
+  { id: "saleAmount", label: "Сумма услуги (₽)" },
   { id: "deliveryCost", label: "Доставка" },
   { id: "profit", label: "Прибыль" },
   { id: "notes", label: "Примечание" },
@@ -24,6 +25,7 @@ export const DEFAULT_TRANSPORTATION_COLUMNS = [
   "carrier",
   "quantityKg",
   "salePrice",
+  "saleAmount",
   "deliveryCost",
   "profit",
 ];

@@ -205,7 +205,7 @@ export const TransportationForm = forwardRef<
     deliveryCost,
     deliveryTariff,
     saleAmount,
-    profit,
+    profit: calculatedProfit,
   } = useTransportationCalculations({
     inputMode: watchFormInputMode as "liters" | "kg",
     quantityLiters: watchQuantityLiters?.toString() || "",
@@ -222,6 +222,9 @@ export const TransportationForm = forwardRef<
     isAviaService,
     productType: watchProductType,
   });
+
+  // Для АвиаСервис прибыль = сумма услуги (нет внешних затрат на доставку)
+  const profit = isAviaService ? saleAmount : calculatedProfit;
 
   const {
     showDuplicateDialog,
