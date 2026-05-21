@@ -912,7 +912,7 @@ export const TransportationForm = forwardRef<
               <CardTitle className="text-lg">Ценообразование</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-0">
                   <Label>Цена услуги</Label>
                   <div className="flex gap-1 items-center">
@@ -951,8 +951,7 @@ export const TransportationForm = forwardRef<
                   label="Сумма услуги (₽)"
                   value={saleAmount !== null ? formatCurrency(saleAmount) : "—"}
                 />
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
+
                 <div
                   className={
                     profit !== null

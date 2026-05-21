@@ -1100,74 +1100,50 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
               />
 
               <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
-                {watchedValues.inputMode === "liters" ? (
-                  <>
-                    <FormField
-                      control={form.control}
-                      name="quantityLiters"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2">
-                            Литры
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              {...field}
-                              value={field.value || ""}
-                              data-testid="input-quantity-liters"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    {/* <FormField
-                      control={form.control}
-                      name="density"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2">
-                            Плотность
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.001"
-                              {...field}
-                              value={field.value || ""}
-                              data-testid="input-density"
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    /> */}
-                  </>
-                ) : (
-                  <FormField
-                    control={form.control}
-                    name="quantityKg"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          Масса (кг)
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            {...field}
-                            value={field.value || ""}
-                            data-testid="input-quantity-kg"
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                )}
+                <FormField
+                  control={form.control}
+                  name="quantityKg"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        Масса (кг)
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          disabled={watchedValues.inputMode === "liters"}
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-quantity-kg"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="quantityLiters"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        Литры
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          disabled={watchedValues.inputMode !== "liters"}
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-quantity-liters"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
 
                 {/* <div>
                   <Label className="text-muted-foreground">Итого (кг)</Label>

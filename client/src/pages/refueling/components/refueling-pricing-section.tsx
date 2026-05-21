@@ -184,7 +184,7 @@ export function RefuelingPricingSection({
       <div className="grid gap-3 md:grid-cols-4">
         {!isWarehouseSupplier &&
         purchasePrices.length > 0 &&
-        !basisServicePrice ? (
+        !(basisServicePrice && productType === PRODUCT_TYPE.SERVICE) ? (
           <FormField
             control={form.control}
             name="selectedPurchasePriceId"

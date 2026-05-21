@@ -27,19 +27,15 @@ export const refuelingAbroad = pgTable(
   "refueling_abroad",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    refuelingDate: timestamp("refueling_date", { mode: "string" }).notNull(),
-    productType: text("product_type").notNull(),
+    refuelingDate: timestamp("refueling_date", { mode: "string" }),
+    productType: text("product_type"),
     aircraftNumber: text("aircraft_number"),
     orderNumber: text("order_number"),
     flightNumber: text("flight_number"),
     airport: text("airport"),
     country: text("country"),
-    supplierId: uuid("supplier_id")
-      .notNull()
-      .references(() => suppliers.id),
-    buyerId: uuid("buyer_id")
-      .notNull()
-      .references(() => customers.id),
+    supplierId: uuid("supplier_id").references(() => suppliers.id),
+    buyerId: uuid("buyer_id").references(() => customers.id),
     basisId: uuid("basis_id").references(() => bases.id),
     storageCardId: uuid("storage_card_id").references(() => storageCards.id),
     intermediaryId: uuid("intermediary_id").references(() => suppliers.id),
@@ -54,7 +50,7 @@ export const refuelingAbroad = pgTable(
     }),
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
-    quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
+    quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }),
     inputMode: text("input_mode"),
     currency: text("currency").default("USD").notNull(),
     exchangeRateId: uuid("exchange_rate_id").references(() => exchangeRates.id),

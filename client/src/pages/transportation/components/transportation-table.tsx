@@ -42,6 +42,7 @@ import {
 import {
   formatNumberForTable,
   formatCurrencyForTable,
+  formatPrice,
   getProductLabel,
 } from "@/pages/opt/utils";
 import { useTransportationTable } from "../hooks/use-transportation-table";
@@ -359,12 +360,12 @@ export function TransportationTable({
                   )}
                   {isColumnVisible("salePrice") && (
                     <TableCell className="text-right text-xs py-1.5 px-1">
-                      {formatNumberForTable(deal.salePrice)}
+                      {formatPrice(deal.salePrice) ?? "—"}
                     </TableCell>
                   )}
                   {isColumnVisible("deliveryCost") && (
                     <TableCell className="text-right text-xs py-1.5 px-1">
-                      {formatCurrencyForTable(deal.deliveryCost)}
+                      {formatPrice(deal.deliveryCost) ?? "—"}
                     </TableCell>
                   )}
                   {isColumnVisible("profit") && (
@@ -376,7 +377,7 @@ export function TransportationTable({
                           : "text-red-600",
                       )}
                     >
-                      {formatCurrencyForTable(deal.profit)}
+                      {formatPrice(deal.profit) ?? "—"}
                     </TableCell>
                   )}
                   {isColumnVisible("notes") && (
