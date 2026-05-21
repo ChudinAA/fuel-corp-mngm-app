@@ -66,7 +66,7 @@ import { AddDeliveryCostDialog } from "@/pages/delivery/components/delivery-cost
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 import { AddBaseDialog } from "@/pages/directories/bases-dialog";
 import { CalculatedField } from "@/pages/opt/components/calculated-field";
-import { formatCurrency, formatNumber } from "@/pages/opt/utils";
+import { formatCurrency, formatNumber, formatPrice } from "@/pages/opt/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
@@ -478,7 +478,7 @@ export const TransportationForm = forwardRef<
       .map((pv: any, idx: number) => {
         const parsed = typeof pv === "string" ? JSON.parse(pv) : pv;
         const val = parseFloat(parsed?.price || "0");
-        return { value: `${p.id}-${idx}`, label: `${formatNumber(val)} ₽/кг` };
+        return { value: `${p.id}-${idx}`, label: `${formatPrice(val)} ₽/кг` };
       })
       .flat();
   };
@@ -893,7 +893,7 @@ export const TransportationForm = forwardRef<
                 <CalculatedField
                   label="Тариф (₽/кг)"
                   value={
-                    deliveryTariff !== null ? formatNumber(deliveryTariff) : "—"
+                    deliveryTariff !== null ? formatPrice(deliveryTariff) : "—"
                   }
                 />
                 <CalculatedField
@@ -947,6 +947,12 @@ export const TransportationForm = forwardRef<
                   </div>
                 </div>
 
+                <CalculatedField
+                  label="Сумма услуги (₽)"
+                  value={saleAmount !== null ? formatCurrency(saleAmount) : "—"}
+                />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
                 <div
                   className={
                     profit !== null
@@ -957,7 +963,7 @@ export const TransportationForm = forwardRef<
                   }
                 >
                   <CalculatedField
-                    label="Прибыль"
+                    label="Прибыль (₽)"
                     value={profit !== null ? formatCurrency(profit) : "—"}
                   />
                 </div>

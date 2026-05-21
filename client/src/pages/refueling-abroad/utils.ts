@@ -2,18 +2,14 @@ export function formatNumber(value: number | string | null | undefined): string 
   if (value === null || value === undefined || value === "") return "—";
   const num = typeof value === "string" ? parseFloat(value) : value;
   if (isNaN(num)) return "—";
-  
-  // Add 'k' suffix for numbers >= 1000
-  // Временно убираем логику кило-форматирования
-  // if (Math.abs(num) >= 1000) {
-  //   const kValue = num / 1000;
-  //   return kValue.toLocaleString("ru-RU", { 
-  //     minimumFractionDigits: 1, 
-  //     maximumFractionDigits: 1 
-  //   }) + "к";
-  // }
-  
   return num.toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+export function formatPrice(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  if (isNaN(num)) return "—";
+  return num.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 6 });
 }
 
 export function formatCurrency(value: number | string | null | undefined, currency: string = "USD"): string {

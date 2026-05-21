@@ -1,4 +1,4 @@
-import { eq, desc, sql, or, isNull, and } from "drizzle-orm";
+import { eq, desc, asc, sql, or, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
 import {
   aircraftRefueling,
@@ -94,7 +94,7 @@ export class AircraftRefuelingStorage {
       .leftJoin(warehouses, eq(aircraftRefueling.warehouseId, warehouses.id))
       .leftJoin(equipments, eq(aircraftRefueling.equipmentId, equipments.id))
       .where(whereCondition)
-      .orderBy(desc(aircraftRefueling.refuelingDate))
+      .orderBy(desc(aircraftRefueling.refuelingDate), asc(customers.name))
       .limit(pageSize)
       .offset(offset);
 

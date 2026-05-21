@@ -218,10 +218,11 @@ export function registerPricesRoutes(app: Express) {
 
         console.log("[PRICE CREATE DEBUG] body.limitType:", body.limitType, "body.volume:", body.volume, "body.maxDealAmount:", body.maxDealAmount);
         const limitType = body.limitType || "volume";
-        if (limitType !== "amount" && !body.volume) {
+        const contractLimitEnabled = body.contractLimitEnabled !== false;
+        if (contractLimitEnabled && limitType !== "amount" && !body.volume) {
           return res.status(400).json({ message: "Укажите объем по договору" });
         }
-        if (limitType === "amount" && !body.maxDealAmount) {
+        if (contractLimitEnabled && limitType === "amount" && !body.maxDealAmount) {
           return res.status(400).json({ message: "Укажите максимальную сумму сделки" });
         }
 

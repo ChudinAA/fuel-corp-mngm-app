@@ -53,7 +53,7 @@ import {
   type ChainBankCommissionItem,
 } from "./deal-chain";
 import { computeBankCommission } from "./deal-chain/types";
-import { formatCurrency, formatNumber } from "../utils";
+import { formatCurrency, formatNumber, formatPrice } from "../utils";
 import { PRODUCT_TYPES_ABROAD } from "../constants";
 import type {
   Supplier,
@@ -1265,7 +1265,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                                         key={`${price.id}-${idx}`}
                                         value={`${price.id}-${idx}`}
                                       >
-                                        {formatNumber(priceVal)} $/кг
+                                        {formatPrice(priceVal)} ${watchedValues.inputMode === "liters" ? "/л" : "/кг"}
                                       </SelectItem>
                                     );
                                   } catch {
@@ -1365,7 +1365,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                                         key={`${price.id}-${idx}`}
                                         value={`${price.id}-${idx}`}
                                       >
-                                        {formatNumber(priceVal)} $/кг
+                                        {formatPrice(priceVal)} ${watchedValues.inputMode === "liters" ? "/л" : "/кг"}
                                       </SelectItem>
                                     );
                                   } catch {

@@ -21,10 +21,9 @@ import { CalculatedField } from "../calculated-field";
 import { formatNumber, formatPrice, formatCurrency } from "../utils";
 import { EQUIPMENT_TYPE, PRODUCT_TYPE, COUNTERPARTY_TYPE, COUNTERPARTY_ROLE } from "@shared/constants";
 import { useAuth } from "@/hooks/use-auth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
-
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface RefuelingPricingSectionProps {
@@ -97,6 +96,22 @@ export function RefuelingPricingSection({
   const handleSalePriceCreated = (id: string) => {
     form.setValue("selectedSalePriceId", id);
   };
+
+  useEffect(() => {
+    if (purchasePrices.length > 0 && !selectedPurchasePriceId) {
+      const firstId = `${purchasePrices[0].id}-0`;
+      setSelectedPurchasePriceId(firstId);
+      form.setValue("selectedPurchasePriceId", firstId);
+    }
+  }, [purchasePrices, selectedPurchasePriceId]);
+
+  useEffect(() => {
+    if (salePrices.length > 0 && !selectedSalePriceId) {
+      const firstId = `${salePrices[0].id}-0`;
+      setSelectedSalePriceId(firstId);
+      form.setValue("selectedSalePriceId", firstId);
+    }
+  }, [salePrices, selectedSalePriceId]);
 
   return (
     <>
@@ -181,11 +196,6 @@ export function RefuelingPricingSection({
               const effectiveValue =
                 selectedPurchasePriceId || field.value || firstPriceId;
 
-              if (!selectedPurchasePriceId && !field.value && firstPriceId) {
-                setSelectedPurchasePriceId(firstPriceId);
-                field.onChange(firstPriceId);
-              }
-
               return (
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
@@ -257,20 +267,29 @@ export function RefuelingPricingSection({
             status="ok"
           />
         ) : !isWarehouseSupplier && productType !== PRODUCT_TYPE.SERVICE ? (
-          <div className="flex items-end gap-1">
-            <CalculatedField label="Покупка" value="Нет цены!" status="error" />
-            {hasPermission("prices", "create") && (
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                onClick={() => setAddPurchasePriceOpen(true)}
-                data-testid="button-add-purchase-price-inline"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
+          purchasePrice !== null ? (
+            <CalculatedField
+              label="Покупка"
+              value={formatPrice(purchasePrice)}
+              suffix=" ₽/кг"
+              status="ok"
+            />
+          ) : (
+            <div className="flex items-end gap-1">
+              <CalculatedField label="Покупка" value="Нет цены!" status="error" />
+              {hasPermission("prices", "create") && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => setAddPurchasePriceOpen(true)}
+                  data-testid="button-add-purchase-price-inline"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          )
         ) : (
           <CalculatedField
             label="Покупка"

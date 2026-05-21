@@ -1,4 +1,4 @@
-import { eq, desc, sql, or, isNull, and } from "drizzle-orm";
+import { eq, desc, asc, sql, or, isNull, and } from "drizzle-orm";
 import { db } from "server/db";
 import {
   opt,
@@ -98,7 +98,7 @@ export class OptStorage {
       )
       .leftJoin(warehouses, eq(opt.warehouseId, warehouses.id))
       .where(filterCondition)
-      .orderBy(desc(opt.dealDate))
+      .orderBy(desc(opt.dealDate), asc(customers.name))
       .limit(pageSize)
       .offset(offset);
 

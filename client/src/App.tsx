@@ -406,10 +406,11 @@ function App() {
         target.tagName === "INPUT" &&
         (target as HTMLInputElement).type === "number"
       ) {
+        e.preventDefault();
         (target as HTMLInputElement).blur();
       }
     };
-    document.addEventListener("wheel", handleWheel, { passive: true });
+    document.addEventListener("wheel", handleWheel, { passive: false });
     return () => document.removeEventListener("wheel", handleWheel);
   }, []);
 

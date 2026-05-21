@@ -19,9 +19,9 @@ export const refuelingAbroadFormSchema = z
     flightNumber: z.string().optional().nullable(),
     airportCode: z.string().optional().nullable(),
 
-    supplierId: z.string().min(1, "Выберите поставщика"),
-    buyerId: z.string().min(1, "Выберите покупателя"),
-    basisId: z.string().min(1, "Выберите базис"),
+    supplierId: z.string().optional().nullable().default(""),
+    buyerId: z.string().optional().nullable().default(""),
+    basisId: z.string().optional().nullable().default(""),
     storageCardId: z.string().optional().nullable(),
 
     intermediaries: z.array(intermediaryItemSchema).default([]),
@@ -65,6 +65,27 @@ export const refuelingAbroadFormSchema = z
           code: z.ZodIssueCode.custom,
           message: "Выберите продукт",
           path: ["productType"],
+        });
+      }
+      if (!data.supplierId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Выберите поставщика",
+          path: ["supplierId"],
+        });
+      }
+      if (!data.buyerId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Выберите покупателя",
+          path: ["buyerId"],
+        });
+      }
+      if (!data.basisId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Выберите базис",
+          path: ["basisId"],
         });
       }
     }

@@ -107,9 +107,9 @@ export function VolumeInputSection({
             <CalculatedField
               label="КГ (расчет)"
               value={
-                watchLiters && watchDensity ? formatNumber(calculatedKg) : "—"
+                watchLiters && parseFloat(calculatedKg) > 0 ? formatNumber(calculatedKg) : "—"
               }
-              suffix={watchLiters && watchDensity ? " кг" : ""}
+              suffix={watchLiters && parseFloat(calculatedKg) > 0 ? " кг" : ""}
             />
           ) : (
             <FormField

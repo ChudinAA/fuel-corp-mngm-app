@@ -616,6 +616,12 @@ export const RefuelingForm = forwardRef<
     }
   }, [watchProductType, form]);
 
+  useEffect(() => {
+    if (inputMode === "liters" && calculatedKg && parseFloat(calculatedKg) > 0) {
+      form.setValue("quantityKg", calculatedKg, { shouldDirty: false, shouldValidate: false });
+    }
+  }, [calculatedKg, inputMode, form]);
+
   const onSubmit = async (data: RefuelingFormData, isDraftSubmit?: boolean) => {
     const productType = watchProductType;
     const isDraft = isDraftSubmit ?? data.isDraft;
