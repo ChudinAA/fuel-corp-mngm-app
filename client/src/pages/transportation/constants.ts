@@ -1,4 +1,4 @@
-export const AVIA_SERVICE_CARRIER_NAME = "АвиаСервис";
+export const AVIA_SERVICE_CARRIER_NAME = `ООО "АвиаСервис"`;
 
 export const TRANSPORTATION_QUERY_KEY = "/api/transportation";
 
