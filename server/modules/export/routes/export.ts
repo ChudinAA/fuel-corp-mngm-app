@@ -27,10 +27,14 @@ export function registerExportRoutes(app: Express) {
         const columns = excelService.getAvailableColumns(moduleName, userPermissions);
         const config = exportConfigRegistry[moduleName];
 
+        if (!config) {
+          return res.status(404).json({ message: "Конфигурация модуля не найдена" });
+        }
+
         res.json({
           columns,
-          defaultColumns: config?.defaultColumns || [],
-          displayName: config?.displayName || moduleName,
+          defaultColumns: config.defaultColumns || [],
+          displayName: config.displayName || moduleName,
         });
       } catch (error) {
         console.error("Error fetching export columns:", error);
@@ -47,7 +51,7 @@ export function registerExportRoutes(app: Express) {
     async (req, res) => {
       try {
         const { moduleName } = req.params;
-        const { selectedColumns, filters, fileName } = req.body;
+        const { selectedColumns, exportFilters, fileName } = req.body;
 
         if (!selectedColumns || !Array.isArray(selectedColumns)) {
           return res.status(400).json({ message: "Необходимо выбрать колонки для экспорта" });
@@ -61,56 +65,62 @@ export function registerExportRoutes(app: Express) {
         const role = await storage.roles.getRole(user.roleId);
         const userPermissions = role?.permissions || [];
 
-        // Получение данных из соответствующего модуля
+        const search: string = exportFilters?.search || "";
+        const columnFilters: Record<string, string[]> = exportFilters?.columnFilters || {};
+
         let data: any[] = [];
+
         switch (moduleName) {
-          case "opt":
-            if (typeof storage.opt.getAllOpts === 'function') {
-              data = await storage.opt.getAllOpts();
-            } else {
-              const result = await storage.opt.getOptDeals(1, 10000);
-              data = result.data;
-            }
+          case "opt": {
+            const result = await storage.opt.getOptDeals(0, 100000, search, columnFilters);
+            data = result.data;
             break;
-          case "refueling":
-            if (typeof storage.aircraftRefueling.getAllAircraftRefuelings === 'function') {
-              data = await storage.aircraftRefueling.getAllAircraftRefuelings();
-            } else {
-              const result = await storage.aircraftRefueling.getAircraftRefuelings(1, 10000);
-              data = result.data;
-            }
+          }
+          case "refueling": {
+            const result = await storage.aircraftRefueling.getRefuelings(0, 100000, undefined, search, columnFilters);
+            data = result.data;
             break;
-          case "movement":
-            const movementResult = await storage.movement.getMovements(1, 10000);
-            data = movementResult.data;
+          }
+          case "movement": {
+            const result = await storage.movement.getMovements(0, 100000, search, columnFilters);
+            data = result.data;
             break;
-          case "exchange":
-            const exchangeResult = await storage.exchange.getExchanges(1, 10000);
-            data = exchangeResult.data;
+          }
+          case "exchange-deals": {
+            const result = await storage.exchangeDeals.getDeals(0, 100000, search, columnFilters);
+            data = result.data;
             break;
-          case "warehouses":
+          }
+          case "warehouses": {
             data = await storage.warehouses.getWarehouses();
+            if (search) {
+              const s = search.toLowerCase();
+              data = data.filter((w: any) => w.name?.toLowerCase().includes(s));
+            }
             break;
+          }
+          case "transportation": {
+            const result = await storage.transportation.getTransportationDeals(0, 100000, search, columnFilters);
+            data = result.data;
+            break;
+          }
+          case "refueling-abroad": {
+            const result = await storage.refuelingAbroad.getAll(0, 100000, search, columnFilters);
+            data = result.data;
+            break;
+          }
           default:
-            return res.status(400).json({ message: "Неизвестный модуль" });
+            return res.status(400).json({ message: `Неизвестный модуль: ${moduleName}` });
         }
 
-        // Применение фильтров (если есть)
-        if (filters) {
-          data = this.applyFilters(data, filters);
-        }
-
-        // Генерация Excel
         const buffer = await excelService.generateExcel(data, {
           moduleName,
           selectedColumns,
-          filters,
           userPermissions,
           sheetName: exportConfigRegistry[moduleName]?.displayName,
         });
 
-        // Отправка файла
-        const downloadFileName = fileName || `${moduleName}_export_${Date.now()}.xlsx`;
+        const downloadFileName = fileName || `${exportConfigRegistry[moduleName]?.displayName || moduleName}_${new Date().toISOString().split("T")[0]}.xlsx`;
         res.setHeader(
           "Content-Type",
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -126,19 +136,4 @@ export function registerExportRoutes(app: Express) {
       }
     }
   );
-
-  // Вспомогательная функция фильтрации
-  function applyFilters(data: any[], filters: Record<string, any>): any[] {
-    return data.filter(item => {
-      for (const [key, value] of Object.entries(filters)) {
-        if (value !== undefined && value !== null && value !== '') {
-          const itemValue = key.split('.').reduce((obj, k) => obj?.[k], item);
-          if (itemValue !== value) {
-            return false;
-          }
-        }
-      }
-      return true;
-    });
-  }
 }

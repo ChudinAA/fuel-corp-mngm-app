@@ -316,7 +316,11 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
           <History className="h-4 w-4 mr-2" />
           История
         </Button>
-        <ExportButton moduleName="opt" />
+        <ExportButton
+          moduleName="opt"
+          exportFilters={{ search, columnFilters }}
+          previewData={deals}
+        />
       </div>
 
       <div className="border rounded-lg overflow-x-auto">

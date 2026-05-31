@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Search, Plus, Loader2, Pencil, Copy, Trash2 } from "lucide-react";
+import { ExportButton } from "@/components/export/export-button";
 import { EntityActionsMenu, type EntityAction } from "@/components/entity-actions-menu";
 import { TableColumnFilter } from "@/components/ui/table-column-filter";
 import { useAuth } from "@/hooks/use-auth";
@@ -170,6 +171,11 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
             data-testid="input-search-deals"
           />
         </div>
+        <ExportButton
+          moduleName="exchange-deals"
+          exportFilters={{ search, columnFilters }}
+          previewData={deals}
+        />
         {onAdd && hasPermission("exchange-deals", "create") && (
           <Button onClick={onAdd} data-testid="button-add-exchange-deal">
             <Plus className="h-4 w-4 mr-1" />

@@ -114,7 +114,11 @@ export function EquipmentMovementTable({
           <History className="h-4 w-4 mr-2" />
           История
         </Button>
-        <ExportButton moduleName="equipment-movement" />
+        <ExportButton
+          moduleName="movement"
+          exportFilters={{ search, columnFilters }}
+          previewData={movements}
+        />
       </div>
 
       <div className="border rounded-lg overflow-x-auto">

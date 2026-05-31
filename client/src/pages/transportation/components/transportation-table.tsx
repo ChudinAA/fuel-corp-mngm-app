@@ -249,7 +249,11 @@ export function TransportationTable({
           <History className="h-4 w-4 mr-2" />
           История
         </Button>
-        <ExportButton data={exportData} filename="transportation" />
+        <ExportButton
+          moduleName="transportation"
+          exportFilters={{ search, columnFilters }}
+          previewData={allDeals}
+        />
       </div>
 
       <div className="rounded-md border overflow-x-auto">

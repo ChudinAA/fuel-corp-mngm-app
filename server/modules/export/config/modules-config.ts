@@ -1,7 +1,6 @@
 
 import type { ModuleExportConfig } from "../entities/export-config";
 
-// Конфигурация экспорта для модуля ОПТ
 export const optExportConfig: ModuleExportConfig = {
   moduleName: "opt",
   tableName: "opt",
@@ -17,7 +16,7 @@ export const optExportConfig: ModuleExportConfig = {
     { key: "quantity", label: "Количество (кг)", type: "number", exportable: true },
     { key: "purchasePrice", label: "Цена закупки", type: "number", exportable: true, sensitive: true, requiredPermission: "opt.view_prices" },
     { key: "sellingPrice", label: "Цена продажи", type: "number", exportable: true, requiredPermission: "opt.view_prices" },
-    { key: "totalCost", label: "Общая стоимость", type: "number", exportable: true },
+    { key: "totalCost", label: "Сумма закупки", type: "number", exportable: true },
     { key: "totalRevenue", label: "Выручка", type: "number", exportable: true, requiredPermission: "opt.view_revenue" },
     { key: "marginality", label: "Маржинальность (%)", type: "number", exportable: true, sensitive: true, requiredPermission: "opt.view_margin" },
     { key: "profit", label: "Прибыль", type: "number", exportable: true, sensitive: true, requiredPermission: "opt.view_profit" },
@@ -28,7 +27,6 @@ export const optExportConfig: ModuleExportConfig = {
   relations: ["supplier", "customer", "base", "warehouse"],
 };
 
-// Конфигурация для заправки ВС
 export const refuelingExportConfig: ModuleExportConfig = {
   moduleName: "refueling",
   tableName: "aircraft_refueling",
@@ -40,6 +38,8 @@ export const refuelingExportConfig: ModuleExportConfig = {
     { key: "warehouse.name", label: "Склад", type: "string", exportable: true },
     { key: "aircraftType", label: "Тип ВС", type: "string", exportable: true },
     { key: "flightNumber", label: "Номер рейса", type: "string", exportable: true },
+    { key: "customer.name", label: "Покупатель", type: "string", exportable: true },
+    { key: "supplier.name", label: "Поставщик", type: "string", exportable: true },
     { key: "productType", label: "Тип продукта", type: "string", exportable: true },
     { key: "quantity", label: "Количество (кг)", type: "number", exportable: true },
     { key: "purchasePrice", label: "Цена закупки", type: "number", exportable: true, sensitive: true, requiredPermission: "refueling.view_prices" },
@@ -48,10 +48,9 @@ export const refuelingExportConfig: ModuleExportConfig = {
     { key: "profit", label: "Прибыль", type: "number", exportable: true, sensitive: true, requiredPermission: "refueling.view_profit" },
   ],
   defaultColumns: ["refuelingNumber", "refuelingDate", "base.name", "aircraftType", "flightNumber", "quantity"],
-  relations: ["base", "warehouse"],
+  relations: ["base", "warehouse", "customer", "supplier"],
 };
 
-// Конфигурация для перемещений
 export const movementExportConfig: ModuleExportConfig = {
   moduleName: "movement",
   tableName: "movement",
@@ -67,31 +66,36 @@ export const movementExportConfig: ModuleExportConfig = {
     { key: "carrier.name", label: "Перевозчик", type: "string", exportable: true },
     { key: "deliveryCost", label: "Стоимость доставки", type: "number", exportable: true },
     { key: "totalCost", label: "Общая стоимость", type: "number", exportable: true, requiredPermission: "movement.view_costs" },
+    { key: "supplier.name", label: "Поставщик", type: "string", exportable: true },
+    { key: "notes", label: "Примечания", type: "string", exportable: true },
   ],
   defaultColumns: ["movementNumber", "movementDate", "sourceWarehouse.name", "destinationWarehouse.name", "quantity"],
-  relations: ["sourceWarehouse", "destinationWarehouse", "carrier"],
+  relations: ["sourceWarehouse", "destinationWarehouse", "carrier", "supplier"],
 };
 
-// Конфигурация для обмена
-export const exchangeExportConfig: ModuleExportConfig = {
-  moduleName: "exchange",
-  tableName: "exchange",
-  displayName: "Биржевые сделки",
+export const exchangeDealsExportConfig: ModuleExportConfig = {
+  moduleName: "exchange-deals",
+  tableName: "exchange_deals",
+  displayName: "Сделки Биржи",
   columns: [
-    { key: "exchangeNumber", label: "Номер сделки", type: "string", exportable: true },
-    { key: "exchangeDate", label: "Дата сделки", type: "date", exportable: true },
-    { key: "sourceWarehouse.name", label: "Склад отправитель", type: "string", exportable: true },
-    { key: "destinationWarehouse.name", label: "Склад получатель", type: "string", exportable: true },
-    { key: "productType", label: "Тип продукта", type: "string", exportable: true },
-    { key: "quantity", label: "Количество (кг)", type: "number", exportable: true },
-    { key: "exchangeRate", label: "Курс обмена", type: "number", exportable: true },
-    { key: "totalCost", label: "Общая стоимость", type: "number", exportable: true },
+    { key: "dealDate", label: "Дата сделки", type: "date", exportable: true },
+    { key: "dealNumber", label: "Номер сделки", type: "string", exportable: true },
+    { key: "departureName", label: "Станция отправления", type: "string", exportable: true },
+    { key: "destinationName", label: "Станция назначения", type: "string", exportable: true },
+    { key: "buyerName", label: "Покупатель", type: "string", exportable: true },
+    { key: "sellerName", label: "Продавец", type: "string", exportable: true },
+    { key: "paymentDate", label: "Дата оплаты", type: "date", exportable: true },
+    { key: "pricePerTon", label: "Цена за тонну", type: "number", exportable: true },
+    { key: "weightTon", label: "Вес (т)", type: "number", exportable: true },
+    { key: "tariffPricePerTon", label: "Тариф (руб/т)", type: "number", exportable: true },
+    { key: "wagonNumbers", label: "Вагоны", type: "string", exportable: true },
+    { key: "railwayInvoice", label: "Ж/д накладная", type: "string", exportable: true },
+    { key: "notes", label: "Примечания", type: "string", exportable: true },
   ],
-  defaultColumns: ["exchangeNumber", "exchangeDate", "sourceWarehouse.name", "destinationWarehouse.name", "quantity"],
-  relations: ["sourceWarehouse", "destinationWarehouse"],
+  defaultColumns: ["dealDate", "dealNumber", "departureName", "destinationName", "buyerName", "weightTon", "pricePerTon"],
+  relations: [],
 };
 
-// Конфигурация для складов
 export const warehousesExportConfig: ModuleExportConfig = {
   moduleName: "warehouses",
   tableName: "warehouses",
@@ -110,11 +114,62 @@ export const warehousesExportConfig: ModuleExportConfig = {
   relations: [],
 };
 
-// Реестр всех конфигураций
+export const transportationExportConfig: ModuleExportConfig = {
+  moduleName: "transportation",
+  tableName: "transportation",
+  displayName: "Перевозки",
+  columns: [
+    { key: "dealDate", label: "Дата", type: "date", exportable: true },
+    { key: "buyer.name", label: "Заказчик", type: "string", exportable: true },
+    { key: "supplier.name", label: "Поставщик", type: "string", exportable: true },
+    { key: "carrier.name", label: "Перевозчик", type: "string", exportable: true },
+    { key: "deliveryLocation.name", label: "Пункт доставки", type: "string", exportable: true },
+    { key: "basis", label: "Базис погрузки", type: "string", exportable: true },
+    { key: "customerBasis", label: "Базис доставки", type: "string", exportable: true },
+    { key: "productType", label: "Тип продукта", type: "string", exportable: true },
+    { key: "quantityKg", label: "Количество (кг)", type: "number", exportable: true },
+    { key: "salePrice", label: "Цена услуги", type: "number", exportable: true, requiredPermission: "transportation.view_prices" },
+    { key: "saleAmount", label: "Сумма услуги (₽)", type: "number", exportable: true, requiredPermission: "transportation.view_prices" },
+    { key: "deliveryCost", label: "Стоимость доставки", type: "number", exportable: true },
+    { key: "profit", label: "Прибыль", type: "number", exportable: true, sensitive: true, requiredPermission: "transportation.view_prices" },
+    { key: "notes", label: "Примечание", type: "string", exportable: true },
+  ],
+  defaultColumns: ["dealDate", "buyer.name", "carrier.name", "deliveryLocation.name", "quantityKg", "saleAmount"],
+  relations: ["buyer", "supplier", "carrier", "deliveryLocation"],
+};
+
+export const refuelingAbroadExportConfig: ModuleExportConfig = {
+  moduleName: "refueling-abroad",
+  tableName: "refueling_abroad",
+  displayName: "Заправка ВС зарубеж",
+  columns: [
+    { key: "refuelingDate", label: "Дата", type: "date", exportable: true },
+    { key: "airport", label: "Аэропорт", type: "string", exportable: true },
+    { key: "aircraftNumber", label: "Бортовой номер", type: "string", exportable: true },
+    { key: "rtNumber", label: "Номер РТ", type: "string", exportable: true },
+    { key: "supplier.name", label: "Поставщик", type: "string", exportable: true },
+    { key: "buyer.name", label: "Покупатель", type: "string", exportable: true },
+    { key: "basis.name", label: "Базис", type: "string", exportable: true },
+    { key: "productType", label: "Тип продукта", type: "string", exportable: true },
+    { key: "quantityLiters", label: "Объём (л)", type: "number", exportable: true },
+    { key: "quantityKg", label: "Количество (кг)", type: "number", exportable: true },
+    { key: "purchasePriceUsd", label: "Цена закупки (USD)", type: "number", exportable: true, requiredPermission: "refueling-abroad.view_prices" },
+    { key: "purchaseAmountUsd", label: "Сумма закупки (USD)", type: "number", exportable: true, requiredPermission: "refueling-abroad.view_prices" },
+    { key: "salePriceUsd", label: "Цена продажи (USD)", type: "number", exportable: true, requiredPermission: "refueling-abroad.view_prices" },
+    { key: "saleAmountUsd", label: "Сумма продажи (USD)", type: "number", exportable: true, requiredPermission: "refueling-abroad.view_prices" },
+    { key: "purchaseExchangeRateValue", label: "Курс закупки (₽)", type: "number", exportable: true },
+    { key: "saleExchangeRateValue", label: "Курс продажи (₽)", type: "number", exportable: true },
+  ],
+  defaultColumns: ["refuelingDate", "airport", "supplier.name", "buyer.name", "quantityKg", "saleAmountUsd"],
+  relations: ["supplier", "buyer", "basis"],
+};
+
 export const exportConfigRegistry: Record<string, ModuleExportConfig> = {
   opt: optExportConfig,
   refueling: refuelingExportConfig,
   movement: movementExportConfig,
-  exchange: exchangeExportConfig,
+  "exchange-deals": exchangeDealsExportConfig,
   warehouses: warehousesExportConfig,
+  transportation: transportationExportConfig,
+  "refueling-abroad": refuelingAbroadExportConfig,
 };

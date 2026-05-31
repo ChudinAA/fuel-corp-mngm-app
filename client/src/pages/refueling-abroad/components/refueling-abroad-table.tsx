@@ -188,7 +188,11 @@ export function RefuelingAbroadTable({
           <History className="h-4 w-4 mr-2" />
           История изменений
         </Button>
-        <ExportButton module="refueling-abroad" />
+        <ExportButton
+          moduleName="refueling-abroad"
+          exportFilters={{ search, columnFilters }}
+          previewData={items}
+        />
       </div>
 
       <div className="border rounded-lg overflow-hidden">

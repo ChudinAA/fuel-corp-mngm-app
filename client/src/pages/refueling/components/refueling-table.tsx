@@ -310,7 +310,11 @@ export function RefuelingTable({
           <History className="h-4 w-4 mr-2" />
           История
         </Button>
-        <ExportButton module="refueling" />
+        <ExportButton
+          moduleName="refueling"
+          exportFilters={{ search, columnFilters }}
+          previewData={deals}
+        />
       </div>
 
       <div className="border rounded-lg overflow-x-auto">
