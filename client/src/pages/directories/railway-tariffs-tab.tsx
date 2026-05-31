@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import {
@@ -30,10 +31,11 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Combobox } from "@/components/ui/combobox";
-import { Search, Plus, Pencil, Trash2 } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, X } from "lucide-react";
 import { EntityActionsMenu, type EntityAction } from "@/components/entity-actions-menu";
 import { useAuth } from "@/hooks/use-auth";
 import { ArrowRight } from "lucide-react";
+import { ExportButton } from "@/components/export/export-button";
 
 interface RailwayStation {
   id: string;
@@ -198,6 +200,8 @@ function getTariffLabel(tariff: RailwayTariff): string {
 export function RailwayTariffsTab() {
   const { hasPermission } = useAuth();
   const [search, setSearch] = useState("");
+  const [filterFromId, setFilterFromId] = useState<string>("all");
+  const [filterToId, setFilterToId] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTariff, setEditingTariff] = useState<RailwayTariff | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -217,6 +221,28 @@ export function RailwayTariffsTab() {
   const { data: stations = [] } = useQuery<RailwayStation[]>({
     queryKey: ["/api/railway/stations"],
   });
+
+  const filteredTariffs = useMemo(() => {
+    return tariffs.filter(t => {
+      if (filterFromId !== "all" && t.fromStationId !== filterFromId) return false;
+      if (filterToId !== "all" && t.toStationId !== filterToId) return false;
+      return true;
+    });
+  }, [tariffs, filterFromId, filterToId]);
+
+  const hasActiveFilters = filterFromId !== "all" || filterToId !== "all";
+
+  const clearFilters = () => {
+    setFilterFromId("all");
+    setFilterToId("all");
+    setSearch("");
+  };
+
+  const exportPreviewData = filteredTariffs.map(t => ({
+    "fromStation.name": t.fromStation?.name || "",
+    "toStation.name": t.toStation?.name || "",
+    pricePerTon: Number(t.pricePerTon),
+  }));
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => apiRequest("DELETE", `/api/railway/tariffs/${id}`),
@@ -241,17 +267,53 @@ export function RailwayTariffsTab() {
             <CardTitle>Тарифы ЖД доставки</CardTitle>
             <CardDescription>Тарифы на перевозку по парам станций</CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Поиск..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 w-48"
+                className="pl-9 w-40"
                 data-testid="input-search-tariffs"
               />
             </div>
+
+            <Select value={filterFromId} onValueChange={setFilterFromId}>
+              <SelectTrigger className="w-[160px]" data-testid="select-filter-from-station">
+                <SelectValue placeholder="Ст. отправления" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все станции отпр.</SelectItem>
+                {stations.map(s => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterToId} onValueChange={setFilterToId}>
+              <SelectTrigger className="w-[160px]" data-testid="select-filter-to-station">
+                <SelectValue placeholder="Ст. назначения" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все станции назн.</SelectItem>
+                {stations.map(s => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {(hasActiveFilters || search) && (
+              <Button variant="ghost" size="icon" onClick={clearFilters} title="Сбросить фильтры">
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+
+            <ExportButton
+              moduleName="railway-tariffs"
+              previewData={exportPreviewData}
+            />
+
             {hasPermission("directories", "create") && (
               <Button
                 onClick={() => { setEditingTariff(null); setDialogOpen(true); }}
@@ -281,14 +343,14 @@ export function RailwayTariffsTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tariffs.length === 0 ? (
+              {filteredTariffs.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     Нет данных
                   </TableCell>
                 </TableRow>
               ) : (
-                tariffs.map((tariff) => {
+                filteredTariffs.map((tariff) => {
                   const label = getTariffLabel(tariff);
                   return (
                     <TableRow key={tariff.id} data-testid={`row-tariff-${tariff.id}`}>
@@ -369,7 +431,6 @@ export function RailwayTariffsTab() {
         title="Удалить тариф"
         description={`Вы уверены, что хотите удалить тариф "${toDelete?.name}"?`}
       />
-
     </Card>
   );
 }

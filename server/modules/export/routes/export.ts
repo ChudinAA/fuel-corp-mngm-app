@@ -109,6 +109,33 @@ export function registerExportRoutes(app: Express) {
             data = result.data;
             break;
           }
+          case "delivery-cost": {
+            const costs = await storage.delivery.getAllDeliveryCosts();
+            const carriers = await storage.logistics.getAllLogisticsCarriers();
+            const carrierMap = new Map(carriers.map((c: any) => [c.id, c.name]));
+            data = costs.map((c: any) => ({
+              ...c,
+              carrierName: carrierMap.get(c.carrierId) || "",
+            }));
+            if (search) {
+              const s = search.toLowerCase();
+              data = data.filter((c: any) =>
+                c.fromLocation?.toLowerCase().includes(s) ||
+                c.toLocation?.toLowerCase().includes(s) ||
+                c.carrierName?.toLowerCase().includes(s)
+              );
+            }
+            break;
+          }
+          case "railway-tariffs": {
+            data = await storage.railway.getAllTariffs(search);
+            data = data.map((t: any) => ({
+              ...t,
+              "fromStation.name": t.fromStation?.name || "",
+              "toStation.name":   t.toStation?.name || "",
+            }));
+            break;
+          }
           default:
             return res.status(400).json({ message: `Неизвестный модуль: ${moduleName}` });
         }

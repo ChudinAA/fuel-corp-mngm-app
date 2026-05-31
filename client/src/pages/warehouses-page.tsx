@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Warehouse, History, Globe, Plane, Pin } from "lucide-react";
-import { ExportButton } from "@/components/export/export-button";
+
 import { AuditPanel } from "@/components/audit-panel";
 import type { Warehouse as WarehouseType } from "@shared/schema";
 import { WarehouseCard } from "./warehouses/components/warehouse-card";
@@ -102,7 +102,6 @@ export default function WarehousesPage() {
             <History className="h-4 w-4 mr-2" />
             История изменений
           </Button>
-          <ExportButton moduleName="warehouses" />
         </div>
 
         {isLoading ? (

@@ -117,7 +117,7 @@ export class ExcelService {
           }
         } else if (col?.type === "date") {
           cell.alignment = { horizontal: "center", vertical: "middle" };
-          cell.numFmt = "DD.MM.YYYY";
+          cell.numFmt = "dd.mm.yyyy";
         } else {
           cell.alignment = { horizontal: "left", vertical: "middle" };
         }
