@@ -238,12 +238,6 @@ export function RailwayTariffsTab() {
     setSearch("");
   };
 
-  const exportPreviewData = filteredTariffs.map(t => ({
-    "fromStation.name": t.fromStation?.name || "",
-    "toStation.name": t.toStation?.name || "",
-    pricePerTon: Number(t.pricePerTon),
-  }));
-
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => apiRequest("DELETE", `/api/railway/tariffs/${id}`),
     onSuccess: () => {
@@ -311,7 +305,13 @@ export function RailwayTariffsTab() {
 
             <ExportButton
               moduleName="railway-tariffs"
-              previewData={exportPreviewData}
+              exportFilters={{
+                search,
+                columnFilters: {
+                  ...(filterFromId !== "all" ? { fromStationId: [filterFromId] } : {}),
+                  ...(filterToId !== "all" ? { toStationId: [filterToId] } : {}),
+                },
+              }}
             />
 
             {hasPermission("directories", "create") && (

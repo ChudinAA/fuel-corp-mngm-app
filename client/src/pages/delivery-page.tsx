@@ -84,11 +84,6 @@ export default function DeliveryPage() {
     setSearch("");
   };
 
-  const exportPreviewData = filteredCosts.map(c => ({
-    ...c,
-    carrierName: getCarrierName(c.carrierId),
-  }));
-
   const { averageCostPerKg, activeCarriersCount } = useDeliveryStats(deliveryCosts);
 
   return (
@@ -173,7 +168,14 @@ export default function DeliveryPage() {
               <div className="ml-auto flex items-center gap-2">
                 <ExportButton
                   moduleName="delivery-cost"
-                  previewData={exportPreviewData}
+                  exportFilters={{
+                    search,
+                    columnFilters: {
+                      ...(filterCarrierId !== "all" ? { carrierId: [filterCarrierId] } : {}),
+                      ...(filterFrom !== "all" ? { fromLocation: [filterFrom] } : {}),
+                      ...(filterTo !== "all" ? { toLocation: [filterTo] } : {}),
+                    },
+                  }}
                 />
                 <Button
                   variant="outline"

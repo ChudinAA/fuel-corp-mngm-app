@@ -115,7 +115,7 @@ export function EquipmentMovementTable({
           История
         </Button>
         <ExportButton
-          moduleName="movement"
+          moduleName="equipment-movement"
           exportFilters={{ search, columnFilters }}
           previewData={movements}
         />
