@@ -3,7 +3,13 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, type, ...props }, ref) => {
+  ({ className, type, onKeyDown, ...props }, ref) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (type === "number" && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+        e.preventDefault();
+      }
+      onKeyDown?.(e);
+    };
     // h-9 to match icon buttons and default buttons.
     return (
       <input
@@ -13,6 +19,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
           className
         )}
         ref={ref}
+        onKeyDown={handleKeyDown}
         {...props}
       />
     )

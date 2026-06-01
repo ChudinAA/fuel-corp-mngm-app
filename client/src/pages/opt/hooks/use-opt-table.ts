@@ -11,6 +11,9 @@ export function useOptTable() {
   const pageSize = 100;
   const { toast } = useToast();
 
+  const hasActiveFilters = Object.values(columnFilters).some(v => v.length > 0);
+  const effectivePageSize = hasActiveFilters ? 10000 : pageSize;
+
   const {
     data: optDeals,
     isLoading,
@@ -30,13 +33,13 @@ export function useOptTable() {
 
       const res = await apiRequest(
         "GET",
-        `/api/opt?offset=${pageParam}&pageSize=${pageSize}${search ? `&search=${search}` : ""}${filters}`,
+        `/api/opt?offset=${pageParam}&pageSize=${effectivePageSize}${search ? `&search=${encodeURIComponent(search)}` : ""}${filters}`,
       );
       return res.json();
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
-      const loadedCount = allPages.length * pageSize;
+      const loadedCount = allPages.reduce((sum, p) => sum + p.data.length, 0);
       return loadedCount < lastPage.total ? loadedCount : undefined;
     },
   });

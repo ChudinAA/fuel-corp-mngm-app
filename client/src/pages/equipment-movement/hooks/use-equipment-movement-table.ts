@@ -6,6 +6,9 @@ export function useEquipmentMovementTable() {
   const [search, setSearch] = useState("");
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
 
+  const hasActiveFilters = Object.values(columnFilters).some(v => v.length > 0);
+  const effectiveLimit = hasActiveFilters ? 10000 : 100;
+
   const {
     data,
     isLoading,
@@ -17,7 +20,7 @@ export function useEquipmentMovementTable() {
     queryFn: async ({ pageParam = 1 }) => {
       const params = new URLSearchParams({
         page: pageParam.toString(),
-        limit: "100",
+        limit: effectiveLimit.toString(),
         search,
         ...Object.fromEntries(
           Object.entries(columnFilters).map(([k, v]) => [k, v.join(",")])
@@ -28,7 +31,7 @@ export function useEquipmentMovementTable() {
       return {
         data: json.items || [],
         total: json.total || 0,
-        hasMore: (json.items?.length || 0) === 100,
+        hasMore: (json.items?.length || 0) === effectiveLimit,
         nextPage: pageParam + 1
       };
     },

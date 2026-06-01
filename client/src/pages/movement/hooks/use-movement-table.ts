@@ -7,6 +7,9 @@ export function useMovementTable() {
   const [search, setSearch] = useState("");
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
 
+  const hasActiveFilters = Object.values(columnFilters).some(v => v.length > 0);
+  const effectivePageSize = hasActiveFilters ? 10000 : pageSize;
+
   const {
     data,
     fetchNextPage,
@@ -19,14 +22,14 @@ export function useMovementTable() {
     queryFn: async ({ pageParam = 0 }) => {
       const params = new URLSearchParams({
         offset: pageParam.toString(),
-        pageSize: pageSize.toString(),
+        pageSize: effectivePageSize.toString(),
       });
       
       if (search) params.append("search", search);
       
       Object.entries(columnFilters).forEach(([k, v]) => {
         if (v.length > 0) {
-          v.forEach(val => params.append(`filter_${k}`, val));
+          params.append(`filter_${k}`, v.join(","));
         }
       });
 
@@ -35,7 +38,7 @@ export function useMovementTable() {
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
-      const loadedCount = allPages.length * pageSize;
+      const loadedCount = allPages.reduce((sum, p) => sum + p.data.length, 0);
       return loadedCount < lastPage.total ? loadedCount : undefined;
     },
   });
@@ -55,5 +58,6 @@ export function useMovementTable() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    refetch,
   };
 }

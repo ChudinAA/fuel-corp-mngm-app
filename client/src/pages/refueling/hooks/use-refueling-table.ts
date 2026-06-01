@@ -12,9 +12,12 @@ export function useRefuelingTable({ equipmentType = EQUIPMENT_TYPE.COMMON }: { e
   const pageSize = 100;
   const { toast } = useToast();
 
+  const hasActiveFilters = Object.values(columnFilters).some(v => v.length > 0);
+  const effectivePageSize = hasActiveFilters ? 10000 : pageSize;
+
   const filterParams = Object.entries(columnFilters)
     .filter(([_, values]) => values.length > 0)
-    .map(([columnId, values]) => `&filter_${columnId}=${values.join(",")}`)
+    .map(([columnId, values]) => `&filter_${columnId}=${encodeURIComponent(values.join(","))}`)
     .join("");
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
@@ -23,7 +26,7 @@ export function useRefuelingTable({ equipmentType = EQUIPMENT_TYPE.COMMON }: { e
       queryFn: async ({ pageParam = 0 }) => {
         const res = await apiRequest(
           "GET",
-          `/api/refueling?offset=${pageParam}&pageSize=${pageSize}&equipmentType=${equipmentType}${search ? `&search=${search}` : ""}${filterParams}`,
+          `/api/refueling?offset=${pageParam}&pageSize=${effectivePageSize}&equipmentType=${equipmentType}${search ? `&search=${encodeURIComponent(search)}` : ""}${filterParams}`,
         );
         return res.json();
       },

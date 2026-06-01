@@ -73,6 +73,11 @@ export class AircraftRefuelingStorage {
           sql`TO_CHAR(${aircraftRefueling.refuelingDate}, 'DD.MM.YYYY') IN ${filters.date}`,
         );
       }
+      if (filters.orderNumber?.length) {
+        baseConditions.push(
+          sql`${aircraftRefueling.orderNumber} IN ${filters.orderNumber}`,
+        );
+      }
     }
 
     const whereCondition = and(...baseConditions);

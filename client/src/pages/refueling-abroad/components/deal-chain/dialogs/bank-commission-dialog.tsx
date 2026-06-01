@@ -29,11 +29,18 @@ export function BankCommissionDialog({
     commissionType: (editItem?.commissionType || "percent") as
       | "percent"
       | "percent_min",
-    percent: editItem?.percent || (undefined as number | undefined),
-    minValue: editItem?.minValue || (undefined as number | undefined),
+    percent: editItem?.percent as number | undefined,
+    minValue: editItem?.minValue as number | undefined,
     bankName: editItem?.bankName || "",
     notes: editItem?.notes || "",
   });
+
+  const [percentStr, setPercentStr] = useState(
+    editItem?.percent !== undefined ? String(editItem.percent) : ""
+  );
+  const [minValueStr, setMinValueStr] = useState(
+    editItem?.minValue !== undefined ? String(editItem.minValue) : ""
+  );
 
   const handleSave = () => {
     onSave({
@@ -107,15 +114,18 @@ export function BankCommissionDialog({
               <Input
                 type="number"
                 min="0"
-                step="0.01"
+                step="any"
                 placeholder="0.00"
-                value={form.percent || ""}
-                onChange={(e) =>
+                value={percentStr}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  setPercentStr(raw);
+                  const parsed = parseFloat(raw);
                   setForm((f) => ({
                     ...f,
-                    percent: parseFloat(e.target.value) || undefined,
-                  }))
-                }
+                    percent: raw === "" || isNaN(parsed) ? undefined : parsed,
+                  }));
+                }}
                 data-testid="input-bank-commission-percent"
               />
             </div>
@@ -126,15 +136,18 @@ export function BankCommissionDialog({
                 </Label>
                 <Input
                   type="number"
-                  step="0.01"
+                  step="any"
                   placeholder="0.00"
-                  value={form.minValue || ""}
-                  onChange={(e) =>
+                  value={minValueStr}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setMinValueStr(raw);
+                    const parsed = parseFloat(raw);
                     setForm((f) => ({
                       ...f,
-                      minValue: parseFloat(e.target.value) || undefined,
-                    }))
-                  }
+                      minValue: raw === "" || isNaN(parsed) ? undefined : parsed,
+                    }));
+                  }}
                   data-testid="input-bank-commission-min-value"
                 />
               </div>

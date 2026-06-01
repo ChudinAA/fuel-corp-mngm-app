@@ -350,6 +350,18 @@ export function RefuelingTable({
               <TableHead className="text-xs font-semibold p-1 w-[55px]">
                 Борт
               </TableHead>
+              <TableHead className="text-xs font-semibold p-1 w-[80px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span>Номер РТ</span>
+                  <TableColumnFilter
+                    title="Номер РТ"
+                    options={getUniqueOptions("orderNumber")}
+                    selectedValues={columnFilters["orderNumber"] || []}
+                    onUpdate={(values) => handleFilterUpdate("orderNumber", values)}
+                    dataTestId="filter-order-number"
+                  />
+                </div>
+              </TableHead>
               <TableHead className="text-xs font-semibold p-1">
                 <div className="flex items-center justify-between gap-1">
                   <span className="truncate max-w-[70px]">
@@ -418,8 +430,8 @@ export function RefuelingTable({
           <TableBody>
             {deals.length > 0 && (
               <TableRow className="bg-muted/30 hover:bg-muted/40 border-b-2">
-                {/* Дата, Прод., Борт, Поставщик, Базис */}
-                <TableCell className="py-1 px-1" colSpan={5} />
+                {/* Дата, Прод., Борт, Номер РТ, Поставщик, Базис */}
+                <TableCell className="py-1 px-1" colSpan={6} />
                 {/* СЗ - только для LIK */}
                 {equipmentType === EQUIPMENT_TYPE.LIK && (
                   <TableCell className="py-1 px-1" />
@@ -516,6 +528,11 @@ export function RefuelingTable({
                   <TableCell className="text-xs py-1.5 px-1">
                     <span className="truncate max-w-[50px] block">
                       {deal.aircraftNumber || "—"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-xs py-1.5 px-1">
+                    <span className="truncate max-w-[75px] block text-muted-foreground">
+                      {deal.orderNumber || "—"}
                     </span>
                   </TableCell>
                   <TableCell className="text-xs py-1.5 px-1">
