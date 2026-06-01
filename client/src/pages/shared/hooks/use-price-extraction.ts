@@ -87,7 +87,7 @@ export function usePriceExtraction({
     }
 
     return null;
-  }, [purchasePrices, selectedPurchasePriceId, isWarehouseSupplier, supplierWarehouse, selectedSupplier, productType]);
+  }, [purchasePrices, selectedPurchasePriceId, isWarehouseSupplier, supplierWarehouse, selectedSupplier, productType, basisId]);
 
   const salePrice = useMemo((): number | null => {
     if (salePrices.length === 0) return null;
