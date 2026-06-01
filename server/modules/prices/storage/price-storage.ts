@@ -56,7 +56,7 @@ export class PriceStorage {
 
   async getAllPrices(
     offset: number = 0,
-    pageSize: number = 20,
+    pageSize: number = 100,
     filters?: {
       dateFrom?: string;
       dateTo?: string;

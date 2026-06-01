@@ -67,7 +67,7 @@ export function WarehouseDetailsDialog({
     enabled: open,
   });
 
-  const pagelimit = 25;
+  const pagelimit = 100;
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery<{

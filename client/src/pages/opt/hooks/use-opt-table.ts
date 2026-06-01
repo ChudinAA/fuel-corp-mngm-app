@@ -8,7 +8,7 @@ export function useOptTable() {
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>(
     {},
   );
-  const pageSize = 20;
+  const pageSize = 100;
   const { toast } = useToast();
 
   const {

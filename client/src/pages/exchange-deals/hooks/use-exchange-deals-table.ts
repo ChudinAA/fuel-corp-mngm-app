@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 export function useExchangeDealsTable() {
   const [search, setSearch] = useState("");
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
-  const pageSize = 20;
+  const pageSize = 100;
   const { toast } = useToast();
 
   const {

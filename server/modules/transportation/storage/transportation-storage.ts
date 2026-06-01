@@ -23,7 +23,7 @@ export class TransportationStorage {
 
   async getTransportationDeals(
     offset: number = 0,
-    pageSize: number = 20,
+    pageSize: number = 100,
     search?: string,
     filters?: Record<string, string[]>,
   ): Promise<{ data: any[]; total: number }> {

@@ -142,51 +142,6 @@ export class ExcelService {
       column.width = Math.min(Math.max(maxLen + 1, 10), 55);
     });
 
-    // Итоговая строка с суммами для числовых колонок
-    const numericCols = allowedColumns
-      .map((col, i) => ({ col, i }))
-      .filter(({ col }) => col.type === "number");
-
-    if (data.length > 0 && numericCols.length > 0) {
-      const totalRowValues: (string | number | null)[] = allowedColumns.map(
-        (col, i) => {
-          if (col.type === "number") {
-            const vals = data
-              .map((item) => this.getNestedValue(item, col.key))
-              .map((v) => (typeof v === "number" ? v : parseFloat(v)))
-              .filter((v) => !isNaN(v));
-            return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) : null;
-          }
-          return i === 0 ? "Итого:" : null;
-        }
-      );
-
-      const totalRow = worksheet.addRow(totalRowValues);
-      totalRow.height = 20;
-      totalRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-        const col = allowedColumns[colNumber - 1];
-        cell.font = { bold: true, size: 10, name: "Calibri" };
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "FFE8F0F8" },
-        };
-        cell.border = {
-          top: { style: "thin", color: { argb: "FF2C5282" } },
-          left: { style: "hair", color: { argb: BORDER_COLOR } },
-          bottom: { style: "thin", color: { argb: "FF2C5282" } },
-          right: { style: "hair", color: { argb: BORDER_COLOR } },
-        };
-        if (col?.type === "number" && typeof cell.value === "number") {
-          cell.alignment = { horizontal: "right", vertical: "middle" };
-          const isInt = Number.isInteger(cell.value);
-          cell.numFmt = isInt ? "#,##0" : "#,##0.##";
-        } else {
-          cell.alignment = { horizontal: "left", vertical: "middle" };
-        }
-      });
-    }
-
     const buffer = await workbook.xlsx.writeBuffer();
     return Buffer.from(buffer);
   }

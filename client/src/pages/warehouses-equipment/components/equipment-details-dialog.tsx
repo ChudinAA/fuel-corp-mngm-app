@@ -46,7 +46,7 @@ export function EquipmentDetailsDialog({
   open,
   onOpenChange,
 }: EquipmentDetailsDialogProps) {
-  const pagelimit = 25;
+  const pagelimit = 100;
 
   const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } =
     useInfiniteQuery({

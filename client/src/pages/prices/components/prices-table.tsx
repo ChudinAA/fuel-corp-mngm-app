@@ -66,7 +66,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ProductTypeBadge } from "@/components/product-type-badge";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 100;
 
 export function PricesTable({
   dealTypeFilter,

@@ -174,7 +174,7 @@ export function registerPricesRoutes(app: Express) {
 
       const data = await storage.prices.getAllPrices(
         offset ? parseInt(offset as string) : 0,
-        pageSize ? parseInt(pageSize as string) : 20,
+        pageSize ? parseInt(pageSize as string) : 100,
         {
           counterpartyRole: counterpartyRole as string,
           counterpartyType: counterpartyType as string,

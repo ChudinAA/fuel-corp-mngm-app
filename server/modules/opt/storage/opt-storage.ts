@@ -25,7 +25,7 @@ export class OptStorage {
 
   async getOptDeals(
     offset: number = 0,
-    pageSize: number = 20,
+    pageSize: number = 100,
     search?: string,
     filters?: Record<string, string[]>,
   ): Promise<{ data: any[]; total: number }> {
@@ -98,7 +98,7 @@ export class OptStorage {
       )
       .leftJoin(warehouses, eq(opt.warehouseId, warehouses.id))
       .where(filterCondition)
-      .orderBy(desc(opt.dealDate), asc(customers.name))
+      .orderBy(desc(opt.dealDate), asc(customers.name), asc(suppliers.name))
       .limit(pageSize)
       .offset(offset);
 

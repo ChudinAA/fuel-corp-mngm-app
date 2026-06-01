@@ -13,7 +13,7 @@ export function registerOptRoutes(app: Express) {
     requirePermission("opt", "view"),
     async (req, res) => {
       const offset = parseInt(req.query.offset as string) || 0;
-      const pageSize = parseInt(req.query.pageSize as string) || 20;
+      const pageSize = parseInt(req.query.pageSize as string) || 100;
       const search = req.query.search as string | undefined;
       
       // Extract filters

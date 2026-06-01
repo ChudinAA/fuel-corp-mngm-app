@@ -13,7 +13,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     requireAnyPermission(["refueling", "lik-refueling"], "view"),
     async (req, res) => {
       const offset = parseInt(req.query.offset as string) || 0;
-      const pageSize = parseInt(req.query.pageSize as string) || 20;
+      const pageSize = parseInt(req.query.pageSize as string) || 100;
       const equipmentType = req.query.equipmentType as string | undefined;
       const search = req.query.search as string | undefined;
 

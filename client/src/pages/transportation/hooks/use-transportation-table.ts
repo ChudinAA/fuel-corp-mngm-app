@@ -7,7 +7,7 @@ import { TRANSPORTATION_QUERY_KEY } from "../constants";
 export function useTransportationTable() {
   const [search, setSearch] = useState("");
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
-  const pageSize = 20;
+  const pageSize = 100;
   const { toast } = useToast();
 
   const {

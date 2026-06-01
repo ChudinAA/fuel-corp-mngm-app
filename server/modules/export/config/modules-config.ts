@@ -210,10 +210,9 @@ export const deliveryCostExportConfig: ModuleExportConfig = {
     { key: "fromLocation", label: "Откуда",          type: "string", exportable: true },
     { key: "toLocation",   label: "Куда",            type: "string", exportable: true },
     { key: "costPerKg",    label: "За кг (₽)",       type: "number", exportable: true },
-    { key: "distanceKm",   label: "Расстояние (км)", type: "number", exportable: true },
-    { key: "isActive",     label: "Активен",         type: "boolean",exportable: true },
+    { key: "distance",   label: "Расстояние (км)", type: "number", exportable: true },
   ],
-  defaultColumns: ["carrierName","fromLocation","toLocation","costPerKg","isActive"],
+  defaultColumns: ["carrierName","fromLocation","toLocation","costPerKg"],
   relations: [],
 };
 

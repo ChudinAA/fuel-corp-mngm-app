@@ -9,7 +9,7 @@ export function useRefuelingTable({ equipmentType = EQUIPMENT_TYPE.COMMON }: { e
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>(
     {},
   );
-  const pageSize = 20;
+  const pageSize = 100;
   const { toast } = useToast();
 
   const filterParams = Object.entries(columnFilters)

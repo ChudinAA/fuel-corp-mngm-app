@@ -28,7 +28,7 @@ interface UseAuditOptions {
 export function useAudit({
   entityType,
   entityId,
-  limit = 25,
+  limit = 50,
   enabled = true,
 }: UseAuditOptions) {
   const {

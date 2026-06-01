@@ -32,7 +32,7 @@ export class AircraftRefuelingStorage {
 
   async getRefuelings(
     offset: number = 0,
-    pageSize: number = 20,
+    pageSize: number = 100,
     equipmentType?: string,
     search?: string,
     filters?: Record<string, string[]>,
@@ -94,7 +94,7 @@ export class AircraftRefuelingStorage {
       .leftJoin(warehouses, eq(aircraftRefueling.warehouseId, warehouses.id))
       .leftJoin(equipments, eq(aircraftRefueling.equipmentId, equipments.id))
       .where(whereCondition)
-      .orderBy(desc(aircraftRefueling.refuelingDate), asc(customers.name))
+      .orderBy(desc(aircraftRefueling.refuelingDate), asc(customers.name), asc(suppliers.name))
       .limit(pageSize)
       .offset(offset);
 
