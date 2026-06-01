@@ -594,7 +594,7 @@ export function RefuelingTable({
                   <TableCell className="text-right text-xs py-1.5 px-1">
                     <div className="flex items-center justify-end gap-1">
                       {deal.purchasePrice
-                        ? Number(deal.purchasePrice).toFixed(4)
+                        ? formatNumber(deal.purchasePrice)
                         : "-"}
                       {deal.purchasePriceModified && (
                         <Tooltip>
@@ -612,7 +612,7 @@ export function RefuelingTable({
                     {formatCurrencyForTable(deal.purchaseAmount)}
                   </TableCell>
                   <TableCell className="text-right text-xs py-1.5 px-1">
-                    {formatNumber(deal.salePrice)} ₽/кг
+                    {formatNumber(deal.salePrice)}
                   </TableCell>
                   <TableCell className="text-right text-xs py-1.5 px-1">
                     {formatCurrencyForTable(deal.saleAmount)}

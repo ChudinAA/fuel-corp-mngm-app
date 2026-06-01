@@ -563,7 +563,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   <TableCell className="text-right text-xs py-1.5 px-1">
                     <div className="flex items-center justify-end gap-1">
                       {deal.purchasePrice
-                        ? Number(deal.purchasePrice).toFixed(4)
+                        ? formatNumberForTable(deal.purchasePrice)
                         : "-"}
                       {deal.purchasePriceModified && (
                         <Tooltip>
