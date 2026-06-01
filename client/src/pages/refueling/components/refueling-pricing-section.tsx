@@ -87,6 +87,10 @@ export function RefuelingPricingSection({
     (bp) => bp.basisId === watchBasisId
   )?.servicePrice ?? null;
 
+  const basisPvkjPrice = selectedSupplier?.basisPrices?.find(
+    (bp) => bp.basisId === watchBasisId
+  )?.pvkjPrice ?? null;
+
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
   const handlePurchasePriceCreated = (id: string) => {
     form.setValue("selectedPurchasePriceId", id);
@@ -118,6 +122,16 @@ export function RefuelingPricingSection({
       {productType === PRODUCT_TYPE.PVKJ && (
         <div className="mb-4 flex items-center justify-between rounded-md border p-3 bg-accent/5">
           <div className="flex items-center gap-4">
+            {basisPvkjPrice && (
+              <div className="flex flex-col">
+                <span className="text-xs text-muted-foreground leading-none mb-1">
+                  Цена, установленная поставщиком
+                </span>
+                <span className="text-sm font-medium">
+                  {formatPrice(basisPvkjPrice)} ₽/кг
+                </span>
+              </div>
+            )}
             <FormField
               control={form.control}
               name="isPvkjRecharge"
