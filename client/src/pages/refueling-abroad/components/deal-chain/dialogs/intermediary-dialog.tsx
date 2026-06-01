@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import {
   Select,
   SelectContent,
@@ -111,13 +112,18 @@ export function IntermediaryDialog({
     }));
   };
 
+  const intermediaryTitle = editItem ? "Редактировать посредника" : "Добавить посредника";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: intermediaryTitle, onClose });
+  if (isMinimized) return <>{MinimizedBar}</>;
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>
-            {editItem ? "Редактировать посредника" : "Добавить посредника"}
-          </DialogTitle>
+          <div className="flex items-start justify-between gap-2">
+            <DialogTitle>{intermediaryTitle}</DialogTitle>
+            <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+          </div>
         </DialogHeader>
 
         <div className="space-y-4">

@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -63,14 +64,21 @@ export function StorageCardDetailsDialog({
   const localBalance = weightedRate > 0 ? balance * weightedRate : null;
   const isBuyer = card.cardType === "buyer";
 
+  const scTitle = `${card.name} — История транзакций`;
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: scTitle, onClose: () => onOpenChange(false) });
+  if (isMinimized) return <>{MinimizedBar}</>;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[960px] max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-sky-400" />
-            {card.name} — История транзакций
-          </DialogTitle>
+          <div className="flex items-start justify-between gap-2">
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-sky-400" />
+              {card.name} — История транзакций
+            </DialogTitle>
+            <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+          </div>
         </DialogHeader>
 
         <div className="grid grid-cols-3 gap-4 py-2 shrink-0">

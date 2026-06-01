@@ -78,6 +78,11 @@ export class AircraftRefuelingStorage {
           sql`${aircraftRefueling.orderNumber} IN ${filters.orderNumber}`,
         );
       }
+      if (filters.direction?.length) {
+        baseConditions.push(
+          sql`${aircraftRefueling.flightNumber} IN ${filters.direction}`,
+        );
+      }
     }
 
     const whereCondition = and(...baseConditions);

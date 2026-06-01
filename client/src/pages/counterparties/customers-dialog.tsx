@@ -9,6 +9,7 @@ import type { CustomerModule } from "@shared/constants";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import {
   Dialog,
   DialogContent,
@@ -293,8 +294,12 @@ export function AddCustomerDialog({
     }
   };
 
+  const custTitle = editCustomer ? "Редактирование покупателя" : "Новый покупатель";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: custTitle, onClose: () => handleOpenChange(false) });
+
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <>
+    <Dialog open={open && !isMinimized} onOpenChange={handleOpenChange}>
       {!isInline && (
         <DialogTrigger asChild>
           <Button size="sm" data-testid="button-add-customer">
@@ -305,9 +310,10 @@ export function AddCustomerDialog({
       )}
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {editCustomer ? "Редактирование покупателя" : "Новый покупатель"}
-          </DialogTitle>
+          <div className="flex items-start justify-between gap-2">
+            <DialogTitle>{custTitle}</DialogTitle>
+            <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+          </div>
           <DialogDescription>
             {editCustomer
               ? "Изменение данных покупателя"
@@ -652,5 +658,7 @@ export function AddCustomerDialog({
       </DialogContent>
     <ErrorModalComponent />
     </Dialog>
+    {MinimizedBar}
+    </>
   );
 }

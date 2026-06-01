@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -105,14 +106,21 @@ export function EquipmentDetailsDialog({
     }
   };
 
+  const eqDetTitle = `${equipment.name} - История операций`;
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: eqDetTitle, onClose: () => onOpenChange(false) });
+  if (isMinimized) return <>{MinimizedBar}</>;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Truck className="h-5 w-5 text-orange-400" />
-            {equipment.name} - История операций
-          </DialogTitle>
+          <div className="flex items-start justify-between gap-2">
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-orange-400" />
+              {equipment.name} - История операций
+            </DialogTitle>
+            <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+          </div>
           <DialogDescription>
             Детализация поступлений и расходов топлива
           </DialogDescription>

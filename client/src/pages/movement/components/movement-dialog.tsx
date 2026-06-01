@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -434,27 +435,34 @@ export function MovementDialog({
     onOpenChange(false);
   };
 
+  const movTitle = isCopy
+    ? "Копирование перемещения"
+    : isEditing
+      ? editMovement?.isDraft ? "Редактирование черновика" : "Редактирование перемещения"
+      : "Новое перемещение";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({
+    title: movTitle,
+    onClose: () => onOpenChange(false),
+  });
+
   return (
     <>
-      <Dialog open={open} onOpenChange={handleOpenChange}>
+      <Dialog open={open && !isMinimized} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {isCopy
-                ? "Копирование перемещения"
-                : isEditing
-                  ? editMovement?.isDraft
-                    ? "Редактирование черновика"
-                    : "Редактирование перемещения"
-                  : "Новое перемещение"}
-            </DialogTitle>
-            <DialogDescription>
-              {isCopy
-                ? "Создание нового перемещения на основе существующего"
-                : isEditing
-                  ? "Изменение существующей записи"
-                  : "Создание записи о поставке или внутреннем перемещении"}
-            </DialogDescription>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <DialogTitle>{movTitle}</DialogTitle>
+                <DialogDescription>
+                  {isCopy
+                    ? "Создание нового перемещения на основе существующего"
+                    : isEditing
+                      ? "Изменение существующей записи"
+                      : "Создание записи о поставке или внутреннем перемещении"}
+                </DialogDescription>
+              </div>
+              <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+            </div>
           </DialogHeader>
           <Form {...form}>
             <form
@@ -587,6 +595,7 @@ export function MovementDialog({
           </Form>
         </DialogContent>
       </Dialog>
+      {MinimizedBar}
 
       <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
         <AlertDialogContent>

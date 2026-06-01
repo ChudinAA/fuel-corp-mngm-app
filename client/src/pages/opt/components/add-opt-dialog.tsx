@@ -7,6 +7,7 @@ import {
   DialogHeader, 
   DialogTitle 
 } from "@/components/ui/dialog";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +31,8 @@ export function AddOptDialog({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const formRef = useRef<OptFormHandle>(null);
   const { showError, ErrorModalComponent } = useErrorModal();
+  const dialogTitle = isCopy ? "Копирование сделки" : editOpt ? "Редактирование сделки" : "Новая сделка";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: dialogTitle, onClose });
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -73,19 +76,24 @@ export function AddOptDialog({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <Dialog open={isOpen && !isMinimized} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[950px] h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {isCopy ? "Копирование сделки" : editOpt ? "Редактирование сделки" : "Новая сделка"}
-            </DialogTitle>
-            <DialogDescription>
-              {isCopy 
-                ? "Создание новой сделки на основе существующей" 
-                : editOpt 
-                  ? "Измените данные существующей оптовой сделки" 
-                  : "Заполните данные для создания новой оптовой сделки"}
-            </DialogDescription>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <DialogTitle>
+                  {isCopy ? "Копирование сделки" : editOpt ? "Редактирование сделки" : "Новая сделка"}
+                </DialogTitle>
+                <DialogDescription>
+                  {isCopy 
+                    ? "Создание новой сделки на основе существующей" 
+                    : editOpt 
+                      ? "Измените данные существующей оптовой сделки" 
+                      : "Заполните данные для создания новой оптовой сделки"}
+                </DialogDescription>
+              </div>
+              <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+            </div>
           </DialogHeader>
           <OptForm 
             ref={formRef}
@@ -94,6 +102,7 @@ export function AddOptDialog({
           />
         </DialogContent>
       </Dialog>
+      {MinimizedBar}
 
       <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
         <AlertDialogContent>

@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Dialog,
@@ -126,13 +127,18 @@ export function CashflowDialog({ open, onOpenChange, transaction }: CashflowDial
     }
   };
 
+  const cashflowTitle = transaction?.id ? "Редактировать транзакцию" : "Добавить транзакцию";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: cashflowTitle, onClose: () => onOpenChange(false) });
+  if (isMinimized) return <>{MinimizedBar}</>;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {transaction?.id ? "Редактировать транзакцию" : "Добавить транзакцию"}
-          </DialogTitle>
+          <div className="flex items-start justify-between gap-2">
+            <DialogTitle>{cashflowTitle}</DialogTitle>
+            <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import type { ChainBankCommissionItem } from "../types";
 
 interface BankCommissionDialogProps {
@@ -50,13 +51,18 @@ export function BankCommissionDialog({
     onClose();
   };
 
+  const bankCommTitle = editItem ? "Редактировать комиссию банка" : "Добавить комиссию банка";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: bankCommTitle, onClose });
+  if (isMinimized) return <>{MinimizedBar}</>;
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {editItem ? "Редактировать комиссию банка" : "Добавить комиссию банка"}
-          </DialogTitle>
+          <div className="flex items-start justify-between gap-2">
+            <DialogTitle>{bankCommTitle}</DialogTitle>
+            <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+          </div>
         </DialogHeader>
 
         <div className="space-y-4">

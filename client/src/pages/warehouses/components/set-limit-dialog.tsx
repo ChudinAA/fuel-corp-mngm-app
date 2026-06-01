@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import {
   Form,
   FormControl,
@@ -113,15 +114,25 @@ export function SetLimitDialog({ warehouse, open, onOpenChange }: SetLimitDialog
     },
   });
 
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({
+    title: `Лимит склада — ${warehouse.name}`,
+    onClose: () => onOpenChange(false),
+  });
+
+  if (isMinimized) return <>{MinimizedBar}</>;
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Gauge className="h-5 w-5" />
-              Лимит склада — {warehouse.name}
-            </DialogTitle>
+            <div className="flex items-start justify-between gap-2">
+              <DialogTitle className="flex items-center gap-2">
+                <Gauge className="h-5 w-5" />
+                Лимит склада — {warehouse.name}
+              </DialogTitle>
+              <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+            </div>
             <DialogDescription>
               Лимит будет сброшен {nextMonthFirst} (1-е следующего месяца)
             </DialogDescription>

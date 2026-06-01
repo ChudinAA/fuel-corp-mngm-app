@@ -13,6 +13,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getReadableZodError } from "@/lib/form-errors";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DateInput } from "@/components/ui/date-input";
@@ -288,19 +289,26 @@ export function EquipmentMovementDialog({
     mutation.mutate({ data: values, isDraft: true });
   };
 
+  const eqMovTitle = isEditing ? "Редактирование перемещения ОП" : "Новое перемещение ОП";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({
+    title: eqMovTitle,
+    onClose: () => onOpenChange(false),
+  });
+
   return (
     <>
-      <Dialog open={open} onOpenChange={handleOpenChange}>
+      <Dialog open={open && !isMinimized} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {isEditing
-                ? "Редактирование перемещения ОП"
-                : "Новое перемещение ОП"}
-            </DialogTitle>
-            <DialogDescription>
-              Локальное распределение топлива между базовыми складами и СЗ
-            </DialogDescription>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <DialogTitle>{eqMovTitle}</DialogTitle>
+                <DialogDescription>
+                  Локальное распределение топлива между базовыми складами и СЗ
+                </DialogDescription>
+              </div>
+              <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+            </div>
           </DialogHeader>
 
           <Form {...form}>
@@ -582,6 +590,7 @@ export function EquipmentMovementDialog({
           </Form>
         </DialogContent>
       </Dialog>
+      {MinimizedBar}
 
       <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
         <AlertDialogContent>

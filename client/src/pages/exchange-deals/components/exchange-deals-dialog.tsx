@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import {
   Form,
   FormControl,
@@ -331,13 +332,18 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
     mutation.mutate({ ...values, isDraft });
   };
 
+  const exchTitle = deal && !isCopy ? "Редактировать сделку Биржи" : isCopy ? "Копия сделки Биржи" : "Новая сделка Биржи";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: exchTitle, onClose });
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <>
+    <Dialog open={open && !isMinimized} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {deal && !isCopy ? "Редактировать сделку Биржи" : isCopy ? "Копия сделки Биржи" : "Новая сделка Биржи"}
-          </DialogTitle>
+          <div className="flex items-start justify-between gap-2">
+            <DialogTitle>{exchTitle}</DialogTitle>
+            <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+          </div>
         </DialogHeader>
 
         <Form {...form}>
@@ -760,5 +766,7 @@ export function ExchangeDealsDialog({ open, onClose, deal, isCopy }: ExchangeDea
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {MinimizedBar}
+    </>
   );
 }

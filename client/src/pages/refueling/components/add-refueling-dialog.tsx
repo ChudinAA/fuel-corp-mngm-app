@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +32,12 @@ export function AddRefuelingDialog({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const formRef = useRef<RefuelingFormHandle>(null);
   const { showError, ErrorModalComponent } = useErrorModal();
+  const dialogTitle = isCopy
+    ? equipmentType === EQUIPMENT_TYPE.LIK ? "Копирование заправки ОП" : "Копирование заправки"
+    : editRefueling
+      ? equipmentType === EQUIPMENT_TYPE.LIK ? "Редактирование заправки ЛИК" : "Редактирование заправки"
+      : equipmentType === EQUIPMENT_TYPE.LIK ? "Новая заправка ОП" : "Новая заправка ВС";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: dialogTitle, onClose });
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -76,29 +83,22 @@ export function AddRefuelingDialog({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <Dialog open={isOpen && !isMinimized} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[950px] h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {isCopy
-                ? equipmentType === EQUIPMENT_TYPE.LIK
-                  ? "Копирование заправки ОП"
-                  : "Копирование заправки"
-                : editRefueling
-                  ? equipmentType === EQUIPMENT_TYPE.LIK
-                    ? "Редактирование заправки ЛИК"
-                    : "Редактирование заправки"
-                  : equipmentType === EQUIPMENT_TYPE.LIK
-                    ? "Новая заправка ОП"
-                    : "Новая заправка ВС"}
-            </DialogTitle>
-            <DialogDescription>
-              {isCopy
-                ? "Создание новой заправки на основе существующей"
-                : editRefueling
-                  ? "Измените данные существующей заправки"
-                  : "Заполните данные для создания новой заправки ВС"}
-            </DialogDescription>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <DialogTitle>{dialogTitle}</DialogTitle>
+                <DialogDescription>
+                  {isCopy
+                    ? "Создание новой заправки на основе существующей"
+                    : editRefueling
+                      ? "Измените данные существующей заправки"
+                      : "Заполните данные для создания новой заправки ВС"}
+                </DialogDescription>
+              </div>
+              <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+            </div>
           </DialogHeader>
           <RefuelingForm
             ref={formRef}
@@ -114,6 +114,7 @@ export function AddRefuelingDialog({
           />
         </DialogContent>
       </Dialog>
+      {MinimizedBar}
 
       <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
         <AlertDialogContent>

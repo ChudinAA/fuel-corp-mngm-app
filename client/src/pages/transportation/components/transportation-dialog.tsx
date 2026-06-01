@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +36,12 @@ export function TransportationDialog({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const formRef = useRef<TransportationFormHandle>(null);
   const { showError, ErrorModalComponent } = useErrorModal();
+  const title = isCopy
+    ? "Копирование перевозки"
+    : editItem
+    ? "Редактирование перевозки"
+    : "Новая перевозка";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title, onClose });
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -76,12 +83,6 @@ export function TransportationDialog({
     onClose();
   };
 
-  const title = isCopy
-    ? "Копирование перевозки"
-    : editItem
-    ? "Редактирование перевозки"
-    : "Новая перевозка";
-
   const description = isCopy
     ? "Создание новой перевозки на основе существующей"
     : editItem
@@ -90,11 +91,16 @@ export function TransportationDialog({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <Dialog open={isOpen && !isMinimized} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[950px] h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>{description}</DialogDescription>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <DialogTitle>{title}</DialogTitle>
+                <DialogDescription>{description}</DialogDescription>
+              </div>
+              <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+            </div>
           </DialogHeader>
           <TransportationForm
             ref={formRef}
@@ -109,6 +115,7 @@ export function TransportationDialog({
           />
         </DialogContent>
       </Dialog>
+      {MinimizedBar}
 
       <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
         <AlertDialogContent>

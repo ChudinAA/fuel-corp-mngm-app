@@ -101,6 +101,7 @@ export const RefuelingForm = forwardRef<
       isApproxVolume: editData?.isApproxVolume || false,
       isPlannedDeal: editData?.isPlannedDeal || false,
       isPriceRecharge: editData?.isPriceRecharge || false,
+      isPvkjRecharge: editData?.isPvkjRecharge || false,
       setSalePriceZero: editData?.setSalePriceZero || false,
       isDraft: editData?.isDraft || false,
       selectedPurchasePriceId: "",
@@ -157,6 +158,7 @@ export const RefuelingForm = forwardRef<
   const watchKg = form.watch("quantityKg");
   const watchProductType = form.watch("productType");
   const watchIsPriceRecharge = form.watch("isPriceRecharge");
+  const watchIsPvkjRecharge = form.watch("isPvkjRecharge");
 
   const selectedSupplier = suppliers?.find((s) => s.id === watchSupplierId);
   const selectedBuyer = customers?.find((c) => c.id === watchBuyerId);
@@ -219,6 +221,7 @@ export const RefuelingForm = forwardRef<
     initialWarehouseBalance,
     refuelingDate: watchRefuelingDate,
     isPriceRecharge: watchIsPriceRecharge,
+    isPvkjRecharge: watchIsPvkjRecharge,
     setSalePriceZero: form.watch("setSalePriceZero"),
     equipmentType,
     selectedEquipmentId,
@@ -375,6 +378,7 @@ export const RefuelingForm = forwardRef<
         isApproxVolume: editData.isApproxVolume || false,
         isPlannedDeal: editData.isPlannedDeal || false,
         isPriceRecharge: editData.isPriceRecharge || false,
+        isPvkjRecharge: editData.isPvkjRecharge || false,
         setSalePriceZero: editData.setSalePriceZero || false,
         selectedPurchasePriceId: purchasePriceCompositeId,
         selectedSalePriceId: salePriceCompositeId,
@@ -613,6 +617,9 @@ export const RefuelingForm = forwardRef<
   useEffect(() => {
     if (watchProductType !== PRODUCT_TYPE.SERVICE) {
       form.setValue("isPriceRecharge", false);
+    }
+    if (watchProductType !== PRODUCT_TYPE.PVKJ) {
+      form.setValue("isPvkjRecharge", false);
     }
   }, [watchProductType, form]);
 

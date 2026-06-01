@@ -7,6 +7,7 @@ import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -141,8 +142,12 @@ export function AddBaseDialog({
     }
   };
 
+  const basesTitle = editItem ? "Редактирование базиса" : "Новый базис";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: basesTitle, onClose: () => handleOpenChange(false) });
+
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <>
+    <Dialog open={open && !isMinimized} onOpenChange={handleOpenChange}>
       {!isInline && (
         <DialogTrigger asChild>
           <Button size="sm" data-testid="button-add-base">
@@ -153,9 +158,10 @@ export function AddBaseDialog({
       )}
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {editItem ? "Редактирование базиса" : "Новый базис"}
-          </DialogTitle>
+          <div className="flex items-start justify-between gap-2">
+            <DialogTitle>{basesTitle}</DialogTitle>
+            <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+          </div>
           <DialogDescription>
             {editItem
               ? "Изменение записи в справочнике"
@@ -286,5 +292,7 @@ export function AddBaseDialog({
       </DialogContent>
       <ErrorModalComponent />
     </Dialog>
+    {MinimizedBar}
+    </>
   );
 }

@@ -26,6 +26,7 @@ export const refuelingFormSchema = z.object({
   salePriceIndex: z.number().optional().nullable(),
   isDraft: z.boolean().default(false),
   isPriceRecharge: z.boolean().default(false),
+  isPvkjRecharge: z.boolean().default(false),
   setSalePriceZero: z.boolean().default(false),
 });
 

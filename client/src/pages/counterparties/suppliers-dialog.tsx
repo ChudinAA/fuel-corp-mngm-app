@@ -8,6 +8,7 @@ import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -374,8 +375,12 @@ export function AddSupplierDialog({
     }
   };
 
+  const suppTitle = editItem ? "Редактирование поставщика" : "Новый поставщик";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: suppTitle, onClose: () => handleOpenChange(false) });
+
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <>
+    <Dialog open={open && !isMinimized} onOpenChange={handleOpenChange}>
       {!isInline && (
         <DialogTrigger asChild>
           <Button size="sm" data-testid="button-add-supplier">
@@ -386,9 +391,10 @@ export function AddSupplierDialog({
       )}
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {editItem ? "Редактирование поставщика" : "Новый поставщик"}
-          </DialogTitle>
+          <div className="flex items-start justify-between gap-2">
+            <DialogTitle>{suppTitle}</DialogTitle>
+            <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+          </div>
           <DialogDescription>
             {editItem
               ? "Изменение записи в справочнике"
@@ -977,5 +983,7 @@ export function AddSupplierDialog({
       </DialogContent>
     <ErrorModalComponent />
     </Dialog>
+    {MinimizedBar}
+    </>
   );
 }

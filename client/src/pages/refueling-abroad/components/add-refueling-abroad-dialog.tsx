@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useErrorModal } from "@/hooks/use-error-modal";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import {
   RefuelingAbroadForm,
   type RefuelingAbroadFormHandle,
@@ -32,12 +33,12 @@ export function AddRefuelingAbroadDialog({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const formRef = useRef<RefuelingAbroadFormHandle>(null);
   const { showError, ErrorModalComponent } = useErrorModal();
-
-  const title = editRefueling
+  const abroadTitle = editRefueling
     ? isCopy
       ? "Копировать заправку"
       : "Редактировать заправку"
     : "Новая заправка за рубежом";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: abroadTitle, onClose });
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -81,10 +82,13 @@ export function AddRefuelingAbroadDialog({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <Dialog open={isOpen && !isMinimized} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-7xl max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
+            <div className="flex items-start justify-between gap-2">
+              <DialogTitle>{abroadTitle}</DialogTitle>
+              <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+            </div>
           </DialogHeader>
           <ScrollArea className="max-h-[calc(90vh-80px)] pr-4">
             <RefuelingAbroadForm
@@ -99,6 +103,7 @@ export function AddRefuelingAbroadDialog({
           </ScrollArea>
         </DialogContent>
       </Dialog>
+      {MinimizedBar}
 
       <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
         <AlertDialogContent>

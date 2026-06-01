@@ -362,6 +362,18 @@ export function RefuelingTable({
                   />
                 </div>
               </TableHead>
+              <TableHead className="text-xs font-semibold p-1 w-[90px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span>Направление</span>
+                  <TableColumnFilter
+                    title="Направление"
+                    options={getUniqueOptions("flightNumber")}
+                    selectedValues={columnFilters["direction"] || []}
+                    onUpdate={(values) => handleFilterUpdate("direction", values)}
+                    dataTestId="filter-direction"
+                  />
+                </div>
+              </TableHead>
               <TableHead className="text-xs font-semibold p-1">
                 <div className="flex items-center justify-between gap-1">
                   <span className="truncate max-w-[70px]">
@@ -430,8 +442,8 @@ export function RefuelingTable({
           <TableBody>
             {deals.length > 0 && (
               <TableRow className="bg-muted/30 hover:bg-muted/40 border-b-2">
-                {/* Дата, Прод., Борт, Номер РТ, Поставщик, Базис */}
-                <TableCell className="py-1 px-1" colSpan={6} />
+                {/* Дата, Прод., Борт, Номер РТ, Направление, Поставщик, Базис */}
+                <TableCell className="py-1 px-1" colSpan={7} />
                 {/* СЗ - только для LIK */}
                 {equipmentType === EQUIPMENT_TYPE.LIK && (
                   <TableCell className="py-1 px-1" />
@@ -533,6 +545,11 @@ export function RefuelingTable({
                   <TableCell className="text-xs py-1.5 px-1">
                     <span className="truncate max-w-[75px] block text-muted-foreground">
                       {deal.orderNumber || "—"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-xs py-1.5 px-1">
+                    <span className="truncate max-w-[85px] block text-muted-foreground">
+                      {deal.flightNumber || "—"}
                     </span>
                   </TableCell>
                   <TableCell className="text-xs py-1.5 px-1">

@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -236,9 +237,13 @@ export function AddDeliveryCostDialog({
     }
   }, [form.watch("toEntityId"), watchToEntityType]);
 
+  const dcTitle = editDeliveryCost ? "Редактировать тариф доставки" : "Новый тариф доставки";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: dcTitle, onClose: handleClose });
+
   return (
+    <>
     <Dialog
-      open={editDeliveryCost !== null || open}
+      open={(editDeliveryCost !== null || open) && !isMinimized}
       onOpenChange={(isOpen) => {
         if (!isOpen) {
           handleClose();
@@ -260,11 +265,10 @@ export function AddDeliveryCostDialog({
       )}
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>
-            {editDeliveryCost
-              ? "Редактировать тариф доставки"
-              : "Новый тариф доставки"}
-          </DialogTitle>
+          <div className="flex items-start justify-between gap-2">
+            <DialogTitle>{dcTitle}</DialogTitle>
+            <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+          </div>
           <DialogDescription>
             {editDeliveryCost
               ? "Изменение тарифа перевозки"
@@ -536,5 +540,7 @@ export function AddDeliveryCostDialog({
       </DialogContent>
     <ErrorModalComponent />
     </Dialog>
+    {MinimizedBar}
+    </>
   );
 }

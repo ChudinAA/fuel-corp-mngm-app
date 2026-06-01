@@ -29,6 +29,7 @@ interface UseRefuelingCalculationsProps {
   initialWarehouseBalance: number;
   refuelingDate?: Date;
   isPriceRecharge?: boolean;
+  isPvkjRecharge?: boolean;
   setSalePriceZero?: boolean;
   equipmentType?: string;
   selectedEquipmentId?: string;
@@ -55,6 +56,7 @@ export function useRefuelingCalculations({
   initialWarehouseBalance,
   refuelingDate,
   isPriceRecharge = false,
+  isPvkjRecharge = false,
   setSalePriceZero = false,
   equipmentType = EQUIPMENT_TYPE.COMMON,
   selectedEquipmentId,
@@ -150,8 +152,11 @@ export function useRefuelingCalculations({
     if (isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) {
       return purchasePrice;
     }
+    if (isPvkjRecharge && productType === PRODUCT_TYPE.PVKJ) {
+      return purchasePrice;
+    }
     return extractedSalePrice;
-  }, [setSalePriceZero, isPriceRecharge, productType, purchasePrice, extractedSalePrice]);
+  }, [setSalePriceZero, isPriceRecharge, isPvkjRecharge, productType, purchasePrice, extractedSalePrice]);
 
   const purchaseAmount =
     purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
@@ -183,7 +188,9 @@ export function useRefuelingCalculations({
 
   const profit =
     purchaseAmount !== null && saleAmount !== null
-      ? (isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) ? 0 : saleAmount - purchaseAmount - agentFee - otherServiceFee
+      ? ((isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) || (isPvkjRecharge && productType === PRODUCT_TYPE.PVKJ))
+        ? 0
+        : saleAmount - purchaseAmount - agentFee - otherServiceFee
       : null;
 
   const getWarehouseStatus = (): {

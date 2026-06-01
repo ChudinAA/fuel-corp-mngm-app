@@ -115,6 +115,30 @@ export function RefuelingPricingSection({
 
   return (
     <>
+      {productType === PRODUCT_TYPE.PVKJ && (
+        <div className="mb-4 flex items-center justify-between rounded-md border p-3 bg-accent/5">
+          <div className="flex items-center gap-4">
+            <FormField
+              control={form.control}
+              name="isPvkjRecharge"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="checkbox-reprice-pvkj"
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Перевыставить услугу</FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+      )}
       {productType === PRODUCT_TYPE.SERVICE && (
         <div className="mb-4 flex items-center justify-between rounded-md border p-3 bg-accent/5">
           <div className="flex items-center gap-4">
@@ -306,7 +330,7 @@ export function RefuelingPricingSection({
           value={purchaseAmount !== null ? formatCurrency(purchaseAmount) : "—"}
           status={purchaseAmount !== null ? "ok" : "error"}
         />
-        {salePrices.length > 0 && !form.watch("isPriceRecharge") ? (
+        {salePrices.length > 0 && !form.watch("isPriceRecharge") && !form.watch("isPvkjRecharge") ? (
           <FormField
             control={form.control}
             name="selectedSalePriceId"
@@ -383,8 +407,8 @@ export function RefuelingPricingSection({
               );
             }}
           />
-        ) : form.watch("isPriceRecharge") &&
-          productType === PRODUCT_TYPE.SERVICE ? (
+        ) : (form.watch("isPriceRecharge") && productType === PRODUCT_TYPE.SERVICE) ||
+            (form.watch("isPvkjRecharge") && productType === PRODUCT_TYPE.PVKJ) ? (
           <CalculatedField
             label="Продажа"
             value={purchasePrice !== null ? formatPrice(purchasePrice) : "—"}

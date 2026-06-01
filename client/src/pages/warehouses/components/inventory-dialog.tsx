@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import {
   Form,
   FormControl,
@@ -133,15 +134,25 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
     },
   });
 
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({
+    title: `Инвентаризация — ${warehouse.name}`,
+    onClose: () => onOpenChange(false),
+  });
+
+  if (isMinimized) return <>{MinimizedBar}</>;
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5" />
-              Инвентаризация — {warehouse.name}
-            </DialogTitle>
+            <div className="flex items-start justify-between gap-2">
+              <DialogTitle className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5" />
+                Инвентаризация — {warehouse.name}
+              </DialogTitle>
+              <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+            </div>
             <DialogDescription>
               Установите целевые показатели на выбранную дату. Система автоматически рассчитает и добавит корректирующую транзакцию.
             </DialogDescription>

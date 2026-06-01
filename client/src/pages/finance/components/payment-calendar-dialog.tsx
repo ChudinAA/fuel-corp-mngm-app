@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -119,13 +120,18 @@ export function PaymentCalendarDialog({ open, onOpenChange, item }: PaymentCalen
     }
   };
 
+  const payCalTitle = item?.id ? "Редактировать платеж" : "Добавить платеж";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: payCalTitle, onClose: () => onOpenChange(false) });
+  if (isMinimized) return <>{MinimizedBar}</>;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {item?.id ? "Редактировать платеж" : "Добавить платеж"}
-          </DialogTitle>
+          <div className="flex items-start justify-between gap-2">
+            <DialogTitle>{payCalTitle}</DialogTitle>
+            <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

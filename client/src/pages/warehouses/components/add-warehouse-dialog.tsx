@@ -14,6 +14,7 @@ import { Plus, Loader2, X, Building2, Globe2, Users } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import type { Warehouse, Base, Supplier } from "@shared/schema";
 import { EQUIPMENT_TYPE } from "@shared/constants";
 import { newWarehouseFormSchema } from "../schemas";
@@ -221,19 +222,26 @@ export function AddWarehouseDialog({
     },
   });
 
+  const warehouseTitle = isEditing ? "Редактирование склада" : "Новый склад";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: warehouseTitle, onClose: () => setOpen(false) });
+  if (isMinimized) return <>{MinimizedBar}</>;
+
   return (
     <>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "Редактирование склада" : "Новый склад"}
-          </DialogTitle>
-          <DialogDescription>
-            {isEditing 
-              ? "Изменение информации о складе" 
-              : "Добавление нового склада в систему"}
-          </DialogDescription>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <DialogTitle>{warehouseTitle}</DialogTitle>
+              <DialogDescription>
+                {isEditing 
+                  ? "Изменение информации о складе" 
+                  : "Добавление нового склада в систему"}
+              </DialogDescription>
+            </div>
+            <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+          </div>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">

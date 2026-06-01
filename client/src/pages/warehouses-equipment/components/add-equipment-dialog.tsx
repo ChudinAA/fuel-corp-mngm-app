@@ -11,6 +11,7 @@ import { Loader2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import type { Equipment, Warehouse } from "@shared/schema";
 import { z } from "zod";
 
@@ -84,16 +85,23 @@ export function AddEquipmentDialog({
     },
   });
 
+  const eqTitle = isEditing ? "Редактирование СЗ" : "Новое средство заправки (СЗ)";
+  const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: eqTitle, onClose: () => onOpenChange(false) });
+  if (isMinimized) return <>{MinimizedBar}</>;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "Редактирование СЗ" : "Новое средство заправки (СЗ)"}
-          </DialogTitle>
-          <DialogDescription>
-            Укажите название
-          </DialogDescription>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <DialogTitle>{eqTitle}</DialogTitle>
+              <DialogDescription>
+                Укажите название
+              </DialogDescription>
+            </div>
+            <div className="shrink-0 mt-[-4px]">{MinimizeButton}</div>
+          </div>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
