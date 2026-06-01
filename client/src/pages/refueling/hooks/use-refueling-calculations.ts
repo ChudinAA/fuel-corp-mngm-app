@@ -134,16 +134,25 @@ export function useRefuelingCalculations({
       : null;
   }, [isLikMode, equipmentData, isEquipmentLoading]);
 
+  // Если поставщик задал basis-specific pvkjPrice, используем его напрямую (как для SERVICE)
+  const hasBasisPvkjPrice = useMemo(() => {
+    if (productType !== PRODUCT_TYPE.PVKJ || !selectedBasisId || !selectedSupplier?.basisPrices) return false;
+    const bp = selectedSupplier.basisPrices.find((b) => b.basisId === selectedBasisId);
+    return !!(bp?.pvkjPrice);
+  }, [productType, selectedBasisId, selectedSupplier]);
+
   const purchasePrice = useMemo(() => {
     // LIK mode: cost comes from the selected equipment (СЗ) average cost at refueling date
-    if (isLikMode && productType !== PRODUCT_TYPE.SERVICE) {
+    // (не применяется для SERVICE и для PVKJ с basis price)
+    if (isLikMode && productType !== PRODUCT_TYPE.SERVICE && !hasBasisPvkjPrice) {
       return equipmentPriceAtDate !== null ? equipmentPriceAtDate : extractedPurchasePrice;
     }
-    if (isWarehouseSupplier && productType !== PRODUCT_TYPE.SERVICE) {
+    // Warehouse supplier override (не применяется для SERVICE и PVKJ с basis price)
+    if (isWarehouseSupplier && productType !== PRODUCT_TYPE.SERVICE && !hasBasisPvkjPrice) {
       return warehousePriceAtDate !== null ? warehousePriceAtDate : extractedPurchasePrice;
     }
     return extractedPurchasePrice;
-  }, [isLikMode, isWarehouseSupplier, productType, equipmentPriceAtDate, warehousePriceAtDate, extractedPurchasePrice]);
+  }, [isLikMode, isWarehouseSupplier, productType, hasBasisPvkjPrice, equipmentPriceAtDate, warehousePriceAtDate, extractedPurchasePrice]);
 
   const salePrice = useMemo(() => {
     if (setSalePriceZero && productType === PRODUCT_TYPE.SERVICE) {

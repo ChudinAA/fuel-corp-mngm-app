@@ -222,7 +222,8 @@ export function RefuelingPricingSection({
       <div className="grid gap-3 md:grid-cols-4">
         {!isWarehouseSupplier &&
         purchasePrices.length > 0 &&
-        !(basisServicePrice && productType === PRODUCT_TYPE.SERVICE) ? (
+        !(basisServicePrice && productType === PRODUCT_TYPE.SERVICE) &&
+        !(basisPvkjPrice && productType === PRODUCT_TYPE.PVKJ) ? (
           <FormField
             control={form.control}
             name="selectedPurchasePriceId"
@@ -298,6 +299,14 @@ export function RefuelingPricingSection({
           />
         ) : basisServicePrice &&
           productType === PRODUCT_TYPE.SERVICE ? (
+          <CalculatedField
+            label="Покупка"
+            value={purchasePrice !== null ? formatPrice(purchasePrice) : "—"}
+            suffix={purchasePrice !== null ? " ₽/кг" : ""}
+            status="ok"
+          />
+        ) : basisPvkjPrice &&
+          productType === PRODUCT_TYPE.PVKJ ? (
           <CalculatedField
             label="Покупка"
             value={purchasePrice !== null ? formatPrice(purchasePrice) : "—"}

@@ -40,9 +40,21 @@ export function usePriceExtraction({
       return null;
     }
 
-    // Для ПВКЖ со склада
-    if (productType === PRODUCT_TYPE.PVKJ && isWarehouseSupplier && supplierWarehouse) {
-      return parseFloat(supplierWarehouse.pvkjAverageCost || "0");
+    // Для ПВКЖ - сначала проверяем basis-specific pvkj_price у поставщика
+    if (productType === PRODUCT_TYPE.PVKJ) {
+      if (basisId && selectedSupplier?.basisPrices) {
+        const basisPrice = selectedSupplier.basisPrices.find(
+          (bp) => bp.basisId === basisId
+        );
+        if (basisPrice?.pvkjPrice) {
+          return parseFloat(basisPrice.pvkjPrice);
+        }
+      }
+      // Если basis price не задана — берём со склада
+      if (isWarehouseSupplier && supplierWarehouse) {
+        return parseFloat(supplierWarehouse.pvkjAverageCost || "0");
+      }
+      return null;
     }
 
     // Для керосина со склада
