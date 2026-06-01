@@ -7,7 +7,7 @@ export function useEquipmentMovementTable() {
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
 
   const hasActiveFilters = Object.values(columnFilters).some(v => v.length > 0);
-  const effectiveLimit = hasActiveFilters ? 10000 : 100;
+  const effectiveLimit = hasActiveFilters ? 1000 : 100;
 
   const {
     data,

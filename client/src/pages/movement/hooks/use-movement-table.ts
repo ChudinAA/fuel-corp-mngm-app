@@ -8,7 +8,7 @@ export function useMovementTable() {
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
 
   const hasActiveFilters = Object.values(columnFilters).some(v => v.length > 0);
-  const effectivePageSize = hasActiveFilters ? 10000 : pageSize;
+  const effectivePageSize = hasActiveFilters ? 1000 : pageSize;
 
   const {
     data,

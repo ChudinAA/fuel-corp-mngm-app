@@ -11,7 +11,7 @@ export function useTransportationTable() {
   const { toast } = useToast();
 
   const hasActiveFilters = Object.values(columnFilters).some(v => v.length > 0);
-  const effectivePageSize = hasActiveFilters ? 10000 : pageSize;
+  const effectivePageSize = hasActiveFilters ? 1000 : pageSize;
 
   const {
     data: transportationDeals,
