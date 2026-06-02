@@ -364,7 +364,7 @@ export function RefuelingTable({
               </TableHead>
               <TableHead className="text-xs font-semibold p-1 w-[90px]">
                 <div className="flex items-center justify-between gap-1">
-                  <span>Направление</span>
+                  <span>Направ.</span>
                   <TableColumnFilter
                     title="Направление"
                     options={getUniqueOptions("flightNumber")}
