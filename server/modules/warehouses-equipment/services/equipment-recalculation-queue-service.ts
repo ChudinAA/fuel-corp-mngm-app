@@ -10,8 +10,11 @@ export class EquipmentRecalculationQueueService {
     afterDate: string,
     createdById?: string,
     priority: number = 0,
+    tx?: any,
   ): Promise<void> {
-    const existingPending = await db.query.equipmentRecalculationQueue.findFirst({
+    const conn = tx || db;
+
+    const existingPending = await conn.query.equipmentRecalculationQueue.findFirst({
       where: and(
         eq(equipmentRecalculationQueue.equipmentId, equipmentId),
         eq(equipmentRecalculationQueue.productType, productType),
@@ -27,7 +30,7 @@ export class EquipmentRecalculationQueueService {
       const newDate = new Date(afterDate);
 
       if (newDate < existingDate) {
-        await db
+        await conn
           .update(equipmentRecalculationQueue)
           .set({
             afterDate,
@@ -42,7 +45,7 @@ export class EquipmentRecalculationQueueService {
       return;
     }
 
-    await db.insert(equipmentRecalculationQueue).values({
+    await conn.insert(equipmentRecalculationQueue).values({
       equipmentId,
       productType,
       afterDate,

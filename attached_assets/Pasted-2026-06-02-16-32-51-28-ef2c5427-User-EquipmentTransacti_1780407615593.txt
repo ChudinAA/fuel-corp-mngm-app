@@ -1,0 +1,85 @@
+2026-06-02 16:32:51.28
+ef2c5427
+User
+[EquipmentTransactionService] Backdated transaction detected, queuing recalculation for equipment 577d8827-deb2-42f7-aaff-767884f57d87
+2026-06-02 16:37:51.28
+ef2c5427
+User
+[Process] Uncaught Exception: terminating connection due to idle-in-transaction timeout
+2026-06-02 16:37:51.28
+ef2c5427
+User
+at r.n (/home/runner/workspace/dist/index.cjs:65:24822)
+2026-06-02 16:37:51.28
+ef2c5427
+User
+error: terminating connection due to idle-in-transaction timeout
+2026-06-02 16:37:51.28
+ef2c5427
+User
+at w0.startLoop (/home/runner/workspace/dist/index.cjs:65:12576)
+2026-06-02 16:37:51.28
+ef2c5427
+User
+at w0.dataMessage (/home/runner/workspace/dist/index.cjs:65:16803)
+2026-06-02 16:37:51.28
+ef2c5427
+User
+at writeOrBuffer (node:internal/streams/writable:572:12)
+2026-06-02 16:37:51.28
+ef2c5427
+User
+at w0.rK (/home/runner/workspace/dist/index.cjs:65:39730)
+2026-06-02 16:37:51.28
+ef2c5427
+User
+at w0._write (/home/runner/workspace/dist/index.cjs:65:11860)
+2026-06-02 16:37:51.28
+ef2c5427
+User
+at Ze.<anonymous> (/home/runner/workspace/dist/index.cjs:79:33182)
+2026-06-02 16:37:51.28
+ef2c5427
+User
+at Xf (/home/runner/workspace/dist/index.cjs:65:25533)
+2026-06-02 16:37:51.28
+ef2c5427
+User
+at r.emit (node:events:524:28)
+2026-06-02 16:37:51.28
+ef2c5427
+User
+at w0.emit (node:events:524:28)
+2026-06-02 16:37:51.28
+ef2c5427
+User
+at Ze.emit (/home/runner/workspace/dist/index.cjs:78:105399)
+2026-06-02 16:37:51.28
+ef2c5427
+User
+at r.<anonymous> (/home/runner/workspace/dist/index.cjs:79:15841)
+2026-06-02 16:37:51.28
+ef2c5427
+User
+at w0.getData (/home/runner/workspace/dist/index.cjs:65:16006)
+2026-06-02 16:37:51.28
+ef2c5427
+User
+[EquipmentRecalculationQueue] Added task for equipment 577d8827-deb2-42f7-aaff-767884f57d87, productType kerosene, afterDate 2026-06-01T23:59:00
+2026-06-02 16:37:51.28
+ef2c5427
+User
+Error creating refueling: Client has encountered a connection error and is not queryable
+
+2026-06-02 16:37:51.55
+ef2c5427
+User
+1:37:51 PM [express] ERROR: POST /api/refueling 500 in 300569ms :: {"message":"Ошибка создания заправки"}
+2026-06-02 16:37:53.12
+ef2c5427
+User
+[EquipmentRecalculationWorker] Processing task baa29e9d-8329-4915-9bb1-1c038908b448 for equipment 577d8827-deb2-42f7-aaff-767884f57d87
+2026-06-02 16:37:53.25
+ef2c5427
+User
+[EquipmentRecalculationService] Recalculating equipment 577d8827-deb2-42f7-aaff-767884f57d87 from 2026-06-01 23:59:00, productType=kerosene

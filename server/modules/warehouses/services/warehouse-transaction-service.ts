@@ -159,7 +159,8 @@ export class WarehouseTransactionService {
         productType,
         txDate,
         createdById,
-        1
+        1,
+        tx,
       );
     }
 
@@ -296,7 +297,8 @@ export class WarehouseTransactionService {
         productType,
         effectiveDate,
         updatedById,
-        1
+        1,
+        tx,
       );
     }
 
@@ -394,7 +396,8 @@ export class WarehouseTransactionService {
         transaction.productType || "kerosene",
         txDate,
         updatedById,
-        1
+        1,
+        tx,
       );
     }
 
@@ -492,7 +495,8 @@ export class WarehouseTransactionService {
         transaction.productType || "kerosene",
         txDate,
         updatedById,
-        1
+        1,
+        tx,
       );
     }
 

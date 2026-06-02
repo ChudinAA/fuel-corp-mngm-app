@@ -161,6 +161,7 @@ export class EquipmentTransactionService {
         txDate,
         createdById,
         1,
+        tx,
       );
     }
 
@@ -282,6 +283,7 @@ export class EquipmentTransactionService {
         effectiveDate,
         userId,
         1,
+        tx,
       );
     }
 
@@ -372,6 +374,7 @@ export class EquipmentTransactionService {
         txDate,
         userId,
         1,
+        tx,
       );
     }
   }
@@ -460,6 +463,7 @@ export class EquipmentTransactionService {
         txDate,
         userId,
         1,
+        tx,
       );
     }
   }
