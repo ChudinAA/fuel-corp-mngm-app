@@ -37,7 +37,6 @@ export function usePriceExtraction({
           return parseFloat(basisPrice.servicePrice);
         }
       }
-      return null;
     }
 
     // Для ПВКЖ - сначала проверяем basis-specific pvkj_price у поставщика
