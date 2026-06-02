@@ -113,10 +113,11 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         });
         const item = await storage.aircraftRefueling.createRefueling(data);
         res.status(201).json(item);
-      } catch (error) {
+      } catch (error: any) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
         }
+        console.error("Error creating refueling:", error?.message || error);
         res.status(500).json({ message: "Ошибка создания заправки" });
       }
     }

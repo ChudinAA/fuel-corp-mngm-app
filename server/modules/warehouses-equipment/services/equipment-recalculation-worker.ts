@@ -55,6 +55,10 @@ export class EquipmentRecalculationWorker {
 
       try {
         await db.transaction(async (tx) => {
+          // Limit transaction time to prevent indefinite lock waits
+          await tx.execute(sql`SET LOCAL statement_timeout = '60s'`);
+          await tx.execute(sql`SET LOCAL lock_timeout = '30s'`);
+
           await tx.execute(
             sql`SELECT pg_advisory_xact_lock(hashtext(${task.equipmentId} || ${task.productType}))`,
           );
@@ -75,12 +79,17 @@ export class EquipmentRecalculationWorker {
       } catch (error: any) {
         console.error(
           `[EquipmentRecalculationWorker] Task ${task.id} failed:`,
-          error,
+          error?.message || error,
         );
-        await EquipmentRecalculationQueueService.markAsFailed(
-          task.id,
-          error.message || "Unknown error",
-        );
+        // Wrap cleanup to prevent secondary errors from crashing the process
+        try {
+          await EquipmentRecalculationQueueService.markAsFailed(
+            task.id,
+            error?.message || "Unknown error",
+          );
+        } catch (markErr: any) {
+          console.error(`[EquipmentRecalculationWorker] Failed to mark task as failed:`, markErr?.message || markErr);
+        }
       }
     } catch (error) {
       console.error(

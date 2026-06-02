@@ -59,6 +59,10 @@ export class RecalculationWorker {
 
       try {
         await db.transaction(async (tx) => {
+          // Limit transaction time to prevent indefinite lock waits
+          await tx.execute(sql`SET LOCAL statement_timeout = '60s'`);
+          await tx.execute(sql`SET LOCAL lock_timeout = '30s'`);
+
           await tx.execute(
             sql`SELECT pg_advisory_xact_lock(hashtext(${task.warehouseId} || ${task.productType}))`,
           );
@@ -86,13 +90,21 @@ export class RecalculationWorker {
           `[RecalculationWorker] Task ${task.id} completed successfully`,
         );
       } catch (error: any) {
-        console.error(`[RecalculationWorker] Task ${task.id} failed:`, error);
-        await RecalculationQueueService.markAsFailed(
-          task.id,
-          error.message || "Unknown error",
-        );
-        // Set isRecalculating flag
-        await this.setWarehouseRecalculatingFlag(false, task.warehouseId);
+        console.error(`[RecalculationWorker] Task ${task.id} failed:`, error?.message || error);
+        // Wrap cleanup operations to prevent secondary errors from crashing the process
+        try {
+          await RecalculationQueueService.markAsFailed(
+            task.id,
+            error?.message || "Unknown error",
+          );
+        } catch (markErr: any) {
+          console.error(`[RecalculationWorker] Failed to mark task as failed:`, markErr?.message || markErr);
+        }
+        try {
+          await this.setWarehouseRecalculatingFlag(false, task.warehouseId);
+        } catch (flagErr: any) {
+          console.error(`[RecalculationWorker] Failed to clear recalculating flag:`, flagErr?.message || flagErr);
+        }
         SSEService.notifyRecalculationCompleted(task.warehouseId, task.productType);
       }
     } catch (error) {
