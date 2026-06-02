@@ -54,7 +54,7 @@ export function usePriceExtraction({
       if (isWarehouseSupplier && supplierWarehouse) {
         return parseFloat(supplierWarehouse.pvkjAverageCost || "0");
       }
-      return null;
+      // Если нет basis-price и поставщик не склад — используем цену из таблицы цен (fall-through ниже)
     }
 
     // Для керосина со склада
