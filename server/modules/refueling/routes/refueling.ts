@@ -148,9 +148,6 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         res.json(item);
       } catch (error) {
         console.error("Error updating refueling:", error);
-        if (error instanceof Error) {
-          return res.status(400).json({ message: error.message });
-        }
         res.status(500).json({ message: "Ошибка обновления заправки" });
       }
     }
