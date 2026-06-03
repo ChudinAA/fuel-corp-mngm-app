@@ -645,8 +645,8 @@ export function DealChainSection({
           </Alert>
         )}
 
-        <div className="bg-muted/20 p-4 rounded-lg border border-dashed border-primary/30 overflow-x-auto">
-          <div className="flex flex-nowrap items-center gap-1 min-w-max">
+        <div className="bg-muted/20 p-4 rounded-lg border border-dashed border-primary/30">
+          <div className="flex flex-wrap items-center gap-y-2 gap-x-1">
             <div className="flex flex-col items-center gap-0.5 shrink-0">
               <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Покупатель</span>
               <div className="bg-background border-2 border-primary/30 rounded px-3 py-2 text-xs font-semibold whitespace-nowrap">
