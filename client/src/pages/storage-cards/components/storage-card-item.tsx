@@ -120,7 +120,7 @@ export function StorageCardItem({
               >
                 {formatNumber(balance)} {card.currencySymbol || "$"}
               </p>
-              {cardType === "buyer" && localBalance !== null && card.localCurrencyCode && (
+              {localBalance !== null && card.localCurrencyCode && (
                 <p className="text-sm text-muted-foreground mt-0.5">
                   ≈ {formatNumber(localBalance)} {card.localCurrencyCode}
                 </p>
@@ -174,7 +174,7 @@ export function StorageCardItem({
               </div>
             )}
 
-            {cardType === "buyer" && weightedRate > 0 && (
+            {weightedRate > 0 && (
               <div className="flex items-start gap-1.5">
                 <TrendingUp className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div>

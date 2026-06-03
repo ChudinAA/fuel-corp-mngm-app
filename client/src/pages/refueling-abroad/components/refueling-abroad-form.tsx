@@ -552,6 +552,34 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         : 0,
   });
 
+  // Blended purchase rate calculation using supplier card weighted average rate
+  const supplierCardWeightedRate = parseFloat(
+    String(supplierBalanceStatus.supplierCard?.weightedAverageRate || "0")
+  );
+  const purchaseAmountUsdNum = calculations.purchaseAmountUsd ?? 0;
+  const supplierCardCoveredAmount =
+    supplierCardWeightedRate > 0 && supplierBalanceStatus.currentBalance > 0
+      ? Math.min(supplierBalanceStatus.currentBalance, purchaseAmountUsdNum)
+      : 0;
+  const remainingAfterCard = Math.max(0, purchaseAmountUsdNum - supplierCardCoveredAmount);
+  const blendedPurchaseExchangeRate =
+    supplierCardCoveredAmount > 0 && purchaseAmountUsdNum > 0
+      ? (supplierCardCoveredAmount * supplierCardWeightedRate +
+          remainingAfterCard * purchaseExchangeRate) /
+        purchaseAmountUsdNum
+      : purchaseExchangeRate;
+  const blendedPurchaseAmountRub =
+    purchaseAmountUsdNum > 0 && blendedPurchaseExchangeRate > 0
+      ? purchaseAmountUsdNum * blendedPurchaseExchangeRate
+      : (calculations.purchaseAmountRub ?? null);
+  const blendedProfitRub =
+    calculations.saleAmountRub !== null && blendedPurchaseAmountRub !== null
+      ? calculations.saleAmountRub -
+        blendedPurchaseAmountRub -
+        (calculations.totalIntermediaryCommissionRub +
+          calculations.totalBankCommissionRub)
+      : calculations.profitRub;
+
   const buyerBalanceStatus = useBuyerCardBalance({
     buyerId: watchedValues.buyerId,
     saleAmountUsd: calculations.saleAmountUsd,
@@ -638,10 +666,10 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
             : null,
         purchaseAmountUsd: calculations.purchaseAmountUsd || null,
         saleAmountUsd: calculations.saleAmountUsd || null,
-        purchaseAmountRub: calculations.purchaseAmountRub || null,
+        purchaseAmountRub: blendedPurchaseAmountRub || calculations.purchaseAmountRub || null,
         saleAmountRub: calculations.saleAmountRub || null,
         profitUsd: calculations.profitUsd ?? null,
-        profitRub: calculations.profitRub ?? null,
+        profitRub: blendedProfitRub ?? calculations.profitRub ?? null,
         bankCommissionUsd: calculations.totalBankCommissionUsd,
         bankCommissionRub: calculations.totalBankCommissionRub,
         notes: data.notes || null,
@@ -1171,9 +1199,13 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
           saleExchangeRate={saleExchangeRate}
           purchaseExchangeRate={purchaseExchangeRate}
           saleExchangeRateDate={effectiveSaleExchangeRateDate ?? undefined}
-          purchaseExchangeRateDate={
-            effectivePurchaseExchangeRateDate ?? undefined
+          purchaseExchangeRateDate={effectivePurchaseExchangeRateDate ?? undefined}
+          blendedPurchaseExchangeRate={
+            supplierCardCoveredAmount > 0 ? blendedPurchaseExchangeRate : undefined
           }
+          supplierCardAmount={supplierCardCoveredAmount > 0 ? supplierCardCoveredAmount : undefined}
+          supplierCardWeightedRate={supplierCardWeightedRate > 0 ? supplierCardWeightedRate : undefined}
+          remainingAfterCard={supplierCardCoveredAmount > 0 ? remainingAfterCard : undefined}
         />
 
         <Card>

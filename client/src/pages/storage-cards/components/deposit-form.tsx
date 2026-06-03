@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/form";
 import { DateInput } from "@/components/ui/date-input";
 import { format, parseISO } from "date-fns";
-import { cn } from "@/lib/utils";
 import { STORAGE_CARD_TRANSACTION_TYPE } from "@shared/constants";
 import { Combobox } from "@/components/ui/combobox";
 import { useEffect } from "react";
@@ -58,21 +57,16 @@ export function DepositForm({
 
   const { data: currencies = [] } = useQuery<Currency[]>({
     queryKey: ["/api/currencies"],
-    enabled: isBuyer,
   });
 
-  // Determine if this buyer card has already been topped up (currency is locked)
   const cardBalance = parseFloat(String(card.currentBalance || "0"));
-  const hasExistingDeposits = isBuyer && cardBalance !== 0;
-  const lockedLocalCurrencyCode = isBuyer && hasExistingDeposits ? (card.localCurrencyCode || null) : null;
-  const isLockedToUsd = isBuyer && hasExistingDeposits && !card.localCurrencyCode;
+  const hasExistingDeposits = cardBalance !== 0;
+  const lockedLocalCurrencyCode = hasExistingDeposits ? (card.localCurrencyCode || null) : null;
+  const isLockedToUsd = hasExistingDeposits && !card.localCurrencyCode;
   const currencyIsLocked = hasExistingDeposits;
 
-  // Compute initial values synchronously (currencies may already be in cache on re-open)
   const computeInitialValues = (): { currencyMode: "USD" | "local"; localCurrencyId: string } => {
-    if (!isBuyer) return { currencyMode: "USD", localCurrencyId: "" };
     if (isLockedToUsd) return { currencyMode: "USD", localCurrencyId: "" };
-    // Prefer local mode for buyer cards (locked or new)
     const targetCode = lockedLocalCurrencyCode || "RUB";
     const matchedCurrency = currencies.find((c) => c.code === targetCode);
     return {
@@ -96,12 +90,10 @@ export function DepositForm({
     },
   });
 
-  // Fallback: sync form if currencies were not in cache on first mount
   useEffect(() => {
-    if (!isBuyer || currencies.length === 0) return;
+    if (currencies.length === 0) return;
     const { currencyMode, localCurrencyId } = computeInitialValues();
     const current = form.getValues();
-    // Only update if localCurrencyId is still empty (wasn't set by defaultValues)
     if (current.localCurrencyId === "" && localCurrencyId !== "") {
       form.setValue("currencyMode", currencyMode, { shouldRender: true });
       form.setValue("localCurrencyId", localCurrencyId, { shouldRender: true });
@@ -111,9 +103,8 @@ export function DepositForm({
   const currencyMode = useWatch({ control: form.control, name: "currencyMode" });
   const localAmount = useWatch({ control: form.control, name: "localAmount" });
   const exchangeRate = useWatch({ control: form.control, name: "exchangeRate" });
-  const isLocalMode = isBuyer && currencyMode === "local";
+  const isLocalMode = currencyMode === "local";
 
-  // Auto-calculate USD amount from local amount and rate
   useEffect(() => {
     if (!isLocalMode) return;
     const local = parseFloat(localAmount || "0");
@@ -174,59 +165,57 @@ export function DepositForm({
         onSubmit={form.handleSubmit((data) => depositMutation.mutate(data))}
         className="space-y-4"
       >
-        {isBuyer && (
-          <FormField
-            control={form.control}
-            name="currencyMode"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Валюта пополнения</FormLabel>
-                <FormControl>
-                  <Combobox
-                    options={[
-                      { value: "USD", label: "USD — Доллар США" },
-                      ...currencies
-                        .filter((c) => c.code !== "USD")
-                        .map((c) => ({
-                          value: "local:" + c.id,
-                          label: `${c.code} — ${c.name}`,
-                        })),
-                    ]}
-                    value={
-                      field.value === "USD"
-                        ? "USD"
-                        : "local:" + form.watch("localCurrencyId")
+        <FormField
+          control={form.control}
+          name="currencyMode"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Валюта пополнения</FormLabel>
+              <FormControl>
+                <Combobox
+                  options={[
+                    { value: "USD", label: "USD — Доллар США" },
+                    ...currencies
+                      .filter((c) => c.code !== "USD")
+                      .map((c) => ({
+                        value: "local:" + c.id,
+                        label: `${c.code} — ${c.name}`,
+                      })),
+                  ]}
+                  value={
+                    field.value === "USD"
+                      ? "USD"
+                      : "local:" + form.watch("localCurrencyId")
+                  }
+                  onValueChange={(val) => {
+                    if (currencyIsLocked) return;
+                    if (val === "USD") {
+                      field.onChange("USD");
+                      form.setValue("localCurrencyId", "");
+                      form.setValue("localAmount", "");
+                      form.setValue("exchangeRate", "");
+                      form.setValue("amountUsd", "");
+                    } else {
+                      const currId = val.replace("local:", "");
+                      field.onChange("local");
+                      form.setValue("localCurrencyId", currId);
+                      form.setValue("amountUsd", "");
                     }
-                    onValueChange={(val) => {
-                      if (currencyIsLocked) return;
-                      if (val === "USD") {
-                        field.onChange("USD");
-                        form.setValue("localCurrencyId", "");
-                        form.setValue("localAmount", "");
-                        form.setValue("exchangeRate", "");
-                        form.setValue("amountUsd", "");
-                      } else {
-                        const currId = val.replace("local:", "");
-                        field.onChange("local");
-                        form.setValue("localCurrencyId", currId);
-                        form.setValue("amountUsd", "");
-                      }
-                    }}
-                    placeholder="Выберите валюту..."
-                    dataTestId="select-currency-mode"
-                    disabled={currencyIsLocked}
-                  />
-                </FormControl>
-                {currencyIsLocked && (
-                  <p className="text-xs text-muted-foreground">
-                    Валюта зафиксирована по первому пополнению и не может быть изменена
-                  </p>
-                )}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
+                  }}
+                  placeholder="Выберите валюту..."
+                  dataTestId="select-currency-mode"
+                  disabled={currencyIsLocked}
+                />
+              </FormControl>
+              {currencyIsLocked && (
+                <p className="text-xs text-muted-foreground">
+                  Валюта зафиксирована по первому пополнению и не может быть изменена
+                </p>
+              )}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {isLocalMode && (
           <div className="border rounded-md p-3 space-y-3 bg-muted/30">

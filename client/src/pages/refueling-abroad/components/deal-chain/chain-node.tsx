@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Trash2, Users, DollarSign, Percent, ArrowRight } from "lucide-react";
+import { Trash2, Users, DollarSign, Percent, ArrowRight, Calendar } from "lucide-react";
 import type { ChainItem, ChainIntermediaryItem } from "./types";
 import {
   computeIntermediaryCommission,
@@ -20,6 +20,10 @@ interface ChainNodeProps {
   quantityKg: number;
   fromAmount?: number;
   toAmount?: number;
+  purchaseExchangeRate?: number;
+  purchaseExchangeRateDate?: string;
+  saleExchangeRate?: number;
+  saleExchangeRateDate?: string;
 }
 
 const INCOME_TYPE_SHORT: Record<string, string> = {
@@ -44,6 +48,13 @@ function formatRunningAmount(amount: number, currencyCode?: string): string {
   return `${amount.toFixed(2)} ${sym}`.trim();
 }
 
+function formatRate(rate: number): string {
+  return new Intl.NumberFormat("ru-RU", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format(rate);
+}
+
 export function ChainNode({
   item,
   currencies,
@@ -56,6 +67,10 @@ export function ChainNode({
   quantityKg,
   fromAmount,
   toAmount,
+  purchaseExchangeRate,
+  purchaseExchangeRateDate,
+  saleExchangeRate,
+  saleExchangeRateDate,
 }: ChainNodeProps) {
   if (item.type === "intermediary") {
     const supplierName = intermediarySuppliers.find(
@@ -82,6 +97,10 @@ export function ChainNode({
           ? `${item.rateValue ?? 0} $/т`
           : `${item.rateValue ?? 0} $`;
 
+    const commissionRub = saleExchangeRate && realtimeCommission > 0
+      ? realtimeCommission * saleExchangeRate
+      : null;
+
     return (
       <div className="flex flex-col items-center gap-1 group">
         <div
@@ -107,6 +126,27 @@ export function ChainNode({
               -{formatCurrency(realtimeCommission, "USD")}
             </span>
           )}
+          {(saleExchangeRate || saleExchangeRateDate) && (
+            <div className="mt-1 pt-1 border-t border-primary/10 space-y-0.5">
+              {saleExchangeRate ? (
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <DollarSign className="h-2.5 w-2.5 shrink-0" />
+                  <span>Курс продажи: <span className="font-medium text-foreground">{formatRate(saleExchangeRate)} ₽</span></span>
+                </div>
+              ) : null}
+              {saleExchangeRateDate && (
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <Calendar className="h-2.5 w-2.5 shrink-0" />
+                  <span>{saleExchangeRateDate}</span>
+                </div>
+              )}
+              {commissionRub !== null && (
+                <div className="text-[10px] text-destructive font-medium">
+                  ≈ -{new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(commissionRub)} ₽
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <Button
           type="button"
@@ -125,6 +165,10 @@ export function ChainNode({
   }
 
   if (item.type === "exchange_rate") {
+    const rateDateFormatted = item.rateDate
+      ? new Date(item.rateDate + "T00:00:00").toLocaleDateString("ru-RU")
+      : null;
+
     return (
       <div className="flex flex-col items-center gap-1 group">
         <div
@@ -160,6 +204,12 @@ export function ChainNode({
               </span>
             </div>
           )}
+          {rateDateFormatted && (
+            <div className="mt-1 pt-1 border-t border-green-500/10 flex items-center gap-1 text-[10px] text-muted-foreground">
+              <Calendar className="h-2.5 w-2.5 shrink-0" />
+              <span>Дата курса: <span className="font-medium text-foreground">{rateDateFormatted}</span></span>
+            </div>
+          )}
         </div>
         <Button
           type="button"
@@ -190,6 +240,10 @@ export function ChainNode({
         ? `${item.percent ?? 0}%, мин. ${item.minValue ?? 0} $`
         : `${item.percent ?? 0}%`;
 
+    const commissionRub = purchaseExchangeRate && realtimeCommission > 0
+      ? realtimeCommission * purchaseExchangeRate
+      : null;
+
     return (
       <div className="flex flex-col items-center gap-1 group">
         <div
@@ -214,6 +268,27 @@ export function ChainNode({
             <span className="text-[10.5px] text-destructive font-medium mt-0.5">
               -{formatCurrency(realtimeCommission, "USD")}
             </span>
+          )}
+          {(purchaseExchangeRate || purchaseExchangeRateDate) && (
+            <div className="mt-1 pt-1 border-t border-amber-500/10 space-y-0.5">
+              {purchaseExchangeRate ? (
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <DollarSign className="h-2.5 w-2.5 shrink-0" />
+                  <span>Курс закупки: <span className="font-medium text-foreground">{formatRate(purchaseExchangeRate)} ₽</span></span>
+                </div>
+              ) : null}
+              {purchaseExchangeRateDate && (
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <Calendar className="h-2.5 w-2.5 shrink-0" />
+                  <span>{purchaseExchangeRateDate}</span>
+                </div>
+              )}
+              {commissionRub !== null && (
+                <div className="text-[10px] text-destructive font-medium">
+                  ≈ -{new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(commissionRub)} ₽
+                </div>
+              )}
+            </div>
           )}
         </div>
         <Button

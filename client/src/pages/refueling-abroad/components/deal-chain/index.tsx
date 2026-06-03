@@ -78,6 +78,11 @@ interface DealChainSectionProps {
   purchaseExchangeRate?: number;
   saleExchangeRateDate?: string;
   purchaseExchangeRateDate?: string;
+  // Supplier card blended rate info
+  blendedPurchaseExchangeRate?: number;
+  supplierCardAmount?: number;
+  supplierCardWeightedRate?: number;
+  remainingAfterCard?: number;
 }
 
 function AddItemMenu({ onAdd }: { onAdd: (type: ChainItemType) => void }) {
@@ -152,6 +157,10 @@ export function DealChainSection({
   purchaseExchangeRate,
   saleExchangeRateDate,
   purchaseExchangeRateDate,
+  blendedPurchaseExchangeRate,
+  supplierCardAmount,
+  supplierCardWeightedRate,
+  remainingAfterCard,
 }: DealChainSectionProps) {
   const { data: allSuppliers = [] } = useQuery<Supplier[]>({
     queryKey: ["/api/suppliers"],
@@ -222,9 +231,11 @@ export function DealChainSection({
 
   const saleAmountRub =
     saleExchangeRate && saleAmountUsd ? saleAmountUsd * saleExchangeRate : null;
+  // Use blended rate if supplier card contributes, otherwise plain purchase rate
+  const effectivePurchaseExchangeRate = blendedPurchaseExchangeRate ?? purchaseExchangeRate;
   const purchaseAmountRub =
-    purchaseExchangeRate && purchaseAmountUsd
-      ? purchaseAmountUsd * purchaseExchangeRate
+    effectivePurchaseExchangeRate && purchaseAmountUsd
+      ? purchaseAmountUsd * effectivePurchaseExchangeRate
       : null;
 
   const runningAmounts = useMemo(() => {
@@ -612,7 +623,7 @@ export function DealChainSection({
   }, [sortedItems]);
 
   return (
-    <Card>
+    <Card className="min-w-0 w-full">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-base flex items-center gap-2">
@@ -696,6 +707,10 @@ export function DealChainSection({
                     quantityKg={quantityKg}
                     fromAmount={running?.fromAmount}
                     toAmount={running?.toAmount}
+                    purchaseExchangeRate={purchaseExchangeRate}
+                    purchaseExchangeRateDate={purchaseExchangeRateDate}
+                    saleExchangeRate={saleExchangeRate}
+                    saleExchangeRateDate={saleExchangeRateDate}
                   />
                   <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-[-8px]" />
                   <AddItemMenu
@@ -714,6 +729,42 @@ export function DealChainSection({
                 <span className="text-[11px] text-destructive font-medium">
                   -{formatCurrency(purchaseAmountUsd, "USD")}
                 </span>
+              )}
+              {supplierCardAmount != null && supplierCardAmount > 0 && supplierCardWeightedRate != null && supplierCardWeightedRate > 0 && (
+                <div className="mt-1 border border-primary/20 rounded-md px-2 py-1.5 bg-primary/5 space-y-0.5 min-w-[140px]">
+                  <div className="text-[10px] font-semibold text-primary/70 uppercase tracking-wide mb-1">
+                    Расчёт закупки в ₽
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    <span className="font-medium text-foreground">{formatCurrency(supplierCardAmount, "USD")}</span>
+                    {" × "}{new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 4 }).format(supplierCardWeightedRate)} ₽
+                  </div>
+                  <div className="text-[9.5px] text-muted-foreground">
+                    = {new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(supplierCardAmount * supplierCardWeightedRate)} ₽
+                  </div>
+                  <div className="text-[10px] text-sky-600 font-medium">
+                    со средн. курса карты
+                  </div>
+                  {remainingAfterCard != null && remainingAfterCard > 0 && purchaseExchangeRate ? (
+                    <>
+                      <div className="border-t border-primary/10 mt-1 pt-1 text-[10px] text-muted-foreground">
+                        <span className="font-medium text-foreground">{formatCurrency(remainingAfterCard, "USD")}</span>
+                        {" × "}{new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 4 }).format(purchaseExchangeRate)} ₽
+                      </div>
+                      <div className="text-[9.5px] text-muted-foreground">
+                        = {new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(remainingAfterCard * purchaseExchangeRate)} ₽
+                      </div>
+                      <div className="text-[10px] text-amber-600 font-medium">
+                        сверх карты (курс юзера)
+                      </div>
+                    </>
+                  ) : null}
+                  {blendedPurchaseExchangeRate && blendedPurchaseExchangeRate !== purchaseExchangeRate && (
+                    <div className="border-t border-primary/10 mt-1 pt-1 text-[10px] font-semibold text-foreground">
+                      Средн. курс закупки: {new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(blendedPurchaseExchangeRate)} ₽/USD
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
