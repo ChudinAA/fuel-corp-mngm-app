@@ -4,7 +4,7 @@ import {
   type EquipmentMovement,
   type InsertEquipmentMovement,
 } from "../entities/equipment-movement";
-import { eq, and, isNull, desc, or, ilike, sql, inArray } from "drizzle-orm";
+import { eq, and, isNull, desc, or, ilike, sql, inArray, isNotNull } from "drizzle-orm";
 import { TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { EquipmentTransactionService } from "../../warehouses-equipment/services/equipment-transaction-service";
 import { WarehouseTransactionService } from "server/modules/warehouses/services/warehouse-transaction-service";
@@ -29,10 +29,11 @@ export class EquipmentMovementStorage {
         return sql`1=0`;
       }
       // Show movements where fromWarehouse OR toWarehouse is in allowed list
-      return sql`(
-        ${equipmentMovement.fromWarehouseId} = ANY(${allowedWarehouseIds})
-        OR ${equipmentMovement.toWarehouseId} = ANY(${allowedWarehouseIds})
-      )`;
+      // Use Drizzle inArray + or() — raw ANY(array) breaks with Neon driver
+      return or(
+        inArray(equipmentMovement.fromWarehouseId, allowedWarehouseIds),
+        inArray(equipmentMovement.toWarehouseId, allowedWarehouseIds),
+      );
     })();
 
     const items = await db

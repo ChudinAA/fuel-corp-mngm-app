@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { EQUIPMENT_MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { calculateKgFromLiters } from "../../movement/utils";
+import { useWarehouseBalance } from "@/hooks/use-warehouse-balance";
 
 interface UseLikCalculationsProps {
   form: any;
@@ -30,6 +31,7 @@ export function useLikCalculations({
   inputMode,
   warehouses,
   equipments,
+  watchMovementDate,
 }: UseLikCalculationsProps) {
   const calculatedKg = useMemo(() => {
     if (inputMode === "liters" && watchLiters && watchDensity) {
@@ -43,8 +45,21 @@ export function useLikCalculations({
 
   const kgNum = calculatedKg || 0;
 
+  // Live balance API gives real-time averageCost — avoids stale warehouse list props
+  const isStorageToTzk = watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK;
+  const { data: balanceData } = useWarehouseBalance(
+    isStorageToTzk && watchFromWarehouseId ? watchFromWarehouseId : undefined,
+    watchMovementDate instanceof Date ? watchMovementDate : undefined,
+    watchProductType,
+  );
+
   const averageCost = useMemo(() => {
-    if (watchMovementType === EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK) {
+    if (isStorageToTzk) {
+      // Prefer live averageCost from balance API (always up-to-date)
+      if (balanceData && typeof balanceData === "object" && "averageCost" in balanceData && balanceData.averageCost) {
+        return parseFloat(balanceData.averageCost as string);
+      }
+      // Fallback to warehouse list (may be stale after new movements)
       const sourceWarehouse = warehouses.find((w) => w.id === watchFromWarehouseId);
       if (!sourceWarehouse) return 0;
       const costStr =
@@ -53,6 +68,7 @@ export function useLikCalculations({
           : sourceWarehouse.averageCost;
       return costStr ? parseFloat(costStr) : 0;
     } else {
+      // TZK_TO_STORAGE or other: source is equipment
       const sourceEquipment = equipments.find((e) => e.id === watchFromEquipmentId);
       if (!sourceEquipment) return 0;
       const costStr =
@@ -62,7 +78,8 @@ export function useLikCalculations({
       return costStr ? parseFloat(costStr) : 0;
     }
   }, [
-    watchMovementType,
+    isStorageToTzk,
+    balanceData,
     watchFromWarehouseId,
     watchFromEquipmentId,
     watchProductType,

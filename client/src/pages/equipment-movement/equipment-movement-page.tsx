@@ -32,6 +32,7 @@ export default function EquipmentMovementPage() {
         queryKey: ["/api/warehouses/equipment-map"],
       });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses/lik"] });
       toast({ title: "Перемещение удалено" });
     },
     onError: (error: Error) => {

@@ -225,6 +225,7 @@ export function EquipmentMovementDialog({
         queryKey: ["/api/warehouses/equipment-map"],
       });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/warehouses/lik"] });
       queryClient.invalidateQueries({ queryKey: ["/api/warehouses-equipment"] });
       toast({
         title: variables.isDraft
