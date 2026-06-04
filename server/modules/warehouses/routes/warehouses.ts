@@ -23,6 +23,23 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     },
   );
 
+  // Must be registered BEFORE /api/warehouses/:id to avoid "lik" being parsed as UUID
+  app.get(
+    "/api/warehouses/lik",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const allowedIds = await storage.warehouses.getUserAllowedLikWarehouseIds(
+          req.session.userId as unknown as string,
+        );
+        const data = await storage.warehouses.getLikWarehouses(allowedIds);
+        res.json(data);
+      } catch (error) {
+        res.status(500).json({ message: "Ошибка получения складов ОП" });
+      }
+    },
+  );
+
   app.get(
     "/api/warehouses/:id",
     requireAuth,
@@ -507,6 +524,49 @@ export function registerWarehousesOperationsRoutes(app: Express) {
             message: "Ошибка получения оборудования склада",
             error: error.message,
           });
+      }
+    },
+  );
+
+  // ============ USER WAREHOUSE ACCESS (admin) ============
+
+  app.get(
+    "/api/admin/users/:userId/warehouse-access",
+    requireAuth,
+    requirePermission("admin", "view"),
+    async (req, res) => {
+      try {
+        const { userId } = req.params;
+        const rows = await storage.warehouses.getUserWarehouseAccess(userId);
+        res.json(rows.map((r) => r.warehouseId));
+      } catch (error) {
+        res.status(500).json({ message: "Ошибка получения доступа к складам" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/admin/users/:userId/warehouse-access",
+    requireAuth,
+    requirePermission("admin", "edit"),
+    async (req, res) => {
+      try {
+        const { userId } = req.params;
+        const schema = z.object({
+          warehouseIds: z.array(z.string().uuid()),
+        });
+        const { warehouseIds } = schema.parse(req.body);
+        await storage.warehouses.setUserWarehouseAccess(
+          userId,
+          warehouseIds,
+          req.session.userId as unknown as string,
+        );
+        res.json({ message: "Доступ к складам обновлён" });
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: error.errors[0].message });
+        }
+        res.status(500).json({ message: "Ошибка обновления доступа к складам" });
       }
     },
   );

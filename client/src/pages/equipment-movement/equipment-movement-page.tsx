@@ -19,7 +19,7 @@ export default function EquipmentMovementPage() {
   const { showError, ErrorModalComponent } = useErrorModal();
 
   const { data: warehouses } = useQuery<Warehouse[]>({
-    queryKey: ["/api/warehouses"],
+    queryKey: ["/api/warehouses/lik"],
   });
 
   const deleteMutation = useMutation({

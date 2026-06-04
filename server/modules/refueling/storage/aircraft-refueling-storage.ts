@@ -1,4 +1,4 @@
-import { eq, desc, asc, sql, or, isNull, and } from "drizzle-orm";
+import { eq, desc, asc, sql, or, isNull, and, inArray } from "drizzle-orm";
 import { db } from "server/db";
 import {
   aircraftRefueling,
@@ -36,11 +36,23 @@ export class AircraftRefuelingStorage {
     equipmentType?: string,
     search?: string,
     filters?: Record<string, string[]>,
+    allowedWarehouseIds?: string[] | null,
   ): Promise<{ data: any[]; total: number }> {
     const baseConditions: any[] = [isNull(aircraftRefueling.deletedAt)];
 
     if (equipmentType && equipmentType !== EQUIPMENT_TYPE.COMMON) {
       baseConditions.push(eq(aircraftRefueling.equipmentType, equipmentType));
+    }
+
+    // Warehouse access restriction for LIK section
+    if (equipmentType === EQUIPMENT_TYPE.LIK || equipmentType === "lik") {
+      if (allowedWarehouseIds !== null && allowedWarehouseIds !== undefined) {
+        if (allowedWarehouseIds.length === 0) {
+          // User has restriction but no warehouses assigned → show nothing
+          return { data: [], total: 0 };
+        }
+        baseConditions.push(inArray(aircraftRefueling.warehouseId, allowedWarehouseIds));
+      }
     }
 
     if (search && search.trim()) {

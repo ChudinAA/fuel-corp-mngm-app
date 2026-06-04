@@ -4,7 +4,7 @@ import {
   type EquipmentMovement,
   type InsertEquipmentMovement,
 } from "../entities/equipment-movement";
-import { eq, and, isNull, desc, or, ilike, sql } from "drizzle-orm";
+import { eq, and, isNull, desc, or, ilike, sql, inArray } from "drizzle-orm";
 import { TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { EquipmentTransactionService } from "../../warehouses-equipment/services/equipment-transaction-service";
 import { WarehouseTransactionService } from "server/modules/warehouses/services/warehouse-transaction-service";
@@ -15,7 +15,26 @@ export class EquipmentMovementStorage {
     pageSize: number,
     search?: string,
     filters?: Record<string, string[]>,
+    allowedWarehouseIds?: string[] | null,
   ) {
+    // Build warehouse access condition:
+    // null = full access (no restriction)
+    // string[] (even empty) = restricted; if empty → return nothing
+    const warehouseCondition = (() => {
+      if (allowedWarehouseIds === null || allowedWarehouseIds === undefined) {
+        return undefined; // no restriction
+      }
+      if (allowedWarehouseIds.length === 0) {
+        // User has restriction but no warehouses assigned → show nothing
+        return sql`1=0`;
+      }
+      // Show movements where fromWarehouse OR toWarehouse is in allowed list
+      return sql`(
+        ${equipmentMovement.fromWarehouseId} = ANY(${allowedWarehouseIds})
+        OR ${equipmentMovement.toWarehouseId} = ANY(${allowedWarehouseIds})
+      )`;
+    })();
+
     const items = await db
       .select({
         id: equipmentMovement.id,
@@ -49,6 +68,7 @@ export class EquipmentMovementStorage {
         and(
           isNull(equipmentMovement.deletedAt),
           search ? ilike(equipmentMovement.notes, `%${search}%`) : undefined,
+          warehouseCondition,
         ),
       )
       .limit(pageSize)
@@ -58,7 +78,12 @@ export class EquipmentMovementStorage {
     const [totalResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(equipmentMovement)
-      .where(isNull(equipmentMovement.deletedAt));
+      .where(
+        and(
+          isNull(equipmentMovement.deletedAt),
+          warehouseCondition,
+        ),
+      );
 
     const totalCount = Number(totalResult?.count || 0);
     return { items, total: totalCount };

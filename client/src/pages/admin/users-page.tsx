@@ -18,10 +18,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { useAuth } from "@/hooks/use-auth";
-import { EntityActionsMenu, EntityAction } from "@/components/entity-actions-menu";
+import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
 import { 
   Plus, 
@@ -31,11 +31,12 @@ import {
   Search,
   Users,
   Shield,
-  Mail,
-  Key,
-  History
+  History,
+  Warehouse,
+  Lock,
+  Unlock
 } from "lucide-react";
-import type { User, Role } from "@shared/schema";
+import type { User, Role, Warehouse as WarehouseType } from "@shared/schema";
 
 const userFormSchema = z.object({
   email: z.string().email("Введите корректный email"),
@@ -48,11 +49,199 @@ const userFormSchema = z.object({
 
 type UserFormData = z.infer<typeof userFormSchema>;
 
+// ============ WAREHOUSE ACCESS DIALOG ============
+
+function WarehouseAccessDialog({
+  user,
+  open,
+  onOpenChange,
+}: {
+  user: User;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const { toast } = useToast();
+  const [selected, setSelected] = useState<string[]>([]);
+
+  // Fetch ALL warehouses (admin sees all) and filter for lik type
+  const { data: allWarehouses, isLoading: loadingWarehouses } = useQuery<WarehouseType[]>({
+    queryKey: ["/api/warehouses"],
+    staleTime: 60000,
+    enabled: open,
+  });
+
+  const likWarehouses = (allWarehouses || []).filter(
+    (w) => w.equipmentType === "lik" && w.isActive !== false,
+  );
+
+  const { data: currentAccess, isLoading: loadingAccess } = useQuery<string[]>({
+    queryKey: ["/api/admin/users", user.id, "warehouse-access"],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/users/${user.id}/warehouse-access`);
+      if (!res.ok) throw new Error("Ошибка загрузки доступа");
+      return res.json();
+    },
+    enabled: open,
+    staleTime: 0,
+  });
+
+  useEffect(() => {
+    if (currentAccess !== undefined) {
+      setSelected(currentAccess);
+    }
+  }, [currentAccess]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (warehouseIds: string[]) => {
+      const res = await apiRequest("PUT", `/api/admin/users/${user.id}/warehouse-access`, {
+        warehouseIds,
+      });
+      if (!res.ok) throw new Error("Ошибка сохранения");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", user.id, "warehouse-access"],
+      });
+      toast({ title: "Доступ обновлён", description: "Настройки доступа к складам ОП сохранены" });
+      onOpenChange(false);
+    },
+    onError: () => {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось сохранить настройки доступа",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleWarehouse = (id: string) => {
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const isLoading = loadingWarehouses || loadingAccess;
+  const hasRestrictions = selected.length > 0;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Warehouse className="h-5 w-5" />
+            Доступ к складам ОП
+          </DialogTitle>
+          <DialogDescription>
+            <span className="font-medium">
+              {user.firstName} {user.lastName}
+            </span>
+            <br />
+            Выберите склады ОП, которые доступны этому пользователю. Если список пуст — пользователь видит все склады.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 p-3 rounded-md bg-muted/50 text-sm">
+            {hasRestrictions ? (
+              <>
+                <Lock className="h-4 w-4 text-amber-500 shrink-0" />
+                <span>
+                  Ограниченный доступ: {selected.length}{" "}
+                  {selected.length === 1 ? "склад" : selected.length < 5 ? "склада" : "складов"}
+                </span>
+              </>
+            ) : (
+              <>
+                <Unlock className="h-4 w-4 text-green-500 shrink-0" />
+                <span>Полный доступ — видит все склады ОП</span>
+              </>
+            )}
+          </div>
+
+          {isLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : likWarehouses.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Нет складов ОП в системе
+            </p>
+          ) : (
+            <div className="space-y-1 max-h-64 overflow-y-auto">
+              {likWarehouses.map((wh) => (
+                <label
+                  key={wh.id}
+                  className="flex items-center gap-3 p-2 rounded-md hover-elevate cursor-pointer"
+                  data-testid={`checkbox-warehouse-${wh.id}`}
+                >
+                  <Checkbox
+                    checked={selected.includes(wh.id)}
+                    onCheckedChange={() => toggleWarehouse(wh.id)}
+                  />
+                  <span className="text-sm">{wh.name}</span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {likWarehouses.length > 0 && (
+            <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+              <button
+                type="button"
+                className="underline underline-offset-2"
+                onClick={() => setSelected([])}
+              >
+                Сбросить (полный доступ)
+              </button>
+              <button
+                type="button"
+                className="underline underline-offset-2"
+                onClick={() => setSelected(likWarehouses.map((w) => w.id))}
+              >
+                Выбрать все
+              </button>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Отмена
+            </Button>
+            <Button
+              onClick={() => saveMutation.mutate(selected)}
+              disabled={saveMutation.isPending || isLoading}
+              data-testid="button-save-warehouse-access"
+            >
+              {saveMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Сохранение...
+                </>
+              ) : (
+                "Сохранить"
+              )}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============ ADD / EDIT USER DIALOG ============
+
 function AddUserDialog({
   roles,
   editUser,
-  onEditComplete
-}: { roles: Role[]; editUser: User | null; onEditComplete: () => void }) {
+  onEditComplete,
+}: {
+  roles: Role[];
+  editUser: User | null;
+  onEditComplete: () => void;
+}) {
   const { toast } = useToast();
   const { showError, ErrorModalComponent } = useErrorModal();
   const [open, setOpen] = useState(false);
@@ -71,11 +260,7 @@ function AddUserDialog({
 
   const createMutation = useMutation({
     mutationFn: async (data: UserFormData) => {
-      const payload = {
-        ...data,
-        roleId: data.roleId,
-      };
-      const res = await apiRequest("POST", "/api/admin/users", payload);
+      const res = await apiRequest("POST", "/api/admin/users", data);
       return res.json();
     },
     onSuccess: () => {
@@ -84,18 +269,12 @@ function AddUserDialog({
       form.reset();
       setOpen(false);
     },
-    onError: (error: Error) => {
-      showError(error.message);
-    },
+    onError: (error: Error) => showError(error.message),
   });
 
   const updateMutation = useMutation({
     mutationFn: async (data: UserFormData) => {
-      const payload = {
-        ...data,
-        roleId: data.roleId,
-      };
-      const res = await apiRequest("PATCH", `/api/admin/users/${editUser!.id}`, payload);
+      const res = await apiRequest("PATCH", `/api/admin/users/${editUser!.id}`, data);
       return res.json();
     },
     onSuccess: () => {
@@ -105,14 +284,11 @@ function AddUserDialog({
       setOpen(false);
       onEditComplete();
     },
-    onError: (error: Error) => {
-      showError(error.message);
-    },
+    onError: (error: Error) => showError(error.message),
   });
 
   const isEditing = !!editUser;
 
-  // Set form values when editUser prop changes
   useEffect(() => {
     if (editUser) {
       form.reset({
@@ -120,33 +296,18 @@ function AddUserDialog({
         firstName: editUser.firstName,
         lastName: editUser.lastName,
         roleId: editUser.roleId || "",
-        isActive: editUser.isActive,
+        isActive: editUser.isActive ?? true,
       });
       setOpen(true);
     } else if (open) {
-      // Reset form when opening dialog for creating new user
-      form.reset({
-        email: "",
-        password: "",
-        firstName: "",
-        lastName: "",
-        roleId: "",
-        isActive: true,
-      });
+      form.reset({ email: "", password: "", firstName: "", lastName: "", roleId: "", isActive: true });
     }
   }, [editUser, open, form]);
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      form.reset({
-        email: "",
-        password: "",
-        firstName: "",
-        lastName: "",
-        roleId: "",
-        isActive: true,
-      });
+      form.reset({ email: "", password: "", firstName: "", lastName: "", roleId: "", isActive: true });
       onEditComplete();
     }
   };
@@ -162,16 +323,17 @@ function AddUserDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Редактирование пользователя" : "Новый пользователь"}</DialogTitle>
-          <DialogDescription>{isEditing ? "Изменение учетной записи пользователя" : "Создание учетной записи пользователя"}</DialogDescription>
+          <DialogDescription>
+            {isEditing ? "Изменение учетной записи пользователя" : "Создание учетной записи пользователя"}
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => {
-            if (isEditing) {
-              updateMutation.mutate(data);
-            } else {
-              createMutation.mutate(data);
-            }
-          })} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit((data) =>
+              isEditing ? updateMutation.mutate(data) : createMutation.mutate(data),
+            )}
+            className="space-y-4"
+          >
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -207,7 +369,12 @@ function AddUserDialog({
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="user@company.ru" data-testid="input-user-email" {...field} />
+                    <Input
+                      type="email"
+                      placeholder="user@company.ru"
+                      data-testid="input-user-email"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -221,7 +388,12 @@ function AddUserDialog({
                   <FormItem>
                     <FormLabel>Пароль</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" data-testid="input-user-password" {...field} />
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        data-testid="input-user-password"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -242,37 +414,38 @@ function AddUserDialog({
                     </FormControl>
                     <SelectContent>
                       {roles?.map((role) => (
-                        <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
-                      )) || <SelectItem value="none" disabled>Нет ролей</SelectItem>}
+                        <SelectItem key={role.id} value={role.id}>
+                          {role.name}
+                        </SelectItem>
+                      )) || (
+                        <SelectItem value="none" disabled>
+                          Нет ролей
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            {/* <FormField
-              control={form.control}
-              name="isActive"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2 space-y-0">
-                  <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-user-active" />
-                  </FormControl>
-                  <FormLabel className="font-normal cursor-pointer">Активен</FormLabel>
-                </FormItem>
-              )}
-            /> */}
             <div className="flex justify-end gap-4 pt-4">
-              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Отмена</Button>
-              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-save-user">
-                {isEditing ? (
-                  createMutation.isPending || updateMutation.isPending ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</>
-                  ) : (
-                    "Сохранить"
-                  )
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+                Отмена
+              </Button>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending || updateMutation.isPending}
+                data-testid="button-save-user"
+              >
+                {createMutation.isPending || updateMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Сохранение...
+                  </>
+                ) : isEditing ? (
+                  "Сохранить"
                 ) : (
-                  createMutation.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Сохранение...</> : "Создать"
+                  "Создать"
                 )}
               </Button>
             </div>
@@ -284,6 +457,8 @@ function AddUserDialog({
   );
 }
 
+// ============ MAIN PAGE ============
+
 export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -291,39 +466,42 @@ export default function UsersPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
+  const [warehouseAccessUser, setWarehouseAccessUser] = useState<User | null>(null);
+
   const { toast } = useToast();
   const { showError, ErrorModalComponent } = useErrorModal();
   const { hasPermission } = useAuth();
 
-  const {
-    data: users,
-    isLoading,
-    isError
-  } = useQuery<User[]>({ queryKey: ["/api/admin/users"], staleTime: 5 * 60 * 1000 });
+  const { data: users, isLoading, isError } = useQuery<User[]>({
+    queryKey: ["/api/admin/users"],
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const {
-    data: roles
-  } = useQuery<Role[]>({ queryKey: ["/api/roles"], staleTime: 5 * 60 * 1000 });
+  const { data: roles } = useQuery<Role[]>({
+    queryKey: ["/api/roles"],
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const getInitials = (firstName: string, lastName: string) => 
+  const getInitials = (firstName: string, lastName: string) =>
     `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 
-  const getRoleName = (roleId: string | null) => 
-    roles?.find(r => r.id === roleId)?.name || "Не назначена";
+  const getRoleName = (roleId: string | null) =>
+    roles?.find((r) => r.id === roleId)?.name || "Не назначена";
 
-  const formatDate = (dateStr: string | null) => 
+  const formatDate = (dateStr: string | null) =>
     dateStr ? format(new Date(dateStr), "dd.MM.yyyy HH:mm", { locale: ru }) : "—";
 
-  const filteredUsers = users?.filter(u => {
-    const matchesSearch = 
-      u.firstName.toLowerCase().includes(search.toLowerCase()) ||
-      u.lastName.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase());
-    const matchesRole = roleFilter === "all" || u.roleId === roleFilter;
-    return matchesSearch && matchesRole;
-  }) || [];
+  const filteredUsers =
+    users?.filter((u) => {
+      const matchesSearch =
+        u.firstName.toLowerCase().includes(search.toLowerCase()) ||
+        u.lastName.toLowerCase().includes(search.toLowerCase()) ||
+        u.email.toLowerCase().includes(search.toLowerCase());
+      const matchesRole = roleFilter === "all" || u.roleId === roleFilter;
+      return matchesSearch && matchesRole;
+    }) || [];
 
-  const activeCount = users?.filter(u => u.isActive).length || 0;
+  const activeCount = users?.filter((u) => u.isActive).length || 0;
   const totalCount = users?.length || 0;
 
   const deleteMutation = useMutation({
@@ -335,10 +513,10 @@ export default function UsersPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({ title: "Пользователь удален", description: "Запись успешно удалена" });
     },
-    onError: () => {
-      showError("Не удалось удалить пользователя");
-    },
+    onError: () => showError("Не удалось удалить пользователя"),
   });
+
+  const canEditAdmin = hasPermission("admin", "edit");
 
   return (
     <div className="space-y-6">
@@ -348,7 +526,11 @@ export default function UsersPage() {
           <p className="text-muted-foreground">Управление учетными записями</p>
         </div>
         {hasPermission("users", "create") && (
-          <AddUserDialog roles={roles || []} editUser={editingUser} onEditComplete={() => setEditingUser(null)} />
+          <AddUserDialog
+            roles={roles || []}
+            editUser={editingUser}
+            onEditComplete={() => setEditingUser(null)}
+          />
         )}
       </div>
 
@@ -395,7 +577,13 @@ export default function UsersPage() {
             <div className="flex items-center gap-4">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Поиск по имени или email..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" data-testid="input-search-users" />
+                <Input
+                  placeholder="Поиск по имени или email..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-search-users"
+                />
               </div>
               <Select value={roleFilter} onValueChange={setRoleFilter}>
                 <SelectTrigger className="w-[180px]" data-testid="select-filter-role">
@@ -404,15 +592,13 @@ export default function UsersPage() {
                 <SelectContent>
                   <SelectItem value="all">Все роли</SelectItem>
                   {roles?.map((role) => (
-                    <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Button
-                variant="outline"
-                onClick={() => setAuditPanelOpen(true)}
-                title="Аудит всех пользователей"
-              >
+              <Button variant="outline" onClick={() => setAuditPanelOpen(true)}>
                 <History className="h-4 w-4 mr-2" />
                 История изменений
               </Button>
@@ -433,7 +619,11 @@ export default function UsersPage() {
                 <TableBody>
                   {isLoading ? (
                     [1, 2, 3, 4, 5].map((i) => (
-                      <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-12 w-full" /></TableCell></TableRow>
+                      <TableRow key={i}>
+                        <TableCell colSpan={6}>
+                          <Skeleton className="h-12 w-full" />
+                        </TableCell>
+                      </TableRow>
                     ))
                   ) : isError ? (
                     <TableRow>
@@ -465,13 +655,21 @@ export default function UsersPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-muted-foreground">{user.email}</TableCell>
-                        <TableCell><Badge variant="outline">{getRoleName(user.roleId)}</Badge></TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{formatDate(user.lastLoginAt)}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{getRoleName(user.roleId)}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(user.lastLoginAt)}
+                        </TableCell>
                         <TableCell>
                           {user.isActive ? (
-                            <Badge variant="outline" className="text-green-600 border-green-600">Активен</Badge>
+                            <Badge variant="outline" className="text-green-600 border-green-600">
+                              Активен
+                            </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-muted-foreground">Заблокирован</Badge>
+                            <Badge variant="outline" className="text-muted-foreground">
+                              Заблокирован
+                            </Badge>
                           )}
                         </TableCell>
                         <TableCell>
@@ -483,6 +681,13 @@ export default function UsersPage() {
                                 icon: Pencil,
                                 onClick: () => setEditingUser(user),
                                 permission: { module: "users", action: "edit" },
+                              },
+                              {
+                                id: "warehouse-access",
+                                label: "Доступ к складам ОП",
+                                icon: Warehouse,
+                                onClick: () => setWarehouseAccessUser(user),
+                                permission: { module: "admin", action: "edit" },
                               },
                               {
                                 id: "delete",
@@ -514,13 +719,20 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
+      {/* Warehouse access dialog — controlled from parent state */}
+      {warehouseAccessUser && (
+        <WarehouseAccessDialog
+          user={warehouseAccessUser}
+          open={!!warehouseAccessUser}
+          onOpenChange={(v) => { if (!v) setWarehouseAccessUser(null); }}
+        />
+      )}
+
       <DeleteConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={() => {
-          if (userToDelete) {
-            deleteMutation.mutate(userToDelete.id);
-          }
+          if (userToDelete) deleteMutation.mutate(userToDelete.id);
           setDeleteDialogOpen(false);
           setUserToDelete(null);
         }}

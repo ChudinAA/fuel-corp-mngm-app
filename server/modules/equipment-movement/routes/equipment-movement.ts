@@ -15,7 +15,19 @@ export function registerEquipmentMovementRoutes(app: Express) {
       const offset = parseInt(req.query.offset as string) || 0;
       const pageSize = parseInt(req.query.pageSize as string) || 100;
       const search = req.query.search as string | undefined;
-      const result = await (storage as any).equipmentMovement.getMovements(offset, pageSize, search);
+
+      // Get allowed warehouse IDs for the current user (null = full access)
+      const allowedWarehouseIds = await storage.warehouses.getUserAllowedLikWarehouseIds(
+        req.session.userId as string,
+      );
+
+      const result = await (storage as any).equipmentMovement.getMovements(
+        offset,
+        pageSize,
+        search,
+        undefined,
+        allowedWarehouseIds,
+      );
       res.json(result);
     }
   );
@@ -54,6 +66,21 @@ export function registerEquipmentMovementRoutes(app: Express) {
         uuidFields.forEach((field) => {
           if (body[field] === "") body[field] = null;
         });
+
+        // Check warehouse access restriction
+        const allowedWarehouseIds = await storage.warehouses.getUserAllowedLikWarehouseIds(
+          req.session.userId as string,
+        );
+        if (allowedWarehouseIds !== null) {
+          const fromWh = body.fromWarehouseId;
+          const toWh = body.toWarehouseId;
+          if (
+            (fromWh && !allowedWarehouseIds.includes(fromWh)) ||
+            (toWh && !allowedWarehouseIds.includes(toWh))
+          ) {
+            return res.status(403).json({ message: "Нет доступа к указанному складу" });
+          }
+        }
 
         const data = insertEquipmentMovementSchema.parse({
           ...body,
@@ -96,6 +123,21 @@ export function registerEquipmentMovementRoutes(app: Express) {
         uuidFields.forEach((field) => {
           if (body[field] === "") body[field] = null;
         });
+
+        // Check warehouse access restriction
+        const allowedWarehouseIds = await storage.warehouses.getUserAllowedLikWarehouseIds(
+          req.session.userId as string,
+        );
+        if (allowedWarehouseIds !== null) {
+          const fromWh = body.fromWarehouseId;
+          const toWh = body.toWarehouseId;
+          if (
+            (fromWh && !allowedWarehouseIds.includes(fromWh)) ||
+            (toWh && !allowedWarehouseIds.includes(toWh))
+          ) {
+            return res.status(403).json({ message: "Нет доступа к указанному складу" });
+          }
+        }
 
         const data = insertEquipmentMovementSchema.parse({
           ...body,

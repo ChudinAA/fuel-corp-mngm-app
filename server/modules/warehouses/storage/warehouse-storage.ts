@@ -1,4 +1,4 @@
-import { eq, desc, sql, isNull, and } from "drizzle-orm";
+import { eq, desc, sql, isNull, and, inArray } from "drizzle-orm";
 import { db } from "server/db";
 import { format } from "date-fns";
 import {
@@ -6,9 +6,11 @@ import {
   warehouseBases,
   warehouseTransactions,
   warehouseServices,
+  userWarehouseAccess,
   type Warehouse,
   type InsertWarehouse,
   type WarehouseTransaction,
+  type UserWarehouseAccess,
 } from "@shared/schema";
 import { IWarehouseStorage } from "./types";
 import { PRODUCT_TYPE } from "@shared/constants";
@@ -451,5 +453,103 @@ export class WarehouseStorage {
     });
 
     return stats;
+  }
+
+  // ============ LIK WAREHOUSE ACCESS METHODS ============
+
+  /**
+   * Get all LIK (ОП) warehouses.
+   * If allowedIds is provided, only returns those warehouses.
+   * If allowedIds is null/undefined, returns all LIK warehouses (full access).
+   */
+  async getLikWarehouses(allowedIds?: string[] | null): Promise<Warehouse[]> {
+    const conditions: any[] = [
+      isNull(warehouses.deletedAt),
+      eq(warehouses.equipmentType, "lik"),
+    ];
+
+    if (allowedIds && allowedIds.length > 0) {
+      conditions.push(inArray(warehouses.id, allowedIds));
+    } else if (allowedIds !== null && allowedIds !== undefined && allowedIds.length === 0) {
+      // User has restrictions but no warehouses assigned — return empty
+      return [];
+    }
+
+    const warehousesList = await db.query.warehouses.findMany({
+      where: and(...conditions),
+      orderBy: (warehouses, { asc, desc }) => [desc(warehouses.isPinned), asc(warehouses.name)],
+      with: {
+        supplier: { columns: { id: true, name: true } },
+        warehouseBases: { with: { base: true } },
+        warehouseServices: true,
+      },
+    });
+
+    return warehousesList.map((w) => ({
+      ...w,
+      baseIds: w.warehouseBases?.map((wb) => wb.baseId) || [],
+      services: w.warehouseServices?.map((s) => ({
+        id: s.id,
+        serviceName: s.serviceName,
+        serviceType: s.serviceType,
+        serviceValue: s.serviceValue,
+      })) || [],
+    }));
+  }
+
+  /**
+   * Returns the list of warehouse IDs the user is restricted to for LIK access.
+   * Returns null if the user has no restrictions (full access).
+   * Returns an empty array if the user has restrictions but none assigned.
+   */
+  async getUserAllowedLikWarehouseIds(userId: string): Promise<string[] | null> {
+    const rows = await db
+      .select({ warehouseId: userWarehouseAccess.warehouseId })
+      .from(userWarehouseAccess)
+      .where(eq(userWarehouseAccess.userId, userId));
+
+    if (rows.length === 0) {
+      // No restrictions — full access
+      return null;
+    }
+
+    return rows.map((r) => r.warehouseId);
+  }
+
+  /**
+   * Get all warehouse access rows for a specific user.
+   */
+  async getUserWarehouseAccess(userId: string): Promise<UserWarehouseAccess[]> {
+    return db
+      .select()
+      .from(userWarehouseAccess)
+      .where(eq(userWarehouseAccess.userId, userId));
+  }
+
+  /**
+   * Replace the warehouse access list for a user.
+   * Pass an empty array to grant full access (no restrictions).
+   */
+  async setUserWarehouseAccess(
+    userId: string,
+    warehouseIds: string[],
+    createdById: string,
+  ): Promise<void> {
+    await db.transaction(async (tx) => {
+      // Remove all existing access rows for this user
+      await tx
+        .delete(userWarehouseAccess)
+        .where(eq(userWarehouseAccess.userId, userId));
+
+      if (warehouseIds.length > 0) {
+        await tx.insert(userWarehouseAccess).values(
+          warehouseIds.map((warehouseId) => ({
+            userId,
+            warehouseId,
+            createdById,
+          })),
+        );
+      }
+    });
   }
 }

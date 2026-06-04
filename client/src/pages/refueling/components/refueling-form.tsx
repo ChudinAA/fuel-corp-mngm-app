@@ -143,7 +143,8 @@ export const RefuelingForm = forwardRef<
   });
 
   const { data: warehouses } = useQuery<Warehouse[]>({
-    queryKey: ["/api/warehouses"],
+    // For LIK equipment type use the access-filtered endpoint
+    queryKey: equipmentType === EQUIPMENT_TYPE.LIK ? ["/api/warehouses/lik"] : ["/api/warehouses"],
   });
 
   const { data: customers } = useQuery<Customer[]>({

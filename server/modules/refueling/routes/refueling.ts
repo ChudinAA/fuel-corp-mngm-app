@@ -25,12 +25,21 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         }
       });
 
+      // For LIK refueling, get allowed warehouse IDs for the current user
+      let allowedWarehouseIds: string[] | null = null;
+      if (equipmentType === "lik") {
+        allowedWarehouseIds = await storage.warehouses.getUserAllowedLikWarehouseIds(
+          req.session.userId as string,
+        );
+      }
+
       const result = await (storage.aircraftRefueling as any).getRefuelings(
         offset,
         pageSize,
         equipmentType,
         search,
-        filters
+        filters,
+        allowedWarehouseIds,
       );
       res.json(result);
     }
@@ -107,6 +116,16 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
+        // For LIK refueling, check warehouse access
+        if (req.body.equipmentType === "lik" && req.body.warehouseId) {
+          const allowedWarehouseIds = await storage.warehouses.getUserAllowedLikWarehouseIds(
+            req.session.userId as string,
+          );
+          if (allowedWarehouseIds !== null && !allowedWarehouseIds.includes(req.body.warehouseId)) {
+            return res.status(403).json({ message: "Нет доступа к указанному складу" });
+          }
+        }
+
         const data = insertAircraftRefuelingSchema.parse({
           ...req.body,
           createdById: req.session.userId,
@@ -139,6 +158,17 @@ export function registerRefuelingOperationsRoutes(app: Express) {
     async (req, res) => {
       try {
         const id = req.params.id;
+
+        // For LIK refueling, check warehouse access
+        if (req.body.equipmentType === "lik" && req.body.warehouseId) {
+          const allowedWarehouseIds = await storage.warehouses.getUserAllowedLikWarehouseIds(
+            req.session.userId as string,
+          );
+          if (allowedWarehouseIds !== null && !allowedWarehouseIds.includes(req.body.warehouseId)) {
+            return res.status(403).json({ message: "Нет доступа к указанному складу" });
+          }
+        }
+
         const item = await storage.aircraftRefueling.updateRefueling(id, {
           ...req.body,
           updatedById: req.session.userId,

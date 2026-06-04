@@ -195,6 +195,52 @@ export const warehouseTransactionsRelations = relations(
   }),
 );
 
+// Junction table: which LIK warehouses each user can access
+// If a user has NO rows here, they have full access (admins/managers).
+// If a user HAS rows here, they only see those warehouses.
+export const userWarehouseAccess = pgTable(
+  "user_warehouse_access",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    warehouseId: uuid("warehouse_id")
+      .notNull()
+      .references(() => warehouses.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+    createdById: uuid("created_by_id").references(() => users.id),
+  },
+  (table) => ({
+    userWarehouseIdx: index("user_warehouse_access_user_warehouse_idx").on(
+      table.userId,
+      table.warehouseId,
+    ),
+    userIdx: index("user_warehouse_access_user_idx").on(table.userId),
+    warehouseIdx: index("user_warehouse_access_warehouse_idx").on(table.warehouseId),
+  }),
+);
+
+export const userWarehouseAccessRelations = relations(
+  userWarehouseAccess,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userWarehouseAccess.userId],
+      references: [users.id],
+    }),
+    warehouse: one(warehouses, {
+      fields: [userWarehouseAccess.warehouseId],
+      references: [warehouses.id],
+    }),
+  }),
+);
+
+export type UserWarehouseAccess = typeof userWarehouseAccess.$inferSelect;
+export const insertUserWarehouseAccessSchema = createInsertSchema(
+  userWarehouseAccess,
+).omit({ id: true, createdAt: true });
+export type InsertUserWarehouseAccess = z.infer<typeof insertUserWarehouseAccessSchema>;
+
 // ============ INSERT SCHEMAS ============
 
 export const insertWarehouseSchema = z.object({
