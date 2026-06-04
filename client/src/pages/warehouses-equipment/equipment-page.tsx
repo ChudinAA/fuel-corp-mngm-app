@@ -161,7 +161,7 @@ export default function EquipmentsPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         {totalKerosene > 0 && (
                           <span className="text-xs text-foreground normal-case tracking-normal">
-                            Керосин:{" "}
+                            Остаток керосина:{" "}
                             <span className="font-semibold">
                               {totalKerosene.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} кг
                             </span>
@@ -172,7 +172,7 @@ export default function EquipmentsPage() {
                         )}
                         {totalPvkj > 0 && (
                           <span className="text-xs text-foreground normal-case tracking-normal">
-                            ПВКЖ:{" "}
+                            Остаток ПВКЖ:{" "}
                             <span className="font-semibold">
                               {totalPvkj.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} кг
                             </span>

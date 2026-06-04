@@ -540,8 +540,8 @@ export function RefuelingTable({
                       _lastDateSep = _ds;
                       _rows.push(
                         <TableRow key={`__datesep_${_ds}_${deal.id}`} className="bg-muted/20 border-t hover:bg-muted/20">
-                          <TableCell colSpan={100} className="py-0.5 px-3">
-                            <span className="text-[10px] font-semibold text-muted-foreground">{_ds}</span>
+                          <TableCell colSpan={100} className="py-0.5 px-5">
+                            <span className="text-[11px] font-semibold text-muted-foreground">{_ds}</span>
                           </TableCell>
                         </TableRow>
                       );
