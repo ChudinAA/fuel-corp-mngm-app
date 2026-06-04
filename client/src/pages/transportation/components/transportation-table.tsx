@@ -60,6 +60,17 @@ import {
   DEFAULT_TRANSPORTATION_COLUMNS,
 } from "../constants";
 
+function isCreatedToday(createdAt: string | null | undefined): boolean {
+  if (!createdAt) return false;
+  const now = new Date();
+  const d = new Date(createdAt);
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
 interface TransportationTableProps {
   onEdit: (item: any) => void;
   onCopy: (item: any) => void;
@@ -282,6 +293,7 @@ export function TransportationTable({
                             [col.id]: vals,
                           }))
                         }
+                        isDateFilter={col.id === "date"}
                       />
                     )}
                   </div>
@@ -301,17 +313,48 @@ export function TransportationTable({
                 </TableCell>
               </TableRow>
             ) : (
-              allDeals.map((deal) => (
-                <TableRow
-                  key={deal.id}
-                  className={cn(
-                    deal.isDraft &&
-                      "bg-muted/70 opacity-60 border-2 border-orange-200",
-                    "cursor-pointer hover-elevate",
-                  )}
-                  data-testid={`row-transportation-${deal.id}`}
-                  onClick={() => onEdit(deal)}
-                >
+              (() => {
+                const _todayDeals = allDeals.filter((d) => isCreatedToday(d.createdAt));
+                const _olderDeals = allDeals.filter((d) => !isCreatedToday(d.createdAt));
+                const _rows: any[] = [];
+                if (_todayDeals.length > 0) {
+                  _rows.push(
+                    <TableRow key="__today_hdr" className="bg-emerald-50/70 dark:bg-emerald-950/20 border-y border-emerald-200/60 dark:border-emerald-800/40 hover:bg-emerald-50/70 dark:hover:bg-emerald-950/20">
+                      <TableCell colSpan={100} className="py-1.5 px-3">
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">Созданные сегодня</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+                let _lastDateSep = '';
+                const _renderDeal = (deal: any, isToday: boolean) => {
+                  if (!isToday) {
+                    const _ds = deal.dealDate ? format(new Date(deal.dealDate), "dd.MM.yyyy", { locale: ru }) : '';
+                    if (_ds && _ds !== _lastDateSep) {
+                      _lastDateSep = _ds;
+                      _rows.push(
+                        <TableRow key={`__datesep_${_ds}_${deal.id}`} className="bg-muted/20 border-t hover:bg-muted/20">
+                          <TableCell colSpan={100} className="py-0.5 px-3">
+                            <span className="text-[10px] font-semibold text-muted-foreground">{_ds}</span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }
+                  }
+                  _rows.push((
+                    <TableRow
+                      key={deal.id}
+                      className={cn(
+                        isToday && !deal.isDraft && "bg-emerald-50/30 dark:bg-emerald-950/10",
+                        deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200",
+                        "cursor-pointer hover-elevate",
+                      )}
+                      data-testid={`row-transportation-${deal.id}`}
+                      onClick={() => onEdit(deal)}
+                    >
                   {isColumnVisible("date") && (
                     <TableCell className="text-[10px] py-1.5 px-1 whitespace-nowrap">
                       <div className="flex flex-col gap-0.5">
@@ -440,7 +483,12 @@ export function TransportationTable({
                     />
                   </TableCell>
                 </TableRow>
-              ))
+                  ));
+                };
+                _todayDeals.forEach((d: any) => _renderDeal(d, true));
+                _olderDeals.forEach((d: any) => _renderDeal(d, false));
+                return _rows;
+              })()
             )}
           </TableBody>
         </Table>

@@ -49,6 +49,17 @@ import { useMovementTable } from "../hooks/use-movement-table";
 import { cn } from "@/lib/utils";
 import { ProductTypeBadge } from "@/components/product-type-badge";
 
+function isCreatedToday(createdAt: string | null | undefined): boolean {
+  if (!createdAt) return false;
+  const now = new Date();
+  const d = new Date(createdAt);
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
 const formatNumberWithK = (value: string | number) => {
   const num = typeof value === "string" ? parseFloat(value) : value;
   return formatNumber(num);
@@ -210,6 +221,7 @@ export function MovementTable({
                     options={getUniqueOptions("date")}
                     selectedValues={columnFilters["date"] || []}
                     onUpdate={(values) => handleFilterUpdate("date", values)}
+                    isDateFilter
                   />
                 </div>
               </TableHead>
@@ -303,37 +315,67 @@ export function MovementTable({
                 </TableCell>
               </TableRow>
             ) : (
-              data.map((item: any) => {
-                const quantityKg = parseFloat(item.quantityKg || "0");
-                const purchasePrice = item.purchasePrice
-                  ? parseFloat(item.purchasePrice)
-                  : null;
-                const purchaseAmount =
-                  purchasePrice && quantityKg > 0
-                    ? purchasePrice * quantityKg
+              (() => {
+                const _todayItems = data.filter((it: any) => isCreatedToday(it.createdAt));
+                const _olderItems = data.filter((it: any) => !isCreatedToday(it.createdAt));
+                const _rows: any[] = [];
+                if (_todayItems.length > 0) {
+                  _rows.push(
+                    <TableRow key="__today_hdr" className="bg-emerald-50/70 dark:bg-emerald-950/20 border-y border-emerald-200/60 dark:border-emerald-800/40 hover:bg-emerald-50/70 dark:hover:bg-emerald-950/20">
+                      <TableCell colSpan={100} className="py-1.5 px-3">
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">Созданные сегодня</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+                let _lastDateSep = '';
+                const _processItem = (item: any, isToday: boolean) => {
+                  if (!isToday) {
+                    const _ds = formatDate(item.movementDate);
+                    if (_ds !== _lastDateSep) {
+                      _lastDateSep = _ds;
+                      _rows.push(
+                        <TableRow key={`__datesep_${_ds}_${item.id}`} className="bg-muted/20 border-t hover:bg-muted/20">
+                          <TableCell colSpan={100} className="py-0.5 px-3">
+                            <span className="text-[10px] font-semibold text-muted-foreground">{_ds}</span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }
+                  }
+                  const quantityKg = parseFloat(item.quantityKg || "0");
+                  const purchasePrice = item.purchasePrice
+                    ? parseFloat(item.purchasePrice)
+                    : null;
+                  const purchaseAmount =
+                    purchasePrice && quantityKg > 0
+                      ? purchasePrice * quantityKg
+                      : 0;
+                  const deliveryCost = item.deliveryCost
+                    ? parseFloat(item.deliveryCost)
                     : 0;
-                const deliveryCost = item.deliveryCost
-                  ? parseFloat(item.deliveryCost)
-                  : 0;
-                const storageCost = parseFloat(item.storageCost || "0");
-                const warehouseServicesCost = item.warehouseServicesCost
-                  ? parseFloat(item.warehouseServicesCost)
-                  : null;
-                const costPerKg = item.costPerKg
-                  ? parseFloat(item.costPerKg)
-                  : 0;
-                const serviceTypes: Array<{ serviceType: string; serviceValue: string }> =
-                  item.warehouseServiceTypes || [];
-
-                return (
-                  <TableRow
-                    key={item.id}
-                    className={cn(
-                      "hover:bg-muted/50 transition-colors",
-                      item.isDraft &&
-                        "bg-muted/70 opacity-60 border-2 border-orange-200",
-                    )}
-                  >
+                  const storageCost = parseFloat(item.storageCost || "0");
+                  const warehouseServicesCost = item.warehouseServicesCost
+                    ? parseFloat(item.warehouseServicesCost)
+                    : null;
+                  const costPerKg = item.costPerKg
+                    ? parseFloat(item.costPerKg)
+                    : 0;
+                  const serviceTypes: Array<{ serviceType: string; serviceValue: string }> =
+                    item.warehouseServiceTypes || [];
+                  _rows.push((
+                    <TableRow
+                      key={item.id}
+                      className={cn(
+                        isToday && !item.isDraft && "bg-emerald-50/30 dark:bg-emerald-950/10",
+                        "hover:bg-muted/50 transition-colors",
+                        item.isDraft &&
+                          "bg-muted/70 opacity-60 border-2 border-orange-200",
+                      )}
+                    >
                     <TableCell className="text-[10px] py-1.5 px-1 whitespace-nowrap">
                       <div className="flex flex-col gap-1">
                         {formatDate(item.movementDate)}
@@ -524,8 +566,12 @@ export function MovementTable({
                       )}
                     </TableCell>
                   </TableRow>
-                );
-              })
+                  ));
+                };
+                _todayItems.forEach((it: any) => _processItem(it, true));
+                _olderItems.forEach((it: any) => _processItem(it, false));
+                return _rows;
+              })()
             )}
           </TableBody>
         </Table>

@@ -149,10 +149,39 @@ export default function EquipmentsPage() {
 
             {filteredEquipments.length > 0 ? (
               <div className="space-y-3">
-                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-orange-400" />
-                  Средства заправки
-                </h2>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                    <Truck className="h-4 w-4 text-orange-400" />
+                    Средства заправки
+                  </h2>
+                  {(() => {
+                    const totalKerosene = filteredEquipments.reduce((s, eq) => s + parseFloat(eq.currentBalance || "0"), 0);
+                    const totalPvkj = filteredEquipments.reduce((s, eq) => s + parseFloat(eq.pvkjBalance || "0"), 0);
+                    return (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {totalKerosene > 0 && (
+                          <span className="text-xs text-foreground normal-case tracking-normal">
+                            Керосин:{" "}
+                            <span className="font-semibold">
+                              {totalKerosene.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} кг
+                            </span>
+                          </span>
+                        )}
+                        {totalKerosene > 0 && totalPvkj > 0 && (
+                          <span className="text-muted-foreground text-xs">·</span>
+                        )}
+                        {totalPvkj > 0 && (
+                          <span className="text-xs text-foreground normal-case tracking-normal">
+                            ПВКЖ:{" "}
+                            <span className="font-semibold">
+                              {totalPvkj.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} кг
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {filteredEquipments.map((eq) => (
                     <EquipmentCard
