@@ -32,7 +32,8 @@ export default function EquipmentsPage() {
   const { hasPermission } = useAuth();
 
   const { data: warehouses, isLoading: warehousesLoading } = useQuery<WarehouseType[]>({
-    queryKey: ["/api/warehouses"],
+    // Use /api/warehouses/lik so access restrictions are respected per user
+    queryKey: ["/api/warehouses/lik"],
   });
 
   const { data: allEquipments = [], isLoading: equipmentsLoading } = useQuery<Equipment[]>({
@@ -40,8 +41,7 @@ export default function EquipmentsPage() {
     refetchInterval: 10000,
   });
 
-  const likWarehouses =
-    warehouses?.filter((w) => w.equipmentType === EQUIPMENT_TYPE.LIK) || [];
+  const likWarehouses = warehouses || [];
 
   const searchLower = search.toLowerCase();
 

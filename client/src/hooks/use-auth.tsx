@@ -41,6 +41,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: UserWithRole) => {
+      // Clear stale cache from any previous session before loading new user's data
+      queryClient.clear();
       queryClient.setQueryData(["/api/auth/user"], user);
       toast({
         title: "Вход выполнен",
@@ -82,7 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
-      queryClient.setQueryData(["/api/auth/user"], null);
+      // Clear ALL cached data so the next user never sees previous user's data
+      queryClient.clear();
       toast({
         title: "Выход выполнен",
         description: "Вы успешно вышли из системы",
