@@ -153,13 +153,6 @@ export const insertTransportationSchema = z
   })
   .superRefine((data, ctx) => {
     if (!data.isDraft) {
-      if (!data.supplierId) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Поставщик обязателен",
-          path: ["supplierId"],
-        });
-      }
       if (!data.buyerId) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

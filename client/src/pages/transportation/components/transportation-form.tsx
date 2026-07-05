@@ -237,7 +237,7 @@ export const TransportationForm = forwardRef<
     type: "transportation",
     getFields: () => ({
       date: dealDateObj,
-      supplierId: "",
+      supplierId: form.watch("supplierId") || "",
       buyerId: watchBuyerId,
       productType: watchProductType,
       basisId: watchBasisId,

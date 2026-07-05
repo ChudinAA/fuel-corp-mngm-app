@@ -207,7 +207,7 @@ export class TransportationStorage {
 
   async checkDuplicate(data: {
     dealDate: string;
-    supplierId: string;
+    supplierId?: string | null;
     buyerId: string;
     productType: string;
     basisId?: string | null;
@@ -218,7 +218,9 @@ export class TransportationStorage {
     const existing = await db.query.transportation.findFirst({
       where: and(
         sql`DATE(${transportation.dealDate}) = DATE(${data.dealDate})`,
-        eq(transportation.supplierId, data.supplierId),
+        data.supplierId
+          ? eq(transportation.supplierId, data.supplierId)
+          : isNull(transportation.supplierId),
         eq(transportation.buyerId, data.buyerId),
         eq(transportation.productType, data.productType),
         data.basisId

@@ -86,6 +86,17 @@ export function RefuelingAbroadTable({
     return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
   };
 
+  const isCreatedToday = (createdAt: string | null | undefined): boolean => {
+    if (!createdAt) return false;
+    const created = new Date(createdAt);
+    const now = new Date();
+    return (
+      created.getFullYear() === now.getFullYear() &&
+      created.getMonth() === now.getMonth() &&
+      created.getDate() === now.getDate()
+    );
+  };
+
   const getUniqueOptions = (key: string) => {
     const deals = refuelingDeals?.data || [];
     const values = new Map<string, string>();
@@ -316,14 +327,45 @@ export function RefuelingAbroadTable({
                 </TableCell>
               </TableRow>
             ) : (
-              items.map((item: any) => {
+              (() => {
+                const _todayDeals = items.filter((d: any) => isCreatedToday(d.createdAt));
+                const _olderDeals = items.filter((d: any) => !isCreatedToday(d.createdAt));
+                const _rows: any[] = [];
+                if (_todayDeals.length > 0) {
+                  _rows.push(
+                    <TableRow key="__today_hdr" className="bg-emerald-50/70 dark:bg-emerald-950/20 border-y border-emerald-200/60 dark:border-emerald-800/40 hover:bg-emerald-50/70 dark:hover:bg-emerald-950/20">
+                      <TableCell colSpan={100} className="py-1.5 px-3">
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">Созданные сегодня</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+                let _lastDateSep = '';
+                const _renderItem = (item: any, isToday: boolean) => {
+                if (!isToday) {
+                  const _ds = formatDate(item.refuelingDate);
+                  if (_ds !== _lastDateSep) {
+                    _lastDateSep = _ds;
+                    _rows.push(
+                      <TableRow key={`__datesep_${_ds}_${item.id}`} className="bg-muted/20 border-t hover:bg-muted/20">
+                        <TableCell colSpan={100} className="py-0.5 px-5">
+                          <span className="text-[11px] font-semibold text-muted-foreground">{_ds}</span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
+                }
                 const missingRate = !item.isDraft && (
                   !item.saleExchangeRateValue || !item.purchaseExchangeRateValue
                 );
-                return (
+                _rows.push(
                 <TableRow
                   key={item.id}
                   className={cn(
+                    isToday && !item.isDraft && "bg-emerald-50/30 dark:bg-emerald-950/10",
                     item.isDraft &&
                       "bg-muted/70 opacity-60 border-2 border-orange-200",
                     missingRate &&
@@ -545,8 +587,12 @@ export function RefuelingAbroadTable({
                     />
                   </TableCell>
                 </TableRow>
-              );
-              })
+                );
+                };
+                _todayDeals.forEach((d: any) => _renderItem(d, true));
+                _olderDeals.forEach((d: any) => _renderItem(d, false));
+                return _rows;
+              })()
             )}
           </TableBody>
         </Table>

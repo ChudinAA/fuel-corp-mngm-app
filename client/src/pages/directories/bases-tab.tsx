@@ -202,7 +202,7 @@ export function BasesTab() {
                     <TableHead>Тип</TableHead>
                     <TableHead>Местоположение</TableHead>
                     <TableHead>Поставщики / Цены</TableHead>
-                    <TableHead>Статус</TableHead>
+                    <TableHead>Код IATA</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -266,22 +266,8 @@ export function BasesTab() {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell>
-                          {base.isActive ? (
-                            <Badge
-                              variant="outline"
-                              className="text-green-600 border-green-600"
-                            >
-                              Активен
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="text-muted-foreground"
-                            >
-                              Неактивен
-                            </Badge>
-                          )}
+                        <TableCell className="text-muted-foreground">
+                          {base.iataCode || "—"}
                         </TableCell>
                         <TableCell>
                           <EntityActionsMenu

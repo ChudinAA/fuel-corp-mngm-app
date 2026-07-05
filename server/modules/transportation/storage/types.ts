@@ -17,7 +17,7 @@ export interface ITransportationStorage {
   restoreTransportation(id: string, oldData: any, userId?: string): Promise<boolean>;
   checkDuplicate(data: {
     dealDate: string;
-    supplierId: string;
+    supplierId?: string | null;
     buyerId: string;
     productType: string;
     basisId?: string | null;
