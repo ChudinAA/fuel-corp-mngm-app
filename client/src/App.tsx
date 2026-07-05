@@ -47,7 +47,7 @@ import PriceCalculationPage from "@/pages/finance/price-calculation-page";
 import DailyReportsPage from "@/pages/reports/daily-reports-page";
 import AnalyticsPage from "@/pages/reports/analytics-page";
 import RegistriesPage from "@/pages/reports/registries-page";
-import MonthlyPlanPage from "@/pages/reports/monthly-plan-page";
+import PlanningPage from "@/pages/planning/planning-page";
 import GovContractsPage from "@/pages/reports/gov-contracts-page";
 import BudgetPage from "@/pages/reports/budget-page";
 import ManagementReportPage from "@/pages/reports/management-report-page";
@@ -299,9 +299,9 @@ function Router() {
         </AppLayout>
       </Route>
 
-      <Route path="/reports/monthly-plan">
+      <Route path="/planning">
         <AppLayout>
-          <ProtectedRoute component={MonthlyPlanPage} />
+          <ProtectedRoute component={PlanningPage} />
         </AppLayout>
       </Route>
 

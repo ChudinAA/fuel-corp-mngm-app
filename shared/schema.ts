@@ -18,7 +18,7 @@ export * from "server/modules/audit/entities/audit";
 export * from "server/modules/finance/entities/finance";
 export * from "server/modules/reports/entities/reports";
 export * from "server/modules/registries/entities/registries";
-export * from "server/modules/monthly-plan/entities/monthly-plan";
+export * from "server/modules/planning/entities/planning";
 export * from "server/modules/gov-contracts/entities/gov-contracts";
 export * from "server/modules/budget/entities/budget";
 export * from "server/modules/management-report/entities/management-report";

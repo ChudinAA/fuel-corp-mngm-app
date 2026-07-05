@@ -1,0 +1,1 @@
+- [Neon serverless array binding](neon-array-binding.md) — never bind a JS array as a single SQL param with raw `= ANY(${arr})`; use Drizzle's `inArray()` instead.

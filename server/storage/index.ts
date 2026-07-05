@@ -17,7 +17,6 @@ import { PriceCalculationStorage } from "../modules/finance/storage/price-calcul
 import { ReportsStorage } from "../modules/reports/storage/reports-storage";
 import { AnalyticsStorage } from "../modules/analytics/storage/analytics-storage";
 import { RegistriesStorage } from "../modules/registries/storage/registries-storage";
-import { MonthlyPlanStorage } from "../modules/monthly-plan/storage/monthly-plan-storage";
 import { GovernmentContractStorage } from "../modules/gov-contracts/storage/gov-contracts-storage";
 import { BudgetStorage } from "../modules/budget/storage/budget-storage";
 import { ManagementReportStorage } from "../modules/management-report/storage/management-report-storage";
@@ -34,6 +33,7 @@ import { AviationStorage } from "../modules/aviation/storage/aviation-storage";
 import { RailwayStorage } from "../modules/railway/storage/railway-storage";
 import { ExchangeDealsStorage } from "../modules/exchange-deals/storage/exchange-deals-storage";
 import { ExchangeAdvancesStorage } from "../modules/exchange-advances/storage/exchange-advances-storage";
+import { PlanningStorage } from "../modules/planning/storage/planning-storage";
 
 export * from "./types";
 
@@ -58,7 +58,6 @@ export class Storage {
   public reports: ReportsStorage;
   public analytics: AnalyticsStorage;
   public registries: RegistriesStorage;
-  public monthlyPlan: MonthlyPlanStorage;
   public govContracts: GovernmentContractStorage;
   public budget: BudgetStorage;
   public managementReport: ManagementReportStorage;
@@ -74,6 +73,7 @@ export class Storage {
   public railway: RailwayStorage;
   public exchangeDeals: ExchangeDealsStorage;
   public exchangeAdvances: ExchangeAdvancesStorage;
+  public planning: PlanningStorage;
 
   constructor() {
     this.users = new UserStorage();
@@ -95,7 +95,6 @@ export class Storage {
     this.reports = new ReportsStorage();
     this.analytics = new AnalyticsStorage();
     this.registries = new RegistriesStorage();
-    this.monthlyPlan = new MonthlyPlanStorage();
     this.govContracts = new GovernmentContractStorage();
     this.budget = new BudgetStorage();
     this.managementReport = new ManagementReportStorage();
@@ -111,6 +110,7 @@ export class Storage {
     this.railway = new RailwayStorage();
     this.exchangeDeals = new ExchangeDealsStorage();
     this.exchangeAdvances = new ExchangeAdvancesStorage();
+    this.planning = new PlanningStorage();
   }
 }
 

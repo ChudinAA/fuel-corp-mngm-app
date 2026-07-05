@@ -4,7 +4,7 @@ import { registerAuthRoutes } from "./modules/users/routes/auth";
 import { registerAdminRoutes } from "./modules/users/routes/admin";
 import { registerPricesRoutes } from "./modules/prices/routes/prices";
 import { registerDeliveryRoutes } from "./modules/delivery/routes/delivery";
-import { seedDefaultRoles } from "./modules/users/routes/utils";
+import { seedDefaultRoles, ensurePlanningAllocatePermission } from "./modules/users/routes/utils";
 import { registerSuppliersRoutes } from "./modules/suppliers/routes/suppliers";
 import { registerBasesRoutes } from "./modules/bases/routes/bases";
 import { registerCustomersRoutes } from "./modules/customers/routes/customers";
@@ -22,7 +22,7 @@ import { registerPriceCalculationRoutes } from "./modules/finance/routes/price-c
 import { registerReportsRoutes } from "./modules/reports/routes/reports";
 import { registerAnalyticsRoutes } from "./modules/analytics/routes/analytics";
 import { registerRegistriesRoutes } from "./modules/registries/routes/registries";
-import { registerMonthlyPlanRoutes } from "./modules/monthly-plan/routes/monthly-plan";
+import { registerPlanningRoutes } from "./modules/planning/routes/planning";
 import { registerGovernmentContractRoutes } from "./modules/gov-contracts/routes/gov-contracts";
 import { registerBudgetRoutes } from "./modules/budget/routes/budget";
 import { registerManagementReportRoutes } from "./modules/management-report/routes/management-report";
@@ -54,6 +54,7 @@ export async function registerRoutes(
   });
 
   await seedDefaultRoles();
+  await ensurePlanningAllocatePermission();
 
   // SSE Endpoint
   app.get("/api/events", (req, res) => {
@@ -89,7 +90,7 @@ export async function registerRoutes(
   registerReportsRoutes(app);
   registerAnalyticsRoutes(app);
   registerRegistriesRoutes(app);
-  registerMonthlyPlanRoutes(app);
+  registerPlanningRoutes(app);
   registerGovernmentContractRoutes(app);
   registerBudgetRoutes(app);
   registerManagementReportRoutes(app);
@@ -106,6 +107,7 @@ export async function registerRoutes(
   registerRailwayRoutes(app);
   registerExchangeDealsRoutes(app);
   registerExchangeAdvancesRoutes(app);
+  registerPlanningRoutes(app);
 
   return httpServer;
 }

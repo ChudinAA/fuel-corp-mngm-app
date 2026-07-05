@@ -262,8 +262,8 @@ const getReportsMenuItems = (hasPermission: (p: string) => boolean) =>
 const getPlanningMenuItems = (hasPermission: (p: string) => boolean) =>
   [
     {
-      title: "Ежемесячный план",
-      url: "/reports/monthly-plan",
+      title: "Планирование",
+      url: "/planning",
       icon: Calendar1,
       permission: "planning.view",
     },
