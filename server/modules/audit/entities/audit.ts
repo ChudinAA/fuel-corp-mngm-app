@@ -90,6 +90,8 @@ export const ENTITY_TYPES = {
   RAILWAY_TARIFF: 'railway_tariffs',
   EXCHANGE_DEAL: 'exchange_deals',
   EXCHANGE_ADVANCE: 'exchange_advance_cards',
+  PLAN_ENTRY: 'plan_entries',
+  FREE_VOLUME_ALLOCATION: 'free_volume_allocations',
 } as const;
 
 export type EntityType = typeof ENTITY_TYPES[keyof typeof ENTITY_TYPES];

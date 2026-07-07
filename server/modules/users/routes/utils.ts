@@ -1,35 +1,18 @@
 import { storage } from "../../../storage/index";
 import { DEFAULT_ROLES, MODULES, ACTIONS } from "@shared/schema";
 
-const PLANNING_ALLOCATE_ROLES = [
-  "Ген.дир",
-  "Админ",
-  "Коммерческий директор",
-  "Руководитель подразделения",
-];
-
-export async function ensurePlanningAllocatePermission() {
-  try {
-    const roles = await storage.roles.getAllRoles();
-    for (const role of roles) {
-      if (!PLANNING_ALLOCATE_ROLES.includes(role.name)) continue;
-      const permissions = role.permissions || [];
-      if (!permissions.includes("planning.allocate")) {
-        await storage.roles.updateRole(role.id, {
-          permissions: [...permissions, "planning.allocate"],
-        });
-      }
-    }
-  } catch (error) {
-    console.error("Error ensuring planning.allocate permission:", error);
-  }
-}
-
 export async function seedDefaultRoles() {
   try {
     const existingRoles = await storage.roles.getAllRoles();
     if (existingRoles.length === 0) {
       console.log("Seeding default roles...");
+
+      const planningAllocateRoles = [
+        "Ген.дир",
+        "Админ",
+        "Коммерческий директор",
+        "Руководитель подразделения",
+      ];
 
       for (const roleData of DEFAULT_ROLES) {
         let permissions: string[] = [];
@@ -76,7 +59,7 @@ export async function seedDefaultRoles() {
         }
 
         if (
-          PLANNING_ALLOCATE_ROLES.includes(roleData.name) &&
+          planningAllocateRoles.includes(roleData.name) &&
           !permissions.includes("planning.allocate")
         ) {
           permissions = [...permissions, "planning.allocate"];

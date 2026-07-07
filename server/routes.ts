@@ -4,7 +4,7 @@ import { registerAuthRoutes } from "./modules/users/routes/auth";
 import { registerAdminRoutes } from "./modules/users/routes/admin";
 import { registerPricesRoutes } from "./modules/prices/routes/prices";
 import { registerDeliveryRoutes } from "./modules/delivery/routes/delivery";
-import { seedDefaultRoles, ensurePlanningAllocatePermission } from "./modules/users/routes/utils";
+import { seedDefaultRoles } from "./modules/users/routes/utils";
 import { registerSuppliersRoutes } from "./modules/suppliers/routes/suppliers";
 import { registerBasesRoutes } from "./modules/bases/routes/bases";
 import { registerCustomersRoutes } from "./modules/customers/routes/customers";
@@ -54,7 +54,6 @@ export async function registerRoutes(
   });
 
   await seedDefaultRoles();
-  await ensurePlanningAllocatePermission();
 
   // SSE Endpoint
   app.get("/api/events", (req, res) => {

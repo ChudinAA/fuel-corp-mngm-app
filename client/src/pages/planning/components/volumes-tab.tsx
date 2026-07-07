@@ -164,28 +164,38 @@ export function VolumesTab({ period }: { period: PlanningPeriod }) {
                   </TableCell>
                 </TableRow>
               ) : (
-                resources.map((row) => (
-                  <TableRow key={row.supplierId} data-testid={`row-resource-${row.supplierId}`}>
-                    <TableCell>{row.supplierName}</TableCell>
-                    <TableCell>
-                      <AllocatedVolumeCell
-                        supplierId={row.supplierId}
-                        value={row.allocatedVolume}
-                        periodFrom={periodFrom}
-                        periodTo={periodTo}
-                        canEdit={canAllocate}
-                      />
-                    </TableCell>
-                    <TableCell>{row.demand}</TableCell>
-                    <TableCell
-                      className={
-                        parseFloat(row.balance) < 0 ? "text-destructive" : undefined
-                      }
-                    >
-                      {row.balance}
-                    </TableCell>
-                  </TableRow>
-                ))
+                resources.map((row) => {
+                  const bal = parseFloat(row.balance);
+                  return (
+                    <TableRow key={row.supplierId} data-testid={`row-resource-${row.supplierId}`}>
+                      <TableCell className="font-medium">{row.supplierName}</TableCell>
+                      <TableCell>
+                        <AllocatedVolumeCell
+                          supplierId={row.supplierId}
+                          value={row.allocatedVolume}
+                          periodFrom={periodFrom}
+                          periodTo={periodTo}
+                          canEdit={canAllocate}
+                        />
+                      </TableCell>
+                      <TableCell>{row.demand}</TableCell>
+                      <TableCell>
+                        <span
+                          className={
+                            bal < 0
+                              ? "text-destructive font-medium"
+                              : bal > 0
+                                ? "text-emerald-600 font-medium"
+                                : "text-muted-foreground"
+                          }
+                          data-testid={`text-balance-${row.supplierId}`}
+                        >
+                          {bal > 0 ? `+${row.balance}` : row.balance}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -220,14 +230,29 @@ export function VolumesTab({ period }: { period: PlanningPeriod }) {
                   </TableCell>
                 </TableRow>
               ) : (
-                warehousesSummary.map((row) => (
-                  <TableRow key={row.warehouseId} data-testid={`row-warehouse-${row.warehouseId}`}>
-                    <TableCell>{row.warehouseName}</TableCell>
-                    <TableCell>{row.plannedIncome}</TableCell>
-                    <TableCell>{row.plannedExpense}</TableCell>
-                    <TableCell>{row.balance}</TableCell>
-                  </TableRow>
-                ))
+                warehousesSummary.map((row) => {
+                  const bal = parseFloat(row.balance);
+                  return (
+                    <TableRow key={row.warehouseId} data-testid={`row-warehouse-${row.warehouseId}`}>
+                      <TableCell className="font-medium">{row.warehouseName}</TableCell>
+                      <TableCell className="text-emerald-600">{row.plannedIncome}</TableCell>
+                      <TableCell className="text-amber-600">{row.plannedExpense}</TableCell>
+                      <TableCell>
+                        <span
+                          className={
+                            bal < 0
+                              ? "text-destructive font-medium"
+                              : bal > 0
+                                ? "text-emerald-600 font-medium"
+                                : "text-muted-foreground"
+                          }
+                        >
+                          {bal > 0 ? `+${row.balance}` : row.balance}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

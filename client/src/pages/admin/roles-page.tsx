@@ -66,7 +66,7 @@ const PERMISSION_MODULES = {
   finance: { name: "Финансы", permissions: ["view", "create", "edit", "delete", "restore"] },
   // Отчеты и Планирование
   reports: { name: "Отчеты", permissions: ["view", "export"] },
-  planning: { name: "Планирование", permissions: ["view", "create", "edit", "delete"] },
+  planning: { name: "Планирование", permissions: ["view", "create", "edit", "delete", "allocate"] },
   // Администрирование
   users: { name: "Пользователи", permissions: ["view", "create", "edit", "delete", "restore"] },
   roles: { name: "Роли", permissions: ["view", "create", "edit", "delete", "restore"] },

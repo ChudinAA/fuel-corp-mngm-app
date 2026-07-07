@@ -15,6 +15,11 @@ export type InsertFreeVolumeAllocation = InferInsertModel<
   typeof freeVolumeAllocations
 >;
 
+export interface FreeVolumeAllocationWithNames extends FreeVolumeAllocation {
+  fromName?: string | null;
+  toName?: string | null;
+}
+
 export type SupplierAllocatedVolume = InferSelectModel<
   typeof supplierAllocatedVolumes
 >;
@@ -71,9 +76,7 @@ export interface IPlanningStorage {
     dateTo: string,
   ): Promise<PlanEntryWithMeta[]>;
   getPlanEntry(id: string): Promise<PlanEntry | undefined>;
-  createPlanEntry(
-    data: InsertPlanEntry,
-  ): Promise<PlanEntry>;
+  createPlanEntry(data: InsertPlanEntry): Promise<PlanEntry>;
   updatePlanEntry(
     id: string,
     data: Partial<InsertPlanEntry>,
@@ -85,7 +88,7 @@ export interface IPlanningStorage {
     warehouseId: string,
     dateFrom: string,
     dateTo: string,
-  ): Promise<FreeVolumeAllocation[]>;
+  ): Promise<FreeVolumeAllocationWithNames[]>;
   createFreeVolumeAllocation(
     data: InsertFreeVolumeAllocation,
   ): Promise<FreeVolumeAllocation>;

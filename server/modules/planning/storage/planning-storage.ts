@@ -18,6 +18,7 @@ import type {
   PlanEntry,
   InsertPlanEntry,
   FreeVolumeAllocation,
+  FreeVolumeAllocationWithNames,
   InsertFreeVolumeAllocation,
   SupplierAllocatedVolume,
   InsertSupplierAllocatedVolume,
@@ -181,19 +182,55 @@ export class PlanningStorage implements IPlanningStorage {
     warehouseId: string,
     dateFrom: string,
     dateTo: string,
-  ): Promise<FreeVolumeAllocation[]> {
-    return db
+  ): Promise<FreeVolumeAllocationWithNames[]> {
+    const conditions = [isNull(freeVolumeAllocations.deletedAt)];
+    if (warehouseId) conditions.push(eq(freeVolumeAllocations.warehouseId, warehouseId));
+    if (dateFrom) conditions.push(gte(freeVolumeAllocations.date, dateFrom));
+    if (dateTo) conditions.push(lte(freeVolumeAllocations.date, dateTo));
+
+    const rows = await db
       .select()
       .from(freeVolumeAllocations)
-      .where(
-        and(
-          eq(freeVolumeAllocations.warehouseId, warehouseId),
-          isNull(freeVolumeAllocations.deletedAt),
-          gte(freeVolumeAllocations.date, dateFrom),
-          lte(freeVolumeAllocations.date, dateTo),
-        ),
-      )
+      .where(and(...conditions))
       .orderBy(asc(freeVolumeAllocations.date));
+
+    if (rows.length === 0) return [];
+
+    const fromIds = [
+      ...new Set(rows.map((r) => r.fromCounterpartyId).filter(Boolean)),
+    ] as string[];
+    const toIds = [
+      ...new Set(rows.map((r) => r.toCounterpartyId).filter(Boolean)),
+    ] as string[];
+
+    const supplierRows =
+      fromIds.length > 0
+        ? await db
+            .select({ id: suppliers.id, name: suppliers.name })
+            .from(suppliers)
+            .where(inArray(suppliers.id, fromIds))
+        : [];
+
+    const customerRows =
+      toIds.length > 0
+        ? await db
+            .select({ id: customers.id, name: customers.name })
+            .from(customers)
+            .where(inArray(customers.id, toIds))
+        : [];
+
+    const supplierMap = new Map(supplierRows.map((s) => [s.id, s.name]));
+    const customerMap = new Map(customerRows.map((c) => [c.id, c.name]));
+
+    return rows.map((r) => ({
+      ...r,
+      fromName: r.fromCounterpartyId
+        ? (supplierMap.get(r.fromCounterpartyId) ?? null)
+        : null,
+      toName: r.toCounterpartyId
+        ? (customerMap.get(r.toCounterpartyId) ?? null)
+        : null,
+    }));
   }
 
   async createFreeVolumeAllocation(
@@ -381,18 +418,10 @@ export class PlanningStorage implements IPlanningStorage {
     }
 
     for (const a of allocations) {
-      const vol = parseFloat(a.volume);
       if (a.fromCounterpartyId) {
-        demandBySupplier.set(
-          a.fromCounterpartyId,
-          (demandBySupplier.get(a.fromCounterpartyId) || 0) - vol,
-        );
-      }
-      if (a.toCounterpartyId) {
-        demandBySupplier.set(
-          a.toCounterpartyId,
-          (demandBySupplier.get(a.toCounterpartyId) || 0) + vol,
-        );
+        if (!demandBySupplier.has(a.fromCounterpartyId)) {
+          demandBySupplier.set(a.fromCounterpartyId, 0);
+        }
       }
     }
 

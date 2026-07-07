@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Pencil, Trash2, Lock, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Lock, List } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -13,6 +13,22 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -27,11 +43,19 @@ interface PlanEntryRow extends PlanEntryFormEntry {
   isLocked: boolean;
 }
 
+interface ActualDetailItem {
+  sourceType: string;
+  sourceId: string;
+  label: string;
+  quantity: string;
+  date: string;
+}
+
 interface ActualsByDate {
   date: string;
   incomeActual: string;
   expenseActual: string;
-  details: { sourceType: string; sourceId: string; label: string; quantity: string }[];
+  details: ActualDetailItem[];
 }
 
 function fmtPeriod(period: PlanningPeriod) {
@@ -39,6 +63,57 @@ function fmtPeriod(period: PlanningPeriod) {
     dateFrom: format(period.from, "yyyy-MM-dd"),
     dateTo: format(period.to, "yyyy-MM-dd"),
   };
+}
+
+function ActualsModal({
+  open,
+  onClose,
+  date,
+  actual,
+}: {
+  open: boolean;
+  onClose: () => void;
+  date: string;
+  actual: ActualsByDate | undefined;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent data-testid="dialog-actuals">
+        <DialogHeader>
+          <DialogTitle>
+            Факт за {format(new Date(date + "T00:00:00"), "dd.MM.yyyy")}
+          </DialogTitle>
+        </DialogHeader>
+        {!actual || actual.details.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Нет фактических данных за этот день</p>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex gap-4 text-sm">
+              <span>
+                Приход: <strong>{actual.incomeActual || "0"}</strong>
+              </span>
+              <span>
+                Расход: <strong>{actual.expenseActual || "0"}</strong>
+              </span>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Детализация</p>
+              {actual.details.map((d, idx) => (
+                <div
+                  key={`${d.sourceType}-${d.sourceId}-${idx}`}
+                  className="flex justify-between text-sm border-b pb-1"
+                  data-testid={`text-actual-detail-${idx}`}
+                >
+                  <span className="text-muted-foreground">{d.label}</span>
+                  <span className="font-medium">{d.quantity}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export function WarehousePlanPanel({
@@ -56,7 +131,11 @@ export function WarehousePlanPanel({
   const [editingEntry, setEditingEntry] = useState<PlanEntryRow | null>(null);
   const [allocationDialogOpen, setAllocationDialogOpen] = useState(false);
   const [editingAllocation, setEditingAllocation] = useState<AllocationFormEntry | null>(null);
-  const [expandedDate, setExpandedDate] = useState<string | null>(null);
+
+  const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
+  const [deleteAllocationId, setDeleteAllocationId] = useState<string | null>(null);
+
+  const [actualsModalDate, setActualsModalDate] = useState<string | null>(null);
 
   const entriesKey = ["/api/planning/entries", warehouseId, dateFrom, dateTo];
   const allocationsKey = ["/api/planning/allocations", warehouseId, dateFrom, dateTo];
@@ -95,6 +174,7 @@ export function WarehousePlanPanel({
           `/api/planning/actuals?warehouseId=${warehouseId}&dateFrom=${dateFrom}&dateTo=${dateTo}`,
         )
       ).json(),
+    refetchInterval: 30_000,
   });
 
   const actualsByDate = new Map(actuals.map((a) => [a.date, a]));
@@ -105,6 +185,7 @@ export function WarehousePlanPanel({
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/planning/entries", warehouseId] });
+    queryClient.invalidateQueries({ queryKey: ["/api/planning/actuals", warehouseId] });
     queryClient.invalidateQueries({ queryKey: ["/api/planning/summary/resources"] });
     queryClient.invalidateQueries({ queryKey: ["/api/planning/summary/warehouses"] });
     queryClient.invalidateQueries({ queryKey: ["/api/planning/summary/customers"] });
@@ -136,9 +217,10 @@ export function WarehousePlanPanel({
     }
   };
 
-  const handleDeleteEntry = async (id: string) => {
+  const handleDeleteEntry = async () => {
+    if (!deleteEntryId) return;
     try {
-      await apiRequest("DELETE", `/api/planning/entries/${id}`);
+      await apiRequest("DELETE", `/api/planning/entries/${deleteEntryId}`);
       invalidateAll();
       toast({ title: "Запись удалена" });
     } catch (error: any) {
@@ -147,6 +229,8 @@ export function WarehousePlanPanel({
         description: error?.message || "Запись заблокирована или не найдена",
         variant: "destructive",
       });
+    } finally {
+      setDeleteEntryId(null);
     }
   };
 
@@ -170,9 +254,10 @@ export function WarehousePlanPanel({
     }
   };
 
-  const handleDeleteAllocation = async (id: string) => {
+  const handleDeleteAllocation = async () => {
+    if (!deleteAllocationId) return;
     try {
-      await apiRequest("DELETE", `/api/planning/allocations/${id}`);
+      await apiRequest("DELETE", `/api/planning/allocations/${deleteAllocationId}`);
       queryClient.invalidateQueries({ queryKey: allocationsKey });
       queryClient.invalidateQueries({ queryKey: ["/api/planning/summary/resources"] });
       toast({ title: "Распределение удалено" });
@@ -182,8 +267,12 @@ export function WarehousePlanPanel({
         description: error?.message || "Не удалось удалить распределение",
         variant: "destructive",
       });
+    } finally {
+      setDeleteAllocationId(null);
     }
   };
+
+  const actualsForModal = actualsModalDate ? actualsByDate.get(actualsModalDate) : undefined;
 
   return (
     <div className="space-y-4">
@@ -208,12 +297,11 @@ export function WarehousePlanPanel({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead />
                 <TableHead>Дата</TableHead>
                 <TableHead>Тип</TableHead>
                 <TableHead>Контрагент</TableHead>
-                <TableHead>План (объём)</TableHead>
-                <TableHead>Факт</TableHead>
+                <TableHead>План (кг)</TableHead>
+                <TableHead>Факт (кг)</TableHead>
                 <TableHead>Остаток (план)</TableHead>
                 <TableHead />
               </TableRow>
@@ -221,13 +309,13 @@ export function WarehousePlanPanel({
             <TableBody>
               {loadingEntries ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     Загрузка...
                   </TableCell>
                 </TableRow>
               ) : entries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     Нет плановых записей за период
                   </TableCell>
                 </TableRow>
@@ -237,91 +325,85 @@ export function WarehousePlanPanel({
                   const actual = actualsByDate.get(dateKey);
                   const actualValue =
                     entry.type === "income" ? actual?.incomeActual : actual?.expenseActual;
-                  const isExpanded = expandedDate === dateKey;
+                  const hasDetails = actual && actual.details.length > 0;
+
+                  const planNum = parseFloat(entry.volume) || 0;
+                  const factNum = parseFloat(actualValue || "0") || 0;
+                  const diff = factNum - planNum;
 
                   return (
-                    <>
-                      <TableRow key={entry.id} data-testid={`row-plan-entry-${entry.id}`}>
-                        <TableCell>
-                          {actual && actual.details.length > 0 && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setExpandedDate(isExpanded ? null : dateKey)}
-                              data-testid={`button-expand-${entry.id}`}
+                    <TableRow key={entry.id} data-testid={`row-plan-entry-${entry.id}`}>
+                      <TableCell>
+                        <span>
+                          {format(new Date(dateKey + "T00:00:00"), "dd.MM.yyyy")}
+                        </span>
+                        {entry.isLocked && (
+                          <Lock className="inline-block h-3 w-3 ml-1 text-muted-foreground" />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {entry.type === "income" ? (
+                          <Badge variant="outline" className="text-emerald-600 border-emerald-200">
+                            Приход
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-amber-600 border-amber-200">
+                            Расход
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>{entry.counterpartyName || "—"}</TableCell>
+                      <TableCell>{entry.volume}</TableCell>
+                      <TableCell>
+                        {actualValue ? (
+                          <button
+                            onClick={() => setActualsModalDate(dateKey)}
+                            className="flex items-center gap-1 text-left hover:underline"
+                            data-testid={`button-show-actuals-${entry.id}`}
+                          >
+                            <span
+                              className={
+                                diff >= 0 ? "text-emerald-600" : "text-destructive"
+                              }
                             >
-                              {isExpanded ? (
-                                <ChevronDown className="h-4 w-4" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4" />
-                              )}
-                            </Button>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(dateKey), "dd.MM.yyyy")}
-                          {entry.isLocked && (
-                            <Lock className="inline-block h-3 w-3 ml-1 text-muted-foreground" />
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {entry.type === "income" ? (
-                            <Badge variant="outline">Приход</Badge>
-                          ) : (
-                            <Badge variant="outline">Расход</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>{entry.counterpartyName || "—"}</TableCell>
-                        <TableCell>{entry.volume}</TableCell>
-                        <TableCell>{actualValue || "—"}</TableCell>
-                        <TableCell>{entry.balanceAfter || "—"}</TableCell>
-                        <TableCell>
-                          <EntityActionsMenu
-                            actions={[
-                              {
-                                id: "edit",
-                                label: "Редактировать",
-                                icon: Pencil,
-                                onClick: () => {
-                                  setEditingEntry(entry);
-                                  setEntryDialogOpen(true);
-                                },
-                                permission: { module: "planning", action: "edit" },
-                                condition: !entry.isLocked,
+                              {actualValue}
+                            </span>
+                            {hasDetails && (
+                              <List className="h-3 w-3 text-muted-foreground" />
+                            )}
+                          </button>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{entry.balanceAfter || "—"}</TableCell>
+                      <TableCell>
+                        <EntityActionsMenu
+                          actions={[
+                            {
+                              id: "edit",
+                              label: "Редактировать",
+                              icon: Pencil,
+                              onClick: () => {
+                                setEditingEntry(entry);
+                                setEntryDialogOpen(true);
                               },
-                              {
-                                id: "delete",
-                                label: "Удалить",
-                                icon: Trash2,
-                                variant: "destructive",
-                                onClick: () => handleDeleteEntry(entry.id),
-                                permission: { module: "planning", action: "delete" },
-                                condition: !entry.isLocked,
-                              },
-                            ]}
-                          />
-                        </TableCell>
-                      </TableRow>
-                      {isExpanded && actual && (
-                        <TableRow>
-                          <TableCell colSpan={8} className="bg-muted/30">
-                            <div className="p-2 space-y-1">
-                              <p className="text-sm font-medium">Детализация факта:</p>
-                              {actual.details.map((d, idx) => (
-                                <div
-                                  key={`${d.sourceType}-${d.sourceId}-${idx}`}
-                                  className="text-sm text-muted-foreground flex justify-between max-w-md"
-                                  data-testid={`text-actual-detail-${entry.id}-${idx}`}
-                                >
-                                  <span>{d.label}</span>
-                                  <span>{d.quantity}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </>
+                              permission: { module: "planning", action: "edit" },
+                              condition: !entry.isLocked,
+                            },
+                            {
+                              id: "delete",
+                              label: "Удалить",
+                              icon: Trash2,
+                              variant: "destructive",
+                              onClick: () => setDeleteEntryId(entry.id),
+                              permission: { module: "planning", action: "delete" },
+                              condition: !entry.isLocked,
+                            },
+                          ]}
+                        />
+                      </TableCell>
+                    </TableRow>
                   );
                 })
               )}
@@ -353,9 +435,9 @@ export function WarehousePlanPanel({
             <TableHeader>
               <TableRow>
                 <TableHead>Дата</TableHead>
-                <TableHead>Откуда</TableHead>
-                <TableHead>Куда</TableHead>
-                <TableHead>Объём</TableHead>
+                <TableHead>Откуда (поставщик)</TableHead>
+                <TableHead>Куда (клиент)</TableHead>
+                <TableHead>Объём (кг)</TableHead>
                 <TableHead>Примечание</TableHead>
                 <TableHead />
               </TableRow>
@@ -374,11 +456,13 @@ export function WarehousePlanPanel({
                   </TableCell>
                 </TableRow>
               ) : (
-                allocations.map((a) => (
+                allocations.map((a: any) => (
                   <TableRow key={a.id} data-testid={`row-allocation-${a.id}`}>
-                    <TableCell>{format(new Date(a.date.slice(0, 10)), "dd.MM.yyyy")}</TableCell>
-                    <TableCell>{a.fromCounterpartyId || "—"}</TableCell>
-                    <TableCell>{a.toCounterpartyId || "—"}</TableCell>
+                    <TableCell>
+                      {format(new Date(a.date.slice(0, 10) + "T00:00:00"), "dd.MM.yyyy")}
+                    </TableCell>
+                    <TableCell>{a.fromName || a.fromCounterpartyId || "—"}</TableCell>
+                    <TableCell>{a.toName || a.toCounterpartyId || "—"}</TableCell>
                     <TableCell>{a.volume}</TableCell>
                     <TableCell>{a.notes || "—"}</TableCell>
                     <TableCell>
@@ -399,7 +483,7 @@ export function WarehousePlanPanel({
                             label: "Удалить",
                             icon: Trash2,
                             variant: "destructive",
-                            onClick: () => handleDeleteAllocation(a.id),
+                            onClick: () => setDeleteAllocationId(a.id),
                             permission: { module: "planning", action: "delete" },
                           },
                         ]}
@@ -427,6 +511,60 @@ export function WarehousePlanPanel({
         entry={editingAllocation}
         onSubmit={handleAllocationSubmit}
       />
+
+      <AlertDialog open={!!deleteEntryId} onOpenChange={(o) => !o && setDeleteEntryId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить запись плана?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие нельзя отменить. Запись будет удалена безвозвратно.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteEntry}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-entry"
+            >
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!deleteAllocationId}
+        onOpenChange={(o) => !o && setDeleteAllocationId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить распределение?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAllocation}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-allocation"
+            >
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {actualsModalDate && (
+        <ActualsModal
+          open={!!actualsModalDate}
+          onClose={() => setActualsModalDate(null)}
+          date={actualsModalDate}
+          actual={actualsForModal}
+        />
+      )}
     </div>
   );
 }

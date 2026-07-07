@@ -42,6 +42,8 @@ export interface AllocationFormEntry {
   toCounterpartyId: string | null;
   volume: string;
   notes: string | null;
+  fromName?: string | null;
+  toName?: string | null;
 }
 
 export function AllocationDialog({
@@ -60,6 +62,11 @@ export function AllocationDialog({
   const { data: suppliers = [] } = useQuery<{ id: string; name: string }[]>({
     queryKey: ["/api/suppliers"],
     queryFn: async () => (await apiRequest("GET", "/api/suppliers")).json(),
+  });
+
+  const { data: customers = [] } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ["/api/customers"],
+    queryFn: async () => (await apiRequest("GET", "/api/customers")).json(),
   });
 
   const form = useForm<FormValues>({
@@ -96,6 +103,7 @@ export function AllocationDialog({
   };
 
   const supplierOptions = suppliers.map((s) => ({ value: s.id, label: s.name }));
+  const customerOptions = customers.map((c) => ({ value: c.id, label: c.name }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -146,13 +154,13 @@ export function AllocationDialog({
               name="toCounterpartyId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Куда (поставщик)</FormLabel>
+                  <FormLabel>Куда (клиент/покупатель)</FormLabel>
                   <FormControl>
                     <Combobox
-                      options={supplierOptions}
+                      options={customerOptions}
                       value={field.value}
                       onValueChange={field.onChange}
-                      placeholder="Выберите поставщика"
+                      placeholder="Выберите клиента"
                       dataTestId="select-to-counterparty"
                     />
                   </FormControl>
@@ -166,7 +174,7 @@ export function AllocationDialog({
               name="volume"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Объём</FormLabel>
+                  <FormLabel>Объём (кг)</FormLabel>
                   <FormControl>
                     <Input type="number" step="0.01" {...field} data-testid="input-allocation-volume" />
                   </FormControl>

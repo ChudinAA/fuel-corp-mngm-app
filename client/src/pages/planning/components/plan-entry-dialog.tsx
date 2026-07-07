@@ -4,6 +4,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
+import { ru } from "date-fns/locale";
+import { CalendarIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +27,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Combobox } from "@/components/ui/combobox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 
 const formSchema = z.object({
@@ -121,6 +126,8 @@ export function PlanEntryDialog({
     label: c.name,
   }));
 
+  const dateValue = form.watch("date");
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent data-testid="dialog-plan-entry">
@@ -148,11 +155,11 @@ export function PlanEntryDialog({
                     >
                       <div className="flex items-center gap-2">
                         <RadioGroupItem value="income" id="type-income" data-testid="radio-type-income" />
-                        <label htmlFor="type-income">Приход (от поставщика)</label>
+                        <label htmlFor="type-income" className="cursor-pointer">Приход (от поставщика)</label>
                       </div>
                       <div className="flex items-center gap-2">
                         <RadioGroupItem value="expense" id="type-expense" data-testid="radio-type-expense" />
-                        <label htmlFor="type-expense">Расход (клиенту)</label>
+                        <label htmlFor="type-expense" className="cursor-pointer">Расход (клиенту)</label>
                       </div>
                     </RadioGroup>
                   </FormControl>
@@ -167,9 +174,36 @@ export function PlanEntryDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Дата</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} data-testid="input-plan-entry-date" />
-                  </FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !dateValue && "text-muted-foreground",
+                          )}
+                          data-testid="button-plan-entry-date"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateValue
+                            ? format(new Date(dateValue + "T00:00:00"), "dd MMMM yyyy", { locale: ru })
+                            : "Выберите дату"}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dateValue ? new Date(dateValue + "T00:00:00") : undefined}
+                        onSelect={(date) => {
+                          if (date) field.onChange(format(date, "yyyy-MM-dd"));
+                        }}
+                        locale={ru}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
@@ -200,7 +234,7 @@ export function PlanEntryDialog({
               name="volume"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Объём</FormLabel>
+                  <FormLabel>Объём (кг)</FormLabel>
                   <FormControl>
                     <Input type="number" step="0.01" {...field} data-testid="input-plan-entry-volume" />
                   </FormControl>

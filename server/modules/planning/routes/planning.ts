@@ -2,6 +2,8 @@ import type { Express } from "express";
 import { z } from "zod";
 import { storage } from "../../../storage/index";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
+import { auditLog } from "../../audit/middleware/audit-middleware";
+import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import {
   insertPlanEntrySchema,
   insertFreeVolumeAllocationSchema,
@@ -33,6 +35,11 @@ export function registerPlanningRoutes(app: Express) {
     "/api/planning/entries",
     requireAuth,
     requirePermission("planning", "create"),
+    auditLog({
+      entityType: ENTITY_TYPES.PLAN_ENTRY,
+      operation: AUDIT_OPERATIONS.CREATE,
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const data = insertPlanEntrySchema.parse({
@@ -55,6 +62,13 @@ export function registerPlanningRoutes(app: Express) {
     "/api/planning/entries/:id",
     requireAuth,
     requirePermission("planning", "edit"),
+    auditLog({
+      entityType: ENTITY_TYPES.PLAN_ENTRY,
+      operation: AUDIT_OPERATIONS.UPDATE,
+      getEntityId: (req) => req.params.id,
+      getOldData: async (req) => storage.planning.getPlanEntry(req.params.id),
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const updated = await storage.planning.updatePlanEntry(
@@ -77,6 +91,12 @@ export function registerPlanningRoutes(app: Express) {
     "/api/planning/entries/:id",
     requireAuth,
     requirePermission("planning", "delete"),
+    auditLog({
+      entityType: ENTITY_TYPES.PLAN_ENTRY,
+      operation: AUDIT_OPERATIONS.DELETE,
+      getEntityId: (req) => req.params.id,
+      getOldData: async (req) => storage.planning.getPlanEntry(req.params.id),
+    }),
     async (req, res) => {
       try {
         await storage.planning.deletePlanEntry(req.params.id, String(req.session.userId));
@@ -116,6 +136,11 @@ export function registerPlanningRoutes(app: Express) {
     "/api/planning/allocations",
     requireAuth,
     requirePermission("planning", "create"),
+    auditLog({
+      entityType: ENTITY_TYPES.FREE_VOLUME_ALLOCATION,
+      operation: AUDIT_OPERATIONS.CREATE,
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const data = insertFreeVolumeAllocationSchema.parse({
@@ -138,6 +163,16 @@ export function registerPlanningRoutes(app: Express) {
     "/api/planning/allocations/:id",
     requireAuth,
     requirePermission("planning", "edit"),
+    auditLog({
+      entityType: ENTITY_TYPES.FREE_VOLUME_ALLOCATION,
+      operation: AUDIT_OPERATIONS.UPDATE,
+      getEntityId: (req) => req.params.id,
+      getOldData: async (req) => {
+        const rows = await storage.planning.getFreeVolumeAllocations("", "", "");
+        return rows.find((r: any) => r.id === req.params.id);
+      },
+      getNewData: (req) => req.body,
+    }),
     async (req, res) => {
       try {
         const updated = await storage.planning.updateFreeVolumeAllocation(
@@ -158,6 +193,11 @@ export function registerPlanningRoutes(app: Express) {
     "/api/planning/allocations/:id",
     requireAuth,
     requirePermission("planning", "delete"),
+    auditLog({
+      entityType: ENTITY_TYPES.FREE_VOLUME_ALLOCATION,
+      operation: AUDIT_OPERATIONS.DELETE,
+      getEntityId: (req) => req.params.id,
+    }),
     async (req, res) => {
       try {
         await storage.planning.deleteFreeVolumeAllocation(req.params.id, String(req.session.userId));
