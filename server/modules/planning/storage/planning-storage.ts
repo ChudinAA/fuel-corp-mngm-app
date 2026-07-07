@@ -183,52 +183,50 @@ export class PlanningStorage implements IPlanningStorage {
     dateFrom: string,
     dateTo: string,
   ): Promise<FreeVolumeAllocationWithNames[]> {
-    const conditions = [isNull(freeVolumeAllocations.deletedAt)];
-    if (warehouseId) conditions.push(eq(freeVolumeAllocations.warehouseId, warehouseId));
-    if (dateFrom) conditions.push(gte(freeVolumeAllocations.date, dateFrom));
-    if (dateTo) conditions.push(lte(freeVolumeAllocations.date, dateTo));
-
     const rows = await db
       .select()
       .from(freeVolumeAllocations)
-      .where(and(...conditions))
+      .where(
+        and(
+          eq(freeVolumeAllocations.warehouseId, warehouseId),
+          isNull(freeVolumeAllocations.deletedAt),
+          gte(freeVolumeAllocations.date, dateFrom),
+          lte(freeVolumeAllocations.date, dateTo),
+        ),
+      )
       .orderBy(asc(freeVolumeAllocations.date));
 
     if (rows.length === 0) return [];
 
-    const fromIds = [
-      ...new Set(rows.map((r) => r.fromCounterpartyId).filter(Boolean)),
+    // Collect all unique IDs referenced by either field
+    const allIds = [
+      ...new Set([
+        ...rows.map((r) => r.fromCounterpartyId),
+        ...rows.map((r) => r.toCounterpartyId),
+      ].filter(Boolean)),
     ] as string[];
-    const toIds = [
-      ...new Set(rows.map((r) => r.toCounterpartyId).filter(Boolean)),
-    ] as string[];
 
-    const supplierRows =
-      fromIds.length > 0
-        ? await db
-            .select({ id: suppliers.id, name: suppliers.name })
-            .from(suppliers)
-            .where(inArray(suppliers.id, fromIds))
-        : [];
+    // Look up names from both suppliers and customers tables
+    const [supplierRows, customerRows] = await Promise.all([
+      allIds.length > 0
+        ? db.select({ id: suppliers.id, name: suppliers.name }).from(suppliers).where(inArray(suppliers.id, allIds))
+        : Promise.resolve([]),
+      allIds.length > 0
+        ? db.select({ id: customers.id, name: customers.name }).from(customers).where(inArray(customers.id, allIds))
+        : Promise.resolve([]),
+    ]);
 
-    const customerRows =
-      toIds.length > 0
-        ? await db
-            .select({ id: customers.id, name: customers.name })
-            .from(customers)
-            .where(inArray(customers.id, toIds))
-        : [];
-
+    // Build a unified name map: supplier names take priority for "from", customer names for "to"
     const supplierMap = new Map(supplierRows.map((s) => [s.id, s.name]));
     const customerMap = new Map(customerRows.map((c) => [c.id, c.name]));
 
     return rows.map((r) => ({
       ...r,
       fromName: r.fromCounterpartyId
-        ? (supplierMap.get(r.fromCounterpartyId) ?? null)
+        ? (supplierMap.get(r.fromCounterpartyId) ?? customerMap.get(r.fromCounterpartyId) ?? null)
         : null,
       toName: r.toCounterpartyId
-        ? (customerMap.get(r.toCounterpartyId) ?? null)
+        ? (customerMap.get(r.toCounterpartyId) ?? supplierMap.get(r.toCounterpartyId) ?? null)
         : null,
     }));
   }
@@ -419,9 +417,10 @@ export class PlanningStorage implements IPlanningStorage {
 
     for (const a of allocations) {
       if (a.fromCounterpartyId) {
-        if (!demandBySupplier.has(a.fromCounterpartyId)) {
-          demandBySupplier.set(a.fromCounterpartyId, 0);
-        }
+        demandBySupplier.set(
+          a.fromCounterpartyId,
+          (demandBySupplier.get(a.fromCounterpartyId) || 0) + parseFloat(a.volume),
+        );
       }
     }
 
