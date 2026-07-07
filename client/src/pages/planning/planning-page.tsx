@@ -6,15 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { AuditPanel } from "@/components/audit-panel";
 import { VolumesTab } from "./components/volumes-tab";
 import { WarehousesPlanFactTab } from "./components/warehouses-plan-fact-tab";
 
@@ -47,85 +39,6 @@ function getQuickMonths() {
 
 function toInputDate(d: Date) {
   return format(d, "yyyy-MM-dd");
-}
-
-interface AuditEntry {
-  id: string;
-  entityType: string;
-  operation: string;
-  userName: string;
-  createdAt: string;
-  changedFields: string[] | null;
-}
-
-function AuditPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { data: auditData, isLoading } = useQuery<AuditEntry[]>({
-    queryKey: ["/api/audit", "planning"],
-    queryFn: async () => {
-      const r = await apiRequest(
-        "GET",
-        "/api/audit?entityType=plan_entries&limit=50",
-      );
-      return r.json();
-    },
-    enabled: open,
-    select: (d: any) => d?.data ?? d ?? [],
-  });
-
-  const operationLabel: Record<string, string> = {
-    CREATE: "Создание",
-    UPDATE: "Изменение",
-    DELETE: "Удаление",
-    RESTORE: "Восстановление",
-  };
-
-  const entityLabel: Record<string, string> = {
-    plan_entries: "Запись плана",
-    free_volume_allocations: "Распределение объёма",
-  };
-
-  return (
-    <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent className="w-[480px] sm:w-[540px] overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>История изменений (Планирование)</SheetTitle>
-        </SheetHeader>
-        <div className="mt-4 space-y-2">
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">Загрузка...</p>
-          ) : !auditData || auditData.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Нет данных об изменениях</p>
-          ) : (
-            auditData.map((entry) => (
-              <div
-                key={entry.id}
-                className="border rounded-md p-3 space-y-1"
-                data-testid={`audit-entry-${entry.id}`}
-              >
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="text-sm font-medium">
-                    {entityLabel[entry.entityType] ?? entry.entityType}
-                  </span>
-                  <Badge variant="outline" className="text-xs">
-                    {operationLabel[entry.operation] ?? entry.operation}
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {entry.userName} &middot;{" "}
-                  {format(new Date(entry.createdAt), "dd.MM.yyyy HH:mm")}
-                </p>
-                {entry.changedFields && entry.changedFields.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Поля: {entry.changedFields.join(", ")}
-                  </p>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
 }
 
 export default function PlanningPage() {
@@ -230,7 +143,12 @@ export default function PlanningPage() {
         </TabsContent>
       </Tabs>
 
-      <AuditPanel open={auditOpen} onClose={() => setAuditOpen(false)} />
+      <AuditPanel
+        open={auditOpen}
+        onOpenChange={setAuditOpen}
+        entityType="plan_entries"
+        entityName="Планирование"
+      />
     </div>
   );
 }

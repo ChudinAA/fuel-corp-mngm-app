@@ -47,7 +47,7 @@ interface AuditPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   entityType: string;
-  entityId: string;
+  entityId?: string;
   entityName?: string;
 }
 
