@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import { storage } from "../../../storage/index";
+import { db } from "server/db";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
@@ -10,6 +12,8 @@ import {
   insertSupplierAllocatedVolumeSchema,
   insertPlanningResourceSchema,
   insertPlanningCommentSchema,
+  supplierBases,
+  bases,
 } from "@shared/schema";
 
 export function registerPlanningRoutes(app: Express) {
@@ -304,11 +308,8 @@ export function registerPlanningRoutes(app: Express) {
     async (req, res) => {
       try {
         const { supplierId } = req.params;
-        const { supplierBases, bases } = await import("@shared/schema");
-        const { db } = await import("server/db");
-        const { eq } = await import("drizzle-orm");
         const rows = await db
-          .select({ id: bases.id, name: bases.name, code: bases.code })
+          .select({ id: bases.id, name: bases.name, iataCode: (bases as any).iataCode })
           .from(supplierBases)
           .innerJoin(bases, eq(supplierBases.baseId, bases.id))
           .where(eq(supplierBases.supplierId, supplierId));

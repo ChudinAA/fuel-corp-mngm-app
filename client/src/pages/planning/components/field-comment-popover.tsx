@@ -44,7 +44,7 @@ export function FieldCommentPopover({ entityType, entityId, fieldKey }: FieldCom
       );
       return res.json();
     },
-    enabled: open,
+    staleTime: 60_000,
   });
 
   const mutation = useMutation({

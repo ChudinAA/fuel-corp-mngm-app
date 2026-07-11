@@ -16,8 +16,8 @@ import { apiRequest } from "@/lib/queryClient";
 interface ResourceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (values: { supplierId: string; basisId?: string; notes?: string }) => Promise<void>;
-  existing?: { supplierId: string; basisId?: string | null; notes?: string | null } | null;
+  onSubmit: (values: { supplierId: string; notes?: string }) => Promise<void>;
+  existing?: { supplierId: string; notes?: string | null } | null;
 }
 
 export function ResourceDialog({
@@ -27,7 +27,6 @@ export function ResourceDialog({
   existing,
 }: ResourceDialogProps) {
   const [supplierId, setSupplierId] = useState("");
-  const [basisId, setBasisId] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -36,37 +35,18 @@ export function ResourceDialog({
     queryFn: async () => (await apiRequest("GET", "/api/suppliers")).json(),
   });
 
-  const { data: supplierBases = [] } = useQuery<{ id: string; name: string; code?: string }[]>({
-    queryKey: ["/api/planning/supplier-bases", supplierId],
-    queryFn: async () =>
-      (await apiRequest("GET", `/api/planning/supplier-bases/${supplierId}`)).json(),
-    enabled: !!supplierId,
-  });
-
   useEffect(() => {
     if (open) {
       setSupplierId(existing?.supplierId || "");
-      setBasisId(existing?.basisId || "");
       setNotes(existing?.notes || "");
     }
   }, [open, existing]);
-
-  // Reset basisId when supplier changes (unless editing existing)
-  useEffect(() => {
-    if (!existing?.supplierId || supplierId !== existing.supplierId) {
-      setBasisId("");
-    }
-  }, [supplierId]);
 
   const handleSubmit = async () => {
     if (!supplierId) return;
     setSaving(true);
     try {
-      await onSubmit({
-        supplierId,
-        basisId: basisId || undefined,
-        notes: notes || undefined,
-      });
+      await onSubmit({ supplierId, notes: notes || undefined });
       onOpenChange(false);
     } finally {
       setSaving(false);
@@ -74,10 +54,6 @@ export function ResourceDialog({
   };
 
   const supplierOptions = suppliers.map((s) => ({ value: s.id, label: s.name }));
-  const basisOptions = supplierBases.map((b) => ({
-    value: b.id,
-    label: b.code ? `${b.name} (${b.code})` : b.name,
-  }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -96,22 +72,6 @@ export function ResourceDialog({
               dataTestId="select-resource-supplier"
             />
           </div>
-          {supplierId && (
-            <div className="space-y-1.5">
-              <Label>Базис (необязательно)</Label>
-              <Combobox
-                options={[{ value: "", label: "— Все базисы —" }, ...basisOptions]}
-                value={basisId}
-                onValueChange={setBasisId}
-                placeholder={
-                  basisOptions.length === 0
-                    ? "Нет баз для этого поставщика"
-                    : "Выберите базис"
-                }
-                dataTestId="select-resource-basis"
-              />
-            </div>
-          )}
           <div className="space-y-1.5">
             <Label>Примечание</Label>
             <Textarea

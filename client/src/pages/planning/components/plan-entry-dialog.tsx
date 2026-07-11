@@ -32,14 +32,19 @@ import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { tonsToKg, kgToTons } from "../utils/planning-utils";
 
-const formSchema = z.object({
-  date: z.string().min(1, "Дата обязательна"),
-  type: z.enum(["income", "expense"]),
-  counterpartyId: z.string().min(1, "Контрагент обязателен"),
-  basisId: z.string().optional(),
-  volume: z.string().min(1, "Объём обязателен"),
-  notes: z.string().optional(),
-});
+const formSchema = z
+  .object({
+    date: z.string().min(1, "Дата обязательна"),
+    type: z.enum(["income", "expense"]),
+    counterpartyId: z.string().min(1, "Контрагент обязателен"),
+    basisId: z.string().optional(),
+    volume: z.string().min(1, "Объём обязателен"),
+    notes: z.string().optional(),
+  })
+  .refine((data) => data.type !== "income" || !!data.basisId, {
+    message: "Базис обязателен для записи прихода",
+    path: ["basisId"],
+  });
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -117,7 +122,7 @@ export function PlanEntryDialog({
   const selectedResource = planningResources.find((r) => r.supplierId === counterpartyId);
   const supplierIdForBases = selectedResource?.supplierId || "";
 
-  const { data: supplierBases = [] } = useQuery<{ id: string; name: string; code?: string }[]>({
+  const { data: supplierBases = [] } = useQuery<{ id: string; name: string; iataCode?: string }[]>({
     queryKey: ["/api/planning/supplier-bases", supplierIdForBases],
     queryFn: async () =>
       (await apiRequest("GET", `/api/planning/supplier-bases/${supplierIdForBases}`)).json(),
@@ -173,11 +178,11 @@ export function PlanEntryDialog({
   // Basis options depend on type
   const incomeBasisOptions = supplierBases.map((b) => ({
     value: b.id,
-    label: b.code ? `${b.name} (${b.code})` : b.name,
+    label: b.iataCode ? `${b.name} (${b.iataCode})` : b.name,
   }));
   const expenseBasisOptions = allBases.map((b) => ({
     value: b.id,
-    label: b.code ? `${b.name} (${b.code})` : b.name,
+    label: (b as any).iataCode ? `${b.name} (${(b as any).iataCode})` : b.name,
   }));
   const basisOptions =
     type === "income" ? incomeBasisOptions : expenseBasisOptions;
@@ -295,7 +300,35 @@ export function PlanEntryDialog({
               )}
             />
 
-            {(basisOptions.length > 0 || type === "expense") && (
+            {type === "income" ? (
+              <FormField
+                control={form.control}
+                name="basisId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Базис <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Combobox
+                        options={incomeBasisOptions}
+                        value={field.value || ""}
+                        onValueChange={field.onChange}
+                        placeholder={
+                          !counterpartyId
+                            ? "Сначала выберите поставщика"
+                            : incomeBasisOptions.length === 0
+                              ? "Нет баз для этого поставщика"
+                              : "Выберите базис"
+                        }
+                        dataTestId="select-plan-entry-basis"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : expenseBasisOptions.length > 0 ? (
               <FormField
                 control={form.control}
                 name="basisId"
@@ -304,7 +337,7 @@ export function PlanEntryDialog({
                     <FormLabel>Базис (необязательно)</FormLabel>
                     <FormControl>
                       <Combobox
-                        options={[{ value: "", label: "— Не указан —" }, ...basisOptions]}
+                        options={[{ value: "", label: "— Не указан —" }, ...expenseBasisOptions]}
                         value={field.value || ""}
                         onValueChange={field.onChange}
                         placeholder="Выберите базис"
@@ -315,7 +348,7 @@ export function PlanEntryDialog({
                   </FormItem>
                 )}
               />
-            )}
+            ) : null}
 
             <FormField
               control={form.control}

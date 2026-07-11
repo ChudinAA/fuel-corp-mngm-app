@@ -136,227 +136,188 @@ function DateDetailPanel({
   const hasAnyPlan = row.incomeEntries.length > 0 || row.expenseEntries.length > 0;
   const hasAnyFact = incomeDetails.length > 0 || expenseDetails.length > 0;
 
+  function PlanEntry({ e }: { e: PlanEntryRow }) {
+    return (
+      <div key={e.id} className="flex items-start gap-1.5 text-sm py-0.5">
+        <div className="flex-1 min-w-0">
+          <span className={e.type === "income" ? "text-emerald-700 font-medium" : "text-amber-700 font-medium"}>
+            {e.counterpartyName || "—"}
+          </span>
+          {e.basisName && (
+            <span className="ml-1 text-xs text-muted-foreground font-normal">({e.basisName})</span>
+          )}
+          <span className={cn(
+            "ml-2 font-semibold tabular-nums",
+            e.type === "income" ? "text-emerald-600" : "text-amber-600",
+          )}>
+            {fmtTons(e.volume)}
+          </span>
+        </div>
+        <div className="flex items-center gap-0.5 flex-shrink-0">
+          <FieldCommentPopover entityType="plan_entry" entityId={e.id} fieldKey="volume" />
+          <EntityActionsMenu
+            actions={[
+              {
+                id: "edit",
+                label: "Редактировать",
+                icon: Pencil,
+                onClick: () => onEditEntry(e),
+                permission: { module: "planning", action: "edit" },
+                condition: isEntryEditable(e),
+              },
+              {
+                id: "delete",
+                label: "Удалить",
+                icon: Trash2,
+                variant: "destructive",
+                onClick: () => onDeleteEntry(e.id),
+                permission: { module: "planning", action: "delete" },
+                condition: isEntryEditable(e),
+              },
+              {
+                id: "history",
+                label: "История изменений",
+                icon: History,
+                onClick: () => onAuditEntry(e),
+              },
+            ]}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <TableRow className="bg-muted/20 hover:bg-muted/30">
       <TableCell colSpan={9} className="p-0">
-        <div className="mx-4 my-2 border rounded-md overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x">
-            {/* ── ПЛАН ── */}
-            <div className="p-3 space-y-2">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Badge variant="outline" className="text-xs font-medium text-blue-600 border-blue-200">
-                  ПЛАН
-                </Badge>
-              </div>
+        <div className="mx-4 my-2 border rounded-md overflow-hidden divide-y">
 
-              {!hasAnyPlan && (
-                <p className="text-xs text-muted-foreground italic">Нет плановых записей на эту дату</p>
-              )}
-
-              {row.incomeEntries.length > 0 && (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
-                    <ArrowDownToLine className="h-3 w-3 text-emerald-500" />
-                    Плановые поступления
-                  </div>
-                  {row.incomeEntries.map((e) => (
-                    <div key={e.id} className="flex items-center gap-2 pl-4 text-sm group">
-                      <span className="text-emerald-700 font-medium flex-1 truncate">
-                        {e.counterpartyName || "—"}
-                        {e.basisName && (
-                          <span className="ml-1 text-xs text-muted-foreground font-normal">
-                            ({e.basisName})
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-emerald-600 font-semibold tabular-nums whitespace-nowrap">
-                        {fmtTons(e.volume)}
-                      </span>
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
-                        <FieldCommentPopover
-                          entityType="plan_entry"
-                          entityId={e.id}
-                          fieldKey="volume"
-                        />
-                        <EntityActionsMenu
-                          actions={[
-                            {
-                              id: "edit",
-                              label: "Редактировать",
-                              icon: Pencil,
-                              onClick: () => onEditEntry(e),
-                              permission: { module: "planning", action: "edit" },
-                              condition: isEntryEditable(e),
-                            },
-                            {
-                              id: "delete",
-                              label: "Удалить",
-                              icon: Trash2,
-                              variant: "destructive",
-                              onClick: () => onDeleteEntry(e.id),
-                              permission: { module: "planning", action: "delete" },
-                              condition: isEntryEditable(e),
-                            },
-                            {
-                              id: "history",
-                              label: "История изменений",
-                              icon: History,
-                              onClick: () => onAuditEntry(e),
-                            },
-                          ]}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {row.expenseEntries.length > 0 && (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
-                    <ArrowUpFromLine className="h-3 w-3 text-amber-500" />
-                    Плановые расходы
-                  </div>
-                  {row.expenseEntries.map((e) => (
-                    <div key={e.id} className="flex items-center gap-2 pl-4 text-sm group">
-                      <span className="text-amber-700 font-medium flex-1 truncate">
-                        {e.counterpartyName || "—"}
-                        {e.basisName && (
-                          <span className="ml-1 text-xs text-muted-foreground font-normal">
-                            ({e.basisName})
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-amber-600 font-semibold tabular-nums whitespace-nowrap">
-                        {fmtTons(e.volume)}
-                      </span>
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
-                        <FieldCommentPopover
-                          entityType="plan_entry"
-                          entityId={e.id}
-                          fieldKey="volume"
-                        />
-                        <EntityActionsMenu
-                          actions={[
-                            {
-                              id: "edit",
-                              label: "Редактировать",
-                              icon: Pencil,
-                              onClick: () => onEditEntry(e),
-                              permission: { module: "planning", action: "edit" },
-                              condition: isEntryEditable(e),
-                            },
-                            {
-                              id: "delete",
-                              label: "Удалить",
-                              icon: Trash2,
-                              variant: "destructive",
-                              onClick: () => onDeleteEntry(e.id),
-                              permission: { module: "planning", action: "delete" },
-                              condition: isEntryEditable(e),
-                            },
-                            {
-                              id: "history",
-                              label: "История изменений",
-                              icon: History,
-                              onClick: () => onAuditEntry(e),
-                            },
-                          ]}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Plan balance */}
+          {/* ── ПЛАН ── */}
+          <div className="p-2">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Badge variant="outline" className="text-xs font-medium text-blue-600 border-blue-200">
+                ПЛАН
+              </Badge>
               {planBalanceKg !== null && (
-                <div className="mt-2 pt-2 border-t flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground text-xs">Остаток (план):</span>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  Остаток:{" "}
                   <span className={cn(
-                    "font-semibold tabular-nums",
+                    "font-semibold",
                     parseFloat(planBalanceKg) < 0 ? "text-destructive" : "text-foreground",
                   )}>
                     {fmtTons(planBalanceKg)}
                   </span>
-                </div>
+                </span>
               )}
             </div>
 
-            {/* ── ФАКТ ── */}
-            <div className="p-3 space-y-2">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Badge variant="outline" className="text-xs font-medium text-slate-600 border-slate-200">
-                  ФАКТ
-                </Badge>
+            {!hasAnyPlan && (
+              <p className="text-xs text-muted-foreground italic">Нет плановых записей на эту дату</p>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 md:divide-x">
+              {/* Left: Поступления */}
+              <div className="space-y-0.5">
+                {row.incomeEntries.length > 0 ? (
+                  <>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
+                      <ArrowDownToLine className="h-3 w-3 text-emerald-500" />
+                      Плановые поступления
+                    </div>
+                    {row.incomeEntries.map((e) => <PlanEntry key={e.id} e={e} />)}
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground/60 italic md:block hidden">—</p>
+                )}
               </div>
-
-              {!hasAnyFact && (
-                <p className="text-xs text-muted-foreground italic">Нет фактических операций на эту дату</p>
-              )}
-
-              {incomeDetails.length > 0 && (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
-                    <ArrowDownToLine className="h-3 w-3 text-emerald-400" />
-                    Фактические поступления
-                  </div>
-                  {incomeDetails.map((d, i) => (
-                    <div key={i} className="flex items-center gap-2 pl-4 text-sm">
-                      <span className="text-emerald-600 flex-1 truncate">
-                        {d.label}
-                        {d.counterpartyName && (
-                          <span className="ml-1 text-xs text-muted-foreground">
-                            — {d.counterpartyName}
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-emerald-500 font-semibold tabular-nums whitespace-nowrap">
-                        {fmtTons(d.quantity)}
-                      </span>
+              {/* Right: Расходы */}
+              <div className="space-y-0.5 md:pl-4">
+                {row.expenseEntries.length > 0 ? (
+                  <>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
+                      <ArrowUpFromLine className="h-3 w-3 text-amber-500" />
+                      Плановые расходы
                     </div>
-                  ))}
-                </div>
-              )}
+                    {row.expenseEntries.map((e) => <PlanEntry key={e.id} e={e} />)}
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground/60 italic md:block hidden">—</p>
+                )}
+              </div>
+            </div>
+          </div>
 
-              {expenseDetails.length > 0 && (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
-                    <ArrowUpFromLine className="h-3 w-3 text-amber-400" />
-                    Фактические расходы
-                  </div>
-                  {expenseDetails.map((d, i) => (
-                    <div key={i} className="flex items-center gap-2 pl-4 text-sm">
-                      <span className="text-amber-600 flex-1 truncate">
-                        {d.label}
-                        {d.counterpartyName && (
-                          <span className="ml-1 text-xs text-muted-foreground">
-                            — {d.counterpartyName}
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-amber-500 font-semibold tabular-nums whitespace-nowrap">
-                        {fmtTons(d.quantity)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Fact balance */}
+          {/* ── ФАКТ ── */}
+          <div className="p-2">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Badge variant="outline" className="text-xs font-medium text-slate-600 border-slate-200">
+                ФАКТ
+              </Badge>
               {factBalanceKg !== null && (
-                <div className="mt-2 pt-2 border-t flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground text-xs">Остаток (факт):</span>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  Остаток:{" "}
                   <span className={cn(
-                    "font-semibold tabular-nums",
+                    "font-semibold",
                     parseFloat(factBalanceKg) < 0 ? "text-destructive" : "text-foreground",
                   )}>
                     {fmtTons(factBalanceKg)}
                   </span>
-                </div>
+                </span>
               )}
             </div>
+
+            {!hasAnyFact && (
+              <p className="text-xs text-muted-foreground italic">Нет фактических операций на эту дату</p>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 md:divide-x">
+              {/* Left: Поступления */}
+              <div className="space-y-0.5">
+                {incomeDetails.length > 0 ? (
+                  <>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
+                      <ArrowDownToLine className="h-3 w-3 text-emerald-400" />
+                      Фактические поступления
+                    </div>
+                    {incomeDetails.map((d, i) => (
+                      <div key={i} className="text-sm py-0.5">
+                        <span className="text-emerald-600">{d.label}</span>
+                        {d.counterpartyName && (
+                          <span className="ml-1 text-xs text-muted-foreground">— {d.counterpartyName}</span>
+                        )}
+                        <span className="ml-2 text-emerald-500 font-semibold tabular-nums">{fmtTons(d.quantity)}</span>
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground/60 italic md:block hidden">—</p>
+                )}
+              </div>
+              {/* Right: Расходы */}
+              <div className="space-y-0.5 md:pl-4">
+                {expenseDetails.length > 0 ? (
+                  <>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
+                      <ArrowUpFromLine className="h-3 w-3 text-amber-400" />
+                      Фактические расходы
+                    </div>
+                    {expenseDetails.map((d, i) => (
+                      <div key={i} className="text-sm py-0.5">
+                        <span className="text-amber-600">{d.label}</span>
+                        {d.counterpartyName && (
+                          <span className="ml-1 text-xs text-muted-foreground">— {d.counterpartyName}</span>
+                        )}
+                        <span className="ml-2 text-amber-500 font-semibold tabular-nums">{fmtTons(d.quantity)}</span>
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground/60 italic md:block hidden">—</p>
+                )}
+              </div>
+            </div>
           </div>
+
         </div>
       </TableCell>
     </TableRow>
@@ -637,9 +598,9 @@ export function WarehousePlanPanel({
                     Расход план (т)
                   </div>
                 </TableHead>
+                <TableHead>Остаток план (т)</TableHead>
                 <TableHead>Факт прих (т)</TableHead>
                 <TableHead>Факт расх (т)</TableHead>
-                <TableHead>Остаток план (т)</TableHead>
                 <TableHead>Остаток факт (т)</TableHead>
                 <TableHead>Контрагенты</TableHead>
               </TableRow>
@@ -666,6 +627,15 @@ export function WarehousePlanPanel({
                       <span className="text-amber-600">{fmtTons(totalExpenseKg)}</span>
                     </TableCell>
                     <TableCell className="py-2">
+                      {lastPlanBalance ? (
+                        <span className={parseFloat(lastPlanBalance) < 0 ? "text-destructive" : ""}>
+                          {fmtTons(lastPlanBalance)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-2">
                       {totalActualIncomeKg > 0 ? (
                         <span className="text-emerald-500">{fmtTons(totalActualIncomeKg)}</span>
                       ) : (
@@ -675,15 +645,6 @@ export function WarehousePlanPanel({
                     <TableCell className="py-2">
                       {totalActualExpenseKg > 0 ? (
                         <span className="text-amber-500">{fmtTons(totalActualExpenseKg)}</span>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="py-2">
-                      {lastPlanBalance ? (
-                        <span className={parseFloat(lastPlanBalance) < 0 ? "text-destructive" : ""}>
-                          {fmtTons(lastPlanBalance)}
-                        </span>
                       ) : (
                         <span className="text-muted-foreground text-xs">—</span>
                       )}
@@ -767,6 +728,15 @@ export function WarehousePlanPanel({
                           )}
                         </TableCell>
                         <TableCell className="py-2">
+                          {row.lastBalanceAfter ? (
+                            <span className={cn("text-sm", parseFloat(row.lastBalanceAfter) < 0 && "text-destructive")}>
+                              {fmtTons(row.lastBalanceAfter)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-2">
                           {factIncomeKg > 0 ? (
                             <span className="text-emerald-500">{fmtTons(factIncomeKg)}</span>
                           ) : (
@@ -776,15 +746,6 @@ export function WarehousePlanPanel({
                         <TableCell className="py-2">
                           {factExpenseKg > 0 ? (
                             <span className="text-amber-500">{fmtTons(factExpenseKg)}</span>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="py-2">
-                          {row.lastBalanceAfter ? (
-                            <span className={cn("text-sm", parseFloat(row.lastBalanceAfter) < 0 && "text-destructive")}>
-                              {fmtTons(row.lastBalanceAfter)}
-                            </span>
                           ) : (
                             <span className="text-muted-foreground text-xs">—</span>
                           )}
