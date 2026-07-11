@@ -24,21 +24,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Combobox } from "@/components/ui/combobox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
+import { tonsToKg, kgToTons } from "../utils/planning-utils";
 
 const formSchema = z.object({
   date: z.string().min(1, "Дата обязательна"),
   type: z.enum(["income", "expense"]),
   counterpartyId: z.string().min(1, "Контрагент обязателен"),
   volume: z.string().min(1, "Объём обязателен"),
-  isManualBalance: z.boolean().default(false),
-  balanceAfter: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -55,39 +53,45 @@ export interface PlanEntryFormEntry {
   notes: string | null;
 }
 
+interface PlanningResourceWithSupplier {
+  id: string;
+  supplierId: string;
+  supplierName: string;
+}
+
 export function PlanEntryDialog({
   open,
   onOpenChange,
   warehouseId,
   entry,
   onSubmit,
+  defaultDate,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   warehouseId: string;
   entry?: PlanEntryFormEntry | null;
-  onSubmit: (values: FormValues) => Promise<void>;
+  onSubmit: (values: any) => Promise<void>;
+  defaultDate?: string;
 }) {
   const [saving, setSaving] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      date: format(new Date(), "yyyy-MM-dd"),
+      date: defaultDate || format(new Date(), "yyyy-MM-dd"),
       type: "income",
       counterpartyId: "",
       volume: "",
-      isManualBalance: false,
-      balanceAfter: "",
       notes: "",
     },
   });
 
   const type = form.watch("type");
 
-  const { data: suppliers = [] } = useQuery<{ id: string; name: string }[]>({
-    queryKey: ["/api/suppliers"],
-    queryFn: async () => (await apiRequest("GET", "/api/suppliers")).json(),
+  const { data: planningResources = [] } = useQuery<PlanningResourceWithSupplier[]>({
+    queryKey: ["/api/planning/resources"],
+    queryFn: async () => (await apiRequest("GET", "/api/planning/resources")).json(),
     enabled: type === "income",
   });
 
@@ -100,31 +104,36 @@ export function PlanEntryDialog({
   useEffect(() => {
     if (open) {
       form.reset({
-        date: entry ? entry.date.slice(0, 10) : format(new Date(), "yyyy-MM-dd"),
+        date: entry ? entry.date.slice(0, 10) : (defaultDate || format(new Date(), "yyyy-MM-dd")),
         type: entry?.type || "income",
         counterpartyId: entry?.counterpartyId || "",
-        volume: entry?.volume || "",
-        isManualBalance: entry?.isManualBalance || false,
-        balanceAfter: entry?.balanceAfter || "",
+        volume: entry ? kgToTons(entry.volume) : "",
         notes: entry?.notes || "",
       });
     }
-  }, [open, entry]);
+  }, [open, entry, defaultDate]);
 
   const handleSubmit = async (values: FormValues) => {
     setSaving(true);
     try {
-      await onSubmit(values);
+      await onSubmit({
+        ...values,
+        volume: tonsToKg(values.volume),
+        isManualBalance: false,
+        balanceAfter: null,
+      });
       onOpenChange(false);
     } finally {
       setSaving(false);
     }
   };
 
-  const counterpartyOptions = (type === "income" ? suppliers : customers).map((c) => ({
-    value: c.id,
-    label: c.name,
+  const incomeOptions = planningResources.map((r) => ({
+    value: r.supplierId,
+    label: r.supplierName,
   }));
+  const expenseOptions = customers.map((c) => ({ value: c.id, label: c.name }));
+  const counterpartyOptions = type === "income" ? incomeOptions : expenseOptions;
 
   const dateValue = form.watch("date");
 
@@ -220,7 +229,13 @@ export function PlanEntryDialog({
                       options={counterpartyOptions}
                       value={field.value}
                       onValueChange={field.onChange}
-                      placeholder="Выберите контрагента"
+                      placeholder={
+                        type === "income"
+                          ? planningResources.length === 0
+                            ? "Нет ресурсов — добавьте на вкладке Объёмы"
+                            : "Выберите поставщика"
+                          : "Выберите клиента"
+                      }
                       dataTestId="select-counterparty"
                     />
                   </FormControl>
@@ -234,47 +249,19 @@ export function PlanEntryDialog({
               name="volume"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Объём (кг)</FormLabel>
+                  <FormLabel>Объём (т)</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" {...field} data-testid="input-plan-entry-volume" />
+                    <Input
+                      type="number"
+                      step="0.001"
+                      {...field}
+                      data-testid="input-plan-entry-volume"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
-            <FormField
-              control={form.control}
-              name="isManualBalance"
-              render={({ field }) => (
-                <FormItem className="flex items-center justify-between gap-2">
-                  <FormLabel>Указать остаток вручную</FormLabel>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      data-testid="switch-manual-balance"
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            {form.watch("isManualBalance") && (
-              <FormField
-                control={form.control}
-                name="balanceAfter"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Остаток после операции</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" {...field} data-testid="input-balance-after" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
 
             <FormField
               control={form.control}

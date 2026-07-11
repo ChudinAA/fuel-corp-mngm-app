@@ -23,7 +23,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Combobox } from "@/components/ui/combobox";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { ru } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
+import { tonsToKg, kgToTons } from "../utils/planning-utils";
 
 const formSchema = z.object({
   date: z.string().min(1, "Дата обязательна"),
@@ -46,22 +52,30 @@ export interface AllocationFormEntry {
   toName?: string | null;
 }
 
+interface PlanningResourceWithSupplier {
+  id: string;
+  supplierId: string;
+  supplierName: string;
+}
+
 export function AllocationDialog({
   open,
   onOpenChange,
   entry,
   onSubmit,
+  defaultDate,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   entry?: AllocationFormEntry | null;
-  onSubmit: (values: FormValues) => Promise<void>;
+  onSubmit: (values: any) => Promise<void>;
+  defaultDate?: string;
 }) {
   const [saving, setSaving] = useState(false);
 
-  const { data: suppliers = [] } = useQuery<{ id: string; name: string }[]>({
-    queryKey: ["/api/suppliers"],
-    queryFn: async () => (await apiRequest("GET", "/api/suppliers")).json(),
+  const { data: planningResources = [] } = useQuery<PlanningResourceWithSupplier[]>({
+    queryKey: ["/api/planning/resources"],
+    queryFn: async () => (await apiRequest("GET", "/api/planning/resources")).json(),
   });
 
   const { data: customers = [] } = useQuery<{ id: string; name: string }[]>({
@@ -72,7 +86,7 @@ export function AllocationDialog({
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      date: format(new Date(), "yyyy-MM-dd"),
+      date: defaultDate || format(new Date(), "yyyy-MM-dd"),
       fromCounterpartyId: "",
       toCounterpartyId: "",
       volume: "",
@@ -83,27 +97,34 @@ export function AllocationDialog({
   useEffect(() => {
     if (open) {
       form.reset({
-        date: entry ? entry.date.slice(0, 10) : format(new Date(), "yyyy-MM-dd"),
+        date: entry ? entry.date.slice(0, 10) : (defaultDate || format(new Date(), "yyyy-MM-dd")),
         fromCounterpartyId: entry?.fromCounterpartyId || "",
         toCounterpartyId: entry?.toCounterpartyId || "",
-        volume: entry?.volume || "",
+        volume: entry ? kgToTons(entry.volume) : "",
         notes: entry?.notes || "",
       });
     }
-  }, [open, entry]);
+  }, [open, entry, defaultDate]);
 
   const handleSubmit = async (values: FormValues) => {
     setSaving(true);
     try {
-      await onSubmit(values);
+      await onSubmit({
+        ...values,
+        volume: tonsToKg(values.volume),
+      });
       onOpenChange(false);
     } finally {
       setSaving(false);
     }
   };
 
-  const supplierOptions = suppliers.map((s) => ({ value: s.id, label: s.name }));
+  const supplierOptions = planningResources.map((r) => ({
+    value: r.supplierId,
+    label: r.supplierName,
+  }));
   const customerOptions = customers.map((c) => ({ value: c.id, label: c.name }));
+  const dateValue = form.watch("date");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -121,9 +142,36 @@ export function AllocationDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Дата</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} data-testid="input-allocation-date" />
-                  </FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !dateValue && "text-muted-foreground",
+                          )}
+                          data-testid="button-allocation-date"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateValue
+                            ? format(new Date(dateValue + "T00:00:00"), "dd MMMM yyyy", { locale: ru })
+                            : "Выберите дату"}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dateValue ? new Date(dateValue + "T00:00:00") : undefined}
+                        onSelect={(date) => {
+                          if (date) field.onChange(format(date, "yyyy-MM-dd"));
+                        }}
+                        locale={ru}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
@@ -140,7 +188,11 @@ export function AllocationDialog({
                       options={supplierOptions}
                       value={field.value}
                       onValueChange={field.onChange}
-                      placeholder="Выберите поставщика"
+                      placeholder={
+                        planningResources.length === 0
+                          ? "Нет ресурсов — добавьте на вкладке Объёмы"
+                          : "Выберите поставщика"
+                      }
                       dataTestId="select-from-counterparty"
                     />
                   </FormControl>
@@ -174,9 +226,14 @@ export function AllocationDialog({
               name="volume"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Объём (кг)</FormLabel>
+                  <FormLabel>Объём (т)</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" {...field} data-testid="input-allocation-volume" />
+                    <Input
+                      type="number"
+                      step="0.001"
+                      {...field}
+                      data-testid="input-allocation-volume"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

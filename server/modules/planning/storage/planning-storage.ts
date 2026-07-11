@@ -4,13 +4,14 @@ import {
   planEntries,
   freeVolumeAllocations,
   supplierAllocatedVolumes,
+  planningResources,
+  planningSettings,
+  planningComments,
   warehouses,
   warehouseTransactions,
   suppliers,
   customers,
-  opt,
-  aircraftRefueling,
-  movement,
+  users,
 } from "@shared/schema";
 import { SOURCE_TYPE } from "@shared/constants";
 import type {
@@ -22,6 +23,12 @@ import type {
   InsertFreeVolumeAllocation,
   SupplierAllocatedVolume,
   InsertSupplierAllocatedVolume,
+  PlanningResource,
+  PlanningResourceWithSupplier,
+  InsertPlanningResource,
+  PlanningComment,
+  PlanningCommentWithUser,
+  InsertPlanningComment,
   PlanEntryWithMeta,
   ActualsByDate,
   ActualDetailItem,
@@ -36,7 +43,15 @@ function startOfDay(dateStr: string): Date {
   return d;
 }
 
-function isEntryLocked(date: string): boolean {
+function isMonthInPast(dateStr: string): boolean {
+  const now = new Date();
+  const entry = new Date(dateStr);
+  const nowMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const entryMonthStart = new Date(entry.getFullYear(), entry.getMonth(), 1);
+  return entryMonthStart.getTime() < nowMonthStart.getTime();
+}
+
+function isEntryLockedByDate(date: string): boolean {
   const today = startOfDay(new Date().toISOString());
   const entryDate = startOfDay(date);
   return entryDate.getTime() <= today.getTime();
@@ -123,7 +138,7 @@ export class PlanningStorage implements IPlanningStorage {
 
     return rows.map((r) => ({
       ...r,
-      isLocked: isEntryLocked(r.date),
+      isLocked: isEntryLockedByDate(r.date),
       counterpartyName: r.counterpartyId ? nameMap.get(r.counterpartyId) || null : null,
     }));
   }
@@ -148,9 +163,6 @@ export class PlanningStorage implements IPlanningStorage {
   ): Promise<PlanEntry | undefined> {
     const existing = await this.getPlanEntry(id);
     if (!existing) return undefined;
-    if (isEntryLocked(existing.date)) {
-      throw new Error("Запись заблокирована: дата уже наступила");
-    }
 
     const [updated] = await db
       .update(planEntries)
@@ -165,9 +177,6 @@ export class PlanningStorage implements IPlanningStorage {
   async deletePlanEntry(id: string, userId?: string): Promise<boolean> {
     const existing = await this.getPlanEntry(id);
     if (!existing) return false;
-    if (isEntryLocked(existing.date)) {
-      throw new Error("Запись заблокирована: дата уже наступила");
-    }
 
     await db
       .update(planEntries)
@@ -183,22 +192,23 @@ export class PlanningStorage implements IPlanningStorage {
     dateFrom: string,
     dateTo: string,
   ): Promise<FreeVolumeAllocationWithNames[]> {
-    const rows = await db
-      .select()
-      .from(freeVolumeAllocations)
-      .where(
-        and(
+    const whereClause = warehouseId
+      ? and(
           eq(freeVolumeAllocations.warehouseId, warehouseId),
           isNull(freeVolumeAllocations.deletedAt),
           gte(freeVolumeAllocations.date, dateFrom),
           lte(freeVolumeAllocations.date, dateTo),
-        ),
-      )
+        )
+      : isNull(freeVolumeAllocations.deletedAt);
+
+    const rows = await db
+      .select()
+      .from(freeVolumeAllocations)
+      .where(whereClause)
       .orderBy(asc(freeVolumeAllocations.date));
 
     if (rows.length === 0) return [];
 
-    // Collect all unique IDs referenced by either field
     const allIds = [
       ...new Set([
         ...rows.map((r) => r.fromCounterpartyId),
@@ -206,7 +216,6 @@ export class PlanningStorage implements IPlanningStorage {
       ].filter(Boolean)),
     ] as string[];
 
-    // Look up names from both suppliers and customers tables
     const [supplierRows, customerRows] = await Promise.all([
       allIds.length > 0
         ? db.select({ id: suppliers.id, name: suppliers.name }).from(suppliers).where(inArray(suppliers.id, allIds))
@@ -216,7 +225,6 @@ export class PlanningStorage implements IPlanningStorage {
         : Promise.resolve([]),
     ]);
 
-    // Build a unified name map: supplier names take priority for "from", customer names for "to"
     const supplierMap = new Map(supplierRows.map((s) => [s.id, s.name]));
     const customerMap = new Map(customerRows.map((c) => [c.id, c.name]));
 
@@ -278,6 +286,21 @@ export class PlanningStorage implements IPlanningStorage {
       );
   }
 
+  async getSupplierAllocatedVolumesBySupplier(
+    supplierId: string,
+  ): Promise<SupplierAllocatedVolume[]> {
+    return db
+      .select()
+      .from(supplierAllocatedVolumes)
+      .where(
+        and(
+          isNull(supplierAllocatedVolumes.deletedAt),
+          eq(supplierAllocatedVolumes.supplierId, supplierId),
+        ),
+      )
+      .orderBy(asc(supplierAllocatedVolumes.periodFrom));
+  }
+
   async upsertSupplierAllocatedVolume(
     data: InsertSupplierAllocatedVolume,
   ): Promise<SupplierAllocatedVolume> {
@@ -309,6 +332,120 @@ export class PlanningStorage implements IPlanningStorage {
       .returning();
     return created;
   }
+
+  // ============ PLANNING RESOURCES ============
+
+  async getPlanningResources(): Promise<PlanningResourceWithSupplier[]> {
+    const rows = await db
+      .select()
+      .from(planningResources)
+      .where(isNull(planningResources.deletedAt))
+      .orderBy(asc(planningResources.createdAt));
+
+    if (rows.length === 0) return [];
+
+    const supplierIds = rows.map((r) => r.supplierId);
+    const supplierRows = await db
+      .select({ id: suppliers.id, name: suppliers.name })
+      .from(suppliers)
+      .where(inArray(suppliers.id, supplierIds));
+
+    const nameMap = new Map(supplierRows.map((s) => [s.id, s.name]));
+
+    return rows.map((r) => ({
+      ...r,
+      supplierName: nameMap.get(r.supplierId) || "—",
+    }));
+  }
+
+  async createPlanningResource(data: InsertPlanningResource): Promise<PlanningResource> {
+    const [created] = await db.insert(planningResources).values(data).returning();
+    return created;
+  }
+
+  async updatePlanningResource(
+    id: string,
+    data: Partial<InsertPlanningResource>,
+    userId?: string,
+  ): Promise<PlanningResource | undefined> {
+    const [updated] = await db
+      .update(planningResources)
+      .set({ ...data, updatedAt: sql`NOW()`, updatedById: userId })
+      .where(eq(planningResources.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePlanningResource(id: string, userId?: string): Promise<boolean> {
+    await db
+      .update(planningResources)
+      .set({ deletedAt: sql`NOW()`, deletedById: userId })
+      .where(eq(planningResources.id, id));
+    return true;
+  }
+
+  // ============ PLANNING SETTINGS ============
+
+  async getPlanningSettings(): Promise<Record<string, string>> {
+    const rows = await db.select().from(planningSettings);
+    const result: Record<string, string> = {};
+    for (const row of rows) {
+      result[row.key] = row.value;
+    }
+    return result;
+  }
+
+  async upsertPlanningSetting(key: string, value: string, userId?: string): Promise<void> {
+    await db
+      .insert(planningSettings)
+      .values({ key, value, updatedById: userId })
+      .onConflictDoUpdate({
+        target: planningSettings.key,
+        set: { value, updatedAt: sql`NOW()`, updatedById: userId },
+      });
+  }
+
+  // ============ PLANNING COMMENTS ============
+
+  async getPlanningComments(
+    entityType: string,
+    entityId: string,
+    fieldKey: string,
+  ): Promise<PlanningCommentWithUser[]> {
+    const rows = await db
+      .select()
+      .from(planningComments)
+      .where(
+        and(
+          eq(planningComments.entityType, entityType),
+          eq(planningComments.entityId, entityId),
+          eq(planningComments.fieldKey, fieldKey),
+        ),
+      )
+      .orderBy(asc(planningComments.createdAt));
+
+    if (rows.length === 0) return [];
+
+    const userIds = [...new Set(rows.map((r) => r.userId))];
+    const userRows = await db
+      .select({ id: users.id, username: users.username })
+      .from(users)
+      .where(inArray(users.id, userIds));
+
+    const userMap = new Map(userRows.map((u) => [u.id, u.username]));
+
+    return rows.map((r) => ({
+      ...r,
+      userName: userMap.get(r.userId) || "—",
+    }));
+  }
+
+  async createPlanningComment(data: InsertPlanningComment): Promise<PlanningComment> {
+    const [created] = await db.insert(planningComments).values(data).returning();
+    return created;
+  }
+
+  // ============ ACTUALS ============
 
   async getActuals(
     warehouseId: string,
@@ -374,10 +511,17 @@ export class PlanningStorage implements IPlanningStorage {
     return Array.from(byDate.values());
   }
 
+  // ============ SUMMARIES ============
+
   async getResourcesSummary(
     periodFrom: string,
     periodTo: string,
   ): Promise<ResourceSummaryRow[]> {
+    const resources = await this.getPlanningResources();
+    if (resources.length === 0) return [];
+
+    const resourceSupplierIds = resources.map((r) => r.supplierId);
+
     const incomeEntries = await db
       .select()
       .from(planEntries)
@@ -390,7 +534,7 @@ export class PlanningStorage implements IPlanningStorage {
         ),
       );
 
-    const allocations = await db
+    const allAllocations = await db
       .select()
       .from(freeVolumeAllocations)
       .where(
@@ -401,10 +545,16 @@ export class PlanningStorage implements IPlanningStorage {
         ),
       );
 
-    const allocatedVolumes = await this.getSupplierAllocatedVolumes(
-      periodFrom,
-      periodTo,
-    );
+    // Get all allocated volumes for this period (across all months in range)
+    const allAllocatedVolumes = await db
+      .select()
+      .from(supplierAllocatedVolumes)
+      .where(
+        and(
+          isNull(supplierAllocatedVolumes.deletedAt),
+          inArray(supplierAllocatedVolumes.supplierId, resourceSupplierIds),
+        ),
+      );
 
     const demandBySupplier = new Map<string, number>();
     for (const e of incomeEntries) {
@@ -415,7 +565,7 @@ export class PlanningStorage implements IPlanningStorage {
       );
     }
 
-    for (const a of allocations) {
+    for (const a of allAllocations) {
       if (a.fromCounterpartyId) {
         demandBySupplier.set(
           a.fromCounterpartyId,
@@ -424,30 +574,29 @@ export class PlanningStorage implements IPlanningStorage {
       }
     }
 
-    const supplierIds = new Set<string>([
-      ...Array.from(demandBySupplier.keys()),
-      ...allocatedVolumes.map((v) => v.supplierId),
-    ]);
+    // Calculate total allocated volume per supplier for the period
+    // by summing months that overlap with the period
+    const pFrom = new Date(periodFrom);
+    const pTo = new Date(periodTo);
 
-    if (supplierIds.size === 0) return [];
+    const allocatedBySupplier = new Map<string, number>();
+    for (const av of allAllocatedVolumes) {
+      const avFrom = new Date(av.periodFrom);
+      const avTo = new Date(av.periodTo);
+      // Check overlap
+      if (avFrom <= pTo && avTo >= pFrom) {
+        const cur = allocatedBySupplier.get(av.supplierId) || 0;
+        allocatedBySupplier.set(av.supplierId, cur + parseFloat(av.volume));
+      }
+    }
 
-    const supplierRows = await db
-      .select({ id: suppliers.id, name: suppliers.name })
-      .from(suppliers)
-      .where(inArray(suppliers.id, Array.from(supplierIds)));
-
-    const nameMap = new Map(supplierRows.map((s) => [s.id, s.name]));
-    const allocatedMap = new Map(
-      allocatedVolumes.map((v) => [v.supplierId, v.volume]),
-    );
-
-    return Array.from(supplierIds).map((supplierId) => {
-      const allocatedVolume = allocatedMap.get(supplierId) || "0";
-      const demand = (demandBySupplier.get(supplierId) || 0).toFixed(2);
+    return resources.map((res) => {
+      const allocatedVolume = (allocatedBySupplier.get(res.supplierId) || 0).toFixed(2);
+      const demand = (demandBySupplier.get(res.supplierId) || 0).toFixed(2);
       const balance = (parseFloat(allocatedVolume) - parseFloat(demand)).toFixed(2);
       return {
-        supplierId,
-        supplierName: nameMap.get(supplierId) || "—",
+        supplierId: res.supplierId,
+        supplierName: res.supplierName,
         allocatedVolume,
         demand,
         balance,
@@ -487,7 +636,7 @@ export class PlanningStorage implements IPlanningStorage {
         .filter((e) => e.type === "expense")
         .reduce((sum, e) => sum + parseFloat(e.volume), 0);
       const lastEntry = whEntries[whEntries.length - 1];
-      const balance = lastEntry
+      const balancePlan = lastEntry
         ? lastEntry.balanceAfter || "0"
         : wh.currentBalance || "0";
 
@@ -496,7 +645,8 @@ export class PlanningStorage implements IPlanningStorage {
         warehouseName: wh.name,
         plannedIncome: plannedIncome.toFixed(2),
         plannedExpense: plannedExpense.toFixed(2),
-        balance,
+        balancePlan,
+        balanceFact: wh.currentBalance || "0",
       });
     }
 
