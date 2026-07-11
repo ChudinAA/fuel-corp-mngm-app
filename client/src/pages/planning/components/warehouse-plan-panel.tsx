@@ -13,6 +13,10 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   History,
+  TrendingUp,
+  TrendingDown,
+  ArrowDownToLine,
+  ArrowUpFromLine,
 } from "lucide-react";
 import {
   Table,
@@ -54,7 +58,6 @@ import { fmtTons } from "../utils/planning-utils";
 import { cn } from "@/lib/utils";
 
 interface PlanEntryRow extends PlanEntryFormEntry {
-  balanceAfter: string | null;
   counterpartyName?: string | null;
   isLocked: boolean;
 }
@@ -65,12 +68,15 @@ interface ActualDetailItem {
   label: string;
   quantity: string;
   date: string;
+  isExpense: boolean;
+  balanceAfter: string | null;
 }
 
 interface ActualsByDate {
   date: string;
   incomeActual: string;
   expenseActual: string;
+  factBalanceAfter: string | null;
   details: ActualDetailItem[];
 }
 
@@ -93,12 +99,6 @@ function fmtDate(dateStr: string) {
   return format(new Date(dateStr + "T00:00:00"), "dd.MM.yyyy");
 }
 
-function isCurrentMonth(dateStr: string): boolean {
-  const now = new Date();
-  const d = new Date(dateStr + "T00:00:00");
-  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-}
-
 function isPastMonth(dateStr: string): boolean {
   const now = new Date();
   const d = new Date(dateStr + "T00:00:00");
@@ -107,40 +107,237 @@ function isPastMonth(dateStr: string): boolean {
   return entryMonthStart.getTime() < curMonthStart.getTime();
 }
 
-function CounterpartyList({
-  entries,
-  label,
-  colorClass,
-  maxVisible = 2,
+// ─── Detail panel inside expanded date row ───
+function DateDetailPanel({
+  row,
+  warehouseId,
+  lockEnabled,
+  isEntryEditable,
+  onEditEntry,
+  onDeleteEntry,
+  onAuditEntry,
 }: {
-  entries: PlanEntryRow[];
-  label: string;
-  colorClass: string;
-  maxVisible?: number;
+  row: DateRow;
+  warehouseId: string;
+  lockEnabled: boolean;
+  isEntryEditable: (e: PlanEntryRow) => boolean;
+  onEditEntry: (e: PlanEntryRow) => void;
+  onDeleteEntry: (id: string) => void;
+  onAuditEntry: (e: PlanEntryRow) => void;
 }) {
-  if (entries.length === 0) return null;
-  const visible = entries.slice(0, maxVisible);
-  const rest = entries.length - maxVisible;
-  const names = entries.map((e) => e.counterpartyName || "—").join(", ");
+  const incomeDetails = row.actual?.details.filter((d) => !d.isExpense) ?? [];
+  const expenseDetails = row.actual?.details.filter((d) => d.isExpense) ?? [];
+
+  const planBalanceKg = row.lastBalanceAfter;
+  const factBalanceKg = row.actual?.factBalanceAfter ?? null;
+
+  const hasAnyPlan = row.incomeEntries.length > 0 || row.expenseEntries.length > 0;
+  const hasAnyFact = incomeDetails.length > 0 || expenseDetails.length > 0;
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className={cn("text-xs", colorClass)}>
-            {label}:{" "}
-            {visible.map((e) => e.counterpartyName || "—").join(", ")}
-            {rest > 0 && <span className="text-muted-foreground"> +{rest}</span>}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className="max-w-xs text-sm">{names}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <TableRow className="bg-muted/20 hover:bg-muted/30">
+      <TableCell colSpan={9} className="p-0">
+        <div className="mx-4 my-2 border rounded-md overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x">
+            {/* ── ПЛАН ── */}
+            <div className="p-3 space-y-2">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Badge variant="outline" className="text-xs font-medium text-blue-600 border-blue-200">
+                  ПЛАН
+                </Badge>
+              </div>
+
+              {!hasAnyPlan && (
+                <p className="text-xs text-muted-foreground italic">Нет плановых записей на эту дату</p>
+              )}
+
+              {row.incomeEntries.length > 0 && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                    <ArrowDownToLine className="h-3 w-3 text-emerald-500" />
+                    Плановые поступления
+                  </div>
+                  {row.incomeEntries.map((e) => (
+                    <div key={e.id} className="flex items-center gap-2 pl-4 text-sm group">
+                      <span className="text-emerald-700 font-medium flex-1 truncate">
+                        {e.counterpartyName || "—"}
+                      </span>
+                      <span className="text-emerald-600 font-semibold tabular-nums whitespace-nowrap">
+                        {fmtTons(e.volume)}
+                      </span>
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                        <FieldCommentPopover
+                          entityType="plan_entry"
+                          entityId={e.id}
+                          fieldKey="volume"
+                        />
+                        <EntityActionsMenu
+                          actions={[
+                            {
+                              id: "edit",
+                              label: "Редактировать",
+                              icon: Pencil,
+                              onClick: () => onEditEntry(e),
+                              permission: { module: "planning", action: "edit" },
+                              condition: isEntryEditable(e),
+                            },
+                            {
+                              id: "delete",
+                              label: "Удалить",
+                              icon: Trash2,
+                              variant: "destructive",
+                              onClick: () => onDeleteEntry(e.id),
+                              permission: { module: "planning", action: "delete" },
+                              condition: isEntryEditable(e),
+                            },
+                            {
+                              id: "history",
+                              label: "История изменений",
+                              icon: History,
+                              onClick: () => onAuditEntry(e),
+                            },
+                          ]}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {row.expenseEntries.length > 0 && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                    <ArrowUpFromLine className="h-3 w-3 text-amber-500" />
+                    Плановые расходы
+                  </div>
+                  {row.expenseEntries.map((e) => (
+                    <div key={e.id} className="flex items-center gap-2 pl-4 text-sm group">
+                      <span className="text-amber-700 font-medium flex-1 truncate">
+                        {e.counterpartyName || "—"}
+                      </span>
+                      <span className="text-amber-600 font-semibold tabular-nums whitespace-nowrap">
+                        {fmtTons(e.volume)}
+                      </span>
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                        <FieldCommentPopover
+                          entityType="plan_entry"
+                          entityId={e.id}
+                          fieldKey="volume"
+                        />
+                        <EntityActionsMenu
+                          actions={[
+                            {
+                              id: "edit",
+                              label: "Редактировать",
+                              icon: Pencil,
+                              onClick: () => onEditEntry(e),
+                              permission: { module: "planning", action: "edit" },
+                              condition: isEntryEditable(e),
+                            },
+                            {
+                              id: "delete",
+                              label: "Удалить",
+                              icon: Trash2,
+                              variant: "destructive",
+                              onClick: () => onDeleteEntry(e.id),
+                              permission: { module: "planning", action: "delete" },
+                              condition: isEntryEditable(e),
+                            },
+                            {
+                              id: "history",
+                              label: "История изменений",
+                              icon: History,
+                              onClick: () => onAuditEntry(e),
+                            },
+                          ]}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Plan balance */}
+              {planBalanceKg !== null && (
+                <div className="mt-2 pt-2 border-t flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground text-xs">Остаток (план):</span>
+                  <span className={cn(
+                    "font-semibold tabular-nums",
+                    parseFloat(planBalanceKg) < 0 ? "text-destructive" : "text-foreground",
+                  )}>
+                    {fmtTons(planBalanceKg)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* ── ФАКТ ── */}
+            <div className="p-3 space-y-2">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Badge variant="outline" className="text-xs font-medium text-slate-600 border-slate-200">
+                  ФАКТ
+                </Badge>
+              </div>
+
+              {!hasAnyFact && (
+                <p className="text-xs text-muted-foreground italic">Нет фактических операций на эту дату</p>
+              )}
+
+              {incomeDetails.length > 0 && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                    <ArrowDownToLine className="h-3 w-3 text-emerald-400" />
+                    Фактические поступления
+                  </div>
+                  {incomeDetails.map((d, i) => (
+                    <div key={i} className="flex items-center gap-2 pl-4 text-sm">
+                      <span className="text-emerald-600 flex-1 truncate">{d.label}</span>
+                      <span className="text-emerald-500 font-semibold tabular-nums whitespace-nowrap">
+                        {fmtTons(d.quantity)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {expenseDetails.length > 0 && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                    <ArrowUpFromLine className="h-3 w-3 text-amber-400" />
+                    Фактические расходы
+                  </div>
+                  {expenseDetails.map((d, i) => (
+                    <div key={i} className="flex items-center gap-2 pl-4 text-sm">
+                      <span className="text-amber-600 flex-1 truncate">{d.label}</span>
+                      <span className="text-amber-500 font-semibold tabular-nums whitespace-nowrap">
+                        {fmtTons(d.quantity)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Fact balance */}
+              {factBalanceKg !== null && (
+                <div className="mt-2 pt-2 border-t flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground text-xs">Остаток (факт):</span>
+                  <span className={cn(
+                    "font-semibold tabular-nums",
+                    parseFloat(factBalanceKg) < 0 ? "text-destructive" : "text-foreground",
+                  )}>
+                    {fmtTons(factBalanceKg)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </TableCell>
+    </TableRow>
   );
 }
 
+// ─── Main panel ───
 export function WarehousePlanPanel({
   warehouseId,
   period,
@@ -193,10 +390,7 @@ export function WarehousePlanPanel({
   });
 
   const lockEnabled = settings["editLockEnabled"] === "true";
-
   const canCreate = hasPermission("planning", "create");
-  const canEdit = hasPermission("planning", "edit");
-  const canDelete = hasPermission("planning", "delete");
 
   const actualsByDate = new Map(actuals.map((a) => [a.date, a]));
 
@@ -222,15 +416,15 @@ export function WarehousePlanPanel({
       };
     });
 
-  // Summary totals
-  const totalIncomeKg = entries
-    .filter((e) => e.type === "income")
-    .reduce((s, e) => s + parseFloat(e.volume || "0"), 0);
-  const totalExpenseKg = entries
-    .filter((e) => e.type === "expense")
-    .reduce((s, e) => s + parseFloat(e.volume || "0"), 0);
+  // Totals for summary row
+  const totalIncomeKg = entries.filter((e) => e.type === "income").reduce((s, e) => s + parseFloat(e.volume || "0"), 0);
+  const totalExpenseKg = entries.filter((e) => e.type === "expense").reduce((s, e) => s + parseFloat(e.volume || "0"), 0);
   const totalActualIncomeKg = actuals.reduce((s, a) => s + parseFloat(a.incomeActual || "0"), 0);
   const totalActualExpenseKg = actuals.reduce((s, a) => s + parseFloat(a.expenseActual || "0"), 0);
+  // Last plan balance and last fact balance across the period
+  const sortedDateRows = [...dateRows].sort((a, b) => a.date.localeCompare(b.date));
+  const lastPlanBalance = sortedDateRows.filter((r) => r.lastBalanceAfter).at(-1)?.lastBalanceAfter ?? null;
+  const lastFactBalance = sortedDateRows.filter((r) => r.actual?.factBalanceAfter).at(-1)?.actual?.factBalanceAfter ?? null;
 
   const defaultDate = format(period.from, "yyyy-MM-dd");
 
@@ -294,7 +488,7 @@ export function WarehousePlanPanel({
       queryClient.invalidateQueries({ queryKey: ["/api/planning/summary/resources"] });
       toast({ title: "Распределение удалено" });
     } catch (error: any) {
-      toast({ title: "Ошибка", description: error?.message || "Не удалось удалить распределение", variant: "destructive" });
+      toast({ title: "Ошибка", description: error?.message, variant: "destructive" });
     } finally {
       setDeleteAllocationId(null);
     }
@@ -335,11 +529,13 @@ export function WarehousePlanPanel({
     return !isPastMonth(entry.date.slice(0, 10));
   };
 
+  const COL_COUNT = 9;
+
   return (
     <div className="space-y-4">
       {/* Plan/Fact table */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap pb-3">
           <CardTitle>План / Факт</CardTitle>
           <div className="flex items-center gap-2">
             {isAdmin && (
@@ -361,8 +557,8 @@ export function WarehousePlanPanel({
                   </TooltipTrigger>
                   <TooltipContent>
                     {lockEnabled
-                      ? "Редактирование прошлых месяцев заблокировано (нажмите чтобы снять)"
-                      : "Редактирование прошлых месяцев разрешено (нажмите чтобы заблокировать)"}
+                      ? "Редактирование прошлых месяцев заблокировано"
+                      : "Редактирование прошлых месяцев разрешено"}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -403,45 +599,110 @@ export function WarehousePlanPanel({
                   </Button>
                 </TableHead>
                 <TableHead>Дата</TableHead>
-                <TableHead>Приход план (т)</TableHead>
-                <TableHead>Расход план (т)</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
+                    <TrendingDown className="h-3.5 w-3.5 text-emerald-500" />
+                    Приход план (т)
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
+                    <TrendingUp className="h-3.5 w-3.5 text-amber-500" />
+                    Расход план (т)
+                  </div>
+                </TableHead>
                 <TableHead>Факт прих (т)</TableHead>
                 <TableHead>Факт расх (т)</TableHead>
                 <TableHead>Остаток план (т)</TableHead>
+                <TableHead>Остаток факт (т)</TableHead>
                 <TableHead>Контрагенты</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loadingEntries ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={COL_COUNT} className="text-center text-muted-foreground py-8">
                     Загрузка...
-                  </TableCell>
-                </TableRow>
-              ) : dateRows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
-                    Нет данных за период
                   </TableCell>
                 </TableRow>
               ) : (
                 <>
+                  {/* ── Итого за период — ВВЕРХУ ── */}
+                  <TableRow className="bg-blue-50/50 dark:bg-blue-950/20 font-semibold border-b-2">
+                    <TableCell />
+                    <TableCell className="py-2 text-sm text-blue-700 dark:text-blue-400">
+                      Итого за период
+                    </TableCell>
+                    <TableCell className="py-2">
+                      <span className="text-emerald-600">{fmtTons(totalIncomeKg)}</span>
+                    </TableCell>
+                    <TableCell className="py-2">
+                      <span className="text-amber-600">{fmtTons(totalExpenseKg)}</span>
+                    </TableCell>
+                    <TableCell className="py-2">
+                      {totalActualIncomeKg > 0 ? (
+                        <span className="text-emerald-500">{fmtTons(totalActualIncomeKg)}</span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-2">
+                      {totalActualExpenseKg > 0 ? (
+                        <span className="text-amber-500">{fmtTons(totalActualExpenseKg)}</span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-2">
+                      {lastPlanBalance ? (
+                        <span className={parseFloat(lastPlanBalance) < 0 ? "text-destructive" : ""}>
+                          {fmtTons(lastPlanBalance)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-2">
+                      {lastFactBalance ? (
+                        <span className={parseFloat(lastFactBalance) < 0 ? "text-destructive" : ""}>
+                          {fmtTons(lastFactBalance)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-2" />
+                  </TableRow>
+
+                  {/* ── No data message ── */}
+                  {dateRows.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={COL_COUNT} className="text-center text-muted-foreground py-6">
+                        Нет данных за период
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* ── Date rows ── */}
                   {dateRows.map((row) => {
                     const isExpanded = expandedDates.has(row.date);
                     const incomeKg = row.incomeEntries.reduce((s, e) => s + parseFloat(e.volume || "0"), 0);
                     const expenseKg = row.expenseEntries.reduce((s, e) => s + parseFloat(e.volume || "0"), 0);
                     const factIncomeKg = parseFloat(row.actual?.incomeActual || "0");
                     const factExpenseKg = parseFloat(row.actual?.expenseActual || "0");
+                    const factBalKg = row.actual?.factBalanceAfter ?? null;
                     const past = isPastMonth(row.date);
-                    const current = isCurrentMonth(row.date);
+
+                    // Compact counterparty preview
+                    const incomeNames = row.incomeEntries.map((e) => e.counterpartyName || "?").slice(0, 2);
+                    const expenseNames = row.expenseEntries.map((e) => e.counterpartyName || "?").slice(0, 2);
 
                     return [
-                      // Summary row for date
                       <TableRow
                         key={`summary-${row.date}`}
                         className={cn(
                           "cursor-pointer hover-elevate",
-                          past && lockEnabled && "opacity-70",
+                          past && lockEnabled && "opacity-75",
                         )}
                         onClick={() => toggleDate(row.date)}
                         data-testid={`row-date-${row.date}`}
@@ -453,8 +714,8 @@ export function WarehousePlanPanel({
                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                           )}
                         </TableCell>
-                        <TableCell className="font-medium py-2">
-                          <span>{fmtDate(row.date)}</span>
+                        <TableCell className="py-2 font-medium">
+                          {fmtDate(row.date)}
                           {past && lockEnabled && (
                             <Lock className="inline-block h-3 w-3 ml-1 text-muted-foreground" />
                           )}
@@ -463,11 +724,7 @@ export function WarehousePlanPanel({
                           {incomeKg > 0 ? (
                             <div className="flex items-center gap-1">
                               <span className="text-emerald-600 font-medium">{fmtTons(incomeKg)}</span>
-                              <FieldCommentPopover
-                                entityType="plan_date_income"
-                                entityId={warehouseId}
-                                fieldKey={`income_${row.date}`}
-                              />
+                              <FieldCommentPopover entityType="plan_date_income" entityId={warehouseId} fieldKey={`income_${row.date}`} />
                             </div>
                           ) : (
                             <span className="text-muted-foreground text-xs">—</span>
@@ -477,11 +734,7 @@ export function WarehousePlanPanel({
                           {expenseKg > 0 ? (
                             <div className="flex items-center gap-1">
                               <span className="text-amber-600 font-medium">{fmtTons(expenseKg)}</span>
-                              <FieldCommentPopover
-                                entityType="plan_date_expense"
-                                entityId={warehouseId}
-                                fieldKey={`expense_${row.date}`}
-                              />
+                              <FieldCommentPopover entityType="plan_date_expense" entityId={warehouseId} fieldKey={`expense_${row.date}`} />
                             </div>
                           ) : (
                             <span className="text-muted-foreground text-xs">—</span>
@@ -489,273 +742,75 @@ export function WarehousePlanPanel({
                         </TableCell>
                         <TableCell className="py-2">
                           {factIncomeKg > 0 ? (
-                            <div className="flex items-center gap-1">
-                              <span className="text-emerald-500">{fmtTons(factIncomeKg)}</span>
-                              <FieldCommentPopover
-                                entityType="plan_date_fact_income"
-                                entityId={warehouseId}
-                                fieldKey={`fact_income_${row.date}`}
-                              />
-                            </div>
+                            <span className="text-emerald-500">{fmtTons(factIncomeKg)}</span>
                           ) : (
                             <span className="text-muted-foreground text-xs">—</span>
                           )}
                         </TableCell>
                         <TableCell className="py-2">
                           {factExpenseKg > 0 ? (
-                            <div className="flex items-center gap-1">
-                              <span className="text-amber-500">{fmtTons(factExpenseKg)}</span>
-                              <FieldCommentPopover
-                                entityType="plan_date_fact_expense"
-                                entityId={warehouseId}
-                                fieldKey={`fact_expense_${row.date}`}
-                              />
-                            </div>
+                            <span className="text-amber-500">{fmtTons(factExpenseKg)}</span>
                           ) : (
                             <span className="text-muted-foreground text-xs">—</span>
                           )}
                         </TableCell>
                         <TableCell className="py-2">
                           {row.lastBalanceAfter ? (
-                            <span className="text-sm">{fmtTons(row.lastBalanceAfter)}</span>
+                            <span className={cn("text-sm", parseFloat(row.lastBalanceAfter) < 0 && "text-destructive")}>
+                              {fmtTons(row.lastBalanceAfter)}
+                            </span>
                           ) : (
                             <span className="text-muted-foreground text-xs">—</span>
                           )}
                         </TableCell>
                         <TableCell className="py-2">
-                          <div className="space-y-0.5">
-                            <CounterpartyList
-                              entries={row.incomeEntries}
-                              label="Приход"
-                              colorClass="text-emerald-600"
-                            />
-                            <CounterpartyList
-                              entries={row.expenseEntries}
-                              label="Расход"
-                              colorClass="text-amber-600"
-                            />
+                          {factBalKg ? (
+                            <span className={cn("text-sm", parseFloat(factBalKg) < 0 && "text-destructive")}>
+                              {fmtTons(factBalKg)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <div className="flex flex-col gap-0.5 text-xs">
+                            {incomeNames.length > 0 && (
+                              <span className="text-emerald-600 truncate max-w-[120px]">
+                                ↓ {incomeNames.join(", ")}{row.incomeEntries.length > 2 ? ` +${row.incomeEntries.length - 2}` : ""}
+                              </span>
+                            )}
+                            {expenseNames.length > 0 && (
+                              <span className="text-amber-600 truncate max-w-[120px]">
+                                ↑ {expenseNames.join(", ")}{row.expenseEntries.length > 2 ? ` +${row.expenseEntries.length - 2}` : ""}
+                              </span>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>,
 
-                      // Detail rows when expanded
-                      ...(isExpanded
-                        ? [
-                            ...row.incomeEntries.map((entry) => (
-                              <TableRow
-                                key={`detail-${entry.id}`}
-                                className="bg-muted/30"
-                                data-testid={`row-plan-entry-${entry.id}`}
-                              >
-                                <TableCell />
-                                <TableCell className="pl-8 py-1.5">
-                                  <Badge variant="outline" className="text-emerald-600 border-emerald-200 text-xs">
-                                    Приход
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="py-1.5">
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-emerald-600">{fmtTons(entry.volume)}</span>
-                                    <FieldCommentPopover
-                                      entityType="plan_entry"
-                                      entityId={entry.id}
-                                      fieldKey="volume"
-                                    />
-                                  </div>
-                                </TableCell>
-                                <TableCell className="py-1.5" />
-                                <TableCell className="py-1.5">
-                                  {row.actual?.incomeActual && parseFloat(row.actual.incomeActual) > 0 ? (
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-emerald-500 text-xs">{fmtTons(row.actual.incomeActual)}</span>
-                                      <FieldCommentPopover
-                                        entityType="plan_entry_fact"
-                                        entityId={entry.id}
-                                        fieldKey="factIncome"
-                                      />
-                                    </div>
-                                  ) : (
-                                    <span className="text-muted-foreground text-xs">—</span>
-                                  )}
-                                </TableCell>
-                                <TableCell className="py-1.5" />
-                                <TableCell className="py-1.5">
-                                  {entry.balanceAfter ? (
-                                    <span className="text-xs text-muted-foreground">{fmtTons(entry.balanceAfter)}</span>
-                                  ) : (
-                                    <span className="text-muted-foreground text-xs">—</span>
-                                  )}
-                                </TableCell>
-                                <TableCell className="py-1.5">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm">{entry.counterpartyName || "—"}</span>
-                                    <EntityActionsMenu
-                                      actions={[
-                                        {
-                                          id: "edit",
-                                          label: "Редактировать",
-                                          icon: Pencil,
-                                          onClick: () => {
-                                            setEditingEntry(entry);
-                                            setEntryDialogOpen(true);
-                                          },
-                                          permission: { module: "planning", action: "edit" },
-                                          condition: isEntryEditable(entry),
-                                        },
-                                        {
-                                          id: "delete",
-                                          label: "Удалить",
-                                          icon: Trash2,
-                                          variant: "destructive",
-                                          onClick: () => setDeleteEntryId(entry.id),
-                                          permission: { module: "planning", action: "delete" },
-                                          condition: isEntryEditable(entry),
-                                        },
-                                        {
-                                          id: "history",
-                                          label: "История изменений",
-                                          icon: History,
-                                          onClick: () =>
-                                            setAuditEntry({
-                                              id: entry.id,
-                                              label: `Приход ${fmtDate(entry.date.slice(0, 10))} ${entry.counterpartyName || ""}`,
-                                            }),
-                                        },
-                                      ]}
-                                    />
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            )),
-                            ...row.expenseEntries.map((entry) => (
-                              <TableRow
-                                key={`detail-${entry.id}`}
-                                className="bg-muted/30"
-                                data-testid={`row-plan-entry-${entry.id}`}
-                              >
-                                <TableCell />
-                                <TableCell className="pl-8 py-1.5">
-                                  <Badge variant="outline" className="text-amber-600 border-amber-200 text-xs">
-                                    Расход
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="py-1.5" />
-                                <TableCell className="py-1.5">
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-amber-600">{fmtTons(entry.volume)}</span>
-                                    <FieldCommentPopover
-                                      entityType="plan_entry"
-                                      entityId={entry.id}
-                                      fieldKey="volume"
-                                    />
-                                  </div>
-                                </TableCell>
-                                <TableCell className="py-1.5" />
-                                <TableCell className="py-1.5">
-                                  {row.actual?.expenseActual && parseFloat(row.actual.expenseActual) > 0 ? (
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-amber-500 text-xs">{fmtTons(row.actual.expenseActual)}</span>
-                                      <FieldCommentPopover
-                                        entityType="plan_entry_fact"
-                                        entityId={entry.id}
-                                        fieldKey="factExpense"
-                                      />
-                                    </div>
-                                  ) : (
-                                    <span className="text-muted-foreground text-xs">—</span>
-                                  )}
-                                </TableCell>
-                                <TableCell className="py-1.5">
-                                  {entry.balanceAfter ? (
-                                    <span className="text-xs text-muted-foreground">{fmtTons(entry.balanceAfter)}</span>
-                                  ) : (
-                                    <span className="text-muted-foreground text-xs">—</span>
-                                  )}
-                                </TableCell>
-                                <TableCell className="py-1.5">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm">{entry.counterpartyName || "—"}</span>
-                                    <EntityActionsMenu
-                                      actions={[
-                                        {
-                                          id: "edit",
-                                          label: "Редактировать",
-                                          icon: Pencil,
-                                          onClick: () => {
-                                            setEditingEntry(entry);
-                                            setEntryDialogOpen(true);
-                                          },
-                                          permission: { module: "planning", action: "edit" },
-                                          condition: isEntryEditable(entry),
-                                        },
-                                        {
-                                          id: "delete",
-                                          label: "Удалить",
-                                          icon: Trash2,
-                                          variant: "destructive",
-                                          onClick: () => setDeleteEntryId(entry.id),
-                                          permission: { module: "planning", action: "delete" },
-                                          condition: isEntryEditable(entry),
-                                        },
-                                        {
-                                          id: "history",
-                                          label: "История изменений",
-                                          icon: History,
-                                          onClick: () =>
-                                            setAuditEntry({
-                                              id: entry.id,
-                                              label: `Расход ${fmtDate(entry.date.slice(0, 10))} ${entry.counterpartyName || ""}`,
-                                            }),
-                                        },
-                                      ]}
-                                    />
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            )),
-                            // Actual details if any and no plan entries
-                            row.incomeEntries.length === 0 &&
-                              row.expenseEntries.length === 0 &&
-                              row.actual &&
-                              row.actual.details.length > 0 && (
-                                <TableRow key={`actual-only-${row.date}`} className="bg-muted/20">
-                                  <TableCell />
-                                  <TableCell colSpan={7} className="pl-8 py-1.5">
-                                    <div className="text-xs text-muted-foreground space-y-0.5">
-                                      {row.actual.details.map((d, i) => (
-                                        <div key={i} className="flex items-center gap-2">
-                                          <span>{d.label}</span>
-                                          <span className="font-medium">{fmtTons(d.quantity)}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ),
-                          ].filter(Boolean)
-                        : []),
+                      // Expanded detail
+                      isExpanded && (
+                        <DateDetailPanel
+                          key={`detail-${row.date}`}
+                          row={row}
+                          warehouseId={warehouseId}
+                          lockEnabled={lockEnabled}
+                          isEntryEditable={isEntryEditable}
+                          onEditEntry={(e) => {
+                            setEditingEntry(e);
+                            setEntryDialogOpen(true);
+                          }}
+                          onDeleteEntry={(id) => setDeleteEntryId(id)}
+                          onAuditEntry={(e) =>
+                            setAuditEntry({
+                              id: e.id,
+                              label: `Запись ${e.type === "income" ? "прихода" : "расхода"} ${fmtDate(e.date.slice(0, 10))} — ${e.counterpartyName || ""}`,
+                            })
+                          }
+                        />
+                      ),
                     ];
                   })}
-
-                  {/* Summary row */}
-                  <TableRow className="bg-muted/50 font-semibold border-t-2">
-                    <TableCell />
-                    <TableCell className="py-2 text-sm">Итого за период</TableCell>
-                    <TableCell className="py-2">
-                      <span className="text-emerald-600">{fmtTons(totalIncomeKg)}</span>
-                    </TableCell>
-                    <TableCell className="py-2">
-                      <span className="text-amber-600">{fmtTons(totalExpenseKg)}</span>
-                    </TableCell>
-                    <TableCell className="py-2">
-                      <span className="text-emerald-500">{fmtTons(totalActualIncomeKg)}</span>
-                    </TableCell>
-                    <TableCell className="py-2">
-                      <span className="text-amber-500">{fmtTons(totalActualExpenseKg)}</span>
-                    </TableCell>
-                    <TableCell className="py-2" />
-                    <TableCell className="py-2" />
-                  </TableRow>
                 </>
               )}
             </TableBody>
@@ -810,19 +865,13 @@ export function WarehousePlanPanel({
               ) : (
                 allocations.map((a: any) => (
                   <TableRow key={a.id} data-testid={`row-allocation-${a.id}`}>
-                    <TableCell>
-                      {format(new Date(a.date.slice(0, 10) + "T00:00:00"), "dd.MM.yyyy")}
-                    </TableCell>
-                    <TableCell>{a.fromName || a.fromCounterpartyId || "—"}</TableCell>
-                    <TableCell>{a.toName || a.toCounterpartyId || "—"}</TableCell>
+                    <TableCell>{format(new Date(a.date.slice(0, 10) + "T00:00:00"), "dd.MM.yyyy")}</TableCell>
+                    <TableCell>{a.fromName || "—"}</TableCell>
+                    <TableCell>{a.toName || "—"}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <span>{fmtTons(a.volume)}</span>
-                        <FieldCommentPopover
-                          entityType="free_volume_allocation"
-                          entityId={a.id}
-                          fieldKey="volume"
-                        />
+                        <FieldCommentPopover entityType="free_volume_allocation" entityId={a.id} fieldKey="volume" />
                       </div>
                     </TableCell>
                     <TableCell>{a.notes || "—"}</TableCell>
@@ -905,10 +954,7 @@ export function WarehousePlanPanel({
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog
-        open={!!deleteAllocationId}
-        onOpenChange={(o) => !o && setDeleteAllocationId(null)}
-      >
+      <AlertDialog open={!!deleteAllocationId} onOpenChange={(o) => !o && setDeleteAllocationId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Удалить распределение?</AlertDialogTitle>
@@ -929,7 +975,7 @@ export function WarehousePlanPanel({
 
       {auditEntry && (
         <AuditPanel
-          open={!!auditEntry}
+          open
           onOpenChange={(o) => !o && setAuditEntry(null)}
           entityType="plan_entries"
           entityId={auditEntry.id}
@@ -939,7 +985,7 @@ export function WarehousePlanPanel({
 
       {auditAllocation && (
         <AuditPanel
-          open={!!auditAllocation}
+          open
           onOpenChange={(o) => !o && setAuditAllocation(null)}
           entityType="free_volume_allocations"
           entityId={auditAllocation.id}

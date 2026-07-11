@@ -139,6 +139,9 @@ function AuditEntryItem({
       'exchange_deals': 'exchange-deals',
       'exchange_advance_cards': 'exchange-advances',
       'storage_cards': 'storage-cards',
+      'plan_entries': 'planning',
+      'free_volume_allocations': 'planning',
+      'planning_resource': 'planning',
     };
     return moduleMap[entityType] || entityType;
   };

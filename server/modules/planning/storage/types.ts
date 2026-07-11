@@ -47,12 +47,15 @@ export interface ActualDetailItem {
   label: string;
   quantity: string;
   date: string;
+  isExpense: boolean;
+  balanceAfter: string | null;
 }
 
 export interface ActualsByDate {
   date: string;
   incomeActual: string;
   expenseActual: string;
+  factBalanceAfter: string | null;
   details: ActualDetailItem[];
 }
 

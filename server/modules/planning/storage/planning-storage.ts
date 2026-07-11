@@ -428,11 +428,16 @@ export class PlanningStorage implements IPlanningStorage {
 
     const userIds = [...new Set(rows.map((r) => r.userId))];
     const userRows = await db
-      .select({ id: users.id, username: users.username })
+      .select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email })
       .from(users)
       .where(inArray(users.id, userIds));
 
-    const userMap = new Map(userRows.map((u) => [u.id, u.username]));
+    const userMap = new Map(
+      userRows.map((u) => [
+        u.id,
+        `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email || "—",
+      ]),
+    );
 
     return rows.map((r) => ({
       ...r,
@@ -452,6 +457,7 @@ export class PlanningStorage implements IPlanningStorage {
     dateFrom: string,
     dateTo: string,
   ): Promise<ActualsByDate[]> {
+    // Use DATE() cast so timestamp columns compare correctly with date strings
     const transactions = await db
       .select()
       .from(warehouseTransactions)
@@ -459,32 +465,37 @@ export class PlanningStorage implements IPlanningStorage {
         and(
           eq(warehouseTransactions.warehouseId, warehouseId),
           isNull(warehouseTransactions.deletedAt),
-          gte(
-            sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`,
-            dateFrom,
-          ),
-          lte(
-            sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`,
-            dateTo,
-          ),
+          sql`DATE(COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})) >= ${dateFrom}::date`,
+          sql`DATE(COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})) <= ${dateTo}::date`,
         ),
+      )
+      .orderBy(
+        sql`DATE(COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt}))`,
+        sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`,
       );
 
     const byDate = new Map<string, ActualsByDate>();
 
     for (const t of transactions) {
-      const rawDate = t.transactionDate || t.createdAt || "";
-      const dateKey = rawDate.slice(0, 10);
+      const rawDate = (t.transactionDate || t.createdAt || "").slice(0, 10);
+      const dateKey = rawDate;
       if (!byDate.has(dateKey)) {
         byDate.set(dateKey, {
           date: dateKey,
           incomeActual: "0",
           expenseActual: "0",
+          factBalanceAfter: t.balanceAfter || null,
           details: [],
         });
       }
       const entry = byDate.get(dateKey)!;
-      const isReceipt = t.transactionType === "receipt" || t.transactionType === "transfer_in";
+      // Always update factBalanceAfter with the latest transaction on that date
+      if (t.balanceAfter !== null && t.balanceAfter !== undefined) {
+        entry.factBalanceAfter = t.balanceAfter;
+      }
+
+      const isReceipt =
+        t.transactionType === "receipt" || t.transactionType === "transfer_in";
       const qty = parseFloat(t.quantity);
 
       if (isReceipt) {
@@ -505,6 +516,8 @@ export class PlanningStorage implements IPlanningStorage {
         label,
         quantity: t.quantity,
         date: dateKey,
+        isExpense: !isReceipt,
+        balanceAfter: t.balanceAfter || null,
       });
     }
 

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { format, startOfMonth, endOfMonth, addMonths } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -13,6 +14,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { kgToTons } from "../utils/planning-utils";
+
+interface SupplierAllocatedVolume {
+  id: string;
+  supplierId: string;
+  periodFrom: string;
+  periodTo: string;
+  volume: string;
+}
 
 interface AllocatedVolumeDialogProps {
   open: boolean;
@@ -49,7 +59,34 @@ export function AllocatedVolumeDialog({
   const [volume, setVolume] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Load existing allocated volumes for this supplier
+  const { data: existingVolumes = [] } = useQuery<SupplierAllocatedVolume[]>({
+    queryKey: ["/api/planning/allocated-volumes/by-supplier", supplierId],
+    queryFn: async () =>
+      (await apiRequest("GET", `/api/planning/allocated-volumes/by-supplier/${supplierId}`)).json(),
+    enabled: open && !!supplierId,
+  });
+
   const selectedMonthData = months.find((m) => m.from === selectedMonth) || months[1];
+
+  // Pre-fill volume when month selection changes (if existing value found)
+  useEffect(() => {
+    if (!open) return;
+    const existing = existingVolumes.find(
+      (v) => v.periodFrom === selectedMonthData.from && v.periodTo === selectedMonthData.to,
+    );
+    if (existing) {
+      setVolume(kgToTons(existing.volume));
+    } else {
+      setVolume("");
+    }
+  }, [selectedMonth, existingVolumes, open, selectedMonthData.from, selectedMonthData.to]);
+
+  // Reset on open
+  useEffect(() => {
+    if (!open) return;
+    setSelectedMonth(months[1].from);
+  }, [open]);
 
   const handleSave = async () => {
     if (!volume) return;
@@ -68,7 +105,6 @@ export function AllocatedVolumeDialog({
       });
       toast({ title: "Выделенный объём сохранён" });
       onOpenChange(false);
-      setVolume("");
     } catch (err: any) {
       toast({ title: "Ошибка", description: err.message, variant: "destructive" });
     } finally {
@@ -108,6 +144,13 @@ export function AllocatedVolumeDialog({
               placeholder="0.000"
               data-testid="input-allocated-volume"
             />
+            {existingVolumes.find(
+              (v) => v.periodFrom === selectedMonthData.from,
+            ) && (
+              <p className="text-xs text-muted-foreground">
+                Текущее значение обновлено из ранее сохранённых данных
+              </p>
+            )}
           </div>
         </div>
         <DialogFooter>
