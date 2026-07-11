@@ -296,6 +296,30 @@ export function registerPlanningRoutes(app: Express) {
     },
   );
 
+  // ---- Supplier bases lookup ----
+  app.get(
+    "/api/planning/supplier-bases/:supplierId",
+    requireAuth,
+    requirePermission("planning", "view"),
+    async (req, res) => {
+      try {
+        const { supplierId } = req.params;
+        const { supplierBases, bases } = await import("@shared/schema");
+        const { db } = await import("server/db");
+        const { eq } = await import("drizzle-orm");
+        const rows = await db
+          .select({ id: bases.id, name: bases.name, code: bases.code })
+          .from(supplierBases)
+          .innerJoin(bases, eq(supplierBases.baseId, bases.id))
+          .where(eq(supplierBases.supplierId, supplierId));
+        res.json(rows);
+      } catch (error: any) {
+        console.error("Error fetching supplier bases:", error);
+        res.status(500).json({ message: "Ошибка получения баз поставщика" });
+      }
+    },
+  );
+
   // ---- Planning resources ----
   app.get(
     "/api/planning/resources",

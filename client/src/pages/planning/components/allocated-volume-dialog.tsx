@@ -70,10 +70,14 @@ export function AllocatedVolumeDialog({
   const selectedMonthData = months.find((m) => m.from === selectedMonth) || months[1];
 
   // Pre-fill volume when month selection changes (if existing value found)
+  // NOTE: DB stores periodFrom as a timestamp ("2025-07-01 00:00:00"), so we compare
+  // only the first 10 characters (the date part) to avoid mismatch.
   useEffect(() => {
     if (!open) return;
     const existing = existingVolumes.find(
-      (v) => v.periodFrom === selectedMonthData.from && v.periodTo === selectedMonthData.to,
+      (v) =>
+        v.periodFrom.slice(0, 10) === selectedMonthData.from &&
+        v.periodTo.slice(0, 10) === selectedMonthData.to,
     );
     if (existing) {
       setVolume(kgToTons(existing.volume));

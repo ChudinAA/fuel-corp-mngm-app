@@ -59,6 +59,7 @@ import { cn } from "@/lib/utils";
 
 interface PlanEntryRow extends PlanEntryFormEntry {
   counterpartyName?: string | null;
+  basisName?: string | null;
   isLocked: boolean;
 }
 
@@ -70,6 +71,7 @@ interface ActualDetailItem {
   date: string;
   isExpense: boolean;
   balanceAfter: string | null;
+  counterpartyName?: string | null;
 }
 
 interface ActualsByDate {
@@ -161,6 +163,11 @@ function DateDetailPanel({
                     <div key={e.id} className="flex items-center gap-2 pl-4 text-sm group">
                       <span className="text-emerald-700 font-medium flex-1 truncate">
                         {e.counterpartyName || "—"}
+                        {e.basisName && (
+                          <span className="ml-1 text-xs text-muted-foreground font-normal">
+                            ({e.basisName})
+                          </span>
+                        )}
                       </span>
                       <span className="text-emerald-600 font-semibold tabular-nums whitespace-nowrap">
                         {fmtTons(e.volume)}
@@ -214,6 +221,11 @@ function DateDetailPanel({
                     <div key={e.id} className="flex items-center gap-2 pl-4 text-sm group">
                       <span className="text-amber-700 font-medium flex-1 truncate">
                         {e.counterpartyName || "—"}
+                        {e.basisName && (
+                          <span className="ml-1 text-xs text-muted-foreground font-normal">
+                            ({e.basisName})
+                          </span>
+                        )}
                       </span>
                       <span className="text-amber-600 font-semibold tabular-nums whitespace-nowrap">
                         {fmtTons(e.volume)}
@@ -291,7 +303,14 @@ function DateDetailPanel({
                   </div>
                   {incomeDetails.map((d, i) => (
                     <div key={i} className="flex items-center gap-2 pl-4 text-sm">
-                      <span className="text-emerald-600 flex-1 truncate">{d.label}</span>
+                      <span className="text-emerald-600 flex-1 truncate">
+                        {d.label}
+                        {d.counterpartyName && (
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            — {d.counterpartyName}
+                          </span>
+                        )}
+                      </span>
                       <span className="text-emerald-500 font-semibold tabular-nums whitespace-nowrap">
                         {fmtTons(d.quantity)}
                       </span>
@@ -308,7 +327,14 @@ function DateDetailPanel({
                   </div>
                   {expenseDetails.map((d, i) => (
                     <div key={i} className="flex items-center gap-2 pl-4 text-sm">
-                      <span className="text-amber-600 flex-1 truncate">{d.label}</span>
+                      <span className="text-amber-600 flex-1 truncate">
+                        {d.label}
+                        {d.counterpartyName && (
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            — {d.counterpartyName}
+                          </span>
+                        )}
+                      </span>
                       <span className="text-amber-500 font-semibold tabular-nums whitespace-nowrap">
                         {fmtTons(d.quantity)}
                       </span>

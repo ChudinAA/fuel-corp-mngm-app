@@ -39,6 +39,7 @@ export interface PlanningCommentWithUser extends PlanningComment {
 export interface PlanEntryWithMeta extends PlanEntry {
   isLocked: boolean;
   counterpartyName?: string | null;
+  basisName?: string | null;
 }
 
 export interface ActualDetailItem {
@@ -49,6 +50,16 @@ export interface ActualDetailItem {
   date: string;
   isExpense: boolean;
   balanceAfter: string | null;
+  counterpartyName?: string | null;
+}
+
+export interface PlanningResourceWithBasis {
+  id: string;
+  supplierId: string;
+  supplierName: string;
+  basisId?: string | null;
+  basisName?: string | null;
+  notes?: string | null;
 }
 
 export interface ActualsByDate {

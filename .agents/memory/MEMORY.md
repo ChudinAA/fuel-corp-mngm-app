@@ -1,1 +1,4 @@
 - [Neon serverless array binding](neon-array-binding.md) — never bind a JS array as a single SQL param with raw `= ANY(${arr})`; use Drizzle's `inArray()` instead.
+- [Planning actuals quantity fix](planning-actuals-qty.md) — expense warehouse transactions stored as NEGATIVE qty; always use Math.abs for totals; inventory sign determines income/expense.
+- [Planning periodFrom timestamp fix](planning-periodfrom.md) — DB stores periodFrom as full timestamp; compare with .slice(0,10) to match date-only strings.
+- [Planning basisId migration](planning-basis-migration.md) — basisId added to plan_entries and planning_resources; drizzle-kit push is interactive, apply via executeSql instead.

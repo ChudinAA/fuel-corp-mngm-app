@@ -36,6 +36,7 @@ const formSchema = z.object({
   date: z.string().min(1, "Дата обязательна"),
   type: z.enum(["income", "expense"]),
   counterpartyId: z.string().min(1, "Контрагент обязателен"),
+  basisId: z.string().optional(),
   volume: z.string().min(1, "Объём обязателен"),
   notes: z.string().optional(),
 });
@@ -47,6 +48,7 @@ export interface PlanEntryFormEntry {
   date: string;
   type: "income" | "expense";
   counterpartyId: string | null;
+  basisId?: string | null;
   volume: string;
   isManualBalance: boolean | null;
   balanceAfter: string | null;
@@ -57,6 +59,8 @@ interface PlanningResourceWithSupplier {
   id: string;
   supplierId: string;
   supplierName: string;
+  basisId?: string | null;
+  basisName?: string | null;
 }
 
 export function PlanEntryDialog({
@@ -82,12 +86,14 @@ export function PlanEntryDialog({
       date: defaultDate || format(new Date(), "yyyy-MM-dd"),
       type: "income",
       counterpartyId: "",
+      basisId: "",
       volume: "",
       notes: "",
     },
   });
 
   const type = form.watch("type");
+  const counterpartyId = form.watch("counterpartyId");
 
   const { data: planningResources = [] } = useQuery<PlanningResourceWithSupplier[]>({
     queryKey: ["/api/planning/resources"],
@@ -101,23 +107,52 @@ export function PlanEntryDialog({
     enabled: type === "expense",
   });
 
+  const { data: allBases = [] } = useQuery<{ id: string; name: string; code?: string }[]>({
+    queryKey: ["/api/bases"],
+    queryFn: async () => (await apiRequest("GET", "/api/bases")).json(),
+    enabled: type === "expense",
+  });
+
+  // For income: load bases for selected supplier
+  const selectedResource = planningResources.find((r) => r.supplierId === counterpartyId);
+  const supplierIdForBases = selectedResource?.supplierId || "";
+
+  const { data: supplierBases = [] } = useQuery<{ id: string; name: string; code?: string }[]>({
+    queryKey: ["/api/planning/supplier-bases", supplierIdForBases],
+    queryFn: async () =>
+      (await apiRequest("GET", `/api/planning/supplier-bases/${supplierIdForBases}`)).json(),
+    enabled: type === "income" && !!supplierIdForBases,
+  });
+
   useEffect(() => {
     if (open) {
       form.reset({
         date: entry ? entry.date.slice(0, 10) : (defaultDate || format(new Date(), "yyyy-MM-dd")),
         type: entry?.type || "income",
         counterpartyId: entry?.counterpartyId || "",
+        basisId: entry?.basisId || "",
         volume: entry ? kgToTons(entry.volume) : "",
         notes: entry?.notes || "",
       });
     }
   }, [open, entry, defaultDate]);
 
+  // Auto-populate basisId from resource when supplier selected (income)
+  useEffect(() => {
+    if (type === "income" && selectedResource?.basisId) {
+      const current = form.getValues("basisId");
+      if (!current) {
+        form.setValue("basisId", selectedResource.basisId);
+      }
+    }
+  }, [selectedResource?.basisId, type]);
+
   const handleSubmit = async (values: FormValues) => {
     setSaving(true);
     try {
       await onSubmit({
         ...values,
+        basisId: values.basisId || undefined,
         volume: tonsToKg(values.volume),
         isManualBalance: false,
         balanceAfter: null,
@@ -130,10 +165,22 @@ export function PlanEntryDialog({
 
   const incomeOptions = planningResources.map((r) => ({
     value: r.supplierId,
-    label: r.supplierName,
+    label: r.basisName ? `${r.supplierName} / ${r.basisName}` : r.supplierName,
   }));
   const expenseOptions = customers.map((c) => ({ value: c.id, label: c.name }));
   const counterpartyOptions = type === "income" ? incomeOptions : expenseOptions;
+
+  // Basis options depend on type
+  const incomeBasisOptions = supplierBases.map((b) => ({
+    value: b.id,
+    label: b.code ? `${b.name} (${b.code})` : b.name,
+  }));
+  const expenseBasisOptions = allBases.map((b) => ({
+    value: b.id,
+    label: b.code ? `${b.name} (${b.code})` : b.name,
+  }));
+  const basisOptions =
+    type === "income" ? incomeBasisOptions : expenseBasisOptions;
 
   const dateValue = form.watch("date");
 
@@ -159,6 +206,7 @@ export function PlanEntryDialog({
                       onValueChange={(v) => {
                         field.onChange(v);
                         form.setValue("counterpartyId", "");
+                        form.setValue("basisId", "");
                       }}
                       className="flex gap-4"
                     >
@@ -228,7 +276,10 @@ export function PlanEntryDialog({
                     <Combobox
                       options={counterpartyOptions}
                       value={field.value}
-                      onValueChange={field.onChange}
+                      onValueChange={(v) => {
+                        field.onChange(v);
+                        form.setValue("basisId", "");
+                      }}
                       placeholder={
                         type === "income"
                           ? planningResources.length === 0
@@ -243,6 +294,28 @@ export function PlanEntryDialog({
                 </FormItem>
               )}
             />
+
+            {(basisOptions.length > 0 || type === "expense") && (
+              <FormField
+                control={form.control}
+                name="basisId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Базис (необязательно)</FormLabel>
+                    <FormControl>
+                      <Combobox
+                        options={[{ value: "", label: "— Не указан —" }, ...basisOptions]}
+                        value={field.value || ""}
+                        onValueChange={field.onChange}
+                        placeholder="Выберите базис"
+                        dataTestId="select-plan-entry-basis"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

@@ -12,6 +12,10 @@ import {
   suppliers,
   customers,
   users,
+  bases,
+  supplierBases,
+  opt,
+  aircraftRefueling,
 } from "@shared/schema";
 import { SOURCE_TYPE } from "@shared/constants";
 import type {
@@ -117,7 +121,11 @@ export class PlanningStorage implements IPlanningStorage {
       new Set(rows.map((r) => r.counterpartyId).filter(Boolean) as string[]),
     );
 
-    const [supplierRows, customerRows] = await Promise.all([
+    const basisIds = Array.from(
+      new Set(rows.map((r) => (r as any).basisId).filter(Boolean) as string[]),
+    );
+
+    const [supplierRows, customerRows, basisRows] = await Promise.all([
       counterpartyIds.length
         ? db
             .select({ id: suppliers.id, name: suppliers.name })
@@ -130,16 +138,24 @@ export class PlanningStorage implements IPlanningStorage {
             .from(customers)
             .where(inArray(customers.id, counterpartyIds))
         : Promise.resolve([]),
+      basisIds.length
+        ? db
+            .select({ id: bases.id, name: bases.name })
+            .from(bases)
+            .where(inArray(bases.id, basisIds))
+        : Promise.resolve([]),
     ]);
 
     const nameMap = new Map<string, string>();
     supplierRows.forEach((s) => nameMap.set(s.id, s.name));
     customerRows.forEach((c) => nameMap.set(c.id, c.name));
+    const basisNameMap = new Map(basisRows.map((b) => [b.id, b.name]));
 
     return rows.map((r) => ({
       ...r,
       isLocked: isEntryLockedByDate(r.date),
       counterpartyName: r.counterpartyId ? nameMap.get(r.counterpartyId) || null : null,
+      basisName: (r as any).basisId ? basisNameMap.get((r as any).basisId) || null : null,
     }));
   }
 
@@ -345,16 +361,29 @@ export class PlanningStorage implements IPlanningStorage {
     if (rows.length === 0) return [];
 
     const supplierIds = rows.map((r) => r.supplierId);
-    const supplierRows = await db
-      .select({ id: suppliers.id, name: suppliers.name })
-      .from(suppliers)
-      .where(inArray(suppliers.id, supplierIds));
+    const basisIds = Array.from(
+      new Set(rows.map((r) => (r as any).basisId).filter(Boolean) as string[]),
+    );
+    const [supplierRows, basisRows] = await Promise.all([
+      db
+        .select({ id: suppliers.id, name: suppliers.name })
+        .from(suppliers)
+        .where(inArray(suppliers.id, supplierIds)),
+      basisIds.length
+        ? db
+            .select({ id: bases.id, name: bases.name })
+            .from(bases)
+            .where(inArray(bases.id, basisIds))
+        : Promise.resolve([]),
+    ]);
 
     const nameMap = new Map(supplierRows.map((s) => [s.id, s.name]));
+    const basisNameMap = new Map(basisRows.map((b) => [b.id, b.name]));
 
     return rows.map((r) => ({
       ...r,
       supplierName: nameMap.get(r.supplierId) || "—",
+      basisName: (r as any).basisId ? basisNameMap.get((r as any).basisId) || null : null,
     }));
   }
 
@@ -474,6 +503,50 @@ export class PlanningStorage implements IPlanningStorage {
         sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`,
       );
 
+    // Bulk-lookup buyer names for OPT and refueling transactions
+    const optSourceIds = transactions
+      .filter((t) => t.sourceType === SOURCE_TYPE.OPT && t.sourceId)
+      .map((t) => t.sourceId!);
+    const refuelSourceIds = transactions
+      .filter((t) => t.sourceType === SOURCE_TYPE.REFUELING && t.sourceId)
+      .map((t) => t.sourceId!);
+
+    const [optRows, refuelRows] = await Promise.all([
+      optSourceIds.length > 0
+        ? db
+            .select({ id: opt.id, buyerId: opt.buyerId })
+            .from(opt)
+            .where(inArray(opt.id, optSourceIds))
+        : Promise.resolve([]),
+      refuelSourceIds.length > 0
+        ? db
+            .select({ id: aircraftRefueling.id, buyerId: aircraftRefueling.buyerId })
+            .from(aircraftRefueling)
+            .where(inArray(aircraftRefueling.id, refuelSourceIds))
+        : Promise.resolve([]),
+    ]);
+
+    // Map sourceId → buyerId
+    const sourceToBuyer = new Map<string, string | null>();
+    optRows.forEach((r) => sourceToBuyer.set(r.id, r.buyerId));
+    refuelRows.forEach((r) => sourceToBuyer.set(r.id, r.buyerId));
+
+    const allBuyerIds = [
+      ...new Set(
+        [...optRows, ...refuelRows]
+          .map((r) => r.buyerId)
+          .filter(Boolean) as string[],
+      ),
+    ];
+    const buyerRows =
+      allBuyerIds.length > 0
+        ? await db
+            .select({ id: customers.id, name: customers.name })
+            .from(customers)
+            .where(inArray(customers.id, allBuyerIds))
+        : [];
+    const buyerNameMap = new Map(buyerRows.map((r) => [r.id, r.name]));
+
     const byDate = new Map<string, ActualsByDate>();
 
     for (const t of transactions) {
@@ -489,35 +562,68 @@ export class PlanningStorage implements IPlanningStorage {
         });
       }
       const entry = byDate.get(dateKey)!;
-      // Always update factBalanceAfter with the latest transaction on that date
       if (t.balanceAfter !== null && t.balanceAfter !== undefined) {
         entry.factBalanceAfter = t.balanceAfter;
       }
 
-      const isReceipt =
-        t.transactionType === "receipt" || t.transactionType === "transfer_in";
-      const qty = parseFloat(t.quantity);
+      const rawQty = parseFloat(t.quantity);
+      const absQty = Math.abs(rawQty);
+      let isExpense: boolean;
 
-      if (isReceipt) {
-        entry.incomeActual = (parseFloat(entry.incomeActual) + qty).toFixed(2);
+      if (t.transactionType === "inventory") {
+        // Inventory: positive qty = adding stock (income), negative qty = removing (expense)
+        isExpense = rawQty < 0;
+      } else if (
+        t.transactionType === "receipt" ||
+        t.transactionType === "transfer_in"
+      ) {
+        isExpense = false;
       } else {
-        entry.expenseActual = (parseFloat(entry.expenseActual) + qty).toFixed(2);
+        // sale, transfer_out — stored as negative; treat as expense
+        isExpense = true;
       }
 
-      let label = t.sourceType || "Операция";
-      if (t.sourceType === SOURCE_TYPE.OPT) label = "ОПТ";
-      else if (t.sourceType === SOURCE_TYPE.REFUELING) label = "Заправка ВС";
-      else if (t.sourceType === SOURCE_TYPE.REFUELING_ABROAD) label = "Заправка ВС (Зарубеж)";
-      else if (t.sourceType === SOURCE_TYPE.MOVEMENT) label = "Движение/Биржа";
+      if (isExpense) {
+        entry.expenseActual = (
+          parseFloat(entry.expenseActual) + absQty
+        ).toFixed(2);
+      } else {
+        entry.incomeActual = (
+          parseFloat(entry.incomeActual) + absQty
+        ).toFixed(2);
+      }
+
+      // Resolve buyer name for OPT / refueling
+      let counterpartyName: string | null = null;
+      if (t.sourceId && sourceToBuyer.has(t.sourceId)) {
+        const buyerId = sourceToBuyer.get(t.sourceId);
+        if (buyerId) counterpartyName = buyerNameMap.get(buyerId) || null;
+      }
+
+      let label: string;
+      if (t.transactionType === "inventory") {
+        label = `Инвентаризация (${isExpense ? "расход" : "приход"})`;
+      } else if (t.sourceType === SOURCE_TYPE.OPT) {
+        label = "ОПТ";
+      } else if (t.sourceType === SOURCE_TYPE.REFUELING) {
+        label = "Заправка ВС";
+      } else if (t.sourceType === SOURCE_TYPE.REFUELING_ABROAD) {
+        label = "Заправка ВС (Зарубеж)";
+      } else if (t.sourceType === SOURCE_TYPE.MOVEMENT) {
+        label = "Перемещение/Биржа";
+      } else {
+        label = t.sourceType || "Операция";
+      }
 
       entry.details.push({
         sourceType: t.sourceType || "",
         sourceId: t.sourceId || "",
         label,
-        quantity: t.quantity,
+        quantity: absQty.toFixed(2),
         date: dateKey,
-        isExpense: !isReceipt,
+        isExpense,
         balanceAfter: t.balanceAfter || null,
+        counterpartyName,
       });
     }
 
@@ -651,7 +757,7 @@ export class PlanningStorage implements IPlanningStorage {
       const lastEntry = whEntries[whEntries.length - 1];
       const balancePlan = lastEntry
         ? lastEntry.balanceAfter || "0"
-        : wh.currentBalance || "0";
+        : "0";
 
       result.push({
         warehouseId: wh.id,

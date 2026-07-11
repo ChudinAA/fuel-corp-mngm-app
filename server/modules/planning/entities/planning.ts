@@ -13,6 +13,7 @@ import { z } from "zod";
 import { users } from "../../users/entities/users";
 import { warehouses } from "../../warehouses/entities/warehouses";
 import { suppliers } from "../../suppliers/entities/suppliers";
+import { bases } from "../../bases/entities/bases";
 
 // ============ PLAN ENTRIES ============
 export const planEntries = pgTable(
@@ -28,6 +29,7 @@ export const planEntries = pgTable(
     volume: decimal("volume", { precision: 15, scale: 2 }).notNull(),
     balanceAfter: decimal("balance_after", { precision: 15, scale: 2 }),
     isManualBalance: boolean("is_manual_balance").default(false),
+    basisId: uuid("basis_id").references(() => bases.id),
     notes: text("notes"),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -184,6 +186,7 @@ export const planningResources = pgTable(
     supplierId: uuid("supplier_id")
       .notNull()
       .references(() => suppliers.id),
+    basisId: uuid("basis_id").references(() => bases.id),
     notes: text("notes"),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
