@@ -190,132 +190,133 @@ function DateDetailPanel({
   return (
     <TableRow className="bg-muted/20 hover:bg-muted/30">
       <TableCell colSpan={9} className="p-0">
-        <div className="mx-4 my-2 border rounded-md overflow-hidden divide-y">
+        {/* Outer: ПЛАН | ФАКТ side by side */}
+        <div className="mx-4 my-2 border rounded-md overflow-hidden grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x">
 
-          {/* ── ПЛАН ── */}
-          <div className="p-2">
-            <div className="flex items-center gap-1.5 mb-2">
+          {/* ══ ПЛАН ══ */}
+          <div className="p-3 flex flex-col gap-2">
+            {/* Header */}
+            <div className="flex items-center gap-1.5">
               <Badge variant="outline" className="text-xs font-medium text-blue-600 border-blue-200">
                 ПЛАН
               </Badge>
-              {planBalanceKg !== null && (
-                <span className="text-xs text-muted-foreground ml-auto">
-                  Остаток:{" "}
-                  <span className={cn(
-                    "font-semibold",
-                    parseFloat(planBalanceKg) < 0 ? "text-destructive" : "text-foreground",
-                  )}>
-                    {fmtTons(planBalanceKg)}
-                  </span>
-                </span>
-              )}
             </div>
 
             {!hasAnyPlan && (
-              <p className="text-xs text-muted-foreground italic">Нет плановых записей на эту дату</p>
+              <p className="text-xs text-muted-foreground italic">Нет плановых записей</p>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 md:divide-x">
-              {/* Left: Поступления */}
-              <div className="space-y-0.5">
+            {/* Inner: Поступления | Расходы */}
+            <div className="grid grid-cols-2 divide-x flex-1">
+              {/* Плановые поступления */}
+              <div className="pr-3 space-y-0.5">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
+                  <ArrowDownToLine className="h-3 w-3 text-emerald-500" />
+                  Поступления
+                </div>
                 {row.incomeEntries.length > 0 ? (
-                  <>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
-                      <ArrowDownToLine className="h-3 w-3 text-emerald-500" />
-                      Плановые поступления
-                    </div>
-                    {row.incomeEntries.map((e) => <PlanEntry key={e.id} e={e} />)}
-                  </>
+                  row.incomeEntries.map((e) => <PlanEntry key={e.id} e={e} />)
                 ) : (
-                  <p className="text-xs text-muted-foreground/60 italic md:block hidden">—</p>
+                  <p className="text-xs text-muted-foreground/50 italic">—</p>
                 )}
               </div>
-              {/* Right: Расходы */}
-              <div className="space-y-0.5 md:pl-4">
+              {/* Плановые расходы */}
+              <div className="pl-3 space-y-0.5">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
+                  <ArrowUpFromLine className="h-3 w-3 text-amber-500" />
+                  Расходы
+                </div>
                 {row.expenseEntries.length > 0 ? (
-                  <>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
-                      <ArrowUpFromLine className="h-3 w-3 text-amber-500" />
-                      Плановые расходы
-                    </div>
-                    {row.expenseEntries.map((e) => <PlanEntry key={e.id} e={e} />)}
-                  </>
+                  row.expenseEntries.map((e) => <PlanEntry key={e.id} e={e} />)
                 ) : (
-                  <p className="text-xs text-muted-foreground/60 italic md:block hidden">—</p>
+                  <p className="text-xs text-muted-foreground/50 italic">—</p>
                 )}
               </div>
             </div>
+
+            {/* Plan balance — below lists */}
+            {planBalanceKg !== null && (
+              <div className="pt-2 border-t flex items-center gap-1.5 text-xs">
+                <span className="text-muted-foreground">Остаток (план):</span>
+                <span className={cn(
+                  "font-semibold tabular-nums",
+                  parseFloat(planBalanceKg) < 0 ? "text-destructive" : "text-foreground",
+                )}>
+                  {fmtTons(planBalanceKg)}
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* ── ФАКТ ── */}
-          <div className="p-2">
-            <div className="flex items-center gap-1.5 mb-2">
+          {/* ══ ФАКТ ══ */}
+          <div className="p-3 flex flex-col gap-2">
+            {/* Header */}
+            <div className="flex items-center gap-1.5">
               <Badge variant="outline" className="text-xs font-medium text-slate-600 border-slate-200">
                 ФАКТ
               </Badge>
-              {factBalanceKg !== null && (
-                <span className="text-xs text-muted-foreground ml-auto">
-                  Остаток:{" "}
-                  <span className={cn(
-                    "font-semibold",
-                    parseFloat(factBalanceKg) < 0 ? "text-destructive" : "text-foreground",
-                  )}>
-                    {fmtTons(factBalanceKg)}
-                  </span>
-                </span>
-              )}
             </div>
 
             {!hasAnyFact && (
-              <p className="text-xs text-muted-foreground italic">Нет фактических операций на эту дату</p>
+              <p className="text-xs text-muted-foreground italic">Нет фактических операций</p>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 md:divide-x">
-              {/* Left: Поступления */}
-              <div className="space-y-0.5">
+            {/* Inner: Поступления | Расходы */}
+            <div className="grid grid-cols-2 divide-x flex-1">
+              {/* Фактические поступления */}
+              <div className="pr-3 space-y-0.5">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
+                  <ArrowDownToLine className="h-3 w-3 text-emerald-400" />
+                  Поступления
+                </div>
                 {incomeDetails.length > 0 ? (
-                  <>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
-                      <ArrowDownToLine className="h-3 w-3 text-emerald-400" />
-                      Фактические поступления
+                  incomeDetails.map((d, i) => (
+                    <div key={i} className="text-sm py-0.5">
+                      <span className="text-emerald-600">{d.label}</span>
+                      {d.counterpartyName && (
+                        <span className="ml-1 text-xs text-muted-foreground">— {d.counterpartyName}</span>
+                      )}
+                      <span className="ml-1 text-emerald-500 font-semibold tabular-nums">{fmtTons(d.quantity)}</span>
                     </div>
-                    {incomeDetails.map((d, i) => (
-                      <div key={i} className="text-sm py-0.5">
-                        <span className="text-emerald-600">{d.label}</span>
-                        {d.counterpartyName && (
-                          <span className="ml-1 text-xs text-muted-foreground">— {d.counterpartyName}</span>
-                        )}
-                        <span className="ml-2 text-emerald-500 font-semibold tabular-nums">{fmtTons(d.quantity)}</span>
-                      </div>
-                    ))}
-                  </>
+                  ))
                 ) : (
-                  <p className="text-xs text-muted-foreground/60 italic md:block hidden">—</p>
+                  <p className="text-xs text-muted-foreground/50 italic">—</p>
                 )}
               </div>
-              {/* Right: Расходы */}
-              <div className="space-y-0.5 md:pl-4">
+              {/* Фактические расходы */}
+              <div className="pl-3 space-y-0.5">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
+                  <ArrowUpFromLine className="h-3 w-3 text-amber-400" />
+                  Расходы
+                </div>
                 {expenseDetails.length > 0 ? (
-                  <>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
-                      <ArrowUpFromLine className="h-3 w-3 text-amber-400" />
-                      Фактические расходы
+                  expenseDetails.map((d, i) => (
+                    <div key={i} className="text-sm py-0.5">
+                      <span className="text-amber-600">{d.label}</span>
+                      {d.counterpartyName && (
+                        <span className="ml-1 text-xs text-muted-foreground">— {d.counterpartyName}</span>
+                      )}
+                      <span className="ml-1 text-amber-500 font-semibold tabular-nums">{fmtTons(d.quantity)}</span>
                     </div>
-                    {expenseDetails.map((d, i) => (
-                      <div key={i} className="text-sm py-0.5">
-                        <span className="text-amber-600">{d.label}</span>
-                        {d.counterpartyName && (
-                          <span className="ml-1 text-xs text-muted-foreground">— {d.counterpartyName}</span>
-                        )}
-                        <span className="ml-2 text-amber-500 font-semibold tabular-nums">{fmtTons(d.quantity)}</span>
-                      </div>
-                    ))}
-                  </>
+                  ))
                 ) : (
-                  <p className="text-xs text-muted-foreground/60 italic md:block hidden">—</p>
+                  <p className="text-xs text-muted-foreground/50 italic">—</p>
                 )}
               </div>
             </div>
+
+            {/* Fact balance — below lists */}
+            {factBalanceKg !== null && (
+              <div className="pt-2 border-t flex items-center gap-1.5 text-xs">
+                <span className="text-muted-foreground">Остаток (факт):</span>
+                <span className={cn(
+                  "font-semibold tabular-nums",
+                  parseFloat(factBalanceKg) < 0 ? "text-destructive" : "text-foreground",
+                )}>
+                  {fmtTons(factBalanceKg)}
+                </span>
+              </div>
+            )}
           </div>
 
         </div>
