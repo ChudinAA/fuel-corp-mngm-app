@@ -506,6 +506,26 @@ export function registerPlanningRoutes(app: Express) {
     },
   );
 
+  app.delete(
+    "/api/planning/comments/:id",
+    requireAuth,
+    requirePermission("planning", "view"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const userId = String(req.session.userId);
+        const deleted = await storage.planning.deletePlanningComment(id, userId);
+        if (!deleted) {
+          return res.status(403).json({ message: "Комментарий не найден или нет прав на удаление" });
+        }
+        res.json({ ok: true });
+      } catch (error: any) {
+        console.error("Error deleting planning comment:", error);
+        res.status(500).json({ message: "Ошибка удаления комментария" });
+      }
+    },
+  );
+
   // ---- Actuals ----
   app.get(
     "/api/planning/actuals",

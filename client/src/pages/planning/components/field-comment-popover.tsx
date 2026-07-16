@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { MessageSquare, AlertTriangle, Send, Pencil, Check, X, Flag } from "lucide-react";
+import { MessageSquare, AlertTriangle, Send, Pencil, Check, X, Flag, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -83,6 +83,15 @@ export function FieldCommentPopover({ entityType, entityId, fieldKey }: FieldCom
   const togglePriorityMutation = useMutation({
     mutationFn: async ({ id, isHighPriority: val }: { id: string; isHighPriority: boolean }) => {
       await apiRequest("PATCH", `/api/planning/comments/${id}`, { isHighPriority: val });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/planning/comments/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
@@ -206,6 +215,15 @@ export function FieldCommentPopover({ entityType, entityId, fieldKey }: FieldCom
                             data-testid={`button-toggle-priority-${c.id}`}
                           >
                             <Flag className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => deleteMutation.mutate(c.id)}
+                            disabled={deleteMutation.isPending}
+                            className="text-muted-foreground hover:text-destructive transition-colors"
+                            title="Удалить комментарий"
+                            data-testid={`button-delete-comment-${c.id}`}
+                          >
+                            <Trash2 className="h-3 w-3" />
                           </button>
                         </div>
                       )}

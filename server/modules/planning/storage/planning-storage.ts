@@ -499,6 +499,17 @@ export class PlanningStorage implements IPlanningStorage {
     return updated ?? null;
   }
 
+  async deletePlanningComment(id: string, userId: string): Promise<boolean> {
+    const [existing] = await db
+      .select()
+      .from(planningComments)
+      .where(eq(planningComments.id, id));
+    if (!existing || existing.userId !== userId) return false;
+
+    await db.delete(planningComments).where(eq(planningComments.id, id));
+    return true;
+  }
+
   // ============ ACTUALS ============
 
   async getActuals(
