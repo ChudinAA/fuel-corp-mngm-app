@@ -258,6 +258,7 @@ export function PlanEntryDialog({
                       <Calendar
                         mode="single"
                         selected={dateValue ? new Date(dateValue + "T00:00:00") : undefined}
+                        defaultMonth={dateValue ? new Date(dateValue + "T00:00:00") : undefined}
                         onSelect={(date) => {
                           if (date) field.onChange(format(date, "yyyy-MM-dd"));
                         }}
