@@ -41,9 +41,11 @@ interface PlanningResourceWithSupplier {
   basisName?: string | null;
 }
 
+const NO_DATE = "__none__";
+
 interface QuickEntry {
   id: string;
-  date: string; // "" = no specific date (uses period.start on save)
+  date: string; // NO_DATE or specific date (uses period.start on save if NO_DATE)
   volume: string;
   counterpartyId: string;
   notes: string;
@@ -95,7 +97,7 @@ export function QuickPlanDialog({
   const { toast } = useToast();
   const [type, setType] = useState<"income" | "expense">(defaultType);
   const [entries, setEntries] = useState<QuickEntry[]>([
-    { id: makeid(), date: "", volume: "", counterpartyId: "", notes: "" },
+    { id: makeid(), date: NO_DATE, volume: "", counterpartyId: "", notes: "" },
   ]);
   const [saving, setSaving] = useState(false);
 
@@ -104,7 +106,7 @@ export function QuickPlanDialog({
   useEffect(() => {
     if (open) {
       setType(defaultType);
-      setEntries([{ id: makeid(), date: "", volume: "", counterpartyId: "", notes: "" }]);
+      setEntries([{ id: makeid(), date: NO_DATE, volume: "", counterpartyId: "", notes: "" }]);
     }
   }, [open, defaultType]);
 
@@ -139,7 +141,7 @@ export function QuickPlanDialog({
   const addRow = () =>
     setEntries((prev) => [
       ...prev,
-      { id: makeid(), date: "", volume: "", counterpartyId: "", notes: "" },
+      { id: makeid(), date: NO_DATE, volume: "", counterpartyId: "", notes: "" },
     ]);
 
   const removeRow = (id: string) =>
@@ -156,7 +158,7 @@ export function QuickPlanDialog({
     try {
       for (const e of valid) {
         await onSubmitEntry({
-          date: e.date || period.start,
+          date: (e.date && e.date !== NO_DATE) ? e.date : period.start,
           type,
           counterpartyId: e.counterpartyId || undefined,
           basisId: undefined,
@@ -250,7 +252,7 @@ export function QuickPlanDialog({
                       <SelectValue placeholder="Без конкретной даты" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Без конкретной даты</SelectItem>
+                      <SelectItem value={NO_DATE}>Без конкретной даты</SelectItem>
                       {days.map((d) => (
                         <SelectItem key={d} value={d}>
                           {format(new Date(d + "T00:00:00"), "dd MMMM (EEEE)", {
