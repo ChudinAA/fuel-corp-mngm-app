@@ -71,11 +71,12 @@ export interface ActualsByDate {
 }
 
 export interface ResourceSummaryRow {
-  supplierId: string;
+  supplierId: string | null;
   supplierName: string;
   allocatedVolume: string;
   demand: string;
   balance: string;
+  isUnassigned?: boolean;
 }
 
 export interface WarehouseSummaryRow {

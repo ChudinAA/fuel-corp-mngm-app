@@ -35,11 +35,12 @@ import { FieldCommentPopover } from "./field-comment-popover";
 import { fmtTons, kgToTons } from "../utils/planning-utils";
 
 interface ResourceSummaryRow {
-  supplierId: string;
+  supplierId: string | null;
   supplierName: string;
   allocatedVolume: string;
   demand: string;
   balance: string;
+  isUnassigned?: boolean;
 }
 
 interface WarehouseSummaryRow {
@@ -201,108 +202,165 @@ export function VolumesTab({ period }: { period: PlanningPeriod }) {
                   </TableCell>
                 </TableRow>
               ) : (
-                resources.map((res) => {
-                  const summary = summaryBySupplier.get(res.supplierId);
-                  const allocatedKg = summary?.allocatedVolume || "0";
-                  const demandKg = summary?.demand || "0";
-                  const balanceKg = summary?.balance || "0";
-                  const balNum = parseFloat(balanceKg);
+                <>
+                  {resources.map((res) => {
+                    const summary = summaryBySupplier.get(res.supplierId ?? "");
+                    const allocatedKg = summary?.allocatedVolume || "0";
+                    const demandKg = summary?.demand || "0";
+                    const balanceKg = summary?.balance || "0";
+                    const balNum = parseFloat(balanceKg);
 
-                  return (
-                    <TableRow key={res.id} data-testid={`row-resource-${res.id}`}>
-                      <TableCell className="font-medium">{res.supplierName}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <span data-testid={`text-allocated-volume-${res.id}`}>
-                            {fmtTons(allocatedKg)}
-                          </span>
-                          {canAllocate && (
-                            <button
-                              className="text-muted-foreground hover:text-foreground transition-colors"
-                              onClick={() =>
-                                setAllocatedVolumeDialog({
-                                  supplierId: res.supplierId,
-                                  supplierName: res.supplierName,
-                                })
-                              }
-                              title="Установить объём"
-                              data-testid={`button-edit-allocated-${res.id}`}
-                            >
-                              <PencilIcon className="h-3.5 w-3.5" />
-                            </button>
+                    return (
+                      <TableRow
+                        key={res.supplierId ?? "unassigned"}
+                        data-testid={`row-resource-${res.supplierId ?? "unassigned"}`}
+                        className={res.isUnassigned ? "bg-amber-50 dark:bg-amber-950/30" : ""}
+                      >
+                        <TableCell className={res.isUnassigned ? "font-medium text-amber-700 dark:text-amber-400" : "font-medium"}>
+                          {res.supplierName}
+                          {res.isUnassigned && (
+                            <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">(нераспределено)</span>
                           )}
-                          <FieldCommentPopover
-                            entityType="planning_resource"
-                            entityId={res.id}
-                            fieldKey="allocatedVolume"
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <span>{fmtTons(demandKg)}</span>
-                          <FieldCommentPopover
-                            entityType="planning_resource"
-                            entityId={res.id}
-                            fieldKey="demand"
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className={
-                              balNum < 0
-                                ? "text-destructive font-medium"
-                                : balNum > 0
-                                  ? "text-emerald-600 font-medium"
-                                  : "text-muted-foreground"
-                            }
-                            data-testid={`text-balance-${res.id}`}
-                          >
-                            {balNum > 0 ? "+" : ""}{fmtTons(balanceKg)}
-                          </span>
-                          <FieldCommentPopover
-                            entityType="planning_resource"
-                            entityId={res.id}
-                            fieldKey="balance"
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <EntityActionsMenu
-                          actions={[
-                            {
-                              id: "edit",
-                              label: "Редактировать",
-                              icon: Pencil,
-                              onClick: () => {
-                                setEditingResource(res);
-                                setResourceDialogOpen(true);
-                              },
-                              permission: { module: "planning", action: "allocate" },
-                            },
-                            {
-                              id: "delete",
-                              label: "Удалить",
-                              icon: Trash2,
-                              variant: "destructive",
-                              onClick: () => setDeleteResourceId(res.id),
-                              permission: { module: "planning", action: "allocate" },
-                            },
-                            {
-                              id: "history",
-                              label: "История изменений",
-                              icon: History,
-                              onClick: () =>
-                                setAuditOpen({ supplierId: res.supplierId, name: res.supplierName }),
-                            },
-                          ]}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
+                        </TableCell>
+                        <TableCell>
+                          {res.isUnassigned ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <span data-testid={`text-allocated-volume-${res.supplierId}`}>
+                                {fmtTons(allocatedKg)}
+                              </span>
+                              {canAllocate && (
+                                <button
+                                  className="text-muted-foreground hover:text-foreground transition-colors"
+                                  onClick={() =>
+                                    setAllocatedVolumeDialog({
+                                      supplierId: res.supplierId!,
+                                      supplierName: res.supplierName,
+                                    })
+                                  }
+                                  title="Установить объём"
+                                  data-testid={`button-edit-allocated-${res.supplierId}`}
+                                >
+                                  <PencilIcon className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                              <FieldCommentPopover
+                                entityType="planning_resource"
+                                entityId={res.supplierId!}
+                                fieldKey="allocatedVolume"
+                              />
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <span className={res.isUnassigned ? "font-medium text-amber-700 dark:text-amber-400" : ""}>
+                              {fmtTons(res.isUnassigned ? res.demand : demandKg)}
+                            </span>
+                            {!res.isUnassigned && (
+                              <FieldCommentPopover
+                                entityType="planning_resource"
+                                entityId={res.supplierId!}
+                                fieldKey="demand"
+                              />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={
+                                res.isUnassigned
+                                  ? "text-destructive font-medium"
+                                  : balNum < 0
+                                    ? "text-destructive font-medium"
+                                    : balNum > 0
+                                      ? "text-emerald-600 font-medium"
+                                      : "text-muted-foreground"
+                              }
+                              data-testid={`text-balance-${res.supplierId ?? "unassigned"}`}
+                            >
+                              {res.isUnassigned
+                                ? `−${fmtTons(res.demand)}`
+                                : `${balNum > 0 ? "+" : ""}${fmtTons(balanceKg)}`}
+                            </span>
+                            {!res.isUnassigned && (
+                              <FieldCommentPopover
+                                entityType="planning_resource"
+                                entityId={res.supplierId!}
+                                fieldKey="balance"
+                              />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {!res.isUnassigned && (
+                            <EntityActionsMenu
+                              actions={[
+                                {
+                                  id: "edit",
+                                  label: "Редактировать",
+                                  icon: Pencil,
+                                  onClick: () => {
+                                    setEditingResource(res as any);
+                                    setResourceDialogOpen(true);
+                                  },
+                                  permission: { module: "planning", action: "allocate" },
+                                },
+                                {
+                                  id: "delete",
+                                  label: "Удалить",
+                                  icon: Trash2,
+                                  variant: "destructive",
+                                  onClick: () => setDeleteResourceId((res as any).id),
+                                  permission: { module: "planning", action: "allocate" },
+                                },
+                                {
+                                  id: "history",
+                                  label: "История изменений",
+                                  icon: History,
+                                  onClick: () =>
+                                    setAuditOpen({ supplierId: res.supplierId!, name: res.supplierName }),
+                                },
+                              ]}
+                            />
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {/* Unassigned row from summary if not already in resources list */}
+                  {resourcesSummary
+                    .filter((s) => s.isUnassigned)
+                    .map((s) => {
+                      const demandNum = parseFloat(s.demand);
+                      return (
+                        <TableRow
+                          key="unassigned-summary"
+                          className="bg-amber-50 dark:bg-amber-950/30"
+                          data-testid="row-resource-unassigned"
+                        >
+                          <TableCell className="font-medium text-amber-700 dark:text-amber-400">
+                            Не указан поставщик
+                            <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">(нераспределено)</span>
+                          </TableCell>
+                          <TableCell><span className="text-muted-foreground">—</span></TableCell>
+                          <TableCell>
+                            <span className="font-medium text-amber-700 dark:text-amber-400">
+                              {fmtTons(s.demand)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-destructive font-medium">
+                              −{fmtTons(s.demand)}
+                            </span>
+                          </TableCell>
+                          <TableCell />
+                        </TableRow>
+                      );
+                    })}
+                </>
               )}
             </TableBody>
           </Table>

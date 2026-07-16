@@ -735,8 +735,12 @@ export class PlanningStorage implements IPlanningStorage {
       );
 
     const demandBySupplier = new Map<string, number>();
+    let unassignedDemand = 0;
     for (const e of incomeEntries) {
-      if (!e.counterpartyId) continue;
+      if (!e.counterpartyId) {
+        unassignedDemand += parseFloat(e.volume);
+        continue;
+      }
       demandBySupplier.set(
         e.counterpartyId,
         (demandBySupplier.get(e.counterpartyId) || 0) + parseFloat(e.volume),
@@ -768,7 +772,7 @@ export class PlanningStorage implements IPlanningStorage {
       }
     }
 
-    return resources.map((res) => {
+    const rows = resources.map((res) => {
       const allocatedVolume = (allocatedBySupplier.get(res.supplierId) || 0).toFixed(2);
       const demand = (demandBySupplier.get(res.supplierId) || 0).toFixed(2);
       const balance = (parseFloat(allocatedVolume) - parseFloat(demand)).toFixed(2);
@@ -780,6 +784,20 @@ export class PlanningStorage implements IPlanningStorage {
         balance,
       };
     });
+
+    // Add unassigned row if there are income plan entries without a counterparty
+    if (unassignedDemand > 0) {
+      rows.push({
+        supplierId: null as any,
+        supplierName: "Не указан поставщик",
+        allocatedVolume: "0.00",
+        demand: unassignedDemand.toFixed(2),
+        balance: (-unassignedDemand).toFixed(2),
+        isUnassigned: true,
+      } as any);
+    }
+
+    return rows;
   }
 
   async getWarehousesSummary(

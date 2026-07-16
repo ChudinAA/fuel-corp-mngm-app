@@ -525,6 +525,7 @@ export function WarehousePlanPanel({
 
   const [entryDialogOpen, setEntryDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<PlanEntryRow | null>(null);
+  const [editingPeriodDates, setEditingPeriodDates] = useState<string[]>([]);
   const [quickDialogOpen, setQuickDialogOpen] = useState(false);
   const [quickAddPeriod, setQuickAddPeriod] = useState<FiveDayPeriod | null>(null);
   const [quickAddType, setQuickAddType] = useState<"income" | "expense">("income");
@@ -1119,6 +1120,15 @@ export function WarehousePlanPanel({
                           isEntryEditable={isEntryEditable}
                           onEditEntry={(e) => {
                             setEditingEntry(e);
+                            // Restrict calendar to dates within this 5-day period
+                            const days: string[] = [];
+                            let d = new Date(row.period.start + "T00:00:00");
+                            const end = new Date(row.period.end + "T00:00:00");
+                            while (d <= end) {
+                              days.push(format(d, "yyyy-MM-dd"));
+                              d = new Date(d.getTime() + 86400000);
+                            }
+                            setEditingPeriodDates(days);
                             setQuickAddPeriod(null);
                             setEntryDialogOpen(true);
                           }}
@@ -1287,6 +1297,7 @@ export function WarehousePlanPanel({
         onSubmit={handleEntrySubmit}
         defaultDate={defaultDate}
         defaultType={undefined}
+        periodDates={editingPeriodDates.length > 0 ? editingPeriodDates : undefined}
       />
 
       <AllocationDialog

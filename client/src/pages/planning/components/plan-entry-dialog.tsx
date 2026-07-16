@@ -32,19 +32,14 @@ import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { tonsToKg, kgToTons } from "../utils/planning-utils";
 
-const formSchema = z
-  .object({
-    date: z.string().min(1, "Дата обязательна"),
-    type: z.enum(["income", "expense"]),
-    counterpartyId: z.string().min(1, "Контрагент обязателен"),
-    basisId: z.string().optional(),
-    volume: z.string().min(1, "Объём обязателен"),
-    notes: z.string().optional(),
-  })
-  .refine((data) => data.type !== "income" || !!data.basisId, {
-    message: "Базис обязателен для записи прихода",
-    path: ["basisId"],
-  });
+const formSchema = z.object({
+  date: z.string().min(1, "Дата обязательна"),
+  type: z.enum(["income", "expense"]),
+  counterpartyId: z.string().optional(),
+  basisId: z.string().optional(),
+  volume: z.string().min(1, "Объём обязателен"),
+  notes: z.string().optional(),
+});
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -76,6 +71,7 @@ export function PlanEntryDialog({
   onSubmit,
   defaultDate,
   defaultType,
+  periodDates,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -84,6 +80,7 @@ export function PlanEntryDialog({
   onSubmit: (values: any) => Promise<void>;
   defaultDate?: string;
   defaultType?: "income" | "expense";
+  periodDates?: string[];
 }) {
   const [saving, setSaving] = useState(false);
 
@@ -263,6 +260,11 @@ export function PlanEntryDialog({
                         onSelect={(date) => {
                           if (date) field.onChange(format(date, "yyyy-MM-dd"));
                         }}
+                        disabled={
+                          periodDates && periodDates.length > 0
+                            ? (date) => !periodDates.includes(format(date, "yyyy-MM-dd"))
+                            : undefined
+                        }
                         locale={ru}
                         initialFocus
                       />
@@ -278,11 +280,17 @@ export function PlanEntryDialog({
               name="counterpartyId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{type === "income" ? "Поставщик" : "Клиент"}</FormLabel>
+                  <FormLabel>
+                    {type === "income" ? "Поставщик" : "Клиент"}
+                    <span className="text-muted-foreground ml-1 text-xs">(необязательно)</span>
+                  </FormLabel>
                   <FormControl>
                     <Combobox
-                      options={counterpartyOptions}
-                      value={field.value}
+                      options={[
+                        { value: "", label: "— Не указан —" },
+                        ...counterpartyOptions,
+                      ]}
+                      value={field.value || ""}
                       onValueChange={(v) => {
                         field.onChange(v);
                         form.setValue("basisId", "");
@@ -309,16 +317,20 @@ export function PlanEntryDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Базис <span className="text-destructive">*</span>
+                      Базис
+                      <span className="text-muted-foreground ml-1 text-xs">(необязательно)</span>
                     </FormLabel>
                     <FormControl>
                       <Combobox
-                        options={incomeBasisOptions}
+                        options={[
+                          { value: "", label: "— Не указан —" },
+                          ...incomeBasisOptions,
+                        ]}
                         value={field.value || ""}
                         onValueChange={field.onChange}
                         placeholder={
                           !counterpartyId
-                            ? "Сначала выберите поставщика"
+                            ? "Выберите базис"
                             : incomeBasisOptions.length === 0
                               ? "Нет баз для этого поставщика"
                               : "Выберите базис"
