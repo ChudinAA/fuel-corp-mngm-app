@@ -58,6 +58,7 @@ import { AuditPanel } from "@/components/audit-panel";
 import type { PlanningPeriod } from "../planning-page";
 import { PlanEntryDialog, type PlanEntryFormEntry } from "./plan-entry-dialog";
 import { AllocationDialog, type AllocationFormEntry } from "./allocation-dialog";
+import { QuickPlanDialog } from "./quick-plan-dialog";
 import { FieldCommentPopover } from "./field-comment-popover";
 import { fmtTons } from "../utils/planning-utils";
 import { cn } from "@/lib/utils";
@@ -365,10 +366,14 @@ function PeriodDetailPanel({
 
           {/* ══ ФАКТ ══ */}
           <div className="p-3 flex flex-col gap-2">
-            <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setFactExpanded((v) => !v)}
+              className="flex items-center gap-1.5 w-full text-left rounded-sm hover:bg-muted/50 transition-colors -mx-1 px-1 py-0.5"
+              data-testid="button-toggle-fact"
+            >
               <Badge
                 variant="outline"
-                className="text-xs font-medium text-slate-600 border-slate-200"
+                className="text-xs font-medium text-slate-600 border-slate-200 pointer-events-none"
               >
                 ФАКТ
               </Badge>
@@ -387,18 +392,15 @@ function PeriodDetailPanel({
                   )}
                 </span>
               )}
-              <button
-                onClick={() => setFactExpanded((v) => !v)}
-                className="ml-auto flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                title={factExpanded ? "Свернуть факт" : "Развернуть факт"}
-              >
+              <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+                {factExpanded ? "свернуть" : hasAnyFact ? "детали" : "нет данных"}
                 {factExpanded ? (
                   <ChevronDown className="h-3.5 w-3.5" />
                 ) : (
                   <ChevronRight className="h-3.5 w-3.5" />
                 )}
-              </button>
-            </div>
+              </span>
+            </button>
 
             {!factExpanded && !hasAnyFact && (
               <p className="text-xs text-muted-foreground italic">
@@ -523,6 +525,7 @@ export function WarehousePlanPanel({
 
   const [entryDialogOpen, setEntryDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<PlanEntryRow | null>(null);
+  const [quickDialogOpen, setQuickDialogOpen] = useState(false);
   const [quickAddPeriod, setQuickAddPeriod] = useState<FiveDayPeriod | null>(null);
   const [quickAddType, setQuickAddType] = useState<"income" | "expense">("income");
   const [allocationDialogOpen, setAllocationDialogOpen] = useState(false);
@@ -771,8 +774,7 @@ export function WarehousePlanPanel({
     e.stopPropagation();
     setQuickAddPeriod(p);
     setQuickAddType(type);
-    setEditingEntry(null);
-    setEntryDialogOpen(true);
+    setQuickDialogOpen(true);
   };
 
   const COL_COUNT = 9;
@@ -809,21 +811,7 @@ export function WarehousePlanPanel({
                 </Tooltip>
               </TooltipProvider>
             )}
-            {canCreate && (
-              <Button
-                size="sm"
-                onClick={() => {
-                  setEditingEntry(null);
-                  setQuickAddPeriod(null);
-                  setEntryDialogOpen(true);
-                }}
-                data-testid="button-add-plan-entry"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Добавить запись
-              </Button>
-            )}
-          </div>
+            </div>
         </CardHeader>
         <CardContent className="overflow-x-auto p-0">
           <Table>
@@ -1013,11 +1001,11 @@ export function WarehousePlanPanel({
                             {canCreate && (
                               <button
                                 onClick={(e) => openQuickAdd(e, row.period, "income")}
-                                className="text-muted-foreground hover:text-emerald-600 transition-colors flex-shrink-0"
+                                className="inline-flex items-center justify-center h-5 w-5 rounded-full border border-blue-400 bg-blue-50 text-blue-500 hover:bg-blue-100 hover:border-blue-500 transition-colors flex-shrink-0"
                                 title="Добавить приход"
                                 data-testid={`button-quick-add-income-${key}`}
                               >
-                                <Plus className="h-3.5 w-3.5" />
+                                <Plus className="h-3 w-3" />
                               </button>
                             )}
                           </div>
@@ -1043,11 +1031,11 @@ export function WarehousePlanPanel({
                             {canCreate && (
                               <button
                                 onClick={(e) => openQuickAdd(e, row.period, "expense")}
-                                className="text-muted-foreground hover:text-amber-600 transition-colors flex-shrink-0"
+                                className="inline-flex items-center justify-center h-5 w-5 rounded-full border border-blue-400 bg-blue-50 text-blue-500 hover:bg-blue-100 hover:border-blue-500 transition-colors flex-shrink-0"
                                 title="Добавить расход"
                                 data-testid={`button-quick-add-expense-${key}`}
                               >
-                                <Plus className="h-3.5 w-3.5" />
+                                <Plus className="h-3 w-3" />
                               </button>
                             )}
                           </div>
@@ -1267,21 +1255,38 @@ export function WarehousePlanPanel({
       </Card>
 
       {/* Dialogs */}
+      {/* Quick-add dialog (new flexible entry per 5-day period) */}
+      {quickAddPeriod && (
+        <QuickPlanDialog
+          open={quickDialogOpen}
+          onOpenChange={(o) => {
+            setQuickDialogOpen(o);
+            if (!o) {
+              setQuickAddPeriod(null);
+              invalidateAll();
+            }
+          }}
+          period={quickAddPeriod}
+          defaultType={quickAddType}
+          warehouseId={warehouseId}
+          onSubmitEntry={async (values: any) => {
+            await apiRequest("POST", "/api/planning/entries", { ...values, warehouseId });
+          }}
+        />
+      )}
+
+      {/* Full edit dialog for existing entries */}
       <PlanEntryDialog
         open={entryDialogOpen}
         onOpenChange={(o) => {
           setEntryDialogOpen(o);
-          if (!o) {
-            setQuickAddPeriod(null);
-          }
+          if (!o) setQuickAddPeriod(null);
         }}
         warehouseId={warehouseId}
         entry={editingEntry}
         onSubmit={handleEntrySubmit}
-        defaultDate={
-          quickAddPeriod ? quickAddPeriod.start : defaultDate
-        }
-        defaultType={quickAddPeriod ? quickAddType : undefined}
+        defaultDate={defaultDate}
+        defaultType={undefined}
       />
 
       <AllocationDialog

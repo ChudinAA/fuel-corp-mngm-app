@@ -16,6 +16,7 @@ import {
   supplierBases,
   opt,
   aircraftRefueling,
+  movement,
 } from "@shared/schema";
 import { SOURCE_TYPE } from "@shared/constants";
 import type {
@@ -530,7 +531,11 @@ export class PlanningStorage implements IPlanningStorage {
       .filter((t) => t.sourceType === SOURCE_TYPE.REFUELING && t.sourceId)
       .map((t) => t.sourceId!);
 
-    const [optRows, refuelRows] = await Promise.all([
+    const movementSourceIds = transactions
+      .filter((t) => t.sourceType === SOURCE_TYPE.MOVEMENT && t.sourceId)
+      .map((t) => t.sourceId!);
+
+    const [optRows, refuelRows, movementRows] = await Promise.all([
       optSourceIds.length > 0
         ? db
             .select({ id: opt.id, buyerId: opt.buyerId })
@@ -543,7 +548,33 @@ export class PlanningStorage implements IPlanningStorage {
             .from(aircraftRefueling)
             .where(inArray(aircraftRefueling.id, refuelSourceIds))
         : Promise.resolve([]),
+      movementSourceIds.length > 0
+        ? db
+            .select({
+              id: movement.id,
+              fromWarehouseId: movement.fromWarehouseId,
+              toWarehouseId: movement.toWarehouseId,
+            })
+            .from(movement)
+            .where(inArray(movement.id, movementSourceIds))
+        : Promise.resolve([]),
     ]);
+
+    // Lookup warehouse names for movements
+    const movWarehouseIdSet = new Set(
+      movementRows
+        .flatMap((r) => [r.fromWarehouseId, r.toWarehouseId])
+        .filter(Boolean) as string[],
+    );
+    const movWarehouseRows =
+      movWarehouseIdSet.size > 0
+        ? await db
+            .select({ id: warehouses.id, name: warehouses.name })
+            .from(warehouses)
+            .where(inArray(warehouses.id, [...movWarehouseIdSet]))
+        : [];
+    const movWarehouseNameMap = new Map(movWarehouseRows.map((r) => [r.id, r.name]));
+    const movementInfoMap = new Map(movementRows.map((r) => [r.id, r]));
 
     // Map sourceId → buyerId
     const sourceToBuyer = new Map<string, string | null>();
@@ -612,11 +643,20 @@ export class PlanningStorage implements IPlanningStorage {
         ).toFixed(2);
       }
 
-      // Resolve buyer name for OPT / refueling
+      // Resolve counterparty name
       let counterpartyName: string | null = null;
       if (t.sourceId && sourceToBuyer.has(t.sourceId)) {
         const buyerId = sourceToBuyer.get(t.sourceId);
         if (buyerId) counterpartyName = buyerNameMap.get(buyerId) || null;
+      } else if (t.sourceType === SOURCE_TYPE.MOVEMENT && t.sourceId && movementInfoMap.has(t.sourceId)) {
+        const mov = movementInfoMap.get(t.sourceId)!;
+        if (!isExpense && mov.fromWarehouseId) {
+          const name = movWarehouseNameMap.get(mov.fromWarehouseId);
+          if (name) counterpartyName = `от: ${name}`;
+        } else if (isExpense && mov.toWarehouseId) {
+          const name = movWarehouseNameMap.get(mov.toWarehouseId);
+          if (name) counterpartyName = `на: ${name}`;
+        }
       }
 
       let label: string;

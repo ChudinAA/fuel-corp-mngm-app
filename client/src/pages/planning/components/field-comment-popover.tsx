@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -31,8 +31,6 @@ interface FieldCommentPopoverProps {
 
 export function FieldCommentPopover({ entityType, entityId, fieldKey }: FieldCommentPopoverProps) {
   const { user } = useAuth();
-  const sessionKey = `comments_seen_${entityType}_${entityId}_${fieldKey}`;
-  const autoOpenApplied = useRef(false);
 
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
@@ -53,20 +51,6 @@ export function FieldCommentPopover({ entityType, entityId, fieldKey }: FieldCom
     },
     staleTime: 60_000,
   });
-
-  // Auto-open on first page visit if there are comments
-  useEffect(() => {
-    if (autoOpenApplied.current) return;
-    if (comments.length === 0) return;
-    const alreadySeen = sessionStorage.getItem(sessionKey);
-    if (!alreadySeen) {
-      setOpen(true);
-      sessionStorage.setItem(sessionKey, "1");
-      autoOpenApplied.current = true;
-    } else {
-      autoOpenApplied.current = true;
-    }
-  }, [comments.length, sessionKey]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -110,9 +94,6 @@ export function FieldCommentPopover({ entityType, entityId, fieldKey }: FieldCom
 
   const handleOpenChange = (v: boolean) => {
     setOpen(v);
-    if (v && !sessionStorage.getItem(sessionKey)) {
-      sessionStorage.setItem(sessionKey, "1");
-    }
   };
 
   const startEdit = (c: PlanningComment) => {
