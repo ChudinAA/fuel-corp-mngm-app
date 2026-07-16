@@ -48,8 +48,11 @@ export function registerPlanningRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
+        const body = req.body;
         const data = insertPlanEntrySchema.parse({
-          ...req.body,
+          ...body,
+          counterpartyId: body.counterpartyId || undefined,
+          basisId: body.basisId || undefined,
           createdById: String(req.session.userId),
         });
         const created = await storage.planning.createPlanEntry(data);
@@ -91,9 +94,17 @@ export function registerPlanningRoutes(app: Express) {
             }
           }
         }
+        const body = req.body;
+        // Convert empty strings to null for nullable UUID fields
+        const sanitized = {
+          ...body,
+          counterpartyId: body.counterpartyId || null,
+          basisId: body.basisId || null,
+          updatedById: String(req.session.userId),
+        };
         const updated = await storage.planning.updatePlanEntry(
           req.params.id,
-          { ...req.body, updatedById: String(req.session.userId) },
+          sanitized,
           String(req.session.userId),
         );
         if (!updated) {

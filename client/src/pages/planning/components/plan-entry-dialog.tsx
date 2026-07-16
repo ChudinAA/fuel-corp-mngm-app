@@ -156,7 +156,8 @@ export function PlanEntryDialog({
     try {
       await onSubmit({
         ...values,
-        basisId: values.basisId || undefined,
+        counterpartyId: values.counterpartyId || null,
+        basisId: values.basisId || null,
         volume: tonsToKg(values.volume),
         isManualBalance: false,
         balanceAfter: null,
