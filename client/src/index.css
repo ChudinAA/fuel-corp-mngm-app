@@ -326,3 +326,45 @@
 .new-deal-flash {
   animation: new-deal-flash 1.5s ease-in-out infinite;
 }
+
+@keyframes comment-pulse-red {
+  0%, 100% {
+    color: hsl(var(--destructive));
+    filter: drop-shadow(0 0 0px transparent);
+    transform: scale(1);
+  }
+  40% {
+    color: hsl(var(--destructive));
+    filter: drop-shadow(0 0 4px hsl(var(--destructive) / 0.7));
+    transform: scale(1.2);
+  }
+  60% {
+    filter: drop-shadow(0 0 6px hsl(var(--destructive) / 0.5));
+    transform: scale(1.15);
+  }
+}
+
+@keyframes comment-pulse-blue {
+  0%, 100% {
+    color: hsl(217 91% 60%);
+    filter: drop-shadow(0 0 0px transparent);
+    transform: scale(1);
+  }
+  40% {
+    color: hsl(217 91% 60%);
+    filter: drop-shadow(0 0 4px hsl(217 91% 60% / 0.7));
+    transform: scale(1.2);
+  }
+  60% {
+    filter: drop-shadow(0 0 6px hsl(217 91% 60% / 0.5));
+    transform: scale(1.15);
+  }
+}
+
+.animate-comment-pulse-red {
+  animation: comment-pulse-red 2s ease-in-out infinite;
+}
+
+.animate-comment-pulse-blue {
+  animation: comment-pulse-blue 2.5s ease-in-out infinite;
+}

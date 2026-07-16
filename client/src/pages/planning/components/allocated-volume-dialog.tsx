@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, startOfMonth, endOfMonth, addMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, addMonths, isBefore, isAfter, startOfDay } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
   Dialog,
@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { kgToTons } from "../utils/planning-utils";
+import type { PlanningPeriod } from "../planning-page";
 
 interface SupplierAllocatedVolume {
   id: string;
@@ -29,21 +30,40 @@ interface AllocatedVolumeDialogProps {
   onOpenChange: (open: boolean) => void;
   supplierId: string;
   supplierName: string;
+  period?: PlanningPeriod;
 }
 
-function getMonthOptions() {
-  const months = [];
-  const now = new Date();
-  for (let i = -1; i <= 11; i++) {
-    const d = addMonths(now, i);
-    const from = startOfMonth(d);
-    const to = endOfMonth(d);
-    months.push({
-      label: format(d, "LLLL yyyy", { locale: ru }),
-      from: format(from, "yyyy-MM-dd"),
-      to: format(to, "yyyy-MM-dd"),
-    });
+function getMonthOptionsFromPeriod(period?: PlanningPeriod) {
+  if (!period) {
+    const months = [];
+    const now = new Date();
+    for (let i = -1; i <= 11; i++) {
+      const d = addMonths(now, i);
+      const from = startOfMonth(d);
+      const to = endOfMonth(d);
+      months.push({
+        label: format(d, "LLLL yyyy", { locale: ru }),
+        from: format(from, "yyyy-MM-dd"),
+        to: format(to, "yyyy-MM-dd"),
+      });
+    }
+    return months;
   }
+
+  const months = [];
+  let cursor = startOfMonth(period.from);
+  const periodEnd = startOfDay(period.to);
+
+  while (!isAfter(cursor, periodEnd)) {
+    const monthEnd = endOfMonth(cursor);
+    months.push({
+      label: format(cursor, "LLLL yyyy", { locale: ru }),
+      from: format(startOfMonth(cursor), "yyyy-MM-dd"),
+      to: format(monthEnd, "yyyy-MM-dd"),
+    });
+    cursor = addMonths(cursor, 1);
+  }
+
   return months;
 }
 
@@ -52,14 +72,14 @@ export function AllocatedVolumeDialog({
   onOpenChange,
   supplierId,
   supplierName,
+  period,
 }: AllocatedVolumeDialogProps) {
   const { toast } = useToast();
-  const months = getMonthOptions();
-  const [selectedMonth, setSelectedMonth] = useState(months[1].from);
+  const months = getMonthOptionsFromPeriod(period);
+  const [selectedMonth, setSelectedMonth] = useState(months[0]?.from ?? "");
   const [volume, setVolume] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Load existing allocated volumes for this supplier
   const { data: existingVolumes = [] } = useQuery<SupplierAllocatedVolume[]>({
     queryKey: ["/api/planning/allocated-volumes/by-supplier", supplierId],
     queryFn: async () =>
@@ -67,40 +87,37 @@ export function AllocatedVolumeDialog({
     enabled: open && !!supplierId,
   });
 
-  const selectedMonthData = months.find((m) => m.from === selectedMonth) || months[1];
+  const selectedMonthData = months.find((m) => m.from === selectedMonth) || months[0];
 
-  // Pre-fill volume when month selection changes (if existing value found)
-  // NOTE: DB stores periodFrom as a timestamp ("2025-07-01 00:00:00"), so we compare
-  // only the first 10 characters (the date part) to avoid mismatch.
   useEffect(() => {
     if (!open) return;
     const existing = existingVolumes.find(
       (v) =>
-        v.periodFrom.slice(0, 10) === selectedMonthData.from &&
-        v.periodTo.slice(0, 10) === selectedMonthData.to,
+        v.periodFrom.slice(0, 10) === selectedMonthData?.from &&
+        v.periodTo.slice(0, 10) === selectedMonthData?.to,
     );
     if (existing) {
       setVolume(kgToTons(existing.volume));
     } else {
       setVolume("");
     }
-  }, [selectedMonth, existingVolumes, open, selectedMonthData.from, selectedMonthData.to]);
+  }, [selectedMonth, existingVolumes, open, selectedMonthData?.from, selectedMonthData?.to]);
 
-  // Reset on open
   useEffect(() => {
     if (!open) return;
-    setSelectedMonth(months[1].from);
-  }, [open]);
+    const newMonths = getMonthOptionsFromPeriod(period);
+    setSelectedMonth(newMonths[0]?.from ?? "");
+  }, [open, period?.from?.toISOString(), period?.to?.toISOString()]);
 
   const handleSave = async () => {
-    if (!volume) return;
+    if (!volume || !selectedMonthData) return;
     setSaving(true);
     try {
       await apiRequest("POST", "/api/planning/allocated-volumes", {
         supplierId,
         periodFrom: selectedMonthData.from,
         periodTo: selectedMonthData.to,
-        volume: (parseFloat(volume) * 1000).toFixed(2), // tons -> kg
+        volume: (parseFloat(volume) * 1000).toFixed(2),
       });
       queryClient.invalidateQueries({ queryKey: ["/api/planning/summary/resources"] });
       queryClient.invalidateQueries({ queryKey: ["/api/planning/resources"] });
@@ -149,7 +166,7 @@ export function AllocatedVolumeDialog({
               data-testid="input-allocated-volume"
             />
             {existingVolumes.find(
-              (v) => v.periodFrom === selectedMonthData.from,
+              (v) => v.periodFrom.slice(0, 10) === selectedMonthData?.from,
             ) && (
               <p className="text-xs text-muted-foreground">
                 Текущее значение обновлено из ранее сохранённых данных

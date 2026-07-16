@@ -75,6 +75,7 @@ export function PlanEntryDialog({
   entry,
   onSubmit,
   defaultDate,
+  defaultType,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -82,6 +83,7 @@ export function PlanEntryDialog({
   entry?: PlanEntryFormEntry | null;
   onSubmit: (values: any) => Promise<void>;
   defaultDate?: string;
+  defaultType?: "income" | "expense";
 }) {
   const [saving, setSaving] = useState(false);
 
@@ -133,14 +135,14 @@ export function PlanEntryDialog({
     if (open) {
       form.reset({
         date: entry ? entry.date.slice(0, 10) : (defaultDate || format(new Date(), "yyyy-MM-dd")),
-        type: entry?.type || "income",
+        type: entry?.type || defaultType || "income",
         counterpartyId: entry?.counterpartyId || "",
         basisId: entry?.basisId || "",
         volume: entry ? kgToTons(entry.volume) : "",
         notes: entry?.notes || "",
       });
     }
-  }, [open, entry, defaultDate]);
+  }, [open, entry, defaultDate, defaultType]);
 
   // Auto-populate basisId from resource when supplier selected (income)
   useEffect(() => {

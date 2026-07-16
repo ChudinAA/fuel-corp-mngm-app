@@ -479,6 +479,25 @@ export class PlanningStorage implements IPlanningStorage {
     return created;
   }
 
+  async updatePlanningComment(
+    id: string,
+    userId: string,
+    data: { text?: string; isHighPriority?: boolean },
+  ): Promise<PlanningComment | null> {
+    const [existing] = await db
+      .select()
+      .from(planningComments)
+      .where(eq(planningComments.id, id));
+    if (!existing || existing.userId !== userId) return null;
+
+    const [updated] = await db
+      .update(planningComments)
+      .set(data)
+      .where(eq(planningComments.id, id))
+      .returning();
+    return updated ?? null;
+  }
+
   // ============ ACTUALS ============
 
   async getActuals(

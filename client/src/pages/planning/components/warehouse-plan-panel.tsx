@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, addDays, differenceInDays } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
   Plus,
@@ -17,6 +17,11 @@ import {
   TrendingDown,
   ArrowDownToLine,
   ArrowUpFromLine,
+  Package,
+  Plane,
+  Globe,
+  ArrowRightLeft,
+  ClipboardList,
 } from "lucide-react";
 import {
   Table,
@@ -82,12 +87,73 @@ interface ActualsByDate {
   details: ActualDetailItem[];
 }
 
-interface DateRow {
-  date: string;
+// ─── 5-day period types ───
+interface FiveDayPeriod {
+  start: string;
+  end: string;
+}
+
+interface PeriodRow {
+  period: FiveDayPeriod;
   incomeEntries: PlanEntryRow[];
   expenseEntries: PlanEntryRow[];
-  actual: ActualsByDate | undefined;
-  lastBalanceAfter: string | null;
+  actuals: ActualsByDate[];
+  lastPlanBalanceAfter: string | null;
+}
+
+function buildFiveDayPeriods(from: Date, to: Date): FiveDayPeriod[] {
+  const periods: FiveDayPeriod[] = [];
+  let current = new Date(from);
+  current.setHours(0, 0, 0, 0);
+  const endDay = new Date(to);
+  endDay.setHours(0, 0, 0, 0);
+
+  while (current <= endDay) {
+    const daysLeft = differenceInDays(endDay, current) + 1;
+    let len: number;
+
+    if (daysLeft <= 6) {
+      if (daysLeft < 3 && periods.length > 0) {
+        const last = periods[periods.length - 1];
+        last.end = format(endDay, "yyyy-MM-dd");
+        break;
+      }
+      len = daysLeft;
+    } else {
+      const afterThis = daysLeft - 5;
+      if (afterThis > 0 && afterThis < 3) {
+        len = daysLeft;
+      } else {
+        len = 5;
+      }
+    }
+
+    const periodEnd = addDays(current, len - 1);
+    periods.push({
+      start: format(current, "yyyy-MM-dd"),
+      end: format(periodEnd, "yyyy-MM-dd"),
+    });
+    current = addDays(periodEnd, 1);
+  }
+
+  return periods;
+}
+
+function periodKey(p: FiveDayPeriod) {
+  return `${p.start}_${p.end}`;
+}
+
+function fmtPeriodLabel(p: FiveDayPeriod): string {
+  const s = new Date(p.start + "T00:00:00");
+  const e = new Date(p.end + "T00:00:00");
+  const sDay = format(s, "dd");
+  const eDay = format(e, "dd");
+  const sMonth = format(s, "MMM", { locale: ru });
+  const eMonth = format(e, "MMM", { locale: ru });
+  if (sMonth === eMonth) {
+    return `${sDay}–${eDay} ${sMonth}`;
+  }
+  return `${sDay} ${sMonth} – ${eDay} ${eMonth}`;
 }
 
 function fmtPeriod(period: PlanningPeriod) {
@@ -95,10 +161,6 @@ function fmtPeriod(period: PlanningPeriod) {
     dateFrom: format(period.from, "yyyy-MM-dd"),
     dateTo: format(period.to, "yyyy-MM-dd"),
   };
-}
-
-function fmtDate(dateStr: string) {
-  return format(new Date(dateStr + "T00:00:00"), "dd.MM.yyyy");
 }
 
 function isPastMonth(dateStr: string): boolean {
@@ -109,8 +171,27 @@ function isPastMonth(dateStr: string): boolean {
   return entryMonthStart.getTime() < curMonthStart.getTime();
 }
 
-// ─── Detail panel inside expanded date row ───
-function DateDetailPanel({
+function getSourceTypeIcon(sourceType: string, label: string) {
+  if (label.startsWith("Инвентаризация")) {
+    return <ClipboardList className="h-3.5 w-3.5 text-purple-500 flex-shrink-0" />;
+  }
+  if (sourceType === "opt") {
+    return <Package className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />;
+  }
+  if (sourceType === "refueling_abroad") {
+    return <Globe className="h-3.5 w-3.5 text-cyan-500 flex-shrink-0" />;
+  }
+  if (sourceType === "refueling") {
+    return <Plane className="h-3.5 w-3.5 text-sky-500 flex-shrink-0" />;
+  }
+  if (sourceType === "movement") {
+    return <ArrowRightLeft className="h-3.5 w-3.5 text-orange-500 flex-shrink-0" />;
+  }
+  return <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />;
+}
+
+// ─── Detail panel inside expanded period row ───
+function PeriodDetailPanel({
   row,
   warehouseId,
   lockEnabled,
@@ -119,7 +200,7 @@ function DateDetailPanel({
   onDeleteEntry,
   onAuditEntry,
 }: {
-  row: DateRow;
+  row: PeriodRow;
   warehouseId: string;
   lockEnabled: boolean;
   isEntryEditable: (e: PlanEntryRow) => boolean;
@@ -127,12 +208,26 @@ function DateDetailPanel({
   onDeleteEntry: (id: string) => void;
   onAuditEntry: (e: PlanEntryRow) => void;
 }) {
-  const incomeDetails = row.actual?.details.filter((d) => !d.isExpense) ?? [];
-  const expenseDetails = row.actual?.details.filter((d) => d.isExpense) ?? [];
+  const [factExpanded, setFactExpanded] = useState(false);
 
-  const planBalanceKg = row.lastBalanceAfter;
-  const factBalanceKg = row.actual?.factBalanceAfter ?? null;
+  const allFactDetails = row.actuals.flatMap((a) => a.details);
+  const incomeDetails = allFactDetails.filter((d) => !d.isExpense);
+  const expenseDetails = allFactDetails.filter((d) => d.isExpense);
 
+  const planBalanceKg = row.lastPlanBalanceAfter;
+  const lastActualWithBalance = [...row.actuals]
+    .reverse()
+    .find((a) => a.factBalanceAfter !== null);
+  const factBalanceKg = lastActualWithBalance?.factBalanceAfter ?? null;
+
+  const totalFactIncome = row.actuals.reduce(
+    (s, a) => s + parseFloat(a.incomeActual || "0"),
+    0,
+  );
+  const totalFactExpense = row.actuals.reduce(
+    (s, a) => s + parseFloat(a.expenseActual || "0"),
+    0,
+  );
   const hasAnyPlan = row.incomeEntries.length > 0 || row.expenseEntries.length > 0;
   const hasAnyFact = incomeDetails.length > 0 || expenseDetails.length > 0;
 
@@ -140,21 +235,38 @@ function DateDetailPanel({
     return (
       <div key={e.id} className="flex items-start gap-1.5 text-sm py-0.5">
         <div className="flex-1 min-w-0">
-          <span className={e.type === "income" ? "text-emerald-700 font-medium" : "text-amber-700 font-medium"}>
+          <span
+            className={
+              e.type === "income"
+                ? "text-emerald-700 font-medium"
+                : "text-amber-700 font-medium"
+            }
+          >
             {e.counterpartyName || "—"}
           </span>
           {e.basisName && (
-            <span className="ml-1 text-xs text-muted-foreground font-normal">({e.basisName})</span>
+            <span className="ml-1 text-xs text-muted-foreground font-normal">
+              ({e.basisName})
+            </span>
           )}
-          <span className={cn(
-            "ml-2 font-semibold tabular-nums",
-            e.type === "income" ? "text-emerald-600" : "text-amber-600",
-          )}>
+          <span
+            className={cn(
+              "ml-2 font-semibold tabular-nums text-xs",
+              e.type === "income" ? "text-emerald-600" : "text-amber-600",
+            )}
+          >
             {fmtTons(e.volume)}
+          </span>
+          <span className="ml-1 text-xs text-muted-foreground">
+            {format(new Date(e.date.slice(0, 10) + "T00:00:00"), "dd.MM")}
           </span>
         </div>
         <div className="flex items-center gap-0.5 flex-shrink-0">
-          <FieldCommentPopover entityType="plan_entry" entityId={e.id} fieldKey="volume" />
+          <FieldCommentPopover
+            entityType="plan_entry"
+            entityId={e.id}
+            fieldKey="volume"
+          />
           <EntityActionsMenu
             actions={[
               {
@@ -190,25 +302,26 @@ function DateDetailPanel({
   return (
     <TableRow className="bg-muted/20 hover:bg-muted/30">
       <TableCell colSpan={9} className="p-0">
-        {/* Outer: ПЛАН | ФАКТ side by side */}
         <div className="mx-4 my-2 border rounded-md overflow-hidden grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x">
 
           {/* ══ ПЛАН ══ */}
           <div className="p-3 flex flex-col gap-2">
-            {/* Header */}
             <div className="flex items-center gap-1.5">
-              <Badge variant="outline" className="text-xs font-medium text-blue-600 border-blue-200">
+              <Badge
+                variant="outline"
+                className="text-xs font-medium text-blue-600 border-blue-200"
+              >
                 ПЛАН
               </Badge>
             </div>
 
             {!hasAnyPlan && (
-              <p className="text-xs text-muted-foreground italic">Нет плановых записей</p>
+              <p className="text-xs text-muted-foreground italic">
+                Нет плановых записей
+              </p>
             )}
 
-            {/* Inner: Поступления | Расходы */}
             <div className="grid grid-cols-2 divide-x flex-1">
-              {/* Плановые поступления */}
               <div className="pr-3 space-y-0.5">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
                   <ArrowDownToLine className="h-3 w-3 text-emerald-500" />
@@ -220,7 +333,6 @@ function DateDetailPanel({
                   <p className="text-xs text-muted-foreground/50 italic">—</p>
                 )}
               </div>
-              {/* Плановые расходы */}
               <div className="pl-3 space-y-0.5">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
                   <ArrowUpFromLine className="h-3 w-3 text-amber-500" />
@@ -234,14 +346,17 @@ function DateDetailPanel({
               </div>
             </div>
 
-            {/* Plan balance — below lists */}
             {planBalanceKg !== null && (
               <div className="pt-2 border-t flex items-center gap-1.5 text-xs">
                 <span className="text-muted-foreground">Остаток (план):</span>
-                <span className={cn(
-                  "font-semibold tabular-nums",
-                  parseFloat(planBalanceKg) < 0 ? "text-destructive" : "text-foreground",
-                )}>
+                <span
+                  className={cn(
+                    "font-semibold tabular-nums",
+                    parseFloat(planBalanceKg) < 0
+                      ? "text-destructive"
+                      : "text-foreground",
+                  )}
+                >
                   {fmtTons(planBalanceKg)}
                 </span>
               </div>
@@ -250,75 +365,144 @@ function DateDetailPanel({
 
           {/* ══ ФАКТ ══ */}
           <div className="p-3 flex flex-col gap-2">
-            {/* Header */}
             <div className="flex items-center gap-1.5">
-              <Badge variant="outline" className="text-xs font-medium text-slate-600 border-slate-200">
+              <Badge
+                variant="outline"
+                className="text-xs font-medium text-slate-600 border-slate-200"
+              >
                 ФАКТ
               </Badge>
+              {/* Compact summary when collapsed */}
+              {!factExpanded && hasAnyFact && (
+                <span className="text-xs text-muted-foreground ml-1">
+                  {totalFactIncome > 0 && (
+                    <span className="text-emerald-600 mr-2">
+                      ↓ {fmtTons(totalFactIncome)}
+                    </span>
+                  )}
+                  {totalFactExpense > 0 && (
+                    <span className="text-amber-600">
+                      ↑ {fmtTons(totalFactExpense)}
+                    </span>
+                  )}
+                </span>
+              )}
+              <button
+                onClick={() => setFactExpanded((v) => !v)}
+                className="ml-auto flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                title={factExpanded ? "Свернуть факт" : "Развернуть факт"}
+              >
+                {factExpanded ? (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5" />
+                )}
+              </button>
             </div>
 
-            {!hasAnyFact && (
-              <p className="text-xs text-muted-foreground italic">Нет фактических операций</p>
+            {!factExpanded && !hasAnyFact && (
+              <p className="text-xs text-muted-foreground italic">
+                Нет фактических операций
+              </p>
             )}
 
-            {/* Inner: Поступления | Расходы */}
-            <div className="grid grid-cols-2 divide-x flex-1">
-              {/* Фактические поступления */}
-              <div className="pr-3 space-y-0.5">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
-                  <ArrowDownToLine className="h-3 w-3 text-emerald-400" />
-                  Поступления
-                </div>
-                {incomeDetails.length > 0 ? (
-                  incomeDetails.map((d, i) => (
-                    <div key={i} className="text-sm py-0.5">
-                      <span className="text-emerald-600">{d.label}</span>
-                      {d.counterpartyName && (
-                        <span className="ml-1 text-xs text-muted-foreground">— {d.counterpartyName}</span>
-                      )}
-                      <span className="ml-1 text-emerald-500 font-semibold tabular-nums">{fmtTons(d.quantity)}</span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-muted-foreground/50 italic">—</p>
+            {factExpanded && (
+              <>
+                {!hasAnyFact && (
+                  <p className="text-xs text-muted-foreground italic">
+                    Нет фактических операций
+                  </p>
                 )}
-              </div>
-              {/* Фактические расходы */}
-              <div className="pl-3 space-y-0.5">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
-                  <ArrowUpFromLine className="h-3 w-3 text-amber-400" />
-                  Расходы
-                </div>
-                {expenseDetails.length > 0 ? (
-                  expenseDetails.map((d, i) => (
-                    <div key={i} className="text-sm py-0.5">
-                      <span className="text-amber-600">{d.label}</span>
-                      {d.counterpartyName && (
-                        <span className="ml-1 text-xs text-muted-foreground">— {d.counterpartyName}</span>
-                      )}
-                      <span className="ml-1 text-amber-500 font-semibold tabular-nums">{fmtTons(d.quantity)}</span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-muted-foreground/50 italic">—</p>
-                )}
-              </div>
-            </div>
 
-            {/* Fact balance — below lists */}
-            {factBalanceKg !== null && (
-              <div className="pt-2 border-t flex items-center gap-1.5 text-xs">
-                <span className="text-muted-foreground">Остаток (факт):</span>
-                <span className={cn(
-                  "font-semibold tabular-nums",
-                  parseFloat(factBalanceKg) < 0 ? "text-destructive" : "text-foreground",
-                )}>
-                  {fmtTons(factBalanceKg)}
-                </span>
-              </div>
+                <div className="grid grid-cols-2 divide-x flex-1">
+                  <div className="pr-3 space-y-0.5">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
+                      <ArrowDownToLine className="h-3 w-3 text-emerald-400" />
+                      Поступления
+                    </div>
+                    {incomeDetails.length > 0 ? (
+                      incomeDetails.map((d, i) => (
+                        <div key={i} className="flex items-center gap-1.5 py-0.5">
+                          <TooltipProvider delayDuration={300}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="flex-shrink-0">
+                                  {getSourceTypeIcon(d.sourceType, d.label)}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p className="text-xs">{d.label}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <span className="text-emerald-600 font-semibold tabular-nums text-xs">
+                            {fmtTons(d.quantity)}
+                          </span>
+                          {d.counterpartyName && (
+                            <span className="text-xs text-muted-foreground truncate">
+                              {d.counterpartyName}
+                            </span>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground/50 italic">—</p>
+                    )}
+                  </div>
+                  <div className="pl-3 space-y-0.5">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mb-1">
+                      <ArrowUpFromLine className="h-3 w-3 text-amber-400" />
+                      Расходы
+                    </div>
+                    {expenseDetails.length > 0 ? (
+                      expenseDetails.map((d, i) => (
+                        <div key={i} className="flex items-center gap-1.5 py-0.5">
+                          <TooltipProvider delayDuration={300}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="flex-shrink-0">
+                                  {getSourceTypeIcon(d.sourceType, d.label)}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <p className="text-xs">{d.label}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <span className="text-amber-600 font-semibold tabular-nums text-xs">
+                            {fmtTons(d.quantity)}
+                          </span>
+                          {d.counterpartyName && (
+                            <span className="text-xs text-muted-foreground truncate">
+                              {d.counterpartyName}
+                            </span>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground/50 italic">—</p>
+                    )}
+                  </div>
+                </div>
+
+                {factBalanceKg !== null && (
+                  <div className="pt-2 border-t flex items-center gap-1.5 text-xs">
+                    <span className="text-muted-foreground">Остаток (факт):</span>
+                    <span
+                      className={cn(
+                        "font-semibold tabular-nums",
+                        parseFloat(factBalanceKg) < 0
+                          ? "text-destructive"
+                          : "text-foreground",
+                      )}
+                    >
+                      {fmtTons(factBalanceKg)}
+                    </span>
+                  </div>
+                )}
+              </>
             )}
           </div>
-
         </div>
       </TableCell>
     </TableRow>
@@ -339,14 +523,19 @@ export function WarehousePlanPanel({
 
   const [entryDialogOpen, setEntryDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<PlanEntryRow | null>(null);
+  const [quickAddPeriod, setQuickAddPeriod] = useState<FiveDayPeriod | null>(null);
+  const [quickAddType, setQuickAddType] = useState<"income" | "expense">("income");
   const [allocationDialogOpen, setAllocationDialogOpen] = useState(false);
   const [editingAllocation, setEditingAllocation] = useState<AllocationFormEntry | null>(null);
   const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
   const [deleteAllocationId, setDeleteAllocationId] = useState<string | null>(null);
-  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
+  const [expandedPeriods, setExpandedPeriods] = useState<Set<string>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
   const [auditEntry, setAuditEntry] = useState<{ id: string; label: string } | null>(null);
-  const [auditAllocation, setAuditAllocation] = useState<{ id: string; label: string } | null>(null);
+  const [auditAllocation, setAuditAllocation] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
 
   const entriesKey = ["/api/planning/entries", warehouseId, dateFrom, dateTo];
   const allocationsKey = ["/api/planning/allocations", warehouseId, dateFrom, dateTo];
@@ -356,19 +545,36 @@ export function WarehousePlanPanel({
   const { data: entries = [], isLoading: loadingEntries } = useQuery<PlanEntryRow[]>({
     queryKey: entriesKey,
     queryFn: async () =>
-      (await apiRequest("GET", `/api/planning/entries?warehouseId=${warehouseId}&dateFrom=${dateFrom}&dateTo=${dateTo}`)).json(),
+      (
+        await apiRequest(
+          "GET",
+          `/api/planning/entries?warehouseId=${warehouseId}&dateFrom=${dateFrom}&dateTo=${dateTo}`,
+        )
+      ).json(),
   });
 
-  const { data: allocations = [], isLoading: loadingAllocations } = useQuery<AllocationFormEntry[]>({
+  const { data: allocations = [], isLoading: loadingAllocations } = useQuery<
+    AllocationFormEntry[]
+  >({
     queryKey: allocationsKey,
     queryFn: async () =>
-      (await apiRequest("GET", `/api/planning/allocations?warehouseId=${warehouseId}&dateFrom=${dateFrom}&dateTo=${dateTo}`)).json(),
+      (
+        await apiRequest(
+          "GET",
+          `/api/planning/allocations?warehouseId=${warehouseId}&dateFrom=${dateFrom}&dateTo=${dateTo}`,
+        )
+      ).json(),
   });
 
   const { data: actuals = [] } = useQuery<ActualsByDate[]>({
     queryKey: actualsKey,
     queryFn: async () =>
-      (await apiRequest("GET", `/api/planning/actuals?warehouseId=${warehouseId}&dateFrom=${dateFrom}&dateTo=${dateTo}`)).json(),
+      (
+        await apiRequest(
+          "GET",
+          `/api/planning/actuals?warehouseId=${warehouseId}&dateFrom=${dateFrom}&dateTo=${dateTo}`,
+        )
+      ).json(),
     refetchInterval: 30_000,
   });
 
@@ -380,39 +586,59 @@ export function WarehousePlanPanel({
   const lockEnabled = settings["editLockEnabled"] === "true";
   const canCreate = hasPermission("planning", "create");
 
+  // ─── Build 5-day periods for entire selected range ───
+  const fiveDayPeriods = buildFiveDayPeriods(period.from, period.to);
+
   const actualsByDate = new Map(actuals.map((a) => [a.date, a]));
 
-  // Build date-grouped rows merging plan entries + actuals
-  const allDates = new Set<string>();
-  entries.forEach((e) => allDates.add(e.date.slice(0, 10)));
-  actuals.forEach((a) => allDates.add(a.date));
-
-  const dateRows: DateRow[] = Array.from(allDates)
-    .sort()
-    .map((date) => {
-      const dayEntries = entries.filter((e) => e.date.slice(0, 10) === date);
-      const incomeEntries = dayEntries.filter((e) => e.type === "income");
-      const expenseEntries = dayEntries.filter((e) => e.type === "expense");
-      const actual = actualsByDate.get(date);
-      const lastEntry = dayEntries[dayEntries.length - 1];
-      return {
-        date,
-        incomeEntries,
-        expenseEntries,
-        actual,
-        lastBalanceAfter: lastEntry?.balanceAfter || null,
-      };
+  const periodRows: PeriodRow[] = fiveDayPeriods.map((p) => {
+    const periodEntries = entries.filter((e) => {
+      const d = e.date.slice(0, 10);
+      return d >= p.start && d <= p.end;
     });
+    const incomeEntries = periodEntries.filter((e) => e.type === "income");
+    const expenseEntries = periodEntries.filter((e) => e.type === "expense");
 
-  // Totals for summary row
-  const totalIncomeKg = entries.filter((e) => e.type === "income").reduce((s, e) => s + parseFloat(e.volume || "0"), 0);
-  const totalExpenseKg = entries.filter((e) => e.type === "expense").reduce((s, e) => s + parseFloat(e.volume || "0"), 0);
-  const totalActualIncomeKg = actuals.reduce((s, a) => s + parseFloat(a.incomeActual || "0"), 0);
-  const totalActualExpenseKg = actuals.reduce((s, a) => s + parseFloat(a.expenseActual || "0"), 0);
-  // Last plan balance and last fact balance across the period
-  const sortedDateRows = [...dateRows].sort((a, b) => a.date.localeCompare(b.date));
-  const lastPlanBalance = sortedDateRows.filter((r) => r.lastBalanceAfter).at(-1)?.lastBalanceAfter ?? null;
-  const lastFactBalance = sortedDateRows.filter((r) => r.actual?.factBalanceAfter).at(-1)?.actual?.factBalanceAfter ?? null;
+    const periodActuals = actuals.filter((a) => a.date >= p.start && a.date <= p.end);
+
+    // Last plan balance: the last entry's balanceAfter in this period
+    const lastEntry = periodEntries[periodEntries.length - 1];
+    const lastPlanBalanceAfter = lastEntry?.balanceAfter ?? null;
+
+    return {
+      period: p,
+      incomeEntries,
+      expenseEntries,
+      actuals: periodActuals,
+      lastPlanBalanceAfter,
+    };
+  });
+
+  // ─── Totals for summary row ───
+  const totalIncomeKg = entries
+    .filter((e) => e.type === "income")
+    .reduce((s, e) => s + parseFloat(e.volume || "0"), 0);
+  const totalExpenseKg = entries
+    .filter((e) => e.type === "expense")
+    .reduce((s, e) => s + parseFloat(e.volume || "0"), 0);
+  const totalActualIncomeKg = actuals.reduce(
+    (s, a) => s + parseFloat(a.incomeActual || "0"),
+    0,
+  );
+  const totalActualExpenseKg = actuals.reduce(
+    (s, a) => s + parseFloat(a.expenseActual || "0"),
+    0,
+  );
+  const lastPlanBalance =
+    [...periodRows]
+      .reverse()
+      .find((r) => r.lastPlanBalanceAfter)
+      ?.lastPlanBalanceAfter ?? null;
+  const lastFactBalance =
+    [...actuals]
+      .reverse()
+      .find((a) => a.factBalanceAfter)
+      ?.factBalanceAfter ?? null;
 
   const defaultDate = format(period.from, "yyyy-MM-dd");
 
@@ -434,7 +660,11 @@ export function WarehousePlanPanel({
       invalidateAll();
       toast({ title: "Запись сохранена" });
     } catch (error: any) {
-      toast({ title: "Ошибка", description: error?.message || "Не удалось сохранить запись", variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: error?.message || "Не удалось сохранить запись",
+        variant: "destructive",
+      });
       throw error;
     }
   };
@@ -446,7 +676,11 @@ export function WarehousePlanPanel({
       invalidateAll();
       toast({ title: "Запись удалена" });
     } catch (error: any) {
-      toast({ title: "Ошибка", description: error?.message || "Запись заблокирована или не найдена", variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: error?.message || "Запись заблокирована или не найдена",
+        variant: "destructive",
+      });
     } finally {
       setDeleteEntryId(null);
     }
@@ -455,7 +689,11 @@ export function WarehousePlanPanel({
   const handleAllocationSubmit = async (values: any) => {
     try {
       if (editingAllocation) {
-        await apiRequest("PATCH", `/api/planning/allocations/${editingAllocation.id}`, values);
+        await apiRequest(
+          "PATCH",
+          `/api/planning/allocations/${editingAllocation.id}`,
+          values,
+        );
       } else {
         await apiRequest("POST", "/api/planning/allocations", { ...values, warehouseId });
       }
@@ -463,7 +701,11 @@ export function WarehousePlanPanel({
       queryClient.invalidateQueries({ queryKey: ["/api/planning/summary/resources"] });
       toast({ title: "Распределение сохранено" });
     } catch (error: any) {
-      toast({ title: "Ошибка", description: error?.message || "Не удалось сохранить распределение", variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: error?.message || "Не удалось сохранить распределение",
+        variant: "destructive",
+      });
       throw error;
     }
   };
@@ -485,7 +727,10 @@ export function WarehousePlanPanel({
   const toggleLock = async () => {
     const newVal = lockEnabled ? "false" : "true";
     try {
-      await apiRequest("PATCH", "/api/planning/settings", { key: "editLockEnabled", value: newVal });
+      await apiRequest("PATCH", "/api/planning/settings", {
+        key: "editLockEnabled",
+        value: newVal,
+      });
       queryClient.invalidateQueries({ queryKey: settingsKey });
       toast({ title: lockEnabled ? "Блокировка снята" : "Блокировка включена" });
     } catch {
@@ -493,21 +738,22 @@ export function WarehousePlanPanel({
     }
   };
 
-  const toggleDate = (date: string) => {
-    setExpandedDates((prev) => {
+  const togglePeriod = (p: FiveDayPeriod) => {
+    const key = periodKey(p);
+    setExpandedPeriods((prev) => {
       const next = new Set(prev);
-      if (next.has(date)) next.delete(date);
-      else next.add(date);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   };
 
-  const toggleAllDates = () => {
+  const toggleAllPeriods = () => {
     if (allExpanded) {
-      setExpandedDates(new Set());
+      setExpandedPeriods(new Set());
       setAllExpanded(false);
     } else {
-      setExpandedDates(new Set(dateRows.map((r) => r.date)));
+      setExpandedPeriods(new Set(fiveDayPeriods.map(periodKey)));
       setAllExpanded(true);
     }
   };
@@ -515,6 +761,18 @@ export function WarehousePlanPanel({
   const isEntryEditable = (entry: PlanEntryRow): boolean => {
     if (!lockEnabled) return true;
     return !isPastMonth(entry.date.slice(0, 10));
+  };
+
+  const openQuickAdd = (
+    e: React.MouseEvent,
+    p: FiveDayPeriod,
+    type: "income" | "expense",
+  ) => {
+    e.stopPropagation();
+    setQuickAddPeriod(p);
+    setQuickAddType(type);
+    setEditingEntry(null);
+    setEntryDialogOpen(true);
   };
 
   const COL_COUNT = 9;
@@ -556,6 +814,7 @@ export function WarehousePlanPanel({
                 size="sm"
                 onClick={() => {
                   setEditingEntry(null);
+                  setQuickAddPeriod(null);
                   setEntryDialogOpen(true);
                 }}
                 data-testid="button-add-plan-entry"
@@ -574,7 +833,7 @@ export function WarehousePlanPanel({
                   <Button
                     size="icon"
                     variant="ghost"
-                    onClick={toggleAllDates}
+                    onClick={toggleAllPeriods}
                     className="h-6 w-6"
                     title={allExpanded ? "Свернуть все" : "Развернуть все"}
                     data-testid="button-toggle-all-rows"
@@ -609,13 +868,16 @@ export function WarehousePlanPanel({
             <TableBody>
               {loadingEntries ? (
                 <TableRow>
-                  <TableCell colSpan={COL_COUNT} className="text-center text-muted-foreground py-8">
+                  <TableCell
+                    colSpan={COL_COUNT}
+                    className="text-center text-muted-foreground py-8"
+                  >
                     Загрузка...
                   </TableCell>
                 </TableRow>
               ) : (
                 <>
-                  {/* ── Итого за период — ВВЕРХУ ── */}
+                  {/* ── Итого за период ── */}
                   <TableRow className="bg-blue-50/50 dark:bg-blue-950/20 font-semibold border-b-2">
                     <TableCell />
                     <TableCell className="py-2 text-sm text-blue-700 dark:text-blue-400">
@@ -629,7 +891,11 @@ export function WarehousePlanPanel({
                     </TableCell>
                     <TableCell className="py-2">
                       {lastPlanBalance ? (
-                        <span className={parseFloat(lastPlanBalance) < 0 ? "text-destructive" : ""}>
+                        <span
+                          className={
+                            parseFloat(lastPlanBalance) < 0 ? "text-destructive" : ""
+                          }
+                        >
                           {fmtTons(lastPlanBalance)}
                         </span>
                       ) : (
@@ -638,21 +904,29 @@ export function WarehousePlanPanel({
                     </TableCell>
                     <TableCell className="py-2">
                       {totalActualIncomeKg > 0 ? (
-                        <span className="text-emerald-500">{fmtTons(totalActualIncomeKg)}</span>
+                        <span className="text-emerald-500">
+                          {fmtTons(totalActualIncomeKg)}
+                        </span>
                       ) : (
                         <span className="text-muted-foreground text-xs">—</span>
                       )}
                     </TableCell>
                     <TableCell className="py-2">
                       {totalActualExpenseKg > 0 ? (
-                        <span className="text-amber-500">{fmtTons(totalActualExpenseKg)}</span>
+                        <span className="text-amber-500">
+                          {fmtTons(totalActualExpenseKg)}
+                        </span>
                       ) : (
                         <span className="text-muted-foreground text-xs">—</span>
                       )}
                     </TableCell>
                     <TableCell className="py-2">
                       {lastFactBalance ? (
-                        <span className={parseFloat(lastFactBalance) < 0 ? "text-destructive" : ""}>
+                        <span
+                          className={
+                            parseFloat(lastFactBalance) < 0 ? "text-destructive" : ""
+                          }
+                        >
                           {fmtTons(lastFactBalance)}
                         </span>
                       ) : (
@@ -662,38 +936,48 @@ export function WarehousePlanPanel({
                     <TableCell className="py-2" />
                   </TableRow>
 
-                  {/* ── No data message ── */}
-                  {dateRows.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={COL_COUNT} className="text-center text-muted-foreground py-6">
-                        Нет данных за период
-                      </TableCell>
-                    </TableRow>
-                  )}
+                  {/* ── Period rows ── */}
+                  {periodRows.map((row) => {
+                    const key = periodKey(row.period);
+                    const isExpanded = expandedPeriods.has(key);
+                    const incomeKg = row.incomeEntries.reduce(
+                      (s, e) => s + parseFloat(e.volume || "0"),
+                      0,
+                    );
+                    const expenseKg = row.expenseEntries.reduce(
+                      (s, e) => s + parseFloat(e.volume || "0"),
+                      0,
+                    );
+                    const factIncomeKg = row.actuals.reduce(
+                      (s, a) => s + parseFloat(a.incomeActual || "0"),
+                      0,
+                    );
+                    const factExpenseKg = row.actuals.reduce(
+                      (s, a) => s + parseFloat(a.expenseActual || "0"),
+                      0,
+                    );
+                    const lastActualBal = [...row.actuals]
+                      .reverse()
+                      .find((a) => a.factBalanceAfter)?.factBalanceAfter ?? null;
 
-                  {/* ── Date rows ── */}
-                  {dateRows.map((row) => {
-                    const isExpanded = expandedDates.has(row.date);
-                    const incomeKg = row.incomeEntries.reduce((s, e) => s + parseFloat(e.volume || "0"), 0);
-                    const expenseKg = row.expenseEntries.reduce((s, e) => s + parseFloat(e.volume || "0"), 0);
-                    const factIncomeKg = parseFloat(row.actual?.incomeActual || "0");
-                    const factExpenseKg = parseFloat(row.actual?.expenseActual || "0");
-                    const factBalKg = row.actual?.factBalanceAfter ?? null;
-                    const past = isPastMonth(row.date);
+                    const past = isPastMonth(row.period.start);
 
-                    // Compact counterparty preview
-                    const incomeNames = row.incomeEntries.map((e) => e.counterpartyName || "?").slice(0, 2);
-                    const expenseNames = row.expenseEntries.map((e) => e.counterpartyName || "?").slice(0, 2);
+                    const incomeNames = row.incomeEntries
+                      .map((e) => e.counterpartyName || "?")
+                      .slice(0, 2);
+                    const expenseNames = row.expenseEntries
+                      .map((e) => e.counterpartyName || "?")
+                      .slice(0, 2);
 
                     return [
                       <TableRow
-                        key={`summary-${row.date}`}
+                        key={`summary-${key}`}
                         className={cn(
                           "cursor-pointer hover-elevate",
                           past && lockEnabled && "opacity-75",
                         )}
-                        onClick={() => toggleDate(row.date)}
-                        data-testid={`row-date-${row.date}`}
+                        onClick={() => togglePeriod(row.period)}
+                        data-testid={`row-period-${key}`}
                       >
                         <TableCell className="py-2">
                           {isExpanded ? (
@@ -702,36 +986,83 @@ export function WarehousePlanPanel({
                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                           )}
                         </TableCell>
-                        <TableCell className="py-2 font-medium">
-                          {fmtDate(row.date)}
+                        <TableCell className="py-2 font-medium text-sm whitespace-nowrap">
+                          {fmtPeriodLabel(row.period)}
                           {past && lockEnabled && (
                             <Lock className="inline-block h-3 w-3 ml-1 text-muted-foreground" />
                           )}
                         </TableCell>
+
+                        {/* Приход план */}
                         <TableCell className="py-2">
-                          {incomeKg > 0 ? (
-                            <div className="flex items-center gap-1">
-                              <span className="text-emerald-600 font-medium">{fmtTons(incomeKg)}</span>
-                              <FieldCommentPopover entityType="plan_date_income" entityId={warehouseId} fieldKey={`income_${row.date}`} />
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">—</span>
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            {incomeKg > 0 ? (
+                              <>
+                                <span className="text-emerald-600 font-medium">
+                                  {fmtTons(incomeKg)}
+                                </span>
+                                <FieldCommentPopover
+                                  entityType="plan_period_income"
+                                  entityId={warehouseId}
+                                  fieldKey={`income_${key}`}
+                                />
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            )}
+                            {canCreate && (
+                              <button
+                                onClick={(e) => openQuickAdd(e, row.period, "income")}
+                                className="text-muted-foreground hover:text-emerald-600 transition-colors flex-shrink-0"
+                                title="Добавить приход"
+                                data-testid={`button-quick-add-income-${key}`}
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </TableCell>
+
+                        {/* Расход план */}
                         <TableCell className="py-2">
-                          {expenseKg > 0 ? (
-                            <div className="flex items-center gap-1">
-                              <span className="text-amber-600 font-medium">{fmtTons(expenseKg)}</span>
-                              <FieldCommentPopover entityType="plan_date_expense" entityId={warehouseId} fieldKey={`expense_${row.date}`} />
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">—</span>
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            {expenseKg > 0 ? (
+                              <>
+                                <span className="text-amber-600 font-medium">
+                                  {fmtTons(expenseKg)}
+                                </span>
+                                <FieldCommentPopover
+                                  entityType="plan_period_expense"
+                                  entityId={warehouseId}
+                                  fieldKey={`expense_${key}`}
+                                />
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            )}
+                            {canCreate && (
+                              <button
+                                onClick={(e) => openQuickAdd(e, row.period, "expense")}
+                                className="text-muted-foreground hover:text-amber-600 transition-colors flex-shrink-0"
+                                title="Добавить расход"
+                                data-testid={`button-quick-add-expense-${key}`}
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </TableCell>
+
                         <TableCell className="py-2">
-                          {row.lastBalanceAfter ? (
-                            <span className={cn("text-sm", parseFloat(row.lastBalanceAfter) < 0 && "text-destructive")}>
-                              {fmtTons(row.lastBalanceAfter)}
+                          {row.lastPlanBalanceAfter ? (
+                            <span
+                              className={cn(
+                                "text-sm",
+                                parseFloat(row.lastPlanBalanceAfter) < 0 &&
+                                  "text-destructive",
+                              )}
+                            >
+                              {fmtTons(row.lastPlanBalanceAfter)}
                             </span>
                           ) : (
                             <span className="text-muted-foreground text-xs">—</span>
@@ -739,22 +1070,31 @@ export function WarehousePlanPanel({
                         </TableCell>
                         <TableCell className="py-2">
                           {factIncomeKg > 0 ? (
-                            <span className="text-emerald-500">{fmtTons(factIncomeKg)}</span>
+                            <span className="text-emerald-500">
+                              {fmtTons(factIncomeKg)}
+                            </span>
                           ) : (
                             <span className="text-muted-foreground text-xs">—</span>
                           )}
                         </TableCell>
                         <TableCell className="py-2">
                           {factExpenseKg > 0 ? (
-                            <span className="text-amber-500">{fmtTons(factExpenseKg)}</span>
+                            <span className="text-amber-500">
+                              {fmtTons(factExpenseKg)}
+                            </span>
                           ) : (
                             <span className="text-muted-foreground text-xs">—</span>
                           )}
                         </TableCell>
                         <TableCell className="py-2">
-                          {factBalKg ? (
-                            <span className={cn("text-sm", parseFloat(factBalKg) < 0 && "text-destructive")}>
-                              {fmtTons(factBalKg)}
+                          {lastActualBal ? (
+                            <span
+                              className={cn(
+                                "text-sm",
+                                parseFloat(lastActualBal) < 0 && "text-destructive",
+                              )}
+                            >
+                              {fmtTons(lastActualBal)}
                             </span>
                           ) : (
                             <span className="text-muted-foreground text-xs">—</span>
@@ -764,35 +1104,41 @@ export function WarehousePlanPanel({
                           <div className="flex flex-col gap-0.5 text-xs">
                             {incomeNames.length > 0 && (
                               <span className="text-emerald-600 truncate max-w-[120px]">
-                                ↓ {incomeNames.join(", ")}{row.incomeEntries.length > 2 ? ` +${row.incomeEntries.length - 2}` : ""}
+                                ↓ {incomeNames.join(", ")}
+                                {row.incomeEntries.length > 2
+                                  ? ` +${row.incomeEntries.length - 2}`
+                                  : ""}
                               </span>
                             )}
                             {expenseNames.length > 0 && (
                               <span className="text-amber-600 truncate max-w-[120px]">
-                                ↑ {expenseNames.join(", ")}{row.expenseEntries.length > 2 ? ` +${row.expenseEntries.length - 2}` : ""}
+                                ↑ {expenseNames.join(", ")}
+                                {row.expenseEntries.length > 2
+                                  ? ` +${row.expenseEntries.length - 2}`
+                                  : ""}
                               </span>
                             )}
                           </div>
                         </TableCell>
                       </TableRow>,
 
-                      // Expanded detail
                       isExpanded && (
-                        <DateDetailPanel
-                          key={`detail-${row.date}`}
+                        <PeriodDetailPanel
+                          key={`detail-${key}`}
                           row={row}
                           warehouseId={warehouseId}
                           lockEnabled={lockEnabled}
                           isEntryEditable={isEntryEditable}
                           onEditEntry={(e) => {
                             setEditingEntry(e);
+                            setQuickAddPeriod(null);
                             setEntryDialogOpen(true);
                           }}
                           onDeleteEntry={(id) => setDeleteEntryId(id)}
                           onAuditEntry={(e) =>
                             setAuditEntry({
                               id: e.id,
-                              label: `Запись ${e.type === "income" ? "прихода" : "расхода"} ${fmtDate(e.date.slice(0, 10))} — ${e.counterpartyName || ""}`,
+                              label: `Запись ${e.type === "income" ? "прихода" : "расхода"} ${fmtPeriodLabel(row.period)} — ${e.counterpartyName || ""}`,
                             })
                           }
                         />
@@ -840,26 +1186,41 @@ export function WarehousePlanPanel({
             <TableBody>
               {loadingAllocations ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={6}
+                    className="text-center text-muted-foreground"
+                  >
                     Загрузка...
                   </TableCell>
                 </TableRow>
               ) : allocations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={6}
+                    className="text-center text-muted-foreground"
+                  >
                     Нет распределений за период
                   </TableCell>
                 </TableRow>
               ) : (
                 allocations.map((a: any) => (
                   <TableRow key={a.id} data-testid={`row-allocation-${a.id}`}>
-                    <TableCell>{format(new Date(a.date.slice(0, 10) + "T00:00:00"), "dd.MM.yyyy")}</TableCell>
+                    <TableCell>
+                      {format(
+                        new Date(a.date.slice(0, 10) + "T00:00:00"),
+                        "dd.MM.yyyy",
+                      )}
+                    </TableCell>
                     <TableCell>{a.fromName || "—"}</TableCell>
                     <TableCell>{a.toName || "—"}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <span>{fmtTons(a.volume)}</span>
-                        <FieldCommentPopover entityType="free_volume_allocation" entityId={a.id} fieldKey="volume" />
+                        <FieldCommentPopover
+                          entityType="free_volume_allocation"
+                          entityId={a.id}
+                          fieldKey="volume"
+                        />
                       </div>
                     </TableCell>
                     <TableCell>{a.notes || "—"}</TableCell>
@@ -908,11 +1269,19 @@ export function WarehousePlanPanel({
       {/* Dialogs */}
       <PlanEntryDialog
         open={entryDialogOpen}
-        onOpenChange={setEntryDialogOpen}
+        onOpenChange={(o) => {
+          setEntryDialogOpen(o);
+          if (!o) {
+            setQuickAddPeriod(null);
+          }
+        }}
         warehouseId={warehouseId}
         entry={editingEntry}
         onSubmit={handleEntrySubmit}
-        defaultDate={defaultDate}
+        defaultDate={
+          quickAddPeriod ? quickAddPeriod.start : defaultDate
+        }
+        defaultType={quickAddPeriod ? quickAddType : undefined}
       />
 
       <AllocationDialog
@@ -923,7 +1292,10 @@ export function WarehousePlanPanel({
         defaultDate={defaultDate}
       />
 
-      <AlertDialog open={!!deleteEntryId} onOpenChange={(o) => !o && setDeleteEntryId(null)}>
+      <AlertDialog
+        open={!!deleteEntryId}
+        onOpenChange={(o) => !o && setDeleteEntryId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Удалить запись плана?</AlertDialogTitle>
@@ -942,7 +1314,10 @@ export function WarehousePlanPanel({
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!deleteAllocationId} onOpenChange={(o) => !o && setDeleteAllocationId(null)}>
+      <AlertDialog
+        open={!!deleteAllocationId}
+        onOpenChange={(o) => !o && setDeleteAllocationId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Удалить распределение?</AlertDialogTitle>

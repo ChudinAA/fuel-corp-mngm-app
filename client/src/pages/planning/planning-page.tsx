@@ -26,7 +26,7 @@ function getDefaultPeriod(): PlanningPeriod {
 function getQuickMonths() {
   const months = [];
   const now = new Date();
-  for (let i = 0; i <= 6; i++) {
+  for (let i = -2; i <= 6; i++) {
     const d = addMonths(now, i);
     months.push({
       label: format(d, "LLL yy", { locale: ru }),

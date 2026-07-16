@@ -469,6 +469,7 @@ export function VolumesTab({ period }: { period: PlanningPeriod }) {
           onOpenChange={(o) => !o && setAllocatedVolumeDialog(null)}
           supplierId={allocatedVolumeDialog.supplierId}
           supplierName={allocatedVolumeDialog.supplierName}
+          period={period}
         />
       )}
 

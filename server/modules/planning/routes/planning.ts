@@ -471,6 +471,30 @@ export function registerPlanningRoutes(app: Express) {
     },
   );
 
+  app.patch(
+    "/api/planning/comments/:id",
+    requireAuth,
+    requirePermission("planning", "view"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const userId = String(req.session.userId);
+        const { text, isHighPriority } = req.body as { text?: string; isHighPriority?: boolean };
+        const updated = await storage.planning.updatePlanningComment(id, userId, {
+          ...(text !== undefined ? { text } : {}),
+          ...(isHighPriority !== undefined ? { isHighPriority } : {}),
+        });
+        if (!updated) {
+          return res.status(403).json({ message: "Комментарий не найден или нет прав на редактирование" });
+        }
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error updating planning comment:", error);
+        res.status(500).json({ message: "Ошибка обновления комментария" });
+      }
+    },
+  );
+
   // ---- Actuals ----
   app.get(
     "/api/planning/actuals",
