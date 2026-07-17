@@ -3,6 +3,7 @@ import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,7 +15,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTitle as DialogTitlePrimitive,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -44,6 +44,8 @@ import {
   Filter,
   Loader2,
   Car,
+  AlertTriangle,
+  Settings2,
 } from "lucide-react";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
 import { AuditPanel } from "@/components/audit-panel";
@@ -65,6 +67,7 @@ import {
 } from "../utils";
 import { cn } from "@/lib/utils";
 import { ProductTypeBadge } from "@/components/product-type-badge";
+import { ManageRecalculationDialog } from "./manage-recalculation-dialog";
 
 const PAGE_SIZE = 100;
 
@@ -74,6 +77,7 @@ export function PricesTable({
   productTypeFilter,
   onEdit,
 }: PricesTableProps) {
+  const { isAdmin } = useAuth();
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>(
     {},
   );
@@ -84,6 +88,8 @@ export function PricesTable({
   const [contractDialogOpen, setContractDialogOpen] = useState(false);
   const [selectedPrice, setSelectedPrice] = useState<Price | null>(null);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
+  const [manageRecalcDialogOpen, setManageRecalcDialogOpen] = useState(false);
+  const [manageRecalcPrice, setManageRecalcPrice] = useState<any | null>(null);
   const { toast } = useToast();
   const { showError, ErrorModalComponent } = useErrorModal();
 
@@ -182,7 +188,6 @@ export function PricesTable({
     return (
       prices
         ?.filter((p) => {
-          // Быстрые фильтры
           if (dealTypeFilter !== "all" && p.counterpartyType !== dealTypeFilter)
             return false;
           if (roleFilter !== "all" && p.counterpartyRole !== roleFilter)
@@ -193,7 +198,6 @@ export function PricesTable({
           )
             return false;
 
-          // Колончатые фильтры
           for (const [columnId, selectedValues] of Object.entries(
             columnFilters,
           )) {
@@ -208,7 +212,6 @@ export function PricesTable({
             }
           }
 
-          // Поиск
           if (search) {
             const searchLower = search.toLowerCase();
             const contractorName = getContractorName(
@@ -242,6 +245,16 @@ export function PricesTable({
     allContractors,
   ]);
 
+  // Split into queue and regular
+  const queuePrices = useMemo(
+    () => filteredPrices.filter((p: any) => p.needsRecalculation),
+    [filteredPrices],
+  );
+  const regularPrices = useMemo(
+    () => filteredPrices.filter((p: any) => !p.needsRecalculation),
+    [filteredPrices],
+  );
+
   const deleteMutation = useMutation({
     mutationFn: async (priceId: string) => {
       const res = await apiRequest("DELETE", `/api/prices/${priceId}`);
@@ -265,6 +278,322 @@ export function PricesTable({
       </div>
     );
   }
+
+  const renderPriceRow = (price: any) => {
+    const dateTo = price.dateTo ? new Date(price.dateTo) : null;
+    if (dateTo) {
+      dateTo.setHours(23, 59, 59, 999);
+    }
+    const isExpired = dateTo && dateTo < new Date();
+    const isInQueue = !!price.needsRecalculation;
+
+    return (
+      <TableRow
+        key={price.id}
+        data-testid={`row-price-${price.id}`}
+        className={cn(
+          isExpired && !isInQueue && "opacity-60",
+          isInQueue &&
+            "bg-amber-50/60 dark:bg-amber-950/20 border-l-2 border-l-amber-400 dark:border-l-amber-600",
+        )}
+      >
+        <TableCell className="text-[13px] whitespace-nowrap">
+          {formatDate(price.dateFrom)} -{" "}
+          <span className={isExpired ? "text-red-400/70" : ""}>
+            {formatDate(price.dateTo)}
+          </span>
+        </TableCell>
+        <TableCell>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center justify-center">
+                {price.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE ? (
+                  <Package className="h-5 w-5 text-blue-500/70" />
+                ) : price.counterpartyType === COUNTERPARTY_TYPE.REFUELING ? (
+                  <Plane className="h-5 w-5 text-purple-500/70" />
+                ) : price.counterpartyType ===
+                  COUNTERPARTY_TYPE.REFUELING_ABROAD ? (
+                  <Plane className="h-5 w-5 text-teal-500/70" />
+                ) : (
+                  <Car className="h-5 w-5 text-yellow-500/70" />
+                )}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              {price.counterpartyType === COUNTERPARTY_TYPE.WHOLESALE
+                ? "ОПТ"
+                : price.counterpartyType === COUNTERPARTY_TYPE.REFUELING
+                  ? "Заправка ВС"
+                  : price.counterpartyType ===
+                      COUNTERPARTY_TYPE.REFUELING_ABROAD
+                    ? "Заправка ВС Зарубеж"
+                    : "Перевозка"}
+            </TooltipContent>
+          </Tooltip>
+        </TableCell>
+        <TableCell>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center justify-center">
+                {price.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER ? (
+                  <TruckIcon className="h-5 w-5 text-green-500/70" />
+                ) : (
+                  <ShoppingCart className="h-5 w-5 text-orange-500/70" />
+                )}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              {price.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER
+                ? "Поставщик"
+                : "Покупатель"}
+            </TooltipContent>
+          </Tooltip>
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center gap-2">
+            {getContractorName(
+              price.counterpartyId,
+              price.counterpartyType,
+              price.counterpartyRole,
+            )}
+            {isInQueue && (
+              <Badge className="text-[10px] px-1.5 py-0 h-5 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300 dark:border-amber-700">
+                Нужен пересчёт
+              </Badge>
+            )}
+          </div>
+        </TableCell>
+        <TableCell>{price.basis || "—"}</TableCell>
+        <TableCell>
+          <ProductTypeBadge type={price.productType} />
+        </TableCell>
+        <TableCell className="text-right font-medium">
+          <div className="flex items-center justify-end gap-1.5">
+            <span>
+              {getPriceDisplay(
+                price.priceValues,
+                price.currencySymbol || "₽",
+              )}
+            </span>
+            <span className="text-[11px] text-muted-foreground font-normal border rounded px-1 py-0.5 leading-none">
+              {price.priceUnit === "liter" ? "л" : "кг"}
+            </span>
+          </div>
+        </TableCell>
+        <TableCell className="text-right">
+          {(price as any).limitType === "amount"
+            ? (price as any).maxDealAmount
+              ? `${formatNumberForTable((price as any).maxDealAmount)} ₽`
+              : "—"
+            : price.volume
+              ? `${formatNumberForTable(price.volume)} кг`
+              : "—"}
+        </TableCell>
+        <TableCell className="text-right">
+          <div className="flex items-center justify-end gap-1">
+            <span>
+              {(price as any).limitType === "amount"
+                ? (price as any).soldAmount &&
+                  parseFloat((price as any).soldAmount) > 0
+                  ? `${formatNumberForTable((price as any).soldAmount)} ₽`
+                  : "—"
+                : price.soldVolume && parseFloat(price.soldVolume) > 0
+                  ? `${formatNumberForTable(price.soldVolume)} кг`
+                  : "—"}
+            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5"
+                  onClick={() => selectionCheck.calculateForPrice.mutate(price)}
+                  disabled={
+                    selectionCheck.calculatingPriceId === price.id
+                  }
+                  data-testid={`button-calc-selection-${price.id}`}
+                >
+                  <RefreshCw
+                    className={`h-3 w-3 ${selectionCheck.calculatingPriceId === price.id ? "animate-spin" : ""}`}
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Пересчитать выборку</TooltipContent>
+            </Tooltip>
+          </div>
+        </TableCell>
+        <TableCell>
+          <EntityActionsMenu
+            actions={[
+              ...(isInQueue && isAdmin
+                ? [
+                    {
+                      id: "manage-recalculation",
+                      label: "Управление пересчётом",
+                      icon: Settings2,
+                      onClick: () => {
+                        setManageRecalcPrice(price);
+                        setManageRecalcDialogOpen(true);
+                      },
+                      separatorAfter: true,
+                    },
+                  ]
+                : []),
+              {
+                id: "edit",
+                label: "Редактировать",
+                icon: Pencil,
+                onClick: () => onEdit(price),
+                permission: { module: "prices", action: "edit" },
+              },
+              {
+                id: "notes",
+                label: "Примечания",
+                icon: StickyNote,
+                onClick: () => {
+                  setSelectedPrice(price);
+                  setNotesDialogOpen(true);
+                },
+                condition: !!price.notes,
+              },
+              {
+                id: "contract",
+                label: "Договор",
+                icon: FileText,
+                onClick: () => {
+                  setSelectedPrice(price);
+                  setContractDialogOpen(true);
+                },
+                condition: !!price.contractNumber,
+              },
+              {
+                id: "delete",
+                label: "Удалить",
+                icon: Trash2,
+                onClick: () => {
+                  setPriceToDelete(price);
+                  setDeleteDialogOpen(true);
+                },
+                variant: "destructive" as const,
+                permission: { module: "prices", action: "delete" },
+                separatorAfter: true,
+              },
+            ]}
+            audit={{
+              entityType: "prices",
+              entityId: price.id,
+              entityName: `Цена для ${getContractorName(price.counterpartyId, price.counterpartyType, price.counterpartyRole)}`,
+            }}
+          />
+        </TableCell>
+      </TableRow>
+    );
+  };
+
+  const tableHeader = (
+    <TableHeader>
+      <TableRow>
+        <TableHead className="w-[110px]">
+          <div className="flex items-center justify-between gap-1">
+            <span>Период</span>
+            <TableColumnFilter
+              title="Период"
+              options={getUniqueOptions("date")}
+              selectedValues={columnFilters["date"] || []}
+              onUpdate={(values) => handleFilterUpdate("date", values)}
+              dataTestId="filter-date"
+            />
+          </div>
+        </TableHead>
+        <TableHead className="w-[60px]">
+          <div className="flex items-center justify-between gap-0">
+            <span>Тип</span>
+            <TableColumnFilter
+              title="Тип"
+              options={[
+                { label: "ОПТ", value: COUNTERPARTY_TYPE.WHOLESALE },
+                { label: "Заправка ВС", value: COUNTERPARTY_TYPE.REFUELING },
+                {
+                  label: "Заправка ВС Зарубеж",
+                  value: COUNTERPARTY_TYPE.REFUELING_ABROAD,
+                },
+                {
+                  label: "Перевозка",
+                  value: COUNTERPARTY_TYPE.TRANSPORTATION,
+                },
+              ]}
+              selectedValues={columnFilters["counterpartyType"] || []}
+              onUpdate={(values) =>
+                handleFilterUpdate("counterpartyType", values)
+              }
+              dataTestId="filter-type"
+            />
+          </div>
+        </TableHead>
+        <TableHead className="w-[60px]">
+          <div className="flex items-center justify-between gap-0">
+            <span>Роль</span>
+            <TableColumnFilter
+              title="Роль"
+              options={[
+                { label: "Поставщик", value: COUNTERPARTY_ROLE.SUPPLIER },
+                { label: "Покупатель", value: COUNTERPARTY_ROLE.BUYER },
+              ]}
+              selectedValues={columnFilters["counterpartyRole"] || []}
+              onUpdate={(values) =>
+                handleFilterUpdate("counterpartyRole", values)
+              }
+              dataTestId="filter-role"
+            />
+          </div>
+        </TableHead>
+        <TableHead>
+          <div className="flex items-center justify-between gap-1">
+            <span>Контрагент</span>
+            <TableColumnFilter
+              title="Контрагент"
+              options={getUniqueOptions("counterpartyId")}
+              selectedValues={columnFilters["counterpartyId"] || []}
+              onUpdate={(values) =>
+                handleFilterUpdate("counterpartyId", values)
+              }
+              dataTestId="filter-counterparty"
+            />
+          </div>
+        </TableHead>
+        <TableHead>
+          <div className="flex items-center justify-between gap-1">
+            <span>Базис</span>
+            <TableColumnFilter
+              title="Базис"
+              options={getUniqueOptions("basis")}
+              selectedValues={columnFilters["basis"] || []}
+              onUpdate={(values) => handleFilterUpdate("basis", values)}
+              dataTestId="filter-basis"
+            />
+          </div>
+        </TableHead>
+        <TableHead>
+          <div className="flex items-center justify-between gap-1">
+            <span>Продукт</span>
+            <TableColumnFilter
+              title="Продукт"
+              options={getUniqueOptions("productType")}
+              selectedValues={columnFilters["productType"] || []}
+              onUpdate={(values) =>
+                handleFilterUpdate("productType", values)
+              }
+              dataTestId="filter-product"
+            />
+          </div>
+        </TableHead>
+        <TableHead className="text-right">Цена</TableHead>
+        <TableHead className="text-center">Объем/Сумма</TableHead>
+        <TableHead className="text-center">Выборка</TableHead>
+        <TableHead className="w-[10px]"></TableHead>
+      </TableRow>
+    </TableHeader>
+  );
 
   return (
     <div className="space-y-4">
@@ -306,313 +635,42 @@ export function PricesTable({
         </Button>
       </div>
 
+      {/* Queue section */}
+      {queuePrices.length > 0 && (
+        <div className="border rounded-lg overflow-x-auto border-amber-200 dark:border-amber-800/50">
+          <div className="bg-amber-50/80 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800/50 px-4 py-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                Очередь на пересчёт ({queuePrices.length})
+              </span>
+            </div>
+          </div>
+          <Table>
+            {tableHeader}
+            <TableBody>
+              {queuePrices.map((price) => renderPriceRow(price))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Regular prices table */}
       <div className="border rounded-lg overflow-x-auto">
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[110px]">
-                <div className="flex items-center justify-between gap-1">
-                  <span>Период</span>
-                  <TableColumnFilter
-                    title="Период"
-                    options={getUniqueOptions("date")}
-                    selectedValues={columnFilters["date"] || []}
-                    onUpdate={(values) => handleFilterUpdate("date", values)}
-                    dataTestId="filter-date"
-                  />
-                </div>
-              </TableHead>
-              <TableHead className="w-[60px]">
-                <div className="flex items-center justify-between gap-0">
-                  <span>Тип</span>
-                  <TableColumnFilter
-                    title="Тип"
-                    options={[
-                      { label: "ОПТ", value: COUNTERPARTY_TYPE.WHOLESALE },
-                      {
-                        label: "Заправка ВС",
-                        value: COUNTERPARTY_TYPE.REFUELING,
-                      },
-                      {
-                        label: "Заправка ВС Зарубеж",
-                        value: COUNTERPARTY_TYPE.REFUELING_ABROAD,
-                      },
-                      {
-                        label: "Перевозка",
-                        value: COUNTERPARTY_TYPE.TRANSPORTATION,
-                      },
-                    ]}
-                    selectedValues={columnFilters["counterpartyType"] || []}
-                    onUpdate={(values) =>
-                      handleFilterUpdate("counterpartyType", values)
-                    }
-                    dataTestId="filter-type"
-                  />
-                </div>
-              </TableHead>
-              <TableHead className="w-[60px]">
-                <div className="flex items-center justify-between gap-0">
-                  <span>Роль</span>
-                  <TableColumnFilter
-                    title="Роль"
-                    options={[
-                      { label: "Поставщик", value: COUNTERPARTY_ROLE.SUPPLIER },
-                      { label: "Покупатель", value: COUNTERPARTY_ROLE.BUYER },
-                    ]}
-                    selectedValues={columnFilters["counterpartyRole"] || []}
-                    onUpdate={(values) =>
-                      handleFilterUpdate("counterpartyRole", values)
-                    }
-                    dataTestId="filter-role"
-                  />
-                </div>
-              </TableHead>
-              <TableHead>
-                <div className="flex items-center justify-between gap-1">
-                  <span>Контрагент</span>
-                  <TableColumnFilter
-                    title="Контрагент"
-                    options={getUniqueOptions("counterpartyId")}
-                    selectedValues={columnFilters["counterpartyId"] || []}
-                    onUpdate={(values) =>
-                      handleFilterUpdate("counterpartyId", values)
-                    }
-                    dataTestId="filter-counterparty"
-                  />
-                </div>
-              </TableHead>
-              <TableHead>
-                <div className="flex items-center justify-between gap-1">
-                  <span>Базис</span>
-                  <TableColumnFilter
-                    title="Базис"
-                    options={getUniqueOptions("basis")}
-                    selectedValues={columnFilters["basis"] || []}
-                    onUpdate={(values) => handleFilterUpdate("basis", values)}
-                    dataTestId="filter-basis"
-                  />
-                </div>
-              </TableHead>
-              <TableHead>
-                <div className="flex items-center justify-between gap-1">
-                  <span>Продукт</span>
-                  <TableColumnFilter
-                    title="Продукт"
-                    options={getUniqueOptions("productType")}
-                    selectedValues={columnFilters["productType"] || []}
-                    onUpdate={(values) =>
-                      handleFilterUpdate("productType", values)
-                    }
-                    dataTestId="filter-product"
-                  />
-                </div>
-              </TableHead>
-              <TableHead className="text-right">Цена</TableHead>
-              <TableHead className="text-center">Объем/Сумма</TableHead>
-              <TableHead className="text-center">Выборка</TableHead>
-              <TableHead className="w-[10px]"></TableHead>
-            </TableRow>
-          </TableHeader>
+          {tableHeader}
           <TableBody>
-            {filteredPrices.length === 0 ? (
+            {regularPrices.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={10}
                   className="text-center py-8 text-muted-foreground"
                 >
-                  Нет данных
+                  {filteredPrices.length === 0 ? "Нет данных" : "Все цены в очереди на пересчёт"}
                 </TableCell>
               </TableRow>
             ) : (
-              filteredPrices.map((price) => {
-                const dateTo = price.dateTo ? new Date(price.dateTo) : null;
-                if (dateTo) {
-                  dateTo.setHours(23, 59, 59, 999);
-                }
-                const isExpired = dateTo && dateTo < new Date();
-                return (
-                  <TableRow
-                    key={price.id}
-                    data-testid={`row-price-${price.id}`}
-                    className={isExpired ? "opacity-60" : ""}
-                  >
-                    <TableCell className="text-[13px] whitespace-nowrap">
-                      {formatDate(price.dateFrom)} -{" "}
-                      <span className={isExpired ? "text-red-400/70" : ""}>
-                        {formatDate(price.dateTo)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center justify-center">
-                            {price.counterpartyType ===
-                            COUNTERPARTY_TYPE.WHOLESALE ? (
-                              <Package className="h-5 w-5 text-blue-500/70" />
-                            ) : price.counterpartyType ===
-                              COUNTERPARTY_TYPE.REFUELING ? (
-                              <Plane className="h-5 w-5 text-purple-500/70" />
-                            ) : price.counterpartyType ===
-                              COUNTERPARTY_TYPE.REFUELING_ABROAD ? (
-                              <Plane className="h-5 w-5 text-teal-500/70" />
-                            ) : (
-                              <Car className="h-5 w-5 text-yellow-500/70" />
-                            )}
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {price.counterpartyType ===
-                          COUNTERPARTY_TYPE.WHOLESALE
-                            ? "ОПТ"
-                            : price.counterpartyType ===
-                                COUNTERPARTY_TYPE.REFUELING
-                              ? "Заправка ВС"
-                              : price.counterpartyType ===
-                                  COUNTERPARTY_TYPE.REFUELING_ABROAD
-                                ? "Заправка ВС Зарубеж"
-                                : "Перевозка"}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center justify-center">
-                            {price.counterpartyRole ===
-                            COUNTERPARTY_ROLE.SUPPLIER ? (
-                              <TruckIcon className="h-5 w-5 text-green-500/70" />
-                            ) : (
-                              <ShoppingCart className="h-5 w-5 text-orange-500/70" />
-                            )}
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {price.counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER
-                            ? "Поставщик"
-                            : "Покупатель"}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell>
-                      {getContractorName(
-                        price.counterpartyId,
-                        price.counterpartyType,
-                        price.counterpartyRole,
-                      )}
-                    </TableCell>
-                    <TableCell>{price.basis || "—"}</TableCell>
-                    <TableCell>
-                      <ProductTypeBadge type={price.productType} />
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <span>
-                          {getPriceDisplay(
-                            price.priceValues,
-                            price.currencySymbol || "₽",
-                          )}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground font-normal border rounded px-1 py-0.5 leading-none">
-                          {price.priceUnit === "liter" ? "л" : "кг"}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {(price as any).limitType === "amount"
-                        ? (price as any).maxDealAmount
-                          ? `${formatNumberForTable((price as any).maxDealAmount)} ₽`
-                          : "—"
-                        : price.volume
-                          ? `${formatNumberForTable(price.volume)} кг`
-                          : "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <span>
-                          {(price as any).limitType === "amount"
-                            ? (price as any).soldAmount && parseFloat((price as any).soldAmount) > 0
-                              ? `${formatNumberForTable((price as any).soldAmount)} ₽`
-                              : "—"
-                            : price.soldVolume && parseFloat(price.soldVolume) > 0
-                              ? `${formatNumberForTable(price.soldVolume)} кг`
-                              : "—"}
-                        </span>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-5 w-5"
-                              onClick={() =>
-                                selectionCheck.calculateForPrice.mutate(price)
-                              }
-                              disabled={
-                                selectionCheck.calculatingPriceId === price.id
-                              }
-                              data-testid={`button-calc-selection-${price.id}`}
-                            >
-                              <RefreshCw
-                                className={`h-3 w-3 ${selectionCheck.calculatingPriceId === price.id ? "animate-spin" : ""}`}
-                              />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Пересчитать выборку</TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <EntityActionsMenu
-                        actions={[
-                          {
-                            id: "edit",
-                            label: "Редактировать",
-                            icon: Pencil,
-                            onClick: () => onEdit(price),
-                            permission: { module: "prices", action: "edit" },
-                          },
-                          {
-                            id: "notes",
-                            label: "Примечания",
-                            icon: StickyNote,
-                            onClick: () => {
-                              setSelectedPrice(price);
-                              setNotesDialogOpen(true);
-                            },
-                            condition: !!price.notes,
-                          },
-                          {
-                            id: "contract",
-                            label: "Договор",
-                            icon: FileText,
-                            onClick: () => {
-                              setSelectedPrice(price);
-                              setContractDialogOpen(true);
-                            },
-                            condition: !!price.contractNumber,
-                          },
-                          {
-                            id: "delete",
-                            label: "Удалить",
-                            icon: Trash2,
-                            onClick: () => {
-                              setPriceToDelete(price);
-                              setDeleteDialogOpen(true);
-                            },
-                            variant: "destructive" as const,
-                            permission: { module: "prices", action: "delete" },
-                            separatorAfter: true,
-                          },
-                        ]}
-                        audit={{
-                          entityType: "prices",
-                          entityId: price.id,
-                          entityName: `Цена для ${getContractorName(price.counterpartyId, price.counterpartyType, price.counterpartyRole)}`,
-                        }}
-                      />
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+              regularPrices.map((price) => renderPriceRow(price))
             )}
           </TableBody>
         </Table>
@@ -693,6 +751,31 @@ export function PricesTable({
         entityId=""
         entityName="Все цены (включая удаленные)"
       />
+
+      {manageRecalcPrice && (
+        <ManageRecalculationDialog
+          open={manageRecalcDialogOpen}
+          onOpenChange={(v) => {
+            setManageRecalcDialogOpen(v);
+            if (!v) setManageRecalcPrice(null);
+          }}
+          priceId={manageRecalcPrice.id}
+          oldPriceDisplay={getPriceDisplay(
+            manageRecalcPrice.oldPriceValues,
+            manageRecalcPrice.currencySymbol || "₽",
+          )}
+          newPriceDisplay={getPriceDisplay(
+            manageRecalcPrice.priceValues,
+            manageRecalcPrice.currencySymbol || "₽",
+          )}
+          counterpartyName={getContractorName(
+            manageRecalcPrice.counterpartyId,
+            manageRecalcPrice.counterpartyType,
+            manageRecalcPrice.counterpartyRole,
+          )}
+        />
+      )}
+
       <ErrorModalComponent />
     </div>
   );

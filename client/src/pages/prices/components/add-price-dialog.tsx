@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,6 +29,8 @@ import type { PriceFormData, PriceDialogProps } from "../types";
 import { useDateCheck } from "../hooks/use-date-check";
 import { PriceFormFields } from "./price-form-fields";
 import { PriceChecksPanel } from "./price-checks-panel";
+import { PriceChangeConfirmDialog } from "./price-change-confirm-dialog";
+import { getPriceDisplay } from "../utils";
 
 export function AddPriceDialog({
   editPrice,
@@ -43,6 +45,8 @@ export function AddPriceDialog({
   const { showError, ErrorModalComponent } = useErrorModal();
   const [localOpen, setLocalOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [priceChangeConfirmOpen, setPriceChangeConfirmOpen] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<PriceFormData | null>(null);
 
   const open = isInline ? inlineOpen : localOpen;
   const setOpen = isInline ? onInlineOpenChange || setLocalOpen : setLocalOpen;
@@ -500,6 +504,25 @@ export function AddPriceDialog({
     },
   });
 
+  // Helper: check if price values changed
+  const hasPriceValuesChanged = useCallback((
+    oldPriceValues: string[] | null | undefined,
+    newValues: Array<{ price: string }>,
+  ): boolean => {
+    if (!oldPriceValues || oldPriceValues.length === 0) return false;
+    if (oldPriceValues.length !== newValues.length) return true;
+    return oldPriceValues.some((pv, i) => {
+      try {
+        const parsed = JSON.parse(pv);
+        const oldPrice = String(parsed.price || "");
+        const newPrice = String(newValues[i]?.price || "");
+        return oldPrice !== newPrice;
+      } catch {
+        return true;
+      }
+    });
+  }, []);
+
   const handleSubmit = async (data: PriceFormData) => {
     // Если проверка показала ошибку пересечения дат, блокируем создание
     if (dateCheck.result && dateCheck.result.status === "error") {
@@ -546,8 +569,30 @@ export function AddPriceDialog({
       }
     }
 
+    // If editing and price values changed — intercept to show confirmation dialog
+    if (editPrice && hasPriceValuesChanged(editPrice.priceValues, data.priceValues)) {
+      setPendingFormData(data);
+      setPriceChangeConfirmOpen(true);
+      return;
+    }
+
     createMutation.mutate(data);
   };
+
+  // Called when PriceChangeConfirmDialog completes successfully
+  const handlePriceChangeConfirmed = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["/api/prices/list"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/prices/find-active"] });
+    if (editPrice?.id) {
+      queryClient.invalidateQueries({ queryKey: ["/api/prices", editPrice.id] });
+    }
+    setPendingFormData(null);
+    setPriceChangeConfirmOpen(false);
+    dateCheck.setResult(null);
+    setDateCheckPassed(false);
+    setOpen(false);
+    if (onEditComplete) onEditComplete();
+  }, [editPrice, onEditComplete, setOpen, dateCheck]);
 
   // Ref-флаг: при программном сворачивании блокируем вызов setOpen(false) в onOpenChange.
   // Radix Dialog в режиме controlled НЕ вызывает onOpenChange при изменении open-пропа,
@@ -882,6 +927,49 @@ export function AddPriceDialog({
       </DialogContent>
     </Dialog>
     {!isInline && <ErrorModalComponent />}
+    {editPrice && priceChangeConfirmOpen && pendingFormData && (
+      <PriceChangeConfirmDialog
+        open={priceChangeConfirmOpen}
+        onOpenChange={(v) => {
+          if (!v) setPendingFormData(null);
+          setPriceChangeConfirmOpen(v);
+        }}
+        priceId={editPrice.id}
+        newPriceValues={pendingFormData.priceValues.map((v) => v.price)}
+        oldPriceDisplay={getPriceDisplay(
+          editPrice.priceValues,
+          (editPrice as any).currencySymbol || (editPrice.currency === "USD" ? "$" : "₽"),
+        )}
+        newPriceDisplay={getPriceDisplay(
+          pendingFormData.priceValues.map((v) =>
+            JSON.stringify({ price: v.price }),
+          ),
+          (editPrice as any).currencySymbol || (editPrice.currency === "USD" ? "$" : "₽"),
+        )}
+        otherData={{
+          productType: pendingFormData.productType,
+          counterpartyId: pendingFormData.counterpartyId,
+          counterpartyType: pendingFormData.counterpartyType,
+          counterpartyRole: pendingFormData.counterpartyRole,
+          basis: pendingFormData.basis,
+          basisId: pendingFormData.basisId || null,
+          loadingBasisId: pendingFormData.loadingBasisId || null,
+          currency: pendingFormData.currency,
+          currencyId: pendingFormData.currencyId || null,
+          limitType: pendingFormData.limitType || "volume",
+          volume: (!pendingFormData.contractLimitEnabled || pendingFormData.limitType === "amount") ? null : (pendingFormData.volume || null),
+          maxDealAmount: (!pendingFormData.contractLimitEnabled || pendingFormData.limitType !== "amount") ? null : (pendingFormData.maxDealAmount || null),
+          dateFrom: format(pendingFormData.dateFrom, "yyyy-MM-dd"),
+          dateTo: format(pendingFormData.dateTo, "yyyy-MM-dd"),
+          contractNumber: pendingFormData.contractNumber || null,
+          contractAppendix: pendingFormData.contractAppendix || null,
+          notes: pendingFormData.notes || null,
+          priceUnit: pendingFormData.priceUnit || "kg",
+          contractLimitEnabled: pendingFormData.contractLimitEnabled !== false,
+        }}
+        onConfirmed={handlePriceChangeConfirmed}
+      />
+    )}
   </>
   );
 }
