@@ -53,8 +53,6 @@ export const prices = pgTable(
     priceUnit: text("price_unit").default("kg"),
     contractLimitEnabled: boolean("contract_limit_enabled").default(true),
     isActive: boolean("is_active").default(true),
-    needsRecalculation: boolean("needs_recalculation").notNull().default(false),
-    oldPriceValues: text("old_price_values").array(),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
     createdById: uuid("created_by_id").references(() => users.id),

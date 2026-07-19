@@ -7,7 +7,6 @@ import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
 import { RecalculationWorker } from "./modules/warehouses/services/recalculation-worker";
 import { EquipmentRecalculationWorker } from "./modules/warehouses-equipment/services/equipment-recalculation-worker";
-import { PriceRecalculationWorker } from "./modules/prices/services/price-recalculation-worker";
 
 const app = express();
 const httpServer = createServer(app);
@@ -143,8 +142,6 @@ process.on("uncaughtException", (error: Error) => {
       log(`serving on port ${port}`);
       
       RecalculationWorker.start(5000);
-      PriceRecalculationWorker.start(5000);
-      log("Price recalculation worker started");
       log("Recalculation worker started");
       EquipmentRecalculationWorker.start(5000);
       log("Equipment recalculation worker started");

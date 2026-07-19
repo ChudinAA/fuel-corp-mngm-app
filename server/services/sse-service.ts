@@ -20,8 +20,4 @@ export class SSEService {
   static notifyRecalculationCompleted(warehouseId: string, productType: string) {
     this.broadcast("warehouse_recalculated", { warehouseId, productType });
   }
-
-  static notifyPriceRecalculationCompleted(priceId: string) {
-    this.broadcast("price_recalculation_completed", { priceId });
-  }
 }
