@@ -1,15 +1,14 @@
 import { useState } from "react";
+import { format as dateFmt } from "date-fns";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Trash2, Pencil, TrendingDown, TrendingUp, MessageSquare } from "lucide-react";
-import { format } from "date-fns";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Plus,
+  Trash2,
+  Pencil,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  PlusCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -45,6 +44,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { fmtTons } from "../utils/planning-utils";
 import { FieldCommentPopover } from "./field-comment-popover";
 import type { PlanningPeriod } from "../planning-page";
+import { cn } from "@/lib/utils";
 
 interface TopLevelVolume {
   id: string;
@@ -99,8 +99,8 @@ export function TopLevelResourceDetail({
   const { toast } = useToast();
   const canManage = hasPermission("planning", "allocate");
 
-  const periodFrom = format(period.from, "yyyy-MM-dd");
-  const periodTo = format(period.to, "yyyy-MM-dd");
+  const periodFrom = dateFmt(period.from, "yyyy-MM-dd");
+  const periodTo = dateFmt(period.to, "yyyy-MM-dd");
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -131,8 +131,12 @@ export function TopLevelResourceDetail({
     enabled: form.type === "expense",
   });
 
-  function openAdd() {
-    setForm({ ...EMPTY_FORM });
+  function openAdd(preset?: { warehouseId?: string; type?: "income" | "expense" }) {
+    setForm({
+      ...EMPTY_FORM,
+      warehouseId: preset?.warehouseId ?? "",
+      type: preset?.type ?? "income",
+    });
     setEditingId(null);
     setFormOpen(true);
   }
@@ -159,7 +163,10 @@ export function TopLevelResourceDetail({
         periodTo: period.to.toISOString(),
         type: form.type,
         volume: volumeKg,
-        counterpartyId: (form.counterpartyId && form.counterpartyId !== NONE_VALUE) ? form.counterpartyId : null,
+        counterpartyId:
+          form.counterpartyId && form.counterpartyId !== NONE_VALUE
+            ? form.counterpartyId
+            : null,
         notes: form.notes || null,
         scenarioId: scenarioId || null,
       };
@@ -199,11 +206,11 @@ export function TopLevelResourceDetail({
     },
   });
 
-  const totalIncome = volumes.filter((v) => v.type === "income").reduce((s, v) => s + parseFloat(v.volume || "0"), 0);
-  const totalExpense = volumes.filter((v) => v.type === "expense").reduce((s, v) => s + parseFloat(v.volume || "0"), 0);
-
-  // Group by warehouse for side-by-side view
-  const byWarehouse = new Map<string, { name: string; income: TopLevelVolume[]; expense: TopLevelVolume[] }>();
+  // Group by warehouse
+  const byWarehouse = new Map<
+    string,
+    { name: string; income: TopLevelVolume[]; expense: TopLevelVolume[] }
+  >();
   for (const v of volumes) {
     const key = v.warehouseId;
     if (!byWarehouse.has(key)) {
@@ -215,24 +222,32 @@ export function TopLevelResourceDetail({
   }
   const warehouseGroups = Array.from(byWarehouse.entries());
 
+  const totalIncome = volumes
+    .filter((v) => v.type === "income")
+    .reduce((s, v) => s + parseFloat(v.volume || "0"), 0);
+  const totalExpense = volumes
+    .filter((v) => v.type === "expense")
+    .reduce((s, v) => s + parseFloat(v.volume || "0"), 0);
+
   return (
     <div className="space-y-3">
+      {/* Header row */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
           <p className="text-sm font-medium">{supplierName}</p>
           <p className="text-xs text-muted-foreground">Верхнеуровневое планирование</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="gap-1 text-emerald-600">
-            <TrendingDown className="h-3 w-3" />
-            Приход: {fmtTons(totalIncome.toFixed(2))} т
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="outline" className="gap-1 text-emerald-600 border-emerald-200">
+            <ArrowDownToLine className="h-3 w-3" />
+            Приход: {fmtTons(totalIncome.toString())} т
           </Badge>
-          <Badge variant="outline" className="gap-1 text-amber-600">
-            <TrendingUp className="h-3 w-3" />
-            Расход: {fmtTons(totalExpense.toFixed(2))} т
+          <Badge variant="outline" className="gap-1 text-amber-600 border-amber-200">
+            <ArrowUpFromLine className="h-3 w-3" />
+            Расход: {fmtTons(totalExpense.toString())} т
           </Badge>
           {canManage && (
-            <Button size="sm" onClick={openAdd} data-testid="button-add-top-level-volume">
+            <Button size="sm" onClick={() => openAdd()} data-testid="button-add-top-level-volume">
               <Plus className="h-3.5 w-3.5 mr-1" />
               Добавить
             </Button>
@@ -240,145 +255,172 @@ export function TopLevelResourceDetail({
         </div>
       </div>
 
-      <div className="border rounded-md overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Склад</TableHead>
-              <TableHead className="text-emerald-700 dark:text-emerald-400">Поступления</TableHead>
-              <TableHead className="text-amber-700 dark:text-amber-400">Расходы</TableHead>
-              {canManage && <TableHead />}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                  Загрузка...
-                </TableCell>
-              </TableRow>
-            ) : warehouseGroups.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                  Нет верхнеуровневых записей. Нажмите «Добавить» чтобы начать.
-                </TableCell>
-              </TableRow>
-            ) : (
-              warehouseGroups.map(([whId, whData]) => {
-                const maxRows = Math.max(whData.income.length, whData.expense.length, 1);
-                return Array.from({ length: maxRows }, (_, i) => {
-                  const incomeEntry = whData.income[i];
-                  const expenseEntry = whData.expense[i];
-                  return (
-                    <TableRow key={`${whId}-${i}`}>
-                      {i === 0 ? (
-                        <TableCell className="font-medium align-top" rowSpan={maxRows}>
-                          {whData.name}
-                        </TableCell>
-                      ) : null}
-                      <TableCell className="align-top">
-                        {incomeEntry ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-emerald-600 tabular-nums">
-                              +{fmtTons(incomeEntry.volume)} т
-                            </span>
-                            {incomeEntry.counterpartyName && (
-                              <span className="text-xs text-muted-foreground">({incomeEntry.counterpartyName})</span>
-                            )}
-                            <FieldCommentPopover
-                              entityType="top_level_volume"
-                              entityId={incomeEntry.id}
-                              fieldKey="volume"
-                            />
-                            {canManage && (
-                              <>
-                                <button
-                                  className="text-muted-foreground hover:text-foreground transition-colors"
-                                  onClick={() => openEdit(incomeEntry)}
-                                  title="Редактировать"
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                </button>
-                                <button
-                                  className="text-muted-foreground hover:text-destructive transition-colors"
-                                  onClick={() => setDeleteId(incomeEntry.id)}
-                                  title="Удалить"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        ) : <span className="text-muted-foreground text-xs">—</span>}
-                      </TableCell>
-                      <TableCell className="align-top">
-                        {expenseEntry ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-amber-600 tabular-nums">
-                              -{fmtTons(expenseEntry.volume)} т
-                            </span>
-                            {expenseEntry.counterpartyName && (
-                              <span className="text-xs text-muted-foreground">({expenseEntry.counterpartyName})</span>
-                            )}
-                            <FieldCommentPopover
-                              entityType="top_level_volume"
-                              entityId={expenseEntry.id}
-                              fieldKey="volume"
-                            />
-                            {canManage && (
-                              <>
-                                <button
-                                  className="text-muted-foreground hover:text-foreground transition-colors"
-                                  onClick={() => openEdit(expenseEntry)}
-                                  title="Редактировать"
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                </button>
-                                <button
-                                  className="text-muted-foreground hover:text-destructive transition-colors"
-                                  onClick={() => setDeleteId(expenseEntry.id)}
-                                  title="Удалить"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        ) : <span className="text-muted-foreground text-xs">—</span>}
-                      </TableCell>
-                      {canManage && <TableCell />}
-                    </TableRow>
-                  );
-                });
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {/* Warehouse panels */}
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground py-2">Загрузка...</p>
+      ) : warehouseGroups.length === 0 ? (
+        <p className="text-sm text-muted-foreground italic py-2">
+          Нет верхнеуровневых записей. Нажмите «Добавить» чтобы начать.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {warehouseGroups.map(([whId, whData]) => {
+            const whIncome = whData.income.reduce(
+              (s, v) => s + parseFloat(v.volume || "0"),
+              0,
+            );
+            const whExpense = whData.expense.reduce(
+              (s, v) => s + parseFloat(v.volume || "0"),
+              0,
+            );
+            return (
+              <div key={whId} className="border rounded-md overflow-hidden">
+                {/* Warehouse name header */}
+                <div className="px-3 py-1.5 bg-muted/30 border-b flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">{whData.name}</span>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {whIncome > 0 && (
+                      <span className="text-emerald-600 font-medium">
+                        ↓ {fmtTons(whIncome.toString())} т
+                      </span>
+                    )}
+                    {whExpense > 0 && (
+                      <span className="text-amber-600 font-medium">
+                        ↑ {fmtTons(whExpense.toString())} т
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Two-column plan grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x">
+                  {/* Поступления */}
+                  <div className="p-3 space-y-1.5">
+                    <div className="flex items-center justify-between gap-1 mb-2">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                        <ArrowDownToLine className="h-3 w-3 text-emerald-500" />
+                        Поступления
+                        {whIncome > 0 && (
+                          <span className="ml-1 text-emerald-600 font-semibold tabular-nums">
+                            {fmtTons(whIncome.toString())} т
+                          </span>
+                        )}
+                      </div>
+                      {canManage && (
+                        <button
+                          className="text-emerald-500 hover:text-emerald-700 transition-colors"
+                          title="Быстрое добавление поступления"
+                          onClick={() => openAdd({ warehouseId: whId, type: "income" })}
+                          data-testid={`button-quick-add-income-${whId}`}
+                        >
+                          <PlusCircle className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                    {whData.income.length > 0 ? (
+                      whData.income.map((v) => (
+                        <VolumeEntry
+                          key={v.id}
+                          entry={v}
+                          canManage={canManage}
+                          onEdit={() => openEdit(v)}
+                          onDelete={() => setDeleteId(v.id)}
+                        />
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground/50 italic">—</p>
+                    )}
+                  </div>
+
+                  {/* Расходы */}
+                  <div className="p-3 space-y-1.5">
+                    <div className="flex items-center justify-between gap-1 mb-2">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                        <ArrowUpFromLine className="h-3 w-3 text-amber-500" />
+                        Расходы
+                        {whExpense > 0 && (
+                          <span className="ml-1 text-amber-600 font-semibold tabular-nums">
+                            {fmtTons(whExpense.toString())} т
+                          </span>
+                        )}
+                      </div>
+                      {canManage && (
+                        <button
+                          className="text-amber-500 hover:text-amber-700 transition-colors"
+                          title="Быстрое добавление расхода"
+                          onClick={() => openAdd({ warehouseId: whId, type: "expense" })}
+                          data-testid={`button-quick-add-expense-${whId}`}
+                        >
+                          <PlusCircle className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                    {whData.expense.length > 0 ? (
+                      whData.expense.map((v) => (
+                        <VolumeEntry
+                          key={v.id}
+                          entry={v}
+                          canManage={canManage}
+                          onEdit={() => openEdit(v)}
+                          onDelete={() => setDeleteId(v.id)}
+                        />
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground/50 italic">—</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Add/Edit dialog */}
-      <Dialog open={formOpen} onOpenChange={(o) => { setFormOpen(o); if (!o) setEditingId(null); }}>
+      <Dialog
+        open={formOpen}
+        onOpenChange={(o) => {
+          setFormOpen(o);
+          if (!o) setEditingId(null);
+        }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Редактировать объём" : "Добавить верхнеуровневый объём"}</DialogTitle>
+            <DialogTitle>
+              {editingId ? "Редактировать объём" : "Добавить верхнеуровневый объём"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1">
               <Label>Склад</Label>
-              <Select value={form.warehouseId} onValueChange={(v) => setForm((f) => ({ ...f, warehouseId: v }))}>
+              <Select
+                value={form.warehouseId}
+                onValueChange={(v) => setForm((f) => ({ ...f, warehouseId: v }))}
+              >
                 <SelectTrigger data-testid="select-top-level-warehouse">
                   <SelectValue placeholder="Выберите склад" />
                 </SelectTrigger>
                 <SelectContent>
                   {warehouses.map((w) => (
-                    <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
               <Label>Тип</Label>
-              <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v as "income" | "expense", counterpartyId: "" }))}>
+              <Select
+                value={form.type}
+                onValueChange={(v) =>
+                  setForm((f) => ({
+                    ...f,
+                    type: v as "income" | "expense",
+                    counterpartyId: NONE_VALUE,
+                  }))
+                }
+              >
                 <SelectTrigger data-testid="select-top-level-type">
                   <SelectValue />
                 </SelectTrigger>
@@ -390,15 +432,23 @@ export function TopLevelResourceDetail({
             </div>
             {form.type === "expense" && (
               <div className="space-y-1">
-                <Label>Клиент <span className="text-muted-foreground text-xs">(опционально)</span></Label>
-                <Select value={form.counterpartyId} onValueChange={(v) => setForm((f) => ({ ...f, counterpartyId: v }))}>
+                <Label>
+                  Клиент{" "}
+                  <span className="text-muted-foreground text-xs">(опционально)</span>
+                </Label>
+                <Select
+                  value={form.counterpartyId}
+                  onValueChange={(v) => setForm((f) => ({ ...f, counterpartyId: v }))}
+                >
                   <SelectTrigger data-testid="select-top-level-customer">
                     <SelectValue placeholder="Выберите клиента" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE_VALUE}>— Не указан —</SelectItem>
                     {customers.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -417,7 +467,10 @@ export function TopLevelResourceDetail({
               />
             </div>
             <div className="space-y-1">
-              <Label>Заметки <span className="text-muted-foreground text-xs">(опционально)</span></Label>
+              <Label>
+                Заметки{" "}
+                <span className="text-muted-foreground text-xs">(опционально)</span>
+              </Label>
               <Textarea
                 value={form.notes}
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
@@ -428,13 +481,19 @@ export function TopLevelResourceDetail({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setFormOpen(false)}>Отмена</Button>
+            <Button variant="outline" onClick={() => setFormOpen(false)}>
+              Отмена
+            </Button>
             <Button
               onClick={() => saveMutation.mutate()}
               disabled={!form.warehouseId || !form.volume || saveMutation.isPending}
               data-testid="button-confirm-top-level-volume"
             >
-              {saveMutation.isPending ? "Сохранение..." : editingId ? "Сохранить" : "Добавить"}
+              {saveMutation.isPending
+                ? "Сохранение..."
+                : editingId
+                  ? "Сохранить"
+                  : "Добавить"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -460,6 +519,69 @@ export function TopLevelResourceDetail({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+function VolumeEntry({
+  entry,
+  canManage,
+  onEdit,
+  onDelete,
+}: {
+  entry: TopLevelVolume;
+  canManage: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const isIncome = entry.type === "income";
+  return (
+    <div className="flex items-start gap-1.5 text-sm py-0.5">
+      <div className="flex-1 min-w-0">
+        <span
+          className={cn(
+            "font-semibold tabular-nums text-xs",
+            isIncome ? "text-emerald-600" : "text-amber-600",
+          )}
+        >
+          {isIncome ? "+" : "−"}{fmtTons(entry.volume)} т
+        </span>
+        {entry.counterpartyName && (
+          <span className="ml-1.5 text-xs text-muted-foreground truncate">
+            {entry.counterpartyName}
+          </span>
+        )}
+        {entry.notes && (
+          <span className="ml-1.5 text-xs text-muted-foreground/60 italic truncate">
+            {entry.notes}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-0.5 flex-shrink-0">
+        <FieldCommentPopover
+          entityType="top_level_volume"
+          entityId={entry.id}
+          fieldKey="volume"
+        />
+        {canManage && (
+          <>
+            <button
+              className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+              onClick={onEdit}
+              title="Редактировать"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+            <button
+              className="text-muted-foreground hover:text-destructive transition-colors p-0.5"
+              onClick={onDelete}
+              title="Удалить"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
