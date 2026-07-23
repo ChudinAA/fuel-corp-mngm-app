@@ -57,19 +57,16 @@ export default function PlanningPage() {
 
   const syncMutation = useMutation({
     mutationFn: () =>
-      apiRequest("/api/logistics-plan/sync", {
-        method: "POST",
-        body: JSON.stringify({
-          periodFrom: toInputDate(period.from),
-          periodTo: toInputDate(period.to),
-          scenarioId: scenarioId || null,
-        }),
-      }),
+      apiRequest("POST", "/api/logistics-plan/sync", {
+        periodFrom: toInputDate(period.from),
+        periodTo: toInputDate(period.to),
+        scenarioId: scenarioId || null,
+      }).then((r) => r.json()),
     onSuccess: () => {
       toast({ title: "План синхронизирован с логистикой" });
       navigate("/logistics-plan");
     },
-    onError: () => toast({ title: "Ошибка синхронизации", variant: "destructive" }),
+    onError: (e: any) => toast({ title: e?.message || "Ошибка синхронизации", variant: "destructive" }),
   });
 
   const handleFromChange = (val: string) => {

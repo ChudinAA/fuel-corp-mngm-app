@@ -39,12 +39,13 @@ export function RoutesTab({ periodFrom, periodTo }: RoutesTabProps) {
   const [search, setSearch] = useState("");
 
   const { data: routes = [], isLoading } = useQuery<any[]>({
-    queryKey: ["/api/delivery"],
-    queryFn: () => apiRequest("/api/delivery"),
+    queryKey: ["/api/delivery-costs"],
+    queryFn: () => apiRequest("GET", "/api/delivery-costs").then((r) => r.json()),
   });
 
   const { data: carriers = [] } = useQuery<any[]>({
     queryKey: ["/api/logistics/carriers"],
+    queryFn: () => apiRequest("GET", "/api/logistics/carriers").then((r) => r.json()),
   });
 
   const aviaserviceCarrier = carriers.find((c: any) =>
@@ -56,22 +57,25 @@ export function RoutesTab({ periodFrom, periodTo }: RoutesTabProps) {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) =>
-      apiRequest(`/api/delivery/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+      apiRequest("PATCH", `/api/delivery-costs/${id}`, data).then((r) => r.json()),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/delivery"] });
+      qc.invalidateQueries({ queryKey: ["/api/delivery-costs"] });
       toast({ title: "Маршрут обновлён" });
       setEditDialogOpen(false);
     },
-    onError: () => toast({ title: "Ошибка обновления", variant: "destructive" }),
+    onError: (e: any) => toast({ title: e?.message || "Ошибка обновления", variant: "destructive" }),
   });
+
+  const carrierById = new Map<string, any>(carriers.map((c: any) => [c.id, c]));
 
   const filteredRoutes = routes.filter((r: any) => {
     if (!search) return true;
     const q = search.toLowerCase();
+    const carrierName = carrierById.get(r.carrierId)?.name ?? "";
     return (
       r.fromLocation?.toLowerCase().includes(q) ||
       r.toLocation?.toLowerCase().includes(q) ||
-      r.carrier?.name?.toLowerCase().includes(q)
+      carrierName.toLowerCase().includes(q)
     );
   });
 
@@ -202,7 +206,7 @@ export function RoutesTab({ periodFrom, periodTo }: RoutesTabProps) {
                         {route.otherCarriers.map((r: any) => (
                           <div key={r.id} className="flex items-center gap-1 text-xs">
                             <Truck className="h-3 w-3 text-muted-foreground" />
-                            <span>{r.carrier?.name || "—"}</span>
+                            <span>{carrierById.get(r.carrierId)?.name || "—"}</span>
                             <span className="text-muted-foreground">
                               {parseFloat(r.costPerKg).toFixed(4)}
                             </span>

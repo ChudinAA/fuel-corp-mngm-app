@@ -49,17 +49,17 @@ export function TransportTab({ periodFrom, periodTo }: TransportTabProps) {
   const { data: units = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/logistics-plan/transport-units", periodFrom, periodTo],
     queryFn: () =>
-      apiRequest(`/api/logistics-plan/transport-units?periodFrom=${periodFrom}&periodTo=${periodTo}`),
+      apiRequest("GET", `/api/logistics-plan/transport-units?periodFrom=${periodFrom}&periodTo=${periodTo}`).then((r) => r.json()),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) =>
-      apiRequest(`/api/logistics-plan/transport-units/${id}`, { method: "DELETE" }),
+      apiRequest("DELETE", `/api/logistics-plan/transport-units/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
       toast({ title: "Транспортная единица удалена" });
     },
-    onError: () => toast({ title: "Ошибка удаления", variant: "destructive" }),
+    onError: (e: any) => toast({ title: e?.message || "Ошибка удаления", variant: "destructive" }),
   });
 
   const openAudit = (id: string) => {

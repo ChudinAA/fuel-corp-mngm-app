@@ -97,23 +97,23 @@ export function RoutePlanDialog({
 
   const createMutation = useMutation({
     mutationFn: (data: any) =>
-      apiRequest("/api/logistics-plan/routes", { method: "POST", body: JSON.stringify(data) }),
+      apiRequest("POST", "/api/logistics-plan/routes", data).then((r) => r.json()),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/calendar"] });
       toast({ title: "Маршрут добавлен" });
       form.reset();
     },
-    onError: () => toast({ title: "Ошибка создания маршрута", variant: "destructive" }),
+    onError: (e: any) => toast({ title: e?.message || "Ошибка создания маршрута", variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) =>
-      apiRequest(`/api/logistics-plan/routes/${id}`, { method: "DELETE" }),
+      apiRequest("DELETE", `/api/logistics-plan/routes/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/calendar"] });
       toast({ title: "Маршрут удалён" });
     },
-    onError: () => toast({ title: "Ошибка удаления", variant: "destructive" }),
+    onError: (e: any) => toast({ title: e?.message || "Ошибка удаления", variant: "destructive" }),
   });
 
   const onSubmit = (data: FormData) => {

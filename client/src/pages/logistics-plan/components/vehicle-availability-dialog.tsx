@@ -72,7 +72,7 @@ export function VehicleAvailabilityDialog({
   const { data: availabilities = [] } = useQuery<any[]>({
     queryKey: ["/api/logistics-plan/vehicle-availability", vehicleId],
     queryFn: () =>
-      apiRequest(`/api/logistics-plan/vehicle-availability?vehicleId=${vehicleId}`),
+      apiRequest("GET", `/api/logistics-plan/vehicle-availability?vehicleId=${vehicleId}`).then((r) => r.json()),
     enabled: open && !!vehicleId,
   });
 
@@ -99,28 +99,25 @@ export function VehicleAvailabilityDialog({
 
   const createMutation = useMutation({
     mutationFn: (data: any) =>
-      apiRequest("/api/logistics-plan/vehicle-availability", {
-        method: "POST",
-        body: JSON.stringify({ ...data, vehicleId }),
-      }),
+      apiRequest("POST", "/api/logistics-plan/vehicle-availability", { ...data, vehicleId }).then((r) => r.json()),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/vehicle-availability", vehicleId] });
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
       toast({ title: "Запись добавлена" });
       form.reset({ type: "maintenance", dateFrom: periodFrom, dateTo: periodTo, reason: null });
     },
-    onError: () => toast({ title: "Ошибка сохранения", variant: "destructive" }),
+    onError: (e: any) => toast({ title: e?.message || "Ошибка сохранения", variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) =>
-      apiRequest(`/api/logistics-plan/vehicle-availability/${id}`, { method: "DELETE" }),
+      apiRequest("DELETE", `/api/logistics-plan/vehicle-availability/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/vehicle-availability", vehicleId] });
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
       toast({ title: "Запись удалена" });
     },
-    onError: () => toast({ title: "Ошибка удаления", variant: "destructive" }),
+    onError: (e: any) => toast({ title: e?.message || "Ошибка удаления", variant: "destructive" }),
   });
 
   const onSubmit = (data: FormData) => {

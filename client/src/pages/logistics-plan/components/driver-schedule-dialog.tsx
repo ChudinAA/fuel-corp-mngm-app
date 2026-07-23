@@ -73,7 +73,7 @@ export function DriverScheduleDialog({
   const { data: schedules = [] } = useQuery<any[]>({
     queryKey: ["/api/logistics-plan/driver-schedule", driverId],
     queryFn: () =>
-      apiRequest(`/api/logistics-plan/driver-schedule?driverId=${driverId}`),
+      apiRequest("GET", `/api/logistics-plan/driver-schedule?driverId=${driverId}`).then((r) => r.json()),
     enabled: open && !!driverId,
   });
 
@@ -100,25 +100,25 @@ export function DriverScheduleDialog({
 
   const createMutation = useMutation({
     mutationFn: (data: any) =>
-      apiRequest("/api/logistics-plan/driver-schedule", { method: "POST", body: JSON.stringify({ ...data, driverId }) }),
+      apiRequest("POST", "/api/logistics-plan/driver-schedule", { ...data, driverId }).then((r) => r.json()),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/driver-schedule", driverId] });
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
       toast({ title: "Запись добавлена" });
       form.reset({ type: "unavailable", dateFrom: periodFrom, dateTo: periodTo, reason: null });
     },
-    onError: () => toast({ title: "Ошибка сохранения", variant: "destructive" }),
+    onError: (e: any) => toast({ title: e?.message || "Ошибка сохранения", variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) =>
-      apiRequest(`/api/logistics-plan/driver-schedule/${id}`, { method: "DELETE" }),
+      apiRequest("DELETE", `/api/logistics-plan/driver-schedule/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/driver-schedule", driverId] });
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
       toast({ title: "Запись удалена" });
     },
-    onError: () => toast({ title: "Ошибка удаления", variant: "destructive" }),
+    onError: (e: any) => toast({ title: e?.message || "Ошибка удаления", variant: "destructive" }),
   });
 
   const onSubmit = (data: FormData) => {

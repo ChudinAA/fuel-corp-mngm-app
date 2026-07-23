@@ -40,18 +40,18 @@ export function PlanningTab({ periodFrom, periodTo }: PlanningTabProps) {
   const { data: calendarData, isLoading: calendarLoading } = useQuery<any>({
     queryKey: ["/api/logistics-plan/calendar", periodFrom, periodTo],
     queryFn: () =>
-      apiRequest(`/api/logistics-plan/calendar?periodFrom=${periodFrom}&periodTo=${periodTo}`),
+      apiRequest("GET", `/api/logistics-plan/calendar?periodFrom=${periodFrom}&periodTo=${periodTo}`).then((r) => r.json()),
   });
 
   const { data: syncData } = useQuery<any>({
     queryKey: ["/api/logistics-plan/sync", periodFrom, periodTo],
     queryFn: () =>
-      apiRequest(`/api/logistics-plan/sync?periodFrom=${periodFrom}&periodTo=${periodTo}`),
+      apiRequest("GET", `/api/logistics-plan/sync?periodFrom=${periodFrom}&periodTo=${periodTo}`).then((r) => r.json()),
   });
 
   const markReadMutation = useMutation({
     mutationFn: (id: string) =>
-      apiRequest(`/api/logistics-plan/notifications/${id}/read`, { method: "PATCH" }),
+      apiRequest("PATCH", `/api/logistics-plan/notifications/${id}/read`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/calendar"] });
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/notifications"] });
@@ -60,10 +60,7 @@ export function PlanningTab({ periodFrom, periodTo }: PlanningTabProps) {
 
   const markAllReadMutation = useMutation({
     mutationFn: () =>
-      apiRequest("/api/logistics-plan/notifications/mark-all-read", {
-        method: "POST",
-        body: JSON.stringify({ periodFrom, periodTo }),
-      }),
+      apiRequest("POST", "/api/logistics-plan/notifications/mark-all-read", { periodFrom, periodTo }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/calendar"] });
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/notifications"] });

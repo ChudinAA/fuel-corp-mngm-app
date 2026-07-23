@@ -71,15 +71,19 @@ export function TransportUnitDialog({
 
   const { data: carriers = [] } = useQuery<any[]>({
     queryKey: ["/api/logistics/carriers"],
+    queryFn: () => apiRequest("GET", "/api/logistics/carriers").then((r) => r.json()),
   });
   const { data: vehicles = [] } = useQuery<any[]>({
     queryKey: ["/api/logistics/vehicles"],
+    queryFn: () => apiRequest("GET", "/api/logistics/vehicles").then((r) => r.json()),
   });
   const { data: trailers = [] } = useQuery<any[]>({
     queryKey: ["/api/logistics/trailers"],
+    queryFn: () => apiRequest("GET", "/api/logistics/trailers").then((r) => r.json()),
   });
   const { data: drivers = [] } = useQuery<any[]>({
     queryKey: ["/api/logistics/drivers"],
+    queryFn: () => apiRequest("GET", "/api/logistics/drivers").then((r) => r.json()),
   });
 
   const form = useForm<FormData>({
@@ -129,24 +133,24 @@ export function TransportUnitDialog({
 
   const createMutation = useMutation({
     mutationFn: (data: any) =>
-      apiRequest("/api/logistics-plan/transport-units", { method: "POST", body: JSON.stringify(data) }),
+      apiRequest("POST", "/api/logistics-plan/transport-units", data).then((r) => r.json()),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
       toast({ title: "Транспортная единица добавлена" });
       onOpenChange(false);
     },
-    onError: () => toast({ title: "Ошибка сохранения", variant: "destructive" }),
+    onError: (e: any) => toast({ title: e?.message || "Ошибка сохранения", variant: "destructive" }),
   });
 
   const updateMutation = useMutation({
     mutationFn: (data: any) =>
-      apiRequest(`/api/logistics-plan/transport-units/${editingUnit.id}`, { method: "PATCH", body: JSON.stringify(data) }),
+      apiRequest("PATCH", `/api/logistics-plan/transport-units/${editingUnit.id}`, data).then((r) => r.json()),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
       toast({ title: "Транспортная единица обновлена" });
       onOpenChange(false);
     },
-    onError: () => toast({ title: "Ошибка обновления", variant: "destructive" }),
+    onError: (e: any) => toast({ title: e?.message || "Ошибка обновления", variant: "destructive" }),
   });
 
   const onSubmit = (data: FormData) => {
