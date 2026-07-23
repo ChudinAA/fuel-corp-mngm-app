@@ -240,11 +240,11 @@ export function TopLevelResourceDetail({
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="outline" className="gap-1 text-emerald-600 border-emerald-200">
             <ArrowDownToLine className="h-3 w-3" />
-            Приход: {fmtTons(totalIncome.toString())} т
+            Приход: {fmtTons(totalIncome.toString())}
           </Badge>
           <Badge variant="outline" className="gap-1 text-amber-600 border-amber-200">
             <ArrowUpFromLine className="h-3 w-3" />
-            Расход: {fmtTons(totalExpense.toString())} т
+            Расход: {fmtTons(totalExpense.toString())}
           </Badge>
           {canManage && (
             <Button size="sm" onClick={() => openAdd()} data-testid="button-add-top-level-volume">
@@ -281,12 +281,12 @@ export function TopLevelResourceDetail({
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     {whIncome > 0 && (
                       <span className="text-emerald-600 font-medium">
-                        ↓ {fmtTons(whIncome.toString())} т
+                        ↓ {fmtTons(whIncome.toString())}
                       </span>
                     )}
                     {whExpense > 0 && (
                       <span className="text-amber-600 font-medium">
-                        ↑ {fmtTons(whExpense.toString())} т
+                        ↑ {fmtTons(whExpense.toString())}
                       </span>
                     )}
                   </div>
@@ -302,7 +302,7 @@ export function TopLevelResourceDetail({
                         Поступления
                         {whIncome > 0 && (
                           <span className="ml-1 text-emerald-600 font-semibold tabular-nums">
-                            {fmtTons(whIncome.toString())} т
+                            {fmtTons(whIncome.toString())}
                           </span>
                         )}
                       </div>
@@ -340,7 +340,7 @@ export function TopLevelResourceDetail({
                         Расходы
                         {whExpense > 0 && (
                           <span className="ml-1 text-amber-600 font-semibold tabular-nums">
-                            {fmtTons(whExpense.toString())} т
+                            {fmtTons(whExpense.toString())}
                           </span>
                         )}
                       </div>
@@ -544,7 +544,7 @@ function VolumeEntry({
             isIncome ? "text-emerald-600" : "text-amber-600",
           )}
         >
-          {isIncome ? "+" : "−"}{fmtTons(entry.volume)} т
+          {isIncome ? "+" : "−"}{fmtTons(entry.volume)}
         </span>
         {entry.counterpartyName && (
           <span className="ml-1.5 text-xs text-muted-foreground truncate">

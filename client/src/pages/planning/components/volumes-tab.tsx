@@ -272,7 +272,6 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                                     <span className="text-emerald-600 tabular-nums">+{fmtTons(topLevelIncome)}</span>
                                     <span className="text-muted-foreground">/</span>
                                     <span className="text-amber-600 tabular-nums">-{fmtTons(topLevelExpense)}</span>
-                                    <span className="text-muted-foreground text-xs">т</span>
                                   </div>
                                 ) : (
                                   <span className="text-muted-foreground text-xs">—</span>
@@ -282,7 +281,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                               <span className="text-muted-foreground">—</span>
                             )}
                           </TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
+                          <TableCell>
                             {(res as any).isUnassigned ? (
                               <span className="text-muted-foreground">—</span>
                             ) : (
@@ -306,29 +305,33 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                                     <Pencil className="h-3.5 w-3.5" />
                                   </button>
                                 )}
-                                <FieldCommentPopover
-                                  entityType="planning_resource"
-                                  entityId={res.supplierId!}
-                                  fieldKey="allocatedVolume"
-                                />
+                                <span onClick={(e) => e.stopPropagation()}>
+                                  <FieldCommentPopover
+                                    entityType="planning_resource"
+                                    entityId={res.supplierId!}
+                                    fieldKey="allocatedVolume"
+                                  />
+                                </span>
                               </div>
                             )}
                           </TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
+                          <TableCell>
                             <div className="flex items-center gap-1.5">
                               <span className={(res as any).isUnassigned ? "font-medium text-amber-700 dark:text-amber-400" : ""}>
                                 {fmtTons((res as any).isUnassigned ? (res as any).demand : demandKg)}
                               </span>
                               {!(res as any).isUnassigned && (
-                                <FieldCommentPopover
-                                  entityType="planning_resource"
-                                  entityId={res.supplierId!}
-                                  fieldKey="demand"
-                                />
+                                <span onClick={(e) => e.stopPropagation()}>
+                                  <FieldCommentPopover
+                                    entityType="planning_resource"
+                                    entityId={res.supplierId!}
+                                    fieldKey="demand"
+                                  />
+                                </span>
                               )}
                             </div>
                           </TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
+                          <TableCell>
                             <div className="flex items-center gap-1.5">
                               <span
                                 className={
@@ -347,11 +350,13 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                                   : `${balNum > 0 ? "+" : ""}${fmtTons(balanceKg)}`}
                               </span>
                               {!(res as any).isUnassigned && (
-                                <FieldCommentPopover
-                                  entityType="planning_resource"
-                                  entityId={res.supplierId!}
-                                  fieldKey="balance"
-                                />
+                                <span onClick={(e) => e.stopPropagation()}>
+                                  <FieldCommentPopover
+                                    entityType="planning_resource"
+                                    entityId={res.supplierId!}
+                                    fieldKey="balance"
+                                  />
+                                </span>
                               )}
                             </div>
                           </TableCell>
@@ -596,14 +601,16 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                             {row.customerName}
                           </div>
                         </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
+                        <TableCell>
                           <div className="flex items-center gap-1.5">
                             <span>{fmtTons(row.volume)}</span>
-                            <FieldCommentPopover
-                              entityType="customer_plan"
-                              entityId={row.customerId}
-                              fieldKey="volume"
-                            />
+                            <span onClick={(e) => e.stopPropagation()}>
+                              <FieldCommentPopover
+                                entityType="customer_plan"
+                                entityId={row.customerId}
+                                fieldKey="volume"
+                              />
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -629,7 +636,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                                   <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
                                   <span className="font-medium">{wh.warehouseName}</span>
                                   <Badge variant="secondary" className="text-xs">
-                                    {fmtTons(wh.volume)} т
+                                    {fmtTons(wh.volume)}
                                   </Badge>
                                 </div>
                               ))}
