@@ -369,6 +369,7 @@ export const warehouseSupplyTags = pgTable(
     type: text("type").notNull(), // 'railway' | 'auto' | 'supplier' | 'custom'
     supplierId: uuid("supplier_id").references(() => suppliers.id),
     color: text("color").default("blue"),
+    scenarioId: uuid("scenario_id").references(() => planningScenarios.id),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     createdById: uuid("created_by_id").references(() => users.id),
     deletedAt: timestamp("deleted_at", { mode: "string" }),
@@ -376,6 +377,7 @@ export const warehouseSupplyTags = pgTable(
   },
   (table) => ({
     warehouseIdx: index("warehouse_supply_tags_warehouse_idx").on(table.warehouseId),
+    scenarioIdx: index("warehouse_supply_tags_scenario_idx").on(table.scenarioId),
   }),
 );
 

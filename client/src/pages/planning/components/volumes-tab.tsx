@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Pencil, Trash2, History, ChevronDown, ChevronRight, Building2 } from "lucide-react";
+import { Plus, Pencil, Trash2, History, ChevronDown, ChevronRight, Building2, TrendingDown, TrendingUp } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -43,6 +43,8 @@ interface ResourceSummaryRow {
   demand: string;
   balance: string;
   topLevelVolume: string;
+  topLevelIncome: string;
+  topLevelExpense: string;
   isUnassigned?: boolean;
 }
 
@@ -205,7 +207,9 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
             <TableHeader>
               <TableRow>
                 <TableHead>Поставщик</TableHead>
-                <TableHead>Верхнеур. план (т)</TableHead>
+                <TableHead className="bg-violet-50/60 dark:bg-violet-950/20 text-violet-700 dark:text-violet-400">
+                  Верхнеур. Приход/Расход (т)
+                </TableHead>
                 <TableHead>Выделенный объём (т)</TableHead>
                 <TableHead>Потребность (т)</TableHead>
                 <TableHead>Баланс (т)</TableHead>
@@ -232,16 +236,23 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                     const allocatedKg = summary?.allocatedVolume || "0";
                     const demandKg = summary?.demand || "0";
                     const balanceKg = summary?.balance || "0";
-                    const topLevelKg = summary?.topLevelVolume || "0";
+                    const topLevelIncome = summary?.topLevelIncome || "0";
+                    const topLevelExpense = summary?.topLevelExpense || "0";
                     const balNum = parseFloat(balanceKg);
                     const isExpanded = expandedTopLevel === res.supplierId;
+                    const hasTopLevel = parseFloat(topLevelIncome) > 0 || parseFloat(topLevelExpense) > 0;
 
                     return (
                       <>
                         <TableRow
                           key={res.supplierId ?? "unassigned"}
                           data-testid={`row-resource-${res.supplierId ?? "unassigned"}`}
-                          className={(res as any).isUnassigned ? "bg-amber-50 dark:bg-amber-950/30" : ""}
+                          className={`${(res as any).isUnassigned ? "bg-amber-50 dark:bg-amber-950/30" : ""} cursor-pointer select-none`}
+                          onClick={() => {
+                            if (!(res as any).isUnassigned && res.supplierId) {
+                              setExpandedTopLevel(isExpanded ? null : res.supplierId);
+                            }
+                          }}
                         >
                           <TableCell className={(res as any).isUnassigned ? "font-medium text-amber-700 dark:text-amber-400" : "font-medium"}>
                             {res.supplierName}
@@ -249,31 +260,29 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                               <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">(нераспределено)</span>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="bg-violet-50/30 dark:bg-violet-950/10">
                             {!(res as any).isUnassigned ? (
                               <div className="flex items-center gap-1.5">
-                                <button
-                                  className="flex items-center gap-1 text-left hover:text-primary transition-colors"
-                                  onClick={() =>
-                                    setExpandedTopLevel(isExpanded ? null : res.supplierId)
-                                  }
-                                  title="Верхнеуровневый план"
-                                  data-testid={`button-expand-top-level-${res.supplierId}`}
-                                >
-                                  {isExpanded
-                                    ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                                    : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                                  }
-                                  <span className="font-medium tabular-nums">
-                                    {fmtTons(topLevelKg)}
-                                  </span>
-                                </button>
+                                {isExpanded
+                                  ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                  : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                }
+                                {hasTopLevel ? (
+                                  <div className="flex items-center gap-1 text-sm">
+                                    <span className="text-emerald-600 tabular-nums">+{fmtTons(topLevelIncome)}</span>
+                                    <span className="text-muted-foreground">/</span>
+                                    <span className="text-amber-600 tabular-nums">-{fmtTons(topLevelExpense)}</span>
+                                    <span className="text-muted-foreground text-xs">т</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
                               </div>
                             ) : (
                               <span className="text-muted-foreground">—</span>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
                             {(res as any).isUnassigned ? (
                               <span className="text-muted-foreground">—</span>
                             ) : (
@@ -284,12 +293,13 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                                 {canAllocate && (
                                   <button
                                     className="text-muted-foreground hover:text-foreground transition-colors"
-                                    onClick={() =>
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       setAllocatedVolumeDialog({
                                         supplierId: res.supplierId!,
                                         supplierName: res.supplierName,
-                                      })
-                                    }
+                                      });
+                                    }}
                                     title="Установить объём"
                                     data-testid={`button-edit-allocated-${res.supplierId}`}
                                   >
@@ -304,7 +314,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                               </div>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-1.5">
                               <span className={(res as any).isUnassigned ? "font-medium text-amber-700 dark:text-amber-400" : ""}>
                                 {fmtTons((res as any).isUnassigned ? (res as any).demand : demandKg)}
@@ -318,7 +328,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-1.5">
                               <span
                                 className={
@@ -345,7 +355,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
                             {!(res as any).isUnassigned && (
                               <EntityActionsMenu
                                 actions={[
@@ -382,7 +392,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                         {/* Top-level detail expansion row */}
                         {isExpanded && !(res as any).isUnassigned && (
                           <TableRow key={`${res.supplierId}-topLevel`}>
-                            <TableCell colSpan={6} className="bg-muted/30 p-4">
+                            <TableCell colSpan={6} className="bg-violet-50/30 dark:bg-violet-950/10 p-4">
                               <TopLevelResourceDetail
                                 supplierId={res.supplierId!}
                                 supplierName={res.supplierName}
@@ -396,7 +406,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                       </>
                     );
                   })}
-                  {/* Unassigned row from summary if not already in resources list */}
+                  {/* Unassigned row from summary */}
                   {resourcesSummary
                     .filter((s) => s.isUnassigned)
                     .map((s) => (
@@ -409,7 +419,9 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                           Не указан поставщик
                           <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">(нераспределено)</span>
                         </TableCell>
-                        <TableCell><span className="text-muted-foreground">—</span></TableCell>
+                        <TableCell className="bg-violet-50/30 dark:bg-violet-950/10">
+                          <span className="text-muted-foreground">—</span>
+                        </TableCell>
                         <TableCell><span className="text-muted-foreground">—</span></TableCell>
                         <TableCell>
                           <span className="font-medium text-amber-700 dark:text-amber-400">
@@ -441,11 +453,11 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
             <TableHeader>
               <TableRow>
                 <TableHead>Склад</TableHead>
+                <TableHead>Поставка</TableHead>
                 <TableHead>Планируемый приход (т)</TableHead>
                 <TableHead>Планируемый расход (т)</TableHead>
                 <TableHead>Остаток (план, т)</TableHead>
                 <TableHead>Остаток (факт, т)</TableHead>
-                <TableHead>Метки</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -468,9 +480,16 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                   return (
                     <TableRow key={row.warehouseId} data-testid={`row-warehouse-${row.warehouseId}`}>
                       <TableCell className="font-medium">
-                        <div>
-                          {row.warehouseName}
-                          <WarehouseSupplyTagsBadges warehouseId={row.warehouseId} />
+                        {row.warehouseName}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <WarehouseSupplyTagsBadges warehouseId={row.warehouseId} scenarioId={scenarioId} />
+                          <WarehouseSupplyTagsDialog
+                            warehouseId={row.warehouseId}
+                            warehouseName={row.warehouseName}
+                            scenarioId={scenarioId}
+                          />
                         </div>
                       </TableCell>
                       <TableCell>
@@ -494,40 +513,30 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className={
-                              balPlan < 0
-                                ? "text-destructive font-medium"
-                                : balPlan > 0
-                                  ? "text-emerald-600 font-medium"
-                                  : "text-muted-foreground"
-                            }
-                          >
-                            {balPlan > 0 ? "+" : ""}{fmtTons(row.balancePlan)}
-                          </span>
-                        </div>
+                        <span
+                          className={
+                            balPlan < 0
+                              ? "text-destructive font-medium"
+                              : balPlan > 0
+                                ? "text-emerald-600 font-medium"
+                                : "text-muted-foreground"
+                          }
+                        >
+                          {balPlan > 0 ? "+" : ""}{fmtTons(row.balancePlan)}
+                        </span>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className={
-                              balFact < 0
-                                ? "text-destructive font-medium"
-                                : balFact > 0
-                                  ? "text-emerald-600 font-medium"
-                                  : "text-muted-foreground"
-                            }
-                          >
-                            {balFact > 0 ? "+" : ""}{fmtTons(row.balanceFact)}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <WarehouseSupplyTagsDialog
-                          warehouseId={row.warehouseId}
-                          warehouseName={row.warehouseName}
-                        />
+                        <span
+                          className={
+                            balFact < 0
+                              ? "text-destructive font-medium"
+                              : balFact > 0
+                                ? "text-emerald-600 font-medium"
+                                : "text-muted-foreground"
+                          }
+                        >
+                          {balFact > 0 ? "+" : ""}{fmtTons(row.balanceFact)}
+                        </span>
                       </TableCell>
                     </TableRow>
                   );
@@ -571,9 +580,23 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                   const hasWarehouses = row.warehouses && row.warehouses.length > 0;
                   return (
                     <>
-                      <TableRow key={row.customerId} data-testid={`row-customer-${row.customerId}`}>
-                        <TableCell>{row.customerName}</TableCell>
+                      <TableRow
+                        key={row.customerId}
+                        data-testid={`row-customer-${row.customerId}`}
+                        className={hasWarehouses ? "cursor-pointer select-none hover-elevate" : ""}
+                        onClick={() => hasWarehouses && toggleCustomer(row.customerId)}
+                      >
                         <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            {hasWarehouses && (
+                              isExpanded
+                                ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            )}
+                            {row.customerName}
+                          </div>
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-1.5">
                             <span>{fmtTons(row.volume)}</span>
                             <FieldCommentPopover
@@ -585,19 +608,10 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                         </TableCell>
                         <TableCell>
                           {hasWarehouses ? (
-                            <button
-                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                              onClick={() => toggleCustomer(row.customerId)}
-                              data-testid={`button-expand-customer-${row.customerId}`}
-                            >
-                              {isExpanded ? (
-                                <ChevronDown className="h-3.5 w-3.5" />
-                              ) : (
-                                <ChevronRight className="h-3.5 w-3.5" />
-                              )}
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Building2 className="h-3.5 w-3.5" />
                               {row.warehouses.length} скл.
-                            </button>
+                            </div>
                           ) : (
                             <span className="text-muted-foreground text-xs">—</span>
                           )}

@@ -809,17 +809,25 @@ export class PlanningStorage implements IPlanningStorage {
         ),
       );
 
-    const topLevelBySupplier = new Map<string, number>();
+    const topLevelIncomeBySupplier = new Map<string, number>();
+    const topLevelExpenseBySupplier = new Map<string, number>();
     for (const tlv of topLevelRows) {
-      const cur = topLevelBySupplier.get(tlv.supplierId) || 0;
-      topLevelBySupplier.set(tlv.supplierId, cur + parseFloat(tlv.volume));
+      if (tlv.type === "income") {
+        const cur = topLevelIncomeBySupplier.get(tlv.supplierId) || 0;
+        topLevelIncomeBySupplier.set(tlv.supplierId, cur + parseFloat(tlv.volume));
+      } else {
+        const cur = topLevelExpenseBySupplier.get(tlv.supplierId) || 0;
+        topLevelExpenseBySupplier.set(tlv.supplierId, cur + parseFloat(tlv.volume));
+      }
     }
 
     const rows = resources.map((res) => {
       const allocatedVolume = (allocatedBySupplier.get(res.supplierId) || 0).toFixed(2);
       const demand = (demandBySupplier.get(res.supplierId) || 0).toFixed(2);
       const balance = (parseFloat(allocatedVolume) - parseFloat(demand)).toFixed(2);
-      const topLevelVolume = (topLevelBySupplier.get(res.supplierId) || 0).toFixed(2);
+      const topLevelIncome = (topLevelIncomeBySupplier.get(res.supplierId) || 0).toFixed(2);
+      const topLevelExpense = (topLevelExpenseBySupplier.get(res.supplierId) || 0).toFixed(2);
+      const topLevelVolume = ((topLevelIncomeBySupplier.get(res.supplierId) || 0) + (topLevelExpenseBySupplier.get(res.supplierId) || 0)).toFixed(2);
       return {
         supplierId: res.supplierId,
         supplierName: res.supplierName,
@@ -827,6 +835,8 @@ export class PlanningStorage implements IPlanningStorage {
         demand,
         balance,
         topLevelVolume,
+        topLevelIncome,
+        topLevelExpense,
       };
     });
 
@@ -838,6 +848,8 @@ export class PlanningStorage implements IPlanningStorage {
         demand: unassignedDemand.toFixed(2),
         balance: (-unassignedDemand).toFixed(2),
         topLevelVolume: "0.00",
+        topLevelIncome: "0.00",
+        topLevelExpense: "0.00",
         isUnassigned: true,
       } as any);
     }
@@ -1186,7 +1198,7 @@ export class PlanningStorage implements IPlanningStorage {
 
   // ============ WAREHOUSE SUPPLY TAGS ============
 
-  async getWarehouseSupplyTags(warehouseId: string): Promise<WarehouseSupplyTagWithSupplier[]> {
+  async getWarehouseSupplyTags(warehouseId: string, scenarioId?: string | null): Promise<WarehouseSupplyTagWithSupplier[]> {
     const rows = await db
       .select()
       .from(warehouseSupplyTags)
@@ -1194,6 +1206,7 @@ export class PlanningStorage implements IPlanningStorage {
         and(
           eq(warehouseSupplyTags.warehouseId, warehouseId),
           isNull(warehouseSupplyTags.deletedAt),
+          buildScenarioFilter(warehouseSupplyTags.scenarioId, scenarioId),
         ),
       )
       .orderBy(asc(warehouseSupplyTags.createdAt));

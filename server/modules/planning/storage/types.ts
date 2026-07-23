@@ -80,6 +80,8 @@ export interface ResourceSummaryRow {
   demand: string;
   balance: string;
   topLevelVolume: string;
+  topLevelIncome: string;
+  topLevelExpense: string;
   isUnassigned?: boolean;
 }
 
@@ -183,7 +185,7 @@ export interface IPlanningStorage {
   getTopLevelWarehouseSummary(warehouseId: string, periodFrom: string, periodTo: string, scenarioId?: string | null): Promise<TopLevelWarehouseSummary>;
 
   // Warehouse supply tags
-  getWarehouseSupplyTags(warehouseId: string): Promise<WarehouseSupplyTagWithSupplier[]>;
+  getWarehouseSupplyTags(warehouseId: string, scenarioId?: string | null): Promise<WarehouseSupplyTagWithSupplier[]>;
   createWarehouseSupplyTag(data: InsertWarehouseSupplyTag): Promise<WarehouseSupplyTag>;
   deleteWarehouseSupplyTag(id: string, userId?: string): Promise<boolean>;
 }

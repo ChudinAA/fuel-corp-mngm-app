@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Trash2, TrendingDown, TrendingUp } from "lucide-react";
+import { Plus, Trash2, Pencil, TrendingDown, TrendingUp, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 import {
   Table,
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -42,6 +43,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { fmtTons } from "../utils/planning-utils";
+import { FieldCommentPopover } from "./field-comment-popover";
 import type { PlanningPeriod } from "../planning-page";
 
 interface TopLevelVolume {
@@ -63,6 +65,11 @@ interface Warehouse {
   name: string;
 }
 
+interface Customer {
+  id: string;
+  name: string;
+}
+
 interface TopLevelResourceDetailProps {
   supplierId: string;
   supplierName: string;
@@ -70,6 +77,14 @@ interface TopLevelResourceDetailProps {
   scenarioId: string | null;
   onClose: () => void;
 }
+
+const EMPTY_FORM = {
+  warehouseId: "",
+  type: "income" as "income" | "expense",
+  volume: "",
+  counterpartyId: "",
+  notes: "",
+};
 
 export function TopLevelResourceDetail({
   supplierId,
@@ -85,13 +100,10 @@ export function TopLevelResourceDetail({
   const periodFrom = format(period.from, "yyyy-MM-dd");
   const periodTo = format(period.to, "yyyy-MM-dd");
 
-  const [addOpen, setAddOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  const [formWarehouseId, setFormWarehouseId] = useState("");
-  const [formType, setFormType] = useState<"income" | "expense">("income");
-  const [formVolume, setFormVolume] = useState("");
-  const [formCounterpartyId, setFormCounterpartyId] = useState("");
+  const [form, setForm] = useState({ ...EMPTY_FORM });
 
   const { data: volumes = [], isLoading } = useQuery<TopLevelVolume[]>({
     queryKey: ["/api/planning/top-level-volumes", supplierId, periodFrom, periodTo, scenarioId],
@@ -111,28 +123,58 @@ export function TopLevelResourceDetail({
     queryFn: async () => (await apiRequest("GET", "/api/warehouses")).json(),
   });
 
-  const createMutation = useMutation({
+  const { data: customers = [] } = useQuery<Customer[]>({
+    queryKey: ["/api/customers"],
+    queryFn: async () => (await apiRequest("GET", "/api/customers")).json(),
+    enabled: form.type === "expense",
+  });
+
+  function openAdd() {
+    setForm({ ...EMPTY_FORM });
+    setEditingId(null);
+    setFormOpen(true);
+  }
+
+  function openEdit(v: TopLevelVolume) {
+    setForm({
+      warehouseId: v.warehouseId,
+      type: v.type as "income" | "expense",
+      volume: (parseFloat(v.volume) / 1000).toString(),
+      counterpartyId: v.counterpartyId || "",
+      notes: v.notes || "",
+    });
+    setEditingId(v.id);
+    setFormOpen(true);
+  }
+
+  const saveMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/planning/top-level-volumes", {
+      const volumeKg = (parseFloat(form.volume) * 1000).toString();
+      const body = {
         supplierId,
-        warehouseId: formWarehouseId,
+        warehouseId: form.warehouseId,
         periodFrom: period.from.toISOString(),
         periodTo: period.to.toISOString(),
-        type: formType,
-        volume: formVolume,
-        counterpartyId: formCounterpartyId || null,
+        type: form.type,
+        volume: volumeKg,
+        counterpartyId: form.counterpartyId || null,
+        notes: form.notes || null,
         scenarioId: scenarioId || null,
-      });
+      };
+      if (editingId) {
+        await apiRequest("PATCH", `/api/planning/top-level-volumes/${editingId}`, body);
+      } else {
+        await apiRequest("POST", "/api/planning/top-level-volumes", body);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/planning/top-level-volumes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/planning/summary/resources"] });
-      toast({ title: "Объём добавлен" });
-      setAddOpen(false);
-      setFormWarehouseId("");
-      setFormVolume("");
-      setFormCounterpartyId("");
-      setFormType("income");
+      queryClient.invalidateQueries({ queryKey: ["/api/planning/top-level-volumes/warehouse-summary"] });
+      toast({ title: editingId ? "Объём обновлён" : "Объём добавлен" });
+      setFormOpen(false);
+      setEditingId(null);
+      setForm({ ...EMPTY_FORM });
     },
     onError: (err: any) => {
       toast({ title: "Ошибка", description: err.message, variant: "destructive" });
@@ -146,6 +188,7 @@ export function TopLevelResourceDetail({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/planning/top-level-volumes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/planning/summary/resources"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/planning/top-level-volumes/warehouse-summary"] });
       toast({ title: "Запись удалена" });
       setDeleteId(null);
     },
@@ -156,6 +199,19 @@ export function TopLevelResourceDetail({
 
   const totalIncome = volumes.filter((v) => v.type === "income").reduce((s, v) => s + parseFloat(v.volume || "0"), 0);
   const totalExpense = volumes.filter((v) => v.type === "expense").reduce((s, v) => s + parseFloat(v.volume || "0"), 0);
+
+  // Group by warehouse for side-by-side view
+  const byWarehouse = new Map<string, { name: string; income: TopLevelVolume[]; expense: TopLevelVolume[] }>();
+  for (const v of volumes) {
+    const key = v.warehouseId;
+    if (!byWarehouse.has(key)) {
+      byWarehouse.set(key, { name: v.warehouseName || "—", income: [], expense: [] });
+    }
+    const entry = byWarehouse.get(key)!;
+    if (v.type === "income") entry.income.push(v);
+    else entry.expense.push(v);
+  }
+  const warehouseGroups = Array.from(byWarehouse.entries());
 
   return (
     <div className="space-y-3">
@@ -174,11 +230,7 @@ export function TopLevelResourceDetail({
             Расход: {fmtTons(totalExpense.toFixed(2))} т
           </Badge>
           {canManage && (
-            <Button
-              size="sm"
-              onClick={() => setAddOpen(true)}
-              data-testid="button-add-top-level-volume"
-            >
+            <Button size="sm" onClick={openAdd} data-testid="button-add-top-level-volume">
               <Plus className="h-3.5 w-3.5 mr-1" />
               Добавить
             </Button>
@@ -191,73 +243,127 @@ export function TopLevelResourceDetail({
           <TableHeader>
             <TableRow>
               <TableHead>Склад</TableHead>
-              <TableHead>Тип</TableHead>
-              <TableHead>Объём (т)</TableHead>
-              <TableHead>Контрагент</TableHead>
-              <TableHead />
+              <TableHead className="text-emerald-700 dark:text-emerald-400">Поступления</TableHead>
+              <TableHead className="text-amber-700 dark:text-amber-400">Расходы</TableHead>
+              {canManage && <TableHead />}
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
+                <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
                   Загрузка...
                 </TableCell>
               </TableRow>
-            ) : volumes.length === 0 ? (
+            ) : warehouseGroups.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
+                <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
                   Нет верхнеуровневых записей. Нажмите «Добавить» чтобы начать.
                 </TableCell>
               </TableRow>
             ) : (
-              volumes.map((v) => (
-                <TableRow key={v.id} data-testid={`row-top-level-${v.id}`}>
-                  <TableCell className="font-medium">{v.warehouseName || "—"}</TableCell>
-                  <TableCell>
-                    {v.type === "income" ? (
-                      <Badge variant="outline" className="text-emerald-600 gap-1 text-xs">
-                        <TrendingDown className="h-3 w-3" />
-                        Приход
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-amber-600 gap-1 text-xs">
-                        <TrendingUp className="h-3 w-3" />
-                        Расход
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{fmtTons(v.volume)} т</TableCell>
-                  <TableCell className="text-muted-foreground">{v.counterpartyName || "—"}</TableCell>
-                  <TableCell>
-                    {canManage && (
-                      <button
-                        className="text-muted-foreground hover:text-destructive transition-colors"
-                        onClick={() => setDeleteId(v.id)}
-                        title="Удалить"
-                        data-testid={`button-delete-top-level-${v.id}`}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
+              warehouseGroups.map(([whId, whData]) => {
+                const maxRows = Math.max(whData.income.length, whData.expense.length, 1);
+                return Array.from({ length: maxRows }, (_, i) => {
+                  const incomeEntry = whData.income[i];
+                  const expenseEntry = whData.expense[i];
+                  return (
+                    <TableRow key={`${whId}-${i}`}>
+                      {i === 0 ? (
+                        <TableCell className="font-medium align-top" rowSpan={maxRows}>
+                          {whData.name}
+                        </TableCell>
+                      ) : null}
+                      <TableCell className="align-top">
+                        {incomeEntry ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-emerald-600 tabular-nums">
+                              +{fmtTons(incomeEntry.volume)} т
+                            </span>
+                            {incomeEntry.counterpartyName && (
+                              <span className="text-xs text-muted-foreground">({incomeEntry.counterpartyName})</span>
+                            )}
+                            <FieldCommentPopover
+                              entityType="top_level_volume"
+                              entityId={incomeEntry.id}
+                              fieldKey="volume"
+                            />
+                            {canManage && (
+                              <>
+                                <button
+                                  className="text-muted-foreground hover:text-foreground transition-colors"
+                                  onClick={() => openEdit(incomeEntry)}
+                                  title="Редактировать"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                                <button
+                                  className="text-muted-foreground hover:text-destructive transition-colors"
+                                  onClick={() => setDeleteId(incomeEntry.id)}
+                                  title="Удалить"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        ) : <span className="text-muted-foreground text-xs">—</span>}
+                      </TableCell>
+                      <TableCell className="align-top">
+                        {expenseEntry ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-amber-600 tabular-nums">
+                              -{fmtTons(expenseEntry.volume)} т
+                            </span>
+                            {expenseEntry.counterpartyName && (
+                              <span className="text-xs text-muted-foreground">({expenseEntry.counterpartyName})</span>
+                            )}
+                            <FieldCommentPopover
+                              entityType="top_level_volume"
+                              entityId={expenseEntry.id}
+                              fieldKey="volume"
+                            />
+                            {canManage && (
+                              <>
+                                <button
+                                  className="text-muted-foreground hover:text-foreground transition-colors"
+                                  onClick={() => openEdit(expenseEntry)}
+                                  title="Редактировать"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                                <button
+                                  className="text-muted-foreground hover:text-destructive transition-colors"
+                                  onClick={() => setDeleteId(expenseEntry.id)}
+                                  title="Удалить"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        ) : <span className="text-muted-foreground text-xs">—</span>}
+                      </TableCell>
+                      {canManage && <TableCell />}
+                    </TableRow>
+                  );
+                });
+              })
             )}
           </TableBody>
         </Table>
       </div>
 
-      {/* Add dialog */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      {/* Add/Edit dialog */}
+      <Dialog open={formOpen} onOpenChange={(o) => { setFormOpen(o); if (!o) setEditingId(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Добавить верхнеуровневый объём</DialogTitle>
+            <DialogTitle>{editingId ? "Редактировать объём" : "Добавить верхнеуровневый объём"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1">
               <Label>Склад</Label>
-              <Select value={formWarehouseId} onValueChange={setFormWarehouseId}>
+              <Select value={form.warehouseId} onValueChange={(v) => setForm((f) => ({ ...f, warehouseId: v }))}>
                 <SelectTrigger data-testid="select-top-level-warehouse">
                   <SelectValue placeholder="Выберите склад" />
                 </SelectTrigger>
@@ -270,7 +376,7 @@ export function TopLevelResourceDetail({
             </div>
             <div className="space-y-1">
               <Label>Тип</Label>
-              <Select value={formType} onValueChange={(v) => setFormType(v as "income" | "expense")}>
+              <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v as "income" | "expense", counterpartyId: "" }))}>
                 <SelectTrigger data-testid="select-top-level-type">
                   <SelectValue />
                 </SelectTrigger>
@@ -280,27 +386,53 @@ export function TopLevelResourceDetail({
                 </SelectContent>
               </Select>
             </div>
+            {form.type === "expense" && (
+              <div className="space-y-1">
+                <Label>Клиент <span className="text-muted-foreground text-xs">(опционально)</span></Label>
+                <Select value={form.counterpartyId} onValueChange={(v) => setForm((f) => ({ ...f, counterpartyId: v }))}>
+                  <SelectTrigger data-testid="select-top-level-customer">
+                    <SelectValue placeholder="Выберите клиента" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">— Не указан —</SelectItem>
+                    {customers.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1">
               <Label>Объём (т)</Label>
               <Input
                 type="number"
                 min="0"
-                step="0.01"
-                value={formVolume}
-                onChange={(e) => setFormVolume(e.target.value)}
-                placeholder="0.00"
+                step="0.001"
+                value={form.volume}
+                onChange={(e) => setForm((f) => ({ ...f, volume: e.target.value }))}
+                placeholder="0.000"
                 data-testid="input-top-level-volume"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Заметки <span className="text-muted-foreground text-xs">(опционально)</span></Label>
+              <Textarea
+                value={form.notes}
+                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                placeholder="Комментарий..."
+                className="resize-none text-sm"
+                rows={2}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>Отмена</Button>
+            <Button variant="outline" onClick={() => setFormOpen(false)}>Отмена</Button>
             <Button
-              onClick={() => createMutation.mutate()}
-              disabled={!formWarehouseId || !formVolume || createMutation.isPending}
+              onClick={() => saveMutation.mutate()}
+              disabled={!form.warehouseId || !form.volume || saveMutation.isPending}
               data-testid="button-confirm-top-level-volume"
             >
-              {createMutation.isPending ? "Сохранение..." : "Добавить"}
+              {saveMutation.isPending ? "Сохранение..." : editingId ? "Сохранить" : "Добавить"}
             </Button>
           </DialogFooter>
         </DialogContent>

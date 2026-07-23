@@ -31,9 +31,10 @@ interface SupplyTag {
   color: string;
 }
 
-interface Supplier {
+interface PlanningResource {
   id: string;
-  name: string;
+  supplierId: string;
+  supplierName: string;
 }
 
 const TAG_TYPES = [
@@ -43,17 +44,24 @@ const TAG_TYPES = [
   { value: "custom", label: "Другое", icon: Tag },
 ];
 
-const TAG_COLORS = [
-  { value: "blue", label: "Синий", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
-  { value: "green", label: "Зелёный", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
-  { value: "orange", label: "Оранжевый", cls: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" },
-  { value: "purple", label: "Фиолетовый", cls: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" },
-  { value: "red", label: "Красный", cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
-  { value: "gray", label: "Серый", cls: "bg-muted text-muted-foreground" },
-];
+const TAG_TYPE_COLORS: Record<string, string> = {
+  railway: "blue",
+  auto: "green",
+  supplier: "orange",
+  custom: "gray",
+};
+
+const TAG_COLORS: Record<string, string> = {
+  blue: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  green: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  orange: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+  purple: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+  red: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  gray: "bg-muted text-muted-foreground",
+};
 
 export function getTagColorClass(color: string): string {
-  return TAG_COLORS.find((c) => c.value === color)?.cls ?? TAG_COLORS[0].cls;
+  return TAG_COLORS[color] ?? TAG_COLORS.blue;
 }
 
 export function getTagIcon(type: string) {
@@ -69,13 +77,17 @@ export function getTagTypeLabel(type: string): string {
 interface WarehouseSupplyTagsProps {
   warehouseId: string;
   warehouseName: string;
+  scenarioId?: string | null;
 }
 
-export function WarehouseSupplyTagsBadges({ warehouseId }: { warehouseId: string }) {
+export function WarehouseSupplyTagsBadges({ warehouseId, scenarioId }: { warehouseId: string; scenarioId?: string | null }) {
+  const params = new URLSearchParams({ warehouseId });
+  if (scenarioId) params.set("scenarioId", scenarioId);
+
   const { data: tags = [] } = useQuery<SupplyTag[]>({
-    queryKey: ["/api/planning/warehouse-tags", warehouseId],
+    queryKey: ["/api/planning/warehouse-tags", warehouseId, scenarioId],
     queryFn: async () =>
-      (await apiRequest("GET", `/api/planning/warehouse-tags?warehouseId=${warehouseId}`)).json(),
+      (await apiRequest("GET", `/api/planning/warehouse-tags?${params}`)).json(),
   });
 
   if (tags.length === 0) return null;
@@ -101,7 +113,7 @@ export function WarehouseSupplyTagsBadges({ warehouseId }: { warehouseId: string
   );
 }
 
-export function WarehouseSupplyTagsDialog({ warehouseId, warehouseName }: WarehouseSupplyTagsProps) {
+export function WarehouseSupplyTagsDialog({ warehouseId, warehouseName, scenarioId }: WarehouseSupplyTagsProps) {
   const { hasPermission } = useAuth();
   const { toast } = useToast();
   const canManage = hasPermission("planning", "allocate");
@@ -110,41 +122,50 @@ export function WarehouseSupplyTagsDialog({ warehouseId, warehouseName }: Wareho
   const [formType, setFormType] = useState("railway");
   const [formLabel, setFormLabel] = useState("");
   const [formSupplierId, setFormSupplierId] = useState("");
-  const [formColor, setFormColor] = useState("blue");
+
+  const tagsParams = new URLSearchParams({ warehouseId });
+  if (scenarioId) tagsParams.set("scenarioId", scenarioId);
 
   const { data: tags = [], isLoading } = useQuery<SupplyTag[]>({
-    queryKey: ["/api/planning/warehouse-tags", warehouseId],
+    queryKey: ["/api/planning/warehouse-tags", warehouseId, scenarioId],
     queryFn: async () =>
-      (await apiRequest("GET", `/api/planning/warehouse-tags?warehouseId=${warehouseId}`)).json(),
+      (await apiRequest("GET", `/api/planning/warehouse-tags?${tagsParams}`)).json(),
     enabled: open,
   });
 
-  const { data: suppliers = [] } = useQuery<Supplier[]>({
-    queryKey: ["/api/suppliers"],
-    queryFn: async () => (await apiRequest("GET", "/api/suppliers")).json(),
+  // Load planning resources (not all suppliers)
+  const { data: resources = [] } = useQuery<PlanningResource[]>({
+    queryKey: ["/api/planning/resources"],
+    queryFn: async () => (await apiRequest("GET", "/api/planning/resources")).json(),
     enabled: open && formType === "supplier",
   });
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const label = formType === "supplier"
-        ? (suppliers.find((s) => s.id === formSupplierId)?.name || formLabel || "Поставщик")
-        : formLabel || getTagTypeLabel(formType);
+      const autoColor = TAG_TYPE_COLORS[formType] || "blue";
+      let label: string;
+      if (formType === "supplier") {
+        label = resources.find((r) => r.supplierId === formSupplierId)?.supplierName || "Поставщик";
+      } else if (formType === "custom") {
+        label = formLabel || "Другое";
+      } else {
+        label = getTagTypeLabel(formType);
+      }
       await apiRequest("POST", "/api/planning/warehouse-tags", {
         warehouseId,
         label,
         type: formType,
         supplierId: formType === "supplier" ? (formSupplierId || null) : null,
-        color: formColor,
+        color: autoColor,
+        scenarioId: scenarioId || null,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/planning/warehouse-tags", warehouseId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/planning/warehouse-tags", warehouseId, scenarioId] });
       toast({ title: "Метка добавлена" });
       setFormLabel("");
       setFormSupplierId("");
       setFormType("railway");
-      setFormColor("blue");
     },
     onError: (err: any) => {
       toast({ title: "Ошибка", description: err.message, variant: "destructive" });
@@ -156,15 +177,13 @@ export function WarehouseSupplyTagsDialog({ warehouseId, warehouseName }: Wareho
       await apiRequest("DELETE", `/api/planning/warehouse-tags/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/planning/warehouse-tags", warehouseId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/planning/warehouse-tags", warehouseId, scenarioId] });
       toast({ title: "Метка удалена" });
     },
     onError: (err: any) => {
       toast({ title: "Ошибка", description: err.message, variant: "destructive" });
     },
   });
-
-  const activeType = TAG_TYPES.find((t) => t.value === formType);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -178,7 +197,7 @@ export function WarehouseSupplyTagsDialog({ warehouseId, warehouseName }: Wareho
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-3 space-y-3" align="start">
-        <div className="font-medium text-sm">{warehouseName} — метки поставок</div>
+        <div className="font-medium text-sm">{warehouseName} — поставка</div>
 
         {/* Existing tags */}
         <div className="space-y-1.5">
@@ -199,7 +218,7 @@ export function WarehouseSupplyTagsDialog({ warehouseId, warehouseName }: Wareho
                     {tag.type === "supplier" && tag.supplierName
                       ? tag.supplierName
                       : tag.label}
-                    {tag.type === "supplier" && (
+                    {tag.type !== "supplier" && (
                       <span className="text-xs opacity-70 ml-1">({getTagTypeLabel(tag.type)})</span>
                     )}
                   </Badge>
@@ -238,7 +257,7 @@ export function WarehouseSupplyTagsDialog({ warehouseId, warehouseName }: Wareho
               </Select>
             </div>
 
-            {formType === "supplier" ? (
+            {formType === "supplier" && (
               <div className="space-y-1">
                 <Label className="text-xs">Поставщик</Label>
                 <Select value={formSupplierId} onValueChange={setFormSupplierId}>
@@ -246,13 +265,23 @@ export function WarehouseSupplyTagsDialog({ warehouseId, warehouseName }: Wareho
                     <SelectValue placeholder="Выберите поставщика" />
                   </SelectTrigger>
                   <SelectContent>
-                    {suppliers.map((s) => (
-                      <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
-                    ))}
+                    {resources.length === 0 ? (
+                      <SelectItem value="_none" disabled className="text-xs text-muted-foreground">
+                        Нет ресурсов в плане
+                      </SelectItem>
+                    ) : (
+                      resources.map((r) => (
+                        <SelectItem key={r.supplierId} value={r.supplierId} className="text-xs">
+                          {r.supplierName}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
-            ) : formType === "custom" ? (
+            )}
+
+            {formType === "custom" && (
               <div className="space-y-1">
                 <Label className="text-xs">Текст метки</Label>
                 <Input
@@ -262,23 +291,7 @@ export function WarehouseSupplyTagsDialog({ warehouseId, warehouseName }: Wareho
                   className="h-8 text-xs"
                 />
               </div>
-            ) : null}
-
-            <div className="space-y-1">
-              <Label className="text-xs">Цвет</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {TAG_COLORS.map((c) => (
-                  <button
-                    key={c.value}
-                    onClick={() => setFormColor(c.value)}
-                    className={`px-2 py-0.5 rounded text-xs ${c.cls} ${formColor === c.value ? "ring-2 ring-offset-1 ring-foreground" : ""}`}
-                    title={c.label}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            )}
 
             <Button
               size="sm"

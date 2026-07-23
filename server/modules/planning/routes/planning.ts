@@ -812,11 +812,11 @@ export function registerPlanningRoutes(app: Express) {
     requirePermission("planning", "view"),
     async (req, res) => {
       try {
-        const { warehouseId } = req.query as Record<string, string>;
+        const { warehouseId, scenarioId } = req.query as Record<string, string>;
         if (!warehouseId) {
           return res.status(400).json({ message: "warehouseId обязателен" });
         }
-        const tags = await storage.planning.getWarehouseSupplyTags(warehouseId);
+        const tags = await storage.planning.getWarehouseSupplyTags(warehouseId, scenarioId || null);
         res.json(tags);
       } catch (error: any) {
         console.error("Error fetching warehouse supply tags:", error);
@@ -834,6 +834,7 @@ export function registerPlanningRoutes(app: Express) {
         const data = insertWarehouseSupplyTagSchema.parse({
           ...req.body,
           supplierId: req.body.supplierId || undefined,
+          scenarioId: req.body.scenarioId || undefined,
           createdById: String(req.session.userId),
         });
         const created = await storage.planning.createWarehouseSupplyTag(data);

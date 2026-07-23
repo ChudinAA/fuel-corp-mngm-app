@@ -105,87 +105,102 @@ export function ScenarioSelector({ selectedScenarioId, onScenarioChange }: Scena
     ? scenarios.find((s) => s.id === selectedScenarioId)?.name || "..."
     : DEFAULT_LABEL;
 
-  return (
-    <div className="flex items-center gap-2">
-      {/* Scenario picker */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 max-w-[220px]"
-            data-testid="button-scenario-selector"
-          >
-            <Layers className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-            <span className="truncate">{selectedName}</span>
-            {selectedScenarioId && (
-              <Badge variant="secondary" className="text-xs ml-1 flex-shrink-0">alt</Badge>
-            )}
-            <ChevronDown className="h-3.5 w-3.5 ml-auto text-muted-foreground flex-shrink-0" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuItem
-            onClick={() => onScenarioChange(null)}
-            className="flex items-center justify-between"
-            data-testid="scenario-option-default"
-          >
-            <span>{DEFAULT_LABEL}</span>
-            {!selectedScenarioId && (
-              <Badge variant="default" className="text-xs">активный</Badge>
-            )}
-          </DropdownMenuItem>
-          {scenarios.length > 0 && <DropdownMenuSeparator />}
-          {scenarios.map((s) => (
-            <DropdownMenuItem
-              key={s.id}
-              className="flex items-center justify-between gap-2 pr-1"
-              data-testid={`scenario-option-${s.id}`}
-            >
-              <span
-                className="flex-1 truncate cursor-pointer"
-                onClick={() => onScenarioChange(s.id)}
-              >
-                {s.name}
-              </span>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {s.id === selectedScenarioId && (
-                  <Badge variant="default" className="text-xs">выбран</Badge>
-                )}
-                {canManage && (
-                  <button
-                    className="text-muted-foreground hover:text-destructive transition-colors p-0.5"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteId(s.id);
-                    }}
-                    title="Удалить сценарий"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+  const isAltScenario = !!selectedScenarioId;
 
-      {/* Add scenario button */}
-      {canManage && (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            setName("");
-            setCloneMode("current");
-            setCreateOpen(true);
-          }}
-          data-testid="button-add-scenario"
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          Добавить сценарий
-        </Button>
-      )}
+  return (
+    <>
+      {/* Highlighted scenario frame */}
+      <div
+        className={
+          isAltScenario
+            ? "flex items-center gap-2 px-3 py-1.5 rounded-md border-2 border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-950/30 scenario-pulse"
+            : "flex items-center gap-2"
+        }
+      >
+        {isAltScenario && (
+          <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 whitespace-nowrap">
+            Сценарий:
+          </span>
+        )}
+
+        {/* Scenario picker */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={isAltScenario ? "ghost" : "outline"}
+              size="sm"
+              className={`gap-1.5 max-w-[220px] ${isAltScenario ? "text-amber-700 dark:text-amber-300 font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/40" : ""}`}
+              data-testid="button-scenario-selector"
+            >
+              <Layers className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="truncate">{selectedName}</span>
+              <ChevronDown className="h-3.5 w-3.5 ml-auto flex-shrink-0" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem
+              onClick={() => onScenarioChange(null)}
+              className="flex items-center justify-between"
+              data-testid="scenario-option-default"
+            >
+              <span>{DEFAULT_LABEL}</span>
+              {!selectedScenarioId && (
+                <Badge variant="default" className="text-xs">активный</Badge>
+              )}
+            </DropdownMenuItem>
+            {scenarios.length > 0 && <DropdownMenuSeparator />}
+            {scenarios.map((s) => (
+              <DropdownMenuItem
+                key={s.id}
+                className="flex items-center justify-between gap-2 pr-1"
+                data-testid={`scenario-option-${s.id}`}
+              >
+                <span
+                  className="flex-1 truncate cursor-pointer"
+                  onClick={() => onScenarioChange(s.id)}
+                >
+                  {s.name}
+                </span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {s.id === selectedScenarioId && (
+                    <Badge variant="default" className="text-xs">выбран</Badge>
+                  )}
+                  {canManage && (
+                    <button
+                      className="text-muted-foreground hover:text-destructive transition-colors p-0.5"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteId(s.id);
+                      }}
+                      title="Удалить сценарий"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Add scenario button */}
+        {canManage && (
+          <Button
+            size="sm"
+            variant={isAltScenario ? "ghost" : "outline"}
+            className={isAltScenario ? "text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40" : ""}
+            onClick={() => {
+              setName("");
+              setCloneMode("current");
+              setCreateOpen(true);
+            }}
+            data-testid="button-add-scenario"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Добавить сценарий
+          </Button>
+        )}
+      </div>
 
       {/* Create dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -275,6 +290,6 @@ export function ScenarioSelector({ selectedScenarioId, onScenarioChange }: Scena
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
