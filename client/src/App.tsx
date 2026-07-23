@@ -58,6 +58,7 @@ import EquipmentMovementPage from "@/pages/equipment-movement/equipment-movement
 
 import InDevelopmentPage from "@/pages/shared/in-development";
 import TransportationPage from "@/pages/transportation/transportation-page";
+import LogisticsPlanPage from "@/pages/logistics-plan/logistics-plan-page";
 
 function ProtectedRoute({
   component: Component,
@@ -386,6 +387,12 @@ function Router() {
       <Route path="/lik">
         <AppLayout>
           <ProtectedRoute component={InDevelopmentPage} />
+        </AppLayout>
+      </Route>
+
+      <Route path="/logistics-plan">
+        <AppLayout>
+          <ProtectedRoute component={LogisticsPlanPage} />
         </AppLayout>
       </Route>
 

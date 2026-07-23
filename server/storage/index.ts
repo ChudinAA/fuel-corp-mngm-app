@@ -34,6 +34,7 @@ import { RailwayStorage } from "../modules/railway/storage/railway-storage";
 import { ExchangeDealsStorage } from "../modules/exchange-deals/storage/exchange-deals-storage";
 import { ExchangeAdvancesStorage } from "../modules/exchange-advances/storage/exchange-advances-storage";
 import { PlanningStorage } from "../modules/planning/storage/planning-storage";
+import { LogisticsPlanStorage } from "../modules/logistics-plan/storage/logistics-plan-storage";
 
 export * from "./types";
 
@@ -74,6 +75,7 @@ export class Storage {
   public exchangeDeals: ExchangeDealsStorage;
   public exchangeAdvances: ExchangeAdvancesStorage;
   public planning: PlanningStorage;
+  public logisticsPlan: LogisticsPlanStorage;
 
   constructor() {
     this.users = new UserStorage();
@@ -111,6 +113,7 @@ export class Storage {
     this.exchangeDeals = new ExchangeDealsStorage();
     this.exchangeAdvances = new ExchangeAdvancesStorage();
     this.planning = new PlanningStorage();
+    this.logisticsPlan = new LogisticsPlanStorage();
   }
 }
 

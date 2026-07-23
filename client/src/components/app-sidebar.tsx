@@ -273,6 +273,12 @@ const getPlanningMenuItems = (hasPermission: (p: string) => boolean) =>
       icon: Wallet,
       permission: "planning.view",
     },
+    {
+      title: "План Логистики",
+      url: "/logistics-plan",
+      icon: Truck,
+      permission: "planning.view",
+    },
   ].filter((item) => !item.permission || hasPermission(item.permission));
 
 const getAdminMenuItems = (hasPermission: (p: string) => boolean) =>

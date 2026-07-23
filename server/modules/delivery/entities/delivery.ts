@@ -31,6 +31,8 @@ export const deliveryCost = pgTable("delivery_cost", {
   toLocation: text("to_location").notNull(),
   costPerKg: decimal("cost_per_kg", { precision: 15, scale: 6 }).notNull(),
   distance: decimal("distance", { precision: 10, scale: 2 }),
+  transitDays: integer("transit_days"),
+  priority: integer("priority"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),

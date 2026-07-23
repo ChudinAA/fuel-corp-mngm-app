@@ -92,6 +92,8 @@ export const ENTITY_TYPES = {
   EXCHANGE_ADVANCE: 'exchange_advance_cards',
   PLAN_ENTRY: 'plan_entries',
   FREE_VOLUME_ALLOCATION: 'free_volume_allocations',
+  LOGISTICS_TRANSPORT_UNIT: 'logistics_transport_units',
+  LOGISTICS_PLAN_ROUTE: 'logistics_plan_routes',
 } as const;
 
 export type EntityType = typeof ENTITY_TYPES[keyof typeof ENTITY_TYPES];

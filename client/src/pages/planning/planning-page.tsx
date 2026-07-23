@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { addMonths, endOfMonth, format, startOfMonth } from "date-fns";
 import { ru } from "date-fns/locale";
-import { History } from "lucide-react";
+import { History, Truck } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,10 @@ import { AuditPanel } from "@/components/audit-panel";
 import { VolumesTab } from "./components/volumes-tab";
 import { WarehousesPlanFactTab } from "./components/warehouses-plan-fact-tab";
 import { ScenarioSelector } from "./components/scenario-selector";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 export type PlanningPeriod = {
   from: Date;
@@ -48,6 +52,25 @@ export default function PlanningPage() {
   const [auditOpen, setAuditOpen] = useState(false);
   const [scenarioId, setScenarioId] = useState<string | null>(null);
   const quickMonths = getQuickMonths();
+  const { toast } = useToast();
+  const [, navigate] = useLocation();
+
+  const syncMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("/api/logistics-plan/sync", {
+        method: "POST",
+        body: JSON.stringify({
+          periodFrom: toInputDate(period.from),
+          periodTo: toInputDate(period.to),
+          scenarioId: scenarioId || null,
+        }),
+      }),
+    onSuccess: () => {
+      toast({ title: "План синхронизирован с логистикой" });
+      navigate("/logistics-plan");
+    },
+    onError: () => toast({ title: "Ошибка синхронизации", variant: "destructive" }),
+  });
 
   const handleFromChange = (val: string) => {
     if (!val) return;
@@ -82,6 +105,16 @@ export default function PlanningPage() {
             selectedScenarioId={scenarioId}
             onScenarioChange={setScenarioId}
           />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => syncMutation.mutate()}
+            disabled={syncMutation.isPending}
+            data-testid="button-sync-logistics"
+          >
+            <Truck className="h-4 w-4 mr-2" />
+            {syncMutation.isPending ? "Синхронизация..." : "Запустить в план логистики"}
+          </Button>
           <Button
             variant="outline"
             size="sm"
