@@ -7,6 +7,9 @@ import {
   planningResources,
   planningSettings,
   planningComments,
+  planningScenarios,
+  planningTopLevelVolumes,
+  warehouseSupplyTags,
   warehouses,
   warehouseTransactions,
   suppliers,
@@ -40,6 +43,15 @@ import type {
   ResourceSummaryRow,
   WarehouseSummaryRow,
   CustomerSummaryRow,
+  PlanningScenario,
+  InsertPlanningScenario,
+  PlanningTopLevelVolume,
+  InsertPlanningTopLevelVolume,
+  PlanningTopLevelVolumeWithNames,
+  TopLevelWarehouseSummary,
+  WarehouseSupplyTag,
+  InsertWarehouseSupplyTag,
+  WarehouseSupplyTagWithSupplier,
 } from "./types";
 
 function startOfDay(dateStr: string): Date {
@@ -60,6 +72,13 @@ function isEntryLockedByDate(date: string): boolean {
   const today = startOfDay(new Date().toISOString());
   const entryDate = startOfDay(date);
   return entryDate.getTime() <= today.getTime();
+}
+
+function buildScenarioFilter(col: any, scenarioId?: string | null) {
+  if (scenarioId) {
+    return eq(col, scenarioId);
+  }
+  return isNull(col);
 }
 
 export class PlanningStorage implements IPlanningStorage {
@@ -104,6 +123,7 @@ export class PlanningStorage implements IPlanningStorage {
     warehouseId: string,
     dateFrom: string,
     dateTo: string,
+    scenarioId?: string | null,
   ): Promise<PlanEntryWithMeta[]> {
     const rows = await db
       .select()
@@ -114,6 +134,7 @@ export class PlanningStorage implements IPlanningStorage {
           isNull(planEntries.deletedAt),
           gte(planEntries.date, dateFrom),
           lte(planEntries.date, dateTo),
+          buildScenarioFilter(planEntries.scenarioId, scenarioId),
         ),
       )
       .orderBy(asc(planEntries.date), asc(planEntries.createdAt));
@@ -517,7 +538,6 @@ export class PlanningStorage implements IPlanningStorage {
     dateFrom: string,
     dateTo: string,
   ): Promise<ActualsByDate[]> {
-    // Use DATE() cast so timestamp columns compare correctly with date strings
     const transactions = await db
       .select()
       .from(warehouseTransactions)
@@ -534,7 +554,6 @@ export class PlanningStorage implements IPlanningStorage {
         sql`COALESCE(${warehouseTransactions.transactionDate}, ${warehouseTransactions.createdAt})`,
       );
 
-    // Bulk-lookup buyer names for OPT and refueling transactions
     const optSourceIds = transactions
       .filter((t) => t.sourceType === SOURCE_TYPE.OPT && t.sourceId)
       .map((t) => t.sourceId!);
@@ -571,7 +590,6 @@ export class PlanningStorage implements IPlanningStorage {
         : Promise.resolve([]),
     ]);
 
-    // Lookup warehouse names for movements
     const movWarehouseIdSet = new Set(
       movementRows
         .flatMap((r) => [r.fromWarehouseId, r.toWarehouseId])
@@ -587,7 +605,6 @@ export class PlanningStorage implements IPlanningStorage {
     const movWarehouseNameMap = new Map(movWarehouseRows.map((r) => [r.id, r.name]));
     const movementInfoMap = new Map(movementRows.map((r) => [r.id, r]));
 
-    // Map sourceId → buyerId
     const sourceToBuyer = new Map<string, string | null>();
     optRows.forEach((r) => sourceToBuyer.set(r.id, r.buyerId));
     refuelRows.forEach((r) => sourceToBuyer.set(r.id, r.buyerId));
@@ -632,7 +649,6 @@ export class PlanningStorage implements IPlanningStorage {
       let isExpense: boolean;
 
       if (t.transactionType === "inventory") {
-        // Inventory: positive qty = adding stock (income), negative qty = removing (expense)
         isExpense = rawQty < 0;
       } else if (
         t.transactionType === "receipt" ||
@@ -640,7 +656,6 @@ export class PlanningStorage implements IPlanningStorage {
       ) {
         isExpense = false;
       } else {
-        // sale, transfer_out — stored as negative; treat as expense
         isExpense = true;
       }
 
@@ -654,7 +669,6 @@ export class PlanningStorage implements IPlanningStorage {
         ).toFixed(2);
       }
 
-      // Resolve counterparty name
       let counterpartyName: string | null = null;
       if (t.sourceId && sourceToBuyer.has(t.sourceId)) {
         const buyerId = sourceToBuyer.get(t.sourceId);
@@ -705,6 +719,7 @@ export class PlanningStorage implements IPlanningStorage {
   async getResourcesSummary(
     periodFrom: string,
     periodTo: string,
+    scenarioId?: string | null,
   ): Promise<ResourceSummaryRow[]> {
     const resources = await this.getPlanningResources();
     if (resources.length === 0) return [];
@@ -720,6 +735,7 @@ export class PlanningStorage implements IPlanningStorage {
           eq(planEntries.type, "income"),
           gte(planEntries.date, periodFrom),
           lte(planEntries.date, periodTo),
+          buildScenarioFilter(planEntries.scenarioId, scenarioId),
         ),
       );
 
@@ -734,7 +750,6 @@ export class PlanningStorage implements IPlanningStorage {
         ),
       );
 
-    // Get all allocated volumes for this period (across all months in range)
     const allAllocatedVolumes = await db
       .select()
       .from(supplierAllocatedVolumes)
@@ -767,8 +782,6 @@ export class PlanningStorage implements IPlanningStorage {
       }
     }
 
-    // Calculate total allocated volume per supplier for the period
-    // by summing months that overlap with the period
     const pFrom = new Date(periodFrom);
     const pTo = new Date(periodTo);
 
@@ -776,27 +789,47 @@ export class PlanningStorage implements IPlanningStorage {
     for (const av of allAllocatedVolumes) {
       const avFrom = new Date(av.periodFrom);
       const avTo = new Date(av.periodTo);
-      // Check overlap
       if (avFrom <= pTo && avTo >= pFrom) {
         const cur = allocatedBySupplier.get(av.supplierId) || 0;
         allocatedBySupplier.set(av.supplierId, cur + parseFloat(av.volume));
       }
     }
 
+    // Get top-level volumes per supplier for the period
+    const topLevelRows = await db
+      .select()
+      .from(planningTopLevelVolumes)
+      .where(
+        and(
+          isNull(planningTopLevelVolumes.deletedAt),
+          inArray(planningTopLevelVolumes.supplierId, resourceSupplierIds),
+          lte(planningTopLevelVolumes.periodFrom, periodTo),
+          gte(planningTopLevelVolumes.periodTo, periodFrom),
+          buildScenarioFilter(planningTopLevelVolumes.scenarioId, scenarioId),
+        ),
+      );
+
+    const topLevelBySupplier = new Map<string, number>();
+    for (const tlv of topLevelRows) {
+      const cur = topLevelBySupplier.get(tlv.supplierId) || 0;
+      topLevelBySupplier.set(tlv.supplierId, cur + parseFloat(tlv.volume));
+    }
+
     const rows = resources.map((res) => {
       const allocatedVolume = (allocatedBySupplier.get(res.supplierId) || 0).toFixed(2);
       const demand = (demandBySupplier.get(res.supplierId) || 0).toFixed(2);
       const balance = (parseFloat(allocatedVolume) - parseFloat(demand)).toFixed(2);
+      const topLevelVolume = (topLevelBySupplier.get(res.supplierId) || 0).toFixed(2);
       return {
         supplierId: res.supplierId,
         supplierName: res.supplierName,
         allocatedVolume,
         demand,
         balance,
+        topLevelVolume,
       };
     });
 
-    // Add unassigned row if there are income plan entries without a counterparty
     if (unassignedDemand > 0) {
       rows.push({
         supplierId: null as any,
@@ -804,6 +837,7 @@ export class PlanningStorage implements IPlanningStorage {
         allocatedVolume: "0.00",
         demand: unassignedDemand.toFixed(2),
         balance: (-unassignedDemand).toFixed(2),
+        topLevelVolume: "0.00",
         isUnassigned: true,
       } as any);
     }
@@ -814,6 +848,7 @@ export class PlanningStorage implements IPlanningStorage {
   async getWarehousesSummary(
     periodFrom: string,
     periodTo: string,
+    scenarioId?: string | null,
   ): Promise<WarehouseSummaryRow[]> {
     const activeWarehouses = await db
       .select()
@@ -828,6 +863,7 @@ export class PlanningStorage implements IPlanningStorage {
           isNull(planEntries.deletedAt),
           gte(planEntries.date, periodFrom),
           lte(planEntries.date, periodTo),
+          buildScenarioFilter(planEntries.scenarioId, scenarioId),
         ),
       )
       .orderBy(asc(planEntries.date), asc(planEntries.createdAt));
@@ -863,6 +899,7 @@ export class PlanningStorage implements IPlanningStorage {
   async getCustomersSummary(
     periodFrom: string,
     periodTo: string,
+    scenarioId?: string | null,
   ): Promise<CustomerSummaryRow[]> {
     const expenseEntries = await db
       .select()
@@ -873,31 +910,318 @@ export class PlanningStorage implements IPlanningStorage {
           eq(planEntries.type, "expense"),
           gte(planEntries.date, periodFrom),
           lte(planEntries.date, periodTo),
+          buildScenarioFilter(planEntries.scenarioId, scenarioId),
         ),
       );
 
     const volumeByCustomer = new Map<string, number>();
+    // warehouseId → volume for each customer
+    const warehouseVolumeByCustomer = new Map<string, Map<string, number>>();
+
     for (const e of expenseEntries) {
       if (!e.counterpartyId) continue;
       volumeByCustomer.set(
         e.counterpartyId,
         (volumeByCustomer.get(e.counterpartyId) || 0) + parseFloat(e.volume),
       );
+      if (!warehouseVolumeByCustomer.has(e.counterpartyId)) {
+        warehouseVolumeByCustomer.set(e.counterpartyId, new Map());
+      }
+      const whMap = warehouseVolumeByCustomer.get(e.counterpartyId)!;
+      whMap.set(e.warehouseId, (whMap.get(e.warehouseId) || 0) + parseFloat(e.volume));
     }
 
     if (volumeByCustomer.size === 0) return [];
 
-    const customerRows = await db
-      .select({ id: customers.id, name: customers.name })
-      .from(customers)
-      .where(inArray(customers.id, Array.from(volumeByCustomer.keys())));
+    const customerIds = Array.from(volumeByCustomer.keys());
+    const warehouseIds = Array.from(
+      new Set(expenseEntries.map((e) => e.warehouseId))
+    );
+
+    const [customerRows, warehouseRows] = await Promise.all([
+      db
+        .select({ id: customers.id, name: customers.name })
+        .from(customers)
+        .where(inArray(customers.id, customerIds)),
+      warehouseIds.length > 0
+        ? db
+            .select({ id: warehouses.id, name: warehouses.name })
+            .from(warehouses)
+            .where(inArray(warehouses.id, warehouseIds))
+        : Promise.resolve([]),
+    ]);
 
     const nameMap = new Map(customerRows.map((c) => [c.id, c.name]));
+    const warehouseNameMap = new Map(warehouseRows.map((w) => [w.id, w.name]));
 
-    return Array.from(volumeByCustomer.entries()).map(([customerId, volume]) => ({
-      customerId,
-      customerName: nameMap.get(customerId) || "—",
-      volume: volume.toFixed(2),
+    return Array.from(volumeByCustomer.entries()).map(([customerId, volume]) => {
+      const whMap = warehouseVolumeByCustomer.get(customerId) || new Map();
+      const whVolumes = Array.from(whMap.entries()).map(([wid, vol]) => ({
+        warehouseId: wid,
+        warehouseName: warehouseNameMap.get(wid) || "—",
+        volume: vol.toFixed(2),
+      }));
+      return {
+        customerId,
+        customerName: nameMap.get(customerId) || "—",
+        volume: volume.toFixed(2),
+        warehouses: whVolumes,
+      };
+    });
+  }
+
+  // ============ PLANNING SCENARIOS ============
+
+  async getPlanningScenarios(): Promise<PlanningScenario[]> {
+    return db
+      .select()
+      .from(planningScenarios)
+      .where(isNull(planningScenarios.deletedAt))
+      .orderBy(asc(planningScenarios.createdAt));
+  }
+
+  async createPlanningScenario(data: InsertPlanningScenario): Promise<PlanningScenario> {
+    const [created] = await db.insert(planningScenarios).values(data).returning();
+    return created;
+  }
+
+  async updatePlanningScenario(
+    id: string,
+    data: Partial<InsertPlanningScenario>,
+    userId?: string,
+  ): Promise<PlanningScenario | undefined> {
+    const [updated] = await db
+      .update(planningScenarios)
+      .set({ ...data, updatedAt: sql`NOW()`, updatedById: userId })
+      .where(eq(planningScenarios.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePlanningScenario(id: string, userId?: string): Promise<boolean> {
+    await db
+      .update(planningScenarios)
+      .set({ deletedAt: sql`NOW()`, deletedById: userId })
+      .where(eq(planningScenarios.id, id));
+    return true;
+  }
+
+  async clonePlanningScenario(
+    sourceScenarioId: string | null,
+    newScenarioData: InsertPlanningScenario,
+  ): Promise<PlanningScenario> {
+    const [created] = await db.insert(planningScenarios).values(newScenarioData).returning();
+    const newId = created.id;
+
+    const scenarioFilter = sourceScenarioId ? eq(planEntries.scenarioId, sourceScenarioId) : isNull(planEntries.scenarioId);
+    const allocFilter = sourceScenarioId
+      ? eq(supplierAllocatedVolumes.scenarioId, sourceScenarioId)
+      : isNull(supplierAllocatedVolumes.scenarioId);
+    const freeAllocFilter = sourceScenarioId
+      ? eq(freeVolumeAllocations.scenarioId, sourceScenarioId)
+      : isNull(freeVolumeAllocations.scenarioId);
+    const topLevelFilter = sourceScenarioId
+      ? eq(planningTopLevelVolumes.scenarioId, sourceScenarioId)
+      : isNull(planningTopLevelVolumes.scenarioId);
+
+    const [sourcePlanEntries, sourceAllocatedVols, sourceFreeAllocs, sourceTopLevel] = await Promise.all([
+      db.select().from(planEntries).where(and(isNull(planEntries.deletedAt), scenarioFilter)),
+      db.select().from(supplierAllocatedVolumes).where(and(isNull(supplierAllocatedVolumes.deletedAt), allocFilter)),
+      db.select().from(freeVolumeAllocations).where(and(isNull(freeVolumeAllocations.deletedAt), freeAllocFilter)),
+      db.select().from(planningTopLevelVolumes).where(and(isNull(planningTopLevelVolumes.deletedAt), topLevelFilter)),
+    ]);
+
+    if (sourcePlanEntries.length > 0) {
+      await db.insert(planEntries).values(
+        sourcePlanEntries.map(({ id, createdAt, updatedAt, deletedAt, deletedById, ...rest }) => ({
+          ...rest,
+          scenarioId: newId,
+          createdById: newScenarioData.createdById,
+        })),
+      );
+    }
+
+    if (sourceAllocatedVols.length > 0) {
+      await db.insert(supplierAllocatedVolumes).values(
+        sourceAllocatedVols.map(({ id, createdAt, updatedAt, deletedAt, deletedById, ...rest }) => ({
+          ...rest,
+          scenarioId: newId,
+          createdById: newScenarioData.createdById,
+        })),
+      );
+    }
+
+    if (sourceFreeAllocs.length > 0) {
+      await db.insert(freeVolumeAllocations).values(
+        sourceFreeAllocs.map(({ id, createdAt, updatedAt, deletedAt, deletedById, ...rest }) => ({
+          ...rest,
+          scenarioId: newId,
+          createdById: newScenarioData.createdById,
+        })),
+      );
+    }
+
+    if (sourceTopLevel.length > 0) {
+      await db.insert(planningTopLevelVolumes).values(
+        sourceTopLevel.map(({ id, createdAt, updatedAt, deletedAt, deletedById, ...rest }) => ({
+          ...rest,
+          scenarioId: newId,
+          createdById: newScenarioData.createdById,
+        })),
+      );
+    }
+
+    return created;
+  }
+
+  // ============ TOP-LEVEL VOLUMES ============
+
+  async getTopLevelVolumes(
+    supplierId: string,
+    periodFrom: string,
+    periodTo: string,
+    scenarioId?: string | null,
+  ): Promise<PlanningTopLevelVolumeWithNames[]> {
+    const rows = await db
+      .select()
+      .from(planningTopLevelVolumes)
+      .where(
+        and(
+          isNull(planningTopLevelVolumes.deletedAt),
+          eq(planningTopLevelVolumes.supplierId, supplierId),
+          lte(planningTopLevelVolumes.periodFrom, periodTo),
+          gte(planningTopLevelVolumes.periodTo, periodFrom),
+          buildScenarioFilter(planningTopLevelVolumes.scenarioId, scenarioId),
+        ),
+      )
+      .orderBy(asc(planningTopLevelVolumes.createdAt));
+
+    if (rows.length === 0) return [];
+
+    const warehouseIds = [...new Set(rows.map((r) => r.warehouseId))];
+    const counterpartyIds = [...new Set(rows.map((r) => r.counterpartyId).filter(Boolean) as string[])];
+
+    const [warehouseRows, supplierCps, customerCps] = await Promise.all([
+      db.select({ id: warehouses.id, name: warehouses.name }).from(warehouses).where(inArray(warehouses.id, warehouseIds)),
+      counterpartyIds.length > 0
+        ? db.select({ id: suppliers.id, name: suppliers.name }).from(suppliers).where(inArray(suppliers.id, counterpartyIds))
+        : Promise.resolve([]),
+      counterpartyIds.length > 0
+        ? db.select({ id: customers.id, name: customers.name }).from(customers).where(inArray(customers.id, counterpartyIds))
+        : Promise.resolve([]),
+    ]);
+
+    const warehouseNameMap = new Map(warehouseRows.map((w) => [w.id, w.name]));
+    const cpNameMap = new Map<string, string>();
+    supplierCps.forEach((s) => cpNameMap.set(s.id, s.name));
+    customerCps.forEach((c) => cpNameMap.set(c.id, c.name));
+
+    return rows.map((r) => ({
+      ...r,
+      warehouseName: warehouseNameMap.get(r.warehouseId) || "—",
+      counterpartyName: r.counterpartyId ? cpNameMap.get(r.counterpartyId) || null : null,
     }));
+  }
+
+  async createTopLevelVolume(data: InsertPlanningTopLevelVolume): Promise<PlanningTopLevelVolume> {
+    const [created] = await db.insert(planningTopLevelVolumes).values(data).returning();
+    return created;
+  }
+
+  async updateTopLevelVolume(
+    id: string,
+    data: Partial<InsertPlanningTopLevelVolume>,
+    userId?: string,
+  ): Promise<PlanningTopLevelVolume | undefined> {
+    const [updated] = await db
+      .update(planningTopLevelVolumes)
+      .set({ ...data, updatedAt: sql`NOW()`, updatedById: userId })
+      .where(eq(planningTopLevelVolumes.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteTopLevelVolume(id: string, userId?: string): Promise<boolean> {
+    await db
+      .update(planningTopLevelVolumes)
+      .set({ deletedAt: sql`NOW()`, deletedById: userId })
+      .where(eq(planningTopLevelVolumes.id, id));
+    return true;
+  }
+
+  async getTopLevelWarehouseSummary(
+    warehouseId: string,
+    periodFrom: string,
+    periodTo: string,
+    scenarioId?: string | null,
+  ): Promise<TopLevelWarehouseSummary> {
+    const wh = await db.query.warehouses.findFirst({ where: eq(warehouses.id, warehouseId) });
+    const rows = await db
+      .select()
+      .from(planningTopLevelVolumes)
+      .where(
+        and(
+          isNull(planningTopLevelVolumes.deletedAt),
+          eq(planningTopLevelVolumes.warehouseId, warehouseId),
+          lte(planningTopLevelVolumes.periodFrom, periodTo),
+          gte(planningTopLevelVolumes.periodTo, periodFrom),
+          buildScenarioFilter(planningTopLevelVolumes.scenarioId, scenarioId),
+        ),
+      );
+
+    const topLevelIncome = rows
+      .filter((r) => r.type === "income")
+      .reduce((s, r) => s + parseFloat(r.volume), 0);
+    const topLevelExpense = rows
+      .filter((r) => r.type === "expense")
+      .reduce((s, r) => s + parseFloat(r.volume), 0);
+
+    return {
+      warehouseId,
+      warehouseName: wh?.name || "—",
+      topLevelIncome: topLevelIncome.toFixed(2),
+      topLevelExpense: topLevelExpense.toFixed(2),
+    };
+  }
+
+  // ============ WAREHOUSE SUPPLY TAGS ============
+
+  async getWarehouseSupplyTags(warehouseId: string): Promise<WarehouseSupplyTagWithSupplier[]> {
+    const rows = await db
+      .select()
+      .from(warehouseSupplyTags)
+      .where(
+        and(
+          eq(warehouseSupplyTags.warehouseId, warehouseId),
+          isNull(warehouseSupplyTags.deletedAt),
+        ),
+      )
+      .orderBy(asc(warehouseSupplyTags.createdAt));
+
+    if (rows.length === 0) return [];
+
+    const supplierIds = [...new Set(rows.map((r) => r.supplierId).filter(Boolean) as string[])];
+    const supplierRows = supplierIds.length > 0
+      ? await db.select({ id: suppliers.id, name: suppliers.name }).from(suppliers).where(inArray(suppliers.id, supplierIds))
+      : [];
+    const supplierNameMap = new Map(supplierRows.map((s) => [s.id, s.name]));
+
+    return rows.map((r) => ({
+      ...r,
+      supplierName: r.supplierId ? supplierNameMap.get(r.supplierId) || null : null,
+    }));
+  }
+
+  async createWarehouseSupplyTag(data: InsertWarehouseSupplyTag): Promise<WarehouseSupplyTag> {
+    const [created] = await db.insert(warehouseSupplyTags).values(data).returning();
+    return created;
+  }
+
+  async deleteWarehouseSupplyTag(id: string, userId?: string): Promise<boolean> {
+    await db
+      .update(warehouseSupplyTags)
+      .set({ deletedAt: sql`NOW()`, deletedById: userId })
+      .where(eq(warehouseSupplyTags.id, id));
+    return true;
   }
 }

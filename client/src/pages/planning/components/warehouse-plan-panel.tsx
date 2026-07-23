@@ -515,13 +515,16 @@ function PeriodDetailPanel({
 export function WarehousePlanPanel({
   warehouseId,
   period,
+  scenarioId,
 }: {
   warehouseId: string;
   period: PlanningPeriod;
+  scenarioId?: string | null;
 }) {
   const { toast } = useToast();
   const { hasPermission, isAdmin } = useAuth();
   const { dateFrom, dateTo } = fmtPeriod(period);
+  const scenarioParam = scenarioId ? `&scenarioId=${scenarioId}` : "";
 
   const [entryDialogOpen, setEntryDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<PlanEntryRow | null>(null);
@@ -547,12 +550,12 @@ export function WarehousePlanPanel({
   const settingsKey = ["/api/planning/settings"];
 
   const { data: entries = [], isLoading: loadingEntries } = useQuery<PlanEntryRow[]>({
-    queryKey: entriesKey,
+    queryKey: [...entriesKey, scenarioId],
     queryFn: async () =>
       (
         await apiRequest(
           "GET",
-          `/api/planning/entries?warehouseId=${warehouseId}&dateFrom=${dateFrom}&dateTo=${dateTo}`,
+          `/api/planning/entries?warehouseId=${warehouseId}&dateFrom=${dateFrom}&dateTo=${dateTo}${scenarioParam}`,
         )
       ).json(),
   });
@@ -585,6 +588,16 @@ export function WarehousePlanPanel({
   const { data: settings = {} } = useQuery<Record<string, string>>({
     queryKey: settingsKey,
     queryFn: async () => (await apiRequest("GET", "/api/planning/settings")).json(),
+  });
+
+  const { data: topLevelSummary } = useQuery<{ topLevelIncome: string; topLevelExpense: string }>({
+    queryKey: ["/api/planning/top-level-volumes/warehouse-summary", warehouseId, dateFrom, dateTo, scenarioId],
+    queryFn: async () => {
+      const params = new URLSearchParams({ warehouseId, periodFrom: dateFrom, periodTo: dateTo });
+      if (scenarioId) params.set("scenarioId", scenarioId);
+      return (await apiRequest("GET", `/api/planning/top-level-volumes/warehouse-summary?${params}`)).json();
+    },
+    enabled: !!warehouseId,
   });
 
   const lockEnabled = settings["editLockEnabled"] === "true";
@@ -866,6 +879,35 @@ export function WarehousePlanPanel({
                 </TableRow>
               ) : (
                 <>
+                  {/* ── Верхнеур. план ── */}
+                  {topLevelSummary && (parseFloat(topLevelSummary.topLevelIncome) > 0 || parseFloat(topLevelSummary.topLevelExpense) > 0) && (
+                    <TableRow className="bg-violet-50/50 dark:bg-violet-950/20 font-medium">
+                      <TableCell />
+                      <TableCell className="py-2 text-sm text-violet-700 dark:text-violet-400">
+                        Верхнеур. план
+                      </TableCell>
+                      <TableCell className="py-2">
+                        {parseFloat(topLevelSummary.topLevelIncome) > 0 ? (
+                          <span className="text-emerald-600">{fmtTons(topLevelSummary.topLevelIncome)}</span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-2">
+                        {parseFloat(topLevelSummary.topLevelExpense) > 0 ? (
+                          <span className="text-amber-600">{fmtTons(topLevelSummary.topLevelExpense)}</span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-2" />
+                      <TableCell className="py-2" />
+                      <TableCell className="py-2" />
+                      <TableCell className="py-2" />
+                      <TableCell className="py-2" />
+                    </TableRow>
+                  )}
+
                   {/* ── Итого за период ── */}
                   <TableRow className="bg-blue-50/50 dark:bg-blue-950/20 font-semibold border-b-2">
                     <TableCell />

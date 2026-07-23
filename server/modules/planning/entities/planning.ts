@@ -15,6 +15,35 @@ import { warehouses } from "../../warehouses/entities/warehouses";
 import { suppliers } from "../../suppliers/entities/suppliers";
 import { bases } from "../../bases/entities/bases";
 
+// ============ PLANNING SCENARIOS ============
+export const planningScenarios = pgTable(
+  "planning_scenarios",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull(),
+    description: text("description"),
+    isActive: boolean("is_active").default(false).notNull(),
+    basedOnScenarioId: uuid("based_on_scenario_id"),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+    createdById: uuid("created_by_id").references(() => users.id),
+    updatedAt: timestamp("updated_at", { mode: "string" }),
+    updatedById: uuid("updated_by_id").references(() => users.id),
+    deletedAt: timestamp("deleted_at", { mode: "string" }),
+    deletedById: uuid("deleted_by_id").references(() => users.id),
+  },
+);
+
+export const insertPlanningScenarioSchema = createInsertSchema(planningScenarios).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+  deletedById: true,
+});
+
+export type PlanningScenario = typeof planningScenarios.$inferSelect;
+export type InsertPlanningScenario = z.infer<typeof insertPlanningScenarioSchema>;
+
 // ============ PLAN ENTRIES ============
 export const planEntries = pgTable(
   "plan_entries",
@@ -31,6 +60,7 @@ export const planEntries = pgTable(
     isManualBalance: boolean("is_manual_balance").default(false),
     basisId: uuid("basis_id").references(() => bases.id),
     notes: text("notes"),
+    scenarioId: uuid("scenario_id").references(() => planningScenarios.id),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
     createdById: uuid("created_by_id").references(() => users.id),
@@ -89,6 +119,7 @@ export const freeVolumeAllocations = pgTable(
     toCounterpartyId: uuid("to_counterparty_id"),
     volume: decimal("volume", { precision: 15, scale: 2 }).notNull(),
     notes: text("notes"),
+    scenarioId: uuid("scenario_id").references(() => planningScenarios.id),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
     createdById: uuid("created_by_id").references(() => users.id),
@@ -143,6 +174,7 @@ export const supplierAllocatedVolumes = pgTable(
     periodFrom: timestamp("period_from", { mode: "string" }).notNull(),
     periodTo: timestamp("period_to", { mode: "string" }).notNull(),
     volume: decimal("volume", { precision: 15, scale: 2 }).notNull(),
+    scenarioId: uuid("scenario_id").references(() => planningScenarios.id),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
     createdById: uuid("created_by_id").references(() => users.id),
@@ -287,3 +319,72 @@ export const insertPlanningCommentSchema = createInsertSchema(
 
 export type PlanningComment = typeof planningComments.$inferSelect;
 export type InsertPlanningComment = z.infer<typeof insertPlanningCommentSchema>;
+
+// ============ PLANNING TOP-LEVEL VOLUMES ============
+export const planningTopLevelVolumes = pgTable(
+  "planning_top_level_volumes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    supplierId: uuid("supplier_id").notNull().references(() => suppliers.id),
+    warehouseId: uuid("warehouse_id").notNull().references(() => warehouses.id),
+    periodFrom: timestamp("period_from", { mode: "string" }).notNull(),
+    periodTo: timestamp("period_to", { mode: "string" }).notNull(),
+    type: text("type").notNull(), // 'income' | 'expense'
+    volume: decimal("volume", { precision: 15, scale: 2 }).notNull(),
+    counterpartyId: uuid("counterparty_id"),
+    notes: text("notes"),
+    scenarioId: uuid("scenario_id").references(() => planningScenarios.id),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+    createdById: uuid("created_by_id").references(() => users.id),
+    updatedAt: timestamp("updated_at", { mode: "string" }),
+    updatedById: uuid("updated_by_id").references(() => users.id),
+    deletedAt: timestamp("deleted_at", { mode: "string" }),
+    deletedById: uuid("deleted_by_id").references(() => users.id),
+  },
+  (table) => ({
+    supplierIdx: index("planning_top_level_volumes_supplier_idx").on(table.supplierId),
+    warehouseIdx: index("planning_top_level_volumes_warehouse_idx").on(table.warehouseId),
+    periodIdx: index("planning_top_level_volumes_period_idx").on(table.periodFrom, table.periodTo),
+  }),
+);
+
+export const insertPlanningTopLevelVolumeSchema = createInsertSchema(planningTopLevelVolumes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+  deletedById: true,
+});
+
+export type PlanningTopLevelVolume = typeof planningTopLevelVolumes.$inferSelect;
+export type InsertPlanningTopLevelVolume = z.infer<typeof insertPlanningTopLevelVolumeSchema>;
+
+// ============ WAREHOUSE SUPPLY TAGS ============
+export const warehouseSupplyTags = pgTable(
+  "warehouse_supply_tags",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    warehouseId: uuid("warehouse_id").notNull().references(() => warehouses.id),
+    label: text("label").notNull(),
+    type: text("type").notNull(), // 'railway' | 'auto' | 'supplier' | 'custom'
+    supplierId: uuid("supplier_id").references(() => suppliers.id),
+    color: text("color").default("blue"),
+    createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+    createdById: uuid("created_by_id").references(() => users.id),
+    deletedAt: timestamp("deleted_at", { mode: "string" }),
+    deletedById: uuid("deleted_by_id").references(() => users.id),
+  },
+  (table) => ({
+    warehouseIdx: index("warehouse_supply_tags_warehouse_idx").on(table.warehouseId),
+  }),
+);
+
+export const insertWarehouseSupplyTagSchema = createInsertSchema(warehouseSupplyTags).omit({
+  id: true,
+  createdAt: true,
+  deletedAt: true,
+  deletedById: true,
+});
+
+export type WarehouseSupplyTag = typeof warehouseSupplyTags.$inferSelect;
+export type InsertWarehouseSupplyTag = z.infer<typeof insertWarehouseSupplyTagSchema>;

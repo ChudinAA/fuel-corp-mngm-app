@@ -12,6 +12,9 @@ import {
   insertSupplierAllocatedVolumeSchema,
   insertPlanningResourceSchema,
   insertPlanningCommentSchema,
+  insertPlanningScenarioSchema,
+  insertPlanningTopLevelVolumeSchema,
+  insertWarehouseSupplyTagSchema,
   supplierBases,
   bases,
 } from "@shared/schema";
@@ -24,11 +27,16 @@ export function registerPlanningRoutes(app: Express) {
     requirePermission("planning", "view"),
     async (req, res) => {
       try {
-        const { warehouseId, dateFrom, dateTo } = req.query as Record<string, string>;
+        const { warehouseId, dateFrom, dateTo, scenarioId } = req.query as Record<string, string>;
         if (!warehouseId || !dateFrom || !dateTo) {
           return res.status(400).json({ message: "warehouseId, dateFrom и dateTo обязательны" });
         }
-        const entries = await storage.planning.getPlanEntries(warehouseId, dateFrom, dateTo);
+        const entries = await storage.planning.getPlanEntries(
+          warehouseId,
+          dateFrom,
+          dateTo,
+          scenarioId || null,
+        );
         res.json(entries);
       } catch (error: any) {
         console.error("Error fetching plan entries:", error);
@@ -53,6 +61,7 @@ export function registerPlanningRoutes(app: Express) {
           ...body,
           counterpartyId: body.counterpartyId || undefined,
           basisId: body.basisId || undefined,
+          scenarioId: body.scenarioId || undefined,
           createdById: String(req.session.userId),
         });
         const created = await storage.planning.createPlanEntry(data);
@@ -80,7 +89,6 @@ export function registerPlanningRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
-        // Check global lock setting
         const settings = await storage.planning.getPlanningSettings();
         const lockEnabled = settings["editLockEnabled"] === "true";
         if (lockEnabled) {
@@ -95,7 +103,6 @@ export function registerPlanningRoutes(app: Express) {
           }
         }
         const body = req.body;
-        // Convert empty strings to null for nullable UUID fields
         const sanitized = {
           ...body,
           counterpartyId: body.counterpartyId || null,
@@ -130,7 +137,6 @@ export function registerPlanningRoutes(app: Express) {
     }),
     async (req, res) => {
       try {
-        // Check global lock setting
         const settings = await storage.planning.getPlanningSettings();
         const lockEnabled = settings["editLockEnabled"] === "true";
         if (lockEnabled) {
@@ -553,11 +559,11 @@ export function registerPlanningRoutes(app: Express) {
     requirePermission("planning", "view"),
     async (req, res) => {
       try {
-        const { periodFrom, periodTo } = req.query as Record<string, string>;
+        const { periodFrom, periodTo, scenarioId } = req.query as Record<string, string>;
         if (!periodFrom || !periodTo) {
           return res.status(400).json({ message: "periodFrom и periodTo обязательны" });
         }
-        const summary = await storage.planning.getResourcesSummary(periodFrom, periodTo);
+        const summary = await storage.planning.getResourcesSummary(periodFrom, periodTo, scenarioId || null);
         res.json(summary);
       } catch (error: any) {
         console.error("Error fetching resources summary:", error);
@@ -572,11 +578,11 @@ export function registerPlanningRoutes(app: Express) {
     requirePermission("planning", "view"),
     async (req, res) => {
       try {
-        const { periodFrom, periodTo } = req.query as Record<string, string>;
+        const { periodFrom, periodTo, scenarioId } = req.query as Record<string, string>;
         if (!periodFrom || !periodTo) {
           return res.status(400).json({ message: "periodFrom и periodTo обязательны" });
         }
-        const summary = await storage.planning.getWarehousesSummary(periodFrom, periodTo);
+        const summary = await storage.planning.getWarehousesSummary(periodFrom, periodTo, scenarioId || null);
         res.json(summary);
       } catch (error: any) {
         console.error("Error fetching warehouses summary:", error);
@@ -591,15 +597,268 @@ export function registerPlanningRoutes(app: Express) {
     requirePermission("planning", "view"),
     async (req, res) => {
       try {
-        const { periodFrom, periodTo } = req.query as Record<string, string>;
+        const { periodFrom, periodTo, scenarioId } = req.query as Record<string, string>;
         if (!periodFrom || !periodTo) {
           return res.status(400).json({ message: "periodFrom и periodTo обязательны" });
         }
-        const summary = await storage.planning.getCustomersSummary(periodFrom, periodTo);
+        const summary = await storage.planning.getCustomersSummary(periodFrom, periodTo, scenarioId || null);
         res.json(summary);
       } catch (error: any) {
         console.error("Error fetching customers summary:", error);
         res.status(500).json({ message: "Ошибка получения сводки по клиентам" });
+      }
+    },
+  );
+
+  // ---- Planning scenarios ----
+  app.get(
+    "/api/planning/scenarios",
+    requireAuth,
+    requirePermission("planning", "view"),
+    async (req, res) => {
+      try {
+        const scenarios = await storage.planning.getPlanningScenarios();
+        res.json(scenarios);
+      } catch (error: any) {
+        console.error("Error fetching planning scenarios:", error);
+        res.status(500).json({ message: "Ошибка получения сценариев" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/planning/scenarios",
+    requireAuth,
+    requirePermission("planning", "allocate"),
+    async (req, res) => {
+      try {
+        const { name, description, basedOnScenarioId, cloneFrom } = req.body as {
+          name: string;
+          description?: string;
+          basedOnScenarioId?: string | null;
+          cloneFrom?: string | null;
+        };
+        if (!name) {
+          return res.status(400).json({ message: "Название сценария обязательно" });
+        }
+        const scenarioData = {
+          name,
+          description: description || null,
+          isActive: false,
+          basedOnScenarioId: basedOnScenarioId || null,
+          createdById: String(req.session.userId),
+        };
+        let scenario;
+        if (cloneFrom !== undefined) {
+          scenario = await storage.planning.clonePlanningScenario(cloneFrom, scenarioData);
+        } else {
+          scenario = await storage.planning.createPlanningScenario(scenarioData);
+        }
+        res.status(201).json(scenario);
+      } catch (error: any) {
+        console.error("Error creating planning scenario:", error);
+        res.status(500).json({ message: "Ошибка создания сценария" });
+      }
+    },
+  );
+
+  app.patch(
+    "/api/planning/scenarios/:id",
+    requireAuth,
+    requirePermission("planning", "allocate"),
+    async (req, res) => {
+      try {
+        const updated = await storage.planning.updatePlanningScenario(
+          req.params.id,
+          req.body,
+          String(req.session.userId),
+        );
+        if (!updated) return res.status(404).json({ message: "Сценарий не найден" });
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error updating planning scenario:", error);
+        res.status(500).json({ message: "Ошибка обновления сценария" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/planning/scenarios/:id",
+    requireAuth,
+    requirePermission("planning", "allocate"),
+    async (req, res) => {
+      try {
+        await storage.planning.deletePlanningScenario(req.params.id, String(req.session.userId));
+        res.json({ ok: true });
+      } catch (error: any) {
+        console.error("Error deleting planning scenario:", error);
+        res.status(500).json({ message: "Ошибка удаления сценария" });
+      }
+    },
+  );
+
+  // ---- Top-level volumes ----
+  app.get(
+    "/api/planning/top-level-volumes",
+    requireAuth,
+    requirePermission("planning", "view"),
+    async (req, res) => {
+      try {
+        const { supplierId, periodFrom, periodTo, scenarioId } = req.query as Record<string, string>;
+        if (!supplierId || !periodFrom || !periodTo) {
+          return res.status(400).json({ message: "supplierId, periodFrom и periodTo обязательны" });
+        }
+        const volumes = await storage.planning.getTopLevelVolumes(
+          supplierId,
+          periodFrom,
+          periodTo,
+          scenarioId || null,
+        );
+        res.json(volumes);
+      } catch (error: any) {
+        console.error("Error fetching top-level volumes:", error);
+        res.status(500).json({ message: "Ошибка получения верхнеуровневых объёмов" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/planning/top-level-volumes/warehouse-summary",
+    requireAuth,
+    requirePermission("planning", "view"),
+    async (req, res) => {
+      try {
+        const { warehouseId, periodFrom, periodTo, scenarioId } = req.query as Record<string, string>;
+        if (!warehouseId || !periodFrom || !periodTo) {
+          return res.status(400).json({ message: "warehouseId, periodFrom и periodTo обязательны" });
+        }
+        const summary = await storage.planning.getTopLevelWarehouseSummary(
+          warehouseId,
+          periodFrom,
+          periodTo,
+          scenarioId || null,
+        );
+        res.json(summary);
+      } catch (error: any) {
+        console.error("Error fetching top-level warehouse summary:", error);
+        res.status(500).json({ message: "Ошибка получения сводки верхнеуровневого плана" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/planning/top-level-volumes",
+    requireAuth,
+    requirePermission("planning", "allocate"),
+    async (req, res) => {
+      try {
+        const data = insertPlanningTopLevelVolumeSchema.parse({
+          ...req.body,
+          counterpartyId: req.body.counterpartyId || undefined,
+          scenarioId: req.body.scenarioId || undefined,
+          createdById: String(req.session.userId),
+        });
+        const created = await storage.planning.createTopLevelVolume(data);
+        res.status(201).json(created);
+      } catch (error: any) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: error.errors[0].message });
+        }
+        console.error("Error creating top-level volume:", error);
+        res.status(500).json({ message: "Ошибка создания верхнеуровневого объёма" });
+      }
+    },
+  );
+
+  app.patch(
+    "/api/planning/top-level-volumes/:id",
+    requireAuth,
+    requirePermission("planning", "allocate"),
+    async (req, res) => {
+      try {
+        const updated = await storage.planning.updateTopLevelVolume(
+          req.params.id,
+          req.body,
+          String(req.session.userId),
+        );
+        if (!updated) return res.status(404).json({ message: "Запись не найдена" });
+        res.json(updated);
+      } catch (error: any) {
+        console.error("Error updating top-level volume:", error);
+        res.status(500).json({ message: "Ошибка обновления верхнеуровневого объёма" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/planning/top-level-volumes/:id",
+    requireAuth,
+    requirePermission("planning", "allocate"),
+    async (req, res) => {
+      try {
+        await storage.planning.deleteTopLevelVolume(req.params.id, String(req.session.userId));
+        res.json({ ok: true });
+      } catch (error: any) {
+        console.error("Error deleting top-level volume:", error);
+        res.status(500).json({ message: "Ошибка удаления верхнеуровневого объёма" });
+      }
+    },
+  );
+
+  // ---- Warehouse supply tags ----
+  app.get(
+    "/api/planning/warehouse-tags",
+    requireAuth,
+    requirePermission("planning", "view"),
+    async (req, res) => {
+      try {
+        const { warehouseId } = req.query as Record<string, string>;
+        if (!warehouseId) {
+          return res.status(400).json({ message: "warehouseId обязателен" });
+        }
+        const tags = await storage.planning.getWarehouseSupplyTags(warehouseId);
+        res.json(tags);
+      } catch (error: any) {
+        console.error("Error fetching warehouse supply tags:", error);
+        res.status(500).json({ message: "Ошибка получения меток склада" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/planning/warehouse-tags",
+    requireAuth,
+    requirePermission("planning", "allocate"),
+    async (req, res) => {
+      try {
+        const data = insertWarehouseSupplyTagSchema.parse({
+          ...req.body,
+          supplierId: req.body.supplierId || undefined,
+          createdById: String(req.session.userId),
+        });
+        const created = await storage.planning.createWarehouseSupplyTag(data);
+        res.status(201).json(created);
+      } catch (error: any) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: error.errors[0].message });
+        }
+        console.error("Error creating warehouse supply tag:", error);
+        res.status(500).json({ message: "Ошибка создания метки склада" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/planning/warehouse-tags/:id",
+    requireAuth,
+    requirePermission("planning", "allocate"),
+    async (req, res) => {
+      try {
+        await storage.planning.deleteWarehouseSupplyTag(req.params.id, String(req.session.userId));
+        res.json({ ok: true });
+      } catch (error: any) {
+        console.error("Error deleting warehouse supply tag:", error);
+        res.status(500).json({ message: "Ошибка удаления метки склада" });
       }
     },
   );

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { AuditPanel } from "@/components/audit-panel";
 import { VolumesTab } from "./components/volumes-tab";
 import { WarehousesPlanFactTab } from "./components/warehouses-plan-fact-tab";
+import { ScenarioSelector } from "./components/scenario-selector";
 
 export type PlanningPeriod = {
   from: Date;
@@ -45,6 +46,7 @@ export default function PlanningPage() {
   const [period, setPeriod] = useState<PlanningPeriod>(getDefaultPeriod());
   const [activeTab, setActiveTab] = useState("volumes");
   const [auditOpen, setAuditOpen] = useState(false);
+  const [scenarioId, setScenarioId] = useState<string | null>(null);
   const quickMonths = getQuickMonths();
 
   const handleFromChange = (val: string) => {
@@ -75,15 +77,21 @@ export default function PlanningPage() {
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setAuditOpen(true)}
-          data-testid="button-audit-history"
-        >
-          <History className="h-4 w-4 mr-2" />
-          История
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <ScenarioSelector
+            selectedScenarioId={scenarioId}
+            onScenarioChange={setScenarioId}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAuditOpen(true)}
+            data-testid="button-audit-history"
+          >
+            <History className="h-4 w-4 mr-2" />
+            История
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 border rounded-md p-4 bg-muted/20">
@@ -135,11 +143,11 @@ export default function PlanningPage() {
         </TabsList>
 
         <TabsContent value="volumes" className="mt-4">
-          <VolumesTab period={period} />
+          <VolumesTab period={period} scenarioId={scenarioId} />
         </TabsContent>
 
         <TabsContent value="warehouses" className="mt-4">
-          <WarehousesPlanFactTab period={period} />
+          <WarehousesPlanFactTab period={period} scenarioId={scenarioId} />
         </TabsContent>
       </Tabs>
 

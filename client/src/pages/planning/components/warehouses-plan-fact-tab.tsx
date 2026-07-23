@@ -12,7 +12,7 @@ interface Warehouse {
   deletedAt?: string | null;
 }
 
-export function WarehousesPlanFactTab({ period }: { period: PlanningPeriod }) {
+export function WarehousesPlanFactTab({ period, scenarioId }: { period: PlanningPeriod; scenarioId?: string | null }) {
   const { data: warehouses = [], isLoading } = useQuery<Warehouse[]>({
     queryKey: ["/api/warehouses"],
     queryFn: async () => {
@@ -60,7 +60,7 @@ export function WarehousesPlanFactTab({ period }: { period: PlanningPeriod }) {
 
       {warehouses.map((wh) => (
         <TabsContent key={wh.id} value={wh.id} className="mt-4">
-          <WarehousePlanPanel warehouseId={wh.id} period={period} />
+          <WarehousePlanPanel warehouseId={wh.id} period={period} scenarioId={scenarioId} />
         </TabsContent>
       ))}
     </Tabs>

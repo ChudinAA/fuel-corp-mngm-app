@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Plus, Pencil, Trash2, Pencil as PencilIcon, History } from "lucide-react";
+import { Plus, Pencil, Trash2, History, ChevronDown, ChevronRight, Building2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -32,7 +32,9 @@ import type { PlanningPeriod } from "../planning-page";
 import { ResourceDialog } from "./resource-dialog";
 import { AllocatedVolumeDialog } from "./allocated-volume-dialog";
 import { FieldCommentPopover } from "./field-comment-popover";
-import { fmtTons, kgToTons } from "../utils/planning-utils";
+import { TopLevelResourceDetail } from "./top-level-resource-detail";
+import { WarehouseSupplyTagsBadges, WarehouseSupplyTagsDialog } from "./warehouse-supply-tags-dialog";
+import { fmtTons } from "../utils/planning-utils";
 
 interface ResourceSummaryRow {
   supplierId: string | null;
@@ -40,6 +42,7 @@ interface ResourceSummaryRow {
   allocatedVolume: string;
   demand: string;
   balance: string;
+  topLevelVolume: string;
   isUnassigned?: boolean;
 }
 
@@ -52,10 +55,17 @@ interface WarehouseSummaryRow {
   balanceFact: string;
 }
 
+interface CustomerWarehouseVolume {
+  warehouseId: string;
+  warehouseName: string;
+  volume: string;
+}
+
 interface CustomerSummaryRow {
   customerId: string;
   customerName: string;
   volume: string;
+  warehouses: CustomerWarehouseVolume[];
 }
 
 interface PlanningResourceRow {
@@ -72,7 +82,7 @@ function fmtPeriod(period: PlanningPeriod) {
   };
 }
 
-export function VolumesTab({ period }: { period: PlanningPeriod }) {
+export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; scenarioId: string | null }) {
   const { hasPermission } = useAuth();
   const { toast } = useToast();
   const canAllocate = hasPermission("planning", "allocate");
@@ -86,6 +96,10 @@ export function VolumesTab({ period }: { period: PlanningPeriod }) {
     supplierName: string;
   } | null>(null);
   const [auditOpen, setAuditOpen] = useState<{ supplierId: string; name: string } | null>(null);
+  const [expandedTopLevel, setExpandedTopLevel] = useState<string | null>(null);
+  const [expandedCustomers, setExpandedCustomers] = useState<Set<string>>(new Set());
+
+  const scenarioParam = scenarioId ? `&scenarioId=${scenarioId}` : "";
 
   const { data: resources = [], isLoading: loadingResources } = useQuery<PlanningResourceRow[]>({
     queryKey: ["/api/planning/resources"],
@@ -93,33 +107,33 @@ export function VolumesTab({ period }: { period: PlanningPeriod }) {
   });
 
   const { data: resourcesSummary = [], isLoading: loadingResourcesSummary } = useQuery<ResourceSummaryRow[]>({
-    queryKey: ["/api/planning/summary/resources", periodFrom, periodTo],
+    queryKey: ["/api/planning/summary/resources", periodFrom, periodTo, scenarioId],
     queryFn: async () => {
       const res = await apiRequest(
         "GET",
-        `/api/planning/summary/resources?periodFrom=${periodFrom}&periodTo=${periodTo}`,
+        `/api/planning/summary/resources?periodFrom=${periodFrom}&periodTo=${periodTo}${scenarioParam}`,
       );
       return res.json();
     },
   });
 
   const { data: warehousesSummary = [], isLoading: loadingWarehouses } = useQuery<WarehouseSummaryRow[]>({
-    queryKey: ["/api/planning/summary/warehouses", periodFrom, periodTo],
+    queryKey: ["/api/planning/summary/warehouses", periodFrom, periodTo, scenarioId],
     queryFn: async () => {
       const res = await apiRequest(
         "GET",
-        `/api/planning/summary/warehouses?periodFrom=${periodFrom}&periodTo=${periodTo}`,
+        `/api/planning/summary/warehouses?periodFrom=${periodFrom}&periodTo=${periodTo}${scenarioParam}`,
       );
       return res.json();
     },
   });
 
   const { data: customersSummary = [], isLoading: loadingCustomers } = useQuery<CustomerSummaryRow[]>({
-    queryKey: ["/api/planning/summary/customers", periodFrom, periodTo],
+    queryKey: ["/api/planning/summary/customers", periodFrom, periodTo, scenarioId],
     queryFn: async () => {
       const res = await apiRequest(
         "GET",
-        `/api/planning/summary/customers?periodFrom=${periodFrom}&periodTo=${periodTo}`,
+        `/api/planning/summary/customers?periodFrom=${periodFrom}&periodTo=${periodTo}${scenarioParam}`,
       );
       return res.json();
     },
@@ -157,6 +171,15 @@ export function VolumesTab({ period }: { period: PlanningPeriod }) {
     }
   };
 
+  const toggleCustomer = (id: string) => {
+    setExpandedCustomers((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-4">
       {/* Resources table */}
@@ -177,11 +200,12 @@ export function VolumesTab({ period }: { period: PlanningPeriod }) {
             </Button>
           )}
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="overflow-x-auto p-0">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Поставщик</TableHead>
+                <TableHead>Верхнеур. план (т)</TableHead>
                 <TableHead>Выделенный объём (т)</TableHead>
                 <TableHead>Потребность (т)</TableHead>
                 <TableHead>Баланс (т)</TableHead>
@@ -191,13 +215,13 @@ export function VolumesTab({ period }: { period: PlanningPeriod }) {
             <TableBody>
               {loadingResources ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
                     Загрузка...
                   </TableCell>
                 </TableRow>
               ) : resources.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
                     Нет ресурсов. Нажмите «Добавить ресурс» чтобы начать.
                   </TableCell>
                 </TableRow>
@@ -208,158 +232,198 @@ export function VolumesTab({ period }: { period: PlanningPeriod }) {
                     const allocatedKg = summary?.allocatedVolume || "0";
                     const demandKg = summary?.demand || "0";
                     const balanceKg = summary?.balance || "0";
+                    const topLevelKg = summary?.topLevelVolume || "0";
                     const balNum = parseFloat(balanceKg);
+                    const isExpanded = expandedTopLevel === res.supplierId;
 
                     return (
-                      <TableRow
-                        key={res.supplierId ?? "unassigned"}
-                        data-testid={`row-resource-${res.supplierId ?? "unassigned"}`}
-                        className={res.isUnassigned ? "bg-amber-50 dark:bg-amber-950/30" : ""}
-                      >
-                        <TableCell className={res.isUnassigned ? "font-medium text-amber-700 dark:text-amber-400" : "font-medium"}>
-                          {res.supplierName}
-                          {res.isUnassigned && (
-                            <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">(нераспределено)</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {res.isUnassigned ? (
-                            <span className="text-muted-foreground">—</span>
-                          ) : (
-                            <div className="flex items-center gap-1.5">
-                              <span data-testid={`text-allocated-volume-${res.supplierId}`}>
-                                {fmtTons(allocatedKg)}
-                              </span>
-                              {canAllocate && (
+                      <>
+                        <TableRow
+                          key={res.supplierId ?? "unassigned"}
+                          data-testid={`row-resource-${res.supplierId ?? "unassigned"}`}
+                          className={(res as any).isUnassigned ? "bg-amber-50 dark:bg-amber-950/30" : ""}
+                        >
+                          <TableCell className={(res as any).isUnassigned ? "font-medium text-amber-700 dark:text-amber-400" : "font-medium"}>
+                            {res.supplierName}
+                            {(res as any).isUnassigned && (
+                              <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">(нераспределено)</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {!(res as any).isUnassigned ? (
+                              <div className="flex items-center gap-1.5">
                                 <button
-                                  className="text-muted-foreground hover:text-foreground transition-colors"
+                                  className="flex items-center gap-1 text-left hover:text-primary transition-colors"
                                   onClick={() =>
-                                    setAllocatedVolumeDialog({
-                                      supplierId: res.supplierId!,
-                                      supplierName: res.supplierName,
-                                    })
+                                    setExpandedTopLevel(isExpanded ? null : res.supplierId)
                                   }
-                                  title="Установить объём"
-                                  data-testid={`button-edit-allocated-${res.supplierId}`}
+                                  title="Верхнеуровневый план"
+                                  data-testid={`button-expand-top-level-${res.supplierId}`}
                                 >
-                                  <PencilIcon className="h-3.5 w-3.5" />
+                                  {isExpanded
+                                    ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                                    : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                  }
+                                  <span className="font-medium tabular-nums">
+                                    {fmtTons(topLevelKg)}
+                                  </span>
                                 </button>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {(res as any).isUnassigned ? (
+                              <span className="text-muted-foreground">—</span>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <span data-testid={`text-allocated-volume-${res.supplierId}`}>
+                                  {fmtTons(allocatedKg)}
+                                </span>
+                                {canAllocate && (
+                                  <button
+                                    className="text-muted-foreground hover:text-foreground transition-colors"
+                                    onClick={() =>
+                                      setAllocatedVolumeDialog({
+                                        supplierId: res.supplierId!,
+                                        supplierName: res.supplierName,
+                                      })
+                                    }
+                                    title="Установить объём"
+                                    data-testid={`button-edit-allocated-${res.supplierId}`}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                                <FieldCommentPopover
+                                  entityType="planning_resource"
+                                  entityId={res.supplierId!}
+                                  fieldKey="allocatedVolume"
+                                />
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              <span className={(res as any).isUnassigned ? "font-medium text-amber-700 dark:text-amber-400" : ""}>
+                                {fmtTons((res as any).isUnassigned ? (res as any).demand : demandKg)}
+                              </span>
+                              {!(res as any).isUnassigned && (
+                                <FieldCommentPopover
+                                  entityType="planning_resource"
+                                  entityId={res.supplierId!}
+                                  fieldKey="demand"
+                                />
                               )}
-                              <FieldCommentPopover
-                                entityType="planning_resource"
-                                entityId={res.supplierId!}
-                                fieldKey="allocatedVolume"
-                              />
                             </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <span className={res.isUnassigned ? "font-medium text-amber-700 dark:text-amber-400" : ""}>
-                              {fmtTons(res.isUnassigned ? res.demand : demandKg)}
-                            </span>
-                            {!res.isUnassigned && (
-                              <FieldCommentPopover
-                                entityType="planning_resource"
-                                entityId={res.supplierId!}
-                                fieldKey="demand"
-                              />
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className={
-                                res.isUnassigned
-                                  ? "text-destructive font-medium"
-                                  : balNum < 0
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={
+                                  (res as any).isUnassigned
                                     ? "text-destructive font-medium"
-                                    : balNum > 0
-                                      ? "text-emerald-600 font-medium"
-                                      : "text-muted-foreground"
-                              }
-                              data-testid={`text-balance-${res.supplierId ?? "unassigned"}`}
-                            >
-                              {res.isUnassigned
-                                ? `−${fmtTons(res.demand)}`
-                                : `${balNum > 0 ? "+" : ""}${fmtTons(balanceKg)}`}
-                            </span>
-                            {!res.isUnassigned && (
-                              <FieldCommentPopover
-                                entityType="planning_resource"
-                                entityId={res.supplierId!}
-                                fieldKey="balance"
+                                    : balNum < 0
+                                      ? "text-destructive font-medium"
+                                      : balNum > 0
+                                        ? "text-emerald-600 font-medium"
+                                        : "text-muted-foreground"
+                                }
+                                data-testid={`text-balance-${res.supplierId ?? "unassigned"}`}
+                              >
+                                {(res as any).isUnassigned
+                                  ? `−${fmtTons((res as any).demand)}`
+                                  : `${balNum > 0 ? "+" : ""}${fmtTons(balanceKg)}`}
+                              </span>
+                              {!(res as any).isUnassigned && (
+                                <FieldCommentPopover
+                                  entityType="planning_resource"
+                                  entityId={res.supplierId!}
+                                  fieldKey="balance"
+                                />
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {!(res as any).isUnassigned && (
+                              <EntityActionsMenu
+                                actions={[
+                                  {
+                                    id: "edit",
+                                    label: "Редактировать",
+                                    icon: Pencil,
+                                    onClick: () => {
+                                      setEditingResource(res as any);
+                                      setResourceDialogOpen(true);
+                                    },
+                                    permission: { module: "planning", action: "allocate" },
+                                  },
+                                  {
+                                    id: "delete",
+                                    label: "Удалить",
+                                    icon: Trash2,
+                                    variant: "destructive",
+                                    onClick: () => setDeleteResourceId((res as any).id),
+                                    permission: { module: "planning", action: "allocate" },
+                                  },
+                                  {
+                                    id: "history",
+                                    label: "История изменений",
+                                    icon: History,
+                                    onClick: () =>
+                                      setAuditOpen({ supplierId: res.supplierId!, name: res.supplierName }),
+                                  },
+                                ]}
                               />
                             )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {!res.isUnassigned && (
-                            <EntityActionsMenu
-                              actions={[
-                                {
-                                  id: "edit",
-                                  label: "Редактировать",
-                                  icon: Pencil,
-                                  onClick: () => {
-                                    setEditingResource(res as any);
-                                    setResourceDialogOpen(true);
-                                  },
-                                  permission: { module: "planning", action: "allocate" },
-                                },
-                                {
-                                  id: "delete",
-                                  label: "Удалить",
-                                  icon: Trash2,
-                                  variant: "destructive",
-                                  onClick: () => setDeleteResourceId((res as any).id),
-                                  permission: { module: "planning", action: "allocate" },
-                                },
-                                {
-                                  id: "history",
-                                  label: "История изменений",
-                                  icon: History,
-                                  onClick: () =>
-                                    setAuditOpen({ supplierId: res.supplierId!, name: res.supplierName }),
-                                },
-                              ]}
-                            />
-                          )}
-                        </TableCell>
-                      </TableRow>
+                          </TableCell>
+                        </TableRow>
+                        {/* Top-level detail expansion row */}
+                        {isExpanded && !(res as any).isUnassigned && (
+                          <TableRow key={`${res.supplierId}-topLevel`}>
+                            <TableCell colSpan={6} className="bg-muted/30 p-4">
+                              <TopLevelResourceDetail
+                                supplierId={res.supplierId!}
+                                supplierName={res.supplierName}
+                                period={period}
+                                scenarioId={scenarioId}
+                                onClose={() => setExpandedTopLevel(null)}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
                     );
                   })}
                   {/* Unassigned row from summary if not already in resources list */}
                   {resourcesSummary
                     .filter((s) => s.isUnassigned)
-                    .map((s) => {
-                      const demandNum = parseFloat(s.demand);
-                      return (
-                        <TableRow
-                          key="unassigned-summary"
-                          className="bg-amber-50 dark:bg-amber-950/30"
-                          data-testid="row-resource-unassigned"
-                        >
-                          <TableCell className="font-medium text-amber-700 dark:text-amber-400">
-                            Не указан поставщик
-                            <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">(нераспределено)</span>
-                          </TableCell>
-                          <TableCell><span className="text-muted-foreground">—</span></TableCell>
-                          <TableCell>
-                            <span className="font-medium text-amber-700 dark:text-amber-400">
-                              {fmtTons(s.demand)}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-destructive font-medium">
-                              −{fmtTons(s.demand)}
-                            </span>
-                          </TableCell>
-                          <TableCell />
-                        </TableRow>
-                      );
-                    })}
+                    .map((s) => (
+                      <TableRow
+                        key="unassigned-summary"
+                        className="bg-amber-50 dark:bg-amber-950/30"
+                        data-testid="row-resource-unassigned"
+                      >
+                        <TableCell className="font-medium text-amber-700 dark:text-amber-400">
+                          Не указан поставщик
+                          <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">(нераспределено)</span>
+                        </TableCell>
+                        <TableCell><span className="text-muted-foreground">—</span></TableCell>
+                        <TableCell><span className="text-muted-foreground">—</span></TableCell>
+                        <TableCell>
+                          <span className="font-medium text-amber-700 dark:text-amber-400">
+                            {fmtTons(s.demand)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-destructive font-medium">
+                            −{fmtTons(s.demand)}
+                          </span>
+                        </TableCell>
+                        <TableCell />
+                      </TableRow>
+                    ))}
                 </>
               )}
             </TableBody>
@@ -372,7 +436,7 @@ export function VolumesTab({ period }: { period: PlanningPeriod }) {
         <CardHeader>
           <CardTitle>Данные по складам</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="overflow-x-auto p-0">
           <Table>
             <TableHeader>
               <TableRow>
@@ -381,18 +445,19 @@ export function VolumesTab({ period }: { period: PlanningPeriod }) {
                 <TableHead>Планируемый расход (т)</TableHead>
                 <TableHead>Остаток (план, т)</TableHead>
                 <TableHead>Остаток (факт, т)</TableHead>
+                <TableHead>Метки</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loadingWarehouses ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     Загрузка...
                   </TableCell>
                 </TableRow>
               ) : warehousesSummary.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     Нет данных
                   </TableCell>
                 </TableRow>
@@ -402,7 +467,12 @@ export function VolumesTab({ period }: { period: PlanningPeriod }) {
                   const balFact = parseFloat(row.balanceFact);
                   return (
                     <TableRow key={row.warehouseId} data-testid={`row-warehouse-${row.warehouseId}`}>
-                      <TableCell className="font-medium">{row.warehouseName}</TableCell>
+                      <TableCell className="font-medium">
+                        <div>
+                          {row.warehouseName}
+                          <WarehouseSupplyTagsBadges warehouseId={row.warehouseId} />
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           <span className="text-emerald-600">{fmtTons(row.plannedIncome)}</span>
@@ -453,6 +523,12 @@ export function VolumesTab({ period }: { period: PlanningPeriod }) {
                           </span>
                         </div>
                       </TableCell>
+                      <TableCell>
+                        <WarehouseSupplyTagsDialog
+                          warehouseId={row.warehouseId}
+                          warehouseName={row.warehouseName}
+                        />
+                      </TableCell>
                     </TableRow>
                   );
                 })
@@ -467,43 +543,89 @@ export function VolumesTab({ period }: { period: PlanningPeriod }) {
         <CardHeader>
           <CardTitle>Данные по клиентам</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="overflow-x-auto p-0">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Клиент</TableHead>
                 <TableHead>Объём (т)</TableHead>
+                <TableHead>Склады</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loadingCustomers ? (
                 <TableRow>
-                  <TableCell colSpan={2} className="text-center text-muted-foreground">
+                  <TableCell colSpan={3} className="text-center text-muted-foreground">
                     Загрузка...
                   </TableCell>
                 </TableRow>
               ) : customersSummary.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={2} className="text-center text-muted-foreground">
+                  <TableCell colSpan={3} className="text-center text-muted-foreground">
                     Нет данных
                   </TableCell>
                 </TableRow>
               ) : (
-                customersSummary.map((row) => (
-                  <TableRow key={row.customerId} data-testid={`row-customer-${row.customerId}`}>
-                    <TableCell>{row.customerName}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5">
-                        <span>{fmtTons(row.volume)}</span>
-                        <FieldCommentPopover
-                          entityType="customer_plan"
-                          entityId={row.customerId}
-                          fieldKey="volume"
-                        />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                customersSummary.map((row) => {
+                  const isExpanded = expandedCustomers.has(row.customerId);
+                  const hasWarehouses = row.warehouses && row.warehouses.length > 0;
+                  return (
+                    <>
+                      <TableRow key={row.customerId} data-testid={`row-customer-${row.customerId}`}>
+                        <TableCell>{row.customerName}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <span>{fmtTons(row.volume)}</span>
+                            <FieldCommentPopover
+                              entityType="customer_plan"
+                              entityId={row.customerId}
+                              fieldKey="volume"
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {hasWarehouses ? (
+                            <button
+                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                              onClick={() => toggleCustomer(row.customerId)}
+                              data-testid={`button-expand-customer-${row.customerId}`}
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="h-3.5 w-3.5" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5" />
+                              )}
+                              <Building2 className="h-3.5 w-3.5" />
+                              {row.warehouses.length} скл.
+                            </button>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && hasWarehouses && (
+                        <TableRow key={`${row.customerId}-warehouses`}>
+                          <TableCell colSpan={3} className="bg-muted/20 p-3">
+                            <div className="flex flex-wrap gap-2">
+                              {row.warehouses.map((wh) => (
+                                <div
+                                  key={wh.warehouseId}
+                                  className="flex items-center gap-2 border rounded-md px-3 py-1.5 text-sm"
+                                >
+                                  <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span className="font-medium">{wh.warehouseName}</span>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {fmtTons(wh.volume)} т
+                                  </Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  );
+                })
               )}
             </TableBody>
           </Table>
