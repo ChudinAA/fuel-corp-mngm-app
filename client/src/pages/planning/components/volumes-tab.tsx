@@ -453,7 +453,7 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
             <TableHeader>
               <TableRow>
                 <TableHead>Склад</TableHead>
-                <TableHead>Поставка</TableHead>
+                <TableHead className="w-52 max-w-52">Поставка</TableHead>
                 <TableHead>Планируемый приход (т)</TableHead>
                 <TableHead>Планируемый расход (т)</TableHead>
                 <TableHead>Остаток (план, т)</TableHead>
@@ -482,8 +482,8 @@ export function VolumesTab({ period, scenarioId }: { period: PlanningPeriod; sce
                       <TableCell className="font-medium">
                         {row.warehouseName}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
+                      <TableCell className="w-52 max-w-52">
+                        <div className="flex flex-wrap items-center gap-1">
                           <WarehouseSupplyTagsBadges warehouseId={row.warehouseId} scenarioId={scenarioId} />
                           <WarehouseSupplyTagsDialog
                             warehouseId={row.warehouseId}

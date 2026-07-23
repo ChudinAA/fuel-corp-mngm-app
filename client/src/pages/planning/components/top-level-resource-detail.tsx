@@ -78,11 +78,13 @@ interface TopLevelResourceDetailProps {
   onClose: () => void;
 }
 
+const NONE_VALUE = "__none__";
+
 const EMPTY_FORM = {
   warehouseId: "",
   type: "income" as "income" | "expense",
   volume: "",
-  counterpartyId: "",
+  counterpartyId: NONE_VALUE,
   notes: "",
 };
 
@@ -140,7 +142,7 @@ export function TopLevelResourceDetail({
       warehouseId: v.warehouseId,
       type: v.type as "income" | "expense",
       volume: (parseFloat(v.volume) / 1000).toString(),
-      counterpartyId: v.counterpartyId || "",
+      counterpartyId: v.counterpartyId || NONE_VALUE,
       notes: v.notes || "",
     });
     setEditingId(v.id);
@@ -157,7 +159,7 @@ export function TopLevelResourceDetail({
         periodTo: period.to.toISOString(),
         type: form.type,
         volume: volumeKg,
-        counterpartyId: form.counterpartyId || null,
+        counterpartyId: (form.counterpartyId && form.counterpartyId !== NONE_VALUE) ? form.counterpartyId : null,
         notes: form.notes || null,
         scenarioId: scenarioId || null,
       };
@@ -394,7 +396,7 @@ export function TopLevelResourceDetail({
                     <SelectValue placeholder="Выберите клиента" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">— Не указан —</SelectItem>
+                    <SelectItem value={NONE_VALUE}>— Не указан —</SelectItem>
                     {customers.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
