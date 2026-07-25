@@ -182,10 +182,12 @@ export const insertLogisticsDeliveryLocationSchema = createInsertSchema(
   logisticsDeliveryLocations
 ).omit({ id: true });
 export const insertLogisticsVehicleSchema = createInsertSchema(
-  logisticsVehicles
+  logisticsVehicles,
+  { capacityKg: z.coerce.string().optional().nullable() }
 ).omit({ id: true });
 export const insertLogisticsTrailerSchema = createInsertSchema(
-  logisticsTrailers
+  logisticsTrailers,
+  { capacityKg: z.coerce.string().optional().nullable() }
 ).omit({ id: true });
 export const insertLogisticsDriverSchema = createInsertSchema(
   logisticsDrivers
