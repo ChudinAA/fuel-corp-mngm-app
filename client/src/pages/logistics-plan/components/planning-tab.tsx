@@ -356,12 +356,14 @@ function WeekView({
   periodTo,
   routes,
   units,
+  unassignedDemands,
   onOpenDay,
 }: {
   periodFrom: string;
   periodTo: string;
   routes: any[];
   units: any[];
+  unassignedDemands: any[];
   onOpenDay: (day: Date) => void;
 }) {
   const from = new Date(periodFrom);
@@ -430,10 +432,20 @@ function WeekView({
     });
 
   const hasUnassigned = (day: Date) =>
-    routes.some((r: any) => {
-      if (!r.dateStart || r.transportUnitId) return false;
+    unassignedDemands.some((d: any) => {
+      if (!d.deliveryDeadline) return false;
       try {
-        return isSameDay(parseISO(r.dateStart), day);
+        return isSameDay(parseISO(d.deliveryDeadline), day);
+      } catch {
+        return false;
+      }
+    });
+
+  const unassignedForDay = (day: Date) =>
+    unassignedDemands.filter((d: any) => {
+      if (!d.deliveryDeadline) return false;
+      try {
+        return isSameDay(parseISO(d.deliveryDeadline), day);
       } catch {
         return false;
       }
@@ -627,12 +639,14 @@ function MonthView({
   periodTo,
   routes,
   units,
+  unassignedDemands,
   onOpenDay,
 }: {
   periodFrom: string;
   periodTo: string;
   routes: any[];
   units: any[];
+  unassignedDemands: any[];
   onOpenDay: (day: Date) => void;
 }) {
   const from = new Date(periodFrom);
@@ -662,10 +676,10 @@ function MonthView({
     });
 
   const hasUnassigned = (day: Date) =>
-    routes.some((r: any) => {
-      if (!r.dateStart || r.transportUnitId) return false;
+    unassignedDemands.some((d: any) => {
+      if (!d.deliveryDeadline) return false;
       try {
-        return isSameDay(parseISO(r.dateStart), day);
+        return isSameDay(parseISO(d.deliveryDeadline), day);
       } catch {
         return false;
       }
@@ -813,6 +827,7 @@ export function PlanningTab({ periodFrom, periodTo }: PlanningTabProps) {
   const units: any[] = calendarData?.transportUnits || [];
   const notifications: any[] = calendarData?.notifications || [];
   const unreadCount: number = calendarData?.unreadCount || 0;
+  const unassignedDemands: any[] = calendarData?.unassignedDemands || [];
 
   const hasSyncedPlan = syncData?.latest != null;
 
@@ -885,6 +900,7 @@ export function PlanningTab({ periodFrom, periodTo }: PlanningTabProps) {
                 periodTo={periodTo}
                 routes={routes}
                 units={units}
+                unassignedDemands={unassignedDemands}
                 onOpenDay={openDayPlan}
               />
             ) : (
@@ -893,6 +909,7 @@ export function PlanningTab({ periodFrom, periodTo }: PlanningTabProps) {
                 periodTo={periodTo}
                 routes={routes}
                 units={units}
+                unassignedDemands={unassignedDemands}
                 onOpenDay={openDayPlan}
               />
             )}
@@ -908,6 +925,7 @@ export function PlanningTab({ periodFrom, periodTo }: PlanningTabProps) {
             periodTo={periodTo}
             units={units}
             routes={routes}
+            unassignedDemands={unassignedDemands}
           />
         )}
       </div>

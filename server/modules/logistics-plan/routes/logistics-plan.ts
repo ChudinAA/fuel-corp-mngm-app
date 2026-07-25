@@ -8,6 +8,8 @@ import {
   insertLogisticsPlanCommentSchema,
   insertLogisticsMonthlySyncSchema,
   planEntries,
+  logisticsPlanRoutes,
+  warehouseBases,
   warehouses,
   bases,
 } from "@shared/schema";
@@ -16,7 +18,8 @@ import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { db } from "server/db";
-import { and, isNull, gte, lte, eq } from "drizzle-orm";
+import { and, isNull, gte, lte, eq, sql } from "drizzle-orm";
+import { runAutoAssignment } from "../engine/auto-assign";
 
 export function registerLogisticsPlanRoutes(app: Express) {
 
@@ -555,15 +558,19 @@ export function registerLogisticsPlanRoutes(app: Express) {
           periodTo: string;
         };
 
-        // Fetch current plan_entries (пятидневки) as snapshot — excludes top-level volumes
+        if (!periodFrom || !periodTo) {
+          return res.status(400).json({ message: "periodFrom и periodTo обязательны" });
+        }
+
+        // Fetch current plan_entries (пятидневки) as snapshot
         const conditions: any[] = [isNull(planEntries.deletedAt)];
-        if (periodFrom) conditions.push(gte(planEntries.date, periodFrom));
-        if (periodTo) conditions.push(lte(planEntries.date, periodTo));
+        conditions.push(gte(planEntries.date, periodFrom));
+        conditions.push(lte(planEntries.date, periodTo));
         if (scenarioId) conditions.push(eq(planEntries.scenarioId, scenarioId));
 
         const entries = await db.select().from(planEntries).where(and(...conditions));
 
-        // Check if active sync already exists for this month+scenario — update instead of create
+        // Check if active sync already exists for this month+scenario
         const existingSync = await storage.logisticsPlan.getSyncByPeriodAndScenario(
           periodFrom,
           periodTo,
@@ -572,19 +579,25 @@ export function registerLogisticsPlanRoutes(app: Express) {
 
         let sync: any;
         if (existingSync) {
-          // Re-sync: update snapshot and add notification
+          // Re-sync: update snapshot
           sync = await storage.logisticsPlan.updateSync(existingSync.id, {
             snapshotData: entries as any,
             periodFrom,
             periodTo,
           });
-          await storage.logisticsPlan.createNotification({
-            syncId: existingSync.id,
-            type: "change",
-            message: `План пересинхронизирован. Период: ${periodFrom?.slice(0, 10)} — ${periodTo?.slice(0, 10)}. Записей: ${entries.length}`,
-            periodFrom,
-            periodTo,
-          });
+
+          // Soft-delete previously auto-generated routes so they can be regenerated cleanly
+          // Manual routes (status='manual') are preserved intentionally
+          await db
+            .update(logisticsPlanRoutes)
+            .set({ deletedAt: sql`NOW()` })
+            .where(
+              and(
+                eq(logisticsPlanRoutes.syncId, existingSync.id),
+                eq(logisticsPlanRoutes.status, "auto"),
+                isNull(logisticsPlanRoutes.deletedAt),
+              ),
+            );
         } else {
           // First sync for this month+scenario
           sync = await storage.logisticsPlan.createSync({
@@ -593,19 +606,36 @@ export function registerLogisticsPlanRoutes(app: Express) {
             periodTo,
             status: "active",
             snapshotData: entries as any,
-            createdById: req.session.userId,
-          });
-          await storage.logisticsPlan.createNotification({
-            syncId: sync.id,
-            type: "change",
-            message: `План запущен в логистику. Период: ${periodFrom?.slice(0, 10)} — ${periodTo?.slice(0, 10)}. Записей: ${entries.length}`,
-            periodFrom,
-            periodTo,
+            createdById: req.session.userId as unknown as string,
           });
         }
 
-        res.status(existingSync ? 200 : 201).json(sync);
+        // Run auto-assignment engine — generates logistics_plan_routes from plan_entries
+        const stats = await runAutoAssignment({
+          syncId: sync.id,
+          periodFrom,
+          periodTo,
+          scenarioId: scenarioId || null,
+          userId: req.session.userId as unknown as string,
+        });
+
+        // Create summary notification
+        const isResync = !!existingSync;
+        const summary = isResync
+          ? `План пересинхронизирован. Записей: ${entries.length}. Маршрутов: ${stats.created}, прогонов: ${stats.deadheads}, не назначено: ${stats.unassigned}.`
+          : `План запущен в логистику. Записей: ${entries.length}. Маршрутов: ${stats.created}, прогонов: ${stats.deadheads}, не назначено: ${stats.unassigned}.`;
+
+        await storage.logisticsPlan.createNotification({
+          syncId: sync.id,
+          type: "change",
+          message: summary,
+          periodFrom,
+          periodTo,
+        });
+
+        res.status(isResync ? 200 : 201).json({ ...sync, stats });
       } catch (error) {
+        console.error("Sync error:", error);
         res.status(500).json({ message: "Ошибка запуска синхронизации" });
       }
     }
@@ -673,19 +703,56 @@ export function registerLogisticsPlanRoutes(app: Express) {
           return res.status(400).json({ message: "Необходимо указать период" });
         }
 
-        const [routes, transportUnits, notifications] = await Promise.all([
+        const [routes, transportUnits, notifications, unassignedEntries, allWbRows, allBases, allWarehouses] = await Promise.all([
           storage.logisticsPlan.getPlanRoutes({ periodFrom, periodTo, scenarioId }),
           storage.logisticsPlan.getAllTransportUnits({ periodFrom, periodTo }),
           storage.logisticsPlan.getNotifications({ periodFrom, periodTo }),
+          storage.logisticsPlan.getUnassignedRoutes(periodFrom, periodTo, scenarioId),
+          db.select().from(warehouseBases),
+          storage.bases.getAllBases(),
+          storage.warehouses.getAllWarehouses(),
         ]);
 
-        const unreadCount = notifications.filter((n) => !n.isRead).length;
+        // Build lookup maps for enrichment
+        const basesMap = new Map(allBases.map((b: any) => [b.id, b.name]));
+        const warehousesMap = new Map(allWarehouses.map((w: any) => [w.id, w]));
+        const wbPrimary = new Map<string, string>();
+        for (const wb of allWbRows) {
+          if (!wbPrimary.has(wb.warehouseId)) wbPrimary.set(wb.warehouseId, wb.baseId);
+        }
+
+        // Enrich each unassigned plan_entry with from/to names and deliveryDeadline
+        const unassignedDemands = unassignedEntries.map((entry: any) => {
+          const wBasisId = wbPrimary.get(entry.warehouseId);
+          const wName = warehousesMap.get(entry.warehouseId)?.name ?? "Склад";
+          let fromEntityName = "";
+          let toEntityName = "";
+          if (entry.type === "income") {
+            fromEntityName = entry.basisId ? (basesMap.get(entry.basisId) ?? "Базис") : "—";
+            toEntityName = wBasisId ? (basesMap.get(wBasisId) ?? wName) : wName;
+          } else if (entry.type === "expense") {
+            fromEntityName = wBasisId ? (basesMap.get(wBasisId) ?? wName) : wName;
+            toEntityName = entry.basisId ? (basesMap.get(entry.basisId) ?? "Базис") : "—";
+          }
+          // deliveryDeadline = entry.date - 2 days
+          const d = new Date(entry.date);
+          d.setUTCDate(d.getUTCDate() - 2);
+          return {
+            ...entry,
+            fromEntityName,
+            toEntityName,
+            deliveryDeadline: d.toISOString(),
+          };
+        });
+
+        const unreadCount = notifications.filter((n: any) => !n.isRead).length;
 
         res.json({
           routes,
           transportUnits,
           notifications: notifications.slice(0, 50),
           unreadCount,
+          unassignedDemands,
         });
       } catch (error) {
         res.status(500).json({ message: "Ошибка получения данных календаря" });
