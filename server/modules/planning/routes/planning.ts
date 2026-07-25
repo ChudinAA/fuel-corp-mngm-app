@@ -44,10 +44,20 @@ async function autoResyncIfNeeded(entryDate: string, scenarioId?: string | null)
       periodFrom,
       periodTo,
     });
+
+    // Re-run auto-assignment engine so calendar routes stay current
+    const { runAutoAssignment } = await import("../../logistics-plan/engine/auto-assign");
+    const stats = await runAutoAssignment({
+      syncId: existingSync.id,
+      periodFrom,
+      periodTo,
+      scenarioId: scenarioId || null,
+    });
+
     await storage.logisticsPlan.createNotification({
       syncId: existingSync.id,
       type: "change",
-      message: `Автосинхронизация: план обновлён. Период: ${periodFrom} — ${periodTo}. Записей: ${entries.length}`,
+      message: `Ежемесячный план обновлён и автоматически синхронизирован с логистикой. Период: ${periodFrom} — ${periodTo}. Записей плана: ${entries.length}. Маршрутов создано: ${stats.created}, прогонов: ${stats.deadheads}, нераспределено: ${stats.unassigned}.`,
       periodFrom,
       periodTo,
     });

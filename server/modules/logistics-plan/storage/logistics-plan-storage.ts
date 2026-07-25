@@ -230,11 +230,24 @@ export class LogisticsPlanStorage implements ILogisticsPlanStorage {
       conditions.push(eq(planEntries.scenarioId, scenarioId));
     }
     const entries = await db.select().from(planEntries).where(and(...conditions));
+
+    // Fetch route planEntryIds that fall within this period (avoid cross-period false positives)
+    const routeConds = [
+      isNull(logisticsPlanRoutes.deletedAt),
+      gte(logisticsPlanRoutes.dateStart, periodFrom),
+      lte(logisticsPlanRoutes.dateStart, periodTo),
+    ];
+    if (scenarioId) {
+      routeConds.push(eq(logisticsPlanRoutes.scenarioId, scenarioId));
+    }
     const assignedEntryIds = await db
       .select({ planEntryId: logisticsPlanRoutes.planEntryId })
       .from(logisticsPlanRoutes)
-      .where(and(isNull(logisticsPlanRoutes.deletedAt), isNull(logisticsPlanRoutes.planEntryId).not()));
-    const assignedSet = new Set(assignedEntryIds.map((r) => r.planEntryId));
+      .where(and(...routeConds));
+
+    const assignedSet = new Set(
+      assignedEntryIds.map((r) => r.planEntryId).filter(Boolean),
+    );
     return entries.filter((e) => !assignedSet.has(e.id));
   }
 

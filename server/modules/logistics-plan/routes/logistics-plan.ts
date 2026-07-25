@@ -703,7 +703,7 @@ export function registerLogisticsPlanRoutes(app: Express) {
           return res.status(400).json({ message: "Необходимо указать период" });
         }
 
-        const [routes, transportUnits, notifications, unassignedEntries, allWbRows, allBases, allWarehouses] = await Promise.all([
+        const [routes, rawUnits, notifications, unassignedEntries, allWbRows, allBases, allWarehouses, carriers, vehicles, trailers, drivers, driverSchedules, vehicleAvailabilities] = await Promise.all([
           storage.logisticsPlan.getPlanRoutes({ periodFrom, periodTo, scenarioId }),
           storage.logisticsPlan.getAllTransportUnits({ periodFrom, periodTo }),
           storage.logisticsPlan.getNotifications({ periodFrom, periodTo }),
@@ -711,11 +711,38 @@ export function registerLogisticsPlanRoutes(app: Express) {
           db.select().from(warehouseBases),
           storage.bases.getAllBases(),
           storage.warehouses.getAllWarehouses(),
+          storage.logistics.getAllLogisticsCarriers(),
+          storage.logistics.getAllLogisticsVehicles(),
+          storage.logistics.getAllLogisticsTrailers(),
+          storage.logistics.getAllLogisticsDrivers(),
+          storage.logisticsPlan.getAllDriverSchedules({ dateFrom: periodFrom, dateTo: periodTo }),
+          storage.logisticsPlan.getAllVehicleAvailabilities({ dateFrom: periodFrom, dateTo: periodTo }),
         ]);
 
-        // Build lookup maps for enrichment
-        const basesMap = new Map(allBases.map((b: any) => [b.id, b.name]));
-        const warehousesMap = new Map(allWarehouses.map((w: any) => [w.id, w]));
+        // Enrich transport units (same as /transport-units endpoint)
+        const transportUnits = rawUnits.map((unit: any) => {
+          const carrier = (carriers as any[]).find((c: any) => c.id === unit.carrierId);
+          const vehicle = (vehicles as any[]).find((v: any) => v.id === unit.vehicleId);
+          const trailer = (trailers as any[]).find((t: any) => t.id === unit.trailerId);
+          const driver = (drivers as any[]).find((d: any) => d.id === unit.driverId);
+          const driverUnavailable = unit.driverId
+            ? (driverSchedules as any[]).some((s: any) => s.driverId === unit.driverId && s.type !== "available")
+            : false;
+          const vehicleUnavailable = unit.vehicleId
+            ? (vehicleAvailabilities as any[]).some((a: any) => a.vehicleId === unit.vehicleId)
+            : false;
+          const driverScheduleForPeriod = unit.driverId
+            ? (driverSchedules as any[]).filter((s: any) => s.driverId === unit.driverId)
+            : [];
+          const vehicleAvailabilityForPeriod = unit.vehicleId
+            ? (vehicleAvailabilities as any[]).filter((a: any) => a.vehicleId === unit.vehicleId)
+            : [];
+          return { ...unit, carrier, vehicle, trailer, driver, driverUnavailable, vehicleUnavailable, driverScheduleForPeriod, vehicleAvailabilityForPeriod };
+        });
+
+        // Build lookup maps for unassigned demand enrichment
+        const basesMap = new Map((allBases as any[]).map((b: any) => [b.id, b.name]));
+        const warehousesMap = new Map((allWarehouses as any[]).map((w: any) => [w.id, w]));
         const wbPrimary = new Map<string, string>();
         for (const wb of allWbRows) {
           if (!wbPrimary.has(wb.warehouseId)) wbPrimary.set(wb.warehouseId, wb.baseId);
@@ -754,8 +781,9 @@ export function registerLogisticsPlanRoutes(app: Express) {
           unreadCount,
           unassignedDemands,
         });
-      } catch (error) {
-        res.status(500).json({ message: "Ошибка получения данных календаря" });
+      } catch (error: any) {
+        console.error("Calendar endpoint error:", error?.message, error?.stack);
+        res.status(500).json({ message: "Ошибка получения данных календаря", detail: error?.message });
       }
     }
   );

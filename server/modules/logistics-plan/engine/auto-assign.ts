@@ -212,91 +212,91 @@ export async function runAutoAssignment(opts: {
   const requirements: RouteRequirement[] = [];
   const problemNotifications: Array<{ type: string; message: string }> = [];
 
-  for (const entry of entries) {
-    let fromEntityType: string;
-    let fromEntityId: string;
-    let fromEntityName: string;
-    let toEntityType: string;
-    let toEntityId: string;
-    let toEntityName: string;
+  /** Helper: human-readable name for any entity */
+  function entityName(type: string, id: string): string {
+    if (type === DELIVERY_ENTITY_TYPE.BASE) return basesMap.get(id) ?? `базис(${id.slice(0, 6)})`;
+    if (type === DELIVERY_ENTITY_TYPE.WAREHOUSE) return warehousesMap.get(id)?.name ?? `склад(${id.slice(0, 6)})`;
+    return `точка(${id.slice(0, 6)})`;
+  }
 
+  for (const entry of entries) {
     const warehouseName = warehousesMap.get(entry.warehouseId)?.name ?? "Склад";
     const warehouseBasisId = warehousePrimaryBasis.get(entry.warehouseId);
+    const B = DELIVERY_ENTITY_TYPE.BASE;
+    const W = DELIVERY_ENTITY_TYPE.WAREHOUSE;
+    const DL = DELIVERY_ENTITY_TYPE.DELIVERY_LOCATION;
+
+    // Build ordered candidate (from, to) pairs — tried in cascade until one has matching tariffs
+    // Each candidate: [fromType, fromId, toType, toId]
+    type Quad = [string, string, string, string];
+    let candidates: Quad[] = [];
 
     if (entry.type === "income") {
-      // from = supplier basis, to = warehouse's basis
+      // Goods arrive TO warehouse FROM supplier
+      // "from" side = supplier (entry.basisId as base or delivery_location)
+      // "to" side   = warehouse (by basis or directly by warehouseId)
+      if (entry.basisId) {
+        if (warehouseBasisId) candidates.push([B, entry.basisId, B, warehouseBasisId]);
+        candidates.push([B, entry.basisId, W, entry.warehouseId]);
+        if (warehouseBasisId) candidates.push([DL, entry.basisId, B, warehouseBasisId]);
+        candidates.push([DL, entry.basisId, W, entry.warehouseId]);
+      }
+      // Also try warehouse→warehouse if entry has no basisId
       if (!entry.basisId) {
-        problemNotifications.push({
-          type: "unassigned",
-          message: `Приход: не указан базис поставщика (запись ${entry.id.slice(0, 8)}) — маршрут пропущен`,
-        });
-        continue;
+        candidates.push([W, entry.warehouseId, W, entry.warehouseId]); // unlikely but failsafe
       }
-      if (!warehouseBasisId) {
-        problemNotifications.push({
-          type: "unassigned",
-          message: `Склад «${warehouseName}» не привязан ни к одному базису — маршрут пропущен`,
-        });
-        continue;
-      }
-      fromEntityType = DELIVERY_ENTITY_TYPE.BASE;
-      fromEntityId = entry.basisId;
-      fromEntityName = basesMap.get(entry.basisId) ?? "Базис поставщика";
-      toEntityType = DELIVERY_ENTITY_TYPE.BASE;
-      toEntityId = warehouseBasisId;
-      toEntityName = basesMap.get(warehouseBasisId) ?? warehouseName;
     } else if (entry.type === "expense") {
-      // from = warehouse's basis, to = counterparty basis
-      if (!entry.basisId) {
-        problemNotifications.push({
-          type: "unassigned",
-          message: `Расход: не указан базис контрагента (запись ${entry.id.slice(0, 8)}) — маршрут пропущен`,
-        });
-        continue;
+      // Goods leave FROM warehouse TO counterparty
+      // "from" side = warehouse (by basis or directly)
+      // "to" side   = counterparty (entry.basisId as base or delivery_location)
+      if (entry.basisId) {
+        if (warehouseBasisId) candidates.push([B, warehouseBasisId, B, entry.basisId]);
+        candidates.push([W, entry.warehouseId, B, entry.basisId]);
+        if (warehouseBasisId) candidates.push([B, warehouseBasisId, DL, entry.basisId]);
+        candidates.push([W, entry.warehouseId, DL, entry.basisId]);
+      } else {
+        // No counterparty basis — try warehouse→warehouse
+        candidates.push([W, entry.warehouseId, W, entry.warehouseId]);
       }
-      if (!warehouseBasisId) {
-        problemNotifications.push({
-          type: "unassigned",
-          message: `Склад «${warehouseName}» не привязан ни к одному базису — маршрут пропущен`,
-        });
-        continue;
-      }
-      fromEntityType = DELIVERY_ENTITY_TYPE.BASE;
-      fromEntityId = warehouseBasisId;
-      fromEntityName = basesMap.get(warehouseBasisId) ?? warehouseName;
-      toEntityType = DELIVERY_ENTITY_TYPE.BASE;
-      toEntityId = entry.basisId;
-      toEntityName = basesMap.get(entry.basisId) ?? "Базис контрагента";
     } else {
       // unknown type — skip silently
       continue;
     }
 
-    // Find all delivery costs matching this from→to pair (any carrier)
-    // Cascade: base→base first, warehouse→base fallback
-    let matchingRaw = allDeliveryCosts.filter(
-      (dc) =>
-        dc.fromEntityType === fromEntityType &&
-        dc.fromEntityId === fromEntityId &&
-        dc.toEntityType === toEntityType &&
-        dc.toEntityId === toEntityId,
-    );
+    // Try each candidate in cascade, take first non-empty match
+    let matchingRaw: typeof allDeliveryCosts = [];
+    let matchedFrom: Quad[0] = B;
+    let matchedFromId: Quad[1] = entry.basisId ?? entry.warehouseId;
+    let matchedTo: Quad[2] = B;
+    let matchedToId: Quad[3] = entry.warehouseId;
 
-    // Warehouse→base fallback for income entries when no base→base found
-    if (matchingRaw.length === 0 && entry.type === "income") {
-      matchingRaw = allDeliveryCosts.filter(
-        (dc) =>
-          dc.fromEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE &&
-          dc.fromEntityId === entry.warehouseId &&
-          dc.toEntityType === DELIVERY_ENTITY_TYPE.BASE &&
-          dc.toEntityId === entry.basisId,
+    for (const [ft, fi, tt, ti] of candidates) {
+      const found = allDeliveryCosts.filter(
+        (dc) => dc.fromEntityType === ft && dc.fromEntityId === fi &&
+                dc.toEntityType === tt && dc.toEntityId === ti,
       );
+      if (found.length > 0) {
+        matchingRaw = found;
+        [matchedFrom, matchedFromId, matchedTo, matchedToId] = [ft, fi, tt, ti];
+        break;
+      }
     }
+
+    const fromEntityType = matchedFrom;
+    const fromEntityId = matchedFromId;
+    const fromEntityName = entityName(matchedFrom, matchedFromId);
+    const toEntityType = matchedTo;
+    const toEntityId = matchedToId;
+    const toEntityName = entityName(matchedTo, matchedToId);
+
+    const candidateLabel = candidates.length > 0
+      ? `${entityName(candidates[0][0], candidates[0][1])} → ${entityName(candidates[0][2], candidates[0][3])}`
+      : "?";
 
     if (matchingRaw.length === 0) {
       problemNotifications.push({
         type: "unassigned",
-        message: `Маршрут не найден в тарифах доставки: ${fromEntityName} → ${toEntityName}. Задайте маршрут вручную.`,
+        message: `Тариф доставки не найден: ${candidateLabel}. Нет подходящего тарифа ни для одной из ${candidates.length} комбинаций маршрута. Задайте вручную.`,
       });
       continue;
     }
