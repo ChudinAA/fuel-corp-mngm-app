@@ -520,6 +520,29 @@ export function registerLogisticsPlanRoutes(app: Express) {
     }
   );
 
+  // Check sync status for a specific period+scenario combination
+  app.get(
+    "/api/logistics-plan/sync/status",
+    requireAuth,
+    requirePermission("planning", "view"),
+    async (req, res) => {
+      try {
+        const { periodFrom, periodTo, scenarioId } = req.query as Record<string, string | undefined>;
+        if (!periodFrom || !periodTo) {
+          return res.status(400).json({ message: "periodFrom и periodTo обязательны" });
+        }
+        const sync = await storage.logisticsPlan.getSyncByPeriodAndScenario(
+          periodFrom,
+          periodTo,
+          scenarioId || null,
+        );
+        res.json({ isActive: !!sync, sync: sync || null });
+      } catch (error) {
+        res.status(500).json({ message: "Ошибка получения статуса синхронизации" });
+      }
+    }
+  );
+
   app.post(
     "/api/logistics-plan/sync",
     requireAuth,
@@ -532,7 +555,7 @@ export function registerLogisticsPlanRoutes(app: Express) {
           periodTo: string;
         };
 
-        // Fetch current plan_entries as snapshot
+        // Fetch current plan_entries (пятидневки) as snapshot — excludes top-level volumes
         const conditions: any[] = [isNull(planEntries.deletedAt)];
         if (periodFrom) conditions.push(gte(planEntries.date, periodFrom));
         if (periodTo) conditions.push(lte(planEntries.date, periodTo));
@@ -540,26 +563,48 @@ export function registerLogisticsPlanRoutes(app: Express) {
 
         const entries = await db.select().from(planEntries).where(and(...conditions));
 
-        // Create sync record
-        const sync = await storage.logisticsPlan.createSync({
-          scenarioId: scenarioId || null,
+        // Check if active sync already exists for this month+scenario — update instead of create
+        const existingSync = await storage.logisticsPlan.getSyncByPeriodAndScenario(
           periodFrom,
           periodTo,
-          status: "active",
-          snapshotData: entries as any,
-          createdById: req.session.userId,
-        });
+          scenarioId || null,
+        );
 
-        // Create welcome notification
-        await storage.logisticsPlan.createNotification({
-          syncId: sync.id,
-          type: "change",
-          message: `План запущен в логистику. Период: ${periodFrom?.slice(0, 10)} — ${periodTo?.slice(0, 10)}. Записей: ${entries.length}`,
-          periodFrom,
-          periodTo,
-        });
+        let sync: any;
+        if (existingSync) {
+          // Re-sync: update snapshot and add notification
+          sync = await storage.logisticsPlan.updateSync(existingSync.id, {
+            snapshotData: entries as any,
+            periodFrom,
+            periodTo,
+          });
+          await storage.logisticsPlan.createNotification({
+            syncId: existingSync.id,
+            type: "change",
+            message: `План пересинхронизирован. Период: ${periodFrom?.slice(0, 10)} — ${periodTo?.slice(0, 10)}. Записей: ${entries.length}`,
+            periodFrom,
+            periodTo,
+          });
+        } else {
+          // First sync for this month+scenario
+          sync = await storage.logisticsPlan.createSync({
+            scenarioId: scenarioId || null,
+            periodFrom,
+            periodTo,
+            status: "active",
+            snapshotData: entries as any,
+            createdById: req.session.userId,
+          });
+          await storage.logisticsPlan.createNotification({
+            syncId: sync.id,
+            type: "change",
+            message: `План запущен в логистику. Период: ${periodFrom?.slice(0, 10)} — ${periodTo?.slice(0, 10)}. Записей: ${entries.length}`,
+            periodFrom,
+            periodTo,
+          });
+        }
 
-        res.status(201).json(sync);
+        res.status(existingSync ? 200 : 201).json(sync);
       } catch (error) {
         res.status(500).json({ message: "Ошибка запуска синхронизации" });
       }

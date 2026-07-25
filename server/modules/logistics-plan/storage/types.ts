@@ -57,6 +57,7 @@ export interface ILogisticsPlanStorage {
   createSync(data: InsertLogisticsMonthlySync): Promise<LogisticsMonthlySync>;
   updateSync(id: string, data: Partial<InsertLogisticsMonthlySync>): Promise<LogisticsMonthlySync | undefined>;
   getLatestSync(scenarioId?: string): Promise<LogisticsMonthlySync | undefined>;
+  getSyncByPeriodAndScenario(periodFrom: string, periodTo: string, scenarioId?: string | null): Promise<LogisticsMonthlySync | undefined>;
 
   // Notifications
   getNotifications(filters?: { periodFrom?: string; periodTo?: string; isRead?: boolean }): Promise<LogisticsPlanNotification[]>;

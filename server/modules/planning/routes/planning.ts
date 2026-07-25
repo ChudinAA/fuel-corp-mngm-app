@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull, gte, lte } from "drizzle-orm";
 import { storage } from "../../../storage/index";
 import { db } from "server/db";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
@@ -17,7 +17,45 @@ import {
   insertWarehouseSupplyTagSchema,
   supplierBases,
   bases,
+  planEntries,
 } from "@shared/schema";
+
+// Auto-sync helper: if an active sync exists for the same month+scenario, refresh it
+async function autoResyncIfNeeded(entryDate: string, scenarioId?: string | null) {
+  try {
+    const d = new Date(entryDate);
+    const periodFrom = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+    const periodTo = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
+
+    const existingSync = await storage.logisticsPlan.getSyncByPeriodAndScenario(
+      periodFrom,
+      periodTo,
+      scenarioId || null,
+    );
+    if (!existingSync) return;
+
+    // Refresh snapshot
+    const conditions: any[] = [isNull(planEntries.deletedAt), gte(planEntries.date, periodFrom), lte(planEntries.date, periodTo)];
+    if (scenarioId) conditions.push(eq(planEntries.scenarioId, scenarioId));
+    const entries = await db.select().from(planEntries).where(and(...conditions));
+
+    await storage.logisticsPlan.updateSync(existingSync.id, {
+      snapshotData: entries as any,
+      periodFrom,
+      periodTo,
+    });
+    await storage.logisticsPlan.createNotification({
+      syncId: existingSync.id,
+      type: "change",
+      message: `Автосинхронизация: план обновлён. Период: ${periodFrom} — ${periodTo}. Записей: ${entries.length}`,
+      periodFrom,
+      periodTo,
+    });
+  } catch (e) {
+    // Auto-sync is best-effort — don't break the main request
+    console.error("Auto-sync failed:", e);
+  }
+}
 
 export function registerPlanningRoutes(app: Express) {
   // ---- Plan entries ----
@@ -66,6 +104,8 @@ export function registerPlanningRoutes(app: Express) {
         });
         const created = await storage.planning.createPlanEntry(data);
         res.status(201).json(created);
+        // Auto-resync if this period is already active in logistics
+        autoResyncIfNeeded(created.date, created.scenarioId || undefined).catch(() => {});
       } catch (error: any) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({ message: error.errors[0].message });
@@ -102,6 +142,8 @@ export function registerPlanningRoutes(app: Express) {
             }
           }
         }
+        // Fetch pre-update state for cross-scope resync detection
+        const entryBeforeUpdate = await storage.planning.getPlanEntry(req.params.id);
         const body = req.body;
         const sanitized = {
           ...body,
@@ -118,6 +160,19 @@ export function registerPlanningRoutes(app: Express) {
           return res.status(404).json({ message: "Запись не найдена" });
         }
         res.json(updated);
+        // Auto-resync: trigger for both old and new (month, scenario) scopes.
+        // If date or scenario changed, the old scope's snapshot also becomes stale.
+        const oldDate = entryBeforeUpdate?.date;
+        const oldScenario = entryBeforeUpdate?.scenarioId || undefined;
+        const newDate = updated.date;
+        const newScenario = updated.scenarioId || undefined;
+        const toMonth = (d: string) => d.slice(0, 7); // "yyyy-mm"
+        const oldScope = `${toMonth(oldDate ?? newDate)}|${oldScenario ?? ""}`;
+        const newScope = `${toMonth(newDate)}|${newScenario ?? ""}`;
+        autoResyncIfNeeded(newDate, newScenario).catch(() => {});
+        if (oldDate && oldScope !== newScope) {
+          autoResyncIfNeeded(oldDate, oldScenario).catch(() => {});
+        }
       } catch (error: any) {
         console.error("Error updating plan entry:", error);
         res.status(400).json({ message: error.message || "Ошибка обновления записи" });
@@ -150,8 +205,14 @@ export function registerPlanningRoutes(app: Express) {
             }
           }
         }
+        // Fetch entry before delete for auto-sync
+        const entryBeforeDelete = await storage.planning.getPlanEntry(req.params.id);
         await storage.planning.deletePlanEntry(req.params.id, String(req.session.userId));
         res.json({ message: "Запись удалена" });
+        // Auto-resync if this period is already active in logistics
+        if (entryBeforeDelete) {
+          autoResyncIfNeeded(entryBeforeDelete.date, entryBeforeDelete.scenarioId || undefined).catch(() => {});
+        }
       } catch (error: any) {
         console.error("Error deleting plan entry:", error);
         res.status(400).json({ message: error.message || "Ошибка удаления записи" });

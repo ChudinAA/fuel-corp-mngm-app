@@ -317,6 +317,25 @@ export class LogisticsPlanStorage implements ILogisticsPlanStorage {
     return sync;
   }
 
+  async getSyncByPeriodAndScenario(periodFrom: string, periodTo: string, scenarioId?: string | null): Promise<LogisticsMonthlySync | undefined> {
+    const conditions: any[] = [
+      eq(logisticsMonthlySyncs.status, "active"),
+      sql`date_trunc('month', ${logisticsMonthlySyncs.periodFrom}) = date_trunc('month', ${periodFrom}::timestamp)`,
+    ];
+    if (scenarioId) {
+      conditions.push(eq(logisticsMonthlySyncs.scenarioId, scenarioId));
+    } else {
+      conditions.push(isNull(logisticsMonthlySyncs.scenarioId));
+    }
+    const [sync] = await db
+      .select()
+      .from(logisticsMonthlySyncs)
+      .where(and(...conditions))
+      .orderBy(desc(logisticsMonthlySyncs.createdAt))
+      .limit(1);
+    return sync;
+  }
+
   // ========== NOTIFICATIONS ==========
 
   async getNotifications(filters?: { periodFrom?: string; periodTo?: string; isRead?: boolean }): Promise<LogisticsPlanNotification[]> {
