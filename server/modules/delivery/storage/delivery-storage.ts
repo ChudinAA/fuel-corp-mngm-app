@@ -80,6 +80,8 @@ export class DeliveryStorage implements IDeliveryStorage {
     if (data.costPerKg !== undefined) updateFields.costPerKg = (data.costPerKg !== null && data.costPerKg !== "") ? String(data.costPerKg) : null;
     if (data.distance !== undefined) updateFields.distance = (data.distance !== null && data.distance !== "") ? String(data.distance) : null;
     if (data.isActive !== undefined) updateFields.isActive = data.isActive;
+    if (data.transitDays !== undefined) updateFields.transitDays = data.transitDays != null ? Number(data.transitDays) : null;
+    if (data.priority !== undefined) updateFields.priority = data.priority != null ? Number(data.priority) : null;
 
     const [updated] = await db
       .update(deliveryCost)
