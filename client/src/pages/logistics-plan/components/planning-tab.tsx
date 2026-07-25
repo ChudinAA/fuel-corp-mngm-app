@@ -1,23 +1,47 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  eachDayOfInterval,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   eachWeekOfInterval,
-  endOfWeek,
   format,
   isSameDay,
   startOfWeek,
   addDays,
   parseISO,
   isWithinInterval,
+  addWeeks,
+  startOfMonth,
 } from "date-fns";
 import { ru } from "date-fns/locale";
-import { AlertTriangle, Bell, CalendarDays, LayoutGrid, CheckCircle, Clock, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Bell,
+  CalendarDays,
+  LayoutGrid,
+  CheckCircle,
+  Clock,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Truck,
+  User,
+  MapPin,
+  Wrench,
+  ArrowRight,
+  RefreshCw,
+  Package,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
 import { RoutePlanDialog } from "./route-plan-dialog";
 import { SyncStatusBanner } from "./sync-status-banner";
 
@@ -28,25 +52,742 @@ interface PlanningTabProps {
 
 type ViewMode = "week" | "month";
 
+// ─── helpers ─────────────────────────────────────────────────────────────────
+
+const WEEK_DAYS_RU = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+function getRouteStatusMeta(route: any) {
+  if (route.type === "unavailable")
+    return {
+      bg: "bg-gray-100 dark:bg-gray-800",
+      border: "border-gray-300 dark:border-gray-600",
+      dot: "bg-gray-400",
+      label: "Ремонт/ТО",
+    };
+  if (route.isLate)
+    return {
+      bg: "bg-red-100 dark:bg-red-900/40",
+      border: "border-red-400 dark:border-red-600",
+      dot: "bg-red-500",
+      label: "С опозданием",
+    };
+  if (route.isDeadline)
+    return {
+      bg: "bg-amber-100 dark:bg-amber-900/40",
+      border: "border-amber-400 dark:border-amber-600",
+      dot: "bg-amber-500",
+      label: "Дедлайн",
+    };
+  if (route.isUnplanned)
+    return {
+      bg: "bg-purple-100 dark:bg-purple-900/40",
+      border: "border-purple-400 dark:border-purple-600",
+      dot: "bg-purple-500",
+      label: "Внеплановый",
+    };
+  if (!route.isOptimal)
+    return {
+      bg: "bg-yellow-100 dark:bg-yellow-900/40",
+      border: "border-yellow-400 dark:border-yellow-600",
+      dot: "bg-yellow-500",
+      label: "Не оптимален",
+    };
+  if (route.type === "deadhead")
+    return {
+      bg: "bg-blue-100 dark:bg-blue-900/40",
+      border: "border-blue-400 dark:border-blue-600",
+      dot: "bg-blue-500",
+      label: "Прогон",
+    };
+  return {
+    bg: "bg-green-100 dark:bg-green-900/40",
+    border: "border-green-400 dark:border-green-600",
+    dot: "bg-green-500",
+    label: "Маршрут",
+  };
+}
+
+function RouteTypeIcon({ type, className }: { type: string; className?: string }) {
+  if (type === "deadhead") return <RefreshCw className={cn("h-3 w-3", className)} />;
+  if (type === "unavailable") return <Wrench className={cn("h-3 w-3", className)} />;
+  return <ArrowRight className={cn("h-3 w-3", className)} />;
+}
+
+function getNotifIcon(type: string) {
+  if (type === "deadline" || type === "late")
+    return <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />;
+  if (type === "unassigned")
+    return <Clock className="h-3.5 w-3.5 text-blue-500 shrink-0" />;
+  if (type === "unplanned")
+    return <AlertTriangle className="h-3.5 w-3.5 text-purple-500 shrink-0" />;
+  return <Bell className="h-3.5 w-3.5 text-muted-foreground shrink-0" />;
+}
+
+function routeShortLabel(route: any) {
+  if (route.type === "deadhead") return "Прогон";
+  if (route.type === "unavailable") return "Ремонт";
+  const from = route.fromEntityName?.split(" ")[0] || "?";
+  const to = route.toEntityName?.split(" ")[0] || "?";
+  return `${from}→${to}`;
+}
+
+function RouteTooltipContent({ route, unit }: { route: any; unit?: any }) {
+  const meta = getRouteStatusMeta(route);
+  return (
+    <div className="flex flex-col gap-1.5 min-w-[180px] max-w-[260px] text-xs">
+      <div className="flex items-center gap-1.5 font-medium">
+        <span
+          className={cn("inline-block w-2 h-2 rounded-full shrink-0", meta.dot)}
+        />
+        {meta.label}
+        {route.priority != null && (
+          <Badge variant="outline" className="ml-auto text-[10px] py-0 px-1 h-4">
+            P{route.priority}
+          </Badge>
+        )}
+      </div>
+      {route.type !== "unavailable" && (
+        <div className="flex items-center gap-1 text-muted-foreground">
+          <MapPin className="h-3 w-3 shrink-0" />
+          <span>
+            {route.fromEntityName || "—"} → {route.toEntityName || "—"}
+          </span>
+        </div>
+      )}
+      {unit?.vehicle && (
+        <div className="flex items-center gap-1 text-muted-foreground">
+          <Truck className="h-3 w-3 shrink-0" />
+          <span>{unit.vehicle.regNumber}{unit.vehicle.model ? ` (${unit.vehicle.model})` : ""}</span>
+        </div>
+      )}
+      {unit?.driver && (
+        <div className="flex items-center gap-1 text-muted-foreground">
+          <User className="h-3 w-3 shrink-0" />
+          <span>{unit.driver.fullName}</span>
+        </div>
+      )}
+      {route.dateStart && (
+        <div className="flex items-center gap-1 text-muted-foreground">
+          <CalendarDays className="h-3 w-3 shrink-0" />
+          <span>
+            {format(parseISO(route.dateStart), "dd.MM")}
+            {route.dateEnd && route.dateEnd !== route.dateStart
+              ? ` — ${format(parseISO(route.dateEnd), "dd.MM")}`
+              : ""}
+          </span>
+        </div>
+      )}
+      {route.notes && (
+        <p className="text-muted-foreground border-t pt-1 mt-0.5">{route.notes}</p>
+      )}
+    </div>
+  );
+}
+
+// ─── compact route pill ───────────────────────────────────────────────────────
+
+function RoutePill({
+  route,
+  unit,
+  compact = false,
+}: {
+  route: any;
+  unit?: any;
+  compact?: boolean;
+}) {
+  const meta = getRouteStatusMeta(route);
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          className={cn(
+            "flex items-center gap-1 rounded border leading-none cursor-default select-none",
+            compact ? "px-1 py-0.5 text-[10px]" : "px-1.5 py-1 text-xs",
+            meta.bg,
+            meta.border,
+          )}
+        >
+          <RouteTypeIcon
+            type={route.type}
+            className={cn(
+              "shrink-0 opacity-70",
+              compact ? "h-2.5 w-2.5" : "h-3 w-3",
+            )}
+          />
+          <span className="truncate max-w-[80px]">{routeShortLabel(route)}</span>
+          {route.isLate && (
+            <AlertTriangle className="h-2.5 w-2.5 text-red-600 shrink-0" />
+          )}
+          {route.isDeadline && !route.isLate && (
+            <Clock className="h-2.5 w-2.5 text-amber-600 shrink-0" />
+          )}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="bg-background border shadow-lg p-2">
+        <RouteTooltipContent route={route} unit={unit} />
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+// ─── Legend ──────────────────────────────────────────────────────────────────
+
+function CalendarLegend() {
+  const items = [
+    { dot: "bg-green-500", label: "Маршрут (норм.)", Icon: ArrowRight },
+    { dot: "bg-blue-500", label: "Прогон", Icon: RefreshCw },
+    { dot: "bg-amber-500", label: "Дедлайн", Icon: Clock },
+    { dot: "bg-red-500", label: "С опозданием", Icon: AlertTriangle },
+    { dot: "bg-purple-500", label: "Внеплановый", Icon: AlertTriangle },
+    { dot: "bg-yellow-500", label: "Не оптимален", Icon: null },
+    { dot: "bg-gray-400", label: "Ремонт/ТО", Icon: Wrench },
+  ];
+  return (
+    <div className="flex flex-wrap gap-3 py-2 text-[11px] text-muted-foreground">
+      {items.map((item) => (
+        <div key={item.label} className="flex items-center gap-1">
+          <span className={cn("w-2 h-2 rounded-full shrink-0", item.dot)} />
+          {item.Icon && <item.Icon className="h-2.5 w-2.5 opacity-60" />}
+          {item.label}
+        </div>
+      ))}
+      <div className="flex items-center gap-1">
+        <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+        <span>● Нераспределённые маршруты</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Notifications strip ─────────────────────────────────────────────────────
+
+function NotificationsStrip({
+  notifications,
+  unreadCount,
+  onMarkRead,
+  onMarkAllRead,
+}: {
+  notifications: any[];
+  unreadCount: number;
+  onMarkRead: (id: string) => void;
+  onMarkAllRead: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="rounded-md border bg-card">
+      {/* header row */}
+      <div
+        className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none hover:bg-muted/40 transition-colors"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <Bell className="h-4 w-4 text-muted-foreground shrink-0" />
+        <span className="font-medium text-sm">Оповещения</span>
+        {unreadCount > 0 && (
+          <Badge variant="destructive" className="text-[10px] h-4 px-1">
+            {unreadCount}
+          </Badge>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          {unreadCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs h-6 px-2"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMarkAllRead();
+              }}
+            >
+              <CheckCircle className="h-3 w-3 mr-1" />
+              Все прочитаны
+            </Button>
+          )}
+          {expanded ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
+        </div>
+      </div>
+
+      {/* expanded list */}
+      {expanded && (
+        <div className="border-t">
+          {notifications.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">
+              Нет оповещений
+            </p>
+          ) : (
+            <div className="flex flex-col divide-y max-h-60 overflow-y-auto">
+              {notifications.map((n: any) => (
+                <div
+                  key={n.id}
+                  className={cn(
+                    "flex items-start gap-2 px-3 py-2 text-xs",
+                    !n.isRead ? "bg-muted/30" : "opacity-60",
+                  )}
+                >
+                  {getNotifIcon(n.type)}
+                  <p className="flex-1 leading-snug">{n.message}</p>
+                  {!n.isRead && (
+                    <button
+                      className="shrink-0 hover:text-foreground text-muted-foreground transition-colors"
+                      onClick={() => onMarkRead(n.id)}
+                      title="Прочитано"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Week View ────────────────────────────────────────────────────────────────
+
+function WeekView({
+  periodFrom,
+  periodTo,
+  routes,
+  units,
+  onOpenDay,
+}: {
+  periodFrom: string;
+  periodTo: string;
+  routes: any[];
+  units: any[];
+  onOpenDay: (day: Date) => void;
+}) {
+  const from = new Date(periodFrom);
+  const to = new Date(periodTo);
+
+  // Build list of week starts within the period
+  const allWeekStarts = useMemo(() => {
+    const weeks: Date[] = [];
+    let ws = startOfWeek(from, { weekStartsOn: 1 });
+    while (ws <= to) {
+      weeks.push(ws);
+      ws = addWeeks(ws, 1);
+    }
+    return weeks;
+  }, [periodFrom, periodTo]);
+
+  const [weekIdx, setWeekIdx] = useState(0);
+  const weekStart = allWeekStarts[weekIdx] ?? allWeekStarts[0];
+  const weekDays = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
+    [weekStart],
+  );
+
+  const unitById = useMemo(() => {
+    const m = new Map<string, any>();
+    units.forEach((u) => m.set(u.id, u));
+    return m;
+  }, [units]);
+
+  const getRoutesForUnit = (unitId: string, day: Date) =>
+    routes.filter((r: any) => {
+      if (r.transportUnitId !== unitId) return false;
+      if (!r.dateStart) return false;
+      try {
+        const start = parseISO(r.dateStart);
+        const end = r.dateEnd ? parseISO(r.dateEnd) : start;
+        return isWithinInterval(day, { start, end });
+      } catch {
+        return false;
+      }
+    });
+
+  const isVehicleUnavailable = (unit: any, day: Date) =>
+    unit.vehicleAvailabilityForPeriod?.some((a: any) => {
+      try {
+        return isWithinInterval(day, {
+          start: parseISO(a.dateFrom),
+          end: parseISO(a.dateTo),
+        });
+      } catch {
+        return false;
+      }
+    });
+
+  const isDriverUnavailable = (unit: any, day: Date) =>
+    unit.driverScheduleForPeriod?.some((s: any) => {
+      if (s.type === "available") return false;
+      try {
+        return isWithinInterval(day, {
+          start: parseISO(s.dateFrom),
+          end: parseISO(s.dateTo),
+        });
+      } catch {
+        return false;
+      }
+    });
+
+  const hasUnassigned = (day: Date) =>
+    routes.some((r: any) => {
+      if (!r.dateStart || r.transportUnitId) return false;
+      try {
+        return isSameDay(parseISO(r.dateStart), day);
+      } catch {
+        return false;
+      }
+    });
+
+  const inPeriod = (day: Date) => day >= from && day <= to;
+
+  return (
+    <div className="flex flex-col gap-2">
+      {/* week navigation */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setWeekIdx((i) => Math.max(0, i - 1))}
+          disabled={weekIdx === 0}
+          className="h-8 w-8 p-0"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-sm font-medium min-w-[180px] text-center">
+          {format(weekStart, "d MMM", { locale: ru })} —{" "}
+          {format(addDays(weekStart, 6), "d MMM yyyy", { locale: ru })}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setWeekIdx((i) => Math.min(allWeekStarts.length - 1, i + 1))}
+          disabled={weekIdx === allWeekStarts.length - 1}
+          className="h-8 w-8 p-0"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+        <span className="text-xs text-muted-foreground ml-2">
+          Неделя {weekIdx + 1} из {allWeekStarts.length}
+        </span>
+      </div>
+
+      {/* grid */}
+      <div className="rounded-md border overflow-hidden">
+        {/* header */}
+        <div
+          className="grid bg-muted/50"
+          style={{ gridTemplateColumns: "180px repeat(7, 1fr)" }}
+        >
+          <div className="px-3 py-2 text-xs font-medium text-muted-foreground border-r">
+            ТС / Водитель
+          </div>
+          {weekDays.map((day, i) => {
+            const today = isSameDay(day, new Date());
+            const active = inPeriod(day);
+            const unassigned = active && hasUnassigned(day);
+            return (
+              <div
+                key={i}
+                className={cn(
+                  "px-2 py-2 text-center text-xs font-medium border-r last:border-r-0",
+                  today && "bg-primary/15 dark:bg-primary/20",
+                  !active && "opacity-40",
+                )}
+              >
+                <div className="text-muted-foreground">{WEEK_DAYS_RU[i]}</div>
+                <div
+                  className={cn(
+                    "text-sm font-semibold mt-0.5",
+                    today && "text-primary",
+                  )}
+                >
+                  {format(day, "d")}
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  {format(day, "MMM", { locale: ru })}
+                </div>
+                {unassigned && (
+                  <div className="flex justify-center mt-0.5">
+                    <span
+                      className="w-2 h-2 rounded-full bg-red-500 inline-block"
+                      title="Нераспределённые маршруты"
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* rows */}
+        {units.length === 0 ? (
+          <div className="py-10 text-center text-sm text-muted-foreground border-t">
+            Нет транспортных единиц. Добавьте их во вкладке «Транспорт».
+          </div>
+        ) : (
+          <div className="divide-y">
+            {units.map((unit: any) => (
+              <div
+                key={unit.id}
+                className="grid hover:bg-muted/20 transition-colors"
+                style={{ gridTemplateColumns: "180px repeat(7, 1fr)" }}
+              >
+                {/* unit label */}
+                <div className="px-3 py-2 border-r bg-background flex flex-col justify-center gap-0.5">
+                  <div className="flex items-center gap-1">
+                    <Truck className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span className="text-xs font-medium truncate">
+                      {unit.vehicle?.regNumber || unit.carrier?.name || "—"}
+                    </span>
+                  </div>
+                  {unit.vehicle?.model && (
+                    <span className="text-[10px] text-muted-foreground truncate pl-4">
+                      {unit.vehicle.model}
+                    </span>
+                  )}
+                  {unit.driver?.fullName && (
+                    <div className="flex items-center gap-1 pl-0">
+                      <User className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        {unit.driver.fullName.split(" ").slice(0, 2).join(" ")}
+                      </span>
+                    </div>
+                  )}
+                  {unit.trailerCapacityM3 && (
+                    <div className="flex items-center gap-1 pl-0">
+                      <Package className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
+                      <span className="text-[10px] text-muted-foreground">
+                        {parseFloat(unit.trailerCapacityM3).toFixed(0)} м³
+                      </span>
+                    </div>
+                  )}
+                  {unit.driverUnavailable && (
+                    <span className="text-[10px] text-orange-600 dark:text-orange-400 font-medium">
+                      Вод. нет
+                    </span>
+                  )}
+                  {unit.vehicleUnavailable && (
+                    <span className="text-[10px] text-gray-500 font-medium">
+                      ТС недоступен
+                    </span>
+                  )}
+                </div>
+
+                {/* day cells */}
+                {weekDays.map((day, i) => {
+                  const active = inPeriod(day);
+                  const today = isSameDay(day, new Date());
+                  const dayRoutes = active ? getRoutesForUnit(unit.id, day) : [];
+                  const vehicleOut = active && isVehicleUnavailable(unit, day);
+                  const driverOut = active && !vehicleOut && isDriverUnavailable(unit, day);
+
+                  return (
+                    <div
+                      key={i}
+                      className={cn(
+                        "px-1.5 py-1.5 border-r last:border-r-0 min-h-[60px] flex flex-col gap-1",
+                        today && "bg-primary/5",
+                        !active && "bg-muted/20 opacity-50",
+                        active && "cursor-pointer",
+                      )}
+                      onClick={() => active && onOpenDay(day)}
+                    >
+                      {vehicleOut && (
+                        <div className="flex items-center gap-0.5 text-[10px] text-gray-500 bg-gray-100 dark:bg-gray-800 rounded px-1 py-0.5">
+                          <Wrench className="h-2.5 w-2.5 shrink-0" />
+                          <span>Недоступен</span>
+                        </div>
+                      )}
+                      {driverOut && (
+                        <div className="flex items-center gap-0.5 text-[10px] text-orange-700 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30 rounded px-1 py-0.5">
+                          <User className="h-2.5 w-2.5 shrink-0" />
+                          <span>Вод. нет</span>
+                        </div>
+                      )}
+                      {dayRoutes.map((r: any) => (
+                        <RoutePill key={r.id} route={r} unit={unit} compact />
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Month View ───────────────────────────────────────────────────────────────
+
+function MonthView({
+  periodFrom,
+  periodTo,
+  routes,
+  units,
+  onOpenDay,
+}: {
+  periodFrom: string;
+  periodTo: string;
+  routes: any[];
+  units: any[];
+  onOpenDay: (day: Date) => void;
+}) {
+  const from = new Date(periodFrom);
+  const to = new Date(periodTo);
+
+  const weeks = useMemo(
+    () => eachWeekOfInterval({ start: from, end: to }, { weekStartsOn: 1 }),
+    [periodFrom, periodTo],
+  );
+
+  const unitById = useMemo(() => {
+    const m = new Map<string, any>();
+    units.forEach((u) => m.set(u.id, u));
+    return m;
+  }, [units]);
+
+  const getRoutesForDay = (day: Date) =>
+    routes.filter((r: any) => {
+      if (!r.dateStart) return false;
+      try {
+        const start = parseISO(r.dateStart);
+        const end = r.dateEnd ? parseISO(r.dateEnd) : start;
+        return isWithinInterval(day, { start, end });
+      } catch {
+        return false;
+      }
+    });
+
+  const hasUnassigned = (day: Date) =>
+    routes.some((r: any) => {
+      if (!r.dateStart || r.transportUnitId) return false;
+      try {
+        return isSameDay(parseISO(r.dateStart), day);
+      } catch {
+        return false;
+      }
+    });
+
+  return (
+    <div className="rounded-md border overflow-hidden">
+      {/* header */}
+      <div className="grid bg-muted/50" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
+        {WEEK_DAYS_RU.map((d) => (
+          <div
+            key={d}
+            className="px-2 py-2 text-center text-xs font-medium text-muted-foreground border-r last:border-r-0"
+          >
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* weeks */}
+      <div className="divide-y">
+        {weeks.map((weekStart) => {
+          const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+          return (
+            <div
+              key={weekStart.toISOString()}
+              className="grid"
+              style={{ gridTemplateColumns: "repeat(7, 1fr)" }}
+            >
+              {weekDays.map((day) => {
+                const inRange = day >= from && day <= to;
+                const today = isSameDay(day, new Date());
+                const dayRoutes = inRange ? getRoutesForDay(day) : [];
+                const unassigned = inRange && hasUnassigned(day);
+                const maxVisible = 4;
+
+                return (
+                  <div
+                    key={day.toISOString()}
+                    className={cn(
+                      "border-r last:border-r-0 px-1.5 py-1.5 min-h-[90px] flex flex-col",
+                      !inRange && "bg-muted/20 opacity-40",
+                      inRange && "cursor-pointer hover:bg-muted/20 transition-colors",
+                      today && "bg-primary/5 dark:bg-primary/10",
+                    )}
+                    onClick={() => inRange && onOpenDay(day)}
+                  >
+                    {/* day number */}
+                    <div className="flex items-center justify-between mb-1">
+                      <span
+                        className={cn(
+                          "text-sm font-medium leading-none",
+                          today &&
+                            "bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs",
+                          !inRange && "text-muted-foreground",
+                        )}
+                      >
+                        {format(day, "d")}
+                      </span>
+                      {unassigned && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Нераспределённые маршруты</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+
+                    {/* route pills */}
+                    <div className="flex flex-col gap-0.5 flex-1">
+                      {dayRoutes.slice(0, maxVisible).map((r: any) => (
+                        <RoutePill
+                          key={r.id}
+                          route={r}
+                          unit={unitById.get(r.transportUnitId)}
+                          compact
+                        />
+                      ))}
+                      {dayRoutes.length > maxVisible && (
+                        <span className="text-[10px] text-muted-foreground pl-1">
+                          +{dayRoutes.length - maxVisible} ещё
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export function PlanningTab({ periodFrom, periodTo }: PlanningTabProps) {
-  const { toast } = useToast();
   const qc = useQueryClient();
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [routePlanOpen, setRoutePlanOpen] = useState(false);
-  const [selectedRoute, setSelectedRoute] = useState<any | null>(null);
-  const [notifOpen, setNotifOpen] = useState(false);
 
   const { data: calendarData, isLoading: calendarLoading } = useQuery<any>({
     queryKey: ["/api/logistics-plan/calendar", periodFrom, periodTo],
     queryFn: () =>
-      apiRequest("GET", `/api/logistics-plan/calendar?periodFrom=${periodFrom}&periodTo=${periodTo}`).then((r) => r.json()),
+      apiRequest(
+        "GET",
+        `/api/logistics-plan/calendar?periodFrom=${periodFrom}&periodTo=${periodTo}`,
+      ).then((r) => r.json()),
   });
 
   const { data: syncData } = useQuery<any>({
     queryKey: ["/api/logistics-plan/sync", periodFrom, periodTo],
     queryFn: () =>
-      apiRequest("GET", `/api/logistics-plan/sync?periodFrom=${periodFrom}&periodTo=${periodTo}`).then((r) => r.json()),
+      apiRequest(
+        "GET",
+        `/api/logistics-plan/sync?periodFrom=${periodFrom}&periodTo=${periodTo}`,
+      ).then((r) => r.json()),
   });
 
   const markReadMutation = useMutation({
@@ -54,111 +795,59 @@ export function PlanningTab({ periodFrom, periodTo }: PlanningTabProps) {
       apiRequest("PATCH", `/api/logistics-plan/notifications/${id}/read`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/calendar"] });
-      qc.invalidateQueries({ queryKey: ["/api/logistics-plan/notifications"] });
     },
   });
 
   const markAllReadMutation = useMutation({
     mutationFn: () =>
-      apiRequest("POST", "/api/logistics-plan/notifications/mark-all-read", { periodFrom, periodTo }),
+      apiRequest("POST", "/api/logistics-plan/notifications/mark-all-read", {
+        periodFrom,
+        periodTo,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/calendar"] });
-      qc.invalidateQueries({ queryKey: ["/api/logistics-plan/notifications"] });
     },
   });
-
-  const from = new Date(periodFrom);
-  const to = new Date(periodTo);
-
-  const days = eachDayOfInterval({ start: from, end: to });
-  const weeks = eachWeekOfInterval({ start: from, end: to }, { weekStartsOn: 1 });
 
   const routes: any[] = calendarData?.routes || [];
   const units: any[] = calendarData?.transportUnits || [];
   const notifications: any[] = calendarData?.notifications || [];
   const unreadCount: number = calendarData?.unreadCount || 0;
 
-  const getRoutesForDay = (day: Date) => {
-    return routes.filter((r: any) => {
-      if (!r.dateStart) return false;
-      try {
-        return isSameDay(parseISO(r.dateStart), day);
-      } catch {
-        return false;
-      }
-    });
-  };
-
-  const getRoutesForUnit = (unitId: string, day: Date) => {
-    return routes.filter((r: any) => {
-      if (r.transportUnitId !== unitId) return false;
-      if (!r.dateStart || !r.dateEnd) return false;
-      try {
-        return isWithinInterval(day, {
-          start: parseISO(r.dateStart),
-          end: parseISO(r.dateEnd),
-        });
-      } catch {
-        return false;
-      }
-    });
-  };
-
-  const getRouteStatusColor = (route: any) => {
-    if (route.isLate) return "bg-red-100 border-red-300 dark:bg-red-900/30";
-    if (route.isDeadline) return "bg-amber-100 border-amber-300 dark:bg-amber-900/30";
-    if (route.isUnplanned) return "bg-purple-100 border-purple-300 dark:bg-purple-900/30";
-    if (!route.isOptimal) return "bg-yellow-100 border-yellow-300 dark:bg-yellow-900/30";
-    if (route.type === "deadhead") return "bg-blue-100 border-blue-300 dark:bg-blue-900/30";
-    return "bg-green-100 border-green-300 dark:bg-green-900/30";
-  };
-
-  const getNotifIcon = (type: string) => {
-    if (type === "deadline" || type === "late") return <AlertTriangle className="h-3 w-3 text-amber-500" />;
-    if (type === "unassigned") return <Clock className="h-3 w-3 text-blue-500" />;
-    if (type === "unplanned") return <AlertTriangle className="h-3 w-3 text-purple-500" />;
-    return <Bell className="h-3 w-3 text-muted-foreground" />;
-  };
-
-  const hasUnassigned = (day: Date) => {
-    return routes.some((r: any) => {
-      if (!r.dateStart) return false;
-      try {
-        return isSameDay(parseISO(r.dateStart), day) && !r.transportUnitId;
-      } catch {
-        return false;
-      }
-    });
-  };
+  const hasSyncedPlan = syncData?.latest != null;
 
   const openDayPlan = (day: Date) => {
     setSelectedDay(day);
     setRoutePlanOpen(true);
   };
 
-  const hasSyncedPlan = syncData?.latest != null;
-
   return (
-    <div className="flex flex-col gap-4">
-      <SyncStatusBanner
-        syncData={syncData}
-        periodFrom={periodFrom}
-        periodTo={periodTo}
-      />
+    <TooltipProvider delayDuration={200}>
+      <div className="flex flex-col gap-3">
+        {/* Sync status */}
+        <SyncStatusBanner syncData={syncData} periodFrom={periodFrom} periodTo={periodTo} />
 
-      {!hasSyncedPlan ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
-          <CalendarDays className="h-10 w-10 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground max-w-sm">
-            Ежемесячный план ещё не запущен в логистику. Нажмите кнопку{" "}
-            <strong>«Запустить в план логистики»</strong> на странице «Планирование ежем.»,
-            чтобы данные появились здесь.
-          </p>
-        </div>
-      ) : (
-        <div className="flex gap-4 items-start">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2 mb-4">
+        {/* Notifications — always visible under tabs */}
+        <NotificationsStrip
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onMarkRead={(id) => markReadMutation.mutate(id)}
+          onMarkAllRead={() => markAllReadMutation.mutate()}
+        />
+
+        {!hasSyncedPlan ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center gap-3 rounded-md border bg-muted/20">
+            <CalendarDays className="h-12 w-12 text-muted-foreground opacity-40" />
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Ежемесячный план ещё не запущен в логистику. Нажмите кнопку{" "}
+              <strong>«Запустить в план логистики»</strong> на странице «Планирование»,
+              чтобы данные появились здесь.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {/* View switcher + legend */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex gap-2">
                 <Button
                   variant={viewMode === "week" ? "default" : "outline"}
@@ -166,7 +855,7 @@ export function PlanningTab({ periodFrom, periodTo }: PlanningTabProps) {
                   onClick={() => setViewMode("week")}
                   data-testid="button-view-week"
                 >
-                  <CalendarDays className="h-4 w-4 mr-2" />
+                  <CalendarDays className="h-4 w-4 mr-1.5" />
                   Неделя
                 </Button>
                 <Button
@@ -175,329 +864,53 @@ export function PlanningTab({ periodFrom, periodTo }: PlanningTabProps) {
                   onClick={() => setViewMode("month")}
                   data-testid="button-view-month"
                 >
-                  <LayoutGrid className="h-4 w-4 mr-2" />
+                  <LayoutGrid className="h-4 w-4 mr-1.5" />
                   Месяц
                 </Button>
               </div>
+              {calendarLoading && (
+                <span className="text-xs text-muted-foreground animate-pulse">
+                  Загрузка…
+                </span>
+              )}
             </div>
 
-            {viewMode === "week" && (
-              <div className="overflow-auto rounded-md border">
-                <table className="min-w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="bg-muted/50">
-                      <th className="border px-3 py-2 text-left font-medium min-w-[180px] sticky left-0 bg-muted/50 z-10">
-                        ТС / Водитель
-                      </th>
-                      {days.map((day) => (
-                        <th
-                          key={day.toISOString()}
-                          className={cn(
-                            "border px-2 py-2 text-center font-medium min-w-[120px] cursor-pointer hover-elevate",
-                            isSameDay(day, new Date()) && "bg-primary/10"
-                          )}
-                          onClick={() => openDayPlan(day)}
-                        >
-                          <div className="flex flex-col items-center gap-0.5">
-                            <span className="text-xs text-muted-foreground">
-                              {format(day, "EEE", { locale: ru })}
-                            </span>
-                            <span>{format(day, "d MMM", { locale: ru })}</span>
-                            {hasUnassigned(day) && (
-                              <span className="w-2 h-2 rounded-full bg-red-500 inline-block" title="Нераспределённые маршруты" />
-                            )}
-                          </div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {units.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={days.length + 1}
-                          className="border px-3 py-8 text-center text-muted-foreground"
-                        >
-                          Нет транспортных единиц. Добавьте их во вкладке «Транспорт».
-                        </td>
-                      </tr>
-                    ) : (
-                      units.map((unit: any) => (
-                        <tr key={unit.id}>
-                          <td className="border px-3 py-2 sticky left-0 bg-background z-10">
-                            <div className="flex flex-col gap-0.5">
-                              <span className="font-medium text-sm">
-                                {unit.vehicle?.regNumber || "—"}
-                              </span>
-                              {unit.trailerCapacityM3 && (
-                                <span className="text-xs text-muted-foreground">
-                                  {parseFloat(unit.trailerCapacityM3).toFixed(0)} м³
-                                </span>
-                              )}
-                              {unit.driver?.fullName && (
-                                <span className="text-xs text-muted-foreground">
-                                  {unit.driver.fullName}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          {days.map((day) => {
-                            const dayRoutes = getRoutesForUnit(unit.id, day);
-                            const isUnavailable = unit.vehicleAvailabilityForPeriod?.some((a: any) => {
-                              try {
-                                return isWithinInterval(day, {
-                                  start: parseISO(a.dateFrom),
-                                  end: parseISO(a.dateTo),
-                                });
-                              } catch {
-                                return false;
-                              }
-                            });
-                            const driverUnavailable = unit.driverScheduleForPeriod?.some((s: any) => {
-                              if (s.type === "available") return false;
-                              try {
-                                return isWithinInterval(day, {
-                                  start: parseISO(s.dateFrom),
-                                  end: parseISO(s.dateTo),
-                                });
-                              } catch {
-                                return false;
-                              }
-                            });
+            {/* Legend */}
+            <CalendarLegend />
 
-                            return (
-                              <td
-                                key={day.toISOString()}
-                                className={cn(
-                                  "border px-2 py-1 align-top cursor-pointer hover-elevate min-w-[120px]",
-                                  isSameDay(day, new Date()) && "bg-primary/5"
-                                )}
-                                onClick={() => openDayPlan(day)}
-                              >
-                                {isUnavailable && (
-                                  <div className="text-xs rounded px-1 py-0.5 bg-gray-100 dark:bg-gray-800 text-muted-foreground mb-1">
-                                    Недоступен
-                                  </div>
-                                )}
-                                {driverUnavailable && !isUnavailable && (
-                                  <div className="text-xs rounded px-1 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 mb-1">
-                                    Вод. нет
-                                  </div>
-                                )}
-                                {dayRoutes.map((r: any) => (
-                                  <div
-                                    key={r.id}
-                                    className={cn(
-                                      "text-xs rounded px-1 py-0.5 border mb-1 leading-tight",
-                                      getRouteStatusColor(r)
-                                    )}
-                                  >
-                                    {r.type === "deadhead" ? (
-                                      <span className="text-muted-foreground">Прогон</span>
-                                    ) : (
-                                      <span>
-                                        {r.fromEntityName?.split(" ")[0] || "?"} →{" "}
-                                        {r.toEntityName?.split(" ")[0] || "?"}
-                                      </span>
-                                    )}
-                                    {r.isLate && <AlertTriangle className="inline h-2.5 w-2.5 ml-1 text-red-600" />}
-                                    {r.isDeadline && !r.isLate && <Clock className="inline h-2.5 w-2.5 ml-1 text-amber-600" />}
-                                  </div>
-                                ))}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+            {/* Calendar */}
+            {viewMode === "week" ? (
+              <WeekView
+                periodFrom={periodFrom}
+                periodTo={periodTo}
+                routes={routes}
+                units={units}
+                onOpenDay={openDayPlan}
+              />
+            ) : (
+              <MonthView
+                periodFrom={periodFrom}
+                periodTo={periodTo}
+                routes={routes}
+                units={units}
+                onOpenDay={openDayPlan}
+              />
             )}
-
-            {viewMode === "month" && (
-              <div className="overflow-auto rounded-md border">
-                <table className="min-w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="bg-muted/50">
-                      {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((d) => (
-                        <th key={d} className="border px-2 py-2 text-center font-medium min-w-[120px]">
-                          {d}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {weeks.map((weekStart) => {
-                      const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-                      return (
-                        <tr key={weekStart.toISOString()}>
-                          {weekDays.map((day) => {
-                            const inRange =
-                              day >= from && day <= to;
-                            const dayRoutes = getRoutesForDay(day);
-                            const unassigned = hasUnassigned(day);
-                            return (
-                              <td
-                                key={day.toISOString()}
-                                className={cn(
-                                  "border px-2 py-2 align-top min-h-[80px] min-w-[120px]",
-                                  !inRange && "bg-muted/30 opacity-50",
-                                  inRange && "cursor-pointer hover-elevate",
-                                  isSameDay(day, new Date()) && "bg-primary/5"
-                                )}
-                                onClick={() => inRange && openDayPlan(day)}
-                              >
-                                <div className="flex items-start justify-between gap-1 mb-1">
-                                  <span
-                                    className={cn(
-                                      "text-sm font-medium",
-                                      !inRange && "text-muted-foreground"
-                                    )}
-                                  >
-                                    {format(day, "d")}
-                                  </span>
-                                  {unassigned && (
-                                    <span
-                                      className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1"
-                                      title="Нераспределённые маршруты"
-                                    />
-                                  )}
-                                </div>
-                                {inRange && dayRoutes.slice(0, 3).map((r: any) => (
-                                  <div
-                                    key={r.id}
-                                    className={cn(
-                                      "text-xs rounded px-1 py-0.5 border mb-0.5 truncate",
-                                      getRouteStatusColor(r)
-                                    )}
-                                  >
-                                    {r.type === "deadhead"
-                                      ? "Прогон"
-                                      : `${r.fromEntityName?.split(" ")[0] || "?"} → ${r.toEntityName?.split(" ")[0] || "?"}`}
-                                  </div>
-                                ))}
-                                {inRange && dayRoutes.length > 3 && (
-                                  <span className="text-xs text-muted-foreground">
-                                    +{dayRoutes.length - 3} ещё
-                                  </span>
-                                )}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-3 mt-3 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded bg-green-100 border border-green-300" />
-                Маршрут (норм.)
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded bg-blue-100 border border-blue-300" />
-                Прогон
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded bg-amber-100 border border-amber-300" />
-                Дедлайн
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded bg-red-100 border border-red-300" />
-                С опозданием
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded bg-purple-100 border border-purple-300" />
-                Внеплановый
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded bg-yellow-100 border border-yellow-300" />
-                Не оптимальный
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-red-500" />
-                Нераспределённые
-              </div>
-            </div>
           </div>
+        )}
 
-          <div className="w-72 shrink-0">
-            <div className="rounded-md border p-3 flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Bell className="h-4 w-4" />
-                  <span className="font-medium text-sm">Оповещения</span>
-                  {unreadCount > 0 && (
-                    <Badge variant="destructive" className="text-xs">
-                      {unreadCount}
-                    </Badge>
-                  )}
-                </div>
-                {unreadCount > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs h-7"
-                    onClick={() => markAllReadMutation.mutate()}
-                  >
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Все прочитаны
-                  </Button>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-2 max-h-96 overflow-y-auto">
-                {notifications.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">
-                    Нет оповещений
-                  </p>
-                ) : (
-                  notifications.map((n: any) => (
-                    <div
-                      key={n.id}
-                      className={cn(
-                        "flex items-start gap-2 rounded-md p-2 text-xs",
-                        !n.isRead ? "bg-muted/70" : "opacity-60"
-                      )}
-                    >
-                      <div className="mt-0.5 shrink-0">{getNotifIcon(n.type)}</div>
-                      <div className="flex-1 min-w-0">
-                        <p className="leading-snug">{n.message}</p>
-                      </div>
-                      {!n.isRead && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5 shrink-0"
-                          onClick={() => markReadMutation.mutate(n.id)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {selectedDay && (
-        <RoutePlanDialog
-          open={routePlanOpen}
-          onOpenChange={setRoutePlanOpen}
-          day={selectedDay}
-          periodFrom={periodFrom}
-          periodTo={periodTo}
-          units={units}
-          routes={routes}
-        />
-      )}
-    </div>
+        {selectedDay && (
+          <RoutePlanDialog
+            open={routePlanOpen}
+            onOpenChange={setRoutePlanOpen}
+            day={selectedDay}
+            periodFrom={periodFrom}
+            periodTo={periodTo}
+            units={units}
+            routes={routes}
+          />
+        )}
+      </div>
+    </TooltipProvider>
   );
 }
