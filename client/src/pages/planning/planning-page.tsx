@@ -117,67 +117,71 @@ export default function PlanningPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-col items-end gap-2">
+          {/* Top row: action buttons */}
+          <div className="flex items-start gap-2">
+            {/* Sync button block */}
+            <div className="flex flex-col items-end gap-0.5">
+              <Button
+                className={
+                  isAlreadySynced
+                    ? "bg-orange-500/60 text-white cursor-not-allowed opacity-70 hover:bg-orange-500/60"
+                    : "bg-orange-500 hover:bg-orange-600 text-white shadow-sm"
+                }
+                size="sm"
+                onClick={() => !isAlreadySynced && syncMutation.mutate()}
+                disabled={syncMutation.isPending || isAlreadySynced}
+                data-testid="button-sync-logistics"
+              >
+                {isAlreadySynced ? (
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                ) : (
+                  <Truck className="h-4 w-4 mr-2" />
+                )}
+                {syncMutation.isPending
+                  ? "Синхронизация..."
+                  : isAlreadySynced
+                  ? "Запущен в логистику"
+                  : "Запустить в план логистики"}
+              </Button>
+              {/* Sync status hint */}
+              <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                {isAlreadySynced ? (
+                  <>
+                    <CheckCircle2 className="h-3 w-3 text-green-500" />
+                    Синхронизирован
+                    {syncedAt ? (
+                      <>
+                        {" "}·{" "}
+                        {format(new Date(syncedAt), "dd.MM.yyyy HH:mm", { locale: ru })}
+                      </>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <Clock className="h-3 w-3 text-muted-foreground" />
+                    Не запущен
+                  </>
+                )}
+              </span>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAuditOpen(true)}
+              data-testid="button-audit-history"
+            >
+              <History className="h-4 w-4 mr-2" />
+              История
+            </Button>
+          </div>
+
+          {/* Bottom row: scenario selector */}
           <ScenarioSelector
             selectedScenarioId={scenarioId}
             onScenarioChange={setScenarioId}
           />
-
-          {/* Sync button block */}
-          <div className="flex flex-col items-end gap-0.5">
-            <Button
-              className={
-                isAlreadySynced
-                  ? "bg-orange-500/60 text-white cursor-not-allowed opacity-70 hover:bg-orange-500/60"
-                  : "bg-orange-500 hover:bg-orange-600 text-white shadow-sm"
-              }
-              size="sm"
-              onClick={() => !isAlreadySynced && syncMutation.mutate()}
-              disabled={syncMutation.isPending || isAlreadySynced}
-              data-testid="button-sync-logistics"
-            >
-              {isAlreadySynced ? (
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-              ) : (
-                <Truck className="h-4 w-4 mr-2" />
-              )}
-              {syncMutation.isPending
-                ? "Синхронизация..."
-                : isAlreadySynced
-                ? "Запущен в логистику"
-                : "Запустить в план логистики"}
-            </Button>
-            {/* Sync status hint */}
-            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-              {isAlreadySynced ? (
-                <>
-                  <CheckCircle2 className="h-3 w-3 text-green-500" />
-                  Синхронизирован
-                  {syncedAt ? (
-                    <>
-                      {" "}·{" "}
-                      {format(new Date(syncedAt), "dd.MM.yyyy HH:mm", { locale: ru })}
-                    </>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <Clock className="h-3 w-3 text-muted-foreground" />
-                  Не запущен
-                </>
-              )}
-            </span>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setAuditOpen(true)}
-            data-testid="button-audit-history"
-          >
-            <History className="h-4 w-4 mr-2" />
-            История
-          </Button>
         </div>
       </div>
 

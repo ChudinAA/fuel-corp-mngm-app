@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,6 @@ import {
   parseISO,
   isWithinInterval,
   addWeeks,
-  startOfMonth,
 } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -27,6 +26,7 @@ import {
   CalendarDays,
   LayoutGrid,
   CheckCircle,
+  CheckCircle2,
   Clock,
   X,
   ChevronLeft,
@@ -40,6 +40,8 @@ import {
   Package,
   ChevronDown,
   ChevronUp,
+  Info,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RoutePlanDialog } from "./route-plan-dialog";
@@ -136,9 +138,7 @@ function RouteTooltipContent({ route, unit }: { route: any; unit?: any }) {
   return (
     <div className="flex flex-col gap-1.5 min-w-[180px] max-w-[260px] text-xs">
       <div className="flex items-center gap-1.5 font-medium">
-        <span
-          className={cn("inline-block w-2 h-2 rounded-full shrink-0", meta.dot)}
-        />
+        <span className={cn("inline-block w-2 h-2 rounded-full shrink-0", meta.dot)} />
         {meta.label}
         {route.priority != null && (
           <Badge variant="outline" className="ml-auto text-[10px] py-0 px-1 h-4">
@@ -157,7 +157,10 @@ function RouteTooltipContent({ route, unit }: { route: any; unit?: any }) {
       {unit?.vehicle && (
         <div className="flex items-center gap-1 text-muted-foreground">
           <Truck className="h-3 w-3 shrink-0" />
-          <span>{unit.vehicle.regNumber}{unit.vehicle.model ? ` (${unit.vehicle.model})` : ""}</span>
+          <span>
+            {unit.vehicle.regNumber}
+            {unit.vehicle.model ? ` (${unit.vehicle.model})` : ""}
+          </span>
         </div>
       )}
       {unit?.driver && (
@@ -209,10 +212,7 @@ function RoutePill({
         >
           <RouteTypeIcon
             type={route.type}
-            className={cn(
-              "shrink-0 opacity-70",
-              compact ? "h-2.5 w-2.5" : "h-3 w-3",
-            )}
+            className={cn("shrink-0 opacity-70", compact ? "h-2.5 w-2.5" : "h-3 w-3")}
           />
           <span className="truncate max-w-[80px]">{routeShortLabel(route)}</span>
           {route.isLate && (
@@ -225,6 +225,43 @@ function RoutePill({
       </TooltipTrigger>
       <TooltipContent side="top" className="bg-background border shadow-lg p-2">
         <RouteTooltipContent route={route} unit={unit} />
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+// ─── Unassigned badge (replaces the old tiny dot) ────────────────────────────
+
+function UnassignedBadge({ count, demands }: { count: number; demands: any[] }) {
+  const tooltipContent = (
+    <div className="flex flex-col gap-1 text-xs max-w-[220px]">
+      <p className="font-semibold text-red-600 dark:text-red-400">
+        {count} нераспределённых {count === 1 ? "маршрут" : "маршрута/маршрутов"}
+      </p>
+      <p className="text-muted-foreground">
+        Системе не удалось автоматически назначить транспорт. Возможные причины:
+      </p>
+      <ul className="list-disc pl-3 space-y-0.5 text-muted-foreground">
+        <li>Нет доступного транспорта/водителей</li>
+        <li>Не настроены тарифы для маршрута</li>
+        <li>Все ТС заняты в этот период</li>
+      </ul>
+      <p className="text-muted-foreground border-t pt-1 mt-0.5">
+        Нажмите на день для ручного распределения.
+      </p>
+    </div>
+  );
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-red-500 text-white text-[10px] font-semibold leading-none cursor-help">
+          <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
+          {count}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="bg-background border shadow-lg p-2">
+        {tooltipContent}
       </TooltipContent>
     </Tooltip>
   );
@@ -252,14 +289,191 @@ function CalendarLegend() {
         </div>
       ))}
       <div className="flex items-center gap-1">
-        <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-        <span>● Нераспределённые маршруты</span>
+        <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-red-500 text-white text-[9px] font-semibold leading-none">
+          <AlertTriangle className="h-2 w-2" />
+          N
+        </span>
+        <span>Нераспределённые</span>
       </div>
     </div>
   );
 }
 
-// ─── Notifications strip ─────────────────────────────────────────────────────
+// ─── Summary panel ────────────────────────────────────────────────────────────
+
+function LogisticsSummaryPanel({
+  routes,
+  units,
+  unassignedDemands,
+  notifications,
+}: {
+  routes: any[];
+  units: any[];
+  unassignedDemands: any[];
+  notifications: any[];
+}) {
+  const totalRoutes = routes.filter((r) => r.type !== "unavailable").length;
+  const lateCount = routes.filter((r) => r.isLate).length;
+  const deadlineCount = routes.filter((r) => r.isDeadline && !r.isLate).length;
+  const unassignedCount = unassignedDemands.length;
+  const driverUnavailableUnits = units.filter((u) => u.driverUnavailable).length;
+  const vehicleUnavailableUnits = units.filter((u) => u.vehicleUnavailable).length;
+
+  const allGood =
+    unassignedCount === 0 &&
+    lateCount === 0 &&
+    driverUnavailableUnits === 0;
+
+  return (
+    <div className="rounded-md border bg-card px-4 py-3">
+      <div className="flex items-center gap-2 mb-2">
+        <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
+        <span className="text-sm font-medium">Состояние логистики</span>
+        {allGood && (
+          <Badge
+            variant="outline"
+            className="text-[10px] h-5 px-1.5 text-green-700 border-green-300 bg-green-50 dark:text-green-400 dark:border-green-700 dark:bg-green-950/30 ml-auto"
+          >
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Всё в порядке
+          </Badge>
+        )}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {/* Total routes */}
+        <SummaryCard
+          icon={<ArrowRight className="h-3.5 w-3.5" />}
+          label="Маршрутов"
+          value={totalRoutes}
+          variant="neutral"
+        />
+
+        {/* Unassigned */}
+        <SummaryCard
+          icon={<AlertTriangle className="h-3.5 w-3.5" />}
+          label="Нераспределённых"
+          value={unassignedCount}
+          variant={unassignedCount > 0 ? "danger" : "ok"}
+          hint={
+            unassignedCount > 0
+              ? "Не удалось назначить транспорт — проверьте тарифы, транспорт и водителей"
+              : undefined
+          }
+        />
+
+        {/* Late / deadline */}
+        <SummaryCard
+          icon={<Clock className="h-3.5 w-3.5" />}
+          label="Дедлайн/опоздания"
+          value={lateCount + deadlineCount}
+          variant={lateCount > 0 ? "danger" : deadlineCount > 0 ? "warn" : "ok"}
+          hint={
+            lateCount > 0
+              ? `${lateCount} с опозданием, ${deadlineCount} дедлайнов`
+              : deadlineCount > 0
+              ? `${deadlineCount} маршрутов с дедлайном`
+              : undefined
+          }
+        />
+
+        {/* Driver / vehicle availability */}
+        <SummaryCard
+          icon={<User className="h-3.5 w-3.5" />}
+          label="Недоступных ТС/вод."
+          value={driverUnavailableUnits + vehicleUnavailableUnits}
+          variant={
+            driverUnavailableUnits + vehicleUnavailableUnits > 0 ? "warn" : "ok"
+          }
+          hint={
+            driverUnavailableUnits + vehicleUnavailableUnits > 0
+              ? `${driverUnavailableUnits} вод. недоступно, ${vehicleUnavailableUnits} ТС недоступно`
+              : undefined
+          }
+        />
+      </div>
+
+      {/* Actionable hints */}
+      {unassignedCount > 0 && (
+        <div className="mt-3 flex items-start gap-2 rounded-md bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <span>
+            <strong>{unassignedCount} {unassignedCount === 1 ? "маршрут не распределён" : "маршрута не распределены"}.</strong>{" "}
+            Проверьте: настроены ли тарифы во вкладке «Маршруты», добавлены ли транспортные единицы
+            во вкладке «Транспорт», и есть ли доступные водители на нужные даты.
+            Нажмите на день в календаре для ручного назначения.
+          </span>
+        </div>
+      )}
+      {units.length === 0 && (
+        <div className="mt-3 flex items-start gap-2 rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+          <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <span>
+            Транспортные единицы не настроены. Перейдите во вкладку «Транспорт» и добавьте
+            тягачи с прицепами и водителями для автоматического формирования логистики.
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SummaryCard({
+  icon,
+  label,
+  value,
+  variant,
+  hint,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  variant: "ok" | "warn" | "danger" | "neutral";
+  hint?: string;
+}) {
+  const colors = {
+    ok: "text-green-700 dark:text-green-400",
+    warn: "text-amber-700 dark:text-amber-400",
+    danger: "text-red-700 dark:text-red-400",
+    neutral: "text-foreground",
+  };
+  const bgColors = {
+    ok: "",
+    warn: "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800",
+    danger: "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800",
+    neutral: "",
+  };
+
+  const card = (
+    <div
+      className={cn(
+        "flex flex-col gap-0.5 rounded-md border px-3 py-2",
+        bgColors[variant] || "border-border",
+      )}
+    >
+      <div className={cn("flex items-center gap-1.5 text-[11px] text-muted-foreground")}>
+        <span className={cn(variant !== "neutral" && value > 0 ? colors[variant] : "")}>
+          {icon}
+        </span>
+        {label}
+      </div>
+      <div className={cn("text-xl font-bold leading-none", variant !== "neutral" && value > 0 ? colors[variant] : "text-foreground")}>
+        {value}
+      </div>
+    </div>
+  );
+
+  if (hint) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{card}</TooltipTrigger>
+        <TooltipContent className="max-w-[200px] text-xs">{hint}</TooltipContent>
+      </Tooltip>
+    );
+  }
+  return card;
+}
+
+// ─── Notifications strip ──────────────────────────────────────────────────────
 
 function NotificationsStrip({
   notifications,
@@ -274,6 +488,11 @@ function NotificationsStrip({
 }) {
   const [expanded, setExpanded] = useState(false);
 
+  // Auto-expand when there are unread notifications
+  useEffect(() => {
+    if (unreadCount > 0) setExpanded(true);
+  }, [unreadCount]);
+
   return (
     <div className="rounded-md border bg-card">
       {/* header row */}
@@ -287,6 +506,9 @@ function NotificationsStrip({
           <Badge variant="destructive" className="text-[10px] h-4 px-1">
             {unreadCount}
           </Badge>
+        )}
+        {unreadCount === 0 && notifications.length > 0 && (
+          <span className="text-xs text-muted-foreground">({notifications.length})</span>
         )}
         <div className="ml-auto flex items-center gap-2">
           {unreadCount > 0 && (
@@ -369,7 +591,6 @@ function WeekView({
   const from = new Date(periodFrom);
   const to = new Date(periodTo);
 
-  // Build list of week starts within the period
   const allWeekStarts = useMemo(() => {
     const weeks: Date[] = [];
     let ws = startOfWeek(from, { weekStartsOn: 1 });
@@ -431,16 +652,6 @@ function WeekView({
       }
     });
 
-  const hasUnassigned = (day: Date) =>
-    unassignedDemands.some((d: any) => {
-      if (!d.deliveryDeadline) return false;
-      try {
-        return isSameDay(parseISO(d.deliveryDeadline), day);
-      } catch {
-        return false;
-      }
-    });
-
   const unassignedForDay = (day: Date) =>
     unassignedDemands.filter((d: any) => {
       if (!d.deliveryDeadline) return false;
@@ -497,7 +708,7 @@ function WeekView({
           {weekDays.map((day, i) => {
             const today = isSameDay(day, new Date());
             const active = inPeriod(day);
-            const unassigned = active && hasUnassigned(day);
+            const dayUnassigned = active ? unassignedForDay(day) : [];
             return (
               <div
                 key={i}
@@ -519,12 +730,9 @@ function WeekView({
                 <div className="text-[10px] text-muted-foreground">
                   {format(day, "MMM", { locale: ru })}
                 </div>
-                {unassigned && (
-                  <div className="flex justify-center mt-0.5">
-                    <span
-                      className="w-2 h-2 rounded-full bg-red-500 inline-block"
-                      title="Нераспределённые маршруты"
-                    />
+                {dayUnassigned.length > 0 && (
+                  <div className="flex justify-center mt-1">
+                    <UnassignedBadge count={dayUnassigned.length} demands={dayUnassigned} />
                   </div>
                 )}
               </div>
@@ -675,8 +883,8 @@ function MonthView({
       }
     });
 
-  const hasUnassigned = (day: Date) =>
-    unassignedDemands.some((d: any) => {
+  const unassignedForDay = (day: Date) =>
+    unassignedDemands.filter((d: any) => {
       if (!d.deliveryDeadline) return false;
       try {
         return isSameDay(parseISO(d.deliveryDeadline), day);
@@ -713,8 +921,8 @@ function MonthView({
                 const inRange = day >= from && day <= to;
                 const today = isSameDay(day, new Date());
                 const dayRoutes = inRange ? getRoutesForDay(day) : [];
-                const unassigned = inRange && hasUnassigned(day);
-                const maxVisible = 4;
+                const dayUnassigned = inRange ? unassignedForDay(day) : [];
+                const maxVisible = 3;
 
                 return (
                   <div
@@ -727,8 +935,8 @@ function MonthView({
                     )}
                     onClick={() => inRange && onOpenDay(day)}
                   >
-                    {/* day number */}
-                    <div className="flex items-center justify-between mb-1">
+                    {/* day number + unassigned badge */}
+                    <div className="flex items-start justify-between mb-1 gap-1">
                       <span
                         className={cn(
                           "text-sm font-medium leading-none",
@@ -739,15 +947,8 @@ function MonthView({
                       >
                         {format(day, "d")}
                       </span>
-                      {unassigned && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">Нераспределённые маршруты</p>
-                          </TooltipContent>
-                        </Tooltip>
+                      {dayUnassigned.length > 0 && (
+                        <UnassignedBadge count={dayUnassigned.length} demands={dayUnassigned} />
                       )}
                     </div>
 
@@ -839,16 +1040,8 @@ export function PlanningTab({ periodFrom, periodTo }: PlanningTabProps) {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex flex-col gap-3">
-        {/* Sync status */}
+        {/* Sync status + alternative scenario banner */}
         <SyncStatusBanner syncData={syncData} periodFrom={periodFrom} periodTo={periodTo} />
-
-        {/* Notifications — always visible under tabs */}
-        <NotificationsStrip
-          notifications={notifications}
-          unreadCount={unreadCount}
-          onMarkRead={(id) => markReadMutation.mutate(id)}
-          onMarkAllRead={() => markAllReadMutation.mutate()}
-        />
 
         {!hasSyncedPlan ? (
           <div className="flex flex-col items-center justify-center py-16 text-center gap-3 rounded-md border bg-muted/20">
@@ -861,6 +1054,22 @@ export function PlanningTab({ periodFrom, periodTo }: PlanningTabProps) {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
+            {/* Summary panel */}
+            <LogisticsSummaryPanel
+              routes={routes}
+              units={units}
+              unassignedDemands={unassignedDemands}
+              notifications={notifications}
+            />
+
+            {/* Notifications — auto-expands when unread > 0 */}
+            <NotificationsStrip
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onMarkRead={(id) => markReadMutation.mutate(id)}
+              onMarkAllRead={() => markAllReadMutation.mutate()}
+            />
+
             {/* View switcher + legend */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex gap-2">

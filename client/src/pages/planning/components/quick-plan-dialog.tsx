@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, addDays, differenceInDays } from "date-fns";
 import { ru } from "date-fns/locale";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Loader2, Tag } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -41,13 +41,20 @@ interface PlanningResourceWithSupplier {
   basisName?: string | null;
 }
 
+interface BasisOption {
+  id: string;
+  name: string;
+}
+
 const NO_DATE = "__none__";
+const NO_BASIS = "__none__";
 
 interface QuickEntry {
   id: string;
-  date: string; // NO_DATE or specific date (uses period.start on save if NO_DATE)
+  date: string; // NO_DATE or specific date
   volume: string;
   counterpartyId: string;
+  basisId: string; // NO_BASIS or actual basisId
   notes: string;
 }
 
@@ -66,6 +73,14 @@ function periodDays(period: FiveDayPeriod): string[] {
   return days;
 }
 
+/** Middle day of the period (rounded down) */
+function periodMiddleDate(period: FiveDayPeriod): string {
+  const start = new Date(period.start + "T00:00:00");
+  const end = new Date(period.end + "T00:00:00");
+  const diff = differenceInDays(end, start);
+  return format(addDays(start, Math.floor(diff / 2)), "yyyy-MM-dd");
+}
+
 function fmtPeriodLabel(p: FiveDayPeriod): string {
   const s = new Date(p.start + "T00:00:00");
   const e = new Date(p.end + "T00:00:00");
@@ -77,6 +92,10 @@ function fmtPeriodLabel(p: FiveDayPeriod): string {
     return `${sDay}–${eDay} ${sMonth}`;
   }
   return `${sDay} ${sMonth} – ${eDay} ${eMonth}`;
+}
+
+function makeEmptyEntry(): QuickEntry {
+  return { id: makeid(), date: NO_DATE, volume: "", counterpartyId: "", basisId: NO_BASIS, notes: "" };
 }
 
 export function QuickPlanDialog({
@@ -96,21 +115,21 @@ export function QuickPlanDialog({
 }) {
   const { toast } = useToast();
   const [type, setType] = useState<"income" | "expense">(defaultType);
-  const [entries, setEntries] = useState<QuickEntry[]>([
-    { id: makeid(), date: NO_DATE, volume: "", counterpartyId: "", notes: "" },
-  ]);
+  const [entries, setEntries] = useState<QuickEntry[]>([makeEmptyEntry()]);
   const [saving, setSaving] = useState(false);
 
   const days = periodDays(period);
+  const defaultDate = periodMiddleDate(period);
 
   useEffect(() => {
     if (open) {
       setType(defaultType);
-      setEntries([{ id: makeid(), date: NO_DATE, volume: "", counterpartyId: "", notes: "" }]);
+      setEntries([makeEmptyEntry()]);
     }
   }, [open, defaultType]);
 
-  // Fetch counterparty options
+  // ─── Data fetches ─────────────────────────────────────────────────────────
+
   const { data: planningResources = [] } = useQuery<PlanningResourceWithSupplier[]>({
     queryKey: ["/api/planning/resources"],
     queryFn: async () => (await apiRequest("GET", "/api/planning/resources")).json(),
@@ -123,31 +142,61 @@ export function QuickPlanDialog({
     enabled: open && type === "expense",
   });
 
-  const incomeOptions = planningResources.map((r) => ({
-    value: r.supplierId,
-    label: r.basisName ? `${r.supplierName} / ${r.basisName}` : r.supplierName,
-  }));
-  const expenseOptions = customers.map((c) => ({ value: c.id, label: c.name }));
-  const counterpartyOptions =
-    type === "income"
-      ? [{ value: "", label: "— Не указан —" }, ...incomeOptions]
-      : [{ value: "", label: "— Не указан —" }, ...expenseOptions];
+  const { data: allBases = [] } = useQuery<BasisOption[]>({
+    queryKey: ["/api/bases"],
+    queryFn: async () => (await apiRequest("GET", "/api/bases")).json(),
+    enabled: open && type === "expense",
+  });
 
-  // ─── Row helpers ───
+  // ─── Derived options ──────────────────────────────────────────────────────
+
+  /** Deduplicated suppliers for income */
+  const supplierOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of planningResources) {
+      if (!seen.has(r.supplierId)) seen.set(r.supplierId, r.supplierName);
+    }
+    return Array.from(seen.entries()).map(([value, label]) => ({ value, label }));
+  }, [planningResources]);
+
+  /** Bases available for a given supplierId (income) */
+  function basesForSupplier(supplierId: string) {
+    const opts = planningResources
+      .filter((r) => r.supplierId === supplierId && r.basisId)
+      .map((r) => ({ value: r.basisId!, label: r.basisName! }));
+    return opts;
+  }
+
+  /** Bases for expense: all bases */
+  const expenseBasisOptions = useMemo(
+    () => allBases.map((b) => ({ value: b.id, label: b.name })),
+    [allBases],
+  );
+
+  const customerOptions = useMemo(
+    () => customers.map((c) => ({ value: c.id, label: c.name })),
+    [customers],
+  );
+
+  // ─── Row helpers ──────────────────────────────────────────────────────────
+
   const updateEntry = (id: string, field: keyof QuickEntry, value: string) => {
-    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, [field]: value } : e)));
+    setEntries((prev) =>
+      prev.map((e) => {
+        if (e.id !== id) return e;
+        // Reset basisId when counterparty changes
+        if (field === "counterpartyId") return { ...e, counterpartyId: value, basisId: NO_BASIS };
+        return { ...e, [field]: value };
+      }),
+    );
   };
 
-  const addRow = () =>
-    setEntries((prev) => [
-      ...prev,
-      { id: makeid(), date: NO_DATE, volume: "", counterpartyId: "", notes: "" },
-    ]);
+  const addRow = () => setEntries((prev) => [...prev, makeEmptyEntry()]);
 
-  const removeRow = (id: string) =>
-    setEntries((prev) => prev.filter((e) => e.id !== id));
+  const removeRow = (id: string) => setEntries((prev) => prev.filter((e) => e.id !== id));
 
-  // ─── Submit ───
+  // ─── Submit ───────────────────────────────────────────────────────────────
+
   const handleSubmit = async () => {
     const valid = entries.filter((e) => e.volume.trim() !== "");
     if (valid.length === 0) {
@@ -157,11 +206,13 @@ export function QuickPlanDialog({
     setSaving(true);
     try {
       for (const e of valid) {
+        const resolvedDate =
+          e.date && e.date !== NO_DATE ? e.date : defaultDate;
         await onSubmitEntry({
-          date: (e.date && e.date !== NO_DATE) ? e.date : period.start,
+          date: resolvedDate,
           type,
           counterpartyId: e.counterpartyId || undefined,
-          basisId: undefined,
+          basisId: e.basisId && e.basisId !== NO_BASIS ? e.basisId : undefined,
           volume: tonsToKg(e.volume),
           notes: e.notes || undefined,
           isManualBalance: false,
@@ -209,7 +260,7 @@ export function QuickPlanDialog({
             size="sm"
             onClick={() => {
               setType("income");
-              setEntries((prev) => prev.map((e) => ({ ...e, counterpartyId: "" })));
+              setEntries((prev) => prev.map((e) => ({ ...e, counterpartyId: "", basisId: NO_BASIS })));
             }}
             data-testid="button-type-income"
           >
@@ -221,7 +272,7 @@ export function QuickPlanDialog({
             size="sm"
             onClick={() => {
               setType("expense");
-              setEntries((prev) => prev.map((e) => ({ ...e, counterpartyId: "" })));
+              setEntries((prev) => prev.map((e) => ({ ...e, counterpartyId: "", basisId: NO_BASIS })));
             }}
             data-testid="button-type-expense"
           >
@@ -231,123 +282,162 @@ export function QuickPlanDialog({
 
         {/* Entries list */}
         <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-          {entries.map((entry, idx) => (
-            <div
-              key={entry.id}
-              className="rounded-md border bg-muted/30 p-3 space-y-2"
-              data-testid={`quick-entry-row-${idx}`}
-            >
-              <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
-                {/* Date */}
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">День пятидневки</Label>
-                  <Select
-                    value={entry.date}
-                    onValueChange={(v) => updateEntry(entry.id, "date", v)}
-                  >
-                    <SelectTrigger
-                      className="h-9 text-sm"
-                      data-testid={`select-date-${idx}`}
+          {entries.map((entry, idx) => {
+            const incomeBasisOptions = isIncome && entry.counterpartyId
+              ? basesForSupplier(entry.counterpartyId)
+              : [];
+            const showBasisField =
+              isIncome
+                ? entry.counterpartyId !== "" && incomeBasisOptions.length > 0
+                : entry.counterpartyId !== ""; // always show for expense when client selected
+
+            return (
+              <div
+                key={entry.id}
+                className="rounded-md border bg-muted/30 p-3 space-y-2"
+                data-testid={`quick-entry-row-${idx}`}
+              >
+                <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                  {/* Date */}
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">
+                      День пятидневки
+                      <span className="text-[10px] ml-1 text-muted-foreground/60">
+                        (по умолч. середина)
+                      </span>
+                    </Label>
+                    <Select
+                      value={entry.date}
+                      onValueChange={(v) => updateEntry(entry.id, "date", v)}
                     >
-                      <SelectValue placeholder="Без конкретной даты" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NO_DATE}>Без конкретной даты</SelectItem>
-                      {days.map((d) => (
-                        <SelectItem key={d} value={d}>
-                          {format(new Date(d + "T00:00:00"), "dd MMMM (EEEE)", {
-                            locale: ru,
-                          })}
+                      <SelectTrigger
+                        className="h-9 text-sm"
+                        data-testid={`select-date-${idx}`}
+                      >
+                        <SelectValue placeholder="Середина пятидневки" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_DATE}>
+                          Середина пятидневки ({format(new Date(defaultDate + "T00:00:00"), "dd.MM", { locale: ru })})
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        {days.map((d) => (
+                          <SelectItem key={d} value={d}>
+                            {format(new Date(d + "T00:00:00"), "dd MMMM (EEEE)", {
+                              locale: ru,
+                            })}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Volume */}
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">
+                      Объём (т) <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      placeholder="0.000"
+                      value={entry.volume}
+                      onChange={(e) => updateEntry(entry.id, "volume", e.target.value)}
+                      className={cn(
+                        "h-9 text-sm",
+                        !entry.volume && "border-muted-foreground/30",
+                      )}
+                      data-testid={`input-volume-${idx}`}
+                    />
+                  </div>
+
+                  {/* Delete button */}
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => removeRow(entry.id)}
+                    disabled={entries.length === 1}
+                    className="text-muted-foreground hover:text-destructive"
+                    data-testid={`button-remove-row-${idx}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
 
-                {/* Volume */}
+                {/* Counterparty (optional) */}
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">
-                    Объём (т) <span className="text-destructive">*</span>
+                    {isIncome ? "Поставщик" : "Клиент"}{" "}
+                    <span className="text-muted-foreground/60">(необязательно)</span>
                   </Label>
-                  <Input
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    placeholder="0.000"
-                    value={entry.volume}
-                    onChange={(e) => updateEntry(entry.id, "volume", e.target.value)}
-                    className={cn(
-                      "h-9 text-sm",
-                      !entry.volume && "border-muted-foreground/30",
-                    )}
-                    data-testid={`input-volume-${idx}`}
+                  <Combobox
+                    options={[
+                      { value: "", label: isIncome ? "— Поставщик не указан —" : "— Клиент не указан —" },
+                      ...(isIncome ? supplierOptions : customerOptions),
+                    ]}
+                    value={entry.counterpartyId}
+                    onValueChange={(v) => updateEntry(entry.id, "counterpartyId", v)}
+                    placeholder={
+                      isIncome
+                        ? "Выберите поставщика (опционально)"
+                        : "Выберите клиента (опционально)"
+                    }
+                    dataTestId={`combobox-counterparty-${idx}`}
                   />
                 </div>
 
-                {/* Delete button */}
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => removeRow(entry.id)}
-                  disabled={entries.length === 1}
-                  className="text-muted-foreground hover:text-destructive"
-                  data-testid={`button-remove-row-${idx}`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+                {/* Basis (appears after counterparty selected) */}
+                {showBasisField && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Tag className="h-3 w-3" />
+                      Базис{" "}
+                      <span className="text-muted-foreground/60">(необязательно)</span>
+                    </Label>
+                    <Combobox
+                      options={[
+                        { value: NO_BASIS, label: "— Базис не указан —" },
+                        ...(isIncome ? incomeBasisOptions : expenseBasisOptions),
+                      ]}
+                      value={entry.basisId}
+                      onValueChange={(v) => updateEntry(entry.id, "basisId", v)}
+                      placeholder="Выберите базис"
+                      dataTestId={`combobox-basis-${idx}`}
+                    />
+                  </div>
+                )}
 
-              {/* Counterparty (optional) */}
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  {isIncome ? "Поставщик" : "Клиент"}{" "}
-                  <span className="text-muted-foreground/60">(необязательно)</span>
-                </Label>
-                <Combobox
-                  options={counterpartyOptions}
-                  value={entry.counterpartyId}
-                  onValueChange={(v) =>
-                    updateEntry(entry.id, "counterpartyId", v === "" ? "" : v)
-                  }
-                  placeholder={
-                    isIncome
-                      ? "Выберите поставщика (опционально)"
-                      : "Выберите клиента (опционально)"
-                  }
-                  dataTestId={`combobox-counterparty-${idx}`}
-                />
+                {/* Notes (optional) */}
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    Примечание{" "}
+                    <span className="text-muted-foreground/60">(необязательно)</span>
+                  </Label>
+                  <Textarea
+                    value={entry.notes}
+                    onChange={(e) => updateEntry(entry.id, "notes", e.target.value)}
+                    placeholder="Доп. информация..."
+                    rows={1}
+                    className="text-sm resize-none"
+                    data-testid={`textarea-notes-${idx}`}
+                  />
+                </div>
               </div>
-
-              {/* Notes (optional) */}
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  Примечание{" "}
-                  <span className="text-muted-foreground/60">(необязательно)</span>
-                </Label>
-                <Textarea
-                  value={entry.notes}
-                  onChange={(e) => updateEntry(entry.id, "notes", e.target.value)}
-                  placeholder="Доп. информация..."
-                  rows={1}
-                  className="text-sm resize-none"
-                  data-testid={`textarea-notes-${idx}`}
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* Add row */}
+        {/* Add row — highlighted */}
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={addRow}
-          className="w-full border-dashed"
+          className="w-full border-dashed border-2 border-blue-400 text-blue-600 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-500 dark:border-blue-500 dark:text-blue-400 dark:hover:bg-blue-950/30 dark:hover:border-blue-400 font-medium transition-colors"
           data-testid="button-add-quick-row"
         >
-          <Plus className="h-3.5 w-3.5 mr-1" />
+          <Plus className="h-4 w-4 mr-1.5" />
           Добавить строку
         </Button>
 
