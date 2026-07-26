@@ -52,6 +52,7 @@ import {
   Wrench,
   CheckCircle2,
   XCircle,
+  X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AuditPanel } from "@/components/audit-panel";
@@ -109,16 +110,137 @@ function fmtDate(d: string) {
   }
 }
 
+// ─── Extra drivers section ────────────────────────────────────────────────────
+
+function ExtraDriversSection({
+  unit,
+  allDrivers,
+  periodFrom,
+  periodTo,
+}: {
+  unit: any;
+  allDrivers: any[];
+  periodFrom: string;
+  periodTo: string;
+}) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [addOpen, setAddOpen] = useState(false);
+  const [selectedDriverId, setSelectedDriverId] = useState("");
+
+  const { data: extraDrivers = [] } = useQuery<any[]>({
+    queryKey: ["/api/logistics-plan/extra-drivers", unit.id],
+    queryFn: () =>
+      apiRequest("GET", `/api/logistics-plan/transport-units/${unit.id}/extra-drivers`).then((r) => r.json()),
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (driverId: string) =>
+      apiRequest("POST", `/api/logistics-plan/transport-units/${unit.id}/extra-drivers`, { driverId }).then((r) => r.json()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/logistics-plan/extra-drivers", unit.id] });
+      qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
+      setSelectedDriverId("");
+      setAddOpen(false);
+    },
+    onError: (e: any) => toast({ title: e?.message || "Ошибка", variant: "destructive" }),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/logistics-plan/extra-drivers/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/logistics-plan/extra-drivers", unit.id] });
+      qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
+    },
+    onError: (e: any) => toast({ title: e?.message || "Ошибка", variant: "destructive" }),
+  });
+
+  // Exclude already-assigned drivers
+  const assignedIds = new Set([unit.driverId, ...extraDrivers.map((ed: any) => ed.driverId)].filter(Boolean));
+  const availableToAdd = allDrivers.filter((d) => !assignedIds.has(d.id));
+
+  return (
+    <div className="border-t mt-3 pt-3">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-medium text-muted-foreground">Дополнительные водители</p>
+        {!addOpen && (
+          <button
+            className="h-5 flex items-center gap-0.5 text-[10px] text-primary hover:underline"
+            onClick={() => setAddOpen(true)}
+          >
+            <Plus className="h-3 w-3" />
+            Добавить
+          </button>
+        )}
+      </div>
+
+      {extraDrivers.length === 0 && !addOpen && (
+        <p className="text-xs text-muted-foreground italic">Не добавлены</p>
+      )}
+
+      <div className="flex flex-col gap-1">
+        {extraDrivers.map((ed: any) => (
+          <div key={ed.id} className="flex items-center justify-between gap-2 rounded border px-2 py-1">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <User className="h-3 w-3 shrink-0 text-muted-foreground" />
+              <span className="text-xs truncate">{ed.driver?.fullName ?? "—"}</span>
+            </div>
+            <button
+              className="h-5 w-5 flex items-center justify-center rounded hover:bg-muted shrink-0"
+              onClick={() => removeMutation.mutate(ed.id)}
+              disabled={removeMutation.isPending}
+              title="Удалить водителя"
+            >
+              <Trash2 className="h-3 w-3 text-destructive" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {addOpen && (
+        <div className="mt-2 flex items-center gap-2">
+          <select
+            className="flex-1 h-7 text-xs rounded border border-input bg-background px-2 focus:outline-none focus:ring-1 focus:ring-ring"
+            value={selectedDriverId}
+            onChange={(e) => setSelectedDriverId(e.target.value)}
+          >
+            <option value="">Выберите водителя</option>
+            {availableToAdd.map((d) => (
+              <option key={d.id} value={d.id}>{d.fullName}</option>
+            ))}
+          </select>
+          <Button
+            size="sm"
+            className="h-7 text-xs px-2"
+            disabled={!selectedDriverId || addMutation.isPending}
+            onClick={() => addMutation.mutate(selectedDriverId)}
+          >
+            OK
+          </Button>
+          <button
+            className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
+            onClick={() => { setAddOpen(false); setSelectedDriverId(""); }}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Driver schedule inline cell ──────────────────────────────────────────────
 
 function DriverScheduleCell({
   unit,
   periodFrom,
   periodTo,
+  allDrivers,
 }: {
   unit: any;
   periodFrom: string;
   periodTo: string;
+  allDrivers: any[];
 }) {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -140,6 +262,7 @@ function DriverScheduleCell({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/driver-schedule", driverId] });
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
+      qc.invalidateQueries({ queryKey: ["/api/logistics-plan/calendar"] });
       form.reset({ type: "unavailable", dateFrom: periodFrom, dateTo: periodTo, reason: null });
     },
     onError: (e: any) => toast({ title: e?.message || "Ошибка", variant: "destructive" }),
@@ -150,6 +273,7 @@ function DriverScheduleCell({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/driver-schedule", driverId] });
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
+      qc.invalidateQueries({ queryKey: ["/api/logistics-plan/calendar"] });
     },
     onError: (e: any) => toast({ title: e?.message || "Ошибка", variant: "destructive" }),
   });
@@ -178,7 +302,7 @@ function DriverScheduleCell({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className="flex items-center gap-1 group">
+        <button className="flex items-center gap-1 hover:bg-muted/50 rounded px-1 -ml-1 transition-colors">
           {unavailable ? (
             <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
           ) : (
@@ -192,6 +316,7 @@ function DriverScheduleCell({
               {schedules.length}
             </Badge>
           )}
+          <Pencil className="h-3 w-3 text-muted-foreground ml-0.5 opacity-60" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-3" side="left" align="start">
@@ -308,6 +433,13 @@ function DriverScheduleCell({
             </form>
           </Form>
         </div>
+
+        <ExtraDriversSection
+          unit={unit}
+          allDrivers={allDrivers}
+          periodFrom={periodFrom}
+          periodTo={periodTo}
+        />
       </PopoverContent>
     </Popover>
   );
@@ -344,6 +476,7 @@ function VehicleAvailabilityCell({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/vehicle-availability", vehicleId] });
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
+      qc.invalidateQueries({ queryKey: ["/api/logistics-plan/calendar"] });
       form.reset({ type: "repair", dateFrom: periodFrom, dateTo: periodTo, reason: null });
     },
     onError: (e: any) => toast({ title: e?.message || "Ошибка", variant: "destructive" }),
@@ -354,6 +487,7 @@ function VehicleAvailabilityCell({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/vehicle-availability", vehicleId] });
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
+      qc.invalidateQueries({ queryKey: ["/api/logistics-plan/calendar"] });
     },
     onError: (e: any) => toast({ title: e?.message || "Ошибка", variant: "destructive" }),
   });
@@ -382,7 +516,7 @@ function VehicleAvailabilityCell({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className="flex items-center gap-1 group">
+        <button className="flex items-center gap-1 hover:bg-muted/50 rounded px-1 -ml-1 transition-colors">
           {unavailable ? (
             <>
               <Wrench className="h-3.5 w-3.5 text-red-500 shrink-0" />
@@ -399,6 +533,7 @@ function VehicleAvailabilityCell({
               {availabilities.length}
             </Badge>
           )}
+          <Pencil className="h-3 w-3 text-muted-foreground ml-0.5 opacity-60" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-3" side="left" align="start">
@@ -542,6 +677,11 @@ export function TransportTab({ periodFrom, periodTo }: TransportTabProps) {
       ).then((r) => r.json()),
   });
 
+  const { data: allDrivers = [] } = useQuery<any[]>({
+    queryKey: ["/api/logistics/drivers"],
+    queryFn: () => apiRequest("GET", "/api/logistics/drivers").then((r) => r.json()),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) =>
       apiRequest("DELETE", `/api/logistics-plan/transport-units/${id}`),
@@ -672,6 +812,7 @@ export function TransportTab({ periodFrom, periodTo }: TransportTabProps) {
                       unit={unit}
                       periodFrom={periodFrom}
                       periodTo={periodTo}
+                      allDrivers={allDrivers}
                     />
                   </TableCell>
 

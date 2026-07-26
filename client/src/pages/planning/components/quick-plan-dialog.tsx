@@ -145,7 +145,7 @@ export function QuickPlanDialog({
   const { data: allBases = [] } = useQuery<BasisOption[]>({
     queryKey: ["/api/bases"],
     queryFn: async () => (await apiRequest("GET", "/api/bases")).json(),
-    enabled: open && type === "expense",
+    enabled: open, // needed for both income (fallback) and expense
   });
 
   // ─── Derived options ──────────────────────────────────────────────────────
@@ -159,19 +159,29 @@ export function QuickPlanDialog({
     return Array.from(seen.entries()).map(([value, label]) => ({ value, label }));
   }, [planningResources]);
 
-  /** Bases available for a given supplierId (income) */
-  function basesForSupplier(supplierId: string) {
-    const opts = planningResources
-      .filter((r) => r.supplierId === supplierId && r.basisId)
-      .map((r) => ({ value: r.basisId!, label: r.basisName! }));
-    return opts;
-  }
-
-  /** Bases for expense: all bases */
-  const expenseBasisOptions = useMemo(
+  /** All bases as generic options */
+  const allBasisOptions = useMemo(
     () => allBases.map((b) => ({ value: b.id, label: b.name })),
     [allBases],
   );
+
+  /** Bases available for a given supplierId (income) — deduped by basisId */
+  function basesForSupplier(supplierId: string) {
+    const seen = new Map<string, string>();
+    for (const r of planningResources) {
+      if (r.supplierId === supplierId && r.basisId && r.basisName && !seen.has(r.basisId)) {
+        seen.set(r.basisId, r.basisName);
+      }
+    }
+    if (seen.size > 0) {
+      return Array.from(seen.entries()).map(([value, label]) => ({ value, label }));
+    }
+    // Fallback: return all bases if supplier has none configured in resources
+    return allBasisOptions;
+  }
+
+  /** Bases for expense: all bases */
+  const expenseBasisOptions = allBasisOptions;
 
   const customerOptions = useMemo(
     () => customers.map((c) => ({ value: c.id, label: c.name })),
@@ -184,8 +194,12 @@ export function QuickPlanDialog({
     setEntries((prev) =>
       prev.map((e) => {
         if (e.id !== id) return e;
-        // Reset basisId when counterparty changes
-        if (field === "counterpartyId") return { ...e, counterpartyId: value, basisId: NO_BASIS };
+        if (field === "counterpartyId") {
+          // Auto-select the first available basis for the new counterparty
+          const bases = isIncome ? basesForSupplier(value) : expenseBasisOptions;
+          const autoBasid = value !== "" && bases.length > 0 ? bases[0].value : NO_BASIS;
+          return { ...e, counterpartyId: value, basisId: autoBasid };
+        }
         return { ...e, [field]: value };
       }),
     );
@@ -286,10 +300,8 @@ export function QuickPlanDialog({
             const incomeBasisOptions = isIncome && entry.counterpartyId
               ? basesForSupplier(entry.counterpartyId)
               : [];
-            const showBasisField =
-              isIncome
-                ? entry.counterpartyId !== "" && incomeBasisOptions.length > 0
-                : entry.counterpartyId !== ""; // always show for expense when client selected
+            // Show basis field whenever a counterparty is selected
+            const showBasisField = entry.counterpartyId !== "";
 
             return (
               <div

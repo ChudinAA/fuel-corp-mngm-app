@@ -178,6 +178,30 @@ export const logisticsPlanNotifications = pgTable("logistics_plan_notifications"
   periodIdx: index("lpn_period_idx").on(table.periodFrom, table.periodTo),
 }));
 
+// ============ EXTRA DRIVERS (Дополнительные водители на ТС) ============
+
+export const logisticsUnitExtraDrivers = pgTable("logistics_unit_extra_drivers", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  transportUnitId: uuid("transport_unit_id").notNull().references(() => logisticsTransportUnits.id, { onDelete: "cascade" }),
+  driverId: uuid("driver_id").notNull().references(() => logisticsDrivers.id, { onDelete: "cascade" }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "string" }),
+  deletedAt: timestamp("deleted_at", { mode: "string" }),
+  createdById: uuid("created_by_id").references(() => users.id),
+}, (table) => ({
+  unitIdx: index("lued_unit_idx").on(table.transportUnitId),
+  driverIdx2: index("lued_driver_idx").on(table.driverId),
+}));
+
+export const insertLogisticsUnitExtraDriverSchema = z.object({
+  transportUnitId: z.string().uuid(),
+  driverId: z.string().uuid(),
+  notes: z.string().optional().nullable(),
+});
+
+export type LogisticsUnitExtraDriver = typeof logisticsUnitExtraDrivers.$inferSelect;
+
 // ============ RELATIONS ============
 
 export const logisticsTransportUnitsRelations = relations(logisticsTransportUnits, ({ one, many }) => ({

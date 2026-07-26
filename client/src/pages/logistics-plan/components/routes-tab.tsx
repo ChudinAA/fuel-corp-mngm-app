@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -145,12 +145,12 @@ function InlineTransitDays({
   }
 
   return (
-    <div className="flex items-center gap-1 group/cell">
+    <div className="flex items-center gap-1">
       <span className="text-sm">
         {value != null ? value : <span className="text-muted-foreground">—</span>}
       </span>
       <button
-        className="opacity-0 group-hover/cell:opacity-100 h-5 w-5 flex items-center justify-center rounded hover:bg-muted transition-opacity"
+        className="opacity-60 hover:opacity-100 h-5 w-5 flex items-center justify-center rounded hover:bg-muted transition-opacity"
         onClick={startEdit}
         disabled={pending}
         title="Редактировать сутки пути"
@@ -201,10 +201,10 @@ function InlinePriority({
   }
 
   return (
-    <div className="flex items-center gap-1 group/cell">
+    <div className="flex items-center gap-1">
       <PriorityBadge priority={value} />
       <button
-        className="opacity-0 group-hover/cell:opacity-100 h-5 w-5 flex items-center justify-center rounded hover:bg-muted transition-opacity"
+        className="opacity-60 hover:opacity-100 h-5 w-5 flex items-center justify-center rounded hover:bg-muted transition-opacity"
         onClick={() => setEditing(true)}
         disabled={pending}
         title="Редактировать приоритет"
@@ -231,46 +231,62 @@ function CarrierRatesCell({
   const formatRate = (rate: string | null | undefined) =>
     rate != null ? parseFloat(rate).toFixed(2) : "0";
 
-  return (
-    <div className="flex flex-col gap-0.5">
-      {/* АвиаСервис */}
-      <div className="flex items-center gap-1">
-        <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded px-1 py-0.5 min-w-[24px] text-center">
+  const items: React.ReactNode[] = [];
+
+  if (aviaserviceCarrier) {
+    items.push(
+      <div key="as" className="flex items-center gap-1">
+        <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded px-1 py-0.5">
           АС
         </span>
-        <span className="text-xs tabular-nums">{formatRate(route.aviaserviceRate)} ₽</span>
+        <span className="text-xs tabular-nums whitespace-nowrap">{formatRate(route.aviaserviceRate)} ₽</span>
       </div>
+    );
+  }
 
-      {/* Старовойтов */}
-      <div className="flex items-center gap-1">
-        <span className="text-[10px] font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded px-1 py-0.5 min-w-[24px] text-center">
+  if (starovoitovCarrier) {
+    items.push(
+      <div key="st" className="flex items-center gap-1">
+        <span className="text-[10px] font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded px-1 py-0.5">
           СТ
         </span>
-        <span className="text-xs tabular-nums">{formatRate(route.starovoitovRate)} ₽</span>
+        <span className="text-xs tabular-nums whitespace-nowrap">{formatRate(route.starovoitovRate)} ₽</span>
       </div>
+    );
+  }
 
-      {/* Other carriers */}
-      {route.otherCarriers?.map((r: any) => {
-        const name = carrierById.get(r.carrierId)?.name ?? "—";
-        const abbr = name.split(/\s+/).map((w: string) => w[0]).join("").toUpperCase().slice(0, 3);
-        return (
-          <TooltipProvider key={r.id} delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-1 cursor-default">
-                  <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-1 py-0.5 min-w-[24px] text-center">
-                    {abbr}
-                  </span>
-                  <span className="text-xs tabular-nums">{formatRate(r.costPerKg)} ₽</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs">{name}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        );
-      })}
+  route.otherCarriers?.forEach((r: any) => {
+    const name = carrierById.get(r.carrierId)?.name ?? "—";
+    const abbr = name.split(/\s+/).map((w: string) => w[0]).join("").toUpperCase().slice(0, 3);
+    items.push(
+      <Tooltip key={r.id}>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-1 cursor-default">
+            <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-1 py-0.5">
+              {abbr}
+            </span>
+            <span className="text-xs tabular-nums whitespace-nowrap">{formatRate(r.costPerKg)} ₽</span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-xs">{name}</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  });
+
+  if (items.length === 0) {
+    return <span className="text-muted-foreground text-xs">—</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      {items.map((item, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <span className="text-muted-foreground/40 text-xs select-none">|</span>}
+          {item}
+        </React.Fragment>
+      ))}
     </div>
   );
 }
@@ -376,6 +392,13 @@ export function RoutesTab({ periodFrom, periodTo }: RoutesTabProps) {
       otherCarriers,
       allRecords: group,
     });
+  });
+
+  // Stable sort: alphabetical by route direction, prevents jumping after inline edits
+  uniqueRoutes.sort((a, b) => {
+    const ka = `${a.fromLocation ?? ""}:${a.toLocation ?? ""}`;
+    const kb = `${b.fromLocation ?? ""}:${b.toLocation ?? ""}`;
+    return ka.localeCompare(kb, "ru");
   });
 
   return (

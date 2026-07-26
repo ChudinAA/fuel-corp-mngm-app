@@ -665,6 +665,8 @@ export function WarehousePlanPanel({
     queryClient.invalidateQueries({ queryKey: ["/api/planning/summary/resources"] });
     queryClient.invalidateQueries({ queryKey: ["/api/planning/summary/warehouses"] });
     queryClient.invalidateQueries({ queryKey: ["/api/planning/summary/customers"] });
+    // Invalidate logistics calendar so the planning tab updates automatically
+    queryClient.invalidateQueries({ queryKey: ["/api/logistics-plan/calendar"] });
   };
 
   const handleEntrySubmit = async (values: any) => {

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,7 @@ import {
 import { cn } from "@/lib/utils";
 import { RoutePlanDialog } from "./route-plan-dialog";
 import { SyncStatusBanner } from "./sync-status-banner";
+import { useToast } from "@/hooks/use-toast";
 
 interface PlanningTabProps {
   periodFrom: string;
@@ -301,6 +302,74 @@ function CalendarLegend() {
 
 // ─── Summary panel ────────────────────────────────────────────────────────────
 
+type SummaryCardKey = "routes" | "unassigned" | "deadline" | "unavailable";
+
+function SummaryCard({
+  icon,
+  label,
+  value,
+  variant,
+  hint,
+  active,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  variant: "ok" | "warn" | "danger" | "neutral";
+  hint?: string;
+  active?: boolean;
+  onClick?: () => void;
+}) {
+  const colors = {
+    ok: "text-green-700 dark:text-green-400",
+    warn: "text-amber-700 dark:text-amber-400",
+    danger: "text-red-700 dark:text-red-400",
+    neutral: "text-foreground",
+  };
+  const bgColors = {
+    ok: "",
+    warn: "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800",
+    danger: "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800",
+    neutral: "",
+  };
+
+  const card = (
+    <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => e.key === "Enter" && onClick() : undefined}
+      className={cn(
+        "flex flex-col gap-0.5 rounded-md border px-3 py-2 transition-colors",
+        bgColors[variant] || "border-border",
+        onClick && "cursor-pointer hover:bg-muted/50",
+        active && "ring-2 ring-primary ring-offset-1",
+      )}
+    >
+      <div className={cn("flex items-center gap-1.5 text-[11px] text-muted-foreground")}>
+        <span className={cn(variant !== "neutral" && value > 0 ? colors[variant] : "")}>
+          {icon}
+        </span>
+        {label}
+      </div>
+      <div className={cn("text-xl font-bold leading-none", variant !== "neutral" && value > 0 ? colors[variant] : "text-foreground")}>
+        {value}
+      </div>
+    </div>
+  );
+
+  if (hint && !onClick) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{card}</TooltipTrigger>
+        <TooltipContent className="max-w-[200px] text-xs">{hint}</TooltipContent>
+      </Tooltip>
+    );
+  }
+  return card;
+}
+
 function LogisticsSummaryPanel({
   routes,
   units,
@@ -312,17 +381,137 @@ function LogisticsSummaryPanel({
   unassignedDemands: any[];
   notifications: any[];
 }) {
+  const [activeCard, setActiveCard] = useState<SummaryCardKey | null>(null);
+
   const totalRoutes = routes.filter((r) => r.type !== "unavailable").length;
   const lateCount = routes.filter((r) => r.isLate).length;
   const deadlineCount = routes.filter((r) => r.isDeadline && !r.isLate).length;
   const unassignedCount = unassignedDemands.length;
-  const driverUnavailableUnits = units.filter((u) => u.driverUnavailable).length;
-  const vehicleUnavailableUnits = units.filter((u) => u.vehicleUnavailable).length;
+  const driverUnavailableUnits = units.filter((u) => u.driverUnavailable);
+  const vehicleUnavailableUnits = units.filter((u) => u.vehicleUnavailable);
+  const unavailableCount = driverUnavailableUnits.length + vehicleUnavailableUnits.length;
 
   const allGood =
     unassignedCount === 0 &&
     lateCount === 0 &&
-    driverUnavailableUnits === 0;
+    driverUnavailableUnits.length === 0;
+
+  const toggleCard = (key: SummaryCardKey) => setActiveCard((prev) => (prev === key ? null : key));
+
+  // Detail content for each card
+  const renderDetail = () => {
+    if (!activeCard) return null;
+
+    if (activeCard === "routes") {
+      const displayed = routes.filter((r) => r.type !== "unavailable");
+      return (
+        <div className="mt-3 border-t pt-3">
+          <p className="text-xs font-medium mb-2 text-muted-foreground">Все маршруты ({displayed.length})</p>
+          <div className="flex flex-col gap-1 max-h-52 overflow-y-auto pr-1">
+            {displayed.length === 0 && <p className="text-xs text-muted-foreground">Нет маршрутов</p>}
+            {displayed.map((r: any) => (
+              <div key={r.id} className="flex items-center justify-between gap-2 rounded border px-2 py-1.5 text-xs bg-muted/30">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                  <span className="truncate font-medium">{r.fromLocation ?? "—"} → {r.toLocation ?? "—"}</span>
+                </div>
+                <span className="text-muted-foreground shrink-0">{r.date ? r.date.slice(0, 10) : ""}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (activeCard === "unassigned") {
+      return (
+        <div className="mt-3 border-t pt-3">
+          <p className="text-xs font-medium mb-2 text-muted-foreground">Нераспределённые потребности ({unassignedDemands.length})</p>
+          <div className="flex flex-col gap-1 max-h-52 overflow-y-auto pr-1">
+            {unassignedDemands.length === 0 && <p className="text-xs text-muted-foreground text-green-700">Все потребности распределены</p>}
+            {unassignedDemands.map((d: any, i: number) => (
+              <div key={d.id ?? i} className="flex items-center justify-between gap-2 rounded border border-red-200 dark:border-red-800 px-2 py-1.5 text-xs bg-red-50 dark:bg-red-950/20">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Package className="h-3 w-3 text-red-500 shrink-0" />
+                  <span className="truncate">{d.warehouse?.name ?? d.warehouseId ?? "—"}</span>
+                </div>
+                <span className="text-muted-foreground shrink-0">{d.date ? d.date.slice(0, 10) : ""}</span>
+              </div>
+            ))}
+          </div>
+          {unassignedDemands.length > 0 && (
+            <p className="text-[10px] text-muted-foreground mt-2">
+              Нажмите на день в календаре для ручного назначения маршрута.
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    if (activeCard === "deadline") {
+      const problematic = routes.filter((r) => r.isLate || r.isDeadline);
+      return (
+        <div className="mt-3 border-t pt-3">
+          <p className="text-xs font-medium mb-2 text-muted-foreground">Дедлайны и опоздания ({problematic.length})</p>
+          <div className="flex flex-col gap-1 max-h-52 overflow-y-auto pr-1">
+            {problematic.length === 0 && <p className="text-xs text-green-700">Нет просрочек и дедлайнов</p>}
+            {problematic.map((r: any) => (
+              <div
+                key={r.id}
+                className={cn(
+                  "flex items-center justify-between gap-2 rounded border px-2 py-1.5 text-xs",
+                  r.isLate
+                    ? "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20"
+                    : "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20",
+                )}
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Clock className={cn("h-3 w-3 shrink-0", r.isLate ? "text-red-500" : "text-amber-500")} />
+                  <span className="truncate">{r.fromLocation ?? "—"} → {r.toLocation ?? "—"}</span>
+                </div>
+                <span className={cn("shrink-0 font-medium text-[10px]", r.isLate ? "text-red-600" : "text-amber-600")}>
+                  {r.isLate ? "опоздание" : "дедлайн"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (activeCard === "unavailable") {
+      const allUnavailable = [
+        ...driverUnavailableUnits.map((u: any) => ({ ...u, kind: "driver" })),
+        ...vehicleUnavailableUnits.map((u: any) => ({ ...u, kind: "vehicle" })),
+      ];
+      return (
+        <div className="mt-3 border-t pt-3">
+          <p className="text-xs font-medium mb-2 text-muted-foreground">Недоступные ТС/водители ({allUnavailable.length})</p>
+          <div className="flex flex-col gap-1 max-h-52 overflow-y-auto pr-1">
+            {allUnavailable.length === 0 && <p className="text-xs text-green-700">Все доступны</p>}
+            {allUnavailable.map((u: any) => (
+              <div key={u.id + u.kind} className="flex items-center justify-between gap-2 rounded border border-amber-200 dark:border-amber-800 px-2 py-1.5 text-xs bg-amber-50 dark:bg-amber-950/20">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {u.kind === "driver"
+                    ? <User className="h-3 w-3 text-amber-500 shrink-0" />
+                    : <Truck className="h-3 w-3 text-amber-500 shrink-0" />
+                  }
+                  <span className="truncate">
+                    {u.kind === "driver" ? (u.driver?.fullName ?? "—") : (u.vehicle?.regNumber ?? "—")}
+                  </span>
+                </div>
+                <span className="text-muted-foreground shrink-0 text-[10px]">
+                  {u.kind === "driver" ? "водитель" : "ТС"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <div className="rounded-md border bg-card px-4 py-3">
@@ -340,60 +529,45 @@ function LogisticsSummaryPanel({
         )}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* Total routes */}
         <SummaryCard
           icon={<ArrowRight className="h-3.5 w-3.5" />}
           label="Маршрутов"
           value={totalRoutes}
           variant="neutral"
+          active={activeCard === "routes"}
+          onClick={totalRoutes > 0 ? () => toggleCard("routes") : undefined}
         />
-
-        {/* Unassigned */}
         <SummaryCard
           icon={<AlertTriangle className="h-3.5 w-3.5" />}
           label="Нераспределённых"
           value={unassignedCount}
           variant={unassignedCount > 0 ? "danger" : "ok"}
-          hint={
-            unassignedCount > 0
-              ? "Не удалось назначить транспорт — проверьте тарифы, транспорт и водителей"
-              : undefined
-          }
+          hint={unassignedCount === 0 ? undefined : "Не удалось назначить транспорт — проверьте тарифы, транспорт и водителей"}
+          active={activeCard === "unassigned"}
+          onClick={() => toggleCard("unassigned")}
         />
-
-        {/* Late / deadline */}
         <SummaryCard
           icon={<Clock className="h-3.5 w-3.5" />}
           label="Дедлайн/опоздания"
           value={lateCount + deadlineCount}
           variant={lateCount > 0 ? "danger" : deadlineCount > 0 ? "warn" : "ok"}
-          hint={
-            lateCount > 0
-              ? `${lateCount} с опозданием, ${deadlineCount} дедлайнов`
-              : deadlineCount > 0
-              ? `${deadlineCount} маршрутов с дедлайном`
-              : undefined
-          }
+          active={activeCard === "deadline"}
+          onClick={lateCount + deadlineCount > 0 ? () => toggleCard("deadline") : undefined}
         />
-
-        {/* Driver / vehicle availability */}
         <SummaryCard
           icon={<User className="h-3.5 w-3.5" />}
           label="Недоступных ТС/вод."
-          value={driverUnavailableUnits + vehicleUnavailableUnits}
-          variant={
-            driverUnavailableUnits + vehicleUnavailableUnits > 0 ? "warn" : "ok"
-          }
-          hint={
-            driverUnavailableUnits + vehicleUnavailableUnits > 0
-              ? `${driverUnavailableUnits} вод. недоступно, ${vehicleUnavailableUnits} ТС недоступно`
-              : undefined
-          }
+          value={unavailableCount}
+          variant={unavailableCount > 0 ? "warn" : "ok"}
+          active={activeCard === "unavailable"}
+          onClick={unavailableCount > 0 ? () => toggleCard("unavailable") : undefined}
         />
       </div>
 
+      {renderDetail()}
+
       {/* Actionable hints */}
-      {unassignedCount > 0 && (
+      {!activeCard && unassignedCount > 0 && (
         <div className="mt-3 flex items-start gap-2 rounded-md bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
           <span>
@@ -415,62 +589,6 @@ function LogisticsSummaryPanel({
       )}
     </div>
   );
-}
-
-function SummaryCard({
-  icon,
-  label,
-  value,
-  variant,
-  hint,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number;
-  variant: "ok" | "warn" | "danger" | "neutral";
-  hint?: string;
-}) {
-  const colors = {
-    ok: "text-green-700 dark:text-green-400",
-    warn: "text-amber-700 dark:text-amber-400",
-    danger: "text-red-700 dark:text-red-400",
-    neutral: "text-foreground",
-  };
-  const bgColors = {
-    ok: "",
-    warn: "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800",
-    danger: "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800",
-    neutral: "",
-  };
-
-  const card = (
-    <div
-      className={cn(
-        "flex flex-col gap-0.5 rounded-md border px-3 py-2",
-        bgColors[variant] || "border-border",
-      )}
-    >
-      <div className={cn("flex items-center gap-1.5 text-[11px] text-muted-foreground")}>
-        <span className={cn(variant !== "neutral" && value > 0 ? colors[variant] : "")}>
-          {icon}
-        </span>
-        {label}
-      </div>
-      <div className={cn("text-xl font-bold leading-none", variant !== "neutral" && value > 0 ? colors[variant] : "text-foreground")}>
-        {value}
-      </div>
-    </div>
-  );
-
-  if (hint) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{card}</TooltipTrigger>
-        <TooltipContent className="max-w-[200px] text-xs">{hint}</TooltipContent>
-      </Tooltip>
-    );
-  }
-  return card;
 }
 
 // ─── Notifications strip ──────────────────────────────────────────────────────
@@ -983,6 +1101,7 @@ function MonthView({
 
 export function PlanningTab({ periodFrom, periodTo }: PlanningTabProps) {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [routePlanOpen, setRoutePlanOpen] = useState(false);
@@ -994,7 +1113,21 @@ export function PlanningTab({ periodFrom, periodTo }: PlanningTabProps) {
         "GET",
         `/api/logistics-plan/calendar?periodFrom=${periodFrom}&periodTo=${periodTo}`,
       ).then((r) => r.json()),
+    refetchInterval: 30_000,
   });
+
+  // Show toast when new unread notifications arrive (plan updated externally)
+  const prevUnreadRef = useRef<number>(-1);
+  useEffect(() => {
+    const cur: number = calendarData?.unreadCount ?? 0;
+    if (prevUnreadRef.current >= 0 && cur > prevUnreadRef.current) {
+      toast({
+        title: "Логистика обновлена",
+        description: "Появились новые изменения в плане — данные обновлены.",
+      });
+    }
+    prevUnreadRef.current = cur;
+  }, [calendarData?.unreadCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: syncData } = useQuery<any>({
     queryKey: ["/api/logistics-plan/sync", periodFrom, periodTo],

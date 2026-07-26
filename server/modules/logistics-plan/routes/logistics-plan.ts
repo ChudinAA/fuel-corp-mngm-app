@@ -824,4 +824,69 @@ export function registerLogisticsPlanRoutes(app: Express) {
       }
     }
   );
+
+  // ============ EXTRA DRIVERS (Дополнительные водители ТС) ============
+
+  app.get(
+    "/api/logistics-plan/transport-units/:id/extra-drivers",
+    requireAuth,
+    requirePermission("planning", "view"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const extraDrivers = await storage.logisticsPlan.getExtraDriversForUnit(id);
+        const allDrivers = await storage.logistics.getAllLogisticsDrivers();
+        const enriched = extraDrivers.map((ed) => ({
+          ...ed,
+          driver: allDrivers.find((d) => d.id === ed.driverId),
+        }));
+        res.json(enriched);
+      } catch (error) {
+        res.status(500).json({ message: "Ошибка получения дополнительных водителей" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/logistics-plan/transport-units/:id/extra-drivers",
+    requireAuth,
+    requirePermission("planning", "edit"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { driverId, notes } = req.body as { driverId: string; notes?: string };
+        if (!driverId) {
+          return res.status(400).json({ message: "driverId обязателен" });
+        }
+        const created = await storage.logisticsPlan.addExtraDriver({
+          transportUnitId: id,
+          driverId,
+          notes: notes ?? null,
+          createdById: req.session.userId as unknown as string,
+        });
+        const allDrivers = await storage.logistics.getAllLogisticsDrivers();
+        res.status(201).json({
+          ...created,
+          driver: allDrivers.find((d) => d.id === driverId),
+        });
+      } catch (error) {
+        res.status(500).json({ message: "Ошибка добавления водителя" });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/logistics-plan/extra-drivers/:id",
+    requireAuth,
+    requirePermission("planning", "edit"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        await storage.logisticsPlan.removeExtraDriver(id);
+        res.status(204).end();
+      } catch (error) {
+        res.status(500).json({ message: "Ошибка удаления водителя" });
+      }
+    }
+  );
 }

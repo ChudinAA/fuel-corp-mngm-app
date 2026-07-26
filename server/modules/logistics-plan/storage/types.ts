@@ -59,6 +59,11 @@ export interface ILogisticsPlanStorage {
   getLatestSync(scenarioId?: string): Promise<LogisticsMonthlySync | undefined>;
   getSyncByPeriodAndScenario(periodFrom: string, periodTo: string, scenarioId?: string | null): Promise<LogisticsMonthlySync | undefined>;
 
+  // Extra Drivers
+  getExtraDriversForUnit(transportUnitId: string): Promise<any[]>;
+  addExtraDriver(data: { transportUnitId: string; driverId: string; notes?: string | null; createdById?: string }): Promise<any>;
+  removeExtraDriver(id: string): Promise<boolean>;
+
   // Notifications
   getNotifications(filters?: { periodFrom?: string; periodTo?: string; isRead?: boolean }): Promise<LogisticsPlanNotification[]>;
   createNotification(data: InsertLogisticsPlanNotification): Promise<LogisticsPlanNotification>;

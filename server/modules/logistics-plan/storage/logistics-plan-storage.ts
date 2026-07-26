@@ -8,6 +8,7 @@ import {
   logisticsPlanComments,
   logisticsMonthlySyncs,
   logisticsPlanNotifications,
+  logisticsUnitExtraDrivers,
   planEntries,
   type LogisticsTransportUnit,
   type InsertLogisticsTransportUnit,
@@ -394,5 +395,41 @@ export class LogisticsPlanStorage implements ILogisticsPlanStorage {
       .from(logisticsPlanNotifications)
       .where(and(...conditions));
     return result?.count ?? 0;
+  }
+
+  // ========== EXTRA DRIVERS ==========
+
+  async getExtraDriversForUnit(transportUnitId: string): Promise<any[]> {
+    return db
+      .select()
+      .from(logisticsUnitExtraDrivers)
+      .where(
+        and(
+          eq(logisticsUnitExtraDrivers.transportUnitId, transportUnitId),
+          isNull(logisticsUnitExtraDrivers.deletedAt),
+        ),
+      )
+      .orderBy(asc(logisticsUnitExtraDrivers.createdAt));
+  }
+
+  async addExtraDriver(data: {
+    transportUnitId: string;
+    driverId: string;
+    notes?: string | null;
+    createdById?: string;
+  }): Promise<any> {
+    const [created] = await db
+      .insert(logisticsUnitExtraDrivers)
+      .values(data)
+      .returning();
+    return created;
+  }
+
+  async removeExtraDriver(id: string): Promise<boolean> {
+    await db
+      .update(logisticsUnitExtraDrivers)
+      .set({ deletedAt: sql`NOW()` })
+      .where(eq(logisticsUnitExtraDrivers.id, id));
+    return true;
   }
 }
