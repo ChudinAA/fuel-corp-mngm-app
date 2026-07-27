@@ -184,6 +184,11 @@ export const logisticsUnitExtraDrivers = pgTable("logistics_unit_extra_drivers",
   id: uuid("id").defaultRandom().primaryKey(),
   transportUnitId: uuid("transport_unit_id").notNull().references(() => logisticsTransportUnits.id, { onDelete: "cascade" }),
   driverId: uuid("driver_id").notNull().references(() => logisticsDrivers.id, { onDelete: "cascade" }),
+  /** Optional availability window for this extra driver on the unit */
+  dateFrom: timestamp("date_from", { mode: "string" }),
+  dateTo: timestamp("date_to", { mode: "string" }),
+  /** available | unavailable | vacation | sick | other — null means always available */
+  scheduleType: text("schedule_type"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "string" }),
@@ -197,6 +202,9 @@ export const logisticsUnitExtraDrivers = pgTable("logistics_unit_extra_drivers",
 export const insertLogisticsUnitExtraDriverSchema = z.object({
   transportUnitId: z.string().uuid(),
   driverId: z.string().uuid(),
+  dateFrom: z.string().optional().nullable(),
+  dateTo: z.string().optional().nullable(),
+  scheduleType: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
 });
 

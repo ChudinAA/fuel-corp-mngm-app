@@ -57,6 +57,8 @@ export class DeliveryStorage implements IDeliveryStorage {
         toLocation: data.toLocation,
         costPerKg: data.costPerKg,
         distance: data.distance || null,
+        transitDays: data.transitDays != null ? Number(data.transitDays) : null,
+        priority: data.priority != null ? Number(data.priority) : null,
         createdById: userId,
       })
       .returning();

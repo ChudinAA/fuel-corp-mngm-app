@@ -375,11 +375,13 @@ function LogisticsSummaryPanel({
   units,
   unassignedDemands,
   notifications,
+  onOpenDay,
 }: {
   routes: any[];
   units: any[];
   unassignedDemands: any[];
   notifications: any[];
+  onOpenDay?: (day: Date) => void;
 }) {
   const [activeCard, setActiveCard] = useState<SummaryCardKey | null>(null);
 
@@ -401,6 +403,7 @@ function LogisticsSummaryPanel({
   // Detail content for each card
   const renderDetail = () => {
     if (!activeCard) return null;
+    // onOpenDay is available via closure from props
 
     if (activeCard === "routes") {
       const displayed = routes.filter((r) => r.type !== "unavailable");
@@ -413,9 +416,18 @@ function LogisticsSummaryPanel({
               <div key={r.id} className="flex items-center justify-between gap-2 rounded border px-2 py-1.5 text-xs bg-muted/30">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                  <span className="truncate font-medium">{r.fromLocation ?? "—"} → {r.toLocation ?? "—"}</span>
+                  <span className="truncate font-medium">
+                    {r.fromEntityName ?? "—"} → {r.toEntityName ?? "—"}
+                  </span>
                 </div>
-                <span className="text-muted-foreground shrink-0">{r.date ? r.date.slice(0, 10) : ""}</span>
+                <div className="flex flex-col items-end shrink-0 gap-0.5">
+                  {r.dateStart && (
+                    <span className="text-muted-foreground">{r.dateStart.slice(0, 10)}</span>
+                  )}
+                  {r.status === "auto" && (
+                    <span className="text-[10px] text-blue-500">авто</span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -430,18 +442,43 @@ function LogisticsSummaryPanel({
           <div className="flex flex-col gap-1 max-h-52 overflow-y-auto pr-1">
             {unassignedDemands.length === 0 && <p className="text-xs text-muted-foreground text-green-700">Все потребности распределены</p>}
             {unassignedDemands.map((d: any, i: number) => (
-              <div key={d.id ?? i} className="flex items-center justify-between gap-2 rounded border border-red-200 dark:border-red-800 px-2 py-1.5 text-xs bg-red-50 dark:bg-red-950/20">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <Package className="h-3 w-3 text-red-500 shrink-0" />
-                  <span className="truncate">{d.warehouse?.name ?? d.warehouseId ?? "—"}</span>
+              <div
+                key={d.id ?? i}
+                className="flex items-start justify-between gap-2 rounded border border-red-200 dark:border-red-800 px-2 py-1.5 text-xs bg-red-50 dark:bg-red-950/20"
+              >
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <Package className="h-3 w-3 text-red-500 shrink-0" />
+                    <span className="truncate font-medium">
+                      {d.fromEntityName || "—"} → {d.toEntityName || "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 pl-4 text-muted-foreground">
+                    <span>{d.type === "income" ? "Приход" : "Расход"}</span>
+                    {d.volume && (
+                      <span>{parseFloat(d.volume).toLocaleString("ru-RU")} т</span>
+                    )}
+                    {d.deliveryDeadline && (
+                      <span>дедлайн: {d.deliveryDeadline.slice(0, 10)}</span>
+                    )}
+                  </div>
                 </div>
-                <span className="text-muted-foreground shrink-0">{d.date ? d.date.slice(0, 10) : ""}</span>
+                {onOpenDay && d.deliveryDeadline && (
+                  <button
+                    className="shrink-0 text-[10px] text-primary underline hover:no-underline"
+                    onClick={() => {
+                      try { onOpenDay(new Date(d.deliveryDeadline)); } catch {}
+                    }}
+                  >
+                    Назначить
+                  </button>
+                )}
               </div>
             ))}
           </div>
           {unassignedDemands.length > 0 && (
             <p className="text-[10px] text-muted-foreground mt-2">
-              Нажмите на день в календаре для ручного назначения маршрута.
+              Нажмите «Назначить» или кликните день в календаре для ручного распределения.
             </p>
           )}
         </div>
@@ -1193,6 +1230,7 @@ export function PlanningTab({ periodFrom, periodTo }: PlanningTabProps) {
               units={units}
               unassignedDemands={unassignedDemands}
               notifications={notifications}
+              onOpenDay={openDayPlan}
             />
 
             {/* Notifications — auto-expands when unread > 0 */}

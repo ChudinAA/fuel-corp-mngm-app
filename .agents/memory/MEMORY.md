@@ -1,4 +1,5 @@
 - [Logistics auto-assign engine](logistics-auto-assign.md) — sync now runs full auto-assignment; calendar was always empty before; re-sync deletes auto routes then regenerates.
+- [Logistics plan bug fixes & features](logistics-plan-summary.md) — summary panel field fixes, route-plan-dialog rewrite (entity selects+tariff search), scenario filter fixes, extra drivers with schedule, transitDays/priority in tariff form.
 - [Neon serverless array binding](neon-array-binding.md) — never bind a JS array as a single SQL param with raw `= ANY(${arr})`; use Drizzle's `inArray()` instead.
 - [Planning actuals quantity fix](planning-actuals-qty.md) — expense warehouse transactions stored as NEGATIVE qty; always use Math.abs for totals; inventory sign determines income/expense.
 - [Planning periodFrom timestamp fix](planning-periodfrom.md) — DB stores periodFrom as full timestamp; compare with .slice(0,10) to match date-only strings.

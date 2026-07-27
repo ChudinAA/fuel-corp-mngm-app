@@ -53,6 +53,11 @@ interface AddDeliveryCostDialogProps {
   onInlineOpenChange?: (open: boolean) => void;
   onCreated?: (id: string) => void;
   onClose?: () => void;
+  /** Pre-fill entity selection when opened from route-plan-dialog */
+  prefillFromEntityType?: string;
+  prefillFromEntityId?: string;
+  prefillToEntityType?: string;
+  prefillToEntityId?: string;
 }
 
 export function AddDeliveryCostDialog({
@@ -62,6 +67,10 @@ export function AddDeliveryCostDialog({
   onInlineOpenChange,
   onCreated,
   onClose,
+  prefillFromEntityType,
+  prefillFromEntityId,
+  prefillToEntityType,
+  prefillToEntityId,
 }: AddDeliveryCostDialogProps) {
   const { toast } = useToast();
   const { showError, ErrorModalComponent } = useErrorModal();
@@ -84,6 +93,8 @@ export function AddDeliveryCostDialog({
       toLocation: "",
       costPerKg: "",
       distance: "",
+      transitDays: "",
+      priority: "",
     });
     onClose?.();
   };
@@ -100,6 +111,8 @@ export function AddDeliveryCostDialog({
       toLocation: editDeliveryCost?.toLocation || "",
       costPerKg: editDeliveryCost?.costPerKg?.toString() || "",
       distance: editDeliveryCost?.distance?.toString() || "",
+      transitDays: editDeliveryCost?.transitDays?.toString() || "",
+      priority: editDeliveryCost?.priority?.toString() || "",
     },
   });
 
@@ -213,9 +226,21 @@ export function AddDeliveryCostDialog({
         toLocation: editDeliveryCost.toLocation || "",
         costPerKg: editDeliveryCost.costPerKg?.toString() || "",
         distance: editDeliveryCost.distance?.toString() || "",
+        transitDays: editDeliveryCost.transitDays?.toString() || "",
+        priority: editDeliveryCost.priority?.toString() || "",
       });
     }
   }, [editDeliveryCost, form]);
+
+  // Apply prefill when opening as inline from route-plan-dialog
+  React.useEffect(() => {
+    if (isInline && inlineOpen && prefillFromEntityType && prefillFromEntityId && prefillToEntityType && prefillToEntityId) {
+      form.setValue("fromEntityType", prefillFromEntityType);
+      form.setValue("fromEntityId", prefillFromEntityId);
+      form.setValue("toEntityType", prefillToEntityType);
+      form.setValue("toEntityId", prefillToEntityId);
+    }
+  }, [isInline, inlineOpen, prefillFromEntityType, prefillFromEntityId, prefillToEntityType, prefillToEntityId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   React.useEffect(() => {
     const fromEntityId = form.watch("fromEntityId");
@@ -493,6 +518,49 @@ export function AddDeliveryCostDialog({
                         step="0.01"
                         placeholder="0.00"
                         data-testid="input-distance"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="transitDays"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Срок доставки (сут.)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="1"
+                        data-testid="input-transit-days"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Приоритет</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="1"
+                        step="1"
+                        placeholder="1"
+                        data-testid="input-priority"
                         {...field}
                       />
                     </FormControl>

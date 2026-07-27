@@ -12,6 +12,8 @@ export const deliveryCostFormSchema = z.object({
   toLocation: z.string().min(1, "Укажите куда"),
   costPerKg: z.string().min(1, "Укажите стоимость за кг"),
   distance: z.string().optional(),
+  transitDays: z.string().optional(),
+  priority: z.string().optional(),
 });
 
 export type DeliveryCostFormData = z.infer<typeof deliveryCostFormSchema>;

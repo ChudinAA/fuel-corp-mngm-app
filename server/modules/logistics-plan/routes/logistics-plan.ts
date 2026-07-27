@@ -586,18 +586,24 @@ export function registerLogisticsPlanRoutes(app: Express) {
             periodTo,
           });
 
-          // Soft-delete previously auto-generated routes so they can be regenerated cleanly
-          // Manual routes (status='manual') are preserved intentionally
+          // Soft-delete previously auto-generated routes for this period+scenario
+          // (not just by syncId — covers edge cases where syncId changed or was re-created)
+          // Manual routes (status='manual') are intentionally preserved
+          const deleteConds: any[] = [
+            eq(logisticsPlanRoutes.status, "auto"),
+            isNull(logisticsPlanRoutes.deletedAt),
+            gte(logisticsPlanRoutes.dateStart, periodFrom),
+            lte(logisticsPlanRoutes.dateStart, periodTo),
+          ];
+          if (scenarioId) {
+            deleteConds.push(eq(logisticsPlanRoutes.scenarioId, scenarioId));
+          } else {
+            deleteConds.push(isNull(logisticsPlanRoutes.scenarioId));
+          }
           await db
             .update(logisticsPlanRoutes)
             .set({ deletedAt: sql`NOW()` })
-            .where(
-              and(
-                eq(logisticsPlanRoutes.syncId, existingSync.id),
-                eq(logisticsPlanRoutes.status, "auto"),
-                isNull(logisticsPlanRoutes.deletedAt),
-              ),
-            );
+            .where(and(...deleteConds));
         } else {
           // First sync for this month+scenario
           sync = await storage.logisticsPlan.createSync({
@@ -854,7 +860,13 @@ export function registerLogisticsPlanRoutes(app: Express) {
     async (req, res) => {
       try {
         const { id } = req.params;
-        const { driverId, notes } = req.body as { driverId: string; notes?: string };
+        const { driverId, notes, dateFrom, dateTo, scheduleType } = req.body as {
+          driverId: string;
+          notes?: string;
+          dateFrom?: string;
+          dateTo?: string;
+          scheduleType?: string;
+        };
         if (!driverId) {
           return res.status(400).json({ message: "driverId обязателен" });
         }
@@ -862,6 +874,9 @@ export function registerLogisticsPlanRoutes(app: Express) {
           transportUnitId: id,
           driverId,
           notes: notes ?? null,
+          dateFrom: dateFrom ?? null,
+          dateTo: dateTo ?? null,
+          scheduleType: scheduleType ?? null,
           createdById: req.session.userId as unknown as string,
         });
         const allDrivers = await storage.logistics.getAllLogisticsDrivers();

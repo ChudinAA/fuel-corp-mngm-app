@@ -179,6 +179,9 @@ export class LogisticsPlanStorage implements ILogisticsPlanStorage {
     }
     if (filters?.scenarioId) {
       conditions.push(eq(logisticsPlanRoutes.scenarioId, filters.scenarioId));
+    } else if (filters && "scenarioId" in filters && filters.scenarioId === undefined) {
+      // caller explicitly passed scenarioId=undefined (no scenario) — filter to null only
+      conditions.push(isNull(logisticsPlanRoutes.scenarioId));
     }
     if (filters?.transportUnitId) {
       conditions.push(eq(logisticsPlanRoutes.transportUnitId, filters.transportUnitId));
@@ -229,17 +232,17 @@ export class LogisticsPlanStorage implements ILogisticsPlanStorage {
     ];
     if (scenarioId) {
       conditions.push(eq(planEntries.scenarioId, scenarioId));
+    } else {
+      conditions.push(isNull(planEntries.scenarioId));
     }
     const entries = await db.select().from(planEntries).where(and(...conditions));
 
-    // Fetch route planEntryIds that fall within this period (avoid cross-period false positives)
-    const routeConds = [
-      isNull(logisticsPlanRoutes.deletedAt),
-      gte(logisticsPlanRoutes.dateStart, periodFrom),
-      lte(logisticsPlanRoutes.dateStart, periodTo),
-    ];
+    // Fetch all assigned planEntryIds regardless of dateStart (route may start before period)
+    const routeConds = [isNull(logisticsPlanRoutes.deletedAt)];
     if (scenarioId) {
       routeConds.push(eq(logisticsPlanRoutes.scenarioId, scenarioId));
+    } else {
+      routeConds.push(isNull(logisticsPlanRoutes.scenarioId));
     }
     const assignedEntryIds = await db
       .select({ planEntryId: logisticsPlanRoutes.planEntryId })
@@ -416,6 +419,9 @@ export class LogisticsPlanStorage implements ILogisticsPlanStorage {
     transportUnitId: string;
     driverId: string;
     notes?: string | null;
+    dateFrom?: string | null;
+    dateTo?: string | null;
+    scheduleType?: string | null;
     createdById?: string;
   }): Promise<any> {
     const [created] = await db

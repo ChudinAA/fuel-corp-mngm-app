@@ -110,6 +110,14 @@ function fmtDate(d: string) {
   }
 }
 
+const EXTRA_DRIVER_SCHEDULE_TYPES = [
+  { value: "available", label: "Доступен" },
+  { value: "unavailable", label: "Недоступен" },
+  { value: "vacation", label: "Отпуск" },
+  { value: "sick", label: "Больничный" },
+  { value: "other", label: "Другое" },
+];
+
 // ─── Extra drivers section ────────────────────────────────────────────────────
 
 function ExtraDriversSection({
@@ -127,6 +135,9 @@ function ExtraDriversSection({
   const { toast } = useToast();
   const [addOpen, setAddOpen] = useState(false);
   const [selectedDriverId, setSelectedDriverId] = useState("");
+  const [addDateFrom, setAddDateFrom] = useState("");
+  const [addDateTo, setAddDateTo] = useState("");
+  const [addScheduleType, setAddScheduleType] = useState("available");
 
   const { data: extraDrivers = [] } = useQuery<any[]>({
     queryKey: ["/api/logistics-plan/extra-drivers", unit.id],
@@ -135,12 +146,20 @@ function ExtraDriversSection({
   });
 
   const addMutation = useMutation({
-    mutationFn: (driverId: string) =>
-      apiRequest("POST", `/api/logistics-plan/transport-units/${unit.id}/extra-drivers`, { driverId }).then((r) => r.json()),
+    mutationFn: (payload: {
+      driverId: string;
+      dateFrom: string | null;
+      dateTo: string | null;
+      scheduleType: string | null;
+    }) =>
+      apiRequest("POST", `/api/logistics-plan/transport-units/${unit.id}/extra-drivers`, payload).then((r) => r.json()),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/extra-drivers", unit.id] });
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
       setSelectedDriverId("");
+      setAddDateFrom("");
+      setAddDateTo("");
+      setAddScheduleType("available");
       setAddOpen(false);
     },
     onError: (e: any) => toast({ title: e?.message || "Ошибка", variant: "destructive" }),
@@ -158,6 +177,9 @@ function ExtraDriversSection({
   // Exclude already-assigned drivers
   const assignedIds = new Set([unit.driverId, ...extraDrivers.map((ed: any) => ed.driverId)].filter(Boolean));
   const availableToAdd = allDrivers.filter((d) => !assignedIds.has(d.id));
+
+  const scheduleLabel = (type: string | null | undefined) =>
+    EXTRA_DRIVER_SCHEDULE_TYPES.find((t) => t.value === type)?.label ?? "Всегда доступен";
 
   return (
     <div className="border-t mt-3 pt-3">
@@ -178,51 +200,101 @@ function ExtraDriversSection({
         <p className="text-xs text-muted-foreground italic">Не добавлены</p>
       )}
 
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1.5">
         {extraDrivers.map((ed: any) => (
-          <div key={ed.id} className="flex items-center justify-between gap-2 rounded border px-2 py-1">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <User className="h-3 w-3 shrink-0 text-muted-foreground" />
-              <span className="text-xs truncate">{ed.driver?.fullName ?? "—"}</span>
+          <div key={ed.id} className="rounded border px-2 py-1.5 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <User className="h-3 w-3 shrink-0 text-muted-foreground" />
+                <span className="text-xs font-medium truncate">{ed.driver?.fullName ?? "—"}</span>
+              </div>
+              <button
+                className="h-5 w-5 flex items-center justify-center rounded hover:bg-muted shrink-0"
+                onClick={() => removeMutation.mutate(ed.id)}
+                disabled={removeMutation.isPending}
+                title="Удалить водителя"
+              >
+                <Trash2 className="h-3 w-3 text-destructive" />
+              </button>
             </div>
-            <button
-              className="h-5 w-5 flex items-center justify-center rounded hover:bg-muted shrink-0"
-              onClick={() => removeMutation.mutate(ed.id)}
-              disabled={removeMutation.isPending}
-              title="Удалить водителя"
-            >
-              <Trash2 className="h-3 w-3 text-destructive" />
-            </button>
+            <div className="text-[10px] text-muted-foreground flex flex-wrap gap-2 pl-4">
+              <span className={ed.scheduleType === "unavailable" || ed.scheduleType === "vacation" || ed.scheduleType === "sick" ? "text-red-500" : ""}>
+                {scheduleLabel(ed.scheduleType)}
+              </span>
+              {(ed.dateFrom || ed.dateTo) && (
+                <span>
+                  {ed.dateFrom ? ed.dateFrom.slice(0, 10) : "…"} — {ed.dateTo ? ed.dateTo.slice(0, 10) : "…"}
+                </span>
+              )}
+            </div>
           </div>
         ))}
       </div>
 
       {addOpen && (
-        <div className="mt-2 flex items-center gap-2">
+        <div className="mt-2 space-y-2 rounded border bg-muted/20 px-2 py-2">
           <select
-            className="flex-1 h-7 text-xs rounded border border-input bg-background px-2 focus:outline-none focus:ring-1 focus:ring-ring"
+            className="w-full h-7 text-xs rounded border border-input bg-background px-2 focus:outline-none focus:ring-1 focus:ring-ring"
             value={selectedDriverId}
             onChange={(e) => setSelectedDriverId(e.target.value)}
           >
-            <option value="">Выберите водителя</option>
+            <option value="">— Выберите водителя —</option>
             {availableToAdd.map((d) => (
               <option key={d.id} value={d.id}>{d.fullName}</option>
             ))}
           </select>
-          <Button
-            size="sm"
-            className="h-7 text-xs px-2"
-            disabled={!selectedDriverId || addMutation.isPending}
-            onClick={() => addMutation.mutate(selectedDriverId)}
+          <select
+            className="w-full h-7 text-xs rounded border border-input bg-background px-2 focus:outline-none focus:ring-1 focus:ring-ring"
+            value={addScheduleType}
+            onChange={(e) => setAddScheduleType(e.target.value)}
           >
-            OK
-          </Button>
-          <button
-            className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
-            onClick={() => { setAddOpen(false); setSelectedDriverId(""); }}
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
+            {EXTRA_DRIVER_SCHEDULE_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-0.5">
+              <p className="text-[10px] text-muted-foreground">Период с</p>
+              <input
+                type="date"
+                className="w-full h-7 text-xs rounded border border-input bg-background px-2 focus:outline-none focus:ring-1 focus:ring-ring"
+                value={addDateFrom}
+                onChange={(e) => setAddDateFrom(e.target.value)}
+              />
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-[10px] text-muted-foreground">Период по</p>
+              <input
+                type="date"
+                className="w-full h-7 text-xs rounded border border-input bg-background px-2 focus:outline-none focus:ring-1 focus:ring-ring"
+                value={addDateTo}
+                onChange={(e) => setAddDateTo(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-1.5">
+            <button
+              className="h-7 px-3 rounded text-xs bg-muted hover:bg-muted/80 text-muted-foreground"
+              onClick={() => { setAddOpen(false); setSelectedDriverId(""); setAddDateFrom(""); setAddDateTo(""); setAddScheduleType("available"); }}
+            >
+              Отмена
+            </button>
+            <Button
+              size="sm"
+              className="h-7 text-xs px-3"
+              disabled={!selectedDriverId || addMutation.isPending}
+              onClick={() =>
+                addMutation.mutate({
+                  driverId: selectedDriverId,
+                  dateFrom: addDateFrom ? new Date(addDateFrom).toISOString() : null,
+                  dateTo: addDateTo ? new Date(addDateTo).toISOString() : null,
+                  scheduleType: addScheduleType || null,
+                })
+              }
+            >
+              Добавить
+            </Button>
+          </div>
         </div>
       )}
     </div>

@@ -27,6 +27,7 @@ import {
   logisticsVehicleAvailability,
   logisticsPlanRoutes,
   logisticsPlanNotifications,
+  logisticsUnitExtraDrivers,
   bases,
   warehouses,
 } from "@shared/schema";
@@ -120,6 +121,7 @@ export async function runAutoAssignment(opts: {
     allWarehouses,
     allCarriers,
     existingManualRoutes,
+    allExtraDrivers,
   ] = await Promise.all([
     db
       .select()
@@ -188,6 +190,12 @@ export async function runAutoAssignment(opts: {
           ...(scenarioId ? [eq(logisticsPlanRoutes.scenarioId, scenarioId)] : []),
         ),
       ),
+
+    // extra drivers for all units
+    db
+      .select()
+      .from(logisticsUnitExtraDrivers)
+      .where(isNull(logisticsUnitExtraDrivers.deletedAt)),
   ]);
 
   // ── 2. Build lookup maps ────────────────────────────────────────────────────
@@ -233,29 +241,42 @@ export async function runAutoAssignment(opts: {
 
     if (entry.type === "income") {
       // Goods arrive TO warehouse FROM supplier
-      // "from" side = supplier (entry.basisId as base or delivery_location)
-      // "to" side   = warehouse (by basis or directly by warehouseId)
+      // "from" side = supplier entity (entry.basisId used as base, delivery_location, or warehouse)
+      // "to" side   = warehouse entity (by primary basis or directly by warehouseId)
       if (entry.basisId) {
+        // supplier basisId treated as BASE → warehouse (basis or direct)
         if (warehouseBasisId) candidates.push([B, entry.basisId, B, warehouseBasisId]);
         candidates.push([B, entry.basisId, W, entry.warehouseId]);
+        // supplier basisId treated as DELIVERY_LOCATION → warehouse (basis or direct)
         if (warehouseBasisId) candidates.push([DL, entry.basisId, B, warehouseBasisId]);
         candidates.push([DL, entry.basisId, W, entry.warehouseId]);
+        // supplier basisId treated as WAREHOUSE → warehouse (basis or direct)
+        if (warehouseBasisId) candidates.push([W, entry.basisId, B, warehouseBasisId]);
+        candidates.push([W, entry.basisId, W, entry.warehouseId]);
       }
-      // Also try warehouse→warehouse if entry has no basisId
+      // Also try warehouse-to-itself fallback when no basisId
       if (!entry.basisId) {
-        candidates.push([W, entry.warehouseId, W, entry.warehouseId]); // unlikely but failsafe
+        if (warehouseBasisId) candidates.push([B, warehouseBasisId, B, warehouseBasisId]);
+        candidates.push([W, entry.warehouseId, W, entry.warehouseId]);
       }
     } else if (entry.type === "expense") {
       // Goods leave FROM warehouse TO counterparty
-      // "from" side = warehouse (by basis or directly)
-      // "to" side   = counterparty (entry.basisId as base or delivery_location)
+      // "from" side = warehouse (by primary basis or directly)
+      // "to" side   = counterparty (entry.basisId as base, delivery_location, or warehouse)
       if (entry.basisId) {
-        if (warehouseBasisId) candidates.push([B, warehouseBasisId, B, entry.basisId]);
+        // warehouse basis → counterparty (all types)
+        if (warehouseBasisId) {
+          candidates.push([B, warehouseBasisId, B, entry.basisId]);
+          candidates.push([B, warehouseBasisId, DL, entry.basisId]);
+          candidates.push([B, warehouseBasisId, W, entry.basisId]);
+        }
+        // warehouse direct → counterparty (all types)
         candidates.push([W, entry.warehouseId, B, entry.basisId]);
-        if (warehouseBasisId) candidates.push([B, warehouseBasisId, DL, entry.basisId]);
         candidates.push([W, entry.warehouseId, DL, entry.basisId]);
+        candidates.push([W, entry.warehouseId, W, entry.basisId]);
       } else {
-        // No counterparty basis — try warehouse→warehouse
+        // No counterparty basis — fallbacks
+        if (warehouseBasisId) candidates.push([B, warehouseBasisId, B, warehouseBasisId]);
         candidates.push([W, entry.warehouseId, W, entry.warehouseId]);
       }
     } else {
@@ -366,7 +387,26 @@ export async function runAutoAssignment(opts: {
     }
   }
 
-  /** Check availability of a unit for a date range */
+  // Build extra drivers map: unitId → extra driver records
+  const unitExtraDrivers = new Map<string, typeof allExtraDrivers>();
+  for (const ed of allExtraDrivers) {
+    const list = unitExtraDrivers.get(ed.transportUnitId) ?? [];
+    list.push(ed);
+    unitExtraDrivers.set(ed.transportUnitId, list);
+  }
+
+  /** Returns true if a driver is available in the given range (no blocking schedule) */
+  function isDriverFree(driverId: string, ds: string, de: string): boolean {
+    return !allDriverSchedules.some(
+      (s) =>
+        s.driverId === driverId &&
+        s.type !== "available" &&
+        overlaps(s.dateFrom, s.dateTo, ds, de),
+    );
+  }
+
+  /** Check availability of a unit for a date range.
+   *  When the primary driver is unavailable, tries extra drivers for the unit. */
   function isAvailable(unitId: string, vehicleId: string | null, driverId: string | null, ds: string, de: string): boolean {
     // vehicle maintenance/repair
     if (vehicleId) {
@@ -375,19 +415,25 @@ export async function runAutoAssignment(opts: {
       );
       if (blocked) return false;
     }
-    // driver leave/unavailability
-    if (driverId) {
-      const blocked = allDriverSchedules.some(
-        (ds2) =>
-          ds2.driverId === driverId &&
-          ds2.type !== "available" &&
-          overlaps(ds2.dateFrom, ds2.dateTo, ds, de),
-      );
-      if (blocked) return false;
-    }
     // existing route conflicts
     const busy = unitBusy.get(unitId) ?? [];
-    return !busy.some((p) => overlaps(p.dateStart, p.dateEnd, ds, de));
+    if (busy.some((p) => overlaps(p.dateStart, p.dateEnd, ds, de))) return false;
+
+    // Check primary driver availability
+    const primaryDriverOk = !driverId || isDriverFree(driverId, ds, de);
+    if (primaryDriverOk) return true;
+
+    // Primary driver is blocked — check extra drivers for this unit as fallback
+    const extras = unitExtraDrivers.get(unitId) ?? [];
+    const hasAvailableExtra = extras.some((ed) => {
+      // Skip drivers marked as unavailable/vacation/sick
+      if (ed.scheduleType && !["available", null].includes(ed.scheduleType)) return false;
+      // If the extra driver has a specific availability window, must overlap the route
+      if (ed.dateFrom && ed.dateTo && !overlaps(ed.dateFrom, ed.dateTo, ds, de)) return false;
+      // Check that this extra driver also has no conflicting schedule
+      return isDriverFree(ed.driverId, ds, de);
+    });
+    return hasAvailableExtra;
   }
 
   /** Mark a period as busy for a unit */

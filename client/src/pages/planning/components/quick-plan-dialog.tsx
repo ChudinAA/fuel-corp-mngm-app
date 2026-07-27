@@ -176,8 +176,8 @@ export function QuickPlanDialog({
     if (seen.size > 0) {
       return Array.from(seen.entries()).map(([value, label]) => ({ value, label }));
     }
-    // Fallback: return all bases if supplier has none configured in resources
-    return allBasisOptions;
+    // No resources with basis for this supplier — return empty list
+    return [];
   }
 
   /** Bases for expense: all bases */
