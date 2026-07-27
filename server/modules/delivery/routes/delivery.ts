@@ -55,7 +55,13 @@ export function registerDeliveryRoutes(app: Express) {
     }),
     async (req: Request, res: Response) => {
       try {
-        const data = insertDeliveryCostSchema.parse(req.body);
+        // Coerce numeric fields sent as strings from the form
+        const coerced = {
+          ...req.body,
+          transitDays: req.body.transitDays != null && req.body.transitDays !== "" ? Number(req.body.transitDays) : undefined,
+          priority: req.body.priority != null && req.body.priority !== "" ? Number(req.body.priority) : undefined,
+        };
+        const data = insertDeliveryCostSchema.parse(coerced);
         const created = await storage.delivery.createDeliveryCost(
           data,
           req.session.userId
@@ -90,7 +96,12 @@ export function registerDeliveryRoutes(app: Express) {
     async (req: Request, res: Response) => {
       try {
         const id = req.params.id;
-        const rawData = insertDeliveryCostSchema.partial().parse(req.body);
+        const coercedPatch = {
+          ...req.body,
+          transitDays: req.body.transitDays != null && req.body.transitDays !== "" ? Number(req.body.transitDays) : undefined,
+          priority: req.body.priority != null && req.body.priority !== "" ? Number(req.body.priority) : undefined,
+        };
+        const rawData = insertDeliveryCostSchema.partial().parse(coercedPatch);
         const data = {
           ...rawData,
           costPerKg: rawData.costPerKg === "" ? null : rawData.costPerKg,

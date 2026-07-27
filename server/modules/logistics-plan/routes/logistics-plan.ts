@@ -793,6 +793,13 @@ export function registerLogisticsPlanRoutes(app: Express) {
           d.setUTCDate(d.getUTCDate() - 2);
           // volume is stored in kg — convert to tonnes for display
           const volumeTons = entry.volume != null ? (parseFloat(entry.volume) / 1000) : null;
+          // Explain why from/to entity might be missing
+          let missingDataReason: string | null = null;
+          if (entry.type === "income" && !entry.basisId) {
+            missingDataReason = "Поставщик (базис) не указан в записи плана — невозможно определить маршрут прихода";
+          } else if (entry.type === "expense" && !entry.basisId) {
+            missingDataReason = "Клиент (базис) не указан в записи плана — невозможно определить маршрут расхода";
+          }
           return {
             ...entry,
             fromEntityName,
@@ -802,6 +809,7 @@ export function registerLogisticsPlanRoutes(app: Express) {
             toEntityType,
             toEntityId,
             volumeTons,
+            missingDataReason,
             deliveryDeadline: d.toISOString(),
           };
         });

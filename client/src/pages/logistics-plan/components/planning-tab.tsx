@@ -370,20 +370,81 @@ function SummaryCard({
   return card;
 }
 
+const SUMMARY_SCHEDULE_TYPE_OPTIONS = [
+  { value: "unavailable", label: "Недоступен" },
+  { value: "vacation", label: "Отпуск" },
+  { value: "sick", label: "Больничный" },
+  { value: "day_off", label: "Выходной" },
+  { value: "training", label: "Обучение" },
+  { value: "available", label: "Доступен" },
+];
+const SUMMARY_EXTRA_SCHEDULE_TYPE_OPTIONS = [
+  { value: "available", label: "Доступен (замещает)" },
+  { value: "unavailable", label: "Недоступен" },
+  { value: "vacation", label: "Отпуск" },
+  { value: "sick", label: "Больничный" },
+];
+
 function LogisticsSummaryPanel({
   routes,
   units,
   unassignedDemands,
   notifications,
   onOpenDay,
+  periodFrom,
+  periodTo,
 }: {
   routes: any[];
   units: any[];
   unassignedDemands: any[];
   notifications: any[];
   onOpenDay?: (day: Date) => void;
+  periodFrom?: string;
+  periodTo?: string;
 }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
   const [activeCard, setActiveCard] = useState<SummaryCardKey | null>(null);
+  const [inlineAction, setInlineAction] = useState<{
+    unitId: string;
+    driverId?: string;
+    kind: "schedule" | "extra";
+    type: string;
+    extraDriverId: string;
+    dateFrom: string;
+    dateTo: string;
+    scheduleType: string;
+  } | null>(null);
+
+  const { data: allDriversForPanel = [] } = useQuery<any[]>({
+    queryKey: ["/api/logistics/drivers"],
+    queryFn: () => apiRequest("GET", "/api/logistics/drivers").then((r) => r.json()),
+    enabled: activeCard === "unavailable",
+  });
+
+  const addScheduleMutation = useMutation({
+    mutationFn: (payload: any) =>
+      apiRequest("POST", "/api/logistics-plan/driver-schedule", payload).then((r) => r.json()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/logistics-plan/calendar"] });
+      qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
+      setInlineAction(null);
+      toast({ title: "Запись добавлена в табель" });
+    },
+    onError: (e: any) => toast({ title: e?.message || "Ошибка добавления в табель", variant: "destructive" }),
+  });
+
+  const addExtraDriverMutation = useMutation({
+    mutationFn: (payload: any) =>
+      apiRequest("POST", `/api/logistics-plan/transport-units/${payload.transportUnitId}/extra-drivers`, payload).then((r) => r.json()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/logistics-plan/calendar"] });
+      qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
+      setInlineAction(null);
+      toast({ title: "Дополнительный водитель добавлен" });
+    },
+    onError: (e: any) => toast({ title: e?.message || "Ошибка добавления водителя", variant: "destructive" }),
+  });
 
   const totalRoutes = routes.filter((r) => r.type !== "unavailable").length;
   const lateCount = routes.filter((r) => r.isLate).length;
@@ -444,16 +505,31 @@ function LogisticsSummaryPanel({
             {unassignedDemands.map((d: any, i: number) => (
               <div
                 key={d.id ?? i}
-                className="flex items-start justify-between gap-2 rounded border border-red-200 dark:border-red-800 px-2 py-1.5 text-xs bg-red-50 dark:bg-red-950/20"
+                role={onOpenDay && d.deliveryDeadline ? "button" : undefined}
+                tabIndex={onOpenDay && d.deliveryDeadline ? 0 : undefined}
+                className={cn(
+                  "flex items-start justify-between gap-2 rounded border border-red-200 dark:border-red-800 px-2 py-1.5 text-xs bg-red-50 dark:bg-red-950/20",
+                  onOpenDay && d.deliveryDeadline && "cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors",
+                )}
+                onClick={() => {
+                  if (onOpenDay && d.deliveryDeadline) {
+                    try { onOpenDay(new Date(d.deliveryDeadline)); } catch {}
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && onOpenDay && d.deliveryDeadline) {
+                    try { onOpenDay(new Date(d.deliveryDeadline)); } catch {}
+                  }
+                }}
               >
-                <div className="flex flex-col gap-0.5 min-w-0">
+                <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <Package className="h-3 w-3 text-red-500 shrink-0" />
                     <span className="truncate font-medium">
                       {d.fromEntityName || "—"} → {d.toEntityName || "—"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 pl-4 text-muted-foreground">
+                  <div className="flex items-center gap-2 pl-4 text-muted-foreground flex-wrap">
                     <span>{d.type === "income" ? "Приход" : "Расход"}</span>
                     {(d.volumeTons != null || d.volume != null) && (
                       <span>{(d.volumeTons != null ? d.volumeTons : parseFloat(d.volume) / 1000).toLocaleString("ru-RU", { maximumFractionDigits: 3 })} т</span>
@@ -462,16 +538,15 @@ function LogisticsSummaryPanel({
                       <span>дедлайн: {d.deliveryDeadline.slice(0, 10)}</span>
                     )}
                   </div>
+                  {d.missingDataReason && (
+                    <div className="flex items-start gap-1 pl-4 mt-0.5">
+                      <AlertTriangle className="h-2.5 w-2.5 text-amber-500 shrink-0 mt-0.5" />
+                      <span className="text-[10px] text-amber-700 dark:text-amber-400">{d.missingDataReason}</span>
+                    </div>
+                  )}
                 </div>
                 {onOpenDay && d.deliveryDeadline && (
-                  <button
-                    className="shrink-0 text-[10px] text-primary underline hover:no-underline"
-                    onClick={() => {
-                      try { onOpenDay(new Date(d.deliveryDeadline)); } catch {}
-                    }}
-                  >
-                    Назначить
-                  </button>
+                  <ArrowRight className="h-3 w-3 shrink-0 text-primary mt-0.5" />
                 )}
               </div>
             ))}
@@ -524,6 +599,7 @@ function LogisticsSummaryPanel({
 
       const scheduleTypeLabel: Record<string, string> = {
         available: "Доступен",
+        unavailable: "Недоступен",
         vacation: "Отпуск",
         sick: "Больничный",
         day_off: "Выходной",
@@ -542,6 +618,7 @@ function LogisticsSummaryPanel({
               const hasSubstitute = extraDrivers.some((ed: any) =>
                 !ed.scheduleType || ["available", null, ""].includes(ed.scheduleType)
               );
+              const isActionOpen = inlineAction?.unitId === u.id;
               return (
                 <div key={u.id + u.kind} className={cn(
                   "flex flex-col gap-1.5 rounded border px-2 py-2 text-xs",
@@ -589,6 +666,160 @@ function LogisticsSummaryPanel({
                           </span>
                         );
                       })}
+                    </div>
+                  )}
+                  {/* Quick-add actions for driver units */}
+                  {u.kind === "driver" && !isActionOpen && (
+                    <div className="flex gap-2 border-t pt-1.5 mt-0.5">
+                      <button
+                        className="text-[10px] text-primary hover:underline"
+                        onClick={() => setInlineAction({
+                          unitId: u.id,
+                          driverId: u.driverId,
+                          kind: "schedule",
+                          type: "unavailable",
+                          extraDriverId: "",
+                          dateFrom: periodFrom ?? "",
+                          dateTo: periodTo ?? "",
+                          scheduleType: "available",
+                        })}
+                      >
+                        + Табель
+                      </button>
+                      <button
+                        className="text-[10px] text-primary hover:underline"
+                        onClick={() => setInlineAction({
+                          unitId: u.id,
+                          driverId: u.driverId,
+                          kind: "extra",
+                          type: "unavailable",
+                          extraDriverId: "",
+                          dateFrom: periodFrom ?? "",
+                          dateTo: periodTo ?? "",
+                          scheduleType: "available",
+                        })}
+                      >
+                        + Доп. водитель
+                      </button>
+                    </div>
+                  )}
+                  {/* Inline: add schedule entry */}
+                  {isActionOpen && inlineAction!.kind === "schedule" && (
+                    <div className="border-t pt-2 mt-0.5 space-y-1.5">
+                      <p className="text-[10px] font-medium text-muted-foreground">Новая запись в табель</p>
+                      <select
+                        value={inlineAction!.type}
+                        onChange={(e) => setInlineAction((s) => s ? { ...s, type: e.target.value } : s)}
+                        className="w-full h-7 text-xs rounded border bg-background px-1"
+                      >
+                        {SUMMARY_SCHEDULE_TYPE_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                      <div className="grid grid-cols-2 gap-1">
+                        <input
+                          type="date"
+                          value={inlineAction!.dateFrom}
+                          onChange={(e) => setInlineAction((s) => s ? { ...s, dateFrom: e.target.value } : s)}
+                          className="h-7 text-xs rounded border bg-background px-1"
+                        />
+                        <input
+                          type="date"
+                          value={inlineAction!.dateTo}
+                          onChange={(e) => setInlineAction((s) => s ? { ...s, dateTo: e.target.value } : s)}
+                          className="h-7 text-xs rounded border bg-background px-1"
+                        />
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          className="flex-1 h-6 rounded border bg-primary text-primary-foreground text-[10px] hover:bg-primary/90 disabled:opacity-50"
+                          disabled={addScheduleMutation.isPending}
+                          onClick={() => {
+                            if (!inlineAction?.driverId || !inlineAction.dateFrom || !inlineAction.dateTo) return;
+                            addScheduleMutation.mutate({
+                              driverId: inlineAction.driverId,
+                              type: inlineAction.type,
+                              dateFrom: new Date(inlineAction.dateFrom).toISOString(),
+                              dateTo: new Date(inlineAction.dateTo).toISOString(),
+                            });
+                          }}
+                        >
+                          {addScheduleMutation.isPending ? "..." : "Сохранить"}
+                        </button>
+                        <button
+                          className="h-6 w-8 rounded border text-[10px] hover:bg-muted"
+                          onClick={() => setInlineAction(null)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {/* Inline: add extra driver */}
+                  {isActionOpen && inlineAction!.kind === "extra" && (
+                    <div className="border-t pt-2 mt-0.5 space-y-1.5">
+                      <p className="text-[10px] font-medium text-muted-foreground">Добавить доп. водителя</p>
+                      <select
+                        value={inlineAction!.extraDriverId}
+                        onChange={(e) => setInlineAction((s) => s ? { ...s, extraDriverId: e.target.value } : s)}
+                        className="w-full h-7 text-xs rounded border bg-background px-1"
+                      >
+                        <option value="">— Выберите водителя —</option>
+                        {allDriversForPanel
+                          .filter((d: any) => d.id !== u.driverId)
+                          .map((d: any) => (
+                            <option key={d.id} value={d.id}>{d.fullName}</option>
+                          ))}
+                      </select>
+                      <select
+                        value={inlineAction!.scheduleType}
+                        onChange={(e) => setInlineAction((s) => s ? { ...s, scheduleType: e.target.value } : s)}
+                        className="w-full h-7 text-xs rounded border bg-background px-1"
+                      >
+                        {SUMMARY_EXTRA_SCHEDULE_TYPE_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                      <div className="grid grid-cols-2 gap-1">
+                        <input
+                          type="date"
+                          value={inlineAction!.dateFrom}
+                          onChange={(e) => setInlineAction((s) => s ? { ...s, dateFrom: e.target.value } : s)}
+                          className="h-7 text-xs rounded border bg-background px-1"
+                          placeholder="с (не обязательно)"
+                        />
+                        <input
+                          type="date"
+                          value={inlineAction!.dateTo}
+                          onChange={(e) => setInlineAction((s) => s ? { ...s, dateTo: e.target.value } : s)}
+                          className="h-7 text-xs rounded border bg-background px-1"
+                          placeholder="по (не обязательно)"
+                        />
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          className="flex-1 h-6 rounded border bg-primary text-primary-foreground text-[10px] hover:bg-primary/90 disabled:opacity-50"
+                          disabled={addExtraDriverMutation.isPending || !inlineAction!.extraDriverId}
+                          onClick={() => {
+                            if (!inlineAction?.extraDriverId) return;
+                            addExtraDriverMutation.mutate({
+                              transportUnitId: inlineAction.unitId,
+                              driverId: inlineAction.extraDriverId,
+                              dateFrom: inlineAction.dateFrom ? new Date(inlineAction.dateFrom).toISOString() : null,
+                              dateTo: inlineAction.dateTo ? new Date(inlineAction.dateTo).toISOString() : null,
+                              scheduleType: inlineAction.scheduleType || null,
+                            });
+                          }}
+                        >
+                          {addExtraDriverMutation.isPending ? "..." : "Добавить"}
+                        </button>
+                        <button
+                          className="h-6 w-8 rounded border text-[10px] hover:bg-muted"
+                          onClick={() => setInlineAction(null)}
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1313,6 +1544,8 @@ export function PlanningTab({ periodFrom, periodTo }: PlanningTabProps) {
               unassignedDemands={unassignedDemands}
               notifications={notifications}
               onOpenDay={openDayPlan}
+              periodFrom={periodFrom}
+              periodTo={periodTo}
             />
 
             {/* Notifications — auto-expands when unread > 0 */}

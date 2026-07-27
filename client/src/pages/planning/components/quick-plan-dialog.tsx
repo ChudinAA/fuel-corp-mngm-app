@@ -136,7 +136,7 @@ export function QuickPlanDialog({
     enabled: open && type === "income",
   });
 
-  const { data: customers = [] } = useQuery<{ id: string; name: string }[]>({
+  const { data: customers = [] } = useQuery<{ id: string; name: string; baseIds?: string[] }[]>({
     queryKey: ["/api/customers"],
     queryFn: async () => (await apiRequest("GET", "/api/customers")).json(),
     enabled: open && type === "expense",
@@ -180,8 +180,18 @@ export function QuickPlanDialog({
     return [];
   }
 
-  /** Bases for expense: all bases */
-  const expenseBasisOptions = allBasisOptions;
+  /** Bases for a given customer (expense) — prefers customer's attached bases, falls back to all */
+  function basesForCustomer(customerId: string) {
+    const customer = customers.find((c) => c.id === customerId);
+    const customerBaseIds = customer?.baseIds ?? [];
+    if (customerBaseIds.length > 0) {
+      const attached = allBases
+        .filter((b) => customerBaseIds.includes(b.id))
+        .map((b) => ({ value: b.id, label: b.name }));
+      if (attached.length > 0) return attached;
+    }
+    return allBasisOptions;
+  }
 
   const customerOptions = useMemo(
     () => customers.map((c) => ({ value: c.id, label: c.name })),
@@ -196,7 +206,7 @@ export function QuickPlanDialog({
         if (e.id !== id) return e;
         if (field === "counterpartyId") {
           // Auto-select the first available basis for the new counterparty
-          const bases = isIncome ? basesForSupplier(value) : expenseBasisOptions;
+          const bases = isIncome ? basesForSupplier(value) : basesForCustomer(value);
           const autoBasid = value !== "" && bases.length > 0 ? bases[0].value : NO_BASIS;
           return { ...e, counterpartyId: value, basisId: autoBasid };
         }
@@ -300,6 +310,9 @@ export function QuickPlanDialog({
             const incomeBasisOptions = isIncome && entry.counterpartyId
               ? basesForSupplier(entry.counterpartyId)
               : [];
+            const expenseBasisOptions = !isIncome && entry.counterpartyId
+              ? basesForCustomer(entry.counterpartyId)
+              : allBasisOptions;
             // Show basis field whenever a counterparty is selected
             const showBasisField = entry.counterpartyId !== "";
 

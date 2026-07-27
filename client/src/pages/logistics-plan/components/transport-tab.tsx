@@ -156,6 +156,7 @@ function ExtraDriversSection({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/extra-drivers", unit.id] });
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
+      qc.invalidateQueries({ queryKey: ["/api/logistics-plan/calendar"] });
       setSelectedDriverId("");
       setAddDateFrom("");
       setAddDateTo("");
@@ -170,6 +171,7 @@ function ExtraDriversSection({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/extra-drivers", unit.id] });
       qc.invalidateQueries({ queryKey: ["/api/logistics-plan/transport-units"] });
+      qc.invalidateQueries({ queryKey: ["/api/logistics-plan/calendar"] });
     },
     onError: (e: any) => toast({ title: e?.message || "Ошибка", variant: "destructive" }),
   });
@@ -328,6 +330,17 @@ function DriverScheduleCell({
     enabled: !!driverId,
   });
 
+  // Fetch extra drivers for this unit to show substitute info in the trigger
+  const { data: extraDriversForCell = [] } = useQuery<any[]>({
+    queryKey: ["/api/logistics-plan/extra-drivers", unit.id],
+    queryFn: () =>
+      apiRequest("GET", `/api/logistics-plan/transport-units/${unit.id}/extra-drivers`).then((r) => r.json()),
+    enabled: !!driverId,
+  });
+  const hasSubstitute = extraDriversForCell.some(
+    (ed: any) => !ed.scheduleType || ["available", null, ""].includes(ed.scheduleType),
+  );
+
   const addMutation = useMutation({
     mutationFn: (data: any) =>
       apiRequest("POST", "/api/logistics-plan/driver-schedule", { ...data, driverId }).then((r) => r.json()),
@@ -376,12 +389,18 @@ function DriverScheduleCell({
       <PopoverTrigger asChild>
         <button className="flex items-center gap-1 hover:bg-muted/50 rounded px-1 -ml-1 transition-colors">
           {unavailable ? (
-            <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+            hasSubstitute
+              ? <CheckCircle2 className="h-3.5 w-3.5 text-orange-400 shrink-0" />
+              : <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
           ) : (
             <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
           )}
-          <span className={cn("text-xs", unavailable ? "text-red-600" : "text-green-700")}>
-            {unavailable ? "Недоступен" : "Доступен"}
+          <span className={cn(
+            "text-xs",
+            !unavailable ? "text-green-700" :
+            hasSubstitute ? "text-orange-600" : "text-red-600"
+          )}>
+            {!unavailable ? "Доступен" : hasSubstitute ? "Недоступен (есть замена)" : "Недоступен"}
           </span>
           {hasEntries && (
             <Badge variant="secondary" className="text-[10px] px-1 h-4">
