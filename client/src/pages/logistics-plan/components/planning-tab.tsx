@@ -455,8 +455,8 @@ function LogisticsSummaryPanel({
                   </div>
                   <div className="flex items-center gap-2 pl-4 text-muted-foreground">
                     <span>{d.type === "income" ? "Приход" : "Расход"}</span>
-                    {d.volume && (
-                      <span>{parseFloat(d.volume).toLocaleString("ru-RU")} т</span>
+                    {(d.volumeTons != null || d.volume != null) && (
+                      <span>{(d.volumeTons != null ? d.volumeTons : parseFloat(d.volume) / 1000).toLocaleString("ru-RU", { maximumFractionDigits: 3 })} т</span>
                     )}
                     {d.deliveryDeadline && (
                       <span>дедлайн: {d.deliveryDeadline.slice(0, 10)}</span>
@@ -521,27 +521,79 @@ function LogisticsSummaryPanel({
         ...driverUnavailableUnits.map((u: any) => ({ ...u, kind: "driver" })),
         ...vehicleUnavailableUnits.map((u: any) => ({ ...u, kind: "vehicle" })),
       ];
+
+      const scheduleTypeLabel: Record<string, string> = {
+        available: "Доступен",
+        vacation: "Отпуск",
+        sick: "Больничный",
+        day_off: "Выходной",
+        training: "Обучение",
+        other: "Другое",
+      };
+
       return (
         <div className="mt-3 border-t pt-3">
           <p className="text-xs font-medium mb-2 text-muted-foreground">Недоступные ТС/водители ({allUnavailable.length})</p>
-          <div className="flex flex-col gap-1 max-h-52 overflow-y-auto pr-1">
+          <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
             {allUnavailable.length === 0 && <p className="text-xs text-green-700">Все доступны</p>}
-            {allUnavailable.map((u: any) => (
-              <div key={u.id + u.kind} className="flex items-center justify-between gap-2 rounded border border-amber-200 dark:border-amber-800 px-2 py-1.5 text-xs bg-amber-50 dark:bg-amber-950/20">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  {u.kind === "driver"
-                    ? <User className="h-3 w-3 text-amber-500 shrink-0" />
-                    : <Truck className="h-3 w-3 text-amber-500 shrink-0" />
-                  }
-                  <span className="truncate">
-                    {u.kind === "driver" ? (u.driver?.fullName ?? "—") : (u.vehicle?.regNumber ?? "—")}
-                  </span>
+            {allUnavailable.map((u: any) => {
+              const blockingSchedules = (u.driverScheduleForPeriod ?? []).filter((s: any) => s.type !== "available");
+              const extraDrivers = (u.extraDriversForPeriod ?? []);
+              const hasSubstitute = extraDrivers.some((ed: any) =>
+                !ed.scheduleType || ["available", null, ""].includes(ed.scheduleType)
+              );
+              return (
+                <div key={u.id + u.kind} className={cn(
+                  "flex flex-col gap-1.5 rounded border px-2 py-2 text-xs",
+                  hasSubstitute && u.kind === "driver"
+                    ? "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20"
+                    : "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20"
+                )}>
+                  {/* Header row */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {u.kind === "driver"
+                        ? <User className={cn("h-3 w-3 shrink-0", hasSubstitute ? "text-green-500" : "text-amber-500")} />
+                        : <Truck className="h-3 w-3 text-amber-500 shrink-0" />
+                      }
+                      <span className="font-medium truncate">
+                        {u.kind === "driver" ? (u.driver?.fullName ?? "—") : (u.vehicle?.regNumber ?? "—")}
+                      </span>
+                    </div>
+                    <span className={cn("text-[10px] shrink-0", hasSubstitute && u.kind === "driver" ? "text-green-600 dark:text-green-400" : "text-muted-foreground")}>
+                      {u.kind === "driver"
+                        ? (hasSubstitute ? "есть замена" : "нет замены")
+                        : "ТС недоступно"}
+                    </span>
+                  </div>
+                  {/* Unavailability periods */}
+                  {blockingSchedules.length > 0 && (
+                    <div className="pl-4 flex flex-col gap-0.5">
+                      {blockingSchedules.map((s: any, i: number) => (
+                        <span key={i} className="text-[10px] text-muted-foreground">
+                          {scheduleTypeLabel[s.type] ?? s.type}: {s.dateFrom?.slice(0, 10)} — {s.dateTo?.slice(0, 10)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {/* Extra drivers covering this period */}
+                  {extraDrivers.length > 0 && u.kind === "driver" && (
+                    <div className="pl-4 flex flex-col gap-0.5">
+                      {extraDrivers.map((ed: any, i: number) => {
+                        const blocked = ed.scheduleType && !["available", null, ""].includes(ed.scheduleType);
+                        return (
+                          <span key={i} className={cn("text-[10px]", blocked ? "text-muted-foreground line-through" : "text-green-700 dark:text-green-400")}>
+                            Доп. вод.: {ed.driver?.fullName ?? "—"}
+                            {ed.dateFrom && ed.dateTo && ` (${ed.dateFrom.slice(0, 10)} — ${ed.dateTo.slice(0, 10)})`}
+                            {ed.scheduleType && ed.scheduleType !== "available" && ` · ${scheduleTypeLabel[ed.scheduleType] ?? ed.scheduleType}`}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-                <span className="text-muted-foreground shrink-0 text-[10px]">
-                  {u.kind === "driver" ? "водитель" : "ТС"}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       );
@@ -807,6 +859,21 @@ function WeekView({
       }
     });
 
+  /** Returns true if any extra driver for this unit covers `day` and is not blocked */
+  const hasExtraDriverForDay = (unit: any, day: Date) =>
+    unit.extraDriversForPeriod?.some((ed: any) => {
+      if (ed.scheduleType && !["available", null, ""].includes(ed.scheduleType)) return false;
+      if (ed.dateFrom && ed.dateTo) {
+        try {
+          return isWithinInterval(day, {
+            start: parseISO(ed.dateFrom),
+            end: parseISO(ed.dateTo),
+          });
+        } catch { return false; }
+      }
+      return true; // no date restriction — always available
+    });
+
   const unassignedForDay = (day: Date) =>
     unassignedDemands.filter((d: any) => {
       if (!d.deliveryDeadline) return false;
@@ -938,9 +1005,17 @@ function WeekView({
                     </div>
                   )}
                   {unit.driverUnavailable && (
-                    <span className="text-[10px] text-orange-600 dark:text-orange-400 font-medium">
-                      Вод. нет
-                    </span>
+                    unit.extraDriversForPeriod?.some((ed: any) =>
+                      !ed.scheduleType || ["available", null, ""].includes(ed.scheduleType)
+                    ) ? (
+                      <span className="text-[10px] text-green-600 dark:text-green-400 font-medium">
+                        Недоступен (есть замена)
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-orange-600 dark:text-orange-400 font-medium">
+                        Недоступен
+                      </span>
+                    )
                   )}
                   {unit.vehicleUnavailable && (
                     <span className="text-[10px] text-gray-500 font-medium">
@@ -975,10 +1050,17 @@ function WeekView({
                         </div>
                       )}
                       {driverOut && (
-                        <div className="flex items-center gap-0.5 text-[10px] text-orange-700 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30 rounded px-1 py-0.5">
-                          <User className="h-2.5 w-2.5 shrink-0" />
-                          <span>Вод. нет</span>
-                        </div>
+                        hasExtraDriverForDay(unit, day) ? (
+                          <div className="flex items-center gap-0.5 text-[10px] text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 rounded px-1 py-0.5">
+                            <User className="h-2.5 w-2.5 shrink-0" />
+                            <span>Доп. вод.</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-0.5 text-[10px] text-orange-700 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30 rounded px-1 py-0.5">
+                            <User className="h-2.5 w-2.5 shrink-0" />
+                            <span>Вод. нет</span>
+                          </div>
+                        )
                       )}
                       {dayRoutes.map((r: any) => (
                         <RoutePill key={r.id} route={r} unit={unit} compact />

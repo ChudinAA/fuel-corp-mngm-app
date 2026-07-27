@@ -9,6 +9,7 @@ import {
   insertLogisticsMonthlySyncSchema,
   planEntries,
   logisticsPlanRoutes,
+  logisticsUnitExtraDrivers,
   warehouseBases,
   warehouses,
   bases,
@@ -709,7 +710,7 @@ export function registerLogisticsPlanRoutes(app: Express) {
           return res.status(400).json({ message: "Необходимо указать период" });
         }
 
-        const [routes, rawUnits, notifications, unassignedEntries, allWbRows, allBases, allWarehouses, carriers, vehicles, trailers, drivers, driverSchedules, vehicleAvailabilities] = await Promise.all([
+        const [routes, rawUnits, notifications, unassignedEntries, allWbRows, allBases, allWarehouses, carriers, vehicles, trailers, drivers, driverSchedules, vehicleAvailabilities, allExtraDrivers] = await Promise.all([
           storage.logisticsPlan.getPlanRoutes({ periodFrom, periodTo, scenarioId }),
           storage.logisticsPlan.getAllTransportUnits({ periodFrom, periodTo }),
           storage.logisticsPlan.getNotifications({ periodFrom, periodTo }),
@@ -723,6 +724,7 @@ export function registerLogisticsPlanRoutes(app: Express) {
           storage.logistics.getAllLogisticsDrivers(),
           storage.logisticsPlan.getAllDriverSchedules({ dateFrom: periodFrom, dateTo: periodTo }),
           storage.logisticsPlan.getAllVehicleAvailabilities({ dateFrom: periodFrom, dateTo: periodTo }),
+          db.select().from(logisticsUnitExtraDrivers).where(isNull(logisticsUnitExtraDrivers.deletedAt)),
         ]);
 
         // Enrich transport units (same as /transport-units endpoint)
@@ -743,7 +745,13 @@ export function registerLogisticsPlanRoutes(app: Express) {
           const vehicleAvailabilityForPeriod = unit.vehicleId
             ? (vehicleAvailabilities as any[]).filter((a: any) => a.vehicleId === unit.vehicleId)
             : [];
-          return { ...unit, carrier, vehicle, trailer, driver, driverUnavailable, vehicleUnavailable, driverScheduleForPeriod, vehicleAvailabilityForPeriod };
+          // Extra drivers for this unit (enriched with driver fullName)
+          const unitExtraRaw = (allExtraDrivers as any[]).filter((ed: any) => ed.transportUnitId === unit.id);
+          const extraDriversEnriched = unitExtraRaw.map((ed: any) => {
+            const edDriver = (drivers as any[]).find((d: any) => d.id === ed.driverId);
+            return { ...ed, driver: edDriver ?? null };
+          });
+          return { ...unit, carrier, vehicle, trailer, driver, driverUnavailable, vehicleUnavailable, driverScheduleForPeriod, vehicleAvailabilityForPeriod, extraDriversForPeriod: extraDriversEnriched };
         });
 
         // Build lookup maps for unassigned demand enrichment
@@ -754,26 +762,46 @@ export function registerLogisticsPlanRoutes(app: Express) {
           if (!wbPrimary.has(wb.warehouseId)) wbPrimary.set(wb.warehouseId, wb.baseId);
         }
 
-        // Enrich each unassigned plan_entry with from/to names and deliveryDeadline
+        // Enrich each unassigned plan_entry with from/to names, entity ids/types, volumeTons and deliveryDeadline
+        const DTYPE = { BASE: "base", WAREHOUSE: "warehouse" };
         const unassignedDemands = unassignedEntries.map((entry: any) => {
           const wBasisId = wbPrimary.get(entry.warehouseId);
           const wName = warehousesMap.get(entry.warehouseId)?.name ?? "Склад";
           let fromEntityName = "";
           let toEntityName = "";
+          let fromEntityType = "";
+          let fromEntityId = "";
+          let toEntityType = "";
+          let toEntityId = "";
           if (entry.type === "income") {
+            fromEntityType = entry.basisId ? DTYPE.BASE : DTYPE.WAREHOUSE;
+            fromEntityId = entry.basisId ?? entry.warehouseId;
             fromEntityName = entry.basisId ? (basesMap.get(entry.basisId) ?? "Базис") : "—";
+            toEntityType = wBasisId ? DTYPE.BASE : DTYPE.WAREHOUSE;
+            toEntityId = wBasisId ?? entry.warehouseId;
             toEntityName = wBasisId ? (basesMap.get(wBasisId) ?? wName) : wName;
           } else if (entry.type === "expense") {
+            fromEntityType = wBasisId ? DTYPE.BASE : DTYPE.WAREHOUSE;
+            fromEntityId = wBasisId ?? entry.warehouseId;
             fromEntityName = wBasisId ? (basesMap.get(wBasisId) ?? wName) : wName;
+            toEntityType = entry.basisId ? DTYPE.BASE : DTYPE.WAREHOUSE;
+            toEntityId = entry.basisId ?? entry.warehouseId;
             toEntityName = entry.basisId ? (basesMap.get(entry.basisId) ?? "Базис") : "—";
           }
           // deliveryDeadline = entry.date - 2 days
           const d = new Date(entry.date);
           d.setUTCDate(d.getUTCDate() - 2);
+          // volume is stored in kg — convert to tonnes for display
+          const volumeTons = entry.volume != null ? (parseFloat(entry.volume) / 1000) : null;
           return {
             ...entry,
             fromEntityName,
             toEntityName,
+            fromEntityType,
+            fromEntityId,
+            toEntityType,
+            toEntityId,
+            volumeTons,
             deliveryDeadline: d.toISOString(),
           };
         });

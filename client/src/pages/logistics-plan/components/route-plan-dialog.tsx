@@ -572,9 +572,12 @@ export function RoutePlanDialog({
                             {demand.toEntityName || "—"}
                           </span>
                         </div>
-                        {demand.volume && (
+                        {(demand.volumeTons != null || demand.volume != null) && (
                           <span className="text-[10px] text-muted-foreground">
-                            Объём: {parseFloat(demand.volume).toLocaleString("ru-RU")} т
+                            Объём: {(demand.volumeTons != null
+                              ? demand.volumeTons
+                              : parseFloat(demand.volume) / 1000
+                            ).toLocaleString("ru-RU", { maximumFractionDigits: 3 })} т
                           </span>
                         )}
                         {demand.missingDataReason && (

@@ -241,43 +241,27 @@ export async function runAutoAssignment(opts: {
 
     if (entry.type === "income") {
       // Goods arrive TO warehouse FROM supplier
-      // "from" side = supplier entity (entry.basisId used as base, delivery_location, or warehouse)
-      // "to" side   = warehouse entity (by primary basis or directly by warehouseId)
+      // "from" side = supplier's basis (entry.basisId), "to" side = warehouse's basis or direct warehouse
+      // Same cascade as OPT deals: basis→basis, basis→warehouse
       if (entry.basisId) {
-        // supplier basisId treated as BASE → warehouse (basis or direct)
+        // Skip: supplier basis === warehouse basis means same location — no transport needed
+        if (entry.basisId === warehouseBasisId) {
+          continue;
+        }
         if (warehouseBasisId) candidates.push([B, entry.basisId, B, warehouseBasisId]);
         candidates.push([B, entry.basisId, W, entry.warehouseId]);
-        // supplier basisId treated as DELIVERY_LOCATION → warehouse (basis or direct)
-        if (warehouseBasisId) candidates.push([DL, entry.basisId, B, warehouseBasisId]);
-        candidates.push([DL, entry.basisId, W, entry.warehouseId]);
-        // supplier basisId treated as WAREHOUSE → warehouse (basis or direct)
-        if (warehouseBasisId) candidates.push([W, entry.basisId, B, warehouseBasisId]);
-        candidates.push([W, entry.basisId, W, entry.warehouseId]);
-      }
-      // Also try warehouse-to-itself fallback when no basisId
-      if (!entry.basisId) {
-        if (warehouseBasisId) candidates.push([B, warehouseBasisId, B, warehouseBasisId]);
-        candidates.push([W, entry.warehouseId, W, entry.warehouseId]);
       }
     } else if (entry.type === "expense") {
       // Goods leave FROM warehouse TO counterparty
-      // "from" side = warehouse (by primary basis or directly)
-      // "to" side   = counterparty (entry.basisId as base, delivery_location, or warehouse)
+      // "from" side = warehouse's basis or direct warehouse, "to" side = counterparty's basis (entry.basisId)
+      // Same cascade as OPT deals: basis→basis, warehouse→basis
       if (entry.basisId) {
-        // warehouse basis → counterparty (all types)
-        if (warehouseBasisId) {
-          candidates.push([B, warehouseBasisId, B, entry.basisId]);
-          candidates.push([B, warehouseBasisId, DL, entry.basisId]);
-          candidates.push([B, warehouseBasisId, W, entry.basisId]);
+        // Skip: warehouse basis === counterparty basis means same location — no transport needed
+        if (warehouseBasisId && warehouseBasisId === entry.basisId) {
+          continue;
         }
-        // warehouse direct → counterparty (all types)
+        if (warehouseBasisId) candidates.push([B, warehouseBasisId, B, entry.basisId]);
         candidates.push([W, entry.warehouseId, B, entry.basisId]);
-        candidates.push([W, entry.warehouseId, DL, entry.basisId]);
-        candidates.push([W, entry.warehouseId, W, entry.basisId]);
-      } else {
-        // No counterparty basis — fallbacks
-        if (warehouseBasisId) candidates.push([B, warehouseBasisId, B, warehouseBasisId]);
-        candidates.push([W, entry.warehouseId, W, entry.warehouseId]);
       }
     } else {
       // unknown type — skip silently

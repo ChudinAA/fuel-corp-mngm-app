@@ -41,6 +41,16 @@ description: Summary of all bug fixes and features implemented in the logistics 
 - Added `dateFrom`, `dateTo`, `scheduleType` to `logisticsUnitExtraDrivers` (both schema and DB via executeSql).
 - ExtraDriversSection in transport-tab.tsx rewritten with full schedule UI.
 
+## Fixes in session 2 (corrections)
+
+**Tariff cascade (auto-assign.ts)** — removed treating `entry.basisId` as DL/WAREHOUSE entity types. `basisId` is always a BASE ID. The cascade now mirrors OPT deals exactly: for income [B, basisId, B, wBasisId], [B, basisId, W, warehouseId]; for expense [B, wBasisId, B, basisId], [W, warehouseId, B, basisId]. Added skip for same-entity routes (basisId === warehouseBasisId — e.g. ЯНОС→ЯНОС).
+
+**Volume in tonnes (server)** — `plan_entries.volume` stores in **kg** (quick-plan-dialog uses `tonsToKg()` on input). Calendar endpoint now computes `volumeTons = volume / 1000` and includes `fromEntityType/fromEntityId/toEntityType/toEntityId` in unassigned demand objects.
+
+**"Заполнить" button (route-plan-dialog)** — was not working because server never returned `fromEntityType/Id/toEntityType/Id` on demands. Fixed server-side enrichment.
+
+**Driver availability + extra drivers (planning-tab.tsx)** — Calendar endpoint now fetches all extra drivers and enriches each transport unit with `extraDriversForPeriod`. WeekView cell now shows "Доп. вод." (green) when primary driver is unavailable but an active extra driver covers that day, vs "Вод. нет" (orange) when no substitute. Unit row label shows "Недоступен (есть замена)" vs "Недоступен". Summary panel "unavailable" section now shows unavailability periods, schedule type, and extra driver coverage per unit.
+
 ## Why
 - Without these fixes, calendar showed routes from all scenarios mixed together.
 - getUnassignedRoutes returned false positives for entries already assigned via routes starting before the period.
