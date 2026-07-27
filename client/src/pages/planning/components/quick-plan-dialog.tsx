@@ -142,6 +142,13 @@ export function QuickPlanDialog({
     enabled: open && type === "expense",
   });
 
+  // Suppliers with their attached bases (for income basis selection)
+  const { data: suppliersWithBases = [] } = useQuery<{ id: string; name: string; baseIds?: string[] }[]>({
+    queryKey: ["/api/suppliers"],
+    queryFn: async () => (await apiRequest("GET", "/api/suppliers")).json(),
+    enabled: open && type === "income",
+  });
+
   const { data: allBases = [] } = useQuery<BasisOption[]>({
     queryKey: ["/api/bases"],
     queryFn: async () => (await apiRequest("GET", "/api/bases")).json(),
@@ -165,19 +172,18 @@ export function QuickPlanDialog({
     [allBases],
   );
 
-  /** Bases available for a given supplierId (income) — deduped by basisId */
+  /** Bases available for a given supplierId (income) — mirrors OPT logic using supplier.baseIds */
   function basesForSupplier(supplierId: string) {
-    const seen = new Map<string, string>();
-    for (const r of planningResources) {
-      if (r.supplierId === supplierId && r.basisId && r.basisName && !seen.has(r.basisId)) {
-        seen.set(r.basisId, r.basisName);
-      }
+    const supplier = suppliersWithBases.find((s) => s.id === supplierId);
+    const supplierBaseIds = supplier?.baseIds ?? [];
+    if (supplierBaseIds.length > 0) {
+      const attached = allBases
+        .filter((b) => supplierBaseIds.includes(b.id))
+        .map((b) => ({ value: b.id, label: b.name }));
+      if (attached.length > 0) return attached;
     }
-    if (seen.size > 0) {
-      return Array.from(seen.entries()).map(([value, label]) => ({ value, label }));
-    }
-    // No resources with basis for this supplier — return empty list
-    return [];
+    // Fall back to all bases if supplier has no attached bases
+    return allBasisOptions;
   }
 
   /** Bases for a given customer (expense) — prefers customer's attached bases, falls back to all */

@@ -76,6 +76,8 @@ const formSchema = z.object({
   notes: z.string().optional().nullable(),
   isUnplanned: z.boolean().default(false),
   selectedDeliveryCostId: z.string().optional().nullable(),
+  // Linked plan entry — set when filling from unassigned demand
+  planEntryId: z.string().optional().nullable(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -433,6 +435,8 @@ export function RoutePlanDialog({
     form.setValue("fromEntityName", demand.fromEntityName || null);
     form.setValue("toEntityName", demand.toEntityName || null);
     form.setValue("isUnplanned", false);
+    // Link this route to the demand's plan entry so it disappears from "unassigned"
+    form.setValue("planEntryId", demand.id || null);
     document.getElementById("route-plan-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
@@ -458,6 +462,7 @@ export function RoutePlanDialog({
         notes: null,
         isUnplanned: false,
         selectedDeliveryCostId: null,
+        planEntryId: null,
       });
     },
     onError: (e: any) =>
@@ -500,6 +505,7 @@ export function RoutePlanDialog({
       dateEnd: data.dateEnd ? new Date(data.dateEnd).toISOString() : null,
       notes: data.notes || null,
       isUnplanned: data.isUnplanned,
+      planEntryId: data.planEntryId || null,
       status: "manual",
       periodFrom,
       periodTo,
