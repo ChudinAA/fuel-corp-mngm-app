@@ -5,3 +5,4 @@
 - [Planning periodFrom timestamp fix](planning-periodfrom.md) — DB stores periodFrom as full timestamp; compare with .slice(0,10) to match date-only strings.
 - [Planning basisId migration](planning-basis-migration.md) — basisId added to plan_entries and planning_resources; drizzle-kit push is interactive, apply via executeSql instead.
 - [Extra drivers multi-driver](extra-drivers.md) — logistics_unit_extra_drivers table; API at /transport-units/:id/extra-drivers and /extra-drivers/:id; enriched in GET transport-units response.
+- [Refueling service fees](refueling-service-fees.md) — 7 new cols in aircraft_refueling for agentFeeRate, otherServiceFee (name/type/qty), enabled flags; profit formula and recalc logic.

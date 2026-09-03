@@ -34,6 +34,10 @@ interface UseRefuelingCalculationsProps {
   equipmentType?: string;
   selectedEquipmentId?: string;
   equipmentBalance?: number;
+  /** Включено ли агентское вознаграждение в экономику сделки */
+  isAgentFeeEnabled?: boolean;
+  /** Включена ли прочая услуга в экономику сделки */
+  isOtherServiceEnabled?: boolean;
 }
 
 export function useRefuelingCalculations({
@@ -61,6 +65,8 @@ export function useRefuelingCalculations({
   equipmentType = EQUIPMENT_TYPE.COMMON,
   selectedEquipmentId,
   equipmentBalance = 0,
+  isAgentFeeEnabled = true,
+  isOtherServiceEnabled = true,
 }: UseRefuelingCalculationsProps) {
   const { calculatedKg, finalKg } = useQuantityCalculation({
     inputMode,
@@ -172,7 +178,7 @@ export function useRefuelingCalculations({
   const saleAmount =
     salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
 
-  // agentFeeRate — ставка ₽/кг из настроек базиса (для отображения)
+  // agentFeeRate — ставка ₽/кг из настроек базиса (для отображения и сохранения в сделку)
   const agentFeeRate = useMemo(() => {
     if (selectedBasisId && selectedSupplier?.basisPrices) {
       const basisPrice = selectedSupplier.basisPrices.find(
@@ -195,34 +201,51 @@ export function useRefuelingCalculations({
     return !!(bp?.otherServiceType && bp?.otherServiceValue);
   }, [selectedSupplier, selectedBasisId]);
 
-  // Название прочей услуги (для отображения в сделке)
-  const otherServiceName = useMemo(() => {
+  // Данные прочей услуги из настроек базиса поставщика
+  const otherServiceBasisData = useMemo(() => {
     if (!selectedBasisId || !selectedSupplier?.basisPrices) return null;
     const bp = selectedSupplier.basisPrices.find((b) => b.basisId === selectedBasisId);
-    return (bp as any)?.otherServiceName || null;
+    if (!bp?.otherServiceType || !bp?.otherServiceValue) return null;
+    return bp;
   }, [selectedSupplier, selectedBasisId]);
 
+  const otherServiceName = useMemo(() => {
+    return (otherServiceBasisData as any)?.otherServiceName || null;
+  }, [otherServiceBasisData]);
+
+  const otherServiceType = useMemo(() => {
+    return otherServiceBasisData?.otherServiceType || null;
+  }, [otherServiceBasisData]);
+
+  const otherServiceQuantity = useMemo(() => {
+    return (otherServiceBasisData as any)?.otherServiceQuantity || null;
+  }, [otherServiceBasisData]);
+
   const otherServiceFee = useMemo(() => {
-    if (selectedBasisId && selectedSupplier?.basisPrices) {
-      const bp = selectedSupplier.basisPrices.find((b) => b.basisId === selectedBasisId);
-      if (!bp?.otherServiceType || !bp?.otherServiceValue) return 0;
-      const val = parseFloat(bp.otherServiceValue);
-      if (isNaN(val) || val <= 0) return 0;
-      if (bp.otherServiceType === "royalty_per_ton") return finalKg > 0 ? val * (finalKg / 1000) : 0;
-      if (bp.otherServiceType === "percent_of_amount") return (saleAmount !== null && saleAmount > 0) ? saleAmount * val / 100 : 0;
-      if (bp.otherServiceType === "fixed") {
-        const qty = bp.otherServiceQuantity ? parseFloat(bp.otherServiceQuantity) : 1;
-        return val * (isNaN(qty) || qty <= 0 ? 1 : qty);
-      }
+    if (!otherServiceBasisData) return 0;
+    const val = parseFloat(otherServiceBasisData.otherServiceValue!);
+    if (isNaN(val) || val <= 0) return 0;
+    if (otherServiceBasisData.otherServiceType === "royalty_per_ton") return finalKg > 0 ? val * (finalKg / 1000) : 0;
+    if (otherServiceBasisData.otherServiceType === "percent_of_amount") return (saleAmount !== null && saleAmount > 0) ? saleAmount * val / 100 : 0;
+    if (otherServiceBasisData.otherServiceType === "fixed") {
+      const qty = otherServiceQuantity ? parseFloat(otherServiceQuantity) : 1;
+      return val * (isNaN(qty) || qty <= 0 ? 1 : qty);
     }
     return 0;
-  }, [selectedSupplier, selectedBasisId, finalKg, saleAmount]);
+  }, [otherServiceBasisData, otherServiceQuantity, finalKg, saleAmount]);
+
+  const isRechargeActive = (isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) ||
+    (isPvkjRecharge && productType === PRODUCT_TYPE.PVKJ);
+
+  // Эффективные суммы с учётом чекбоксов включения
+  const effectiveAgentFee = isRechargeActive ? 0 : (isAgentFeeEnabled ? agentFee : 0);
+  const effectiveOtherServiceFee = isRechargeActive ? 0 : (isOtherServiceEnabled ? otherServiceFee : 0);
 
   const profit =
     purchaseAmount !== null && saleAmount !== null
-      ? ((isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) || (isPvkjRecharge && productType === PRODUCT_TYPE.PVKJ))
+      ? isRechargeActive
         ? 0
-        : saleAmount - purchaseAmount - agentFee - otherServiceFee
+        : saleAmount - purchaseAmount - effectiveAgentFee - effectiveOtherServiceFee
       : null;
 
   const getWarehouseStatus = (): {
@@ -324,6 +347,8 @@ export function useRefuelingCalculations({
     otherServiceFee,
     hasOtherService,
     otherServiceName,
+    otherServiceType,
+    otherServiceQuantity,
     profit,
     warehouseStatus,
     contractVolumeStatus,

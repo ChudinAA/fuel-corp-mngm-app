@@ -259,6 +259,10 @@ export function SuppliersTab() {
                                         {otherServiceLabel && bp.otherServiceValue && (
                                           <span className="text-green-600 dark:text-green-400">
                                             {otherServiceLabel}: {parseFloat(bp.otherServiceValue)}{bp.otherServiceType === "percent_of_amount" ? "%" : " ₽"}
+                                            {bp.otherServiceType === "fixed" && (bp as any).otherServiceQuantity && parseFloat((bp as any).otherServiceQuantity) > 1
+                                              ? ` × ${parseFloat((bp as any).otherServiceQuantity)} шт.`
+                                              : ""}
+                                            {(bp as any).otherServiceName ? ` — ${(bp as any).otherServiceName}` : ""}
                                           </span>
                                         )}
                                       </div>

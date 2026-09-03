@@ -693,10 +693,15 @@ export class WarehouseRecalculationService {
       if (refuel && refuel.productType !== PRODUCT_TYPE.SERVICE) {
         const quantityKg = parseFloat(refuel.quantityKg);
         const salePrice = parseFloat(refuel.salePrice || "0");
-        const agentFee = parseFloat(refuel.agentFee || "0");
+        // Агентское: используем сохранённую итоговую сумму, учитываем флаг включения
+        const agentFeeEnabled = refuel.isAgentFeeEnabled !== false; // null/undefined → включено
+        const effectiveAgentFee = agentFeeEnabled ? parseFloat(refuel.agentFee || "0") : 0;
+        // Прочие услуги: используем сохранённую итоговую сумму, учитываем флаг включения
+        const otherServiceEnabled = refuel.isOtherServiceEnabled !== false; // null/undefined → включено
+        const effectiveOtherServiceFee = otherServiceEnabled ? parseFloat((refuel as any).otherServiceFee || "0") : 0;
         const purchaseAmount = quantityKg * newAverageCost;
         const saleAmount = quantityKg * salePrice;
-        const profit = saleAmount - purchaseAmount - agentFee;
+        const profit = saleAmount - purchaseAmount - effectiveAgentFee - effectiveOtherServiceFee;
 
         console.log("        Заправка до обновления:", {
           purchasePrice: refuel.purchasePrice,

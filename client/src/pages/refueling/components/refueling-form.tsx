@@ -81,6 +81,14 @@ export const RefuelingForm = forwardRef<
   const [equipmentBalance, setEquipmentBalance] = useState<number>(0);
   const isEditing = !!editData && !!editData.id;
 
+  // Состояния включения агентского и прочих услуг в экономику сделки
+  const [isAgentFeeEnabled, setIsAgentFeeEnabled] = useState<boolean>(
+    editData?.isAgentFeeEnabled !== false
+  );
+  const [isOtherServiceEnabled, setIsOtherServiceEnabled] = useState<boolean>(
+    editData?.isOtherServiceEnabled !== false
+  );
+
   const initialValuesRef = useRef<RefuelingFormData | null>(null);
 
   const form = useForm<RefuelingFormData>({
@@ -201,6 +209,8 @@ export const RefuelingForm = forwardRef<
     otherServiceFee,
     hasOtherService,
     otherServiceName,
+    otherServiceType,
+    otherServiceQuantity,
     profit,
     warehouseStatus,
     contractVolumeStatus,
@@ -230,6 +240,8 @@ export const RefuelingForm = forwardRef<
     equipmentType,
     selectedEquipmentId,
     equipmentBalance,
+    isAgentFeeEnabled,
+    isOtherServiceEnabled,
   });
 
   const {
@@ -415,6 +427,10 @@ export const RefuelingForm = forwardRef<
         setInputMode("liters");
       }
 
+      // Инициализируем флаги включения услуг из данных сделки
+      setIsAgentFeeEnabled(editData.isAgentFeeEnabled !== false);
+      setIsOtherServiceEnabled(editData.isOtherServiceEnabled !== false);
+
       setIsDataInitialized(true);
     }
   }, [
@@ -477,6 +493,13 @@ export const RefuelingForm = forwardRef<
         purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
         saleAmount: saleAmount !== null ? saleAmount : null,
         agentFee: agentFee !== null ? agentFee : null,
+        agentFeeRate: agentFeeRate || null,
+        isAgentFeeEnabled: isAgentFeeEnabled,
+        otherServiceFee: otherServiceFee || null,
+        otherServiceName: otherServiceName || null,
+        otherServiceType: otherServiceType || null,
+        otherServiceQuantity: otherServiceQuantity ? parseFloat(otherServiceQuantity) : null,
+        isOtherServiceEnabled: isOtherServiceEnabled,
         profit: profit !== null ? profit : null,
         equipmentType: equipmentType,
         equipmentId:
@@ -572,6 +595,13 @@ export const RefuelingForm = forwardRef<
         purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
         saleAmount: saleAmount !== null ? saleAmount : null,
         agentFee: agentFee !== null ? agentFee : null,
+        agentFeeRate: agentFeeRate || null,
+        isAgentFeeEnabled: isAgentFeeEnabled,
+        otherServiceFee: otherServiceFee || null,
+        otherServiceName: otherServiceName || null,
+        otherServiceType: otherServiceType || null,
+        otherServiceQuantity: otherServiceQuantity ? parseFloat(otherServiceQuantity) : null,
+        isOtherServiceEnabled: isOtherServiceEnabled,
         profit: profit !== null ? profit : null,
         equipmentType: equipmentType,
         equipmentId:
@@ -626,6 +656,19 @@ export const RefuelingForm = forwardRef<
       form.setValue("isPvkjRecharge", false);
     }
   }, [watchProductType, form]);
+
+  // Когда "Перевыставить" активно — принудительно снимаем чекбоксы услуг
+  // Когда отключается — возвращаем в true (по умолчанию включены)
+  useEffect(() => {
+    const isRechargeActive = watchIsPriceRecharge || watchIsPvkjRecharge;
+    if (isRechargeActive) {
+      setIsAgentFeeEnabled(false);
+      setIsOtherServiceEnabled(false);
+    } else {
+      setIsAgentFeeEnabled(true);
+      setIsOtherServiceEnabled(true);
+    }
+  }, [watchIsPriceRecharge, watchIsPvkjRecharge]);
 
   useEffect(() => {
     if (inputMode === "liters" && calculatedKg && parseFloat(calculatedKg) > 0) {
@@ -753,12 +796,19 @@ export const RefuelingForm = forwardRef<
             otherServiceFee={otherServiceFee}
             hasOtherService={hasOtherService}
             otherServiceName={otherServiceName}
+            otherServiceType={otherServiceType}
+            otherServiceQuantity={otherServiceQuantity}
             warehouseStatus={warehouseStatus}
             contractVolumeStatus={contractVolumeStatus}
             supplierContractVolumeStatus={supplierContractVolumeStatus}
             productType={watchProductType}
             selectedSupplier={selectedSupplier}
             equipmentType={equipmentType}
+            isAgentFeeEnabled={isAgentFeeEnabled}
+            isOtherServiceEnabled={isOtherServiceEnabled}
+            onAgentFeeEnabledChange={setIsAgentFeeEnabled}
+            onOtherServiceEnabledChange={setIsOtherServiceEnabled}
+            isRechargeActive={!!(watchIsPriceRecharge || watchIsPvkjRecharge)}
           />
 
           <div className="grid gap-4 md:grid-cols-2 items-end">

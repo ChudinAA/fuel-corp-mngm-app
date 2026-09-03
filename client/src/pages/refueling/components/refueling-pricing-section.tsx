@@ -12,8 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
 import type { Price, Supplier } from "@shared/schema";
 import type { RefuelingFormData } from "../schemas";
@@ -25,6 +24,12 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+
+const OTHER_SERVICE_TYPE_LABELS: Record<string, string> = {
+  royalty_per_ton: "Роялти",
+  percent_of_amount: "% от суммы",
+  fixed: "Фиксир.",
+};
 
 interface RefuelingPricingSectionProps {
   form: UseFormReturn<RefuelingFormData>;
@@ -48,6 +53,10 @@ interface RefuelingPricingSectionProps {
   hasOtherService?: boolean;
   /** Название прочей услуги */
   otherServiceName?: string | null;
+  /** Тип прочей услуги */
+  otherServiceType?: string | null;
+  /** Кол-во для fixed-типа */
+  otherServiceQuantity?: string | null;
   warehouseStatus: { status: "ok" | "warning" | "error"; message: string };
   contractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
   supplierContractVolumeStatus: {
@@ -57,6 +66,16 @@ interface RefuelingPricingSectionProps {
   productType: string;
   selectedSupplier: Supplier | undefined;
   equipmentType?: string;
+  /** Включено ли агентское вознаграждение в экономику сделки */
+  isAgentFeeEnabled?: boolean;
+  /** Включена ли прочая услуга в экономику сделки */
+  isOtherServiceEnabled?: boolean;
+  /** Обработчик смены флага включения агентского */
+  onAgentFeeEnabledChange?: (v: boolean) => void;
+  /** Обработчик смены флага включения прочей услуги */
+  onOtherServiceEnabledChange?: (v: boolean) => void;
+  /** Флаг: активен ли режим "Перевыставить" (блокирует чекбоксы) */
+  isRechargeActive?: boolean;
 }
 
 export function RefuelingPricingSection({
@@ -78,12 +97,19 @@ export function RefuelingPricingSection({
   otherServiceFee = 0,
   hasOtherService = false,
   otherServiceName,
+  otherServiceType,
+  otherServiceQuantity,
   warehouseStatus,
   contractVolumeStatus,
   supplierContractVolumeStatus,
   productType,
   selectedSupplier,
   equipmentType = "common",
+  isAgentFeeEnabled = true,
+  isOtherServiceEnabled = true,
+  onAgentFeeEnabledChange,
+  onOtherServiceEnabledChange,
+  isRechargeActive = false,
 }: RefuelingPricingSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -125,6 +151,20 @@ export function RefuelingPricingSection({
       form.setValue("selectedSalePriceId", firstId);
     }
   }, [salePrices, selectedSalePriceId]);
+
+  // Метка типа прочей услуги
+  const otherServiceTypeLabel = otherServiceType ? (OTHER_SERVICE_TYPE_LABELS[otherServiceType] ?? otherServiceType) : null;
+
+  // Описание прочей услуги (тип + название + кол-во)
+  const otherServiceDescription = (() => {
+    const parts: string[] = [];
+    if (otherServiceTypeLabel) parts.push(otherServiceTypeLabel);
+    if (otherServiceName) parts.push(otherServiceName);
+    if (otherServiceType === "fixed" && otherServiceQuantity && parseFloat(otherServiceQuantity) > 1) {
+      parts.push(`× ${parseFloat(otherServiceQuantity)} шт.`);
+    }
+    return parts.join(" · ");
+  })();
 
   return (
     <>
@@ -471,24 +511,62 @@ export function RefuelingPricingSection({
         />
       </div>
 
+      {/* Агентское вознаграждение */}
       {agentFeeRate > 0 && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Агентское вознаграждение: {formatPrice(agentFeeRate)} ₽/кг
-            {agentFee > 0 && (
-              <span className="ml-1 text-muted-foreground">= {formatCurrency(agentFee)}</span>
-            )}
-          </AlertDescription>
-        </Alert>
+        <div className={`rounded-md border p-3 ${isRechargeActive ? "opacity-60" : ""}`}>
+          <div className="flex items-center gap-3">
+            <Checkbox
+              checked={!isRechargeActive && isAgentFeeEnabled}
+              onCheckedChange={(v) => {
+                if (!isRechargeActive) onAgentFeeEnabledChange?.(!!v);
+              }}
+              disabled={isRechargeActive}
+              data-testid="checkbox-agent-fee-enabled"
+            />
+            <div className="flex-1 min-w-0">
+              <span className="text-sm">
+                Агентское вознаграждение: {formatPrice(agentFeeRate)} ₽/кг
+              </span>
+              {agentFee > 0 && (
+                <span className={`ml-2 text-sm ${(!isRechargeActive && isAgentFeeEnabled) ? "text-muted-foreground" : "text-muted-foreground line-through"}`}>
+                  = {formatCurrency(agentFee)} ₽
+                </span>
+              )}
+            </div>
+          </div>
+          {isRechargeActive && (
+            <p className="text-xs text-muted-foreground mt-1 pl-7">Отключено при перевыставлении</p>
+          )}
+        </div>
       )}
+
+      {/* Прочие услуги */}
       {hasOtherService && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {otherServiceName ? otherServiceName : "Прочие услуги"}{otherServiceFee > 0 ? `: ${formatCurrency(otherServiceFee)} ₽` : ""}
-          </AlertDescription>
-        </Alert>
+        <div className={`rounded-md border p-3 ${isRechargeActive ? "opacity-60" : ""}`}>
+          <div className="flex items-center gap-3">
+            <Checkbox
+              checked={!isRechargeActive && isOtherServiceEnabled}
+              onCheckedChange={(v) => {
+                if (!isRechargeActive) onOtherServiceEnabledChange?.(!!v);
+              }}
+              disabled={isRechargeActive}
+              data-testid="checkbox-other-service-enabled"
+            />
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-medium">
+                {otherServiceDescription || "Прочие услуги"}
+              </span>
+              {otherServiceFee > 0 && (
+                <span className={`ml-2 text-sm ${(!isRechargeActive && isOtherServiceEnabled) ? "text-muted-foreground" : "text-muted-foreground line-through"}`}>
+                  = {formatCurrency(otherServiceFee)} ₽
+                </span>
+              )}
+            </div>
+          </div>
+          {isRechargeActive && (
+            <p className="text-xs text-muted-foreground mt-1 pl-7">Отключено при перевыставлении</p>
+          )}
+        </div>
       )}
 
       <div className="grid gap-2 md:grid-cols-4">
