@@ -95,6 +95,11 @@ export class AircraftRefuelingStorage {
           sql`${aircraftRefueling.flightNumber} IN ${filters.direction}`,
         );
       }
+      if (filters.basis?.length) {
+        baseConditions.push(
+          sql`(SELECT name FROM bases WHERE id = ${aircraftRefueling.basisId}) IN ${filters.basis}`,
+        );
+      }
     }
 
     const whereCondition = and(...baseConditions);

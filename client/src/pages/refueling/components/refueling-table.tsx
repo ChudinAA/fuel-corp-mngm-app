@@ -403,7 +403,16 @@ export function RefuelingTable({
                 </div>
               </TableHead>
               <TableHead className="text-xs font-semibold p-1 w-[65px]">
-                Базис
+                <div className="flex items-center justify-between gap-1">
+                  <span>Базис</span>
+                  <TableColumnFilter
+                    title="Базис"
+                    options={getUniqueOptions("basis")}
+                    selectedValues={columnFilters["basis"] || []}
+                    onUpdate={(values) => handleFilterUpdate("basis", values)}
+                    dataTestId="filter-basis"
+                  />
+                </div>
               </TableHead>
               {equipmentType === EQUIPMENT_TYPE.LIK && (
                 <TableHead className="text-xs font-semibold p-1 w-[70px]">
@@ -445,6 +454,9 @@ export function RefuelingTable({
               <TableHead className="text-right text-xs font-semibold p-1 w-[72px]">
                 Продажа
               </TableHead>
+              <TableHead className="text-right text-xs font-semibold p-1 w-[90px]">
+                Прочие усл.
+              </TableHead>
               <TableHead className="text-right text-xs font-semibold p-1 w-[72px]">
                 Прибыль
               </TableHead>
@@ -456,6 +468,7 @@ export function RefuelingTable({
               <TableRow className="bg-muted/30 hover:bg-muted/40 border-b-2">
                 {/* Дата, Прод., Борт, Номер РТ, Направление, Поставщик, Базис */}
                 <TableCell className="py-1 px-1" colSpan={7} />
+
                 {/* СЗ - только для LIK */}
                 {equipmentType === EQUIPMENT_TYPE.LIK && (
                   <TableCell className="py-1 px-1" />
@@ -493,6 +506,17 @@ export function RefuelingTable({
                 <TableCell className="py-1 px-1">
                   <StatCell
                     values={deals.map((d: any) => d.saleAmount)}
+                    formatFn={(v) => formatCurrencyForTable(v)}
+                  />
+                </TableCell>
+                {/* Прочие усл. */}
+                <TableCell className="py-1 px-1">
+                  <StatCell
+                    values={deals.map((d: any) => {
+                      const af = parseFloat(d.agentFee || "0");
+                      const osf = parseFloat(d.otherServiceFee || "0");
+                      return (isNaN(af) ? 0 : af) + (isNaN(osf) ? 0 : osf);
+                    })}
                     formatFn={(v) => formatCurrencyForTable(v)}
                   />
                 </TableCell>
@@ -693,6 +717,44 @@ export function RefuelingTable({
                   </TableCell>
                   <TableCell className="text-right text-xs py-1.5 px-1">
                     {formatCurrencyForTable(deal.saleAmount)}
+                  </TableCell>
+                  <TableCell className="text-right text-xs py-1.5 px-1">
+                    {(() => {
+                      const OTHER_TYPE_SHORT: Record<string, string> = {
+                        royalty_per_ton: "Рой.",
+                        percent_of_amount: "%",
+                        fixed: "Фикс.",
+                      };
+                      const agentFeeVal = parseFloat(deal.agentFee || "0");
+                      const otherFeeVal = parseFloat(deal.otherServiceFee || "0");
+                      const hasAgent = !isNaN(agentFeeVal) && agentFeeVal > 0;
+                      const hasOther = !isNaN(otherFeeVal) && otherFeeVal > 0;
+                      if (!hasAgent && !hasOther) return <span className="text-muted-foreground">—</span>;
+                      return (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex flex-col items-end gap-0.5 cursor-help">
+                                {hasAgent && (
+                                  <span className={deal.isAgentFeeEnabled === false ? "line-through text-muted-foreground" : ""}>
+                                    Аг: {formatCurrencyForTable(agentFeeVal)}
+                                  </span>
+                                )}
+                                {hasOther && (
+                                  <span className={deal.isOtherServiceEnabled === false ? "line-through text-muted-foreground" : ""}>
+                                    {deal.otherServiceType ? (OTHER_TYPE_SHORT[deal.otherServiceType] ?? "") : ""} {formatCurrencyForTable(otherFeeVal)}
+                                  </span>
+                                )}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="left">
+                              {hasAgent && <p>Агентское: {formatCurrencyForTable(agentFeeVal)}{deal.isAgentFeeEnabled === false ? " (выключено)" : ""}</p>}
+                              {hasOther && <p>{deal.otherServiceName || "Прочая услуга"}: {formatCurrencyForTable(otherFeeVal)}{deal.isOtherServiceEnabled === false ? " (выключено)" : ""}</p>}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className={`text-right font-medium text-xs py-1.5 px-1 ${deal.profit !== null && parseFloat(deal.profit) < 0 ? "text-destructive" : "text-green-600"}`}>
                     {formatCurrencyForTable(deal.profit)}

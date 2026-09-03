@@ -658,15 +658,12 @@ export const RefuelingForm = forwardRef<
   }, [watchProductType, form]);
 
   // Когда "Перевыставить" активно — принудительно снимаем чекбоксы услуг
-  // Когда отключается — возвращаем в true (по умолчанию включены)
+  // При деактивации не трогаем — пользователь сам управляет чекбоксами
   useEffect(() => {
     const isRechargeActive = watchIsPriceRecharge || watchIsPvkjRecharge;
     if (isRechargeActive) {
       setIsAgentFeeEnabled(false);
       setIsOtherServiceEnabled(false);
-    } else {
-      setIsAgentFeeEnabled(true);
-      setIsOtherServiceEnabled(true);
     }
   }, [watchIsPriceRecharge, watchIsPvkjRecharge]);
 

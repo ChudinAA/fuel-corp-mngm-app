@@ -155,13 +155,16 @@ export function RefuelingPricingSection({
   // Метка типа прочей услуги
   const otherServiceTypeLabel = otherServiceType ? (OTHER_SERVICE_TYPE_LABELS[otherServiceType] ?? otherServiceType) : null;
 
-  // Описание прочей услуги (тип + название + кол-во)
+  // Описание прочей услуги (тип + название + кол-во + цена за штуку для fixed)
   const otherServiceDescription = (() => {
     const parts: string[] = [];
     if (otherServiceTypeLabel) parts.push(otherServiceTypeLabel);
     if (otherServiceName) parts.push(otherServiceName);
     if (otherServiceType === "fixed" && otherServiceQuantity && parseFloat(otherServiceQuantity) > 1) {
-      parts.push(`× ${parseFloat(otherServiceQuantity)} шт.`);
+      const qty = parseFloat(otherServiceQuantity);
+      const pricePerUnit = otherServiceFee > 0 ? otherServiceFee / qty : 0;
+      parts.push(`× ${qty} шт.`);
+      if (pricePerUnit > 0) parts.push(`(${formatCurrency(pricePerUnit)} ₽/шт.)`);
     }
     return parts.join(" · ");
   })();
