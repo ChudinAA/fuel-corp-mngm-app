@@ -121,9 +121,9 @@ export function EquipmentMovementTable({
         />
       </div>
 
-      <div className="border rounded-lg overflow-x-auto">
+      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-300px)]">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
             <TableRow>
               <TableHead>Дата</TableHead>
               <TableHead>

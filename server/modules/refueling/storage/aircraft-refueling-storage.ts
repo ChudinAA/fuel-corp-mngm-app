@@ -100,6 +100,15 @@ export class AircraftRefuelingStorage {
           sql`(SELECT name FROM bases WHERE id = ${aircraftRefueling.basisId}) IN ${filters.basis}`,
         );
       }
+      // Диапазон дат (приоритет над filter_date)
+      if (filters.dateFrom?.length && filters.dateTo?.length) {
+        baseConditions.push(
+          sql`${aircraftRefueling.refuelingDate} >= ${filters.dateFrom[0]}::date`,
+          sql`${aircraftRefueling.refuelingDate} <= ${filters.dateTo[0]}::date`,
+        );
+        // Убираем filter_date если задан диапазон
+        delete filters.date;
+      }
     }
 
     const whereCondition = and(...baseConditions);
@@ -121,7 +130,13 @@ export class AircraftRefuelingStorage {
       .leftJoin(warehouses, eq(aircraftRefueling.warehouseId, warehouses.id))
       .leftJoin(equipments, eq(aircraftRefueling.equipmentId, equipments.id))
       .where(whereCondition)
-      .orderBy(desc(aircraftRefueling.refuelingDate), asc(customers.name), asc(suppliers.name))
+      .orderBy(
+        desc(aircraftRefueling.refuelingDate),
+        // Группировка по номеру РТ внутри одной даты
+        sql`COALESCE(${aircraftRefueling.orderNumber}, '')`,
+        // Сортировка по типу продукта внутри группы РТ: керосин → ПВКЖ → услуга → прочее
+        sql`CASE WHEN ${aircraftRefueling.productType} = 'kerosene' THEN 0 WHEN ${aircraftRefueling.productType} = 'pvkj' THEN 1 WHEN ${aircraftRefueling.productType} = 'service' THEN 2 ELSE 3 END`,
+      )
       .limit(pageSize)
       .offset(offset);
 

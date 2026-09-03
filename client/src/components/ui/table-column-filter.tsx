@@ -37,6 +37,17 @@ function parseDMY(s: string): Date | null {
   return new Date(y, m, d)
 }
 
+/** Проверяет, является ли значение спецмаркером */
+function isSpecialValue(v: string) {
+  return v.startsWith("__range__:") || v.startsWith("__month__:")
+}
+
+/** Форматирует ISO дату YYYY-MM-DD → DD.MM.YYYY для отображения */
+function fmtIso(s: string) {
+  const [y, m, d] = s.split("-")
+  return d && m && y ? `${d}.${m}.${y}` : s
+}
+
 export function TableColumnFilter({
   title,
   options,
@@ -72,7 +83,8 @@ export function TableColumnFilter({
     setOpen(false)
   }
 
-  const monthGroups = React.useMemo(() => {
+  // --- Месяцы из опций ---
+  const monthGroupsFromOptions = React.useMemo(() => {
     if (!isDateFilter) return []
     const groups = new Map<string, { values: string[]; label: string }>()
     options.forEach((opt) => {
@@ -87,33 +99,109 @@ export function TableColumnFilter({
         groups.get(key)!.values.push(opt.value)
       }
     })
-    return Array.from(groups.entries())
-      .sort((a, b) => b[0].localeCompare(a[0]))
-      .map(([key, { values, label }]) => ({ key, values, label }))
+    return groups
   }, [options, isDateFilter])
 
-  const handleMonthToggle = (values: string[]) => {
-    const allSelected = values.every((v) => tempSelected.includes(v))
-    if (allSelected) {
-      setTempSelected((prev) => prev.filter((v) => !values.includes(v)))
+  // --- Последние 4 месяца (всегда показываем) ---
+  const last4Months = React.useMemo(() => {
+    if (!isDateFilter) return []
+    const result: { key: string; label: string }[] = []
+    const now = new Date()
+    for (let i = 0; i < 4; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const m = String(d.getMonth() + 1).padStart(2, "0")
+      const y = String(d.getFullYear())
+      result.push({ key: `${y}-${m}`, label: `${MONTH_NAMES_RU[d.getMonth()]} ${y}` })
+    }
+    return result
+  }, [isDateFilter])
+
+  // --- Объединяем: последние 4 + из опций, дедупликация, сортировка по убыванию ---
+  const allMonthGroups = React.useMemo(() => {
+    const map = new Map<string, { key: string; label: string; values: string[] }>()
+    last4Months.forEach((m) => {
+      if (!map.has(m.key)) {
+        map.set(m.key, { ...m, values: monthGroupsFromOptions.get(m.key)?.values ?? [] })
+      }
+    })
+    monthGroupsFromOptions.forEach((group, key) => {
+      if (!map.has(key)) {
+        map.set(key, { key, label: group.label, values: group.values })
+      } else {
+        // обновляем values если ещё не заполнили из last4Months
+        const existing = map.get(key)!
+        if (!existing.values.length) existing.values = group.values
+      }
+    })
+    return Array.from(map.values()).sort((a, b) => b.key.localeCompare(a.key))
+  }, [last4Months, monthGroupsFromOptions])
+
+  /** Проверяет, выбран ли месяц — либо через маркер, либо через значения */
+  const isMonthSelected = (group: { key: string; values: string[] }) => {
+    const marker = `__month__:${group.key}`
+    if (tempSelected.includes(marker)) return "full"
+    if (group.values.length > 0) {
+      const allSel = group.values.every((v) => tempSelected.includes(v))
+      const someSel = group.values.some((v) => tempSelected.includes(v))
+      if (allSel) return "full"
+      if (someSel) return "partial"
+    }
+    return "none"
+  }
+
+  const handleMonthToggle = (group: { key: string; values: string[] }) => {
+    const marker = `__month__:${group.key}`
+    const state = isMonthSelected(group)
+
+    if (group.values.length > 0) {
+      // Есть реальные значения — работаем через них
+      if (state === "full") {
+        setTempSelected((prev) => prev.filter((v) => !group.values.includes(v) && v !== marker))
+      } else {
+        setTempSelected((prev) => [...new Set([...prev.filter((v) => v !== marker), ...group.values])])
+      }
     } else {
-      setTempSelected((prev) => [...new Set([...prev, ...values])])
+      // Нет реальных значений — используем маркер (будет отправлен как dateFrom/dateTo)
+      if (state === "full") {
+        setTempSelected((prev) => prev.filter((v) => v !== marker))
+      } else {
+        // Убираем другие __month__ маркеры чтобы не конфликтовали с диапазоном
+        setTempSelected((prev) => [...prev.filter((v) => v !== marker), marker])
+      }
     }
   }
 
+  /** Применить диапазон дат как спецмаркер (сервер обработает через dateFrom/dateTo) */
   const handleApplyRange = () => {
     if (!rangeFrom || !rangeTo) return
     const fromDate = new Date(rangeFrom)
     const toDate = new Date(rangeTo)
     if (fromDate > toDate) return
-    const inRange = options
-      .filter((opt) => {
-        const d = parseDMY(opt.value)
-        return d !== null && d >= fromDate && d <= toDate
-      })
-      .map((opt) => opt.value)
-    setTempSelected((prev) => [...new Set([...prev, ...inRange])])
+
+    const marker = `__range__:${rangeFrom}:${rangeTo}`
+    setTempSelected((prev) => {
+      // Убираем старые диапазоны и маркеры месяцев, ставим новый диапазон
+      const withoutRanges = prev.filter((v) => !v.startsWith("__range__:") && !v.startsWith("__month__:"))
+      return [...withoutRanges, marker]
+    })
+    setRangeFrom("")
+    setRangeTo("")
   }
+
+  // --- Активный диапазон из selectedValues для отображения ---
+  const activeRange = React.useMemo(() => {
+    const r = selectedValues.find((v) => v.startsWith("__range__:"))
+    if (!r) return null
+    const rest = r.slice("__range__:".length)
+    const sepIdx = rest.indexOf(":")
+    if (sepIdx === -1) return null
+    return { from: rest.slice(0, sepIdx), to: rest.slice(sepIdx + 1) }
+  }, [selectedValues])
+
+  // Только не-спецзначения для отображения в CommandList
+  const regularOptions = React.useMemo(() => {
+    return options.filter((o) => !isSpecialValue(o.value))
+  }, [options])
 
   const isActive = selectedValues.length > 0
 
@@ -132,21 +220,33 @@ export function TableColumnFilter({
           <Filter className={cn("h-3.5 w-3.5", isActive && "fill-current")} />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[280px] p-0" align="start">
+      <PopoverContent className="w-[290px] p-0" align="start">
         <div className="p-2 font-medium text-xs text-muted-foreground bg-muted/50">
           Фильтр: {title}
         </div>
 
-        {isDateFilter && monthGroups.length > 0 && (
+        {isDateFilter && (
           <>
             <div className="p-2 space-y-2">
+              {/* Активный диапазон */}
+              {activeRange && (
+                <div className="flex items-center gap-1 text-[10px] bg-primary/10 text-primary rounded px-2 py-1">
+                  <span>📅 {fmtIso(activeRange.from)} — {fmtIso(activeRange.to)}</span>
+                  <button
+                    className="ml-auto hover:text-destructive"
+                    onClick={() => onUpdate(selectedValues.filter((v) => !v.startsWith("__range__:")))}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
               <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
                 Быстрый выбор по месяцу
               </div>
               <div className="flex flex-wrap gap-1">
-                {monthGroups.map((group) => {
-                  const allSel = group.values.every((v) => tempSelected.includes(v))
-                  const someSel = !allSel && group.values.some((v) => tempSelected.includes(v))
+                {allMonthGroups.map((group) => {
+                  const state = isMonthSelected(group)
                   return (
                     <Button
                       key={group.key}
@@ -154,10 +254,10 @@ export function TableColumnFilter({
                       size="sm"
                       className={cn(
                         "h-6 px-2 text-[10px]",
-                        allSel && "bg-primary/10 border-primary text-primary",
-                        someSel && "border-primary/50 text-primary/70"
+                        state === "full" && "bg-primary/10 border-primary text-primary",
+                        state === "partial" && "border-primary/50 text-primary/70"
                       )}
-                      onClick={() => handleMonthToggle(group.values)}
+                      onClick={() => handleMonthToggle(group)}
                     >
                       {group.label}
                     </Button>
@@ -199,10 +299,10 @@ export function TableColumnFilter({
 
         <Command>
           <CommandInput placeholder="Поиск..." className="h-8" />
-          <CommandList className={cn(isDateFilter ? "max-h-[200px]" : "max-h-[300px]")}>
+          <CommandList className={cn(isDateFilter ? "max-h-[160px]" : "max-h-[300px]")}>
             <CommandEmpty>Ничего не найдено.</CommandEmpty>
             <CommandGroup>
-              {options.map((option) => (
+              {regularOptions.map((option) => (
                 <CommandItem
                   key={option.value}
                   onSelect={() => handleToggle(option.value)}

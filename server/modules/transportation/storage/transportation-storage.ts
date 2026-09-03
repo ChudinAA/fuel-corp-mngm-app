@@ -52,7 +52,12 @@ export class TransportationStorage {
             sql`${logisticsCarriers.name} IN ${filters.carrier}`,
           );
         }
-        if (filters.date?.length) {
+        if (filters.dateFrom?.length && filters.dateTo?.length) {
+          conditions.push(
+            sql`${transportation.dealDate} >= ${filters.dateFrom[0]}::date`,
+            sql`${transportation.dealDate} <= ${filters.dateTo[0]}::date`,
+          );
+        } else if (filters.date?.length) {
           conditions.push(
             sql`TO_CHAR(${transportation.dealDate}, 'DD.MM.YYYY') IN ${filters.date}`,
           );

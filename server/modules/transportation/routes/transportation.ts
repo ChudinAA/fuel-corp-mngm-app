@@ -25,6 +25,11 @@ export function registerTransportationRoutes(app: Express) {
         }
       });
 
+      const dateFrom = req.query.dateFrom as string | undefined;
+      const dateTo = req.query.dateTo as string | undefined;
+      if (dateFrom) filters["dateFrom"] = [dateFrom];
+      if (dateTo) filters["dateTo"] = [dateTo];
+
       const result = await (storage as any).transportation.getTransportationDeals(
         offset,
         pageSize,

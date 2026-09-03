@@ -26,6 +26,12 @@ export function registerOptRoutes(app: Express) {
         }
       });
 
+      // Поддержка диапазона дат из фильтра
+      const dateFrom = req.query.dateFrom as string | undefined;
+      const dateTo = req.query.dateTo as string | undefined;
+      if (dateFrom) filters["dateFrom"] = [dateFrom];
+      if (dateTo) filters["dateTo"] = [dateTo];
+
       const result = await (storage.opt as any).getOptDeals(offset, pageSize, search, filters);
       res.json(result);
     }

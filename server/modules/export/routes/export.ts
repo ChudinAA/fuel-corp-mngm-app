@@ -53,11 +53,11 @@ export function registerExportRoutes(app: Express) {
     }
   );
 
-  // Экспорт данных в Excel
+  // Экспорт данных в Excel (доступен всем авторизованным пользователям;
+  // фильтрация колонок по правам происходит в excelService.getAvailableColumns)
   app.post(
     "/api/export/:moduleName",
     requireAuth,
-    requirePermission("reports", "export"),
     async (req, res) => {
       try {
         const { moduleName } = req.params;

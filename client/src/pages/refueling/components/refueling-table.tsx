@@ -131,6 +131,8 @@ interface RefuelingTableProps {
   onDelete?: () => void;
   onAdd?: () => void;
   equipmentType?: string;
+  /** Когда таблица открыта в fullscreen-диалоге, не ограничиваем высоту */
+  isFullscreen?: boolean;
 }
 
 export function RefuelingTable({
@@ -139,6 +141,7 @@ export function RefuelingTable({
   onDelete,
   onAdd,
   equipmentType = EQUIPMENT_TYPE.COMMON,
+  isFullscreen = false,
 }: RefuelingTableProps) {
   const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
   const { hasPermission } = useAuth();
@@ -161,7 +164,7 @@ export function RefuelingTable({
   const [dealToDelete, setDealToDelete] = useState<any>(null);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [selectedDealNotes, setSelectedDealNotes] = useState<string>("");
-  const [searchInput, setSearchInput] = useState("");
+  const [searchInput, setSearchInput] = useState(search);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const cursorPositionRef = useRef<number>(0);
   const [deletedDealsAuditOpen, setDeletedDealsAuditOpen] = useState(false);
@@ -275,6 +278,29 @@ export function RefuelingTable({
 
   const deals = filteredDeals;
 
+  // Вычисляем принадлежность к группе РТ (Номер РТ + та же дата) для визуальной группировки
+  const rtGroupInfo = useMemo(() => {
+    const result = new Map<string, { isGrouped: boolean; isFirstInGroup: boolean; isLastInGroup: boolean }>();
+    const computeForList = (dealList: any[]) => {
+      dealList.forEach((deal, idx) => {
+        if (!deal.orderNumber) {
+          result.set(deal.id, { isGrouped: false, isFirstInGroup: false, isLastInGroup: false });
+          return;
+        }
+        const sameDate = formatDate(deal.refuelingDate);
+        const prev = idx > 0 ? dealList[idx - 1] : null;
+        const next = idx < dealList.length - 1 ? dealList[idx + 1] : null;
+        const prevSame = !!(prev && prev.orderNumber === deal.orderNumber && formatDate(prev.refuelingDate) === sameDate);
+        const nextSame = !!(next && next.orderNumber === deal.orderNumber && formatDate(next.refuelingDate) === sameDate);
+        const isGrouped = prevSame || nextSame;
+        result.set(deal.id, { isGrouped, isFirstInGroup: isGrouped && !prevSame, isLastInGroup: isGrouped && !nextSame });
+      });
+    };
+    computeForList(deals.filter((d: any) => isCreatedToday(d.createdAt)));
+    computeForList(deals.filter((d: any) => !isCreatedToday(d.createdAt)));
+    return result;
+  }, [deals]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
@@ -328,9 +354,9 @@ export function RefuelingTable({
         />
       </div>
 
-      <div className="border rounded-lg overflow-x-auto">
+      <div className={cn("border rounded-lg overflow-auto", !isFullscreen && "max-h-[calc(100vh-300px)]")}>
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
             <TableRow>
               <TableHead className="text-xs font-semibold p-1 w-[80px]">
                 <div className="flex items-center justify-between gap-1">
@@ -345,12 +371,18 @@ export function RefuelingTable({
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-xs font-semibold p-1">
+              <TableHead className="text-xs font-semibold p-1 bg-background">
                 <div className="flex items-center justify-between gap-1">
                   <span>Прод.</span>
                   <TableColumnFilter
                     title="Продукт"
-                    options={getUniqueOptions("productType")}
+                    options={[
+                      { label: getProductLabel(PRODUCT_TYPE.KEROSENE), value: PRODUCT_TYPE.KEROSENE },
+                      { label: getProductLabel(PRODUCT_TYPE.PVKJ), value: PRODUCT_TYPE.PVKJ },
+                      { label: getProductLabel(PRODUCT_TYPE.SERVICE), value: PRODUCT_TYPE.SERVICE },
+                      { label: getProductLabel(PRODUCT_TYPE.STORAGE), value: PRODUCT_TYPE.STORAGE },
+                      { label: getProductLabel(PRODUCT_TYPE.AGENT), value: PRODUCT_TYPE.AGENT },
+                    ]}
                     selectedValues={columnFilters["productType"] || []}
                     onUpdate={(values) =>
                       handleFilterUpdate("productType", values)
@@ -571,6 +603,7 @@ export function RefuelingTable({
                       );
                     }
                   }
+                  const _gInfo = rtGroupInfo.get(deal.id) || { isGrouped: false, isFirstInGroup: false, isLastInGroup: false };
                   _rows.push((
                     <TableRow
                       key={deal.id}
@@ -578,6 +611,10 @@ export function RefuelingTable({
                         isToday && !deal.isDraft && "bg-emerald-50/30 dark:bg-emerald-950/10",
                         deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200",
                         !deal.isDraft && lastCreatedDealId === deal.id && "new-deal-flash",
+                        // Визуальная группировка по Номеру РТ
+                        _gInfo.isGrouped && !deal.isDraft && !isToday && "bg-sky-50/20 dark:bg-sky-950/10",
+                        _gInfo.isFirstInGroup && "border-t-2 border-t-sky-300/50 dark:border-t-sky-700/40",
+                        _gInfo.isLastInGroup && "border-b-2 border-b-sky-300/50 dark:border-b-sky-700/40",
                       )}
                     >
                   <TableCell className="text-[10px] py-1.5 px-1">

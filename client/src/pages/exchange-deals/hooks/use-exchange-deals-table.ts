@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useMemo } from "react";
 import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedTableFilters, buildFilterQueryString } from "@/hooks/use-persisted-table-filters";
 
 export function useExchangeDealsTable() {
-  const [search, setSearch] = useState("");
-  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
+  const { columnFilters, setColumnFilters, search, setSearch } =
+    usePersistedTableFilters("table-filters:exchange-deals");
+
   const pageSize = 100;
   const { toast } = useToast();
 
-  const hasActiveFilters = Object.values(columnFilters).some(v => v.length > 0);
+  const hasActiveFilters = Object.values(columnFilters).some((v) => v.length > 0);
   const effectivePageSize = hasActiveFilters ? 1000 : pageSize;
 
   const {
@@ -21,13 +23,10 @@ export function useExchangeDealsTable() {
   } = useInfiniteQuery<{ data: any[]; total: number }>({
     queryKey: ["/api/exchange-deals", { search, columnFilters }],
     queryFn: async ({ pageParam = 0 }) => {
-      const filters = Object.entries(columnFilters)
-        .filter(([_, values]) => values.length > 0)
-        .map(([id, values]) => `&filter_${id}=${encodeURIComponent(values.join(","))}`)
-        .join("");
+      const filterStr = buildFilterQueryString(columnFilters);
       const res = await apiRequest(
         "GET",
-        `/api/exchange-deals?offset=${pageParam}&pageSize=${effectivePageSize}${search ? `&search=${encodeURIComponent(search)}` : ""}${filters}`,
+        `/api/exchange-deals?offset=${pageParam}&pageSize=${effectivePageSize}${search ? `&search=${encodeURIComponent(search)}` : ""}${filterStr}`,
       );
       return res.json();
     },

@@ -116,7 +116,7 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dealToDelete, setDealToDelete] = useState<any>(null);
-  const [searchInput, setSearchInput] = useState("");
+  const [searchInput, setSearchInput] = useState(search);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const cursorPositionRef = useRef<number>(0);
 
@@ -184,9 +184,9 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
         )}
       </div>
 
-      <div className="border rounded-lg overflow-x-auto">
+      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-300px)]">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
             <TableRow>
               <TableHead className="text-xs font-semibold p-1 w-[90px]">
                 <div className="flex items-center justify-between gap-1">

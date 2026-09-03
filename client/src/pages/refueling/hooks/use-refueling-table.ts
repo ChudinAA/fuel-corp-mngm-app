@@ -3,30 +3,29 @@ import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { EQUIPMENT_TYPE } from "@shared/constants";
+import { usePersistedTableFilters, buildFilterQueryString } from "@/hooks/use-persisted-table-filters";
 
 export function useRefuelingTable({ equipmentType = EQUIPMENT_TYPE.COMMON }: { equipmentType?: string } = {}) {
-  const [search, setSearch] = useState("");
-  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>(
-    {},
-  );
+  const storageKey = `table-filters:refueling:${equipmentType}`;
+  const { columnFilters, setColumnFilters, search, setSearch } = usePersistedTableFilters(storageKey);
+
   const pageSize = 100;
   const { toast } = useToast();
 
-  const hasActiveFilters = Object.values(columnFilters).some(v => v.length > 0);
-  const effectivePageSize = hasActiveFilters ? 1000 : pageSize;
+  // Внутренний search с дебаунсом уже реализован в компоненте таблицы.
+  // Здесь search — итоговое значение, применяемое к запросу.
 
-  const filterParams = Object.entries(columnFilters)
-    .filter(([_, values]) => values.length > 0)
-    .map(([columnId, values]) => `&filter_${columnId}=${encodeURIComponent(values.join(","))}`)
-    .join("");
+  const hasActiveFilters = Object.values(columnFilters).some((v) => v.length > 0);
+  const effectivePageSize = hasActiveFilters ? 1000 : pageSize;
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
       queryKey: [`/api/refueling`, { search, columnFilters, equipmentType }],
       queryFn: async ({ pageParam = 0 }) => {
+        const filterStr = buildFilterQueryString(columnFilters);
         const res = await apiRequest(
           "GET",
-          `/api/refueling?offset=${pageParam}&pageSize=${effectivePageSize}&equipmentType=${equipmentType}${search ? `&search=${encodeURIComponent(search)}` : ""}${filterParams}`,
+          `/api/refueling?offset=${pageParam}&pageSize=${effectivePageSize}&equipmentType=${equipmentType}${search ? `&search=${encodeURIComponent(search)}` : ""}${filterStr}`,
         );
         return res.json();
       },

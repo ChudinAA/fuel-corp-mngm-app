@@ -72,7 +72,7 @@ export function RefuelingAbroadTable({
   } = useRefuelingAbroadTable();
 
   const [deletedDealsAuditOpen, setDeletedDealsAuditOpen] = useState(false);
-  const [searchInput, setSearchInput] = useState("");
+  const [searchInput, setSearchInput] = useState(search);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -206,9 +206,9 @@ export function RefuelingAbroadTable({
         />
       </div>
 
-      <div className="border rounded-lg overflow-hidden">
+      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-300px)]">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
             <TableRow className="hover:bg-transparent">
               <TableHead className="text-[13px] font-semibold p-2 w-[90px]">
                 <div className="flex items-center justify-between gap-1">

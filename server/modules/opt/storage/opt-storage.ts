@@ -51,8 +51,12 @@ export class OptStorage {
         if (filters.carrier?.length) {
           conditions.push(sql`${logisticsCarriers.name} IN ${filters.carrier}`);
         }
-        if (filters.date?.length) {
-          // Convert dates to string format for comparison
+        if (filters.dateFrom?.length && filters.dateTo?.length) {
+          conditions.push(
+            sql`${opt.dealDate} >= ${filters.dateFrom[0]}::date`,
+            sql`${opt.dealDate} <= ${filters.dateTo[0]}::date`,
+          );
+        } else if (filters.date?.length) {
           conditions.push(
             sql`TO_CHAR(${opt.dealDate}, 'DD.MM.YYYY') IN ${filters.date}`,
           );

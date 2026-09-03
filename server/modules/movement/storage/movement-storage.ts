@@ -55,7 +55,12 @@ export class MovementStorage implements IMovementStorage {
     const baseConditions: any[] = [isNull(movement.deletedAt)];
 
     if (filters) {
-      if (filters.date?.length) {
+      if (filters.dateFrom?.length && filters.dateTo?.length) {
+        baseConditions.push(
+          sql`${movement.movementDate} >= ${filters.dateFrom[0]}::date`,
+          sql`${movement.movementDate} <= ${filters.dateTo[0]}::date`,
+        );
+      } else if (filters.date?.length) {
         baseConditions.push(
           sql`TO_CHAR(${movement.movementDate}, 'DD.MM.YYYY') IN (${sql.join(
             filters.date.map((v) => sql`${v}`),

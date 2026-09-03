@@ -96,7 +96,12 @@ export class ExchangeDealsStorage {
         if (filters.buyer?.length) {
           conditions.push(sql`${customers.name} IN ${filters.buyer}`);
         }
-        if (filters.date?.length) {
+        if (filters.dateFrom?.length && filters.dateTo?.length) {
+          conditions.push(
+            sql`${exchangeDeals.dealDate} >= ${filters.dateFrom[0]}::date`,
+            sql`${exchangeDeals.dealDate} <= ${filters.dateTo[0]}::date`,
+          );
+        } else if (filters.date?.length) {
           conditions.push(
             sql`TO_CHAR(${exchangeDeals.dealDate}, 'DD.MM.YYYY') IN ${filters.date}`,
           );

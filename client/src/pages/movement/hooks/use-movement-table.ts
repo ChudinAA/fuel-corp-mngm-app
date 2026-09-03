@@ -1,13 +1,14 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { usePersistedTableFilters, buildFilterQueryString } from "@/hooks/use-persisted-table-filters";
 
 export function useMovementTable() {
-  const [pageSize] = useState(100);
-  const [search, setSearch] = useState("");
-  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
+  const { columnFilters, setColumnFilters, search, setSearch } =
+    usePersistedTableFilters("table-filters:movement");
 
-  const hasActiveFilters = Object.values(columnFilters).some(v => v.length > 0);
+  const pageSize = 100;
+
+  const hasActiveFilters = Object.values(columnFilters).some((v) => v.length > 0);
   const effectivePageSize = hasActiveFilters ? 1000 : pageSize;
 
   const {
@@ -20,21 +21,14 @@ export function useMovementTable() {
   } = useInfiniteQuery({
     queryKey: ["/api/movement", pageSize, search, columnFilters],
     queryFn: async ({ pageParam = 0 }) => {
+      const filterStr = buildFilterQueryString(columnFilters);
       const params = new URLSearchParams({
         offset: pageParam.toString(),
         pageSize: effectivePageSize.toString(),
       });
-      
       if (search) params.append("search", search);
-      
-      Object.entries(columnFilters).forEach(([k, v]) => {
-        if (v.length > 0) {
-          params.append(`filter_${k}`, v.join(","));
-        }
-      });
-
-      const res = await apiRequest("GET", `/api/movement?${params.toString()}`);
-      return res.json() as Promise<{ data: any[], total: number }>;
+      const res = await apiRequest("GET", `/api/movement?${params.toString()}${filterStr}`);
+      return res.json() as Promise<{ data: any[]; total: number }>;
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {

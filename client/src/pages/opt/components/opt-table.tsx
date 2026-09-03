@@ -166,7 +166,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
   const [dealToDelete, setDealToDelete] = useState<any>(null);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [selectedDealNotes, setSelectedDealNotes] = useState<string>("");
-  const [searchInput, setSearchInput] = useState("");
+  const [searchInput, setSearchInput] = useState(search);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const cursorPositionRef = useRef<number>(0);
   const [deletedDealsAuditOpen, setDeletedDealsAuditOpen] = useState(false);
@@ -334,9 +334,9 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
         />
       </div>
 
-      <div className="border rounded-lg overflow-x-auto">
+      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-300px)]">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
             <TableRow>
               <TableHead className="text-xs font-semibold p-1 w-[80px]">
                 <div className="flex items-center justify-between gap-1">
@@ -351,12 +351,18 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-xs font-semibold p-1">
+              <TableHead className="text-xs font-semibold p-1 bg-background">
                 <div className="flex items-center justify-between gap-1">
                   <span>Прод.</span>
                   <TableColumnFilter
                     title="Продукт"
-                    options={getUniqueOptions("productType")}
+                    options={[
+                      { label: getProductLabel(PRODUCT_TYPE.KEROSENE), value: PRODUCT_TYPE.KEROSENE },
+                      { label: getProductLabel(PRODUCT_TYPE.PVKJ), value: PRODUCT_TYPE.PVKJ },
+                      { label: getProductLabel(PRODUCT_TYPE.SERVICE), value: PRODUCT_TYPE.SERVICE },
+                      { label: getProductLabel(PRODUCT_TYPE.STORAGE), value: PRODUCT_TYPE.STORAGE },
+                      { label: getProductLabel(PRODUCT_TYPE.AGENT), value: PRODUCT_TYPE.AGENT },
+                    ]}
                     selectedValues={columnFilters["productType"] || []}
                     onUpdate={(values) =>
                       handleFilterUpdate("productType", values)

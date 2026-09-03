@@ -107,7 +107,7 @@ export function MovementTable({
   const [itemToDelete, setItemToDelete] = useState<any>(null);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState("");
-  const [searchInput, setSearchInput] = useState("");
+  const [searchInput, setSearchInput] = useState(search);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -209,9 +209,9 @@ export function MovementTable({
         />
       </div>
 
-      <div className="border rounded-lg overflow-x-auto">
+      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-300px)]">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
             <TableRow>
               <TableHead className="w-[80px] text-xs font-semibold px-1 py-1">
                 <div className="flex items-center justify-between gap-1">

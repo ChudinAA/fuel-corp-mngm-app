@@ -1,12 +1,12 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { usePersistedTableFilters } from "@/hooks/use-persisted-table-filters";
 
 export function useEquipmentMovementTable() {
-  const [search, setSearch] = useState("");
-  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
+  const { columnFilters, setColumnFilters, search, setSearch } =
+    usePersistedTableFilters("table-filters:equipment-movement");
 
-  const hasActiveFilters = Object.values(columnFilters).some(v => v.length > 0);
+  const hasActiveFilters = Object.values(columnFilters).some((v) => v.length > 0);
   const effectiveLimit = hasActiveFilters ? 1000 : 100;
 
   const {
@@ -32,10 +32,10 @@ export function useEquipmentMovementTable() {
         data: json.items || [],
         total: json.total || 0,
         hasMore: (json.items?.length || 0) === effectiveLimit,
-        nextPage: pageParam + 1
+        nextPage: pageParam + 1,
       };
     },
-    getNextPageParam: (lastPage: any) => 
+    getNextPageParam: (lastPage: any) =>
       lastPage.hasMore ? lastPage.nextPage : undefined,
     initialPageParam: 1,
   });

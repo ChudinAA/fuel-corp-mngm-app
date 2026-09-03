@@ -25,6 +25,12 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         }
       });
 
+      // Поддержка диапазона дат из фильтра
+      const dateFrom = req.query.dateFrom as string | undefined;
+      const dateTo = req.query.dateTo as string | undefined;
+      if (dateFrom) filters["dateFrom"] = [dateFrom];
+      if (dateTo) filters["dateTo"] = [dateTo];
+
       // For LIK refueling, get allowed warehouse IDs for the current user
       let allowedWarehouseIds: string[] | null = null;
       if (equipmentType === "lik") {

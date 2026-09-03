@@ -100,6 +100,7 @@ export default function RefuelingPage({ equipmentType = EQUIPMENT_TYPE.COMMON }:
                     onCopy={handleCopyRefueling}
                     onDelete={handleRefuelingDeleted}
                     equipmentType={equipmentType}
+                    isFullscreen
                   />
                 </ScrollArea>
               </DialogContent>

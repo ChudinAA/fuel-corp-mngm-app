@@ -105,7 +105,7 @@ export function TransportationTable({
     DEFAULT_TRANSPORTATION_COLUMNS,
   );
   const [deletedDealsAuditOpen, setDeletedDealsAuditOpen] = useState(false);
-  const [searchInput, setSearchInput] = useState("");
+  const [searchInput, setSearchInput] = useState(search);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const loaderRef = useRef<HTMLDivElement | null>(null);
 
@@ -267,9 +267,9 @@ export function TransportationTable({
         />
       </div>
 
-      <div className="rounded-md border overflow-x-auto">
+      <div className="rounded-md border overflow-auto max-h-[calc(100vh-300px)]">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
             <TableRow>
               {TRANSPORTATION_TABLE_COLUMNS.filter((c) =>
                 isColumnVisible(c.id),

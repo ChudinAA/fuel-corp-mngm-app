@@ -1,4 +1,5 @@
-import { useState, useMemo, Fragment } from "react";
+import { useState, useMemo, Fragment, useEffect, useRef } from "react";
+import { usePersistedTableFilters } from "@/hooks/use-persisted-table-filters";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -74,10 +75,8 @@ export function PricesTable({
   productTypeFilter,
   onEdit,
 }: PricesTableProps) {
-  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>(
-    {},
-  );
-  const [search, setSearch] = useState("");
+  const { columnFilters, setColumnFilters, search, setSearch } =
+    usePersistedTableFilters("prices-table");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [priceToDelete, setPriceToDelete] = useState<Price | null>(null);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
@@ -306,9 +305,9 @@ export function PricesTable({
         </Button>
       </div>
 
-      <div className="border rounded-lg overflow-x-auto">
+      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-300px)]">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
             <TableRow>
               <TableHead className="w-[110px]">
                 <div className="flex items-center justify-between gap-1">
