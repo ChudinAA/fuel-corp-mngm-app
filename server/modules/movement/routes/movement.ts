@@ -45,6 +45,19 @@ export function registerMovementRoutes(app: Express) {
   );
 
   app.get(
+    "/api/movement/filter-options",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const options = await (storage.movement as any).getFilterOptions();
+        res.json(options);
+      } catch (error) {
+        res.status(500).json({ message: "Ошибка получения опций фильтров" });
+      }
+    }
+  );
+
+  app.get(
     "/api/movement/:id",
     requireAuth,
     requirePermission("movement", "view"),

@@ -9,6 +9,7 @@ import {
   type AircraftRefueling,
   type InsertAircraftRefueling,
   equipments,
+  bases,
 } from "@shared/schema";
 import { IAircraftRefuelingStorage } from "./types";
 import {
@@ -63,6 +64,7 @@ export class AircraftRefuelingStorage {
           sql`${customers.name} ILIKE ${searchPattern}`,
           sql`${aircraftRefueling.aircraftNumber}::text ILIKE ${searchPattern}`,
           sql`${aircraftRefueling.notes}::text ILIKE ${searchPattern}`,
+          sql`${aircraftRefueling.orderNumber}::text ILIKE ${searchPattern}`,
         ),
       );
     }
@@ -562,5 +564,44 @@ export class AircraftRefuelingStorage {
     });
 
     return data;
+  }
+
+  /** D: Серверные опции для текстовых фильтров */
+  async getFilterOptions(equipmentType?: string): Promise<Record<string, Array<{label: string; value: string}>>> {
+    const baseWhere = and(
+      isNull(aircraftRefueling.deletedAt),
+      ...(equipmentType && equipmentType !== EQUIPMENT_TYPE.COMMON
+        ? [eq(aircraftRefueling.equipmentType, equipmentType)]
+        : []),
+    );
+    const toOpts = (vals: (string | null | undefined)[]) =>
+      [...new Set(vals.filter(Boolean))].sort((a, b) => a!.localeCompare(b!)).map(v => ({ label: v!, value: v! }));
+
+    const [orderNums, directions, supplierNames, buyerNames, basisNames] = await Promise.all([
+      db.selectDistinct({ v: aircraftRefueling.orderNumber }).from(aircraftRefueling)
+        .where(and(baseWhere, sql`${aircraftRefueling.orderNumber} IS NOT NULL`))
+        .then(rows => rows.map(r => r.v)),
+      db.selectDistinct({ v: aircraftRefueling.flightNumber }).from(aircraftRefueling)
+        .where(and(baseWhere, sql`${aircraftRefueling.flightNumber} IS NOT NULL`))
+        .then(rows => rows.map(r => r.v)),
+      db.selectDistinct({ v: suppliers.name }).from(aircraftRefueling)
+        .innerJoin(suppliers, eq(aircraftRefueling.supplierId, suppliers.id))
+        .where(baseWhere).then(rows => rows.map(r => r.v)),
+      db.selectDistinct({ v: customers.name }).from(aircraftRefueling)
+        .innerJoin(customers, eq(aircraftRefueling.buyerId, customers.id))
+        .where(baseWhere).then(rows => rows.map(r => r.v)),
+      db.selectDistinct({ v: bases.name }).from(aircraftRefueling)
+        .innerJoin(bases, eq(aircraftRefueling.basisId, bases.id))
+        .where(and(baseWhere, sql`${aircraftRefueling.basisId} IS NOT NULL`))
+        .then(rows => rows.map(r => r.v)),
+    ]);
+
+    return {
+      orderNumber: toOpts(orderNums),
+      direction: toOpts(directions),
+      supplier: toOpts(supplierNames),
+      buyer: toOpts(buyerNames),
+      basis: toOpts(basisNames),
+    };
   }
 }

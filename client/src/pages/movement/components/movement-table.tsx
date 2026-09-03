@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -107,6 +108,15 @@ export function MovementTable({
   const [itemToDelete, setItemToDelete] = useState<any>(null);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState("");
+  const { data: filterOptions } = useQuery<Record<string, Array<{label: string; value: string}>>>({
+    queryKey: ["/api/movement/filter-options"],
+    queryFn: async () => {
+      const res = await fetch("/api/movement/filter-options");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const [searchInput, setSearchInput] = useState(search);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -252,7 +262,7 @@ export function MovementTable({
                   <span className="truncate max-w-[70px]">Откуда</span>
                   <TableColumnFilter
                     title="Откуда"
-                    options={getUniqueOptions("fromName")}
+                    options={filterOptions?.from || []}
                     selectedValues={columnFilters["from"] || []}
                     onUpdate={(values) => handleFilterUpdate("from", values)}
                   />
@@ -263,7 +273,7 @@ export function MovementTable({
                   <span className="truncate max-w-[70px]">Куда</span>
                   <TableColumnFilter
                     title="Куда"
-                    options={getUniqueOptions("toName")}
+                    options={filterOptions?.to || []}
                     selectedValues={columnFilters["to"] || []}
                     onUpdate={(values) => handleFilterUpdate("to", values)}
                   />
@@ -283,7 +293,7 @@ export function MovementTable({
                   <span className="truncate max-w-[65px]">Перевозчик</span>
                   <TableColumnFilter
                     title="Перевозчик"
-                    options={getUniqueOptions("carrierName")}
+                    options={filterOptions?.carrier || []}
                     selectedValues={columnFilters["carrier"] || []}
                     onUpdate={(values) => handleFilterUpdate("carrier", values)}
                   />

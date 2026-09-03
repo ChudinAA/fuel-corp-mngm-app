@@ -154,6 +154,19 @@ export function registerExchangeDealsRoutes(app: Express) {
     },
   );
 
+  app.get(
+    "/api/exchange-deals/filter-options",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const options = await (storage.exchangeDeals as any).getFilterOptions();
+        res.json(options);
+      } catch (error) {
+        res.status(500).json({ message: "Ошибка получения опций фильтров" });
+      }
+    }
+  );
+
   app.post(
     "/api/exchange-deals/:id/copy",
     requireAuth,

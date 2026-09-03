@@ -244,4 +244,33 @@ export class TransportationStorage {
     });
     return !!existing;
   }
+
+  /** D: Серверные опции для текстовых фильтров */
+  async getFilterOptions(): Promise<Record<string, Array<{label: string; value: string}>>> {
+    const base = isNull(transportation.deletedAt);
+    const toOpts = (vals: (string | null | undefined)[]) =>
+      [...new Set(vals.filter(Boolean))].sort((a, b) => a!.localeCompare(b!)).map(v => ({ label: v!, value: v! }));
+
+    const [supplierNames, buyerNames, carrierNames, deliveryNames] = await Promise.all([
+      db.selectDistinct({ v: suppliers.name }).from(transportation)
+        .innerJoin(suppliers, eq(transportation.supplierId, suppliers.id))
+        .where(base).then(rows => rows.map(r => r.v)),
+      db.selectDistinct({ v: customers.name }).from(transportation)
+        .innerJoin(customers, eq(transportation.buyerId, customers.id))
+        .where(base).then(rows => rows.map(r => r.v)),
+      db.selectDistinct({ v: logisticsCarriers.name }).from(transportation)
+        .innerJoin(logisticsCarriers, eq(transportation.carrierId, logisticsCarriers.id))
+        .where(and(base, sql`${transportation.carrierId} IS NOT NULL`)).then(rows => rows.map(r => r.v)),
+      db.selectDistinct({ v: logisticsDeliveryLocations.name }).from(transportation)
+        .innerJoin(logisticsDeliveryLocations, eq(transportation.deliveryLocationId, logisticsDeliveryLocations.id))
+        .where(and(base, sql`${transportation.deliveryLocationId} IS NOT NULL`)).then(rows => rows.map(r => r.v)),
+    ]);
+
+    return {
+      supplier: toOpts(supplierNames),
+      buyer: toOpts(buyerNames),
+      carrier: toOpts(carrierNames),
+      deliveryLocation: toOpts(deliveryNames),
+    };
+  }
 }

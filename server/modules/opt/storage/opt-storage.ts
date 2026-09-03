@@ -490,4 +490,33 @@ export class OptStorage {
       isApproxVolume: item.isApproxVolume || false,
     }));
   }
+
+  /** D: Серверные опции для текстовых фильтров */
+  async getFilterOptions(): Promise<Record<string, Array<{label: string; value: string}>>> {
+    const base = isNull(opt.deletedAt);
+    const toOpts = (vals: (string | null | undefined)[]) =>
+      [...new Set(vals.filter(Boolean))].sort((a, b) => a!.localeCompare(b!)).map(v => ({ label: v!, value: v! }));
+
+    const [supplierNames, buyerNames, carrierNames, deliveryNames] = await Promise.all([
+      db.selectDistinct({ v: suppliers.name }).from(opt)
+        .innerJoin(suppliers, eq(opt.supplierId, suppliers.id))
+        .where(base).then(rows => rows.map(r => r.v)),
+      db.selectDistinct({ v: customers.name }).from(opt)
+        .innerJoin(customers, eq(opt.buyerId, customers.id))
+        .where(base).then(rows => rows.map(r => r.v)),
+      db.selectDistinct({ v: logisticsCarriers.name }).from(opt)
+        .innerJoin(logisticsCarriers, eq(opt.carrierId, logisticsCarriers.id))
+        .where(and(base, sql`${opt.carrierId} IS NOT NULL`)).then(rows => rows.map(r => r.v)),
+      db.selectDistinct({ v: logisticsDeliveryLocations.name }).from(opt)
+        .innerJoin(logisticsDeliveryLocations, eq(opt.deliveryLocationId, logisticsDeliveryLocations.id))
+        .where(and(base, sql`${opt.deliveryLocationId} IS NOT NULL`)).then(rows => rows.map(r => r.v)),
+    ]);
+
+    return {
+      supplier: toOpts(supplierNames),
+      buyer: toOpts(buyerNames),
+      carrier: toOpts(carrierNames),
+      deliveryLocation: toOpts(deliveryNames),
+    };
+  }
 }

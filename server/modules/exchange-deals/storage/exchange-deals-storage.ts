@@ -109,6 +109,11 @@ export class ExchangeDealsStorage {
         if (filters.dealNumber?.length) {
           conditions.push(sql`${exchangeDeals.dealNumber} IN ${filters.dealNumber}`);
         }
+        if (filters.tariff?.length) {
+          conditions.push(
+            sql`EXISTS (SELECT 1 FROM railway_tariffs rt WHERE rt.id = ${exchangeDeals.deliveryTariffId} AND rt.zone_name IN (${sql.join(filters.tariff.map((v: string) => sql`${v}`), sql`, `)}))`
+          );
+        }
       }
 
       if (search && search.trim()) {
@@ -119,6 +124,7 @@ export class ExchangeDealsStorage {
             ilike(customers.name, pattern),
             sql`${exchangeDeals.dealNumber} ILIKE ${pattern}`,
             sql`${exchangeDeals.wagonNumbers} ILIKE ${pattern}`,
+            sql`EXISTS (SELECT 1 FROM railway_tariffs rt WHERE rt.id = ${exchangeDeals.deliveryTariffId} AND rt.zone_name ILIKE ${pattern})`,
           ),
         );
       }
@@ -612,5 +618,35 @@ export class ExchangeDealsStorage {
       })
       .returning();
     return copy;
+  }
+
+  /** D: Серверные опции для текстовых фильтров */
+  async getFilterOptions(): Promise<Record<string, Array<{label: string; value: string}>>> {
+    const base = isNull(exchangeDeals.deletedAt);
+    const toOpts = (vals: (string | null | undefined)[]) =>
+      [...new Set(vals.filter(Boolean))].sort((a, b) => a!.localeCompare(b!)).map(v => ({ label: v!, value: v! }));
+
+    const [sellers, buyers, zones, dealNums] = await Promise.all([
+      db.selectDistinct({ v: suppliers.name }).from(exchangeDeals)
+        .innerJoin(suppliers, eq(exchangeDeals.sellerId, suppliers.id))
+        .where(base).then(rows => rows.map(r => r.v)),
+      db.selectDistinct({ v: customers.name }).from(exchangeDeals)
+        .innerJoin(customers, eq(exchangeDeals.buyerId, customers.id))
+        .where(base).then(rows => rows.map(r => r.v)),
+      db.selectDistinct({ v: railwayTariffs.zoneName }).from(exchangeDeals)
+        .innerJoin(railwayTariffs, eq(exchangeDeals.deliveryTariffId, railwayTariffs.id))
+        .where(and(base, sql`${exchangeDeals.deliveryTariffId} IS NOT NULL`))
+        .then(rows => rows.map(r => r.v)),
+      db.selectDistinct({ v: exchangeDeals.dealNumber }).from(exchangeDeals)
+        .where(and(base, sql`${exchangeDeals.dealNumber} IS NOT NULL`))
+        .then(rows => rows.map(r => r.v)),
+    ]);
+
+    return {
+      seller: toOpts(sellers),
+      buyer: toOpts(buyers),
+      tariff: toOpts(zones),
+      dealNumber: toOpts(dealNums),
+    };
   }
 }

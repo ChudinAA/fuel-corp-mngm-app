@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -166,6 +167,15 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
   const [dealToDelete, setDealToDelete] = useState<any>(null);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [selectedDealNotes, setSelectedDealNotes] = useState<string>("");
+  const { data: filterOptions } = useQuery<Record<string, Array<{label: string; value: string}>>>({
+    queryKey: ["/api/opt/filter-options"],
+    queryFn: async () => {
+      const res = await fetch("/api/opt/filter-options");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const [searchInput, setSearchInput] = useState(search);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const cursorPositionRef = useRef<number>(0);
@@ -378,7 +388,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   </span>
                   <TableColumnFilter
                     title="Поставщик"
-                    options={getUniqueOptions("supplier")}
+                    options={filterOptions?.supplier || []}
                     selectedValues={columnFilters["supplier"] || []}
                     onUpdate={(values) =>
                       handleFilterUpdate("supplier", values)
@@ -394,7 +404,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   </span>
                   <TableColumnFilter
                     title="Покупатель"
-                    options={getUniqueOptions("buyer")}
+                    options={filterOptions?.buyer || []}
                     selectedValues={columnFilters["buyer"] || []}
                     onUpdate={(values) => handleFilterUpdate("buyer", values)}
                     dataTestId="filter-buyer"
@@ -423,7 +433,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   </span>
                   <TableColumnFilter
                     title="Место доставки"
-                    options={getUniqueOptions("deliveryLocation")}
+                    options={filterOptions?.deliveryLocation || []}
                     selectedValues={columnFilters["deliveryLocation"] || []}
                     onUpdate={(values) =>
                       handleFilterUpdate("deliveryLocation", values)
@@ -439,7 +449,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   </span>
                   <TableColumnFilter
                     title="Перевозчик"
-                    options={getUniqueOptions("carrier")}
+                    options={filterOptions?.carrier || []}
                     selectedValues={columnFilters["carrier"] || []}
                     onUpdate={(values) => handleFilterUpdate("carrier", values)}
                     dataTestId="filter-carrier"

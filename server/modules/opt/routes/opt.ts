@@ -38,6 +38,19 @@ export function registerOptRoutes(app: Express) {
   );
 
   app.get(
+    "/api/opt/filter-options",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const options = await (storage.opt as any).getFilterOptions();
+        res.json(options);
+      } catch (error) {
+        res.status(500).json({ message: "Ошибка получения опций фильтров" });
+      }
+    }
+  );
+
+  app.get(
     "/api/opt/contract-used/:priceId",
     requireAuth,
     async (req, res) => {
