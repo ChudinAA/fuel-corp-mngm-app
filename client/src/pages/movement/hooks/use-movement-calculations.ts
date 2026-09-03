@@ -250,6 +250,7 @@ export function useMovementCalculations({
 
     if (!fromEntityId) return 0;
 
+    // Primary lookup: use fromEntityType/fromEntityId as determined above
     const deliveryCostRecord = deliveryCosts.find(
       (dc) =>
         dc.carrierId === watchCarrierId &&
@@ -259,9 +260,31 @@ export function useMovementCalculations({
         dc.toEntityId === toWarehouse.id,
     );
 
-    return deliveryCostRecord && deliveryCostRecord.costPerKg
-      ? parseFloat(deliveryCostRecord.costPerKg) * kgNum
-      : 0;
+    if (deliveryCostRecord && deliveryCostRecord.costPerKg) {
+      return parseFloat(deliveryCostRecord.costPerKg) * kgNum;
+    }
+
+    // Fallback for internal movement: if a basis (watchBasisId) is specified,
+    // also try to find a BASIS→WAREHOUSE tariff
+    if (
+      watchMovementType === MOVEMENT_TYPE.INTERNAL &&
+      watchBasisId &&
+      fromEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE
+    ) {
+      const basisRecord = deliveryCosts.find(
+        (dc) =>
+          dc.carrierId === watchCarrierId &&
+          dc.fromEntityType === DELIVERY_ENTITY_TYPE.BASE &&
+          dc.fromEntityId === watchBasisId &&
+          dc.toEntityType === DELIVERY_ENTITY_TYPE.WAREHOUSE &&
+          dc.toEntityId === toWarehouse.id,
+      );
+      if (basisRecord && basisRecord.costPerKg) {
+        return parseFloat(basisRecord.costPerKg) * kgNum;
+      }
+    }
+
+    return 0;
   }, [
     watchToWarehouseId,
     watchCarrierId,

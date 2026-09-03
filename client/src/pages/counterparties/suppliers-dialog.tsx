@@ -75,6 +75,8 @@ type BasisPriceEntry = {
   agentFee: string;
   otherServiceType: string;
   otherServiceValue: string;
+  otherServiceName: string;
+  otherServiceQuantity: string;
 };
 
 type SupplierFormData = z.infer<typeof supplierFormSchema>;
@@ -103,7 +105,7 @@ export function AddSupplierDialog({
   const { showError, ErrorModalComponent } = useErrorModal();
   const [localOpen, setLocalOpen] = useState(false);
   const [addBaseOpen, setAddBaseOpen] = useState(false);
-  const defaultBasisPriceEntry = (): BasisPriceEntry => ({ servicePrice: "", pvkjPrice: "", agentFee: "", otherServiceType: "", otherServiceValue: "" });
+  const defaultBasisPriceEntry = (): BasisPriceEntry => ({ servicePrice: "", pvkjPrice: "", agentFee: "", otherServiceType: "", otherServiceValue: "", otherServiceName: "", otherServiceQuantity: "" });
   const [basisPricesMap, setBasisPricesMap] = useState<Record<string, BasisPriceEntry>>({});
   const [newlyAddedBasisIndex, setNewlyAddedBasisIndex] = useState<number | null>(null);
   const newBasisRef = useRef<HTMLDivElement | null>(null);
@@ -186,6 +188,8 @@ export function AddSupplierDialog({
           agentFee: entry.agentFee ? entry.agentFee : null,
           otherServiceType: entry.otherServiceType || null,
           otherServiceValue: entry.otherServiceValue ? entry.otherServiceValue : null,
+          otherServiceName: entry.otherServiceName || null,
+          otherServiceQuantity: entry.otherServiceQuantity ? entry.otherServiceQuantity : null,
         };
       });
 
@@ -330,6 +334,8 @@ export function AddSupplierDialog({
             agentFee: bp.agentFee || "",
             otherServiceType: bp.otherServiceType || "",
             otherServiceValue: bp.otherServiceValue || "",
+            otherServiceName: (bp as any).otherServiceName || "",
+            otherServiceQuantity: (bp as any).otherServiceQuantity || "",
           };
         });
       }
@@ -621,7 +627,7 @@ export function AddSupplierDialog({
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground">Агентские</label>
+                          <label className="text-xs text-muted-foreground">Агентские (₽/кг)</label>
                           <Input
                             placeholder="0.000000"
                             type="number"
@@ -638,16 +644,26 @@ export function AddSupplierDialog({
                       </div>
                       <div className="space-y-1">
                         <label className="text-xs text-muted-foreground">Прочие услуги</label>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
+                          <Input
+                            placeholder="Название услуги"
+                            value={basisPrices.otherServiceName}
+                            onChange={(e) => setBasisPricesMap(prev => ({
+                              ...prev,
+                              [currentBasisId]: { ...basisPrices, otherServiceName: e.target.value }
+                            }))}
+                            className="w-40"
+                            data-testid={`input-other-service-name-${index}`}
+                          />
                           <Select
                             value={basisPrices.otherServiceType || ""}
                             onValueChange={(val) => setBasisPricesMap(prev => ({
                               ...prev,
-                              [currentBasisId]: { ...basisPrices, otherServiceType: val, otherServiceValue: "" }
+                              [currentBasisId]: { ...basisPrices, otherServiceType: val, otherServiceValue: "", otherServiceQuantity: "" }
                             }))}
                           >
-                            <SelectTrigger className="w-48" data-testid={`select-other-service-type-${index}`}>
-                              <SelectValue placeholder="Не указано" />
+                            <SelectTrigger className="w-44" data-testid={`select-other-service-type-${index}`}>
+                              <SelectValue placeholder="Тип (не указан)" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="royalty_per_ton">Роялти с тонны</SelectItem>
@@ -672,7 +688,23 @@ export function AddSupplierDialog({
                                 ...prev,
                                 [currentBasisId]: { ...basisPrices, otherServiceValue: e.target.value }
                               }))}
+                              className="w-32"
                               data-testid={`input-other-service-value-${index}`}
+                            />
+                          )}
+                          {basisPrices.otherServiceType === "fixed" && (
+                            <Input
+                              placeholder="Кол-во (шт)"
+                              type="number"
+                              min="1"
+                              step="1"
+                              value={basisPrices.otherServiceQuantity}
+                              onChange={(e) => setBasisPricesMap(prev => ({
+                                ...prev,
+                                [currentBasisId]: { ...basisPrices, otherServiceQuantity: e.target.value }
+                              }))}
+                              className="w-28"
+                              data-testid={`input-other-service-quantity-${index}`}
                             />
                           )}
                         </div>

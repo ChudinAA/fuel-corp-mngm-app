@@ -41,7 +41,13 @@ interface RefuelingPricingSectionProps {
   saleAmount: number | null;
   profit: number | null;
   agentFee: number;
+  /** Ставка агентского вознаграждения ₽/кг (для отображения) */
+  agentFeeRate?: number;
   otherServiceFee?: number;
+  /** Флаг: настроена ли "Прочая услуга" (для немедленного отображения) */
+  hasOtherService?: boolean;
+  /** Название прочей услуги */
+  otherServiceName?: string | null;
   warehouseStatus: { status: "ok" | "warning" | "error"; message: string };
   contractVolumeStatus: { status: "ok" | "warning" | "error"; message: string };
   supplierContractVolumeStatus: {
@@ -68,7 +74,10 @@ export function RefuelingPricingSection({
   saleAmount,
   profit,
   agentFee,
+  agentFeeRate = 0,
   otherServiceFee = 0,
+  hasOtherService = false,
+  otherServiceName,
   warehouseStatus,
   contractVolumeStatus,
   supplierContractVolumeStatus,
@@ -462,19 +471,22 @@ export function RefuelingPricingSection({
         />
       </div>
 
-      {agentFee > 0 && (
+      {agentFeeRate > 0 && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Агентское вознаграждение: {formatPrice(agentFee)} ₽/кг
+            Агентское вознаграждение: {formatPrice(agentFeeRate)} ₽/кг
+            {agentFee > 0 && (
+              <span className="ml-1 text-muted-foreground">= {formatCurrency(agentFee)}</span>
+            )}
           </AlertDescription>
         </Alert>
       )}
-      {otherServiceFee > 0 && (
+      {hasOtherService && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Прочие услуги: {formatCurrency(otherServiceFee)} ₽
+            {otherServiceName ? otherServiceName : "Прочие услуги"}{otherServiceFee > 0 ? `: ${formatCurrency(otherServiceFee)} ₽` : ""}
           </AlertDescription>
         </Alert>
       )}

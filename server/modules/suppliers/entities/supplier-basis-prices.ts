@@ -28,6 +28,8 @@ export const supplierBasisPrices = pgTable(
     agentFee: decimal("agent_fee", { precision: 12, scale: 6 }),
     otherServiceType: text("other_service_type"),
     otherServiceValue: decimal("other_service_value", { precision: 15, scale: 6 }),
+    otherServiceName: text("other_service_name"),
+    otherServiceQuantity: decimal("other_service_quantity", { precision: 15, scale: 6 }),
     createdAt: timestamp("created_at", { mode: "string" }).defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "string" }),
     createdById: uuid("created_by_id").references(() => users.id),
@@ -69,6 +71,8 @@ export const insertSupplierBasisPriceSchema = createInsertSchema(supplierBasisPr
     agentFee: z.coerce.number().optional().nullable(),
     otherServiceType: z.string().optional().nullable(),
     otherServiceValue: z.coerce.number().optional().nullable(),
+    otherServiceName: z.string().optional().nullable(),
+    otherServiceQuantity: z.coerce.number().optional().nullable(),
   });
 
 export type SupplierBasisPrice = typeof supplierBasisPrices.$inferSelect;

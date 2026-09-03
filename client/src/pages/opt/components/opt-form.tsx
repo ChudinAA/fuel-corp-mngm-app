@@ -783,7 +783,18 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
               deliveryError={deliveryError}
               autoTariffType={autoDetectedTariff?.tariffType}
               noDeliveryRequired={noDeliveryRequired}
-              onNoDeliveryRequiredChange={setNoDeliveryRequired}
+              onNoDeliveryRequiredChange={(val) => {
+                setNoDeliveryRequired(val);
+                // При самовывозе — автоматически подставить базис поставщика как базис покупателя
+                if (val && watchBasisId && allBases) {
+                  const base = allBases.find((b) => b.id === watchBasisId);
+                  if (base) {
+                    form.setValue("customerBasisId", base.id, { shouldDirty: true });
+                    form.setValue("customerBasis", base.name, { shouldDirty: true });
+                    setCustomerBasis(base.name);
+                  }
+                }
+              }}
             />
 
             <OptPricingSection

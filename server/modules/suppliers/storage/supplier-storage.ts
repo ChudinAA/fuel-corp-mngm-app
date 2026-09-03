@@ -19,6 +19,8 @@ export type SupplierBasisPriceInput = {
   agentFee?: number | null;
   otherServiceType?: string | null;
   otherServiceValue?: number | null;
+  otherServiceName?: string | null;
+  otherServiceQuantity?: number | null;
 };
 
 export class SupplierStorage implements ISupplierStorage {
@@ -166,6 +168,8 @@ export class SupplierStorage implements ISupplierStorage {
             agentFee: bp.agentFee != null ? String(bp.agentFee) : null,
             otherServiceType: bp.otherServiceType || null,
             otherServiceValue: bp.otherServiceValue != null ? String(bp.otherServiceValue) : null,
+            otherServiceName: bp.otherServiceName || null,
+            otherServiceQuantity: bp.otherServiceQuantity != null ? String(bp.otherServiceQuantity) : null,
           }));
         if (pricesToInsert.length > 0) {
           await tx.insert(supplierBasisPrices).values(pricesToInsert);
@@ -262,6 +266,8 @@ export class SupplierStorage implements ISupplierStorage {
               agentFee: bp.agentFee != null ? String(bp.agentFee) : null,
               otherServiceType: bp.otherServiceType || null,
               otherServiceValue: bp.otherServiceValue != null ? String(bp.otherServiceValue) : null,
+              otherServiceName: bp.otherServiceName || null,
+              otherServiceQuantity: bp.otherServiceQuantity != null ? String(bp.otherServiceQuantity) : null,
             }));
           if (pricesToInsert.length > 0) {
             await tx.insert(supplierBasisPrices).values(pricesToInsert);

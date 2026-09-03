@@ -197,7 +197,10 @@ export const RefuelingForm = forwardRef<
     purchaseAmount,
     saleAmount,
     agentFee,
+    agentFeeRate,
     otherServiceFee,
+    hasOtherService,
+    otherServiceName,
     profit,
     warehouseStatus,
     contractVolumeStatus,
@@ -746,7 +749,10 @@ export const RefuelingForm = forwardRef<
             saleAmount={saleAmount}
             profit={profit}
             agentFee={agentFee}
+            agentFeeRate={agentFeeRate}
             otherServiceFee={otherServiceFee}
+            hasOtherService={hasOtherService}
+            otherServiceName={otherServiceName}
             warehouseStatus={warehouseStatus}
             contractVolumeStatus={contractVolumeStatus}
             supplierContractVolumeStatus={supplierContractVolumeStatus}

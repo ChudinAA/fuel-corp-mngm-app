@@ -172,7 +172,8 @@ export function useRefuelingCalculations({
   const saleAmount =
     salePrice !== null && finalKg > 0 ? salePrice * finalKg : null;
 
-  const agentFee = useMemo(() => {
+  // agentFeeRate — ставка ₽/кг из настроек базиса (для отображения)
+  const agentFeeRate = useMemo(() => {
     if (selectedBasisId && selectedSupplier?.basisPrices) {
       const basisPrice = selectedSupplier.basisPrices.find(
         (bp) => bp.basisId === selectedBasisId
@@ -182,15 +183,37 @@ export function useRefuelingCalculations({
     return 0;
   }, [selectedSupplier, selectedBasisId]);
 
+  // agentFee — итоговая сумма агентского вознаграждения (ставка × кг)
+  const agentFee = useMemo(() => {
+    return agentFeeRate > 0 && finalKg > 0 ? agentFeeRate * finalKg : 0;
+  }, [agentFeeRate, finalKg]);
+
+  // Флаг: настроена ли "Прочая услуга" для выбранного базиса (для немедленного отображения)
+  const hasOtherService = useMemo(() => {
+    if (!selectedBasisId || !selectedSupplier?.basisPrices) return false;
+    const bp = selectedSupplier.basisPrices.find((b) => b.basisId === selectedBasisId);
+    return !!(bp?.otherServiceType && bp?.otherServiceValue);
+  }, [selectedSupplier, selectedBasisId]);
+
+  // Название прочей услуги (для отображения в сделке)
+  const otherServiceName = useMemo(() => {
+    if (!selectedBasisId || !selectedSupplier?.basisPrices) return null;
+    const bp = selectedSupplier.basisPrices.find((b) => b.basisId === selectedBasisId);
+    return (bp as any)?.otherServiceName || null;
+  }, [selectedSupplier, selectedBasisId]);
+
   const otherServiceFee = useMemo(() => {
-    if (selectedBasisId && selectedSupplier?.basisPrices && finalKg > 0) {
+    if (selectedBasisId && selectedSupplier?.basisPrices) {
       const bp = selectedSupplier.basisPrices.find((b) => b.basisId === selectedBasisId);
       if (!bp?.otherServiceType || !bp?.otherServiceValue) return 0;
       const val = parseFloat(bp.otherServiceValue);
       if (isNaN(val) || val <= 0) return 0;
-      if (bp.otherServiceType === "royalty_per_ton") return val * (finalKg / 1000);
-      if (bp.otherServiceType === "percent_of_amount" && saleAmount !== null) return saleAmount * val / 100;
-      if (bp.otherServiceType === "fixed") return val;
+      if (bp.otherServiceType === "royalty_per_ton") return finalKg > 0 ? val * (finalKg / 1000) : 0;
+      if (bp.otherServiceType === "percent_of_amount") return (saleAmount !== null && saleAmount > 0) ? saleAmount * val / 100 : 0;
+      if (bp.otherServiceType === "fixed") {
+        const qty = bp.otherServiceQuantity ? parseFloat(bp.otherServiceQuantity) : 1;
+        return val * (isNaN(qty) || qty <= 0 ? 1 : qty);
+      }
     }
     return 0;
   }, [selectedSupplier, selectedBasisId, finalKg, saleAmount]);
@@ -207,6 +230,11 @@ export function useRefuelingCalculations({
     message: string;
   } => {
     if (productType === PRODUCT_TYPE.SERVICE) {
+      return { status: "ok", message: "—" };
+    }
+
+    // Если для ПВКЖ задана цена поставщика — склад не используется как источник
+    if (productType === PRODUCT_TYPE.PVKJ && hasBasisPvkjPrice) {
       return { status: "ok", message: "—" };
     }
 
@@ -292,7 +320,10 @@ export function useRefuelingCalculations({
     purchaseAmount,
     saleAmount,
     agentFee,
+    agentFeeRate,
     otherServiceFee,
+    hasOtherService,
+    otherServiceName,
     profit,
     warehouseStatus,
     contractVolumeStatus,
