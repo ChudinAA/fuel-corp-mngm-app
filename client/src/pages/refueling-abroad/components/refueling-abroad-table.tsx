@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Table,
   TableBody,
@@ -86,6 +87,18 @@ export function RefuelingAbroadTable({
     }, 500);
     return () => clearTimeout(timer);
   }, [searchInput, setSearch]);
+
+  // Справочники — кэшированные данные для фильтров
+  const { data: allSuppliers = [] } = useQuery<any[]>({ queryKey: ["/api/suppliers"], staleTime: 5 * 60 * 1000 });
+  const { data: allCustomers = [] } = useQuery<any[]>({ queryKey: ["/api/customers"], staleTime: 5 * 60 * 1000 });
+  const { data: allBases = [] } = useQuery<any[]>({ queryKey: ["/api/bases"], staleTime: 5 * 60 * 1000 });
+
+  const supplierOptions = useMemo(() =>
+    allSuppliers.map((s: any) => ({ label: s.name, value: s.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allSuppliers]);
+  const customerOptions = useMemo(() =>
+    allCustomers.map((c: any) => ({ label: c.name, value: c.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allCustomers]);
+  const basesOptions = useMemo(() =>
+    allBases.map((b: any) => ({ label: b.name, value: b.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allBases]);
 
   const formatDate = (dateStr: string) => {
     return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
@@ -230,6 +243,7 @@ export function RefuelingAbroadTable({
                     selectedValues={columnFilters["date"] || []}
                     onUpdate={(values) => handleFilterUpdate("date", values)}
                     dataTestId="filter-date"
+                    isDateFilter
                   />
                 </div>
               </TableHead>
@@ -255,7 +269,7 @@ export function RefuelingAbroadTable({
                   <span>Поставщик</span>
                   <TableColumnFilter
                     title="Поставщик"
-                    options={getUniqueOptions("supplier.name")}
+                    options={supplierOptions}
                     selectedValues={columnFilters["supplier"] || []}
                     onUpdate={(values) =>
                       handleFilterUpdate("supplier", values)
@@ -269,7 +283,7 @@ export function RefuelingAbroadTable({
                   <span>Покупатель</span>
                   <TableColumnFilter
                     title="Покупатель"
-                    options={getUniqueOptions("buyer.name")}
+                    options={customerOptions}
                     selectedValues={columnFilters["buyer"] || []}
                     onUpdate={(values) => handleFilterUpdate("buyer", values)}
                     dataTestId="filter-buyer"
@@ -281,7 +295,7 @@ export function RefuelingAbroadTable({
                   <span>Базис</span>
                   <TableColumnFilter
                     title="Базис"
-                    options={getUniqueOptions("basis.name")}
+                    options={basesOptions}
                     selectedValues={columnFilters["basis"] || []}
                     onUpdate={(values) => handleFilterUpdate("basis", values)}
                     dataTestId="filter-basis"

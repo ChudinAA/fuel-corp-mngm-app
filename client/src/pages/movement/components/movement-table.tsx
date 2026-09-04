@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -102,6 +103,18 @@ export function MovementTable({
     hasNextPage,
     isFetchingNextPage,
   } = useMovementTable();
+
+  // Справочники — кэшированные данные для фильтров
+  const { data: allCarriers = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/carriers"], staleTime: 5 * 60 * 1000 });
+  const { data: allWarehouses = [] } = useQuery<any[]>({ queryKey: ["/api/warehouses"], staleTime: 5 * 60 * 1000 });
+  const { data: allSuppliers = [] } = useQuery<any[]>({ queryKey: ["/api/suppliers"], staleTime: 5 * 60 * 1000 });
+
+  const carrierOptions = useMemo(() =>
+    allCarriers.map((c: any) => ({ label: c.name, value: c.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allCarriers]);
+  const warehouseOptions = useMemo(() =>
+    allWarehouses.map((w: any) => ({ label: w.name, value: w.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allWarehouses]);
+  const supplierOptions = useMemo(() =>
+    allSuppliers.map((s: any) => ({ label: s.name, value: s.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allSuppliers]);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
@@ -252,7 +265,7 @@ export function MovementTable({
                   <span className="truncate max-w-[70px]">Откуда</span>
                   <TableColumnFilter
                     title="Откуда"
-                    options={getUniqueOptions("fromName")}
+                    options={warehouseOptions}
                     selectedValues={columnFilters["from"] || []}
                     onUpdate={(values) => handleFilterUpdate("from", values)}
                   />
@@ -263,7 +276,7 @@ export function MovementTable({
                   <span className="truncate max-w-[70px]">Куда</span>
                   <TableColumnFilter
                     title="Куда"
-                    options={getUniqueOptions("toName")}
+                    options={warehouseOptions}
                     selectedValues={columnFilters["to"] || []}
                     onUpdate={(values) => handleFilterUpdate("to", values)}
                   />
@@ -283,7 +296,7 @@ export function MovementTable({
                   <span className="truncate max-w-[65px]">Перевозчик</span>
                   <TableColumnFilter
                     title="Перевозчик"
-                    options={getUniqueOptions("carrierName")}
+                    options={carrierOptions}
                     selectedValues={columnFilters["carrier"] || []}
                     onUpdate={(values) => handleFilterUpdate("carrier", values)}
                   />

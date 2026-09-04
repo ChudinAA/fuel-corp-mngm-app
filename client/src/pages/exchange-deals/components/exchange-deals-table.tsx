@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -139,6 +140,15 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
     setColumnFilters((prev) => ({ ...prev, [key]: values }));
   };
 
+  // Справочники — кэшированные данные для фильтров
+  const { data: allCustomers = [] } = useQuery<any[]>({ queryKey: ["/api/customers"], staleTime: 5 * 60 * 1000 });
+  const { data: allSuppliers = [] } = useQuery<any[]>({ queryKey: ["/api/suppliers"], staleTime: 5 * 60 * 1000 });
+
+  const customerOptions = useMemo(() =>
+    allCustomers.map((c: any) => ({ label: c.name, value: c.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allCustomers]);
+  const sellerOptions = useMemo(() =>
+    allSuppliers.map((s: any) => ({ label: s.name, value: s.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allSuppliers]);
+
   const getUniqueOptions = (field: string) => {
     const vals = deals
       .map((d: any) => (field === "dealDate" ? formatDate(d.dealDate) : d[field]))
@@ -208,6 +218,7 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
                     selectedValues={columnFilters["date"] || []}
                     onUpdate={(v) => handleFilterUpdate("date", v)}
                     dataTestId="filter-date"
+                    isDateFilter
                   />
                 </div>
               </TableHead>
@@ -230,7 +241,7 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
                   <span className="truncate max-w-[75px]">Покупатель</span>
                   <TableColumnFilter
                     title="Покупатель"
-                    options={getUniqueOptions("buyerName")}
+                    options={customerOptions}
                     selectedValues={columnFilters["buyer"] || []}
                     onUpdate={(v) => handleFilterUpdate("buyer", v)}
                     dataTestId="filter-buyer"
@@ -272,7 +283,7 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
                   <span className="truncate max-w-[70px]">Продавец</span>
                   <TableColumnFilter
                     title="Продавец"
-                    options={getUniqueOptions("sellerName")}
+                    options={sellerOptions}
                     selectedValues={columnFilters["seller"] || []}
                     onUpdate={(v) => handleFilterUpdate("seller", v)}
                     dataTestId="filter-seller"

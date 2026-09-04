@@ -202,8 +202,26 @@ export function PricesTable({
             if (!selectedValues || selectedValues.length === 0) continue;
 
             if (columnId === "date") {
-              const dateStr = formatDate(p.dateFrom);
-              if (!selectedValues.includes(dateStr)) return false;
+              const rangeVal = selectedValues.find((v) => v.startsWith("__range__:") || v.startsWith("__month__:"));
+              if (rangeVal) {
+                const pDate = p.dateFrom ? new Date(p.dateFrom) : null;
+                if (!pDate) return false;
+                if (rangeVal.startsWith("__range__:")) {
+                  const parts = rangeVal.slice("__range__:".length).split(":");
+                  const from = new Date(parts[0]);
+                  const to = new Date(parts[1]);
+                  if (pDate < from || pDate > to) return false;
+                } else {
+                  // __month__:YYYY-MM
+                  const [y, m] = rangeVal.slice("__month__:".length).split("-").map(Number);
+                  const pY = pDate.getFullYear();
+                  const pM = pDate.getMonth() + 1;
+                  if (pY !== y || pM !== m) return false;
+                }
+              } else {
+                const dateStr = formatDate(p.dateFrom);
+                if (!selectedValues.includes(dateStr)) return false;
+              }
             } else {
               const val = p[columnId as keyof Price];
               if (!selectedValues.includes(String(val))) return false;
@@ -324,6 +342,7 @@ export function PricesTable({
                     selectedValues={columnFilters["date"] || []}
                     onUpdate={(values) => handleFilterUpdate("date", values)}
                     dataTestId="filter-date"
+                    isDateFilter
                   />
                 </div>
               </TableHead>

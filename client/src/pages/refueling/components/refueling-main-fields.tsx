@@ -246,26 +246,13 @@ export function RefuelingMainFields({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Направление</FormLabel>
-              {flightNumbersList.length > 0 ? (
-                <Combobox
-                  options={flightNumbersList.map((fn) => ({
-                    value: fn.number,
-                    label: fn.number,
-                  }))}
-                  value={field.value || ""}
-                  onValueChange={(v) => field.onChange(v || "")}
-                  placeholder="Выберите направление"
-                  dataTestId="select-flight-number"
+              <FormControl>
+                <Input
+                  placeholder="Направление рейса"
+                  data-testid="input-flight-number"
+                  {...field}
                 />
-              ) : (
-                <FormControl>
-                  <Input
-                    placeholder="Направление рейса"
-                    data-testid="input-flight-number"
-                    {...field}
-                  />
-                </FormControl>
-              )}
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

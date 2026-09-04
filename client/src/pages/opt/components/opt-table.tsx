@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -237,6 +238,21 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
     return format(new Date(dateStr), "dd.MM.yyyy HH:mm:ss", { locale: ru });
   };
 
+  // Справочники — кэшированные данные для фильтров
+  const { data: allSuppliers = [] } = useQuery<any[]>({ queryKey: ["/api/suppliers"], staleTime: 5 * 60 * 1000 });
+  const { data: allCustomers = [] } = useQuery<any[]>({ queryKey: ["/api/customers"], staleTime: 5 * 60 * 1000 });
+  const { data: allCarriers = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/carriers"], staleTime: 5 * 60 * 1000 });
+  const { data: allDeliveryLocations = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/delivery-locations"], staleTime: 5 * 60 * 1000 });
+
+  const supplierOptions = useMemo(() =>
+    allSuppliers.map((s: any) => ({ label: s.name, value: s.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allSuppliers]);
+  const customerOptions = useMemo(() =>
+    allCustomers.map((c: any) => ({ label: c.name, value: c.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allCustomers]);
+  const carrierOptions = useMemo(() =>
+    allCarriers.map((c: any) => ({ label: c.name, value: c.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allCarriers]);
+  const locationOptions = useMemo(() =>
+    allDeliveryLocations.map((l: any) => ({ label: l.name, value: l.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allDeliveryLocations]);
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -247,7 +263,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
     );
   }
 
-  // Генерируем опции для фильтров на основе данных
+  // Генерируем опции для фильтров на основе данных (для дат и продуктов — из загруженных данных)
   const getUniqueOptions = (key: string) => {
     const values = new Map<string, string>();
     deals.forEach((deal: any) => {
@@ -360,8 +376,6 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                       { label: getProductLabel(PRODUCT_TYPE.KEROSENE), value: PRODUCT_TYPE.KEROSENE },
                       { label: getProductLabel(PRODUCT_TYPE.PVKJ), value: PRODUCT_TYPE.PVKJ },
                       { label: getProductLabel(PRODUCT_TYPE.SERVICE), value: PRODUCT_TYPE.SERVICE },
-                      { label: getProductLabel(PRODUCT_TYPE.STORAGE), value: PRODUCT_TYPE.STORAGE },
-                      { label: getProductLabel(PRODUCT_TYPE.AGENT), value: PRODUCT_TYPE.AGENT },
                     ]}
                     selectedValues={columnFilters["productType"] || []}
                     onUpdate={(values) =>
@@ -378,7 +392,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   </span>
                   <TableColumnFilter
                     title="Поставщик"
-                    options={getUniqueOptions("supplier")}
+                    options={supplierOptions}
                     selectedValues={columnFilters["supplier"] || []}
                     onUpdate={(values) =>
                       handleFilterUpdate("supplier", values)
@@ -394,7 +408,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   </span>
                   <TableColumnFilter
                     title="Покупатель"
-                    options={getUniqueOptions("buyer")}
+                    options={customerOptions}
                     selectedValues={columnFilters["buyer"] || []}
                     onUpdate={(values) => handleFilterUpdate("buyer", values)}
                     dataTestId="filter-buyer"
@@ -423,7 +437,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   </span>
                   <TableColumnFilter
                     title="Место доставки"
-                    options={getUniqueOptions("deliveryLocation")}
+                    options={locationOptions}
                     selectedValues={columnFilters["deliveryLocation"] || []}
                     onUpdate={(values) =>
                       handleFilterUpdate("deliveryLocation", values)
@@ -439,7 +453,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   </span>
                   <TableColumnFilter
                     title="Перевозчик"
-                    options={getUniqueOptions("carrier")}
+                    options={carrierOptions}
                     selectedValues={columnFilters["carrier"] || []}
                     onUpdate={(values) => handleFilterUpdate("carrier", values)}
                     dataTestId="filter-carrier"

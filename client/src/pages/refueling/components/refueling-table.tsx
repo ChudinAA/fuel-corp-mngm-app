@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -207,7 +208,19 @@ export function RefuelingTable({
     };
   }, [equipmentType]);
 
-  // Генерируем опции для фильтров на основе данных
+  // Справочники — кэшированные данные для фильтров
+  const { data: allSuppliers = [] } = useQuery<any[]>({ queryKey: ["/api/suppliers"], staleTime: 5 * 60 * 1000 });
+  const { data: allCustomers = [] } = useQuery<any[]>({ queryKey: ["/api/customers"], staleTime: 5 * 60 * 1000 });
+  const { data: allBases = [] } = useQuery<any[]>({ queryKey: ["/api/bases"], staleTime: 5 * 60 * 1000 });
+
+  const supplierOptions = useMemo(() =>
+    allSuppliers.map((s: any) => ({ label: s.name, value: s.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allSuppliers]);
+  const customerOptions = useMemo(() =>
+    allCustomers.map((c: any) => ({ label: c.name, value: c.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allCustomers]);
+  const basisOptions = useMemo(() =>
+    allBases.map((b: any) => ({ label: b.name, value: b.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allBases]);
+
+  // Генерируем опции для фильтров на основе данных (только для не-справочных столбцов)
   const getUniqueOptions = (key: string) => {
     const deals = refuelingDeals?.data || [];
     const values = new Map<string, string>();
@@ -268,20 +281,34 @@ export function RefuelingTable({
 
   // Вычисляем принадлежность к группе РТ (Номер РТ + та же дата) для визуальной группировки
   const rtGroupInfo = useMemo(() => {
-    const result = new Map<string, { isGrouped: boolean; isFirstInGroup: boolean; isLastInGroup: boolean }>();
+    const result = new Map<string, { isGrouped: boolean; isFirstInGroup: boolean; isLastInGroup: boolean; groupProfit: number | null }>();
     const computeForList = (dealList: any[]) => {
+      // Собираем суммарную прибыль по каждой группе (orderNumber + date)
+      const groupProfits = new Map<string, number>();
+      dealList.forEach((deal) => {
+        if (!deal.orderNumber) return;
+        const key = `${deal.orderNumber}_${formatDate(deal.refuelingDate)}`;
+        const p = deal.profit !== null && deal.profit !== undefined ? parseFloat(deal.profit) : 0;
+        groupProfits.set(key, (groupProfits.get(key) ?? 0) + p);
+      });
       dealList.forEach((deal, idx) => {
         if (!deal.orderNumber) {
-          result.set(deal.id, { isGrouped: false, isFirstInGroup: false, isLastInGroup: false });
+          result.set(deal.id, { isGrouped: false, isFirstInGroup: false, isLastInGroup: false, groupProfit: null });
           return;
         }
         const sameDate = formatDate(deal.refuelingDate);
+        const groupKey = `${deal.orderNumber}_${sameDate}`;
         const prev = idx > 0 ? dealList[idx - 1] : null;
         const next = idx < dealList.length - 1 ? dealList[idx + 1] : null;
         const prevSame = !!(prev && prev.orderNumber === deal.orderNumber && formatDate(prev.refuelingDate) === sameDate);
         const nextSame = !!(next && next.orderNumber === deal.orderNumber && formatDate(next.refuelingDate) === sameDate);
         const isGrouped = prevSame || nextSame;
-        result.set(deal.id, { isGrouped, isFirstInGroup: isGrouped && !prevSame, isLastInGroup: isGrouped && !nextSame });
+        result.set(deal.id, {
+          isGrouped,
+          isFirstInGroup: isGrouped && !prevSame,
+          isLastInGroup: isGrouped && !nextSame,
+          groupProfit: isGrouped ? (groupProfits.get(groupKey) ?? null) : null,
+        });
       });
     };
     computeForList(deals.filter((d: any) => isCreatedToday(d.createdAt)));
@@ -378,8 +405,6 @@ export function RefuelingTable({
                       { label: getProductLabel(PRODUCT_TYPE.KEROSENE), value: PRODUCT_TYPE.KEROSENE },
                       { label: getProductLabel(PRODUCT_TYPE.PVKJ), value: PRODUCT_TYPE.PVKJ },
                       { label: getProductLabel(PRODUCT_TYPE.SERVICE), value: PRODUCT_TYPE.SERVICE },
-                      { label: getProductLabel(PRODUCT_TYPE.STORAGE), value: PRODUCT_TYPE.STORAGE },
-                      { label: getProductLabel(PRODUCT_TYPE.AGENT), value: PRODUCT_TYPE.AGENT },
                     ]}
                     selectedValues={columnFilters["productType"] || []}
                     onUpdate={(values) =>
@@ -423,7 +448,7 @@ export function RefuelingTable({
                   </span>
                   <TableColumnFilter
                     title="Поставщик"
-                    options={getUniqueOptions("supplier")}
+                    options={supplierOptions}
                     selectedValues={columnFilters["supplier"] || []}
                     onUpdate={(values) =>
                       handleFilterUpdate("supplier", values)
@@ -437,7 +462,7 @@ export function RefuelingTable({
                   <span>Базис</span>
                   <TableColumnFilter
                     title="Базис"
-                    options={getUniqueOptions("basis")}
+                    options={basisOptions}
                     selectedValues={columnFilters["basis"] || []}
                     onUpdate={(values) => handleFilterUpdate("basis", values)}
                     dataTestId="filter-basis"
@@ -456,7 +481,7 @@ export function RefuelingTable({
                   </span>
                   <TableColumnFilter
                     title="Покупатель"
-                    options={getUniqueOptions("buyer")}
+                    options={customerOptions}
                     selectedValues={columnFilters["buyer"] || []}
                     onUpdate={(values) => handleFilterUpdate("buyer", values)}
                     dataTestId="filter-buyer"
@@ -601,7 +626,7 @@ export function RefuelingTable({
                       );
                     }
                   }
-                  const _gInfo = rtGroupInfo.get(deal.id) || { isGrouped: false, isFirstInGroup: false, isLastInGroup: false };
+                  const _gInfo = rtGroupInfo.get(deal.id) || { isGrouped: false, isFirstInGroup: false, isLastInGroup: false, groupProfit: null };
                   _rows.push((
                     <TableRow
                       key={deal.id}
@@ -609,10 +634,11 @@ export function RefuelingTable({
                         isToday && !deal.isDraft && "bg-emerald-50/30 dark:bg-emerald-950/10",
                         deal.isDraft && "bg-muted/70 opacity-60 border-2 border-orange-200",
                         !deal.isDraft && lastCreatedDealId === deal.id && "new-deal-flash",
-                        // Визуальная группировка по Номеру РТ
+                        // Визуальная группировка по Номеру РТ — боковые и торцевые рамки
                         _gInfo.isGrouped && !deal.isDraft && !isToday && "bg-sky-50/20 dark:bg-sky-950/10",
-                        _gInfo.isFirstInGroup && "border-t-2 border-t-sky-300/50 dark:border-t-sky-700/40",
-                        _gInfo.isLastInGroup && "border-b-2 border-b-sky-300/50 dark:border-b-sky-700/40",
+                        _gInfo.isGrouped && !deal.isDraft && "border-l-2 border-r-2 border-l-sky-300/60 border-r-sky-300/60 dark:border-l-sky-700/50 dark:border-r-sky-700/50",
+                        _gInfo.isFirstInGroup && !deal.isDraft && "border-t-2 border-t-sky-300/60 dark:border-t-sky-700/50",
+                        _gInfo.isLastInGroup && !deal.isDraft && "border-b-0",
                       )}
                     >
                   <TableCell className="text-[10px] py-1.5 px-1">
@@ -812,6 +838,22 @@ export function RefuelingTable({
                   </TableCell>
                 </TableRow>
                   ));
+                  // Добавляем строку с суммарной прибылью группы после последней строки группы
+                  if (_gInfo.isLastInGroup && !deal.isDraft && _gInfo.groupProfit !== null) {
+                    const _gProfit = _gInfo.groupProfit!;
+                    _rows.push((
+                      <TableRow key={`rt-profit-${deal.id}`} className="border-l-2 border-r-2 border-b-2 border-l-sky-300/60 border-r-sky-300/60 border-b-sky-300/60 dark:border-l-sky-700/50 dark:border-r-sky-700/50 dark:border-b-sky-700/50 bg-sky-50/30 dark:bg-sky-950/15 hover:bg-sky-50/40">
+                        <TableCell colSpan={100} className="py-0.5 px-2">
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="text-[10px] text-muted-foreground">Итого по РТ {deal.orderNumber}:</span>
+                            <span className={`text-[11px] font-semibold ${_gProfit < 0 ? "text-destructive" : "text-green-600"}`}>
+                              {formatCurrencyForTable(String(_gProfit))}
+                            </span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ));
+                  }
                 };
                 _todayDeals.forEach((d: any) => _renderDeal(d, true));
                 _olderDeals.forEach((d: any) => _renderDeal(d, false));

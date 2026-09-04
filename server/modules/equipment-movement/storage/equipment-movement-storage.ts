@@ -36,6 +36,47 @@ export class EquipmentMovementStorage {
       );
     })();
 
+    // Build filter conditions from parsed filters
+    const filterConditions: any[] = [
+      isNull(equipmentMovement.deletedAt),
+      search ? ilike(equipmentMovement.notes, `%${search}%`) : undefined,
+      warehouseCondition,
+    ];
+
+    if (filters) {
+      if (filters.productType?.length) {
+        filterConditions.push(
+          sql`${equipmentMovement.productType} = ANY(ARRAY[${sql.join(filters.productType.map(v => sql`${v}`), sql`, `)}])`
+        );
+      }
+      if (filters.from?.length) {
+        filterConditions.push(
+          sql`(
+            (SELECT name FROM equipments WHERE id = ${equipmentMovement.fromEquipmentId}) = ANY(ARRAY[${sql.join(filters.from.map(v => sql`${v}`), sql`, `)}])
+            OR
+            (SELECT name FROM warehouses WHERE id = ${equipmentMovement.fromWarehouseId}) = ANY(ARRAY[${sql.join(filters.from.map(v => sql`${v}`), sql`, `)}])
+          )`
+        );
+      }
+      if (filters.to?.length) {
+        filterConditions.push(
+          sql`(
+            (SELECT name FROM equipments WHERE id = ${equipmentMovement.toEquipmentId}) = ANY(ARRAY[${sql.join(filters.to.map(v => sql`${v}`), sql`, `)}])
+            OR
+            (SELECT name FROM warehouses WHERE id = ${equipmentMovement.toWarehouseId}) = ANY(ARRAY[${sql.join(filters.to.map(v => sql`${v}`), sql`, `)}])
+          )`
+        );
+      }
+      if (filters.dateFrom?.length && filters.dateTo?.length) {
+        filterConditions.push(
+          sql`${equipmentMovement.movementDate} >= ${filters.dateFrom[0]}::date`,
+          sql`${equipmentMovement.movementDate} <= ${filters.dateTo[0]}::date`,
+        );
+      }
+    }
+
+    const whereClause = and(...filterConditions.filter(Boolean));
+
     const items = await db
       .select({
         id: equipmentMovement.id,
@@ -65,13 +106,7 @@ export class EquipmentMovementStorage {
         sourceWarehouseTransactionId: equipmentMovement.sourceWarehouseTransactionId,
       })
       .from(equipmentMovement)
-      .where(
-        and(
-          isNull(equipmentMovement.deletedAt),
-          search ? ilike(equipmentMovement.notes, `%${search}%`) : undefined,
-          warehouseCondition,
-        ),
-      )
+      .where(whereClause)
       .limit(pageSize)
       .offset(offset)
       .orderBy(desc(equipmentMovement.movementDate));
@@ -79,12 +114,7 @@ export class EquipmentMovementStorage {
     const [totalResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(equipmentMovement)
-      .where(
-        and(
-          isNull(equipmentMovement.deletedAt),
-          warehouseCondition,
-        ),
-      );
+      .where(whereClause);
 
     const totalCount = Number(totalResult?.count || 0);
     return { items, total: totalCount };

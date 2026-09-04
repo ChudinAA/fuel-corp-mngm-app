@@ -16,6 +16,21 @@ export function registerEquipmentMovementRoutes(app: Express) {
       const pageSize = parseInt(req.query.pageSize as string) || 100;
       const search = req.query.search as string | undefined;
 
+      // Parse column filters (sent as filter_<column>=val1,val2 by buildFilterQueryString)
+      const filters: Record<string, string[]> = {};
+      Object.keys(req.query).forEach((key) => {
+        if (key.startsWith("filter_")) {
+          const columnId = key.replace("filter_", "");
+          const value = req.query[key] as string;
+          filters[columnId] = value.split(",").filter(Boolean);
+        }
+      });
+      // Date range support
+      const dateFrom = req.query.dateFrom as string | undefined;
+      const dateTo = req.query.dateTo as string | undefined;
+      if (dateFrom) filters["dateFrom"] = [dateFrom];
+      if (dateTo) filters["dateTo"] = [dateTo];
+
       // Get allowed warehouse IDs for the current user (null = full access)
       const allowedWarehouseIds = await storage.warehouses.getUserAllowedLikWarehouseIds(
         req.session.userId as string,
@@ -25,7 +40,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
         offset,
         pageSize,
         search,
-        undefined,
+        filters,
         allowedWarehouseIds,
       );
       res.json(result);

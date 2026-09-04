@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { usePersistedTableFilters } from "@/hooks/use-persisted-table-filters";
+import { usePersistedTableFilters, buildFilterQueryString } from "@/hooks/use-persisted-table-filters";
 
 export function useEquipmentMovementTable() {
   const { columnFilters, setColumnFilters, search, setSearch } =
@@ -17,27 +17,26 @@ export function useEquipmentMovementTable() {
     isFetchingNextPage,
   } = useInfiniteQuery({
     queryKey: ["/api/equipment-movement", search, columnFilters],
-    queryFn: async ({ pageParam = 1 }) => {
+    queryFn: async ({ pageParam = 0 }) => {
+      const filterStr = buildFilterQueryString(columnFilters);
       const params = new URLSearchParams({
-        page: pageParam.toString(),
-        limit: effectiveLimit.toString(),
-        search,
-        ...Object.fromEntries(
-          Object.entries(columnFilters).map(([k, v]) => [k, v.join(",")])
-        ),
+        offset: pageParam.toString(),
+        pageSize: effectiveLimit.toString(),
       });
-      const res = await apiRequest("GET", `/api/equipment-movement?${params.toString()}`);
+      if (search) params.append("search", search);
+      const res = await apiRequest("GET", `/api/equipment-movement?${params.toString()}${filterStr}`);
       const json = await res.json();
+      const items = json.items || [];
       return {
-        data: json.items || [],
+        data: items,
         total: json.total || 0,
-        hasMore: (json.items?.length || 0) === effectiveLimit,
-        nextPage: pageParam + 1,
       };
     },
-    getNextPageParam: (lastPage: any) =>
-      lastPage.hasMore ? lastPage.nextPage : undefined,
-    initialPageParam: 1,
+    getNextPageParam: (lastPage: any, allPages: any[]) => {
+      const loadedCount = allPages.reduce((sum: number, p: any) => sum + p.data.length, 0);
+      return loadedCount < lastPage.total ? loadedCount : undefined;
+    },
+    initialPageParam: 0,
   });
 
   const movements = data?.pages.flatMap((page) => page.data) || [];

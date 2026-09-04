@@ -188,7 +188,16 @@ export function TableColumnFilter({
     setRangeTo("")
   }
 
-  // --- Активный диапазон из selectedValues для отображения ---
+  // --- Активный диапазон: из tempSelected пока открыто, из selectedValues для значка кнопки ---
+  const activeRangeFromTemp = React.useMemo(() => {
+    const r = tempSelected.find((v) => v.startsWith("__range__:"))
+    if (!r) return null
+    const rest = r.slice("__range__:".length)
+    const sepIdx = rest.indexOf(":")
+    if (sepIdx === -1) return null
+    return { from: rest.slice(0, sepIdx), to: rest.slice(sepIdx + 1) }
+  }, [tempSelected])
+
   const activeRange = React.useMemo(() => {
     const r = selectedValues.find((v) => v.startsWith("__range__:"))
     if (!r) return null
@@ -228,13 +237,13 @@ export function TableColumnFilter({
         {isDateFilter && (
           <>
             <div className="p-2 space-y-2">
-              {/* Активный диапазон */}
-              {activeRange && (
+              {/* Активный диапазон — показываем из tempSelected пока открыто */}
+              {activeRangeFromTemp && (
                 <div className="flex items-center gap-1 text-[10px] bg-primary/10 text-primary rounded px-2 py-1">
-                  <span>📅 {fmtIso(activeRange.from)} — {fmtIso(activeRange.to)}</span>
+                  <span>📅 {fmtIso(activeRangeFromTemp.from)} — {fmtIso(activeRangeFromTemp.to)}</span>
                   <button
                     className="ml-auto hover:text-destructive"
-                    onClick={() => onUpdate(selectedValues.filter((v) => !v.startsWith("__range__:")))}
+                    onClick={() => setTempSelected((prev) => prev.filter((v) => !v.startsWith("__range__:")))}
                   >
                     ✕
                   </button>
