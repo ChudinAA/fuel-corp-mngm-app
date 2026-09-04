@@ -41,19 +41,6 @@ export function registerTransportationRoutes(app: Express) {
   );
 
   app.get(
-    "/api/transportation/filter-options",
-    requireAuth,
-    async (req, res) => {
-      try {
-        const options = await (storage as any).transportation.getFilterOptions();
-        res.json(options);
-      } catch (error) {
-        res.status(500).json({ message: "Ошибка получения опций фильтров" });
-      }
-    }
-  );
-
-  app.get(
     "/api/transportation/:id",
     requireAuth,
     requirePermission("transportation", "view"),

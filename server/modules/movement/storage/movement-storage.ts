@@ -495,36 +495,4 @@ export class MovementStorage implements IMovementStorage {
 
     return true;
   }
-
-  /** D: Серверные опции для текстовых фильтров */
-  async getFilterOptions(): Promise<Record<string, Array<{label: string; value: string}>>> {
-    const base = isNull(movement.deletedAt);
-    const toOpts = (vals: (string | null | undefined)[]) =>
-      [...new Set(vals.filter(Boolean))].sort((a, b) => a!.localeCompare(b!)).map(v => ({ label: v!, value: v! }));
-
-    const [fromSuppliers, fromWarehouses, toWarehouses, carrierNames] = await Promise.all([
-      db.selectDistinct({ v: suppliers.name }).from(movement)
-        .innerJoin(suppliers, eq(movement.supplierId, suppliers.id))
-        .where(and(base, eq(movement.movementType, MOVEMENT_TYPE.SUPPLY)))
-        .then(rows => rows.map(r => r.v)),
-      db.selectDistinct({ v: warehouses.name }).from(movement)
-        .innerJoin(warehouses, eq(movement.fromWarehouseId, warehouses.id))
-        .where(and(base, sql`${movement.fromWarehouseId} IS NOT NULL`))
-        .then(rows => rows.map(r => r.v)),
-      db.selectDistinct({ v: warehouses.name }).from(movement)
-        .innerJoin(warehouses, eq(movement.toWarehouseId, warehouses.id))
-        .where(and(base, sql`${movement.toWarehouseId} IS NOT NULL`))
-        .then(rows => rows.map(r => r.v)),
-      db.selectDistinct({ v: logisticsCarriers.name }).from(movement)
-        .innerJoin(logisticsCarriers, eq(movement.carrierId, logisticsCarriers.id))
-        .where(and(base, sql`${movement.carrierId} IS NOT NULL`))
-        .then(rows => rows.map(r => r.v)),
-    ]);
-
-    return {
-      from: toOpts([...fromSuppliers, ...fromWarehouses]),
-      to: toOpts(toWarehouses),
-      carrier: toOpts(carrierNames),
-    };
-  }
 }

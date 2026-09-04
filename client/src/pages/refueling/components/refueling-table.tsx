@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -165,16 +164,6 @@ export function RefuelingTable({
   const [dealToDelete, setDealToDelete] = useState<any>(null);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [selectedDealNotes, setSelectedDealNotes] = useState<string>("");
-  const { data: filterOptions } = useQuery<Record<string, Array<{label: string; value: string}>>>({
-    queryKey: ["/api/refueling/filter-options", equipmentType],
-    queryFn: async () => {
-      const url = `/api/refueling/filter-options${equipmentType ? `?equipmentType=${equipmentType}` : ""}`;
-      const res = await fetch(url);
-      return res.json();
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
   const [searchInput, setSearchInput] = useState(search);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const cursorPositionRef = useRef<number>(0);
@@ -274,9 +263,20 @@ export function RefuelingTable({
     return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
   };
 
-  // Данные должны быть вычислены ДО любых ранних return, иначе нарушаются правила хуков
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    );
+  }
+
   const allDeals = (refuelingDeals as any)?.data || [];
-  const deals = allDeals;
+  const filteredDeals = allDeals;
+
+  const deals = filteredDeals;
 
   // Вычисляем принадлежность к группе РТ (Номер РТ + та же дата) для визуальной группировки
   const rtGroupInfo = useMemo(() => {
@@ -300,16 +300,6 @@ export function RefuelingTable({
     computeForList(deals.filter((d: any) => !isCreatedToday(d.createdAt)));
     return result;
   }, [deals]);
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <Skeleton key={i} className="h-12 w-full" />
-        ))}
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4">
@@ -409,7 +399,7 @@ export function RefuelingTable({
                   <span>Номер РТ</span>
                   <TableColumnFilter
                     title="Номер РТ"
-                    options={filterOptions?.orderNumber || []}
+                    options={getUniqueOptions("orderNumber")}
                     selectedValues={columnFilters["orderNumber"] || []}
                     onUpdate={(values) => handleFilterUpdate("orderNumber", values)}
                     dataTestId="filter-order-number"
@@ -421,7 +411,7 @@ export function RefuelingTable({
                   <span>Направ.</span>
                   <TableColumnFilter
                     title="Направление"
-                    options={filterOptions?.direction || []}
+                    options={getUniqueOptions("flightNumber")}
                     selectedValues={columnFilters["direction"] || []}
                     onUpdate={(values) => handleFilterUpdate("direction", values)}
                     dataTestId="filter-direction"
@@ -435,7 +425,7 @@ export function RefuelingTable({
                   </span>
                   <TableColumnFilter
                     title="Поставщик"
-                    options={filterOptions?.supplier || []}
+                    options={getUniqueOptions("supplier")}
                     selectedValues={columnFilters["supplier"] || []}
                     onUpdate={(values) =>
                       handleFilterUpdate("supplier", values)
@@ -449,7 +439,7 @@ export function RefuelingTable({
                   <span>Базис</span>
                   <TableColumnFilter
                     title="Базис"
-                    options={filterOptions?.basis || []}
+                    options={getUniqueOptions("basis")}
                     selectedValues={columnFilters["basis"] || []}
                     onUpdate={(values) => handleFilterUpdate("basis", values)}
                     dataTestId="filter-basis"
@@ -468,7 +458,7 @@ export function RefuelingTable({
                   </span>
                   <TableColumnFilter
                     title="Покупатель"
-                    options={filterOptions?.buyer || []}
+                    options={getUniqueOptions("buyer")}
                     selectedValues={columnFilters["buyer"] || []}
                     onUpdate={(values) => handleFilterUpdate("buyer", values)}
                     dataTestId="filter-buyer"

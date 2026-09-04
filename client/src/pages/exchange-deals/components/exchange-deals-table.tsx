@@ -1,5 +1,4 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -117,15 +116,6 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dealToDelete, setDealToDelete] = useState<any>(null);
-  const { data: filterOptions } = useQuery<Record<string, Array<{label: string; value: string}>>>({
-    queryKey: ["/api/exchange-deals/filter-options"],
-    queryFn: async () => {
-      const res = await fetch("/api/exchange-deals/filter-options");
-      return res.json();
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
   const [searchInput, setSearchInput] = useState(search);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const cursorPositionRef = useRef<number>(0);
@@ -215,7 +205,7 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
                   <span>№ сделки</span>
                   <TableColumnFilter
                     title="Номер"
-                    options={filterOptions?.dealNumber || []}
+                    options={getUniqueOptions("dealNumber")}
                     selectedValues={columnFilters["dealNumber"] || []}
                     onUpdate={(v) => handleFilterUpdate("dealNumber", v)}
                     dataTestId="filter-deal-number"
@@ -229,7 +219,7 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
                   <span className="truncate max-w-[75px]">Покупатель</span>
                   <TableColumnFilter
                     title="Покупатель"
-                    options={filterOptions?.buyer || []}
+                    options={getUniqueOptions("buyerName")}
                     selectedValues={columnFilters["buyer"] || []}
                     onUpdate={(v) => handleFilterUpdate("buyer", v)}
                     dataTestId="filter-buyer"
@@ -250,7 +240,7 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
                   <span className="truncate max-w-[60px]">Тариф</span>
                   <TableColumnFilter
                     title="Тариф"
-                    options={filterOptions?.tariff || []}
+                    options={getUniqueOptions("tariffZoneName")}
                     selectedValues={columnFilters["tariff"] || []}
                     onUpdate={(v) => handleFilterUpdate("tariff", v)}
                     dataTestId="filter-tariff"
@@ -271,7 +261,7 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
                   <span className="truncate max-w-[70px]">Продавец</span>
                   <TableColumnFilter
                     title="Продавец"
-                    options={filterOptions?.seller || []}
+                    options={getUniqueOptions("sellerName")}
                     selectedValues={columnFilters["seller"] || []}
                     onUpdate={(v) => handleFilterUpdate("seller", v)}
                     dataTestId="filter-seller"

@@ -52,20 +52,6 @@ export function registerRefuelingOperationsRoutes(app: Express) {
   );
 
   app.get(
-    "/api/refueling/filter-options",
-    requireAuth,
-    async (req, res) => {
-      try {
-        const equipmentType = req.query.equipmentType as string | undefined;
-        const options = await (storage.aircraftRefueling as any).getFilterOptions(equipmentType);
-        res.json(options);
-      } catch (error) {
-        res.status(500).json({ message: "Ошибка получения опций фильтров" });
-      }
-    }
-  );
-
-  app.get(
     "/api/refueling/contract-used/:priceId",
     requireAuth,
     requireAnyPermission(["refueling", "lik-refueling"], "view"),
