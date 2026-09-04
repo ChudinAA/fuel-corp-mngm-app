@@ -32,14 +32,12 @@ import type { Base } from "@shared/schema";
 interface GenericLogisticsTabProps {
   type: "carrier" | "delivery_location" | "vehicle" | "trailer" | "driver";
   title: string;
-  description: string;
   icon: any;
 }
 
 export function GenericLogisticsTab({
   type,
   title,
-  description,
   icon: Icon,
 }: GenericLogisticsTabProps) {
   const { hasPermission } = useAuth();
@@ -281,7 +279,6 @@ export function GenericLogisticsTab({
           <Icon className="h-5 w-5" />
           {title}
         </CardTitle>
-        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">

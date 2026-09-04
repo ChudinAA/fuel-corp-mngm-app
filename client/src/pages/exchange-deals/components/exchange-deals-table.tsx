@@ -14,7 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Plus, Loader2, Pencil, Copy, Trash2 } from "lucide-react";
+import { Search, Plus, Loader2, Pencil, Copy, Trash2, History } from "lucide-react";
+import { AuditPanel } from "@/components/audit-panel";
 import { ExportButton } from "@/components/export/export-button";
 import { EntityActionsMenu, type EntityAction } from "@/components/entity-actions-menu";
 import { TableColumnFilter } from "@/components/ui/table-column-filter";
@@ -114,6 +115,7 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
     [dealsData],
   );
 
+  const [auditOpen, setAuditOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dealToDelete, setDealToDelete] = useState<any>(null);
   const [searchInput, setSearchInput] = useState(search);
@@ -157,6 +159,12 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 flex-wrap">
+        {onAdd && hasPermission("exchange-deals", "create") && (
+          <Button onClick={onAdd} data-testid="button-add-exchange-deal">
+            <Plus className="h-4 w-4 mr-1" />
+            Новая сделка
+          </Button>
+        )}
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -171,17 +179,20 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
             data-testid="input-search-deals"
           />
         </div>
+        <Button
+          variant="outline"
+          onClick={() => setAuditOpen(true)}
+          data-testid="button-audit-history"
+        >
+          <History className="h-4 w-4 mr-2" />
+          История изменений
+        </Button>
         <ExportButton
           moduleName="exchange-deals"
           exportFilters={{ search, columnFilters }}
           previewData={deals}
         />
-        {onAdd && hasPermission("exchange-deals", "create") && (
-          <Button onClick={onAdd} data-testid="button-add-exchange-deal">
-            <Plus className="h-4 w-4 mr-1" />
-            Новая сделка
-          </Button>
-        )}
+        
       </div>
 
       <div className="border rounded-lg overflow-auto max-h-[calc(100vh-300px)]">
@@ -449,6 +460,14 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
         </div>
       )}
 
+      <AuditPanel
+        open={auditOpen}
+        onOpenChange={setAuditOpen}
+        entityType="exchange_deals"
+        entityId=""
+        entityName="Все сделки Биржи (включая удалённые)"
+      />
+      
       <DeleteConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}

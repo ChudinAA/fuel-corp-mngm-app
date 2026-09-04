@@ -11,7 +11,6 @@ export default function CounterpartiesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Контрагенты</h1>
-        <p className="text-muted-foreground">Управление поставщиками и покупателями системы</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>

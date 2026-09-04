@@ -137,9 +137,6 @@ export function BasesTab() {
           <MapPin className="h-5 w-5" />
           Базисы
         </CardTitle>
-        <CardDescription>
-          Управление базисами поставки и заправки
-        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">

@@ -14,7 +14,6 @@ export default function DirectoriesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Справочники</h1>
-        <p className="text-muted-foreground">Управление справочными данными системы</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -60,8 +59,7 @@ export default function DirectoriesPage() {
         <TabsContent value="delivery_locations">
           <GenericLogisticsTab 
             type="delivery_location" 
-            title="Места доставки" 
-            description="Управление точками выгрузки"
+            title="Места доставки"
             icon={MapPin}
           />
         </TabsContent>
@@ -69,8 +67,7 @@ export default function DirectoriesPage() {
         <TabsContent value="carriers">
           <GenericLogisticsTab 
             type="carrier" 
-            title="Перевозчики" 
-            description="Транспортные компании"
+            title="Перевозчики"
             icon={Building2}
           />
         </TabsContent>
@@ -78,8 +75,7 @@ export default function DirectoriesPage() {
         <TabsContent value="drivers">
           <GenericLogisticsTab 
             type="driver" 
-            title="Водители" 
-            description="Список водителей перевозчиков"
+            title="Водители"
             icon={User}
           />
         </TabsContent>
@@ -87,8 +83,7 @@ export default function DirectoriesPage() {
         <TabsContent value="vehicles">
           <GenericLogisticsTab 
             type="vehicle" 
-            title="Транспорт" 
-            description="Грузовые автомобили и бензовозы"
+            title="Транспорт"
             icon={Car}
           />
         </TabsContent>
@@ -96,8 +91,7 @@ export default function DirectoriesPage() {
         <TabsContent value="trailers">
           <GenericLogisticsTab 
             type="trailer" 
-            title="Прицепы" 
-            description="Цистерны и полуприцепы"
+            title="Прицепы"
             icon={Container}
           />
         </TabsContent>

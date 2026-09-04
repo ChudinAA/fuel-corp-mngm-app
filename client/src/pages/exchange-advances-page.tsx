@@ -25,7 +25,6 @@ export default function ExchangeAdvancesPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold">Авансы Биржи</h1>
-          <p className="text-muted-foreground">Авансы продавцов по биржевым сделкам</p>
         </div>
         <Button
           variant="outline"

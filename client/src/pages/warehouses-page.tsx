@@ -67,9 +67,6 @@ export default function WarehousesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Склады</h1>
-          <p className="text-muted-foreground">
-            Управление складами и остатками топлива
-          </p>
         </div>
         {hasPermission("warehouses", "create") && (
           <Button

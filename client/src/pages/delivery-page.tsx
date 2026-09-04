@@ -91,7 +91,6 @@ export default function DeliveryPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Доставка</h1>
-          <p className="text-muted-foreground">Управление тарифами на доставку</p>
         </div>
         {hasPermission("delivery", "create") && (
           <AddDeliveryCostDialog editDeliveryCost={editingDeliveryCost} onClose={() => setEditingDeliveryCost(null)} />
@@ -107,7 +106,6 @@ export default function DeliveryPage() {
       <Card>
         <CardHeader>
           <CardTitle>Тарифы доставки</CardTitle>
-          <CardDescription>Стоимость перевозки по маршрутам</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -166,6 +164,14 @@ export default function DeliveryPage() {
               )}
 
               <div className="ml-auto flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setAuditPanelOpen(true)}
+                  title="Аудит всех тарифов доставки"
+                >
+                  <History className="h-4 w-4 mr-2" />
+                  История
+                </Button>
                 <ExportButton
                   moduleName="delivery-cost"
                   exportFilters={{
@@ -177,14 +183,6 @@ export default function DeliveryPage() {
                     },
                   }}
                 />
-                <Button
-                  variant="outline"
-                  onClick={() => setAuditPanelOpen(true)}
-                  title="Аудит всех тарифов доставки"
-                >
-                  <History className="h-4 w-4 mr-2" />
-                  История
-                </Button>
               </div>
             </div>
 

@@ -104,9 +104,6 @@ export function SuppliersTab() {
           <Building2 className="h-5 w-5" />
           Поставщики
         </CardTitle>
-        <CardDescription>
-          Управление поставщиками для оптовых и заправочных операций
-        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">

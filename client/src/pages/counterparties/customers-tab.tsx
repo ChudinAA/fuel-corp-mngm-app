@@ -79,11 +79,8 @@ export function CustomersTab() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Users className="h-5 w-5" />
-          Справочник Покупатели
+          Покупатели
         </CardTitle>
-        <CardDescription>
-          Единый справочник покупателей для ОПТ, Заправки ВС, Зарубеж
-        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">

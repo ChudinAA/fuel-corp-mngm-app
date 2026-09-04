@@ -63,10 +63,6 @@ export default function OptPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Оптовые продажи</h1>
-        <p className="text-muted-foreground">Учет оптовых сделок</p>
-      </div>
 
       <AddOptDialog
         isOpen={isDialogOpen}
@@ -78,30 +74,8 @@ export default function OptPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
           <div>
-            <CardTitle>Список сделок</CardTitle>
+            <CardTitle>Список сделок ОПТ</CardTitle>
           </div>
-          <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Maximize2 className="h-4 w-4" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-[95vw] h-[90vh]">
-              <DialogHeader>
-                <DialogTitle>Все оптовые сделки</DialogTitle>
-                <DialogDescription>
-                  Полный список сделок с фильтрацией и поиском
-                </DialogDescription>
-              </DialogHeader>
-              <ScrollArea className="flex-1">
-                <OptTable
-                  onEdit={handleEditOpt}
-                  onCopy={handleCopyOpt}
-                  onDelete={handleOptDeleted}
-                />
-              </ScrollArea>
-            </DialogContent>
-          </Dialog>
         </CardHeader>
         <CardContent>
           <OptTable

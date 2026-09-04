@@ -79,12 +79,6 @@ export default function MovementPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Перемещение</h1>
-        <p className="text-muted-foreground">
-          Учет покупок и внутренних перемещений топлива
-        </p>
-      </div>
 
       <MovementDialog
         warehouses={warehouses || []}

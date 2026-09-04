@@ -263,20 +263,8 @@ export function RefuelingTable({
     return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
   };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <Skeleton key={i} className="h-12 w-full" />
-        ))}
-      </div>
-    );
-  }
-
   const allDeals = (refuelingDeals as any)?.data || [];
-  const filteredDeals = allDeals;
-
-  const deals = filteredDeals;
+  const deals = allDeals;
 
   // Вычисляем принадлежность к группе РТ (Номер РТ + та же дата) для визуальной группировки
   const rtGroupInfo = useMemo(() => {
@@ -300,6 +288,16 @@ export function RefuelingTable({
     computeForList(deals.filter((d: any) => !isCreatedToday(d.createdAt)));
     return result;
   }, [deals]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

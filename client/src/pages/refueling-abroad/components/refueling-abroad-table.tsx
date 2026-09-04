@@ -17,9 +17,11 @@ import {
   Search,
   Filter,
   History,
+  Plus,
 } from "lucide-react";
 import { formatCurrency, formatNumber } from "../utils";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { useErrorModal } from "@/hooks/use-error-modal";
 import {
   AlertDialog,
@@ -48,13 +50,16 @@ import { ProductTypeBadge } from "@/components/product-type-badge";
 interface RefuelingAbroadTableProps {
   onEdit: (item: any) => void;
   onCopy: (item: any) => void;
+  onAdd?: () => void;
 }
 
 export function RefuelingAbroadTable({
   onEdit,
   onCopy,
+  onAdd,
 }: RefuelingAbroadTableProps) {
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
   const { showError, ErrorModalComponent } = useErrorModal();
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -167,6 +172,12 @@ export function RefuelingAbroadTable({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
+        {onAdd && hasPermission("abroad", "create") && (
+          <Button onClick={onAdd} data-testid="button-add-refueling-abroad">
+            <Plus className="mr-2 h-4 w-4" />
+            Новая заправка
+          </Button>
+        )}
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input

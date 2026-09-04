@@ -66,6 +66,8 @@ import {
 } from "../utils";
 import { cn } from "@/lib/utils";
 import { ProductTypeBadge } from "@/components/product-type-badge";
+import { useAuth } from "@/hooks/use-auth";
+import { AddPriceDialog } from "./add-price-dialog";
 
 const PAGE_SIZE = 100;
 
@@ -73,7 +75,6 @@ export function PricesTable({
   dealTypeFilter,
   roleFilter,
   productTypeFilter,
-  onEdit,
 }: PricesTableProps) {
   const { columnFilters, setColumnFilters, search, setSearch } =
     usePersistedTableFilters("prices-table");
@@ -84,6 +85,8 @@ export function PricesTable({
   const [selectedPrice, setSelectedPrice] = useState<Price | null>(null);
   const [auditPanelOpen, setAuditPanelOpen] = useState(false);
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
+  const [editingPrice, setEditingPrice] = useState<Price | null>(null);
   const { showError, ErrorModalComponent } = useErrorModal();
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
@@ -268,6 +271,9 @@ export function PricesTable({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
+        {hasPermission("prices", "create") && (
+          <AddPriceDialog editPrice={editingPrice} onEditComplete={() => setEditingPrice(null)} />
+        )}
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -566,7 +572,7 @@ export function PricesTable({
                             id: "edit",
                             label: "Редактировать",
                             icon: Pencil,
-                            onClick: () => onEdit(price),
+                            onClick: () => setEditingPrice(price),
                             permission: { module: "prices", action: "edit" },
                           },
                           {

@@ -55,15 +55,7 @@ export default function RefuelingPage({ equipmentType = EQUIPMENT_TYPE.COMMON }:
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">
-          {equipmentType === EQUIPMENT_TYPE.LIK ? "Заправка ВС ОП" : "Заправка ВС"}
-        </h1>
-        <p className="text-muted-foreground">
-          {equipmentType === EQUIPMENT_TYPE.LIK ? "Учет заправок ВС ОП" : "Учет заправок воздушных судов"}
-        </p>
-      </div>
+    <div className="space-y-4">
 
       <div className="space-y-4">
         <AddRefuelingDialog
@@ -77,34 +69,8 @@ export default function RefuelingPage({ equipmentType = EQUIPMENT_TYPE.COMMON }:
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
             <div>
-              <CardTitle>Список сделок</CardTitle>
+              <CardTitle>{equipmentType === EQUIPMENT_TYPE.LIK ? "Список сделок Заправок ВС ОП" : "Список сделок Заправок ВС"}</CardTitle>
             </div>
-            <Dialog open={isFullScreen} onOpenChange={setIsFullScreen}>
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={() => setIsFullScreen(true)}
-              >
-                <Maximize2 className="h-4 w-4" />
-              </Button>
-              <DialogContent className="max-w-[95vw] h-[90vh]">
-                <DialogHeader>
-                  <DialogTitle>Все заправки ВС</DialogTitle>
-                  <DialogDescription>
-                    Полный список заправок с фильтрацией и поиском
-                  </DialogDescription>
-                </DialogHeader>
-                <ScrollArea className="flex-1">
-                  <RefuelingTable 
-                    onEdit={handleEditRefueling}
-                    onCopy={handleCopyRefueling}
-                    onDelete={handleRefuelingDeleted}
-                    equipmentType={equipmentType}
-                    isFullscreen
-                  />
-                </ScrollArea>
-              </DialogContent>
-            </Dialog>
           </CardHeader>
           <CardContent>
             <RefuelingTable 
