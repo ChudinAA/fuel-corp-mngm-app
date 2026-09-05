@@ -58,10 +58,37 @@ export function usePersistedTableFilters(storageKey: string) {
 }
 
 /**
+ * Разбирает маркер диапазона дат "__range__:YYYY-MM-DD:YYYY-MM-DD"
+ * или месяца "__month__:YYYY-MM" и возвращает {from, to} или null.
+ */
+function parseDateMarker(v: string): { from: string; to: string } | null {
+  if (v.startsWith("__range__:")) {
+    const rest = v.slice("__range__:".length);
+    const sepIdx = rest.indexOf(":");
+    if (sepIdx !== -1) {
+      return { from: rest.slice(0, sepIdx), to: rest.slice(sepIdx + 1) };
+    }
+  } else if (v.startsWith("__month__:")) {
+    const ym = v.slice("__month__:".length);
+    const [y, m] = ym.split("-");
+    if (y && m) {
+      const from = `${y}-${m}-01`;
+      const lastDay = new Date(parseInt(y), parseInt(m), 0).getDate();
+      const to = `${y}-${m}-${String(lastDay).padStart(2, "0")}`;
+      return { from, to };
+    }
+  }
+  return null;
+}
+
+/**
  * Вспомогательная функция — строит строку параметров запроса из columnFilters.
  * Обрабатывает специальные маркеры дат:
- *   __range__:YYYY-MM-DD:YYYY-MM-DD — диапазон дат (отправляется как dateFrom/dateTo)
- *   __month__:YYYY-MM              — целый месяц (отправляется как dateFrom/dateTo)
+ *   __range__:YYYY-MM-DD:YYYY-MM-DD — диапазон дат
+ *   __month__:YYYY-MM              — целый месяц
+ *
+ * Для колонки "date" генерирует dateFrom/dateTo.
+ * Для любых других колонок с датовыми маркерами генерирует <col>DateFrom/<col>DateTo.
  */
 export function buildFilterQueryString(columnFilters: Record<string, string[]>): string {
   const parts: string[] = [];
@@ -74,23 +101,10 @@ export function buildFilterQueryString(columnFilters: Record<string, string[]>):
     if (columnId === "date") {
       const regularDates: string[] = [];
       values.forEach((v) => {
-        if (v.startsWith("__range__:")) {
-          // format: __range__:YYYY-MM-DD:YYYY-MM-DD
-          const rest = v.slice("__range__:".length); // YYYY-MM-DD:YYYY-MM-DD
-          const sepIdx = rest.indexOf(":");
-          if (sepIdx !== -1) {
-            dateFrom = rest.slice(0, sepIdx);
-            dateTo = rest.slice(sepIdx + 1);
-          }
-        } else if (v.startsWith("__month__:")) {
-          // format: __month__:YYYY-MM
-          const ym = v.slice("__month__:".length); // YYYY-MM
-          const [y, m] = ym.split("-");
-          if (y && m) {
-            dateFrom = `${y}-${m}-01`;
-            const lastDay = new Date(parseInt(y), parseInt(m), 0).getDate();
-            dateTo = `${y}-${m}-${String(lastDay).padStart(2, "0")}`;
-          }
+        const parsed = parseDateMarker(v);
+        if (parsed) {
+          dateFrom = parsed.from;
+          dateTo = parsed.to;
         } else {
           regularDates.push(v);
         }
@@ -99,7 +113,27 @@ export function buildFilterQueryString(columnFilters: Record<string, string[]>):
         parts.push(`filter_date=${encodeURIComponent(regularDates.join(","))}`);
       }
     } else {
-      parts.push(`filter_${columnId}=${encodeURIComponent(values.join(","))}`);
+      // Для остальных колонок — проверяем маркеры дат и обычные значения
+      const regularVals: string[] = [];
+      let colDateFrom: string | undefined;
+      let colDateTo: string | undefined;
+
+      values.forEach((v) => {
+        const parsed = parseDateMarker(v);
+        if (parsed) {
+          colDateFrom = parsed.from;
+          colDateTo = parsed.to;
+        } else {
+          regularVals.push(v);
+        }
+      });
+
+      if (regularVals.length) {
+        parts.push(`filter_${columnId}=${encodeURIComponent(regularVals.join(","))}`);
+      }
+      // Генерируем <columnId>From / <columnId>To для дат, кроме "date" (у него dateFrom/dateTo)
+      if (colDateFrom) parts.push(`${columnId}From=${colDateFrom}`);
+      if (colDateTo) parts.push(`${columnId}To=${colDateTo}`);
     }
   });
 

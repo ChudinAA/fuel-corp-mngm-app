@@ -131,6 +131,14 @@ export function PricesTable({
     return contractors?.find((c) => c.id === id)?.name || `ID: ${id}`;
   };
 
+  // Все контрагенты (поставщики + покупатели) для фильтра "Контрагент"
+  const counterpartyOptions = useMemo(() => {
+    const opts: { label: string; value: string }[] = [];
+    allContractors?.forEach((s) => opts.push({ label: s.name, value: s.id }));
+    customers?.forEach((c: any) => opts.push({ label: c.name, value: c.id }));
+    return opts.sort((a, b) => a.label.localeCompare(b.label, "ru"));
+  }, [allContractors, customers]);
+
   const getUniqueOptions = (key: string) => {
     const values = new Map<string, string>();
     prices?.forEach((price: any) => {
@@ -396,7 +404,7 @@ export function PricesTable({
                   <span>Контрагент</span>
                   <TableColumnFilter
                     title="Контрагент"
-                    options={getUniqueOptions("counterpartyId")}
+                    options={counterpartyOptions}
                     selectedValues={columnFilters["counterpartyId"] || []}
                     onUpdate={(values) =>
                       handleFilterUpdate("counterpartyId", values)

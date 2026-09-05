@@ -74,10 +74,22 @@ export class RefuelingAbroadStorage {
     }
 
     if (columnFilters) {
+      // Обработка диапазона дат (приоритет над отдельными датами)
+      if (columnFilters.dateFrom?.length && columnFilters.dateTo?.length) {
+        conditions.push(
+          sql`${refuelingAbroad.refuelingDate}::date >= ${columnFilters.dateFrom[0]}::date` as any,
+          sql`${refuelingAbroad.refuelingDate}::date <= ${columnFilters.dateTo[0]}::date` as any,
+        );
+      }
+
       Object.entries(columnFilters).forEach(([columnId, values]) => {
         if (!values || values.length === 0) return;
+        // Уже обработаны выше
+        if (columnId === "dateFrom" || columnId === "dateTo") return;
 
         if (columnId === "date") {
+          // Пропускаем, если уже задан диапазон
+          if (columnFilters.dateFrom?.length && columnFilters.dateTo?.length) return;
           const dateConditions = values.map((v) => {
             const [day, month, year] = v.split(".");
             const dateStr = `${year}-${month}-${day}`;
@@ -940,6 +952,58 @@ export class RefuelingAbroadStorage {
         ),
       );
     return parseFloat(result?.total || "0");
+  }
+}
+
+  /** Поиск уникальных значений по колонке для серверного фильтра */
+  async getFilterValues(column: string, q: string): Promise<{ label: string; value: string }[]> {
+    const pattern = `%${q}%`;
+
+    if (column === "location") {
+      const result = await db.execute(
+        sql`SELECT DISTINCT val FROM (
+          SELECT airport AS val FROM refueling_abroad
+          WHERE deleted_at IS NULL AND airport ILIKE ${pattern}
+          UNION
+          SELECT aircraft_number AS val FROM refueling_abroad
+          WHERE deleted_at IS NULL AND aircraft_number ILIKE ${pattern}
+          UNION
+          SELECT order_number AS val FROM refueling_abroad
+          WHERE deleted_at IS NULL AND order_number ILIKE ${pattern}
+        ) t WHERE val IS NOT NULL AND val <> '' LIMIT 20`,
+      );
+      return (result.rows as any[]).filter((r) => r.val).map((r) => ({ label: r.val, value: r.val }));
+    }
+
+    if (column === "intermediary") {
+      const result = await db.execute(
+        sql`SELECT DISTINCT name AS val FROM (
+          SELECT s.name FROM refueling_abroad_intermediaries rai
+          JOIN refueling_abroad ra ON ra.id = rai.refueling_abroad_id
+          JOIN suppliers s ON s.id = rai.intermediary_id
+          WHERE ra.deleted_at IS NULL AND s.name ILIKE ${pattern}
+          UNION
+          SELECT c.name FROM refueling_abroad_intermediaries rai
+          JOIN refueling_abroad ra ON ra.id = rai.refueling_abroad_id
+          JOIN customers c ON c.id = rai.customer_intermediary_id
+          WHERE ra.deleted_at IS NULL AND c.name ILIKE ${pattern}
+        ) t WHERE val IS NOT NULL LIMIT 20`,
+      );
+      return (result.rows as any[]).filter((r) => r.val).map((r) => ({ label: r.val, value: r.val }));
+    }
+
+    if (column === "bank") {
+      const result = await db.execute(
+        sql`SELECT DISTINCT rabc.bank_name AS val
+            FROM refueling_abroad_bank_commissions rabc
+            JOIN refueling_abroad ra ON ra.id = rabc.refueling_abroad_id
+            WHERE ra.deleted_at IS NULL AND rabc.bank_name ILIKE ${pattern}
+            LIMIT 20`,
+      );
+      return (result.rows as any[]).filter((r) => r.val).map((r) => ({ label: r.val, value: r.val }));
+    }
+
+    return [];
   }
 }
 

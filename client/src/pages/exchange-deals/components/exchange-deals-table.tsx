@@ -148,6 +148,13 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
     allCustomers.map((c: any) => ({ label: c.name, value: c.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allCustomers]);
   const sellerOptions = useMemo(() =>
     allSuppliers.map((s: any) => ({ label: s.name, value: s.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allSuppliers]);
+  // Покупатель может быть customers.name ИЛИ warehouse-поставщик (buyerSupplierId)
+  const buyerOptions = useMemo(() =>
+    [...allCustomers, ...allSuppliers]
+      .map((e: any) => ({ label: e.name, value: e.name }))
+      .filter((o, i, arr) => arr.findIndex(x => x.value === o.value) === i)
+      .sort((a: any, b: any) => a.label.localeCompare(b.label)),
+    [allCustomers, allSuppliers]);
 
   const getUniqueOptions = (field: string) => {
     const vals = deals
@@ -230,25 +237,71 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
                     options={getUniqueOptions("dealNumber")}
                     selectedValues={columnFilters["dealNumber"] || []}
                     onUpdate={(v) => handleFilterUpdate("dealNumber", v)}
+                    onSearch={async (q) => {
+                      const res = await fetch(`/api/exchange-deals/filter-values?column=dealNumber&q=${encodeURIComponent(q)}`);
+                      return res.json();
+                    }}
                     dataTestId="filter-deal-number"
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-xs font-semibold p-1 w-[100px]">Ст. отпр.</TableHead>
-              <TableHead className="text-xs font-semibold p-1 w-[100px]">Ст. назн.</TableHead>
+              <TableHead className="text-xs font-semibold p-1 w-[100px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span>Ст. отпр.</span>
+                  <TableColumnFilter
+                    title="Ст. отправления"
+                    options={[]}
+                    selectedValues={columnFilters["departure"] || []}
+                    onUpdate={(v) => handleFilterUpdate("departure", v)}
+                    onSearch={async (q) => {
+                      const res = await fetch(`/api/exchange-deals/filter-values?column=departure&q=${encodeURIComponent(q)}`);
+                      return res.json();
+                    }}
+                    dataTestId="filter-departure"
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="text-xs font-semibold p-1 w-[100px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span>Ст. назн.</span>
+                  <TableColumnFilter
+                    title="Ст. назначения"
+                    options={[]}
+                    selectedValues={columnFilters["destination"] || []}
+                    onUpdate={(v) => handleFilterUpdate("destination", v)}
+                    onSearch={async (q) => {
+                      const res = await fetch(`/api/exchange-deals/filter-values?column=destination&q=${encodeURIComponent(q)}`);
+                      return res.json();
+                    }}
+                    dataTestId="filter-destination"
+                  />
+                </div>
+              </TableHead>
               <TableHead className="text-xs font-semibold p-1 w-[110px]">
                 <div className="flex items-center justify-between gap-1">
                   <span className="truncate max-w-[75px]">Покупатель</span>
                   <TableColumnFilter
                     title="Покупатель"
-                    options={customerOptions}
+                    options={buyerOptions}
                     selectedValues={columnFilters["buyer"] || []}
                     onUpdate={(v) => handleFilterUpdate("buyer", v)}
                     dataTestId="filter-buyer"
                   />
                 </div>
               </TableHead>
-              <TableHead className="text-xs font-semibold p-1 w-[90px]">Дата опл.</TableHead>
+              <TableHead className="text-xs font-semibold p-1 w-[90px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span>Дата опл.</span>
+                  <TableColumnFilter
+                    title="Дата оплаты"
+                    options={[]}
+                    selectedValues={columnFilters["paymentDate"] || []}
+                    onUpdate={(v) => handleFilterUpdate("paymentDate", v)}
+                    dataTestId="filter-payment-date"
+                    isDateFilter
+                  />
+                </div>
+              </TableHead>
               <TableHead className="text-right text-xs font-semibold p-1 w-[75px]">
                 Цена/тн
               </TableHead>
@@ -265,6 +318,10 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
                     options={getUniqueOptions("tariffZoneName")}
                     selectedValues={columnFilters["tariff"] || []}
                     onUpdate={(v) => handleFilterUpdate("tariff", v)}
+                    onSearch={async (q) => {
+                      const res = await fetch(`/api/exchange-deals/filter-values?column=tariff&q=${encodeURIComponent(q)}`);
+                      return res.json();
+                    }}
                     dataTestId="filter-tariff"
                   />
                 </div>
@@ -276,8 +333,32 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
               <TableHead className="text-right text-xs font-semibold p-1 w-[80px]">
                 Цена ит.
               </TableHead>
-              <TableHead className="text-xs font-semibold p-1 w-[90px]">Отпр. ваг.</TableHead>
-              <TableHead className="text-xs font-semibold p-1 w-[90px]">Пл. дост.</TableHead>
+              <TableHead className="text-xs font-semibold p-1 w-[90px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span>Отпр. ваг.</span>
+                  <TableColumnFilter
+                    title="Отправка вагона"
+                    options={[]}
+                    selectedValues={columnFilters["wagonDate"] || []}
+                    onUpdate={(v) => handleFilterUpdate("wagonDate", v)}
+                    dataTestId="filter-wagon-date"
+                    isDateFilter
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="text-xs font-semibold p-1 w-[90px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span>Пл. дост.</span>
+                  <TableColumnFilter
+                    title="Плановая доставка"
+                    options={[]}
+                    selectedValues={columnFilters["deliveryDate"] || []}
+                    onUpdate={(v) => handleFilterUpdate("deliveryDate", v)}
+                    dataTestId="filter-delivery-date"
+                    isDateFilter
+                  />
+                </div>
+              </TableHead>
               <TableHead className="text-xs font-semibold p-1 w-[105px]">
                 <div className="flex items-center justify-between gap-1">
                   <span className="truncate max-w-[70px]">Продавец</span>

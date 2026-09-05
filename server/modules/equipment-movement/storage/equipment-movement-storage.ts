@@ -69,8 +69,8 @@ export class EquipmentMovementStorage {
       }
       if (filters.dateFrom?.length && filters.dateTo?.length) {
         filterConditions.push(
-          sql`${equipmentMovement.movementDate} >= ${filters.dateFrom[0]}::date`,
-          sql`${equipmentMovement.movementDate} <= ${filters.dateTo[0]}::date`,
+          sql`${equipmentMovement.movementDate}::date >= ${filters.dateFrom[0]}::date`,
+          sql`${equipmentMovement.movementDate}::date <= ${filters.dateTo[0]}::date`,
         );
       }
     }

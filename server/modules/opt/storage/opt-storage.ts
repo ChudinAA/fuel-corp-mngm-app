@@ -53,8 +53,8 @@ export class OptStorage {
         }
         if (filters.dateFrom?.length && filters.dateTo?.length) {
           conditions.push(
-            sql`${opt.dealDate} >= ${filters.dateFrom[0]}::date`,
-            sql`${opt.dealDate} <= ${filters.dateTo[0]}::date`,
+            sql`${opt.dealDate}::date >= ${filters.dateFrom[0]}::date`,
+            sql`${opt.dealDate}::date <= ${filters.dateTo[0]}::date`,
           );
         } else if (filters.date?.length) {
           conditions.push(

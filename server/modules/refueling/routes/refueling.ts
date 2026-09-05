@@ -52,6 +52,22 @@ export function registerRefuelingOperationsRoutes(app: Express) {
   );
 
   app.get(
+    "/api/refueling/filter-values",
+    requireAuth,
+    requireAnyPermission(["refueling", "lik-refueling"], "view"),
+    async (req, res) => {
+      try {
+        const column = req.query.column as string;
+        const q = (req.query.q as string) || "";
+        const result = await (storage.aircraftRefueling as any).getFilterValues(column, q);
+        res.json(result);
+      } catch (err) {
+        res.status(500).json([]);
+      }
+    }
+  );
+
+  app.get(
     "/api/refueling/contract-used/:priceId",
     requireAuth,
     requireAnyPermission(["refueling", "lik-refueling"], "view"),

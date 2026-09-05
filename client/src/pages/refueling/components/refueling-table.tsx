@@ -61,6 +61,7 @@ import { cn } from "@/lib/utils";
 import { TableColumnFilter } from "@/components/ui/table-column-filter";
 import { ProductTypeBadge } from "@/components/product-type-badge";
 import { StatCell } from "@/components/ui/stat-cell";
+import { useFilterReferenceData } from "@/hooks/use-filter-reference-data";
 
 interface RefuelingDealActionsProps {
   deal: any;
@@ -209,12 +210,15 @@ export function RefuelingTable({
   }, [equipmentType]);
 
   // Справочники — кэшированные данные для фильтров
-  const { data: allSuppliers = [] } = useQuery<any[]>({ queryKey: ["/api/suppliers"], staleTime: 5 * 60 * 1000 });
   const { data: allCustomers = [] } = useQuery<any[]>({ queryKey: ["/api/customers"], staleTime: 5 * 60 * 1000 });
   const { data: allBases = [] } = useQuery<any[]>({ queryKey: ["/api/bases"], staleTime: 5 * 60 * 1000 });
 
-  const supplierOptions = useMemo(() =>
-    allSuppliers.map((s: any) => ({ label: s.name, value: s.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allSuppliers]);
+  // Только поставщики с базисами заправки + СЗ (средства заправки)
+  const { refuelingSupplierOptions, equipmentOptions } = useFilterReferenceData({
+    refuelingSuppliers: true,
+    equipment: equipmentType === EQUIPMENT_TYPE.LIK,
+  });
+
   const customerOptions = useMemo(() =>
     allCustomers.map((c: any) => ({ label: c.name, value: c.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allCustomers]);
   const basisOptions = useMemo(() =>
@@ -415,7 +419,20 @@ export function RefuelingTable({
                 </div>
               </TableHead>
               <TableHead className="text-xs font-semibold p-1 w-[55px]">
-                Борт
+                <div className="flex items-center justify-between gap-1">
+                  <span>Борт</span>
+                  <TableColumnFilter
+                    title="Борт"
+                    options={[]}
+                    selectedValues={columnFilters["board"] || []}
+                    onUpdate={(values) => handleFilterUpdate("board", values)}
+                    onSearch={async (q) => {
+                      const res = await fetch(`/api/refueling/filter-values?column=board&q=${encodeURIComponent(q)}&equipmentType=${equipmentType}`);
+                      return res.json();
+                    }}
+                    dataTestId="filter-board"
+                  />
+                </div>
               </TableHead>
               <TableHead className="text-xs font-semibold p-1 w-[80px]">
                 <div className="flex items-center justify-between gap-1">
@@ -425,6 +442,10 @@ export function RefuelingTable({
                     options={getUniqueOptions("orderNumber")}
                     selectedValues={columnFilters["orderNumber"] || []}
                     onUpdate={(values) => handleFilterUpdate("orderNumber", values)}
+                    onSearch={async (q) => {
+                      const res = await fetch(`/api/refueling/filter-values?column=orderNumber&q=${encodeURIComponent(q)}&equipmentType=${equipmentType}`);
+                      return res.json();
+                    }}
                     dataTestId="filter-order-number"
                   />
                 </div>
@@ -437,6 +458,10 @@ export function RefuelingTable({
                     options={getUniqueOptions("flightNumber")}
                     selectedValues={columnFilters["direction"] || []}
                     onUpdate={(values) => handleFilterUpdate("direction", values)}
+                    onSearch={async (q) => {
+                      const res = await fetch(`/api/refueling/filter-values?column=direction&q=${encodeURIComponent(q)}&equipmentType=${equipmentType}`);
+                      return res.json();
+                    }}
                     dataTestId="filter-direction"
                   />
                 </div>
@@ -448,7 +473,7 @@ export function RefuelingTable({
                   </span>
                   <TableColumnFilter
                     title="Поставщик"
-                    options={supplierOptions}
+                    options={refuelingSupplierOptions}
                     selectedValues={columnFilters["supplier"] || []}
                     onUpdate={(values) =>
                       handleFilterUpdate("supplier", values)
@@ -471,7 +496,16 @@ export function RefuelingTable({
               </TableHead>
               {equipmentType === EQUIPMENT_TYPE.LIK && (
                 <TableHead className="text-xs font-semibold p-1 w-[70px]">
-                  СЗ
+                  <div className="flex items-center justify-between gap-1">
+                    <span>СЗ</span>
+                    <TableColumnFilter
+                      title="СЗ"
+                      options={equipmentOptions}
+                      selectedValues={columnFilters["equipment"] || []}
+                      onUpdate={(values) => handleFilterUpdate("equipment", values)}
+                      dataTestId="filter-equipment"
+                    />
+                  </div>
                 </TableHead>
               )}
               <TableHead className="text-xs font-semibold p-1">

@@ -32,6 +32,12 @@ export function registerRefuelingAbroadRoutes(app: Express) {
           }
         });
 
+        // Передаём dateFrom/dateTo в фильтры
+        const dateFrom = req.query.dateFrom as string | undefined;
+        const dateTo = req.query.dateTo as string | undefined;
+        if (dateFrom) columnFilters["dateFrom"] = [dateFrom];
+        if (dateTo) columnFilters["dateTo"] = [dateTo];
+
         const result = await refuelingAbroadStorage.getAll(
           offset,
           limit,
@@ -44,6 +50,22 @@ export function registerRefuelingAbroadRoutes(app: Express) {
         res
           .status(500)
           .json({ message: "Ошибка получения записей заправки зарубеж" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/refueling-abroad/filter-values",
+    requireAuth,
+    requirePermission("abroad", "view"),
+    async (req, res) => {
+      try {
+        const column = req.query.column as string;
+        const q = (req.query.q as string) || "";
+        const result = await refuelingAbroadStorage.getFilterValues(column, q);
+        res.json(result);
+      } catch (err) {
+        res.status(500).json([]);
       }
     },
   );

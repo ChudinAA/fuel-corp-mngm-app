@@ -125,7 +125,18 @@ export function EquipmentMovementTable({
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
             <TableRow>
-              <TableHead>Дата</TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Дата
+                  <TableColumnFilter
+                    title="Дата"
+                    options={[]}
+                    selectedValues={columnFilters["date"] || []}
+                    onUpdate={(values) => handleFilterUpdate("date", values)}
+                    isDateFilter
+                  />
+                </div>
+              </TableHead>
               <TableHead>
                 <div className="flex items-center gap-2">
                   Продукт

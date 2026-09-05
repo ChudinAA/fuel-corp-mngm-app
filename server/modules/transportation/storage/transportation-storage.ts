@@ -52,10 +52,16 @@ export class TransportationStorage {
             sql`${logisticsCarriers.name} IN ${filters.carrier}`,
           );
         }
+        if (filters.basis?.length) {
+          conditions.push(sql`${loadingBases.name} IN ${filters.basis}`);
+        }
+        if (filters.customerBasis?.length) {
+          conditions.push(sql`${customerBases.name} IN ${filters.customerBasis}`);
+        }
         if (filters.dateFrom?.length && filters.dateTo?.length) {
           conditions.push(
-            sql`${transportation.dealDate} >= ${filters.dateFrom[0]}::date`,
-            sql`${transportation.dealDate} <= ${filters.dateTo[0]}::date`,
+            sql`${transportation.dealDate}::date >= ${filters.dateFrom[0]}::date`,
+            sql`${transportation.dealDate}::date <= ${filters.dateTo[0]}::date`,
           );
         } else if (filters.date?.length) {
           conditions.push(

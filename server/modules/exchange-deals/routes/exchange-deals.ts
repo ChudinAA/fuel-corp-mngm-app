@@ -31,11 +31,36 @@ export function registerExchangeDealsRoutes(app: Express) {
         if (dateFrom) filters["dateFrom"] = [dateFrom];
         if (dateTo) filters["dateTo"] = [dateTo];
 
+        // Дополнительные диапазоны дат (от именованных дат-колонок)
+        const namedDateCols = ["paymentDate", "wagonDate", "deliveryDate"];
+        namedDateCols.forEach((col) => {
+          const from = req.query[`${col}From`] as string | undefined;
+          const to = req.query[`${col}To`] as string | undefined;
+          if (from) filters[`${col}From`] = [from];
+          if (to) filters[`${col}To`] = [to];
+        });
+
         const result = await storage.exchangeDeals.getDeals(offset, pageSize, search, filters);
         res.json(result);
       } catch (error: any) {
         console.error("Error fetching exchange deals:", error);
         res.status(500).json({ message: "Ошибка получения сделок биржи" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/exchange-deals/filter-values",
+    requireAuth,
+    requirePermission("exchange-deals", "view"),
+    async (req, res) => {
+      try {
+        const column = req.query.column as string;
+        const q = (req.query.q as string) || "";
+        const result = await storage.exchangeDeals.getFilterValues(column, q);
+        res.json(result);
+      } catch (err) {
+        res.status(500).json([]);
       }
     },
   );

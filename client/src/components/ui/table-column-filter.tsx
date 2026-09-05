@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Filter } from "lucide-react"
+import { Filter, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,6 +25,12 @@ interface TableColumnFilterProps {
   onUpdate: (values: string[]) => void
   dataTestId?: string
   isDateFilter?: boolean
+  /**
+   * Если задан — при вводе текста в поиске вызывается этот callback
+   * и результаты объединяются с уже имеющимися options.
+   * Позволяет искать значения на бэкенде (не только по видимым строкам).
+   */
+  onSearch?: (query: string) => Promise<{ label: string; value: string }[]>
 }
 
 const MONTH_NAMES_RU = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"]
@@ -55,19 +61,54 @@ export function TableColumnFilter({
   onUpdate,
   dataTestId,
   isDateFilter,
+  onSearch,
 }: TableColumnFilterProps) {
   const [open, setOpen] = React.useState(false)
   const [tempSelected, setTempSelected] = React.useState<string[]>(selectedValues)
   const [rangeFrom, setRangeFrom] = React.useState("")
   const [rangeTo, setRangeTo] = React.useState("")
+  const [searchQuery, setSearchQuery] = React.useState("")
+  const [searchResults, setSearchResults] = React.useState<{ label: string; value: string }[]>([])
+  const [isSearching, setIsSearching] = React.useState(false)
+  const searchTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   React.useEffect(() => {
     setTempSelected(selectedValues)
     if (!open) {
       setRangeFrom("")
       setRangeTo("")
+      setSearchQuery("")
+      setSearchResults([])
     }
   }, [selectedValues, open])
+
+  // Дебаунс поиска на бэкенде
+  React.useEffect(() => {
+    if (!onSearch) return
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+
+    if (!searchQuery || searchQuery.length < 2) {
+      setSearchResults([])
+      setIsSearching(false)
+      return
+    }
+
+    setIsSearching(true)
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const results = await onSearch(searchQuery)
+        setSearchResults(results)
+      } catch {
+        setSearchResults([])
+      } finally {
+        setIsSearching(false)
+      }
+    }, 400)
+
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    }
+  }, [searchQuery, onSearch])
 
   const handleToggle = (value: string) => {
     setTempSelected((prev) =>
@@ -128,7 +169,6 @@ export function TableColumnFilter({
       if (!map.has(key)) {
         map.set(key, { key, label: group.label, values: group.values })
       } else {
-        // обновляем values если ещё не заполнили из last4Months
         const existing = map.get(key)!
         if (!existing.values.length) existing.values = group.values
       }
@@ -154,18 +194,15 @@ export function TableColumnFilter({
     const state = isMonthSelected(group)
 
     if (group.values.length > 0) {
-      // Есть реальные значения — работаем через них
       if (state === "full") {
         setTempSelected((prev) => prev.filter((v) => !group.values.includes(v) && v !== marker))
       } else {
         setTempSelected((prev) => [...new Set([...prev.filter((v) => v !== marker), ...group.values])])
       }
     } else {
-      // Нет реальных значений — используем маркер (будет отправлен как dateFrom/dateTo)
       if (state === "full") {
         setTempSelected((prev) => prev.filter((v) => v !== marker))
       } else {
-        // Убираем другие __month__ маркеры чтобы не конфликтовали с диапазоном
         setTempSelected((prev) => [...prev.filter((v) => v !== marker), marker])
       }
     }
@@ -180,7 +217,6 @@ export function TableColumnFilter({
 
     const marker = `__range__:${rangeFrom}:${rangeTo}`
     setTempSelected((prev) => {
-      // Убираем старые диапазоны и маркеры месяцев, ставим новый диапазон
       const withoutRanges = prev.filter((v) => !v.startsWith("__range__:") && !v.startsWith("__month__:"))
       return [...withoutRanges, marker]
     })
@@ -188,7 +224,7 @@ export function TableColumnFilter({
     setRangeTo("")
   }
 
-  // --- Активный диапазон: из tempSelected пока открыто, из selectedValues для значка кнопки ---
+  // --- Активный диапазон ---
   const activeRangeFromTemp = React.useMemo(() => {
     const r = tempSelected.find((v) => v.startsWith("__range__:"))
     if (!r) return null
@@ -211,6 +247,14 @@ export function TableColumnFilter({
   const regularOptions = React.useMemo(() => {
     return options.filter((o) => !isSpecialValue(o.value))
   }, [options])
+
+  // Объединяем options с результатами бэкенд-поиска (дедупликация по value)
+  const mergedOptions = React.useMemo(() => {
+    if (!searchResults.length) return regularOptions
+    const seen = new Set(regularOptions.map((o) => o.value))
+    const extra = searchResults.filter((r) => !seen.has(r.value))
+    return [...regularOptions, ...extra]
+  }, [regularOptions, searchResults])
 
   const isActive = selectedValues.length > 0
 
@@ -306,14 +350,29 @@ export function TableColumnFilter({
           </>
         )}
 
-        <Command>
-          <CommandInput placeholder="Поиск..." className="h-8" />
+        <Command shouldFilter={!onSearch}>
+          <div className="relative">
+            <CommandInput
+              placeholder="Поиск..."
+              className="h-8"
+              value={onSearch ? searchQuery : undefined}
+              onValueChange={onSearch ? setSearchQuery : undefined}
+            />
+            {isSearching && (
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+              </div>
+            )}
+          </div>
           <CommandList className={cn(isDateFilter ? "max-h-[160px]" : "max-h-[300px]")}>
-            <CommandEmpty>Ничего не найдено.</CommandEmpty>
+            <CommandEmpty>
+              {isSearching ? "Поиск..." : "Ничего не найдено."}
+            </CommandEmpty>
             <CommandGroup>
-              {regularOptions.map((option) => (
+              {mergedOptions.map((option) => (
                 <CommandItem
                   key={option.value}
+                  value={option.value}
                   onSelect={() => handleToggle(option.value)}
                   className="flex items-center gap-2 px-2 py-1.5 cursor-pointer"
                 >

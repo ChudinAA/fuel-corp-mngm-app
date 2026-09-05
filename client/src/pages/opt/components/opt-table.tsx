@@ -59,6 +59,7 @@ import { Badge } from "@/components/ui/badge";
 import { TableColumnFilter } from "@/components/ui/table-column-filter";
 import { PRODUCT_TYPE } from "@shared/constants";
 import { ProductTypeBadge } from "@/components/product-type-badge";
+import { useFilterReferenceData } from "@/hooks/use-filter-reference-data";
 
 interface OptTableProps {
   onEdit: (opt: any) => void;
@@ -239,13 +240,13 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
   };
 
   // Справочники — кэшированные данные для фильтров
-  const { data: allSuppliers = [] } = useQuery<any[]>({ queryKey: ["/api/suppliers"], staleTime: 5 * 60 * 1000 });
   const { data: allCustomers = [] } = useQuery<any[]>({ queryKey: ["/api/customers"], staleTime: 5 * 60 * 1000 });
   const { data: allCarriers = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/carriers"], staleTime: 5 * 60 * 1000 });
   const { data: allDeliveryLocations = [] } = useQuery<any[]>({ queryKey: ["/api/logistics/delivery-locations"], staleTime: 5 * 60 * 1000 });
 
-  const supplierOptions = useMemo(() =>
-    allSuppliers.map((s: any) => ({ label: s.name, value: s.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allSuppliers]);
+  // Только поставщики с оптовыми базисами (для фильтра "Поставщик" в ОПТ)
+  const { wholesaleSupplierOptions } = useFilterReferenceData({ wholesaleSuppliers: true });
+
   const customerOptions = useMemo(() =>
     allCustomers.map((c: any) => ({ label: c.name, value: c.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allCustomers]);
   const carrierOptions = useMemo(() =>
@@ -375,7 +376,6 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                     options={[
                       { label: getProductLabel(PRODUCT_TYPE.KEROSENE), value: PRODUCT_TYPE.KEROSENE },
                       { label: getProductLabel(PRODUCT_TYPE.PVKJ), value: PRODUCT_TYPE.PVKJ },
-                      { label: getProductLabel(PRODUCT_TYPE.SERVICE), value: PRODUCT_TYPE.SERVICE },
                     ]}
                     selectedValues={columnFilters["productType"] || []}
                     onUpdate={(values) =>
@@ -392,7 +392,7 @@ export function OptTable({ onEdit, onCopy, onDelete, onAdd }: OptTableProps) {
                   </span>
                   <TableColumnFilter
                     title="Поставщик"
-                    options={supplierOptions}
+                    options={wholesaleSupplierOptions}
                     selectedValues={columnFilters["supplier"] || []}
                     onUpdate={(values) =>
                       handleFilterUpdate("supplier", values)

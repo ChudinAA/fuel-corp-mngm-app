@@ -57,8 +57,8 @@ export class MovementStorage implements IMovementStorage {
     if (filters) {
       if (filters.dateFrom?.length && filters.dateTo?.length) {
         baseConditions.push(
-          sql`${movement.movementDate} >= ${filters.dateFrom[0]}::date`,
-          sql`${movement.movementDate} <= ${filters.dateTo[0]}::date`,
+          sql`${movement.movementDate}::date >= ${filters.dateFrom[0]}::date`,
+          sql`${movement.movementDate}::date <= ${filters.dateTo[0]}::date`,
         );
       } else if (filters.date?.length) {
         baseConditions.push(

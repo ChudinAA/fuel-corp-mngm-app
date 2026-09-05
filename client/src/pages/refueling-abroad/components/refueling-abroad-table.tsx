@@ -43,6 +43,7 @@ import { PRODUCT_TYPE } from "@shared/constants";
 import { useRefuelingAbroadTable } from "../hooks/use-refueling-abroad-table";
 import { TableColumnFilter } from "@/components/ui/table-column-filter";
 import { Input } from "@/components/ui/input";
+import { useFilterReferenceData } from "@/hooks/use-filter-reference-data";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuditPanel } from "@/components/audit-panel";
 import { ExportButton } from "@/components/export/export-button";
@@ -88,17 +89,12 @@ export function RefuelingAbroadTable({
     return () => clearTimeout(timer);
   }, [searchInput, setSearch]);
 
-  // Справочники — кэшированные данные для фильтров
-  const { data: allSuppliers = [] } = useQuery<any[]>({ queryKey: ["/api/suppliers"], staleTime: 5 * 60 * 1000 });
-  const { data: allCustomers = [] } = useQuery<any[]>({ queryKey: ["/api/customers"], staleTime: 5 * 60 * 1000 });
-  const { data: allBases = [] } = useQuery<any[]>({ queryKey: ["/api/bases"], staleTime: 5 * 60 * 1000 });
-
-  const supplierOptions = useMemo(() =>
-    allSuppliers.map((s: any) => ({ label: s.name, value: s.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allSuppliers]);
-  const customerOptions = useMemo(() =>
-    allCustomers.map((c: any) => ({ label: c.name, value: c.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allCustomers]);
-  const basesOptions = useMemo(() =>
-    allBases.map((b: any) => ({ label: b.name, value: b.name })).sort((a: any, b: any) => a.label.localeCompare(b.label)), [allBases]);
+  // Справочники — только зарубежные поставщики/покупатели/базисы
+  const { abroadSupplierOptions, abroadCustomerOptions, abroadBaseOptions } = useFilterReferenceData({
+    abroadSuppliers: true,
+    abroadCustomers: true,
+    abroadBases: true,
+  });
 
   const formatDate = (dateStr: string) => {
     return format(new Date(dateStr), "dd.MM.yyyy", { locale: ru });
@@ -262,14 +258,27 @@ export function RefuelingAbroadTable({
                 </div>
               </TableHead> */}
               <TableHead className="text-[13px] font-semibold p-2">
-                Аэроп. / Борт / № РТ
+                <div className="flex items-center gap-2">
+                  <span>Аэроп. / Борт / № РТ</span>
+                  <TableColumnFilter
+                    title="Аэроп./Борт/№РТ"
+                    options={[]}
+                    selectedValues={columnFilters["location"] || []}
+                    onUpdate={(values) => handleFilterUpdate("location", values)}
+                    onSearch={async (q) => {
+                      const res = await fetch(`/api/refueling-abroad/filter-values?column=location&q=${encodeURIComponent(q)}`);
+                      return res.json();
+                    }}
+                    dataTestId="filter-location"
+                  />
+                </div>
               </TableHead>
               <TableHead className="text-[13px] font-semibold p-2">
                 <div className="flex items-center justify-between gap-1">
                   <span>Поставщик</span>
                   <TableColumnFilter
                     title="Поставщик"
-                    options={supplierOptions}
+                    options={abroadSupplierOptions}
                     selectedValues={columnFilters["supplier"] || []}
                     onUpdate={(values) =>
                       handleFilterUpdate("supplier", values)
@@ -283,7 +292,7 @@ export function RefuelingAbroadTable({
                   <span>Покупатель</span>
                   <TableColumnFilter
                     title="Покупатель"
-                    options={customerOptions}
+                    options={abroadCustomerOptions}
                     selectedValues={columnFilters["buyer"] || []}
                     onUpdate={(values) => handleFilterUpdate("buyer", values)}
                     dataTestId="filter-buyer"
@@ -295,7 +304,7 @@ export function RefuelingAbroadTable({
                   <span>Базис</span>
                   <TableColumnFilter
                     title="Базис"
-                    options={basesOptions}
+                    options={abroadBaseOptions}
                     selectedValues={columnFilters["basis"] || []}
                     onUpdate={(values) => handleFilterUpdate("basis", values)}
                     dataTestId="filter-basis"
@@ -310,6 +319,10 @@ export function RefuelingAbroadTable({
                     options={getUniqueIntermediaryOptions()}
                     selectedValues={columnFilters["intermediary"] || []}
                     onUpdate={(values) => handleFilterUpdate("intermediary", values)}
+                    onSearch={async (q) => {
+                      const res = await fetch(`/api/refueling-abroad/filter-values?column=intermediary&q=${encodeURIComponent(q)}`);
+                      return res.json();
+                    }}
                     dataTestId="filter-intermediary"
                   />
                 </div>
@@ -322,6 +335,10 @@ export function RefuelingAbroadTable({
                     options={getUniqueBankOptions()}
                     selectedValues={columnFilters["bank"] || []}
                     onUpdate={(values) => handleFilterUpdate("bank", values)}
+                    onSearch={async (q) => {
+                      const res = await fetch(`/api/refueling-abroad/filter-values?column=bank&q=${encodeURIComponent(q)}`);
+                      return res.json();
+                    }}
                     dataTestId="filter-bank"
                   />
                 </div>

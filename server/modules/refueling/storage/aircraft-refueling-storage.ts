@@ -1,4 +1,4 @@
-import { eq, desc, asc, sql, or, isNull, and, inArray } from "drizzle-orm";
+import { eq, desc, asc, sql, or, isNull, and, inArray, ilike } from "drizzle-orm";
 import { db } from "server/db";
 import {
   aircraftRefueling,
@@ -95,6 +95,12 @@ export class AircraftRefuelingStorage {
           sql`${aircraftRefueling.flightNumber} IN ${filters.direction}`,
         );
       }
+      if (filters.equipment?.length) {
+        // Фильтр по СЗ (для ЛИК) — по имени средства заправки
+        baseConditions.push(
+          sql`(SELECT name FROM equipments WHERE id = ${aircraftRefueling.equipmentId}) IN ${filters.equipment}`,
+        );
+      }
       if (filters.basis?.length) {
         baseConditions.push(
           sql`(SELECT name FROM bases WHERE id = ${aircraftRefueling.basisId}) IN ${filters.basis}`,
@@ -103,8 +109,8 @@ export class AircraftRefuelingStorage {
       // Диапазон дат (приоритет над filter_date)
       if (filters.dateFrom?.length && filters.dateTo?.length) {
         baseConditions.push(
-          sql`${aircraftRefueling.refuelingDate} >= ${filters.dateFrom[0]}::date`,
-          sql`${aircraftRefueling.refuelingDate} <= ${filters.dateTo[0]}::date`,
+          sql`${aircraftRefueling.refuelingDate}::date >= ${filters.dateFrom[0]}::date`,
+          sql`${aircraftRefueling.refuelingDate}::date <= ${filters.dateTo[0]}::date`,
         );
         // Убираем filter_date если задан диапазон
         delete filters.date;
@@ -562,5 +568,37 @@ export class AircraftRefuelingStorage {
     });
 
     return data;
+  }
+
+  /** Поиск уникальных значений по колонке для фильтра */
+  async getFilterValues(column: string, q: string): Promise<{ label: string; value: string }[]> {
+    const pattern = `%${q}%`;
+    let results: { val: string | null }[] = [];
+
+    if (column === "board") {
+      results = await db
+        .selectDistinct({ val: aircraftRefueling.aircraftNumber })
+        .from(aircraftRefueling)
+        .where(and(isNull(aircraftRefueling.deletedAt), ilike(aircraftRefueling.aircraftNumber, pattern)))
+        .limit(20);
+    } else if (column === "orderNumber") {
+      results = await db
+        .selectDistinct({ val: aircraftRefueling.orderNumber })
+        .from(aircraftRefueling)
+        .where(and(isNull(aircraftRefueling.deletedAt), ilike(aircraftRefueling.orderNumber, pattern)))
+        .limit(20);
+    } else if (column === "direction") {
+      results = await db
+        .selectDistinct({ val: aircraftRefueling.flightNumber })
+        .from(aircraftRefueling)
+        .where(and(isNull(aircraftRefueling.deletedAt), ilike(aircraftRefueling.flightNumber, pattern)))
+        .limit(20);
+    } else {
+      return [];
+    }
+
+    return results
+      .filter((r) => r.val)
+      .map((r) => ({ label: r.val!, value: r.val! }));
   }
 }

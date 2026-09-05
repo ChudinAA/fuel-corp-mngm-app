@@ -265,7 +265,9 @@ export function MovementTable({
                   <span className="truncate max-w-[70px]">Откуда</span>
                   <TableColumnFilter
                     title="Откуда"
-                    options={warehouseOptions}
+                    options={[...warehouseOptions, ...supplierOptions]
+                      .filter((o, i, arr) => arr.findIndex(x => x.value === o.value) === i)
+                      .sort((a, b) => a.label.localeCompare(b.label, "ru"))}
                     selectedValues={columnFilters["from"] || []}
                     onUpdate={(values) => handleFilterUpdate("from", values)}
                   />

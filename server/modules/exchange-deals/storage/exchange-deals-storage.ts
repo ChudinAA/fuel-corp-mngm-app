@@ -94,12 +94,64 @@ export class ExchangeDealsStorage {
           conditions.push(sql`${suppliers.name} IN ${filters.seller}`);
         }
         if (filters.buyer?.length) {
-          conditions.push(sql`${customers.name} IN ${filters.buyer}`);
+          // Покупатель может быть customers.name ИЛИ warehouse-поставщик (buyerSupplierId)
+          conditions.push(
+            sql`(${customers.name} IN ${filters.buyer} OR EXISTS (
+              SELECT 1 FROM suppliers bs2
+              WHERE bs2.id = ${exchangeDeals.buyerSupplierId}
+              AND bs2.name IN ${filters.buyer}
+            ))`,
+          );
+        }
+        if (filters.paymentDateFrom?.length && filters.paymentDateTo?.length) {
+          conditions.push(
+            sql`${exchangeDeals.paymentDate}::date >= ${filters.paymentDateFrom[0]}::date`,
+            sql`${exchangeDeals.paymentDate}::date <= ${filters.paymentDateTo[0]}::date`,
+          );
+        }
+        if (filters.wagonDateFrom?.length && filters.wagonDateTo?.length) {
+          conditions.push(
+            sql`${exchangeDeals.wagonDepartureDate}::date >= ${filters.wagonDateFrom[0]}::date`,
+            sql`${exchangeDeals.wagonDepartureDate}::date <= ${filters.wagonDateTo[0]}::date`,
+          );
+        }
+        if (filters.deliveryDateFrom?.length && filters.deliveryDateTo?.length) {
+          conditions.push(
+            sql`${exchangeDeals.plannedDeliveryDate}::date >= ${filters.deliveryDateFrom[0]}::date`,
+            sql`${exchangeDeals.plannedDeliveryDate}::date <= ${filters.deliveryDateTo[0]}::date`,
+          );
+        }
+        if (filters.departure?.length) {
+          conditions.push(
+            sql`EXISTS (
+              SELECT 1 FROM railway_stations ds2
+              WHERE ds2.id = ${exchangeDeals.departureStationId}
+              AND ds2.name IN ${filters.departure}
+            )`,
+          );
+        }
+        if (filters.destination?.length) {
+          conditions.push(
+            sql`EXISTS (
+              SELECT 1 FROM railway_stations dest2
+              WHERE dest2.id = ${exchangeDeals.destinationStationId}
+              AND dest2.name IN ${filters.destination}
+            )`,
+          );
+        }
+        if (filters.tariff?.length) {
+          conditions.push(
+            sql`EXISTS (
+              SELECT 1 FROM railway_tariffs rt2
+              WHERE rt2.id = ${exchangeDeals.deliveryTariffId}
+              AND rt2.zone_name IN ${filters.tariff}
+            )`,
+          );
         }
         if (filters.dateFrom?.length && filters.dateTo?.length) {
           conditions.push(
-            sql`${exchangeDeals.dealDate} >= ${filters.dateFrom[0]}::date`,
-            sql`${exchangeDeals.dealDate} <= ${filters.dateTo[0]}::date`,
+            sql`${exchangeDeals.dealDate}::date >= ${filters.dateFrom[0]}::date`,
+            sql`${exchangeDeals.dealDate}::date <= ${filters.dateTo[0]}::date`,
           );
         } else if (filters.date?.length) {
           conditions.push(
@@ -592,6 +644,55 @@ export class ExchangeDealsStorage {
     }
 
     return deal;
+  }
+
+  /** Поиск уникальных значений для серверного фильтра */
+  async getFilterValues(column: string, q: string): Promise<{ label: string; value: string }[]> {
+    const pattern = `%${q}%`;
+
+    if (column === "dealNumber") {
+      const results = await db
+        .selectDistinct({ val: exchangeDeals.dealNumber })
+        .from(exchangeDeals)
+        .where(and(isNull(exchangeDeals.deletedAt), ilike(exchangeDeals.dealNumber, pattern)))
+        .limit(20);
+      return results.filter((r) => r.val).map((r) => ({ label: r.val!, value: r.val! }));
+    }
+
+    if (column === "departure") {
+      const result = await db.execute(
+        sql`SELECT DISTINCT ds.name AS val
+            FROM exchange_deals ed
+            JOIN railway_stations ds ON ds.id = ed.departure_station_id
+            WHERE ed.deleted_at IS NULL AND ds.name ILIKE ${pattern}
+            LIMIT 20`,
+      );
+      return (result.rows as any[]).filter((r) => r.val).map((r) => ({ label: r.val, value: r.val }));
+    }
+
+    if (column === "destination") {
+      const result = await db.execute(
+        sql`SELECT DISTINCT dest.name AS val
+            FROM exchange_deals ed
+            JOIN railway_stations dest ON dest.id = ed.destination_station_id
+            WHERE ed.deleted_at IS NULL AND dest.name ILIKE ${pattern}
+            LIMIT 20`,
+      );
+      return (result.rows as any[]).filter((r) => r.val).map((r) => ({ label: r.val, value: r.val }));
+    }
+
+    if (column === "tariff") {
+      const result = await db.execute(
+        sql`SELECT DISTINCT rt.zone_name AS val
+            FROM exchange_deals ed
+            JOIN railway_tariffs rt ON rt.id = ed.delivery_tariff_id
+            WHERE ed.deleted_at IS NULL AND rt.zone_name ILIKE ${pattern}
+            LIMIT 20`,
+      );
+      return (result.rows as any[]).filter((r) => r.val).map((r) => ({ label: r.val, value: r.val }));
+    }
+
+    return [];
   }
 
   async copyDeal(id: string, createdById?: string): Promise<ExchangeDeal | undefined> {

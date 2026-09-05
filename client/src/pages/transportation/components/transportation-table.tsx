@@ -55,6 +55,7 @@ import { ExportButton } from "@/components/export/export-button";
 import { Badge } from "@/components/ui/badge";
 import { TableColumnFilter } from "@/components/ui/table-column-filter";
 import { ProductTypeBadge } from "@/components/product-type-badge";
+import { useFilterReferenceData } from "@/hooks/use-filter-reference-data";
 import {
   TRANSPORTATION_TABLE_COLUMNS,
   DEFAULT_TRANSPORTATION_COLUMNS,
@@ -121,6 +122,13 @@ export function TransportationTable({
   );
 
   const totalCount = transportationDeals?.pages[0]?.total || 0;
+
+  // Справочники из эндпоинтов для фильтров (не из загруженных данных)
+  const { customerOptions, carrierOptions, baseOptions } = useFilterReferenceData({
+    customers: true,
+    carriers: true,
+    bases: true,
+  });
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -280,12 +288,19 @@ export function TransportationTable({
                     {[
                       "date",
                       "buyer",
+                      "basis",
+                      "customerBasis",
                       "carrier",
                       "deliveryLocation",
                     ].includes(col.id) && (
                       <TableColumnFilter
                         title={col.label}
-                        options={getFilterOptions(col.id)}
+                        options={
+                          col.id === "buyer" ? customerOptions :
+                          col.id === "carrier" ? carrierOptions :
+                          (col.id === "basis" || col.id === "customerBasis") ? baseOptions :
+                          getFilterOptions(col.id)
+                        }
                         selectedValues={columnFilters[col.id] || []}
                         onUpdate={(vals) =>
                           setColumnFilters((prev) => ({
