@@ -16,7 +16,7 @@ export function useRefuelingTable({ equipmentType = EQUIPMENT_TYPE.COMMON }: { e
   // Здесь search — итоговое значение, применяемое к запросу.
 
   const hasActiveFilters = Object.values(columnFilters).some((v) => v.length > 0);
-  const effectivePageSize = hasActiveFilters ? 1000 : pageSize;
+  const effectivePageSize = hasActiveFilters ? 200 : pageSize;
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({

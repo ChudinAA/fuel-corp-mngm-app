@@ -7,7 +7,7 @@ export function useEquipmentMovementTable() {
     usePersistedTableFilters("table-filters:equipment-movement");
 
   const hasActiveFilters = Object.values(columnFilters).some((v) => v.length > 0);
-  const effectiveLimit = hasActiveFilters ? 1000 : 100;
+  const effectiveLimit = hasActiveFilters ? 200 : 100;
 
   const {
     data,
