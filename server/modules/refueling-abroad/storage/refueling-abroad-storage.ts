@@ -953,7 +953,6 @@ export class RefuelingAbroadStorage {
       );
     return parseFloat(result?.total || "0");
   }
-}
 
   /** Поиск уникальных значений по колонке для серверного фильтра */
   async getFilterValues(column: string, q: string): Promise<{ label: string; value: string }[]> {
