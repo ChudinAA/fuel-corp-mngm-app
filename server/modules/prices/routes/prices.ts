@@ -172,17 +172,32 @@ export function registerPricesRoutes(app: Express) {
         pageSize,
       } = req.query;
 
+      // Вспомогательная функция: парсит строку "val1,val2" → массив или одно значение
+      const parseMulti = (raw: string | string[] | undefined): string | string[] | undefined => {
+        if (!raw) return undefined;
+        const str = Array.isArray(raw) ? raw.join(",") : raw;
+        if (!str) return undefined;
+        const parts = str.split(",").map((s) => s.trim()).filter(Boolean);
+        if (parts.length === 0) return undefined;
+        return parts.length === 1 ? parts[0] : parts;
+      };
+
+      // Поддержка filter_* (от buildFilterQueryString) и прямых параметров
+      const resolveFilter = (key: string) =>
+        parseMulti(req.query[`filter_${key}`] as string | undefined) ??
+        parseMulti(req.query[key] as string | undefined);
+
       const data = await storage.prices.getAllPrices(
         offset ? parseInt(offset as string) : 0,
         pageSize ? parseInt(pageSize as string) : 100,
         {
-          counterpartyRole: counterpartyRole as string,
-          counterpartyType: counterpartyType as string,
-          counterpartyId: counterpartyId as string,
-          dateFrom: dateFrom as string,
-          dateTo: dateTo as string,
-          basis: basis as string,
-          productType: productType as string,
+          counterpartyRole:  resolveFilter("counterpartyRole"),
+          counterpartyType:  resolveFilter("counterpartyType"),
+          counterpartyId:    resolveFilter("counterpartyId"),
+          dateFrom: dateFrom as string | undefined,
+          dateTo:   dateTo as string | undefined,
+          basis:    resolveFilter("basis"),
+          productType: resolveFilter("productType"),
         },
       );
       res.json(data);

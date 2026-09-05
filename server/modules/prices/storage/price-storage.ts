@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, asc, isNull, or } from "drizzle-orm";
+import { eq, and, desc, sql, asc, isNull, or, inArray } from "drizzle-orm";
 import { db } from "server/db";
 import {
   prices,
@@ -60,11 +60,11 @@ export class PriceStorage {
     filters?: {
       dateFrom?: string;
       dateTo?: string;
-      counterpartyType?: string;
-      counterpartyRole?: string;
-      counterpartyId?: string;
-      basis?: string;
-      productType?: string;
+      counterpartyType?: string | string[];
+      counterpartyRole?: string | string[];
+      counterpartyId?: string | string[];
+      basis?: string | string[];
+      productType?: string | string[];
     },
   ): Promise<{ data: any[]; total: number }> {
     const conditions = [isNull(prices.deletedAt)];
@@ -74,15 +74,19 @@ export class PriceStorage {
         conditions.push(sql`${prices.dateTo} >= ${filters.dateFrom}`);
       if (filters.dateTo)
         conditions.push(sql`${prices.dateFrom} <= ${filters.dateTo}`);
-      if (filters.counterpartyType)
-        conditions.push(eq(prices.counterpartyType, filters.counterpartyType));
-      if (filters.counterpartyRole)
-        conditions.push(eq(prices.counterpartyRole, filters.counterpartyRole));
-      if (filters.counterpartyId)
-        conditions.push(eq(prices.counterpartyId, filters.counterpartyId));
-      if (filters.basis) conditions.push(eq(prices.basis, filters.basis));
-      if (filters.productType)
-        conditions.push(eq(prices.productType, filters.productType));
+
+      const applyFilter = (col: any, val: string | string[] | undefined) => {
+        if (!val) return;
+        const arr = Array.isArray(val) ? val : [val];
+        if (!arr.length) return;
+        conditions.push(arr.length === 1 ? eq(col, arr[0]) : inArray(col, arr));
+      };
+
+      applyFilter(prices.counterpartyType, filters.counterpartyType);
+      applyFilter(prices.counterpartyRole, filters.counterpartyRole);
+      applyFilter(prices.counterpartyId, filters.counterpartyId);
+      applyFilter(prices.basis, filters.basis);
+      applyFilter(prices.productType, filters.productType);
     }
 
     const data = await db

@@ -1,5 +1,5 @@
 import { useState, useMemo, Fragment, useEffect, useRef } from "react";
-import { usePersistedTableFilters } from "@/hooks/use-persisted-table-filters";
+import { usePersistedTableFilters, buildFilterQueryString } from "@/hooks/use-persisted-table-filters";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -70,7 +70,7 @@ import { ProductTypeBadge } from "@/components/product-type-badge";
 import { useAuth } from "@/hooks/use-auth";
 import { AddPriceDialog } from "./add-price-dialog";
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 5;
 
 export function PricesTable({
   dealTypeFilter,
@@ -80,6 +80,15 @@ export function PricesTable({
   const { columnFilters, setColumnFilters, search, setSearch } =
     usePersistedTableFilters("prices-table");
   const { baseOptions } = useFilterReferenceData({ bases: true });
+
+  // Серверная строка фильтров: все колонки КРОМЕ "date" (дата фильтруется клиентски)
+  const serverFilterStr = useMemo(() => {
+    const f: Record<string, string[]> = {};
+    Object.entries(columnFilters).forEach(([k, v]) => {
+      if (k !== "date" && v.length > 0) f[k] = v;
+    });
+    return buildFilterQueryString(f);
+  }, [columnFilters]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [priceToDelete, setPriceToDelete] = useState<Price | null>(null);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
@@ -93,11 +102,11 @@ export function PricesTable({
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery<{ data: any[]; total: number }>({
-      queryKey: ["/api/prices/list"],
+      queryKey: ["/api/prices/list", serverFilterStr],
       queryFn: async ({ pageParam = 0 }) => {
         const res = await apiRequest(
           "GET",
-          `/api/prices/list?offset=${pageParam}&pageSize=${PAGE_SIZE}`,
+          `/api/prices/list?offset=${pageParam}&pageSize=${PAGE_SIZE}${serverFilterStr}`,
         );
         return res.json();
       },
@@ -133,17 +142,11 @@ export function PricesTable({
     return contractors?.find((c) => c.id === id)?.name || `ID: ${id}`;
   };
 
+  // Опции для фильтров, извлечённые из ЗАГРУЖЕННЫХ прайсов (для date/counterpartyType/counterpartyRole/productType)
   const getUniqueOptions = (key: string) => {
     const values = new Map<string, string>();
     prices?.forEach((price: any) => {
-      if (key === "counterpartyId") {
-        const name = getContractorName(
-          price.counterpartyId,
-          price.counterpartyType,
-          price.counterpartyRole,
-        );
-        values.set(name, price.counterpartyId);
-      } else if (key === "productType") {
+      if (key === "productType") {
         const label = getProductTypeLabel(price.productType);
         values.set(label, price.productType);
       } else if (key === "date") {
@@ -175,6 +178,14 @@ export function PricesTable({
       .map(([label, value]) => ({ label, value }));
   };
 
+  // Все контрагенты (поставщики + покупатели) из справочников для фильтра "Контрагент"
+  const counterpartyOptions = useMemo(() => {
+    const opts: { label: string; value: string }[] = [];
+    allContractors?.forEach((s) => opts.push({ label: s.name, value: s.id }));
+    customers?.forEach((c: any) => opts.push({ label: c.name, value: c.id }));
+    return opts.sort((a, b) => a.label.localeCompare(b.label, "ru"));
+  }, [allContractors, customers]);
+
   const handleFilterUpdate = (columnId: string, values: string[]) => {
     setColumnFilters((prev) => ({
       ...prev,
@@ -197,36 +208,25 @@ export function PricesTable({
           )
             return false;
 
-          // Колончатые фильтры
-          for (const [columnId, selectedValues] of Object.entries(
-            columnFilters,
-          )) {
-            if (!selectedValues || selectedValues.length === 0) continue;
-
-            if (columnId === "date") {
-              const rangeVal = selectedValues.find((v) => v.startsWith("__range__:") || v.startsWith("__month__:"));
-              if (rangeVal) {
-                const pDate = p.dateFrom ? new Date(p.dateFrom) : null;
-                if (!pDate) return false;
-                if (rangeVal.startsWith("__range__:")) {
-                  const parts = rangeVal.slice("__range__:".length).split(":");
-                  const from = new Date(parts[0]);
-                  const to = new Date(parts[1]);
-                  if (pDate < from || pDate > to) return false;
-                } else {
-                  // __month__:YYYY-MM
-                  const [y, m] = rangeVal.slice("__month__:".length).split("-").map(Number);
-                  const pY = pDate.getFullYear();
-                  const pM = pDate.getMonth() + 1;
-                  if (pY !== y || pM !== m) return false;
-                }
+          // Фильтр по дате (клиентский, т.к. сервер принимает только dateFrom/dateTo, но не диапазоны месяцев)
+          const dateValues = columnFilters["date"];
+          if (dateValues && dateValues.length > 0) {
+            const rangeVal = dateValues.find((v) => v.startsWith("__range__:") || v.startsWith("__month__:"));
+            if (rangeVal) {
+              const pDate = p.dateFrom ? new Date(p.dateFrom) : null;
+              if (!pDate) return false;
+              if (rangeVal.startsWith("__range__:")) {
+                const parts = rangeVal.slice("__range__:".length).split(":");
+                const from = new Date(parts[0]);
+                const to = new Date(parts[1]);
+                if (pDate < from || pDate > to) return false;
               } else {
-                const dateStr = formatDate(p.dateFrom);
-                if (!selectedValues.includes(dateStr)) return false;
+                const [y, m] = rangeVal.slice("__month__:".length).split("-").map(Number);
+                if (pDate.getFullYear() !== y || pDate.getMonth() + 1 !== m) return false;
               }
             } else {
-              const val = p[columnId as keyof Price];
-              if (!selectedValues.includes(String(val))) return false;
+              const dateStr = formatDate(p.dateFrom);
+              if (!dateValues.includes(dateStr)) return false;
             }
           }
 
@@ -253,16 +253,7 @@ export function PricesTable({
           return new Date(b.dateTo).getTime() - new Date(a.dateTo).getTime();
         }) || []
     );
-  }, [
-    prices,
-    dealTypeFilter,
-    roleFilter,
-    productTypeFilter,
-    columnFilters,
-    search,
-    customers,
-    allContractors,
-  ]);
+  }, [prices, dealTypeFilter, roleFilter, productTypeFilter, columnFilters, search, customers, allContractors]);
 
   const deleteMutation = useMutation({
     mutationFn: async (priceId: string) => {
@@ -270,7 +261,7 @@ export function PricesTable({
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/prices/list"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prices/list"], exact: false });
       toast({ title: "Цена удалена", description: "Запись успешно удалена" });
     },
     onError: () => {
@@ -398,7 +389,7 @@ export function PricesTable({
                   <span>Контрагент</span>
                   <TableColumnFilter
                     title="Контрагент"
-                    options={getUniqueOptions("counterpartyId")}
+                    options={counterpartyOptions}
                     selectedValues={columnFilters["counterpartyId"] || []}
                     onUpdate={(values) =>
                       handleFilterUpdate("counterpartyId", values)
