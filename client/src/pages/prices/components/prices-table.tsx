@@ -57,6 +57,7 @@ import {
   PRODUCT_TYPE,
 } from "@shared/constants";
 import { usePriceSelection } from "../hooks/use-price-selection";
+import { useFilterReferenceData } from "@/hooks/use-filter-reference-data";
 import {
   formatNumber,
   formatNumberForTable,
@@ -78,6 +79,7 @@ export function PricesTable({
 }: PricesTableProps) {
   const { columnFilters, setColumnFilters, search, setSearch } =
     usePersistedTableFilters("prices-table");
+  const { baseOptions } = useFilterReferenceData({ bases: true });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [priceToDelete, setPriceToDelete] = useState<Price | null>(null);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
@@ -130,14 +132,6 @@ export function PricesTable({
     }
     return contractors?.find((c) => c.id === id)?.name || `ID: ${id}`;
   };
-
-  // Все контрагенты (поставщики + покупатели) для фильтра "Контрагент"
-  const counterpartyOptions = useMemo(() => {
-    const opts: { label: string; value: string }[] = [];
-    allContractors?.forEach((s) => opts.push({ label: s.name, value: s.id }));
-    customers?.forEach((c: any) => opts.push({ label: c.name, value: c.id }));
-    return opts.sort((a, b) => a.label.localeCompare(b.label, "ru"));
-  }, [allContractors, customers]);
 
   const getUniqueOptions = (key: string) => {
     const values = new Map<string, string>();
@@ -404,7 +398,7 @@ export function PricesTable({
                   <span>Контрагент</span>
                   <TableColumnFilter
                     title="Контрагент"
-                    options={counterpartyOptions}
+                    options={getUniqueOptions("counterpartyId")}
                     selectedValues={columnFilters["counterpartyId"] || []}
                     onUpdate={(values) =>
                       handleFilterUpdate("counterpartyId", values)
@@ -418,7 +412,7 @@ export function PricesTable({
                   <span>Базис</span>
                   <TableColumnFilter
                     title="Базис"
-                    options={getUniqueOptions("basis")}
+                    options={baseOptions}
                     selectedValues={columnFilters["basis"] || []}
                     onUpdate={(values) => handleFilterUpdate("basis", values)}
                     dataTestId="filter-basis"
