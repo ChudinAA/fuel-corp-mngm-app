@@ -570,7 +570,7 @@ export function RefuelingTable({
                     values={deals.map((d: any) => {
                       const af = parseFloat(d.agentFee || "0");
                       const osf = parseFloat(d.otherServiceFee || "0");
-                      return (isNaN(af) ? 0 : af) + (isNaN(osf) ? 0 : osf);
+                      return (isNaN(af) || d.isAgentFeeEnabled === false ? 0 : af) + (isNaN(osf) || d.isOtherServiceEnabled === false ? 0 : osf);
                     })}
                     formatFn={(v) => formatCurrencyForTable(v)}
                   />
@@ -796,13 +796,13 @@ export function RefuelingTable({
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="flex flex-col items-end gap-0.5 cursor-help">
-                                {hasAgent && (
-                                  <span className={deal.isAgentFeeEnabled === false ? "line-through text-muted-foreground" : ""}>
+                                {hasAgent && deal.isAgentFeeEnabled === true && (
+                                  <span>
                                     Аг: {formatCurrencyForTable(agentFeeVal)}
                                   </span>
                                 )}
-                                {hasOther && (
-                                  <span className={deal.isOtherServiceEnabled === false ? "line-through text-muted-foreground" : ""}>
+                                {hasOther && deal.isOtherServiceEnabled === true && (
+                                  <span>
                                     {deal.otherServiceType ? (OTHER_TYPE_SHORT[deal.otherServiceType] ?? "") : ""} {formatCurrencyForTable(otherFeeVal)}
                                   </span>
                                 )}
