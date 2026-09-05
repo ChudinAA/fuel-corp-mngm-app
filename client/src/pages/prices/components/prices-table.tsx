@@ -70,7 +70,7 @@ import { ProductTypeBadge } from "@/components/product-type-badge";
 import { useAuth } from "@/hooks/use-auth";
 import { AddPriceDialog } from "./add-price-dialog";
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 100;
 
 export function PricesTable({
   dealTypeFilter,
