@@ -95,6 +95,11 @@ export class AircraftRefuelingStorage {
           sql`${aircraftRefueling.flightNumber} IN ${filters.direction}`,
         );
       }
+      if (filters.board?.length) {
+        baseConditions.push(
+          sql`${aircraftRefueling.aircraftNumber} IN ${filters.board}`,
+        );
+      }
       if (filters.equipment?.length) {
         // Фильтр по СЗ (для ЛИК) — по имени средства заправки
         baseConditions.push(

@@ -140,6 +140,14 @@ export class RefuelingAbroadStorage {
               AND rabc.bank_name IN ${values}
             )`,
           );
+        } else if (columnId === "location") {
+          conditions.push(
+            or(
+              sql`${refuelingAbroad.airport} IN ${values}`,
+              sql`${refuelingAbroad.aircraftNumber} IN ${values}`,
+              sql`${refuelingAbroad.orderNumber} IN ${values}`,
+            ) as any,
+          );
         }
       });
     }
@@ -975,20 +983,30 @@ export class RefuelingAbroadStorage {
     }
 
     if (column === "intermediary") {
-      const result = await db.execute(
-        sql`SELECT DISTINCT name AS val FROM (
-          SELECT s.name FROM refueling_abroad_intermediaries rai
-          JOIN refueling_abroad ra ON ra.id = rai.refueling_abroad_id
-          JOIN suppliers s ON s.id = rai.intermediary_id
-          WHERE ra.deleted_at IS NULL AND s.name ILIKE ${pattern}
-          UNION
-          SELECT c.name FROM refueling_abroad_intermediaries rai
-          JOIN refueling_abroad ra ON ra.id = rai.refueling_abroad_id
-          JOIN customers c ON c.id = rai.customer_intermediary_id
-          WHERE ra.deleted_at IS NULL AND c.name ILIKE ${pattern}
-        ) t WHERE val IS NOT NULL LIMIT 20`,
+      // Два отдельных запроса чтобы избежать duplicate parameter binding в Neon
+      const pattern1 = `%${q}%`;
+      const r1 = await db.execute(
+        sql`SELECT DISTINCT s.name AS val
+            FROM refueling_abroad_intermediaries rai
+            JOIN refueling_abroad ra ON ra.id = rai.refueling_abroad_id
+            JOIN suppliers s ON s.id = rai.intermediary_id
+            WHERE ra.deleted_at IS NULL AND s.name ILIKE ${pattern1}
+            LIMIT 20`,
       );
-      return (result.rows as any[]).filter((r) => r.val).map((r) => ({ label: r.val, value: r.val }));
+      const pattern2 = `%${q}%`;
+      const r2 = await db.execute(
+        sql`SELECT DISTINCT c.name AS val
+            FROM refueling_abroad_intermediaries rai
+            JOIN refueling_abroad ra ON ra.id = rai.refueling_abroad_id
+            JOIN customers c ON c.id = rai.customer_intermediary_id
+            WHERE ra.deleted_at IS NULL AND c.name ILIKE ${pattern2}
+            LIMIT 20`,
+      );
+      const seen = new Set<string>();
+      return [...(r1.rows as any[]), ...(r2.rows as any[])]
+        .filter((r) => r.val && !seen.has(r.val) && seen.add(r.val))
+        .slice(0, 20)
+        .map((r) => ({ label: r.val, value: r.val }));
     }
 
     if (column === "bank") {

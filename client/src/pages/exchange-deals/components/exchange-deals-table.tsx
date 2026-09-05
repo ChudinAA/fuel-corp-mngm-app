@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Plus, Loader2, Pencil, Copy, Trash2, History } from "lucide-react";
+import { Search, Plus, Loader2, Pencil, Copy, Trash2, History, X } from "lucide-react";
 import { AuditPanel } from "@/components/audit-panel";
 import { ExportButton } from "@/components/export/export-button";
 import { EntityActionsMenu, type EntityAction } from "@/components/entity-actions-menu";
@@ -196,6 +196,16 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
             data-testid="input-search-deals"
           />
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setColumnFilters({})}
+          disabled={Object.values(columnFilters).every((v) => v.length === 0)}
+          title="Сбросить все фильтры"
+          data-testid="button-reset-filters"
+        >
+          <X className="h-4 w-4" />
+        </Button>
         <Button
           variant="outline"
           onClick={() => setAuditOpen(true)}

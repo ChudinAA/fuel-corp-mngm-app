@@ -250,11 +250,13 @@ export function TableColumnFilter({
 
   // Объединяем options с результатами бэкенд-поиска (дедупликация по value)
   const mergedOptions = React.useMemo(() => {
+    // Когда задан onSearch и есть активный запрос — показываем ТОЛЬКО результаты поиска
+    if (onSearch && searchQuery.length >= 2) return searchResults
     if (!searchResults.length) return regularOptions
     const seen = new Set(regularOptions.map((o) => o.value))
     const extra = searchResults.filter((r) => !seen.has(r.value))
     return [...regularOptions, ...extra]
-  }, [regularOptions, searchResults])
+  }, [regularOptions, searchResults, onSearch, searchQuery])
 
   const isActive = selectedValues.length > 0
 
@@ -372,7 +374,7 @@ export function TableColumnFilter({
               {mergedOptions.map((option) => (
                 <CommandItem
                   key={option.value}
-                  value={option.value}
+                  value={option.label}
                   onSelect={() => handleToggle(option.value)}
                   className="flex items-center gap-2 px-2 py-1.5 cursor-pointer"
                 >
