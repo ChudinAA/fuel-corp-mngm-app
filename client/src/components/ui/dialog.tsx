@@ -117,16 +117,29 @@ const DialogDescription = React.forwardRef<
 ))
 DialogDescription.displayName = DialogPrimitive.Description.displayName
 
+// ─── Minimizable dialog ────────────────────────────────────────────────────────
+
 /**
- * MinimizableDialog — замена Dialog для диалогов с возможностью сворачивания.
+ * Контекст для передачи open + isMinimized из MinimizableDialog в
+ * MinimizableDialogContent без пропс-дриллинга.
+ * Это необходимо, чтобы оверлей и scroll-lock знали оба значения,
+ * а не только isMinimized (как раньше).
+ */
+const MinimizableDialogCtx = React.createContext<{
+  open: boolean;
+  isMinimized: boolean;
+}>({ open: false, isMinimized: false });
+
+/**
+ * MinimizableDialog — обёртка над DialogPrimitive.Root.
  *
- * Ключевое решение: modal={false} ВСЕГДА — это предотвращает внутреннее
- * перемонтирование Radix при переключении modal prop, что ранее сбрасывало
- * состояние форм. Блокировку скролла и оверлей обрабатываем вручную
- * в MinimizableDialogContent.
+ * Всегда modal={false}: это единственный надёжный способ не дать Radix
+ * перемонтировать Content при смене prop modal, что сбрасывало бы данные форм.
+ * Scroll-lock и оверлей управляются вручную в MinimizableDialogContent.
  */
 const MinimizableDialog = ({
-  isMinimized,
+  isMinimized = false,
+  open,
   onOpenChange,
   children,
   ...props
@@ -134,21 +147,26 @@ const MinimizableDialog = ({
   isMinimized?: boolean;
 }) => {
   const handleOpenChange = React.useCallback(
-    (open: boolean) => {
-      if (!open && isMinimized) return; // block accidental close while minimized
-      onOpenChange?.(open);
+    (next: boolean) => {
+      // Не закрываем диалог кликом снаружи пока он свёрнут —
+      // пользователь должен явно закрыть через кнопку.
+      if (!next && isMinimized) return;
+      onOpenChange?.(next);
     },
     [isMinimized, onOpenChange],
   );
 
   return (
-    <DialogPrimitive.Root
-      modal={false}
-      onOpenChange={handleOpenChange}
-      {...props}
-    >
-      {children}
-    </DialogPrimitive.Root>
+    <MinimizableDialogCtx.Provider value={{ open: open ?? false, isMinimized }}>
+      <DialogPrimitive.Root
+        modal={false}
+        open={open}
+        onOpenChange={handleOpenChange}
+        {...props}
+      >
+        {children}
+      </DialogPrimitive.Root>
+    </MinimizableDialogCtx.Provider>
   );
 };
 MinimizableDialog.displayName = "MinimizableDialog";
@@ -157,11 +175,13 @@ MinimizableDialog.displayName = "MinimizableDialog";
  * MinimizableDialogContent — замена DialogContent для диалогов с возможностью
  * сворачивания.
  *
- * Стратегия сохранения данных:
- * - Контент ВСЕГДА в DOM (display:none при сворачивании, не unmount).
- * - modal={false} на Root не вызывает перемонтирование при смене состояния.
- * - Скролл страницы блокируется вручную через useEffect.
- * - Оверлей (чёрный фон) рендерится отдельно — только когда развёрнут.
+ * Стратегия сохранения данных форм:
+ * - Content всегда в DOM (display:none при сворачивании, а не unmount).
+ * - modal={false} на Root — Radix не перемонтирует Content при смене состояния.
+ * - Scroll-lock управляется через useEffect: активен только когда open && !isMinimized.
+ * - Оверлей — отдельный plain div: рендерится только когда open && !isMinimized.
+ *   Это ключевой момент: если проверять только !isMinimized без open,
+ *   оверлей остаётся видимым когда диалог закрыт, блокируя весь UI.
  */
 const MinimizableDialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
@@ -173,17 +193,21 @@ const MinimizableDialogContent = React.forwardRef<
     {
       className,
       children,
-      isMinimized,
+      isMinimized: isMinimizedProp,
       onPointerDownOutside,
       onInteractOutside,
       ...props
     },
     ref,
   ) => {
-    // Ручная блокировка скролла страницы: только когда диалог развёрнут.
-    // При сворачивании скролл восстанавливается, фон становится доступным.
+    // Читаем open + isMinimized из контекста, prop isMinimized — для обратной совместимости
+    const ctx = React.useContext(MinimizableDialogCtx);
+    const open = ctx.open;
+    const isMinimized = isMinimizedProp ?? ctx.isMinimized;
+
+    // Scroll-lock: только когда диалог открыт и не свёрнут
     React.useEffect(() => {
-      if (!isMinimized) {
+      if (open && !isMinimized) {
         const scrollbarWidth =
           window.innerWidth - document.documentElement.clientWidth;
         document.body.style.overflow = "hidden";
@@ -195,21 +219,24 @@ const MinimizableDialogContent = React.forwardRef<
           document.body.style.paddingRight = "";
         };
       }
-    }, [isMinimized]);
+    }, [open, isMinimized]);
 
     if (typeof document === "undefined") return null;
+
     return createPortal(
       <>
-        {/* Оверлей: только когда развёрнут. Визуально блокирует фон. */}
-        {!isMinimized && (
+        {/* Оверлей: только когда диалог открыт и не свёрнут.
+            Критично: без проверки open оверлей остаётся после закрытия диалога. */}
+        {open && !isMinimized && (
           <div
             className="fixed inset-0 z-50 bg-black/80 animate-in fade-in-0"
             aria-hidden="true"
           />
         )}
-        {/* Обёртка контента: всегда в DOM, скрыта через display:none при сворачивании.
-            Это сохраняет состояние React (данные форм) без перемонтирования. */}
-        <div style={isMinimized ? { display: "none" } : undefined}>
+
+        {/* Контент: всегда в DOM (display:none при сворачивании или закрытии).
+            display:none сохраняет React-стейт (данные форм) без перемонтирования. */}
+        <div style={!open || isMinimized ? { display: "none" } : undefined}>
           <DialogPrimitive.Content
             ref={ref}
             className={cn(
