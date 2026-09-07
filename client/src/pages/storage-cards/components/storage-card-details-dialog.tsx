@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -14,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -28,6 +30,7 @@ import {
   ArrowDownCircle,
   History,
   TrendingUp,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { STORAGE_CARD_TRANSACTION_TYPE } from "@shared/constants";
@@ -38,16 +41,37 @@ interface StorageCardDetailsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const PAGE_LIMIT = 50;
+
 export function StorageCardDetailsDialog({
   card,
   open,
   onOpenChange,
 }: StorageCardDetailsDialogProps) {
-  const { data: transactions, isLoading } = useQuery<any[]>({
-    queryKey: [`/api/storage-cards/${card.id}/transactions`],
-    enabled: open,
-    refetchInterval: 10000,
-  });
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery<{ transactions: any[]; hasMore: boolean }>({
+      queryKey: [`/api/storage-cards/${card.id}/transactions`],
+      queryFn: async ({ pageParam = 0 }) => {
+        const res = await fetch(
+          `/api/storage-cards/${card.id}/transactions?offset=${pageParam}&limit=${PAGE_LIMIT}`,
+          { credentials: "include" },
+        );
+        if (!res.ok) throw new Error("Failed to fetch transactions");
+        return res.json();
+      },
+      enabled: open,
+      initialPageParam: 0,
+      getNextPageParam: (lastPage, allPages) => {
+        if (!lastPage.hasMore) return undefined;
+        return allPages.length * PAGE_LIMIT;
+      },
+      refetchInterval: 10000,
+    });
+
+  const transactions = useMemo(
+    () => data?.pages?.flatMap((p) => p.transactions || []) ?? [],
+    [data],
+  );
 
   const formatNumber = (value: any) =>
     new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(
@@ -178,6 +202,7 @@ export function StorageCardDetailsDialog({
               ))}
             </div>
           ) : transactions && transactions.length > 0 ? (
+            <>
             <div className="min-w-fit overflow-x-auto relative">
             <Table>
               <TableHeader>
@@ -294,6 +319,26 @@ export function StorageCardDetailsDialog({
               </TableBody>
             </Table>
             </div>
+            {hasNextPage && (
+              <div className="flex justify-center py-4">
+                <Button
+                  variant="outline"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  className="min-w-[200px]"
+                >
+                  {isFetchingNextPage ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Загрузка...
+                    </>
+                  ) : (
+                    "Загрузить ещё"
+                  )}
+                </Button>
+              </div>
+            )}
+            </>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <History className="h-12 w-12 mx-auto mb-4 opacity-20" />

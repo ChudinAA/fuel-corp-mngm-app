@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
 import {
   Dialog,
-  DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  MinimizableDialog,
+  MinimizableDialogContent,
 } from "@/components/ui/dialog";
 import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import {
@@ -91,8 +92,8 @@ export function TransportationDialog({
 
   return (
     <>
-      <Dialog open={isOpen && !isMinimized} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[950px] h-[85vh] overflow-y-auto">
+      <MinimizableDialog open={isOpen} isMinimized={isMinimized} onOpenChange={handleOpenChange}>
+        <MinimizableDialogContent isMinimized={isMinimized} className="sm:max-w-[950px] h-[85vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -113,8 +114,8 @@ export function TransportationDialog({
                 : null
             }
           />
-        </DialogContent>
-      </Dialog>
+        </MinimizableDialogContent>
+      </MinimizableDialog>
       {MinimizedBar}
 
       <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>

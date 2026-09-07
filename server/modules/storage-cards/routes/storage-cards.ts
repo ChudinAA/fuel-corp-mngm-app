@@ -190,10 +190,14 @@ export function registerStorageCardsRoutes(app: Express) {
     requirePermission("storage-cards", "view"),
     async (req, res) => {
       try {
-        const transactions = await storage.storageCards.getCardTransactions(
-          req.params.id
+        const offset = parseInt(String(req.query.offset || "0"), 10);
+        const limit = parseInt(String(req.query.limit || "50"), 10);
+        const result = await storage.storageCards.getCardTransactions(
+          req.params.id,
+          offset,
+          limit,
         );
-        res.json(transactions);
+        res.json(result);
       } catch (error: any) {
         console.error("Error fetching transactions:", error);
         res.status(500).json({ message: "Ошибка получения транзакций" });

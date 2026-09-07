@@ -6,10 +6,13 @@ import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorModal } from "@/hooks/use-error-modal";
+import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import { Button } from "@/components/ui/button";
 import { createPortal } from "react-dom";
 import {
   Dialog,
+  MinimizableDialog,
+  MinimizableDialogContent,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -549,6 +552,42 @@ export function AddPriceDialog({
     createMutation.mutate(data);
   };
 
+  // Хук сворачивания для standalone (не-inline) режима
+  const standaloneTitle = editPrice ? "Редактирование цены" : "Новая цена";
+  const handleStandaloneClose = () => {
+    setOpen(false);
+    form.reset({
+      dateFrom: new Date(),
+      dateTo: getDefaultDateTo(),
+      counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
+      counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
+      counterpartyId: "",
+      productType: PRODUCT_TYPE.KEROSENE,
+      basis: "",
+      basisId: undefined,
+      loadingBasisId: undefined,
+      currency: "RUB",
+      currencyId: undefined,
+      limitType: "volume" as "volume" | "amount",
+      volume: "",
+      maxDealAmount: "",
+      priceValues: [{ price: "" }],
+      contractNumber: "",
+      contractAppendix: "",
+      notes: "",
+      priceUnit: "kg" as "kg" | "liter",
+      contractLimitEnabled: true,
+    });
+    dateCheck.setResult(null);
+    setDateCheckPassed(false);
+    if (onEditComplete) onEditComplete();
+  };
+  const {
+    isMinimized: isMinimizedStandalone,
+    MinimizeButton: MinimizeButtonStandalone,
+    MinimizedBar: MinimizedBarStandalone,
+  } = useMinimizableDialog({ title: standaloneTitle, onClose: handleStandaloneClose });
+
   // Ref-флаг: при программном сворачивании блокируем вызов setOpen(false) в onOpenChange.
   // Radix Dialog в режиме controlled НЕ вызывает onOpenChange при изменении open-пропа,
   // но держим ref как страховку на случай edge-cases разных версий Radix.
@@ -767,36 +806,12 @@ export function AddPriceDialog({
 
   return (
     <>
-    <Dialog
+    <MinimizableDialog
       open={open || !!editPrice}
+      isMinimized={isMinimizedStandalone}
       onOpenChange={(isOpen) => {
-        setOpen(isOpen);
         if (!isOpen) {
-          form.reset({
-            dateFrom: new Date(),
-            dateTo: getDefaultDateTo(),
-            counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
-            counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
-            counterpartyId: "",
-            productType: PRODUCT_TYPE.KEROSENE,
-            basis: "",
-            basisId: undefined,
-            loadingBasisId: undefined,
-            currency: "RUB",
-            currencyId: undefined,
-            limitType: "volume" as "volume" | "amount",
-            volume: "",
-            maxDealAmount: "",
-            priceValues: [{ price: "" }],
-            contractNumber: "",
-            contractAppendix: "",
-            notes: "",
-          });
-          dateCheck.setResult(null);
-          setDateCheckPassed(false);
-          if (onEditComplete) {
-            onEditComplete();
-          }
+          handleStandaloneClose();
         }
       }}
     >
@@ -808,14 +823,19 @@ export function AddPriceDialog({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <MinimizableDialogContent isMinimized={isMinimizedStandalone} className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {editPrice ? "Редактирование цены" : "Новая цена"}
-          </DialogTitle>
-          <DialogDescription>
-            Добавление или редактирование цены покупки или продажи
-          </DialogDescription>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <DialogTitle>
+                {editPrice ? "Редактирование цены" : "Новая цена"}
+              </DialogTitle>
+              <DialogDescription>
+                Добавление или редактирование цены покупки или продажи
+              </DialogDescription>
+            </div>
+            <div className="shrink-0 mt-[-4px]">{MinimizeButtonStandalone}</div>
+          </div>
         </DialogHeader>
         <Form {...form}>
           <form
@@ -848,12 +868,7 @@ export function AddPriceDialog({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  setOpen(false);
-                  if (onEditComplete) {
-                    onEditComplete();
-                  }
-                }}
+                onClick={handleStandaloneClose}
               >
                 Отмена
               </Button>
@@ -879,8 +894,9 @@ export function AddPriceDialog({
             </div>
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </MinimizableDialogContent>
+    </MinimizableDialog>
+    {MinimizedBarStandalone}
     {!isInline && <ErrorModalComponent />}
   </>
   );

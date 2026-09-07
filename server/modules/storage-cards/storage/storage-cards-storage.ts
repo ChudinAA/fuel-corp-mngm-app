@@ -197,18 +197,23 @@ export class StorageCardsStorage {
 
   async getCardTransactions(
     storageCardId: string,
-  ): Promise<StorageCardTransaction[]> {
-    return await db.query.storageCardTransactions.findMany({
+    offset = 0,
+    limit = 50,
+  ): Promise<{ transactions: StorageCardTransaction[]; hasMore: boolean }> {
+    const rows = await db.query.storageCardTransactions.findMany({
       where: and(
         eq(storageCardTransactions.storageCardId, storageCardId),
         isNull(storageCardTransactions.deletedAt),
       ),
       orderBy: [desc(storageCardTransactions.transactionDate)],
-      limit: 50,
+      limit: limit + 1, // fetch one extra to detect hasMore
+      offset,
       with: {
         localCurrency: true,
       },
     } as any);
+    const hasMore = rows.length > limit;
+    return { transactions: hasMore ? rows.slice(0, limit) : rows, hasMore };
   }
 
   async createTransaction(
