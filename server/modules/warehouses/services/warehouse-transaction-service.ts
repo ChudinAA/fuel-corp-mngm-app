@@ -268,11 +268,20 @@ export class WarehouseTransactionService {
     }
 
     const oldTxDate = transaction.transactionDate || transaction.createdAt;
-    const effectiveDate = dealDate && new Date(dealDate) < new Date(oldTxDate) ?
-      format(new Date(dealDate).setHours(23, 59, 0, 0), "yyyy-MM-dd'T'HH:mm:ss") :
-      oldTxDate;
 
-    const needsRecalc = await this.needsRecalculation(tx, warehouseId, productType, effectiveDate);
+    // Always move transaction date to the new deal date (both forward and backward).
+    // Previously only backward moves were applied; forward moves left the transaction
+    // on the old date causing warehouse history desync.
+    const newEffectiveDate = dealDate
+      ? format(new Date(dealDate).setHours(23, 59, 0, 0), "yyyy-MM-dd'T'HH:mm:ss")
+      : oldTxDate;
+
+    // Recalculation must start from the EARLIER of old and new dates so that
+    // both the day the transaction left and the day it moved to are recalculated.
+    const recalcStartDate =
+      new Date(newEffectiveDate) <= new Date(oldTxDate) ? newEffectiveDate : oldTxDate;
+
+    const needsRecalc = await this.needsRecalculation(tx, warehouseId, productType, recalcStartDate);
     
     await tx
       .update(warehouseTransactions)
@@ -286,16 +295,16 @@ export class WarehouseTransactionService {
         averageCostAfter: newAverageCost.toFixed(6),
         updatedAt: sql`NOW()`,
         updatedById,
-        transactionDate: effectiveDate,
+        transactionDate: newEffectiveDate,
       })
       .where(eq(warehouseTransactions.id, transactionId));
 
     if (needsRecalc) {
-      console.log(`[WarehouseTransactionService] Transaction update requires recalculation for ${warehouseId}`);
+      console.log(`[WarehouseTransactionService] Transaction update requires recalculation for ${warehouseId} from ${recalcStartDate}`);
       await RecalculationQueueService.addToQueue(
         warehouseId,
         productType,
-        effectiveDate,
+        recalcStartDate,
         updatedById,
         1,
         tx,
@@ -303,6 +312,60 @@ export class WarehouseTransactionService {
     }
 
     return { newAverageCost, newBalance };
+  }
+
+  /**
+   * Updates only the transaction date when a deal's date changes without a quantity change.
+   * Enqueues recalculation from the earlier of old and new dates so both days are corrected.
+   */
+  static async updateTransactionDateAndRecalculate(
+    tx: any,
+    transactionId: string,
+    warehouseId: string,
+    productType: string,
+    oldDealDate: string,
+    newDealDate: string,
+    updatedById?: string,
+  ) {
+    const oldNormalized = format(
+      new Date(oldDealDate).setHours(23, 59, 0, 0),
+      "yyyy-MM-dd'T'HH:mm:ss",
+    );
+    const newNormalized = format(
+      new Date(newDealDate).setHours(23, 59, 0, 0),
+      "yyyy-MM-dd'T'HH:mm:ss",
+    );
+
+    if (oldNormalized === newNormalized) {
+      // Dates resolve to the same end-of-day timestamp — nothing to do
+      return;
+    }
+
+    await tx
+      .update(warehouseTransactions)
+      .set({
+        transactionDate: newNormalized,
+        updatedAt: sql`NOW()`,
+        updatedById,
+      })
+      .where(eq(warehouseTransactions.id, transactionId));
+
+    // Always recalculate from the earlier of old and new dates
+    const recalcStartDate =
+      new Date(newNormalized) <= new Date(oldNormalized) ? newNormalized : oldNormalized;
+
+    console.log(
+      `[WarehouseTransactionService] Date-only change: tx ${transactionId} moved from ${oldNormalized} to ${newNormalized}, recalc from ${recalcStartDate}`,
+    );
+
+    await RecalculationQueueService.addToQueue(
+      warehouseId,
+      productType,
+      recalcStartDate,
+      updatedById,
+      1,
+      tx,
+    );
   }
 
   static async deleteTransactionAndRevertWarehouse(

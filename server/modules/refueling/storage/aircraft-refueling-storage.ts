@@ -317,34 +317,47 @@ export class AircraftRefuelingStorage {
           data.transactionId = transaction.id;
         }
       }
-      // Проверяем изменилось ли количество КГ и есть ли привязанная транзакция (для НЕ черновиков)
+      // Проверяем изменилось ли количество КГ и/или дата сделки, и есть ли привязанная транзакция (для НЕ черновиков)
       else if (
         !currentRefueling.isDraft &&
-        data.quantityKg &&
         (currentRefueling.transactionId ||
           currentRefueling.equipmentTransactionId) &&
         (currentRefueling.warehouseId || currentRefueling.equipmentId) &&
         (currentRefueling.productType === PRODUCT_TYPE.KEROSENE ||
           currentRefueling.productType === PRODUCT_TYPE.PVKJ)
       ) {
-        if (data.productType !== currentRefueling.productType) {
+        if (
+          data.productType !== undefined &&
+          data.productType !== currentRefueling.productType
+        ) {
           throw new Error(
             "Нельзя поменять тип продукта для существующей сделки",
           );
         }
 
-        if (data.warehouseId !== currentRefueling.warehouseId) {
+        if (
+          data.warehouseId !== undefined &&
+          data.warehouseId !== currentRefueling.warehouseId
+        ) {
           throw new Error(
             "Нельзя поменять склад-источник для существующей сделки",
           );
         }
 
         const oldQuantityKg = parseFloat(currentRefueling.quantityKg);
-        const newQuantityKg = parseFloat(data.quantityKg.toString());
+        const newQuantityKg = data.quantityKg
+          ? parseFloat(data.quantityKg.toString())
+          : oldQuantityKg;
         const oldTotalCost = parseFloat(currentRefueling.purchaseAmount || "0");
-        const newTotalCost = data.purchaseAmount || 0;
+        const newTotalCost = data.purchaseAmount ?? oldTotalCost;
 
-        if (oldQuantityKg !== newQuantityKg) {
+        const quantityChanged = oldQuantityKg !== newQuantityKg;
+        const dateChanged =
+          data.refuelingDate !== undefined &&
+          data.refuelingDate !== currentRefueling.refuelingDate;
+
+        if (quantityChanged) {
+          // Количество изменилось — обновляем транзакцию (метод также применит новую дату)
           if (
             currentRefueling.equipmentId &&
             currentRefueling.equipmentTransactionId
@@ -377,6 +390,26 @@ export class AircraftRefuelingStorage {
               data.refuelingDate,
             );
           }
+        } else if (dateChanged) {
+          // Только дата изменилась — обновляем дату транзакции и запускаем пересчёт.
+          // Ранее этот случай полностью игнорировался, из-за чего дата транзакции
+          // на складе оставалась старой и возникал рассинхрон с реестром заправок.
+          if (
+            currentRefueling.warehouseId &&
+            currentRefueling.transactionId
+          ) {
+            await WarehouseTransactionService.updateTransactionDateAndRecalculate(
+              tx,
+              currentRefueling.transactionId,
+              currentRefueling.warehouseId,
+              currentRefueling.productType,
+              currentRefueling.refuelingDate!,
+              data.refuelingDate!,
+              data.updatedById,
+            );
+          }
+          // Для оборудования аналогичная логика не реализована, так как
+          // оборудование не имеет истории остатков по дням
         }
       }
 
