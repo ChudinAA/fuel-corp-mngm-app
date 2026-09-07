@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  MinimizableDialogContent,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -82,8 +83,8 @@ export function AddRefuelingAbroadDialog({
 
   return (
     <>
-      <Dialog open={isOpen && !isMinimized} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-7xl max-h-[90vh]">
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+        <MinimizableDialogContent isMinimized={isMinimized} className="max-w-7xl max-h-[90vh]">
           <DialogHeader>
             <div className="flex items-start justify-between gap-2">
               <DialogTitle>{abroadTitle}</DialogTitle>
@@ -101,7 +102,7 @@ export function AddRefuelingAbroadDialog({
               }
             />
           </ScrollArea>
-        </DialogContent>
+        </MinimizableDialogContent>
       </Dialog>
       {MinimizedBar}
 

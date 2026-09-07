@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  MinimizableDialogContent,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -129,11 +130,11 @@ export function CashflowDialog({ open, onOpenChange, transaction }: CashflowDial
 
   const cashflowTitle = transaction?.id ? "Редактировать транзакцию" : "Добавить транзакцию";
   const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: cashflowTitle, onClose: () => onOpenChange(false) });
-  if (isMinimized) return <>{MinimizedBar}</>;
-
   return (
+    <>
+      {MinimizedBar}
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <MinimizableDialogContent isMinimized={isMinimized} className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
             <DialogTitle>{cashflowTitle}</DialogTitle>
@@ -239,8 +240,9 @@ export function CashflowDialog({ open, onOpenChange, transaction }: CashflowDial
             </Button>
           </DialogFooter>
         </form>
-      </DialogContent>
+      </MinimizableDialogContent>
     <ErrorModalComponent />
     </Dialog>
+    </>
   );
 }

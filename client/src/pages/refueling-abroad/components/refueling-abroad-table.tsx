@@ -349,8 +349,14 @@ export function RefuelingAbroadTable({
               <TableHead className="text-right text-[13px] font-semibold p-2 w-[130px]">
                 Закупка (Цена / Сумма)
               </TableHead>
+              <TableHead className="text-right text-[13px] font-semibold p-2 w-[120px]">
+                Курс закупки (₽) / Дата
+              </TableHead>
               <TableHead className="text-right text-[13px] font-semibold p-2 w-[130px]">
                 Продажа (Цена / Сумма)
+              </TableHead>
+              <TableHead className="text-right text-[13px] font-semibold p-2 w-[120px]">
+                Курс продажи (₽) / Дата
               </TableHead>
               <TableHead className="text-right text-[13px] font-semibold p-2 w-[160px]">
                 Комиссия / Посредники / Прибыль
@@ -362,7 +368,7 @@ export function RefuelingAbroadTable({
             {items.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={12}
+                  colSpan={14}
                   className="text-center py-12 text-muted-foreground"
                 >
                   Нет записей для отображения.
@@ -554,11 +560,43 @@ export function RefuelingAbroadTable({
                     </div>
                   </TableCell>
                   <TableCell className="p-2 text-right">
+                    <div className="flex flex-col font-mono text-[12px]">
+                      {item.purchaseExchangeRateValue ? (
+                        <>
+                          <span>{formatNumber(item.purchaseExchangeRateValue)} ₽</span>
+                          {item.purchaseExchangeRateDate && (
+                            <span className="text-muted-foreground text-[10px]">
+                              {item.purchaseExchangeRateDate}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="p-2 text-right">
                     <div className="flex flex-col font-mono">
                       <span>${formatNumber(item.salePriceUsd)}</span>
                       <span className="font-medium text-orange-600">
                         {formatCurrency(item.saleAmountUsd, "USD")}
                       </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="p-2 text-right">
+                    <div className="flex flex-col font-mono text-[12px]">
+                      {item.saleExchangeRateValue ? (
+                        <>
+                          <span>{formatNumber(item.saleExchangeRateValue)} ₽</span>
+                          {item.saleExchangeRateDate && (
+                            <span className="text-muted-foreground text-[10px]">
+                              {item.saleExchangeRateDate}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="p-2 text-right">

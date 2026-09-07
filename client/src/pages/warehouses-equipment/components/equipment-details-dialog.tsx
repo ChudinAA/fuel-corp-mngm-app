@@ -8,6 +8,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  MinimizableDialogContent,
 } from "@/components/ui/dialog";
 import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -108,11 +109,11 @@ export function EquipmentDetailsDialog({
 
   const eqDetTitle = `${equipment.name} - История операций`;
   const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: eqDetTitle, onClose: () => onOpenChange(false) });
-  if (isMinimized) return <>{MinimizedBar}</>;
-
   return (
+    <>
+      {MinimizedBar}
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh]">
+      <MinimizableDialogContent isMinimized={isMinimized} className="max-w-6xl max-h-[90vh]">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
             <DialogTitle className="flex items-center gap-2">
@@ -257,7 +258,8 @@ export function EquipmentDetailsDialog({
             </div>
           )}
         </ScrollArea>
-      </DialogContent>
+      </MinimizableDialogContent>
     </Dialog>
+    </>
   );
 }

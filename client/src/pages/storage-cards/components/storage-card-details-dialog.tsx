@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  MinimizableDialogContent,
 } from "@/components/ui/dialog";
 import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,11 +67,11 @@ export function StorageCardDetailsDialog({
 
   const scTitle = `${card.name} — История транзакций`;
   const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: scTitle, onClose: () => onOpenChange(false) });
-  if (isMinimized) return <>{MinimizedBar}</>;
-
   return (
+    <>
+      {MinimizedBar}
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[960px] max-h-[85vh] flex flex-col">
+      <MinimizableDialogContent isMinimized={isMinimized} className="max-w-[960px] max-h-[85vh] flex flex-col">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
             <DialogTitle className="flex items-center gap-2">
@@ -168,7 +169,7 @@ export function StorageCardDetailsDialog({
 
         <Separator />
 
-        <ScrollArea className="flex-1 pr-4 mt-2">
+        <ScrollArea className="flex-1 min-h-0 pr-4 mt-2">
           {isLoading ? (
             <div className="space-y-2">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -297,7 +298,8 @@ export function StorageCardDetailsDialog({
             </div>
           )}
         </ScrollArea>
-      </DialogContent>
+      </MinimizableDialogContent>
     </Dialog>
+    </>
   );
 }

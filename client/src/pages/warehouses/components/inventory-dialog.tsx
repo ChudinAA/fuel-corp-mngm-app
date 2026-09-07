@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  MinimizableDialogContent,
 } from "@/components/ui/dialog";
 import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import {
@@ -139,12 +140,11 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
     onClose: () => onOpenChange(false),
   });
 
-  if (isMinimized) return <>{MinimizedBar}</>;
-
   return (
     <>
+      {MinimizedBar}
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md">
+        <MinimizableDialogContent isMinimized={isMinimized} className="max-w-md">
           <DialogHeader>
             <div className="flex items-start justify-between gap-2">
               <DialogTitle className="flex items-center gap-2">
@@ -316,7 +316,7 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
               </div>
             </form>
           </Form>
-        </DialogContent>
+        </MinimizableDialogContent>
       </Dialog>
       <ErrorModalComponent />
     </>

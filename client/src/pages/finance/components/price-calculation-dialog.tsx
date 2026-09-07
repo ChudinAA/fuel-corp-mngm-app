@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  MinimizableDialogContent,
 } from "@/components/ui/dialog";
 import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import { Button } from "@/components/ui/button";
@@ -183,11 +184,11 @@ export function PriceCalculationDialog({ open, onOpenChange, calculation }: Pric
 
   const priceCalcTitle = calculation?.id ? "Редактировать расчет" : "Создать расчет цены";
   const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: priceCalcTitle, onClose: () => onOpenChange(false) });
-  if (isMinimized) return <>{MinimizedBar}</>;
-
   return (
+    <>
+      {MinimizedBar}
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <MinimizableDialogContent isMinimized={isMinimized} className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
             <DialogTitle>{priceCalcTitle}</DialogTitle>
@@ -352,7 +353,8 @@ export function PriceCalculationDialog({ open, onOpenChange, calculation }: Pric
             </Button>
           </DialogFooter>
         </form>
-      </DialogContent>
+      </MinimizableDialogContent>
     </Dialog>
+    </>
   );
 }

@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  MinimizableDialogContent,
 } from "@/components/ui/dialog";
 import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import {
@@ -120,11 +121,11 @@ export function ExchangeRateDialog({
 
   const exchRateTitle = editItem ? "Редактировать курс" : "Добавить курс";
   const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: exchRateTitle, onClose });
-  if (isMinimized) return <>{MinimizedBar}</>;
-
   return (
+    <>
+      {MinimizedBar}
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
+      <MinimizableDialogContent isMinimized={isMinimized} className="max-w-md">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
             <DialogTitle>{exchRateTitle}</DialogTitle>
@@ -297,7 +298,8 @@ export function ExchangeRateDialog({
             {editItem ? "Сохранить" : "Добавить"}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </MinimizableDialogContent>
     </Dialog>
+    </>
   );
 }

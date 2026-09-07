@@ -4,7 +4,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, MinimizableDialogContent } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -224,12 +224,11 @@ export function AddWarehouseDialog({
 
   const warehouseTitle = isEditing ? "Редактирование склада" : "Новый склад";
   const { isMinimized, MinimizeButton, MinimizedBar } = useMinimizableDialog({ title: warehouseTitle, onClose: () => setOpen(false) });
-  if (isMinimized) return <>{MinimizedBar}</>;
-
   return (
     <>
+      {MinimizedBar}
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+      <MinimizableDialogContent isMinimized={isMinimized} className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
             <div>
@@ -660,7 +659,7 @@ export function AddWarehouseDialog({
           inlineOpen={addBaseOpen}
           onInlineOpenChange={setAddBaseOpen}
         />
-      </DialogContent>
+      </MinimizableDialogContent>
     </Dialog>
     <ErrorModalComponent />
     </>

@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  MinimizableDialogContent,
 } from "@/components/ui/dialog";
 import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import {
@@ -119,12 +120,11 @@ export function SetLimitDialog({ warehouse, open, onOpenChange }: SetLimitDialog
     onClose: () => onOpenChange(false),
   });
 
-  if (isMinimized) return <>{MinimizedBar}</>;
-
   return (
     <>
+      {MinimizedBar}
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-sm">
+        <MinimizableDialogContent isMinimized={isMinimized} className="max-w-sm">
           <DialogHeader>
             <div className="flex items-start justify-between gap-2">
               <DialogTitle className="flex items-center gap-2">
@@ -225,7 +225,7 @@ export function SetLimitDialog({ warehouse, open, onOpenChange }: SetLimitDialog
               </div>
             </form>
           </Form>
-        </DialogContent>
+        </MinimizableDialogContent>
       </Dialog>
       <ErrorModalComponent />
     </>

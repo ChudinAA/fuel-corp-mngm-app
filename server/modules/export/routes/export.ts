@@ -163,14 +163,31 @@ export function registerExportRoutes(app: Express) {
                 : parseFloat(r.intermediaryCommissionUsd || 0);
 
               // Банковские комиссии: поле bankCommissionUsd хранится на главной записи
-              // (в цепочке хранится только % и мин. значение, без итогового USD)
               const totalBankCommissionUsd = parseFloat(r.bankCommissionUsd || 0);
+
+              // Названия посредников через запятую
+              const intermediaryNames = Array.isArray(r.intermediaries) && r.intermediaries.length > 0
+                ? r.intermediaries
+                    .map((i: any) => i.intermediary?.name ?? i.customerIntermediary?.name)
+                    .filter(Boolean)
+                    .join(", ")
+                : "";
+
+              // Названия банков через запятую
+              const bankNames = Array.isArray(r.bankCommissions) && r.bankCommissions.length > 0
+                ? r.bankCommissions
+                    .map((bc: any) => bc.bankName)
+                    .filter(Boolean)
+                    .join(", ")
+                : "";
 
               return {
                 ...r,
                 _totalIntermediaryUsd:   totalIntermediaryUsd    || null,
                 _totalBankCommissionUsd: totalBankCommissionUsd  || null,
                 _totalCommissionUsd:     (totalIntermediaryUsd + totalBankCommissionUsd) || null,
+                _intermediaryNames:      intermediaryNames        || null,
+                _bankNames:              bankNames                || null,
               };
             });
             break;
