@@ -140,8 +140,10 @@ export function registerExchangeAdvancesRoutes(app: Express) {
     requirePermission("exchange-advances", "view"),
     async (req, res) => {
       try {
-        const transactions = await storage.exchangeAdvances.getTransactions(req.params.id);
-        res.json(transactions);
+        const limit  = Math.min(parseInt(String(req.query.limit  ?? "50"), 10), 200);
+        const offset = parseInt(String(req.query.offset ?? "0"),  10);
+        const result = await storage.exchangeAdvances.getTransactions(req.params.id, limit, offset);
+        res.json(result);
       } catch (error: any) {
         res.status(500).json({ message: "Ошибка получения транзакций" });
       }

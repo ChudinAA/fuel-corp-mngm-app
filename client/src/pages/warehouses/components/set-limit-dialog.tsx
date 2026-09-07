@@ -4,6 +4,7 @@ import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import {
   Dialog,
+  MinimizableDialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -123,7 +124,7 @@ export function SetLimitDialog({ warehouse, open, onOpenChange }: SetLimitDialog
   return (
     <>
       {MinimizedBar}
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <MinimizableDialog isMinimized={isMinimized} open={open} onOpenChange={onOpenChange}>
         <MinimizableDialogContent isMinimized={isMinimized} className="max-w-sm">
           <DialogHeader>
             <div className="flex items-start justify-between gap-2">
@@ -226,7 +227,7 @@ export function SetLimitDialog({ warehouse, open, onOpenChange }: SetLimitDialog
             </form>
           </Form>
         </MinimizableDialogContent>
-      </Dialog>
+      </MinimizableDialog>
       <ErrorModalComponent />
     </>
   );

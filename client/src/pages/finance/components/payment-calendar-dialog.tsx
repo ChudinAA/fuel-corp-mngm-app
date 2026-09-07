@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Dialog,
+  MinimizableDialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -126,7 +127,7 @@ export function PaymentCalendarDialog({ open, onOpenChange, item }: PaymentCalen
   return (
     <>
       {MinimizedBar}
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <MinimizableDialog isMinimized={isMinimized} open={open} onOpenChange={onOpenChange}>
       <MinimizableDialogContent isMinimized={isMinimized} className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
@@ -236,7 +237,7 @@ export function PaymentCalendarDialog({ open, onOpenChange, item }: PaymentCalen
           </DialogFooter>
         </form>
       </MinimizableDialogContent>
-    </Dialog>
+    </MinimizableDialog>
     </>
   );
 }

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
+  MinimizableDialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -118,7 +119,7 @@ export function IntermediaryDialog({
   return (
     <>
       {MinimizedBar}
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <MinimizableDialog isMinimized={isMinimized} open={open} onOpenChange={(v) => !v && onClose()}>
       <MinimizableDialogContent isMinimized={isMinimized} className="max-w-lg">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
@@ -259,7 +260,7 @@ export function IntermediaryDialog({
           </Button>
         </DialogFooter>
       </MinimizableDialogContent>
-    </Dialog>
+    </MinimizableDialog>
     </>
   );
 }

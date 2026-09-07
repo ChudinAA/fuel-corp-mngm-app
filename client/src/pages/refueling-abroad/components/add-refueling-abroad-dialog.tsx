@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import {
   Dialog,
+  MinimizableDialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -83,7 +84,7 @@ export function AddRefuelingAbroadDialog({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <MinimizableDialog isMinimized={isMinimized} open={isOpen} onOpenChange={handleOpenChange}>
         <MinimizableDialogContent isMinimized={isMinimized} className="max-w-7xl max-h-[90vh]">
           <DialogHeader>
             <div className="flex items-start justify-between gap-2">
@@ -103,7 +104,7 @@ export function AddRefuelingAbroadDialog({
             />
           </ScrollArea>
         </MinimizableDialogContent>
-      </Dialog>
+      </MinimizableDialog>
       {MinimizedBar}
 
       <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>

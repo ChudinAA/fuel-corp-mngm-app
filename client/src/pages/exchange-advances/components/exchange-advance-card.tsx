@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useInfiniteQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,11 +21,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Wallet, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, AlertTriangle, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 function formatMoney(val: string | number | null | undefined) {
   const num = parseFloat(String(val || "0"));
@@ -178,17 +179,32 @@ export function ExchangeAdvanceCard({ card }: ExchangeAdvanceCardProps) {
   const balance = parseFloat(card.currentBalance || "0");
   const isNegative = balance < 0;
 
-  const { data: transactions = [], isLoading: txLoading } = useQuery<any[]>({
+  const PAGE_SIZE = 50;
+  const {
+    data: txPages,
+    isLoading: txLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery<{ data: any[]; total: number }>({
     queryKey: ["/api/exchange-advances", card.id, "transactions"],
-    queryFn: async () => {
-      const res = await fetch(`/api/exchange-advances/${card.id}/transactions`, {
-        credentials: "include",
-      });
-      if (!res.ok) return [];
+    queryFn: async ({ pageParam = 0 }) => {
+      const res = await fetch(
+        `/api/exchange-advances/${card.id}/transactions?limit=${PAGE_SIZE}&offset=${pageParam}`,
+        { credentials: "include" },
+      );
+      if (!res.ok) return { data: [], total: 0 };
       return res.json();
     },
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + p.data.length, 0);
+      return loaded < lastPage.total ? loaded : undefined;
+    },
+    initialPageParam: 0,
     enabled: historyOpen,
   });
+  const transactions = txPages?.pages.flatMap((p) => p.data) ?? [];
+  const totalTransactions = txPages?.pages[0]?.total ?? 0;
 
   return (
     <>
@@ -275,7 +291,7 @@ export function ExchangeAdvanceCard({ card }: ExchangeAdvanceCardProps) {
               {formatMoney(balance)}
             </span>
           </div>
-          <div className="overflow-y-auto flex-1">
+          <ScrollArea className="flex-1 min-h-0">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -327,7 +343,31 @@ export function ExchangeAdvanceCard({ card }: ExchangeAdvanceCardProps) {
                 )}
               </TableBody>
             </Table>
-          </div>
+            {hasNextPage && (
+              <div className="flex justify-center py-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  {isFetchingNextPage ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Загрузка...
+                    </>
+                  ) : (
+                    `Загрузить ещё (${transactions.length} из ${totalTransactions})`
+                  )}
+                </Button>
+              </div>
+            )}
+            {!hasNextPage && transactions.length > 0 && (
+              <p className="text-center text-xs text-muted-foreground py-2">
+                Все {transactions.length} записей загружены
+              </p>
+            )}
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </>

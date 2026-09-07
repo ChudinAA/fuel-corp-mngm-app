@@ -83,14 +83,32 @@ export class ExchangeAdvancesStorage {
 
   // ===== TRANSACTIONS =====
 
-  async getTransactions(cardId: string): Promise<ExchangeAdvanceTransaction[]> {
-    return db.query.exchangeAdvanceTransactions.findMany({
-      where: and(
-        eq(exchangeAdvanceTransactions.cardId, cardId),
-        isNull(exchangeAdvanceTransactions.deletedAt),
-      ),
-      orderBy: [desc(exchangeAdvanceTransactions.createdAt)],
-    });
+  async getTransactions(
+    cardId: string,
+    limit = 50,
+    offset = 0,
+  ): Promise<{ data: ExchangeAdvanceTransaction[]; total: number }> {
+    const [data, [countRow]] = await Promise.all([
+      db.query.exchangeAdvanceTransactions.findMany({
+        where: and(
+          eq(exchangeAdvanceTransactions.cardId, cardId),
+          isNull(exchangeAdvanceTransactions.deletedAt),
+        ),
+        orderBy: [desc(exchangeAdvanceTransactions.createdAt)],
+        limit,
+        offset,
+      }),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(exchangeAdvanceTransactions)
+        .where(
+          and(
+            eq(exchangeAdvanceTransactions.cardId, cardId),
+            isNull(exchangeAdvanceTransactions.deletedAt),
+          ),
+        ),
+    ]);
+    return { data, total: countRow?.count ?? 0 };
   }
 
   async createTransaction(data: InsertExchangeAdvanceTransaction): Promise<ExchangeAdvanceTransaction> {

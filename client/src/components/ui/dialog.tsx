@@ -118,6 +118,39 @@ const DialogDescription = React.forwardRef<
 DialogDescription.displayName = DialogPrimitive.Description.displayName
 
 /**
+ * MinimizableDialog — замена Dialog для диалогов с возможностью сворачивания.
+ * При isMinimized=true: modal=false (снимает scroll lock и focus trap),
+ * Escape и внешние клики не закрывают диалог.
+ */
+const MinimizableDialog = ({
+  isMinimized,
+  onOpenChange,
+  children,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root> & {
+  isMinimized?: boolean;
+}) => {
+  const handleOpenChange = React.useCallback(
+    (open: boolean) => {
+      if (!open && isMinimized) return; // block accidental close while minimized
+      onOpenChange?.(open);
+    },
+    [isMinimized, onOpenChange],
+  );
+
+  return (
+    <DialogPrimitive.Root
+      modal={!isMinimized}
+      onOpenChange={handleOpenChange}
+      {...props}
+    >
+      {children}
+    </DialogPrimitive.Root>
+  );
+};
+MinimizableDialog.displayName = "MinimizableDialog";
+
+/**
  * MinimizableDialogContent — замена DialogContent для диалогов с возможностью
  * сворачивания. Рендерит оверлей и контент в общий div-обёртку, которую можно
  * полностью скрыть через display:none не теряя состояния формы внутри.
@@ -149,6 +182,9 @@ const MinimizableDialogContent = React.forwardRef<
             "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
             className,
           )}
+          onEscapeKeyDown={(e) => {
+            if (isMinimized) e.preventDefault();
+          }}
           onPointerDownOutside={(e) => {
             e.preventDefault();
             onPointerDownOutside?.(e);
@@ -174,6 +210,7 @@ MinimizableDialogContent.displayName = "MinimizableDialogContent";
 
 export {
   Dialog,
+  MinimizableDialog,
   DialogPortal,
   DialogOverlay,
   DialogClose,

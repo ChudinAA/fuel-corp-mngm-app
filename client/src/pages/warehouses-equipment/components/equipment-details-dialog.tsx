@@ -4,6 +4,7 @@ import { ru } from "date-fns/locale";
 import React, { useMemo } from "react";
 import {
   Dialog,
+  MinimizableDialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -112,7 +113,7 @@ export function EquipmentDetailsDialog({
   return (
     <>
       {MinimizedBar}
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <MinimizableDialog isMinimized={isMinimized} open={open} onOpenChange={onOpenChange}>
       <MinimizableDialogContent isMinimized={isMinimized} className="max-w-6xl max-h-[90vh]">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
@@ -259,7 +260,7 @@ export function EquipmentDetailsDialog({
           )}
         </ScrollArea>
       </MinimizableDialogContent>
-    </Dialog>
+    </MinimizableDialog>
     </>
   );
 }

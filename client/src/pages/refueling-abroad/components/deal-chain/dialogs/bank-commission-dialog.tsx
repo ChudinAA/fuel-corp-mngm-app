@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Dialog,
+  MinimizableDialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -57,7 +58,7 @@ export function BankCommissionDialog({
   return (
     <>
       {MinimizedBar}
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <MinimizableDialog isMinimized={isMinimized} open={open} onOpenChange={(v) => !v && onClose()}>
       <MinimizableDialogContent isMinimized={isMinimized} className="max-w-md">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
@@ -186,7 +187,7 @@ export function BankCommissionDialog({
           </Button>
         </DialogFooter>
       </MinimizableDialogContent>
-    </Dialog>
+    </MinimizableDialog>
     </>
   );
 }

@@ -2,7 +2,7 @@ import React from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, MinimizableDialogContent } from "@/components/ui/dialog";
+import { Dialog, MinimizableDialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, MinimizableDialogContent } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -90,7 +90,7 @@ export function AddEquipmentDialog({
   return (
     <>
       {MinimizedBar}
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <MinimizableDialog isMinimized={isMinimized} open={open} onOpenChange={onOpenChange}>
       <MinimizableDialogContent isMinimized={isMinimized}>
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
@@ -157,7 +157,7 @@ export function AddEquipmentDialog({
         </Form>
       </MinimizableDialogContent>
     <ErrorModalComponent />
-    </Dialog>
+    </MinimizableDialog>
     </>
   );
 }

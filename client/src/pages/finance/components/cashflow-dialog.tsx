@@ -8,6 +8,7 @@ import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Dialog,
+  MinimizableDialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -133,7 +134,7 @@ export function CashflowDialog({ open, onOpenChange, transaction }: CashflowDial
   return (
     <>
       {MinimizedBar}
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <MinimizableDialog isMinimized={isMinimized} open={open} onOpenChange={onOpenChange}>
       <MinimizableDialogContent isMinimized={isMinimized} className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
@@ -242,7 +243,7 @@ export function CashflowDialog({ open, onOpenChange, transaction }: CashflowDial
         </form>
       </MinimizableDialogContent>
     <ErrorModalComponent />
-    </Dialog>
+    </MinimizableDialog>
     </>
   );
 }

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Dialog,
+  MinimizableDialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -143,7 +144,7 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
   return (
     <>
       {MinimizedBar}
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <MinimizableDialog isMinimized={isMinimized} open={open} onOpenChange={onOpenChange}>
         <MinimizableDialogContent isMinimized={isMinimized} className="max-w-md">
           <DialogHeader>
             <div className="flex items-start justify-between gap-2">
@@ -317,7 +318,7 @@ export function InventoryDialog({ warehouse, open, onOpenChange }: InventoryDial
             </form>
           </Form>
         </MinimizableDialogContent>
-      </Dialog>
+      </MinimizableDialog>
       <ErrorModalComponent />
     </>
   );

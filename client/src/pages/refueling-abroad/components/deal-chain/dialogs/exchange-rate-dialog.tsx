@@ -9,6 +9,7 @@ import { Lock, ArrowRight } from "lucide-react";
 import { DateInput } from "@/components/ui/date-input";
 import {
   Dialog,
+  MinimizableDialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -124,7 +125,7 @@ export function ExchangeRateDialog({
   return (
     <>
       {MinimizedBar}
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <MinimizableDialog isMinimized={isMinimized} open={open} onOpenChange={(v) => !v && onClose()}>
       <MinimizableDialogContent isMinimized={isMinimized} className="max-w-md">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
@@ -299,7 +300,7 @@ export function ExchangeRateDialog({
           </Button>
         </DialogFooter>
       </MinimizableDialogContent>
-    </Dialog>
+    </MinimizableDialog>
     </>
   );
 }
