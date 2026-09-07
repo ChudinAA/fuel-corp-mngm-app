@@ -72,7 +72,7 @@ export function StorageCardDetailsDialog({
     <>
       {MinimizedBar}
     <MinimizableDialog isMinimized={isMinimized} open={open} onOpenChange={onOpenChange}>
-      <MinimizableDialogContent isMinimized={isMinimized} className="max-w-[960px] max-h-[85vh] flex flex-col">
+      <MinimizableDialogContent isMinimized={isMinimized} className="max-w-[960px] max-h-[85vh]">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
             <DialogTitle className="flex items-center gap-2">
@@ -170,7 +170,7 @@ export function StorageCardDetailsDialog({
 
         <Separator />
 
-        <ScrollArea className="flex-1 min-h-0 pr-4 mt-2 h-[calc(85vh-320px)]">
+        <ScrollArea className="h-[calc(85vh-320px)] pr-4 mt-2">
           {isLoading ? (
             <div className="space-y-2">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -178,6 +178,7 @@ export function StorageCardDetailsDialog({
               ))}
             </div>
           ) : transactions && transactions.length > 0 ? (
+            <div className="min-w-fit overflow-x-auto relative">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -292,6 +293,7 @@ export function StorageCardDetailsDialog({
                 })}
               </TableBody>
             </Table>
+            </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <History className="h-12 w-12 mx-auto mb-4 opacity-20" />

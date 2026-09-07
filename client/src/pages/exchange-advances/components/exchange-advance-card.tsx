@@ -281,7 +281,7 @@ export function ExchangeAdvanceCard({ card }: ExchangeAdvanceCardProps) {
       />
 
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+        <DialogContent className="max-w-2xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle>История транзакций — {card.sellerName}</DialogTitle>
           </DialogHeader>
@@ -291,7 +291,7 @@ export function ExchangeAdvanceCard({ card }: ExchangeAdvanceCardProps) {
               {formatMoney(balance)}
             </span>
           </div>
-          <ScrollArea className="flex-1 min-h-0 h-[calc(80vh-180px)]">
+          <ScrollArea className="h-[calc(80vh-170px)]">
             <Table>
               <TableHeader>
                 <TableRow>

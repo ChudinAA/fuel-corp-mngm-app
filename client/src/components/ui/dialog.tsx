@@ -119,8 +119,11 @@ DialogDescription.displayName = DialogPrimitive.Description.displayName
 
 /**
  * MinimizableDialog — замена Dialog для диалогов с возможностью сворачивания.
- * При isMinimized=true: modal=false (снимает scroll lock и focus trap),
- * Escape и внешние клики не закрывают диалог.
+ *
+ * Ключевое решение: modal={false} ВСЕГДА — это предотвращает внутреннее
+ * перемонтирование Radix при переключении modal prop, что ранее сбрасывало
+ * состояние форм. Блокировку скролла и оверлей обрабатываем вручную
+ * в MinimizableDialogContent.
  */
 const MinimizableDialog = ({
   isMinimized,
@@ -140,7 +143,7 @@ const MinimizableDialog = ({
 
   return (
     <DialogPrimitive.Root
-      modal={!isMinimized}
+      modal={false}
       onOpenChange={handleOpenChange}
       {...props}
     >
@@ -152,8 +155,13 @@ MinimizableDialog.displayName = "MinimizableDialog";
 
 /**
  * MinimizableDialogContent — замена DialogContent для диалогов с возможностью
- * сворачивания. Рендерит оверлей и контент в общий div-обёртку, которую можно
- * полностью скрыть через display:none не теряя состояния формы внутри.
+ * сворачивания.
+ *
+ * Стратегия сохранения данных:
+ * - Контент ВСЕГДА в DOM (display:none при сворачивании, не unmount).
+ * - modal={false} на Root не вызывает перемонтирование при смене состояния.
+ * - Скролл страницы блокируется вручную через useEffect.
+ * - Оверлей (чёрный фон) рендерится отдельно — только когда развёрнут.
  */
 const MinimizableDialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
@@ -172,36 +180,63 @@ const MinimizableDialogContent = React.forwardRef<
     },
     ref,
   ) => {
+    // Ручная блокировка скролла страницы: только когда диалог развёрнут.
+    // При сворачивании скролл восстанавливается, фон становится доступным.
+    React.useEffect(() => {
+      if (!isMinimized) {
+        const scrollbarWidth =
+          window.innerWidth - document.documentElement.clientWidth;
+        document.body.style.overflow = "hidden";
+        if (scrollbarWidth > 0) {
+          document.body.style.paddingRight = `${scrollbarWidth}px`;
+        }
+        return () => {
+          document.body.style.overflow = "";
+          document.body.style.paddingRight = "";
+        };
+      }
+    }, [isMinimized]);
+
     if (typeof document === "undefined") return null;
     return createPortal(
-      <div style={isMinimized ? { display: "none" } : undefined}>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <DialogPrimitive.Content
-          ref={ref}
-          className={cn(
-            "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
-            className,
-          )}
-          onEscapeKeyDown={(e) => {
-            if (isMinimized) e.preventDefault();
-          }}
-          onPointerDownOutside={(e) => {
-            e.preventDefault();
-            onPointerDownOutside?.(e);
-          }}
-          onInteractOutside={(e) => {
-            e.preventDefault();
-            onInteractOutside?.(e);
-          }}
-          {...props}
-        >
-          {children}
-          <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
-        </DialogPrimitive.Content>
-      </div>,
+      <>
+        {/* Оверлей: только когда развёрнут. Визуально блокирует фон. */}
+        {!isMinimized && (
+          <div
+            className="fixed inset-0 z-50 bg-black/80 animate-in fade-in-0"
+            aria-hidden="true"
+          />
+        )}
+        {/* Обёртка контента: всегда в DOM, скрыта через display:none при сворачивании.
+            Это сохраняет состояние React (данные форм) без перемонтирования. */}
+        <div style={isMinimized ? { display: "none" } : undefined}>
+          <DialogPrimitive.Content
+            ref={ref}
+            className={cn(
+              "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+              className,
+            )}
+            onEscapeKeyDown={(e) => {
+              if (isMinimized) e.preventDefault();
+            }}
+            onPointerDownOutside={(e) => {
+              e.preventDefault();
+              onPointerDownOutside?.(e);
+            }}
+            onInteractOutside={(e) => {
+              e.preventDefault();
+              onInteractOutside?.(e);
+            }}
+            {...props}
+          >
+            {children}
+            <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
+          </DialogPrimitive.Content>
+        </div>
+      </>,
       document.body,
     );
   },
