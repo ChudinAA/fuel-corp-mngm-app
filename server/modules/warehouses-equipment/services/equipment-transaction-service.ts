@@ -229,13 +229,15 @@ export class EquipmentTransactionService {
     }
 
     const oldTxDate = transaction.transactionDate || transaction.createdAt;
-    const effectiveDate =
-      dealDate && new Date(dealDate) < new Date(oldTxDate)
-        ? format(
-            new Date(dealDate).setHours(23, 59, 0, 0),
-            "yyyy-MM-dd'T'HH:mm:ss",
-          )
-        : oldTxDate;
+
+    // Always move transaction date to new deal date (both forward and backward).
+    const newEffectiveDate = dealDate
+      ? format(new Date(dealDate).setHours(23, 59, 0, 0), "yyyy-MM-dd'T'HH:mm:ss")
+      : oldTxDate;
+
+    // Recalculate from the EARLIER of old and new dates
+    const recalcStartDate =
+      new Date(newEffectiveDate) <= new Date(oldTxDate) ? newEffectiveDate : oldTxDate;
 
     await tx
       .update(equipmentTransactions)
@@ -247,7 +249,7 @@ export class EquipmentTransactionService {
         averageCostAfter: newAverageCost.toFixed(4),
         updatedAt: sql`NOW()`,
         updatedById: userId,
-        transactionDate: effectiveDate,
+        transactionDate: newEffectiveDate,
       })
       .where(eq(equipmentTransactions.id, transactionId));
 
@@ -271,16 +273,16 @@ export class EquipmentTransactionService {
       tx,
       equipmentId,
       productType,
-      effectiveDate,
+      recalcStartDate,
     );
     if (needsRecalc) {
       console.log(
-        `[EquipmentTransactionService] Transaction update requires recalculation for equipment ${equipmentId}`,
+        `[EquipmentTransactionService] Transaction update requires recalculation for equipment ${equipmentId} from ${recalcStartDate}`,
       );
       await EquipmentRecalculationQueueService.addToQueue(
         equipmentId,
         productType,
-        effectiveDate,
+        recalcStartDate,
         userId,
         1,
         tx,
@@ -288,6 +290,58 @@ export class EquipmentTransactionService {
     }
 
     return newBalance;
+  }
+
+  /**
+   * Updates only the transaction date when a deal's date changes without a quantity change.
+   * Enqueues recalculation from the earlier of old and new dates so both days are corrected.
+   */
+  static async updateTransactionDateAndRecalculate(
+    tx: any,
+    transactionId: string,
+    equipmentId: string,
+    productType: string,
+    oldDealDate: string,
+    newDealDate: string,
+    userId?: string,
+  ) {
+    const oldNormalized = format(
+      new Date(oldDealDate).setHours(23, 59, 0, 0),
+      "yyyy-MM-dd'T'HH:mm:ss",
+    );
+    const newNormalized = format(
+      new Date(newDealDate).setHours(23, 59, 0, 0),
+      "yyyy-MM-dd'T'HH:mm:ss",
+    );
+
+    if (oldNormalized === newNormalized) {
+      return;
+    }
+
+    await tx
+      .update(equipmentTransactions)
+      .set({
+        transactionDate: newNormalized,
+        updatedAt: sql`NOW()`,
+        updatedById: userId,
+      })
+      .where(eq(equipmentTransactions.id, transactionId));
+
+    const recalcStartDate =
+      new Date(newNormalized) <= new Date(oldNormalized) ? newNormalized : oldNormalized;
+
+    console.log(
+      `[EquipmentTransactionService] Date-only change: tx ${transactionId} moved from ${oldNormalized} to ${newNormalized}, recalc from ${recalcStartDate}`,
+    );
+
+    await EquipmentRecalculationQueueService.addToQueue(
+      equipmentId,
+      productType,
+      recalcStartDate,
+      userId,
+      1,
+      tx,
+    );
   }
 
   static async deleteTransactionAndRevertEquipment(

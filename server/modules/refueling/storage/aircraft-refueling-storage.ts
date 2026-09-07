@@ -393,7 +393,7 @@ export class AircraftRefuelingStorage {
         } else if (dateChanged) {
           // Только дата изменилась — обновляем дату транзакции и запускаем пересчёт.
           // Ранее этот случай полностью игнорировался, из-за чего дата транзакции
-          // на складе оставалась старой и возникал рассинхрон с реестром заправок.
+          // оставалась старой и возникал рассинхрон с реестром заправок.
           if (
             currentRefueling.warehouseId &&
             currentRefueling.transactionId
@@ -407,9 +407,20 @@ export class AircraftRefuelingStorage {
               data.refuelingDate!,
               data.updatedById,
             );
+          } else if (
+            currentRefueling.equipmentId &&
+            currentRefueling.equipmentTransactionId
+          ) {
+            await EquipmentTransactionService.updateTransactionDateAndRecalculate(
+              tx,
+              currentRefueling.equipmentTransactionId,
+              currentRefueling.equipmentId,
+              currentRefueling.productType,
+              currentRefueling.refuelingDate!,
+              data.refuelingDate!,
+              data.updatedById,
+            );
           }
-          // Для оборудования аналогичная логика не реализована, так как
-          // оборудование не имеет истории остатков по дням
         }
       }
 

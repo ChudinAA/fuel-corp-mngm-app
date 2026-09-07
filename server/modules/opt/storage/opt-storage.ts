@@ -232,33 +232,46 @@ export class OptStorage {
 
         data.transactionId = transaction.id;
       }
-      // Проверяем изменилось ли количество КГ и есть ли привязанная транзакция (для НЕ черновиков)
+      // Проверяем изменилось ли количество КГ и/или дата сделки, и есть ли привязанная транзакция (для НЕ черновиков)
       else if (
         !currentOpt.isDraft &&
-        data.quantityKg &&
         currentOpt.transactionId &&
         currentOpt.warehouseId &&
         (currentOpt.productType === PRODUCT_TYPE.KEROSENE ||
           currentOpt.productType === PRODUCT_TYPE.PVKJ)
       ) {
-        if (data.productType !== currentOpt.productType) {
+        if (
+          data.productType !== undefined &&
+          data.productType !== currentOpt.productType
+        ) {
           throw new Error(
             "Нельзя поменять тип продукта для существующей сделки",
           );
         }
 
-        if (data.warehouseId !== currentOpt.warehouseId) {
+        if (
+          data.warehouseId !== undefined &&
+          data.warehouseId !== currentOpt.warehouseId
+        ) {
           throw new Error(
             "Нельзя поменять склад-источник для существующей сделки",
           );
         }
 
         const oldQuantityKg = parseFloat(currentOpt.quantityKg);
-        const newQuantityKg = data.quantityKg;
+        const newQuantityKg = data.quantityKg
+          ? parseFloat(data.quantityKg.toString())
+          : oldQuantityKg;
         const oldTotalCost = parseFloat(currentOpt.purchaseAmount || "0");
-        const newTotalCost = data.purchaseAmount || 0;
+        const newTotalCost = data.purchaseAmount ?? oldTotalCost;
 
-        if (oldQuantityKg !== newQuantityKg) {
+        const quantityChanged = oldQuantityKg !== newQuantityKg;
+        const dateChanged =
+          data.dealDate !== undefined &&
+          data.dealDate !== currentOpt.dealDate;
+
+        if (quantityChanged) {
+          // Количество изменилось — обновляем транзакцию (метод также применит новую дату)
           await WarehouseTransactionService.updateTransactionAndRecalculateWarehouse(
             tx,
             currentOpt.transactionId,
@@ -270,6 +283,17 @@ export class OptStorage {
             currentOpt.productType || PRODUCT_TYPE.KEROSENE,
             data.updatedById,
             data.dealDate,
+          );
+        } else if (dateChanged) {
+          // Только дата изменилась — обновляем дату транзакции и запускаем пересчёт
+          await WarehouseTransactionService.updateTransactionDateAndRecalculate(
+            tx,
+            currentOpt.transactionId,
+            currentOpt.warehouseId,
+            currentOpt.productType || PRODUCT_TYPE.KEROSENE,
+            currentOpt.dealDate!,
+            data.dealDate!,
+            data.updatedById,
           );
         }
       }
