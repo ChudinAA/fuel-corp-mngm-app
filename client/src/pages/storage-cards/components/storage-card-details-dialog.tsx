@@ -170,7 +170,7 @@ export function StorageCardDetailsDialog({
 
         <Separator />
 
-        <ScrollArea className="flex-1 min-h-0 pr-4 mt-2">
+        <ScrollArea className="flex-1 min-h-0 pr-4 mt-2 h-[calc(85vh-320px)]">
           {isLoading ? (
             <div className="space-y-2">
               {[1, 2, 3, 4, 5].map((i) => (

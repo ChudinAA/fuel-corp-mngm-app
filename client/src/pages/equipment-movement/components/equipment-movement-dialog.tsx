@@ -28,7 +28,9 @@ import {
 } from "@/components/ui/form";
 import {
   Dialog,
+  MinimizableDialog,
   DialogContent,
+  MinimizableDialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -298,8 +300,8 @@ export function EquipmentMovementDialog({
 
   return (
     <>
-      <Dialog open={open && !isMinimized} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <MinimizableDialog isMinimized={isMinimized} open={open} onOpenChange={handleOpenChange}>
+        <MinimizableDialogContent isMinimized={isMinimized} className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -589,8 +591,8 @@ export function EquipmentMovementDialog({
               </div>
             </form>
           </Form>
-        </DialogContent>
-      </Dialog>
+        </MinimizableDialogContent>
+      </MinimizableDialog>
       {MinimizedBar}
 
       <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>

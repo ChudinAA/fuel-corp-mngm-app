@@ -2,7 +2,9 @@
 import { useState, useRef } from "react";
 import { 
   Dialog, 
+  MinimizableDialog,
   DialogContent, 
+  MinimizableDialogContent,
   DialogDescription, 
   DialogHeader, 
   DialogTitle 
@@ -76,8 +78,8 @@ export function AddOptDialog({
 
   return (
     <>
-      <Dialog open={isOpen && !isMinimized} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[950px] h-[80vh] overflow-y-auto">
+      <MinimizableDialog isMinimized={isMinimized} open={isOpen} onOpenChange={handleOpenChange}>
+        <MinimizableDialogContent isMinimized={isMinimized} className="sm:max-w-[950px] h-[80vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -100,8 +102,8 @@ export function AddOptDialog({
             onSuccess={onClose} 
             editData={editOpt ? (isCopy ? { ...editOpt, id: undefined as any } : editOpt) : null}
           />
-        </DialogContent>
-      </Dialog>
+        </MinimizableDialogContent>
+      </MinimizableDialog>
       {MinimizedBar}
 
       <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>

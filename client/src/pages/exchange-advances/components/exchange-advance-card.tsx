@@ -291,7 +291,7 @@ export function ExchangeAdvanceCard({ card }: ExchangeAdvanceCardProps) {
               {formatMoney(balance)}
             </span>
           </div>
-          <ScrollArea className="flex-1 min-h-0">
+          <ScrollArea className="flex-1 min-h-0 h-[calc(80vh-180px)]">
             <Table>
               <TableHeader>
                 <TableRow>

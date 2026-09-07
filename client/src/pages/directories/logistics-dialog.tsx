@@ -28,7 +28,9 @@ import {
 } from "@/components/ui/form";
 import {
   Dialog,
+  MinimizableDialog,
   DialogContent,
+  MinimizableDialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -390,7 +392,7 @@ export function AddLogisticsDialog({
 
   return (
     <>
-    <Dialog open={open && !isMinimized} onOpenChange={handleOpenChange}>
+    <MinimizableDialog isMinimized={isMinimized} open={open} onOpenChange={handleOpenChange}>
       {!isInline && (
         <DialogTrigger asChild>
           <Button size="sm" data-testid="button-add-logistics">
@@ -399,7 +401,7 @@ export function AddLogisticsDialog({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-md">
+      <MinimizableDialogContent isMinimized={isMinimized} className="max-w-md">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
             <DialogTitle>{logTitle}</DialogTitle>
@@ -840,9 +842,9 @@ export function AddLogisticsDialog({
           inlineOpen={addBaseOpen}
           onInlineOpenChange={setAddBaseOpen}
         />
-      </DialogContent>
+      </MinimizableDialogContent>
       <ErrorModalComponent />
-    </Dialog>
+    </MinimizableDialog>
     {MinimizedBar}
     </>
   );

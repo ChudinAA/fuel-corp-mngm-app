@@ -12,7 +12,9 @@ import { useErrorModal } from "@/hooks/use-error-modal";
 import { useMinimizableDialog } from "@/hooks/use-minimizable-dialog";
 import {
   Dialog,
+  MinimizableDialog,
   DialogContent,
+  MinimizableDialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -299,7 +301,7 @@ export function AddCustomerDialog({
 
   return (
     <>
-    <Dialog open={open && !isMinimized} onOpenChange={handleOpenChange}>
+    <MinimizableDialog isMinimized={isMinimized} open={open} onOpenChange={handleOpenChange}>
       {!isInline && (
         <DialogTrigger asChild>
           <Button size="sm" data-testid="button-add-customer">
@@ -308,7 +310,7 @@ export function AddCustomerDialog({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <MinimizableDialogContent isMinimized={isMinimized} className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
             <DialogTitle>{custTitle}</DialogTitle>
@@ -655,9 +657,9 @@ export function AddCustomerDialog({
           inlineOpen={addBaseOpen}
           onInlineOpenChange={setAddBaseOpen}
         />
-      </DialogContent>
+      </MinimizableDialogContent>
     <ErrorModalComponent />
-    </Dialog>
+    </MinimizableDialog>
     {MinimizedBar}
     </>
   );

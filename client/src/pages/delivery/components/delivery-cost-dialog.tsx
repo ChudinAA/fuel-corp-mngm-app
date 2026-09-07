@@ -28,7 +28,9 @@ import {
 } from "@/components/ui/form";
 import {
   Dialog,
+  MinimizableDialog,
   DialogContent,
+  MinimizableDialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -267,8 +269,9 @@ export function AddDeliveryCostDialog({
 
   return (
     <>
-    <Dialog
-      open={(editDeliveryCost !== null || open) && !isMinimized}
+    <MinimizableDialog
+      isMinimized={isMinimized}
+      open={editDeliveryCost !== null || open}
       onOpenChange={(isOpen) => {
         if (!isOpen) {
           handleClose();
@@ -288,7 +291,7 @@ export function AddDeliveryCostDialog({
           )}
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-lg">
+      <MinimizableDialogContent isMinimized={isMinimized} className="max-w-lg">
         <DialogHeader>
           <div className="flex items-start justify-between gap-2">
             <DialogTitle>{dcTitle}</DialogTitle>
@@ -605,9 +608,9 @@ export function AddDeliveryCostDialog({
             setAddCarrierOpen(false);
           }}
         />
-      </DialogContent>
+      </MinimizableDialogContent>
     <ErrorModalComponent />
-    </Dialog>
+    </MinimizableDialog>
     {MinimizedBar}
     </>
   );
