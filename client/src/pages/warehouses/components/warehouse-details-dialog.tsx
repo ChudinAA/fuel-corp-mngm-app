@@ -146,12 +146,22 @@ export function WarehouseDetailsDialog({
       const pData = groups[date].products[product];
       pData.transactions.push(tx);
 
-      // Сортируем транзакции внутри группы по времени создания для корректного определения баланса
-      pData.transactions.sort(
-        (a, b) =>
+      // Сортируем транзакции внутри группы в том же порядке, что и бэкенд:
+      // по transactionDate ASC → createdAt ASC → id ASC.
+      // Важно использовать все три поля как tiebreaker, потому что все транзакции
+      // одного дня хранятся с одинаковым transactionDate (конец дня T23:59:00),
+      // и без tiebreaker порядок нестабилен — lastTx может оказаться не последней
+      // применённой транзакцией, из-за чего сводный остаток за день некорректен.
+      pData.transactions.sort((a, b) => {
+        const timeDiff =
           new Date(a.transactionDate || a.createdAt).getTime() -
-          new Date(b.transactionDate || b.createdAt).getTime(),
-      );
+          new Date(b.transactionDate || b.createdAt).getTime();
+        if (timeDiff !== 0) return timeDiff;
+        const createdDiff =
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        if (createdDiff !== 0) return createdDiff;
+        return a.id.localeCompare(b.id);
+      });
 
       const qty = parseFloat(tx.quantityKg);
       const sum = parseFloat(tx.sum || "0");

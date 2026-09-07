@@ -58,7 +58,10 @@ export default function RefuelingPage({ equipmentType = EQUIPMENT_TYPE.COMMON }:
     <div className="space-y-4">
 
       <div className="space-y-4">
+        {/* key изменяется при смене редактируемой сделки, чтобы диалог и форма
+            полностью пересоздавались и не сохраняли стейт предыдущего редактирования */}
         <AddRefuelingDialog
+          key={editingRefueling?.id ?? (isCopy ? "copy-new" : "new")}
           isOpen={isDialogOpen}
           onClose={handleCloseDialog}
           editRefueling={editingRefueling}
