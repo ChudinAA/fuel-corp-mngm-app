@@ -810,7 +810,9 @@ export function AddPriceDialog({
       open={open || !!editPrice}
       isMinimized={isMinimizedStandalone}
       onOpenChange={(isOpen) => {
-        if (!isOpen) {
+        if (isOpen) {
+          setOpen(true);
+        } else {
           handleStandaloneClose();
         }
       }}
