@@ -21,14 +21,18 @@ export function normalizeAuditValue(value: any): string {
     }
   }
 
-  // Handle numbers - convert to string with consistent decimal places
+  // Handle numbers - round to 5 decimal places to eliminate floating-point drift
+  // e.g. 79497.60500000001 and 79497.61 should not be treated as different values
   if (typeof value === "number") {
-    return value.toString();
+    return parseFloat(value.toFixed(5)).toString();
   }
 
   // Handle strings that look like numbers with decimals
-  if (typeof value === "string" && /^\d+\.\d+$/.test(value)) {
-    return parseFloat(value).toString();
+  if (typeof value === "string" && /^-?\d+\.?\d*$/.test(value)) {
+    const num = parseFloat(value);
+    if (!isNaN(num)) {
+      return parseFloat(num.toFixed(5)).toString();
+    }
   }
 
   return String(value);

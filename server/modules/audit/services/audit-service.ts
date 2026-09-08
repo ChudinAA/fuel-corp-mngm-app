@@ -58,14 +58,14 @@ export class AuditService {
       driverId: async (id) => {
         try {
           const e = await storage.logistics.getLogisticsDriver(id);
-          return e ? `${e.lastName} ${e.firstName}`.trim() : null;
+          return e?.fullName || null;
         } catch { return null; }
       },
       vehicleId: async (id) => {
-        try { const e = await storage.logistics.getLogisticsVehicle(id); return e?.licensePlate || null; } catch { return null; }
+        try { const e = await storage.logistics.getLogisticsVehicle(id); return e?.regNumber || null; } catch { return null; }
       },
       trailerId: async (id) => {
-        try { const e = await storage.logistics.getLogisticsTrailer(id); return e?.licensePlate || null; } catch { return null; }
+        try { const e = await storage.logistics.getLogisticsTrailer(id); return e?.regNumber || null; } catch { return null; }
       },
     };
 
@@ -203,10 +203,12 @@ export class AuditService {
         continue;
       }
 
-      // Normalize numeric strings to remove trailing zeros (but keep zeros)
-      if (typeof value === 'string' && /^\d+\.?\d*$/.test(value)) {
+      // Normalize numeric values: round to 5 decimal places to eliminate float drift
+      if (typeof value === 'number') {
+        normalized[key] = parseFloat(value.toFixed(5));
+      } else if (typeof value === 'string' && /^-?\d+\.?\d*$/.test(value)) {
         const num = parseFloat(value);
-        normalized[key] = num.toString();
+        normalized[key] = isNaN(num) ? value : parseFloat(num.toFixed(5));
       } else {
         normalized[key] = value;
       }
