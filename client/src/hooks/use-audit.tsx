@@ -12,6 +12,8 @@ export interface AuditEntry {
   changedFields: string[] | null;
   oldData: Record<string, any> | null;
   newData: Record<string, any> | null;
+  /** Denormalized FK names, e.g. { buyerName: "ООО Газпром", supplierName: "Нафта" } */
+  entityMeta: Record<string, string> | null;
   entityDeleted: string | null;
   createdAt: string;
   rolledBackAt: string | null;

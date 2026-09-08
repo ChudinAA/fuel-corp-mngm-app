@@ -2,6 +2,7 @@ import { db } from "../../../db";
 import { auditLog, InsertAuditLog, AuditOperation, EntityType, AUDIT_OPERATIONS } from "../entities/audit";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { getChangedFields } from "../utils/audit-utils";
+import { storage } from "../../../storage/index";
 
 export interface AuditContext {
   userId?: string;
@@ -21,6 +22,83 @@ export interface AuditOptions {
 }
 
 export class AuditService {
+  /**
+   * Resolve human-readable names for FK fields in the data objects.
+   * Returns an entityMeta object keyed by UUID, e.g.:
+   *   { "3fa85f64-...": "ООО Газпром", "7c9b1a2d-...": "Нафта" }
+   * Storing by UUID ensures both old and new values of a changed FK are resolved.
+   */
+  private static async resolveFkNames(
+    oldData: any,
+    newData: any
+  ): Promise<Record<string, string>> {
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isUUID = (v: any) => typeof v === "string" && UUID_RE.test(v);
+
+    // FK field → resolver function
+    const resolvers: Record<string, (id: string) => Promise<string | null>> = {
+      buyerId: async (id) => {
+        try { const e = await storage.customers.getCustomer(id); return e?.name || null; } catch { return null; }
+      },
+      supplierId: async (id) => {
+        try { const e = await storage.suppliers.getSupplier(id); return e?.name || null; } catch { return null; }
+      },
+      carrierId: async (id) => {
+        try { const e = await storage.logistics.getLogisticsCarrier(id); return e?.name || null; } catch { return null; }
+      },
+      warehouseId: async (id) => {
+        try { const e = await storage.warehouses.getWarehouse(id); return e?.name || null; } catch { return null; }
+      },
+      fromWarehouseId: async (id) => {
+        try { const e = await storage.warehouses.getWarehouse(id); return e?.name || null; } catch { return null; }
+      },
+      toWarehouseId: async (id) => {
+        try { const e = await storage.warehouses.getWarehouse(id); return e?.name || null; } catch { return null; }
+      },
+      driverId: async (id) => {
+        try {
+          const e = await storage.logistics.getLogisticsDriver(id);
+          return e ? `${e.lastName} ${e.firstName}`.trim() : null;
+        } catch { return null; }
+      },
+      vehicleId: async (id) => {
+        try { const e = await storage.logistics.getLogisticsVehicle(id); return e?.licensePlate || null; } catch { return null; }
+      },
+      trailerId: async (id) => {
+        try { const e = await storage.logistics.getLogisticsTrailer(id); return e?.licensePlate || null; } catch { return null; }
+      },
+    };
+
+    // Collect unique (field, uuid) pairs from both old and new data
+    // Map by UUID to avoid resolving the same entity twice
+    const toResolve = new Map<string, { field: string; id: string }>();
+    for (const data of [oldData, newData]) {
+      if (!data || typeof data !== "object") continue;
+      for (const [key, value] of Object.entries(data)) {
+        if (resolvers[key] && isUUID(value)) {
+          const uuid = value as string;
+          if (!toResolve.has(uuid)) {
+            toResolve.set(uuid, { field: key, id: uuid });
+          }
+        }
+      }
+    }
+
+    // Resolve all names in parallel; store keyed by UUID so client can look up either old or new
+    const meta: Record<string, string> = {};
+    await Promise.all(
+      Array.from(toResolve.values()).map(async ({ field, id }) => {
+        const resolver = resolvers[field];
+        const name = await resolver(id);
+        if (name) {
+          meta[id] = name; // keyed by UUID
+        }
+      })
+    );
+
+    return meta;
+  }
+
   /**
    * Log an audit entry
    */
@@ -45,6 +123,9 @@ export class AuditService {
         changedFields = getChangedFields(normalizedOldData, normalizedNewData);
       }
 
+      // Resolve human-readable names for FK fields (buyerId, supplierId, etc.)
+      const entityMeta = await this.resolveFkNames(oldData, newData);
+
       await db.insert(auditLog).values({
         entityType,
         entityId,
@@ -52,6 +133,7 @@ export class AuditService {
         oldData: oldData || null,
         newData: newData || null,
         changedFields: changedFields && changedFields.length > 0 ? changedFields : null,
+        entityMeta: Object.keys(entityMeta).length > 0 ? entityMeta : null,
         userId: context.userId || null,
         userName: context.userName || null,
         userEmail: context.userEmail || null,
@@ -111,7 +193,7 @@ export class AuditService {
     const normalized: any = {};
     for (const [key, value] of Object.entries(data)) {
       // Skip arrays and nested objects (relations)
-      if (Array.isArray(value) || (value && typeof value === 'object' && !value.toISOString)) {
+      if (Array.isArray(value) || (value && typeof value === 'object' && !(value as any).toISOString)) {
         continue;
       }
 

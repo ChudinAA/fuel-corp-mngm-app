@@ -168,12 +168,18 @@ export function areApproxEqual(a: unknown, b: unknown): boolean {
 /** Форматирует значение поля для отображения пользователю */
 export function formatValue(
   value: unknown,
-  fieldName?: string
+  fieldName?: string,
+  entityMeta?: Record<string, string> | null
 ): string {
   if (value === null || value === undefined || value === "") return "—";
 
-  // UUID → не показываем сырой ID
-  if (isUUID(value)) return "задано";
+  // UUID → пробуем найти имя в entityMeta (ключ — сам UUID), иначе "задано"
+  if (isUUID(value)) {
+    if (entityMeta && typeof value === "string" && entityMeta[value]) {
+      return entityMeta[value];
+    }
+    return "задано";
+  }
 
   // Массив
   if (Array.isArray(value)) {
@@ -244,19 +250,38 @@ export function computeChanges(
   entityType: string
 ): FieldChange[] {
   const skip = (f: string) => !isFieldVisible(entityType, f);
-  const isFK = (f: string, v: unknown) => isUUID(v) || isUUID(entry.oldData?.[f]);
+  const meta = entry.entityMeta;
+
+  /**
+   * Resolve an FK value: if the value is a UUID and entityMeta has an entry
+   * for that UUID, return the human-readable name instead.
+   * Returns { val, resolved } where resolved=true means we got a real name.
+   */
+  const resolveFK = (v: unknown): { val: unknown; resolved: boolean } => {
+    if (isUUID(v) && meta && typeof v === "string" && meta[v]) {
+      return { val: meta[v], resolved: true };
+    }
+    return { val: v, resolved: false };
+  };
+
+  const rawIsFK = (f: string, v: unknown) => isUUID(v) || isUUID(entry.oldData?.[f]);
 
   const make = (
     field: string,
     oldVal: unknown,
     newVal: unknown
-  ): FieldChange => ({
-    field,
-    label: getFieldLabel(entityType, field),
-    oldVal,
-    newVal,
-    isFK: isFK(field, oldVal) || isFK(field, newVal),
-  });
+  ): FieldChange => {
+    const { val: resolvedOld, resolved: oldResolved } = resolveFK(oldVal);
+    const { val: resolvedNew, resolved: newResolved } = resolveFK(newVal);
+    const stillFK = !oldResolved && !newResolved && (rawIsFK(field, oldVal) || rawIsFK(field, newVal));
+    return {
+      field,
+      label: getFieldLabel(entityType, field),
+      oldVal: resolvedOld,
+      newVal: resolvedNew,
+      isFK: stillFK,
+    };
+  };
 
   // Пустое значение
   const isEmpty = (v: unknown) =>

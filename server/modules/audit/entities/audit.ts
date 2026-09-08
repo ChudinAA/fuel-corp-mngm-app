@@ -13,6 +13,8 @@ export const auditLog = pgTable("audit_log", {
   oldData: jsonb("old_data"),
   newData: jsonb("new_data"),
   changedFields: text("changed_fields").array(),
+  /** Denormalized human-readable names for FK fields, e.g. { buyerName: "ООО Газпром" } */
+  entityMeta: jsonb("entity_meta"),
   userId: uuid("user_id").references(() => users.id),
   userName: text("user_name"),
   userEmail: text("user_email"),
