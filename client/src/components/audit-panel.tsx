@@ -47,11 +47,13 @@ import { useAudit, type AuditEntry } from "@/hooks/use-audit";
 import { useRollback } from "@/hooks/use-rollback";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { ENTITY_TYPE_LABELS } from "@/lib/field-labels";
 import {
-  getFieldLabel,
-  ENTITY_TYPE_LABELS,
-  isFieldVisible,
-} from "@/lib/field-labels";
+  computeChanges,
+  getEntitySummary,
+  changeSummary,
+  formatValue,
+} from "@/lib/audit-helpers";
 
 interface AuditPanelProps {
   open: boolean;
@@ -61,93 +63,60 @@ interface AuditPanelProps {
   entityName?: string;
 }
 
-// ─── Конфигурация типов действий ────────────────────────────────────────────
+// ─── Конфигурация типов действий ─────────────────────────────────────────────
 
 const ACTION_CONFIG = {
   CREATE: {
     icon: Plus,
     label: "Создание",
-    shortLabel: "Создано",
     color: "text-emerald-600 dark:text-emerald-500",
+    dotCls: "bg-emerald-500",
     badgeCls:
       "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800/50 dark:bg-emerald-950/30 dark:text-emerald-400",
-    dotCls: "bg-emerald-500",
+    bgCls: "bg-emerald-50 dark:bg-emerald-950/20",
   },
   UPDATE: {
     icon: Pencil,
     label: "Изменение",
-    shortLabel: "Изменено",
     color: "text-blue-600 dark:text-blue-500",
+    dotCls: "bg-blue-500",
     badgeCls:
       "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800/50 dark:bg-blue-950/30 dark:text-blue-400",
-    dotCls: "bg-blue-500",
+    bgCls: "bg-blue-50 dark:bg-blue-950/20",
   },
   DELETE: {
     icon: Trash2,
     label: "Удаление",
-    shortLabel: "Удалено",
     color: "text-red-600 dark:text-red-500",
+    dotCls: "bg-red-500",
     badgeCls:
       "border-red-300 bg-red-50 text-red-700 dark:border-red-800/50 dark:bg-red-950/30 dark:text-red-400",
-    dotCls: "bg-red-500",
+    bgCls: "bg-red-50 dark:bg-red-950/20",
   },
   RESTORE: {
     icon: RotateCcw,
     label: "Восстановление",
-    shortLabel: "Восстановлено",
     color: "text-purple-600 dark:text-purple-500",
+    dotCls: "bg-purple-500",
     badgeCls:
       "border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-800/50 dark:bg-purple-950/30 dark:text-purple-400",
-    dotCls: "bg-purple-500",
+    bgCls: "bg-purple-50 dark:bg-purple-950/20",
   },
 } as const;
 
-// ─── Вспомогательные функции ─────────────────────────────────────────────────
+// ─── Вспомогательные ─────────────────────────────────────────────────────────
 
-/** Форматирует значение для отображения пользователю */
-function formatValue(value: unknown): string {
-  if (value === null || value === undefined || value === "") return "—";
-  if (typeof value === "boolean") return value ? "Да" : "Нет";
-  if (typeof value === "number") return value.toLocaleString("ru-RU");
-  if (typeof value === "string") {
-    // ISO-дата/время
-    if (/^\d{4}-\d{2}-\d{2}(T|\s)/.test(value)) {
-      try {
-        const d = new Date(value);
-        if (!isNaN(d.getTime())) {
-          return value.includes("T") || value.includes(" ")
-            ? format(d, "dd.MM.yyyy HH:mm", { locale: ru })
-            : format(d, "dd.MM.yyyy", { locale: ru });
-        }
-      } catch {}
-    }
-    // Дата без времени
-    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      try {
-        const d = new Date(value + "T00:00:00");
-        if (!isNaN(d.getTime())) return format(d, "dd.MM.yyyy", { locale: ru });
-      } catch {}
-    }
-    return value;
-  }
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
-}
-
-/** Метка даты группы (Сегодня / Вчера / дата) */
 function formatDateGroup(dateStr: string): string {
-  const d = new Date(dateStr);
+  const d = new Date(dateStr + "T00:00:00");
   if (isToday(d)) return "Сегодня";
   if (isYesterday(d)) return "Вчера";
   return format(d, "d MMMM yyyy", { locale: ru });
 }
 
-/** Определяет, является ли запись результатом отката */
-function isRollbackResult(entry: AuditEntry): boolean {
+function isRollbackEntry(entry: AuditEntry): boolean {
   return !!entry.userName?.includes("откат");
 }
 
-/** Текстовая расшифровка типа отката */
 function rollbackLabel(userName: string): string {
   if (userName.includes("откат создания")) return "Откат создания";
   if (userName.includes("откат изменения")) return "Откат изменения";
@@ -155,101 +124,12 @@ function rollbackLabel(userName: string): string {
   return "Откат";
 }
 
-/** Очищает имя пользователя от пометок об откате */
 function cleanUserName(userName: string | null | undefined): string {
   if (!userName) return "Неизвестно";
   return userName.replace(/\s*\(откат.*?\)\s*/g, "").trim();
 }
 
-/** Вычисляет видимые изменения из записи аудита */
-function computeChanges(
-  entry: AuditEntry,
-  entityType: string
-): Array<{ field: string; label: string; oldVal: unknown; newVal: unknown }> {
-  const skip = (field: string) => !isFieldVisible(entityType, field);
-
-  if (entry.operation === "DELETE" && entry.oldData) {
-    return Object.keys(entry.oldData)
-      .filter((f) => !skip(f))
-      .filter((f) => entry.oldData![f] !== null && entry.oldData![f] !== undefined && entry.oldData![f] !== "")
-      .map((f) => ({
-        field: f,
-        label: getFieldLabel(entityType, f),
-        oldVal: entry.oldData![f],
-        newVal: null,
-      }));
-  }
-
-  if (entry.operation === "RESTORE" && entry.newData) {
-    return Object.keys(entry.newData)
-      .filter((f) => !skip(f))
-      .filter((f) => entry.newData![f] !== null && entry.newData![f] !== undefined && entry.newData![f] !== "")
-      .map((f) => ({
-        field: f,
-        label: getFieldLabel(entityType, f),
-        oldVal: null,
-        newVal: entry.newData![f],
-      }));
-  }
-
-  if (entry.operation === "CREATE" && entry.newData) {
-    return Object.keys(entry.newData)
-      .filter((f) => !skip(f))
-      .filter((f) => entry.newData![f] !== null && entry.newData![f] !== undefined && entry.newData![f] !== "")
-      .map((f) => ({
-        field: f,
-        label: getFieldLabel(entityType, f),
-        oldVal: null,
-        newVal: entry.newData![f],
-      }));
-  }
-
-  // UPDATE — только changedFields
-  if (entry.changedFields && entry.changedFields.length > 0) {
-    return entry.changedFields
-      .filter((f) => !skip(f))
-      .filter((f) => {
-        const o = entry.oldData?.[f];
-        const n = entry.newData?.[f];
-        // Пропускаем если оба null/undefined
-        return !(
-          (o === null || o === undefined || o === "") &&
-          (n === null || n === undefined || n === "")
-        );
-      })
-      .map((f) => ({
-        field: f,
-        label: getFieldLabel(entityType, f),
-        oldVal: entry.oldData?.[f],
-        newVal: entry.newData?.[f],
-      }));
-  }
-
-  return [];
-}
-
-/** Краткая сводка изменённых полей для превью строки */
-function changeSummary(
-  entry: AuditEntry,
-  entityType: string
-): string | null {
-  if (entry.operation === "CREATE") return "Новая запись";
-  if (entry.operation === "DELETE") return "Запись удалена";
-  if (entry.operation === "RESTORE") return "Запись восстановлена";
-
-  if (entry.changedFields && entry.changedFields.length > 0) {
-    const visible = entry.changedFields.filter((f) =>
-      isFieldVisible(entityType, f)
-    );
-    if (visible.length === 0) return null;
-    const labels = visible.slice(0, 3).map((f) => getFieldLabel(entityType, f));
-    const suffix = visible.length > 3 ? ` +${visible.length - 3}` : "";
-    return labels.join(", ") + suffix;
-  }
-  return null;
-}
-
-// ─── Компонент детального просмотра изменений ───────────────────────────────
+// ─── Детальный просмотр изменений ────────────────────────────────────────────
 
 function ChangeDetail({
   entry,
@@ -265,26 +145,64 @@ function ChangeDetail({
 
   if (changes.length === 0) {
     return (
-      <p className="text-xs text-muted-foreground italic px-1">
-        Подробности недоступны
+      <p className="text-xs text-muted-foreground italic">
+        Нет данных для отображения
       </p>
     );
+  }
+
+  // Специальный режим для авансовых карт (показываем баланс как пополнение)
+  if (entityType === "exchange_advance_cards" && entry.operation === "UPDATE") {
+    const balChange = changes.find((c) => c.field === "currentBalance");
+    if (balChange) {
+      const oldBal = balChange.oldVal as number | null;
+      const newBal = balChange.newVal as number | null;
+      const diff =
+        oldBal != null && newBal != null ? (newBal as number) - (oldBal as number) : null;
+      const isTopUp = diff !== null && diff > 0;
+      return (
+        <div className="space-y-2">
+          <div className={cn(
+            "flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium",
+            isTopUp
+              ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400"
+              : "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400"
+          )}>
+            <span>{isTopUp ? "Пополнение" : "Списание"}</span>
+            {diff !== null && (
+              <span className="font-bold">
+                {isTopUp ? "+" : ""}{diff.toLocaleString("ru-RU", { maximumFractionDigits: 2 })}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 text-xs px-1">
+            <span className="text-muted-foreground">Баланс:</span>
+            <span className="text-red-600 dark:text-red-400 line-through">{formatValue(oldBal, "currentBalance")}</span>
+            <ArrowRight className="h-3 w-3 text-muted-foreground" />
+            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{formatValue(newBal, "currentBalance")}</span>
+          </div>
+          {/* Остальные изменения (кроме баланса) */}
+          {changes.filter(c => c.field !== "currentBalance").map(({ field, label, oldVal, newVal }) => (
+            <FieldRow key={field} label={label} oldVal={oldVal} newVal={newVal} field={field} operation={entry.operation} />
+          ))}
+        </div>
+      );
+    }
   }
 
   if (entry.operation === "CREATE") {
     return (
       <div className="space-y-1.5">
-        <p className="text-xs text-muted-foreground mb-2 font-medium">
-          Созданные данные:
-        </p>
-        <div className="grid gap-1">
-          {changes.map(({ field, label, newVal }) => (
-            <div key={field} className="flex items-baseline gap-2 text-xs">
-              <span className="text-muted-foreground min-w-[120px] shrink-0">
-                {label}
-              </span>
-              <span className="font-medium text-foreground break-words">
-                {formatValue(newVal)}
+        <p className="text-[11px] text-muted-foreground font-medium mb-2 uppercase tracking-wide">Созданные данные</p>
+        <div className="grid gap-1.5">
+          {changes.map(({ field, label, newVal, isFK }) => (
+            <div key={field} className="flex items-baseline gap-2 text-xs min-w-0">
+              <span className="text-muted-foreground shrink-0 w-[130px] truncate" title={label}>{label}</span>
+              <span className={cn(
+                "font-medium text-foreground break-words min-w-0",
+                isFK && "text-muted-foreground italic"
+              )}>
+                {isFK ? "задан(о)" : formatValue(newVal, field)}
               </span>
             </div>
           ))}
@@ -296,17 +214,16 @@ function ChangeDetail({
   if (entry.operation === "DELETE") {
     return (
       <div className="space-y-1.5">
-        <p className="text-xs text-muted-foreground mb-2 font-medium">
-          Удалённые данные:
-        </p>
-        <div className="grid gap-1">
-          {changes.map(({ field, label, oldVal }) => (
-            <div key={field} className="flex items-baseline gap-2 text-xs">
-              <span className="text-muted-foreground min-w-[120px] shrink-0">
-                {label}
-              </span>
-              <span className="line-through text-red-600 dark:text-red-400 font-medium break-words">
-                {formatValue(oldVal)}
+        <p className="text-[11px] text-muted-foreground font-medium mb-2 uppercase tracking-wide">Удалённые данные</p>
+        <div className="grid gap-1.5">
+          {changes.map(({ field, label, oldVal, isFK }) => (
+            <div key={field} className="flex items-baseline gap-2 text-xs min-w-0">
+              <span className="text-muted-foreground shrink-0 w-[130px] truncate" title={label}>{label}</span>
+              <span className={cn(
+                "line-through text-red-600 dark:text-red-400 break-words min-w-0",
+                isFK && "not-italic text-muted-foreground"
+              )}>
+                {isFK ? "было задан(о)" : formatValue(oldVal, field)}
               </span>
             </div>
           ))}
@@ -318,17 +235,16 @@ function ChangeDetail({
   if (entry.operation === "RESTORE") {
     return (
       <div className="space-y-1.5">
-        <p className="text-xs text-muted-foreground mb-2 font-medium">
-          Восстановленные данные:
-        </p>
-        <div className="grid gap-1">
-          {changes.map(({ field, label, newVal }) => (
-            <div key={field} className="flex items-baseline gap-2 text-xs">
-              <span className="text-muted-foreground min-w-[120px] shrink-0">
-                {label}
-              </span>
-              <span className="text-purple-700 dark:text-purple-400 font-medium break-words">
-                {formatValue(newVal)}
+        <p className="text-[11px] text-muted-foreground font-medium mb-2 uppercase tracking-wide">Восстановленные данные</p>
+        <div className="grid gap-1.5">
+          {changes.map(({ field, label, newVal, isFK }) => (
+            <div key={field} className="flex items-baseline gap-2 text-xs min-w-0">
+              <span className="text-muted-foreground shrink-0 w-[130px] truncate" title={label}>{label}</span>
+              <span className={cn(
+                "text-purple-700 dark:text-purple-400 font-medium break-words min-w-0",
+                isFK && "italic"
+              )}>
+                {isFK ? "восстановлен(о)" : formatValue(newVal, field)}
               </span>
             </div>
           ))}
@@ -337,33 +253,55 @@ function ChangeDetail({
     );
   }
 
-  // UPDATE — показываем "было → стало"
+  // UPDATE
   return (
-    <div className="space-y-2">
-      <p className="text-xs text-muted-foreground mb-2 font-medium">
-        Изменения:
-      </p>
-      <div className="grid gap-3">
-        {changes.map(({ field, label, oldVal, newVal }) => (
-          <div key={field} className="space-y-1">
-            <p className="text-xs font-medium text-foreground">{label}</p>
-            <div className="flex items-center gap-2 text-xs flex-wrap">
-              <span className="px-2 py-0.5 rounded bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 line-through break-words max-w-[160px]">
-                {formatValue(oldVal)}
-              </span>
-              <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-              <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-semibold break-words max-w-[160px]">
-                {formatValue(newVal)}
-              </span>
-            </div>
-          </div>
-        ))}
+    <div className="space-y-2.5">
+      <p className="text-[11px] text-muted-foreground font-medium mb-2 uppercase tracking-wide">Изменения</p>
+      {changes.map(({ field, label, oldVal, newVal, isFK }) => (
+        <FieldRow key={field} label={label} oldVal={oldVal} newVal={newVal} field={field} operation="UPDATE" isFK={isFK} />
+      ))}
+    </div>
+  );
+}
+
+function FieldRow({
+  label,
+  oldVal,
+  newVal,
+  field,
+  operation,
+  isFK,
+}: {
+  label: string;
+  oldVal: unknown;
+  newVal: unknown;
+  field: string;
+  operation: string;
+  isFK?: boolean;
+}) {
+  return (
+    <div className="space-y-0.5">
+      <p className="text-[11px] font-semibold text-foreground/80">{label}</p>
+      <div className="flex items-center gap-2 flex-wrap text-xs">
+        {isFK ? (
+          <span className="text-muted-foreground italic">изменена ссылка</span>
+        ) : (
+          <>
+            <span className="px-2 py-0.5 rounded bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 line-through max-w-[160px] break-words">
+              {formatValue(oldVal, field)}
+            </span>
+            <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+            <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-semibold max-w-[160px] break-words">
+              {formatValue(newVal, field)}
+            </span>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-// ─── Строка записи аудита ────────────────────────────────────────────────────
+// ─── Строка записи аудита ─────────────────────────────────────────────────────
 
 function AuditEntryRow({
   entry,
@@ -380,21 +318,33 @@ function AuditEntryRow({
   const [showConfirm, setShowConfirm] = useState(false);
 
   const config =
-    ACTION_CONFIG[entry.operation as keyof typeof ACTION_CONFIG] ||
+    ACTION_CONFIG[entry.operation as keyof typeof ACTION_CONFIG] ??
     ACTION_CONFIG.UPDATE;
   const Icon = config.icon;
+
   const isRolledBack = !!entry.rolledBackAt;
   const isEntityDeleted = !!entry.entityDeleted;
-  const isRollbackEntry = isRollbackResult(entry);
-  const summary = changeSummary(entry, entityType);
+  const isRollback = isRollbackEntry(entry);
   const canRollback =
     isAdmin &&
     ["CREATE", "UPDATE", "DELETE"].includes(entry.operation) &&
     !isRolledBack &&
     !isEntityDeleted;
 
-  const timeStr = format(new Date(entry.createdAt), "HH:mm", { locale: ru });
+  const timeStr = format(new Date(entry.createdAt), "HH:mm");
   const userName = cleanUserName(entry.userName);
+
+  // Идентификатор записи (дата/тип/кол-во/название)
+  const entityId = useMemo(
+    () => getEntitySummary(entry, entityType),
+    [entry, entityType]
+  );
+
+  // Краткое описание изменённых полей (только для UPDATE)
+  const fieldsSummary = useMemo(
+    () => changeSummary(entry, entityType),
+    [entry, entityType]
+  );
 
   return (
     <>
@@ -402,58 +352,47 @@ function AuditEntryRow({
         <CollapsibleTrigger asChild>
           <div
             className={cn(
-              "group flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors",
+              "group flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors select-none",
               "hover:bg-muted/60",
               expanded && "bg-muted/40",
-              isRolledBack && "opacity-60"
+              isRolledBack && "opacity-55"
             )}
           >
-            {/* Иконка действия */}
+            {/* Иконка */}
             <div
               className={cn(
-                "mt-0.5 h-7 w-7 rounded-full flex items-center justify-center shrink-0",
-                "bg-background border",
+                "mt-0.5 h-7 w-7 rounded-full flex items-center justify-center shrink-0 bg-background border",
                 config.color
               )}
             >
               <Icon className="h-3.5 w-3.5" />
             </div>
 
-            {/* Основная информация */}
+            {/* Контент */}
             <div className="flex-1 min-w-0">
+              {/* Первая строка: время · пользователь · бейдж */}
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Время */}
                 <span className="text-xs font-mono text-muted-foreground tabular-nums">
                   {timeStr}
                 </span>
-
-                {/* Пользователь */}
                 <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
                   <User className="h-3 w-3 text-muted-foreground" />
                   {userName}
                 </span>
-
-                {/* Бейдж действия */}
                 <Badge
                   variant="outline"
                   className={cn("text-[10px] px-1.5 py-0 h-4", config.badgeCls)}
                 >
-                  {isRollbackEntry
-                    ? rollbackLabel(entry.userName || "")
-                    : config.label}
+                  {isRollback ? rollbackLabel(entry.userName || "") : config.label}
                 </Badge>
-
-                {/* Удалённая запись */}
                 {isEntityDeleted && entry.operation !== "DELETE" && (
                   <Badge
                     variant="outline"
-                    className="text-[10px] px-1.5 py-0 h-4 border-muted-foreground/30 text-muted-foreground"
+                    className="text-[10px] px-1.5 py-0 h-4 text-muted-foreground border-muted-foreground/30"
                   >
                     Запись удалена
                   </Badge>
                 )}
-
-                {/* Уже откачено */}
                 {isRolledBack && (
                   <Badge
                     variant="outline"
@@ -464,29 +403,33 @@ function AuditEntryRow({
                 )}
               </div>
 
-              {/* Краткое описание */}
-              {summary && (
-                <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                  {summary}
+              {/* Идентификатор сущности */}
+              {entityId && (
+                <p className="text-xs text-foreground/70 font-medium mt-0.5 truncate">
+                  {entityId}
                 </p>
               )}
 
-              {/* Информация об откате */}
+              {/* Список изменённых полей (только для UPDATE) */}
+              {fieldsSummary && (
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                  {fieldsSummary}
+                </p>
+              )}
+
+              {/* Дата отката */}
               {isRolledBack && entry.rolledBackAt && (
                 <p className="text-[10px] text-muted-foreground mt-0.5">
                   Откат:{" "}
-                  {format(
-                    new Date(entry.rolledBackAt),
-                    "dd.MM.yyyy в HH:mm",
-                    { locale: ru }
-                  )}
+                  {format(new Date(entry.rolledBackAt), "dd.MM.yyyy в HH:mm", {
+                    locale: ru,
+                  })}
                 </p>
               )}
             </div>
 
-            {/* Правая часть: кнопки и chevron */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              {/* Кнопка отката (только admin) */}
+            {/* Правая часть */}
+            <div className="flex items-center gap-1 shrink-0">
               {canRollback && (
                 <Button
                   variant="ghost"
@@ -501,7 +444,6 @@ function AuditEntryRow({
                   Откатить
                 </Button>
               )}
-
               <ChevronRight
                 className={cn(
                   "h-3.5 w-3.5 text-muted-foreground transition-transform",
@@ -554,7 +496,7 @@ function AuditEntryRow({
   );
 }
 
-// ─── Группа по дате ──────────────────────────────────────────────────────────
+// ─── Группа по дате ───────────────────────────────────────────────────────────
 
 function DateGroup({
   dateKey,
@@ -574,10 +516,9 @@ function DateGroup({
 
   return (
     <div>
-      {/* Заголовок даты */}
       <button
         onClick={() => setCollapsed((c) => !c)}
-        className="flex items-center gap-2 w-full py-2 px-1 text-left group"
+        className="flex items-center gap-2 w-full py-1.5 px-1 text-left"
       >
         <ChevronDown
           className={cn(
@@ -585,16 +526,15 @@ function DateGroup({
             collapsed && "-rotate-90"
           )}
         />
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
           {label}
         </span>
-        <span className="text-xs text-muted-foreground/60 font-normal">
+        <span className="text-[11px] text-muted-foreground/50">
           ({entries.length})
         </span>
-        <div className="flex-1 h-px bg-border/50 ml-1" />
+        <div className="flex-1 h-px bg-border/40 ml-1" />
       </button>
 
-      {/* Записи дня */}
       {!collapsed && (
         <div className="space-y-0.5">
           {entries.map((entry) => (
@@ -612,7 +552,7 @@ function DateGroup({
   );
 }
 
-// ─── Главный компонент панели ─────────────────────────────────────────────────
+// ─── Главная панель ───────────────────────────────────────────────────────────
 
 export function AuditPanel({
   open,
@@ -638,7 +578,7 @@ export function AuditPanel({
     [auditHistory]
   );
 
-  // Группировка по дате (YYYY-MM-DD), сортировка: свежие сверху
+  // Группировка по дате, свежие сверху
   const groupedByDate = useMemo(() => {
     const groups: Record<string, AuditEntry[]> = {};
     entries.forEach((entry) => {
@@ -664,17 +604,16 @@ export function AuditPanel({
             <History className="h-4 w-4 text-muted-foreground" />
             История изменений
           </SheetTitle>
-          <SheetDescription className="text-xs">
-            {entityName ? (
+          <SheetDescription className="text-xs flex items-center gap-2 flex-wrap">
+            <span className="text-muted-foreground">{entityLabel}</span>
+            {entityName && (
               <>
-                <span className="text-muted-foreground">{entityLabel}: </span>
+                <span className="text-muted-foreground">·</span>
                 <span className="font-medium text-foreground">{entityName}</span>
               </>
-            ) : (
-              <span className="text-muted-foreground">{entityLabel}</span>
             )}
             {isAdmin && (
-              <span className="ml-2 inline-flex items-center gap-1 text-amber-600 dark:text-amber-500">
+              <span className="ml-auto inline-flex items-center gap-1 text-amber-600 dark:text-amber-500 text-[11px]">
                 <ShieldAlert className="h-3 w-3" />
                 Откат доступен
               </span>
@@ -691,7 +630,8 @@ export function AuditPanel({
                   <div key={i} className="flex items-start gap-3">
                     <Skeleton className="h-7 w-7 rounded-full shrink-0" />
                     <div className="flex-1 space-y-1.5">
-                      <Skeleton className="h-3.5 w-40" />
+                      <Skeleton className="h-3.5 w-48" />
+                      <Skeleton className="h-3 w-32" />
                       <Skeleton className="h-3 w-24" />
                     </div>
                   </div>
@@ -700,11 +640,9 @@ export function AuditPanel({
             ) : entries.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                  <History className="h-6 w-6 text-muted-foreground opacity-50" />
+                  <History className="h-6 w-6 text-muted-foreground opacity-40" />
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  История изменений пуста
-                </p>
+                <p className="text-sm text-muted-foreground">История изменений пуста</p>
               </div>
             ) : (
               <div className="space-y-1">
@@ -719,7 +657,6 @@ export function AuditPanel({
                   />
                 ))}
 
-                {/* Загрузить ещё */}
                 {hasNextPage && (
                   <div className="pt-2 px-2">
                     <Button
@@ -745,7 +682,7 @@ export function AuditPanel({
           </div>
         </ScrollArea>
 
-        {/* Нижняя панель */}
+        {/* Низ */}
         <div className="px-4 py-3 border-t shrink-0">
           <Button
             variant="outline"
