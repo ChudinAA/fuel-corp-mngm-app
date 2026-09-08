@@ -117,8 +117,12 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
     aircraftNumber: "Номер ВС",
     orderNumber: "Номер заказа",
     flightNumber: "Номер рейса",
+    airportCode: "Код аэропорта",
     airport: "Аэропорт",
     country: "Страна",
+    // Посредники и банки (форматируются сервером как строки)
+    intermediaries: "Посредники",
+    bankCommissions: "Банки в цепочке",
     productType: "Тип топлива",
     inputMode: "Единица ввода",
     quantityKg: "Количество (кг)",
@@ -203,21 +207,24 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
   // ── СКЛАДЫ ────────────────────────────────────────────────────────────────────
   warehouses: {
     name: "Название",
-    supplierId: "Поставщик",
-    equipmentType: "Тип склада",
+    supplierId: "Связанный поставщик",
     storageCost: "Стоимость хранения (руб./т)",
     isExport: "Экспортный склад",
     isActive: "Активен",
     limitVolume: "Лимит объёма (т)",
     limitProductType: "Лимит по типу топлива",
     limitExpiresAt: "Срок действия лимита",
+    // Базисы и услуги — показываем (разрешено в ENTITY_SPECIFIC_SHOW)
+    baseIds: "Базисы",
+    services: "Услуги склада",
   },
 
   // ── ПРАЙС ─────────────────────────────────────────────────────────────────────
   prices: {
     productType: "Тип топлива",
-    counterpartyType: "Тип контрагента",
-    counterpartyRole: "Роль",
+    counterpartyType: "Тип сделки",
+    counterpartyRole: "Роль контрагента",
+    counterpartyId: "Контрагент",
     basis: "Базис",
     volume: "Объём",
     limitType: "Тип лимита",
@@ -231,6 +238,7 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
     currency: "Валюта",
     isActive: "Активен",
     notes: "Примечания",
+    priceValues: "Цены",
   },
 
   // ── ПОСТАВЩИКИ ────────────────────────────────────────────────────────────────
@@ -424,8 +432,10 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
     dealDate: "Дата сделки",
     buyerId: "Покупатель",
     sellerId: "Продавец",
+    buyerSupplierId: "Покупатель/Поставщик",
     paymentDate: "Дата оплаты",
     pricePerTon: "Цена за тонну",
+    tariffPricePerTon: "Тариф за тонну",
     weightTon: "Вес (т), плановый",
     actualWeightTon: "Вес (т), фактический",
     wagonDepartureDate: "Дата отправки вагонов",
@@ -435,6 +445,13 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
     isReceivedAtWarehouse: "Принято на склад",
     isDraft: "Черновик",
     notes: "Примечания",
+    productType: "Тип топлива",
+    // Денормализованные имена (хранятся как строки)
+    sellerName: "Продавец (название)",
+    buyerSupplierName: "Покупатель/Поставщик (название)",
+    tariffZoneName: "Тарифная зона",
+    departureName: "Отправление",
+    destinationName: "Назначение",
   },
 
   // ── АВАНСОВЫЕ КАРТЫ ──────────────────────────────────────────────────────────

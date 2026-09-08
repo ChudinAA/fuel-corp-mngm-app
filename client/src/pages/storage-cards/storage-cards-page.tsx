@@ -26,14 +26,15 @@ export default function StorageCardsPage({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button
+            {/* TODO: аудит Авансов Зарубеж временно скрыт до доработки */}
+            {/* <Button
               variant="outline"
               onClick={() => setAuditPanelOpen(true)}
               title="История изменений"
             >
               <History className="h-4 w-4 mr-2" />
               История изменений
-            </Button>
+            </Button> */}
             <ExportButton moduleName="storage-cards" />
           </div>
         </div>

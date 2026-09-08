@@ -43,6 +43,21 @@ export class AuditService {
       supplierId: async (id) => {
         try { const e = await storage.suppliers.getSupplier(id); return e?.name || null; } catch { return null; }
       },
+      // Биржа: продавец и покупатель/поставщик — всегда поставщик
+      sellerId: async (id) => {
+        try { const e = await storage.suppliers.getSupplier(id); return e?.name || null; } catch { return null; }
+      },
+      buyerSupplierId: async (id) => {
+        try { const e = await storage.suppliers.getSupplier(id); return e?.name || null; } catch { return null; }
+      },
+      // Цены: контрагент может быть покупателем или поставщиком
+      counterpartyId: async (id) => {
+        try {
+          const customer = await storage.customers.getCustomer(id);
+          if (customer?.name) return customer.name;
+        } catch {}
+        try { const e = await storage.suppliers.getSupplier(id); return e?.name || null; } catch { return null; }
+      },
       carrierId: async (id) => {
         try { const e = await storage.logistics.getLogisticsCarrier(id); return e?.name || null; } catch { return null; }
       },
@@ -54,6 +69,13 @@ export class AuditService {
       },
       toWarehouseId: async (id) => {
         try { const e = await storage.warehouses.getWarehouse(id); return e?.name || null; } catch { return null; }
+      },
+      deliveryLocationId: async (id) => {
+        try { const e = await storage.logistics.getLogisticsDeliveryLocation(id); return e?.name || null; } catch { return null; }
+      },
+      // Базис склада (для массива baseIds — обрабатывается отдельно ниже)
+      baseId: async (id) => {
+        try { const e = await storage.bases.getBase(id); return e?.name || null; } catch { return null; }
       },
       driverId: async (id) => {
         try {
@@ -75,10 +97,19 @@ export class AuditService {
     for (const data of [oldData, newData]) {
       if (!data || typeof data !== "object") continue;
       for (const [key, value] of Object.entries(data)) {
+        // Scalar FK
         if (resolvers[key] && isUUID(value)) {
           const uuid = value as string;
           if (!toResolve.has(uuid)) {
             toResolve.set(uuid, { field: key, id: uuid });
+          }
+        }
+        // Array FK (baseIds: string[] — массив UUID базисов склада)
+        if (key === "baseIds" && Array.isArray(value)) {
+          for (const uuid of value) {
+            if (isUUID(uuid) && !toResolve.has(uuid)) {
+              toResolve.set(uuid, { field: "baseId", id: uuid });
+            }
           }
         }
       }
@@ -181,7 +212,7 @@ export class AuditService {
       return data;
     }
 
-    // Handle arrays - skip them in audit (like baseIds, warehouseBases)
+    // Handle top-level arrays — skip (this function processes object data)
     if (Array.isArray(data)) {
       return undefined;
     }
@@ -192,8 +223,38 @@ export class AuditService {
 
     const normalized: any = {};
     for (const [key, value] of Object.entries(data)) {
-      // Skip arrays and nested objects (relations)
-      if (Array.isArray(value) || (value && typeof value === 'object' && !(value as any).toISOString)) {
+      // Arrays — специальная обработка
+      if (Array.isArray(value)) {
+        // Услуги склада (services): форматируем как читаемую строку
+        if (key === 'services') {
+          const typeLabels: Record<string, string> = {
+            fixed: 'фикс.', per_kg: 'за кг', per_liter: 'за л', per_ton: 'за т',
+          };
+          const formatted = (value as any[])
+            .filter((s) => s?.serviceType && s?.serviceValue != null)
+            .map((s) => {
+              const name = s.serviceName ? `${s.serviceName}: ` : '';
+              const type = typeLabels[s.serviceType] || s.serviceType;
+              return `${name}${s.serviceValue} (${type})`;
+            }).join('; ');
+          if (formatted) normalized[key] = formatted;
+        }
+        // Цены (priceValues): форматируем как перечень цен
+        else if (key === 'priceValues') {
+          const formatted = (value as any[])
+            .map((pv) => pv?.price != null ? String(pv.price) : null)
+            .filter(Boolean).join(', ');
+          if (formatted) normalized[key] = formatted;
+        }
+        // Массивы примитивов (baseIds и др.): оставляем как есть для резолвинга UUID на клиенте
+        else if (value.every((v: any) => v === null || typeof v === 'string' || typeof v === 'number')) {
+          normalized[key] = value;
+        }
+        // Прочие массивы объектов: пропускаем
+        continue;
+      }
+      // Вложенные объекты (кроме Date): пропускаем
+      if (value && typeof value === 'object' && !(value as any).toISOString) {
         continue;
       }
 
@@ -310,6 +371,49 @@ export class AuditService {
   }
 
 
+
+  /**
+   * Backfill entityMeta for existing audit entries that have no FK name resolution.
+   * Resolves buyerId, supplierId, carrierId, etc. for old records.
+   * Run once as an admin migration. Safe to run multiple times.
+   */
+  static async backfillEntityMeta(): Promise<{ processed: number; updated: number; errors: number }> {
+    let processed = 0, updated = 0, errors = 0;
+    const batchSize = 100;
+    let offset = 0;
+
+    while (true) {
+      const batch = await db.select()
+        .from(auditLog)
+        .where(sql`${auditLog.entityMeta} IS NULL AND (${auditLog.oldData} IS NOT NULL OR ${auditLog.newData} IS NOT NULL)`)
+        .orderBy(desc(auditLog.createdAt))
+        .limit(batchSize)
+        .offset(offset);
+
+      if (batch.length === 0) break;
+
+      for (const entry of batch) {
+        processed++;
+        try {
+          const meta = await this.resolveFkNames(entry.oldData, entry.newData);
+          if (Object.keys(meta).length > 0) {
+            await db.update(auditLog)
+              .set({ entityMeta: meta })
+              .where(eq(auditLog.id, entry.id));
+            updated++;
+          }
+        } catch {
+          errors++;
+        }
+      }
+
+      offset += batchSize;
+      // Safety: stop after 10k entries per call
+      if (offset >= 10000) break;
+    }
+
+    return { processed, updated, errors };
+  }
 
   /**
    * Get audit statistics for an entity type

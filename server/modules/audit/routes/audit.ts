@@ -225,6 +225,31 @@ router.post(
   }
 );
 
+/**
+ * Backfill entityMeta for existing audit entries (admin only)
+ * POST /api/audit/backfill-entity-meta
+ */
+router.post(
+  "/audit/backfill-entity-meta",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const userId = String(req.session.userId);
+      const user = await storage.users.getUser(userId);
+      const role = user?.roleId ? await storage.roles.getRole(user.roleId) : null;
+      const isAdmin = role?.name === "Админ" || role?.name === "Ген.дир";
+      if (!isAdmin) {
+        return res.status(403).json({ message: "Только для администраторов" });
+      }
+      const result = await AuditService.backfillEntityMeta();
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error backfilling entity meta:", error);
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
 export function registerAuditRoutes(app: Express) {
   app.use("/api", router);
 }

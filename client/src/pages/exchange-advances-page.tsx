@@ -26,14 +26,15 @@ export default function ExchangeAdvancesPage() {
         <div>
           <h1 className="text-2xl font-semibold">Авансы Биржи</h1>
         </div>
-        <Button
+        {/* TODO: аудит Авансов Биржи временно скрыт до доработки */}
+        {/* <Button
           variant="outline"
           onClick={() => setAuditOpen(true)}
           data-testid="button-audit-advances"
         >
           <History className="h-4 w-4 mr-2" />
           История изменений
-        </Button>
+        </Button> */}
       </div>
 
       <div className="relative max-w-sm">

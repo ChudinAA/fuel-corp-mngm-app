@@ -9,8 +9,9 @@ import { insertRefuelingAbroadExchangeRateSchema } from "../entities/refueling-a
 import { insertRefuelingAbroadBankCommissionSchema } from "../entities/refueling-abroad-bank-commissions";
 import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
-import { auditLog } from "../../audit/middleware/audit-middleware";
+import { auditLog, getAuditContext } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
+import { AuditService } from "../../audit/services/audit-service";
 
 export function registerRefuelingAbroadRoutes(app: Express) {
   app.get(
@@ -296,11 +297,54 @@ export function registerRefuelingAbroadRoutes(app: Express) {
           }),
         );
         const validatedData = intermediariesSchema.parse(req.body);
+
+        // Снапшот старых посредников для аудита (с именами через детальный запрос)
+        let oldIntermediariesStr = "";
+        try {
+          const oldItems = await refuelingAbroadIntermediariesStorage.getByRefuelingIdWithDetails(req.params.id);
+          oldIntermediariesStr = oldItems.map((item: any) => {
+            const name = item.name || item.intermediaryId || "—";
+            const parts = [`${name}`];
+            if (item.commissionFormula) parts.push(`формула: ${item.commissionFormula}`);
+            if (item.commissionUsd != null) parts.push(`${item.commissionUsd} USD`);
+            if (item.commissionRub != null) parts.push(`${item.commissionRub} руб.`);
+            return parts.join(", ");
+          }).join("; ") || "—";
+        } catch {}
+
         const items =
           await refuelingAbroadIntermediariesStorage.replaceForRefueling(
             req.params.id,
             validatedData,
           );
+
+        // Снапшот новых посредников для аудита
+        let newIntermediariesStr = "";
+        try {
+          const newItems = await refuelingAbroadIntermediariesStorage.getByRefuelingIdWithDetails(req.params.id);
+          newIntermediariesStr = newItems.map((item: any) => {
+            const name = item.name || item.intermediaryId || "—";
+            const parts = [`${name}`];
+            if (item.commissionFormula) parts.push(`формула: ${item.commissionFormula}`);
+            if (item.commissionUsd != null) parts.push(`${item.commissionUsd} USD`);
+            if (item.commissionRub != null) parts.push(`${item.commissionRub} руб.`);
+            return parts.join(", ");
+          }).join("; ") || "—";
+        } catch {}
+
+        // Аудит: логируем изменение посредников как UPDATE записи
+        try {
+          const context = getAuditContext(req);
+          await AuditService.log({
+            entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
+            entityId: req.params.id,
+            operation: AUDIT_OPERATIONS.UPDATE,
+            oldData: { intermediaries: oldIntermediariesStr },
+            newData: { intermediaries: newIntermediariesStr },
+            context,
+          });
+        } catch {}
+
         res.json(items);
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -417,8 +461,49 @@ export function registerRefuelingAbroadRoutes(app: Express) {
     requirePermission("abroad", "edit"),
     async (req, res) => {
       try {
-        const items = z.array(insertRefuelingAbroadBankCommissionSchema.omit({ refuelingAbroadId: true })).parse(req.body);
-        const result = await refuelingAbroadBankCommissionsStorage.replaceForRefueling(req.params.id, items);
+        const parsed = z.array(insertRefuelingAbroadBankCommissionSchema.omit({ refuelingAbroadId: true })).parse(req.body);
+
+        // Снапшот старых банков для аудита
+        let oldBanksStr = "";
+        try {
+          const oldItems = await refuelingAbroadBankCommissionsStorage.getByRefuelingId(req.params.id);
+          oldBanksStr = (oldItems as any[]).map((item: any) => {
+            const name = item.bankName || item.name || item.bankId || "—";
+            const parts = [`${name}`];
+            if (item.commissionUsd != null) parts.push(`${item.commissionUsd} USD`);
+            if (item.commissionRub != null) parts.push(`${item.commissionRub} руб.`);
+            return parts.join(", ");
+          }).join("; ") || "—";
+        } catch {}
+
+        const result = await refuelingAbroadBankCommissionsStorage.replaceForRefueling(req.params.id, parsed);
+
+        // Снапшот новых банков для аудита
+        let newBanksStr = "";
+        try {
+          const newItems = await refuelingAbroadBankCommissionsStorage.getByRefuelingId(req.params.id);
+          newBanksStr = (newItems as any[]).map((item: any) => {
+            const name = item.bankName || item.name || item.bankId || "—";
+            const parts = [`${name}`];
+            if (item.commissionUsd != null) parts.push(`${item.commissionUsd} USD`);
+            if (item.commissionRub != null) parts.push(`${item.commissionRub} руб.`);
+            return parts.join(", ");
+          }).join("; ") || "—";
+        } catch {}
+
+        // Аудит: логируем изменение банков как UPDATE записи
+        try {
+          const context = getAuditContext(req);
+          await AuditService.log({
+            entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
+            entityId: req.params.id,
+            operation: AUDIT_OPERATIONS.UPDATE,
+            oldData: { bankCommissions: oldBanksStr },
+            newData: { bankCommissions: newBanksStr },
+            context,
+          });
+        } catch {}
+
         res.json(result);
       } catch (error: any) {
         if (error instanceof z.ZodError) {

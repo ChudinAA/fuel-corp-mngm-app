@@ -48,12 +48,12 @@ const ALWAYS_SKIP = new Set([
   "weightedAverageRate", "balanceBefore", "balanceAfter",
   "averageCostBefore", "averageCostAfter",
   "weightedAverageRateBefore", "weightedAverageRateAfter",
-  // Транзитные поля запроса (склад)
-  "newSupplierData", "supplierLinkMode", "createSupplier",
-  "linkedSupplierId", "bases", "services", "baseIds",
+  // Транзитные поля запроса (склад) — техника для операции, не данные
+  "newSupplierData", "supplierLinkMode", "createSupplier", "linkedSupplierId",
+  "bases",
   // Технические флаги
-  "setSalePriceZero", "purchasePriceModified",
-  // Сложные вложенные объекты
+  "setSalePriceZero", "purchasePriceModified", "equipmentType",
+  // Сложные вложенные объекты (глобально; разрешаем для конкретных сущностей ниже)
   "intermediaries", "priceValues",
   // Прочее внутреннее
   "isPinned", "rtNumber", "currentCurrencyCode", "currentCurrencyId",
@@ -68,6 +68,12 @@ const ALWAYS_SKIP = new Set([
 // Поля разрешены только для конкретных сущностей (переопределяют ALWAYS_SKIP)
 const ENTITY_SPECIFIC_SHOW: Record<string, Set<string>> = {
   exchange_advance_cards: new Set(["currentBalance"]),
+  // Склады: базисы и услуги — не технические, должны быть видны
+  warehouses: new Set(["baseIds", "services"]),
+  // Цены: список цен — показываем (сервер форматирует как строку)
+  prices: new Set(["priceValues"]),
+  // Зарубеж: посредники и банки в цепочке — показываем (сервер форматирует как строку)
+  aircraft_refueling_abroad: new Set(["intermediaries", "bankCommissions"]),
 };
 
 /** Нужно ли показывать поле пользователю */
@@ -96,13 +102,20 @@ const ENUM_MAP: Record<string, Record<string, string>> = {
   productType: {
     kerosene: "Керосин", diesel: "Дизельное топливо", pvkj: "ПВКЖ",
     pvkj_tk: "ПВКЖ ТК", gasoline: "Бензин", jet_fuel: "Авиакеросин",
-    mazut: "Мазут",
+    mazut: "Мазут", service: "Услуга заправки", agent: "Агентское",
+    storage: "Хранение",
   },
   movementType: {
     supply: "Приход", expense: "Расход", transfer: "Перемещение", exchange: "Обмен",
   },
   inputMode: { kg: "по кг", liters: "по литрам", liter: "по литрам" },
   equipmentType: { common: "ОП", lik: "ЛИК", pvkj: "ПВКЖ" },
+  productTypeFull: {
+    kerosene: "Керосин", diesel: "Дизельное топливо", pvkj: "ПВКЖ",
+    pvkj_tk: "ПВКЖ ТК", gasoline: "Бензин", jet_fuel: "Авиакеросин",
+    mazut: "Мазут", service: "Услуга заправки", agent: "Агентское",
+    storage: "Хранение",
+  },
   otherServiceType: {
     fixed: "Фиксированная", per_kg: "За кг", per_liter: "За литр", per_ton: "За тонну",
   },
@@ -195,7 +208,15 @@ export function formatValue(
   // Массив
   if (Array.isArray(value)) {
     if (value.length === 0) return "—";
-    // Попробуем показать список строк (например номера вагонов)
+    // UUID-массив → пробуем резолвить через entityMeta (например baseIds)
+    if (
+      entityMeta &&
+      value.every((x) => typeof x === "string" && UUID_RE.test(x))
+    ) {
+      const resolved = value.map((uuid) => entityMeta[uuid as string] || uuid);
+      return resolved.join(", ");
+    }
+    // Строки/числа (например номера вагонов)
     if (value.every((x) => typeof x === "string" || typeof x === "number")) {
       return value.join(", ");
     }
@@ -339,9 +360,11 @@ export function computeChanges(
 const PRODUCT_LABELS: Record<string, string> = {
   kerosene: "Керосин", diesel: "Дизель", pvkj: "ПВКЖ",
   pvkj_tk: "ПВКЖ ТК", gasoline: "Бензин", jet_fuel: "АТФ", mazut: "Мазут",
+  service: "Услуга заправки", agent: "Агентское", storage: "Хранение",
 };
 function prodLabel(pt: unknown): string {
-  return PRODUCT_LABELS[String(pt ?? "")] || String(pt ?? "");
+  if (!pt) return "";
+  return PRODUCT_LABELS[String(pt)] || String(pt);
 }
 
 const MOVE_TYPE_LABELS: Record<string, string> = {
@@ -371,7 +394,7 @@ function qtyLabel(kg: unknown, liters: unknown): string {
 
 /**
  * Возвращает строку-идентификатор сущности для отображения в строке истории.
- * Использует только нечувствительные к FK данные (даты, типы, количества, названия).
+ * Использует данные записи и entityMeta для резолвинга FK-имён.
  */
 export function getEntitySummary(
   entry: AuditEntry,
@@ -384,40 +407,65 @@ export function getEntitySummary(
   const p = (...parts: (string | null | undefined)[]) =>
     parts.filter(Boolean).join(" · ") || null;
 
+  /** Резолвит UUID → имя через entityMeta */
+  const resolveName = (uuid: unknown): string | null => {
+    if (!uuid || typeof uuid !== "string") return null;
+    return entry.entityMeta?.[uuid] || null;
+  };
+
   switch (entityType) {
-    case "opt":
+    case "opt": {
+      const supplier = resolveName(data.supplierId);
+      const buyer = resolveName(data.buyerId);
       return p(
         shortDate(data.dealDate),
         prodLabel(data.productType),
-        qtyLabel(data.quantityKg, data.quantityLiters)
+        qtyLabel(data.quantityKg, data.quantityLiters),
+        supplier,
+        buyer ? `→ ${buyer}` : null
       );
+    }
 
-    case "aircraft_refueling":
+    case "aircraft_refueling": {
+      const supplier = resolveName(data.supplierId);
+      const buyer = resolveName(data.buyerId);
       return p(
         shortDate(data.refuelingDate),
         data.aircraftNumber ? String(data.aircraftNumber) : null,
         prodLabel(data.productType),
-        qtyLabel(data.quantityKg, data.quantityLiters)
+        qtyLabel(data.quantityKg, data.quantityLiters),
+        supplier,
+        buyer ? `→ ${buyer}` : null
       );
+    }
 
-    case "aircraft_refueling_abroad":
+    case "aircraft_refueling_abroad": {
+      const supplier = resolveName(data.supplierId);
+      const buyer = resolveName(data.buyerId);
       return p(
         shortDate(data.refuelingDate),
         data.aircraftNumber ? String(data.aircraftNumber) : null,
-        data.country ? String(data.country) : null,
-        data.airport ? String(data.airport) : null,
-        qtyLabel(data.quantityKg, data.quantityLiters)
+        prodLabel(data.productType),
+        qtyLabel(data.quantityKg, data.quantityLiters),
+        supplier,
+        buyer ? `→ ${buyer}` : null
       );
+    }
 
-    case "movement":
+    case "movement": {
+      const from = resolveName(data.fromWarehouseId);
+      const to = resolveName(data.toWarehouseId);
+      const fromTo = from && to ? `${from} → ${to}` : from || to || null;
       return p(
         shortDate(data.movementDate),
         data.movementType
           ? (MOVE_TYPE_LABELS[String(data.movementType)] || String(data.movementType))
           : null,
         prodLabel(data.productType),
-        qtyLabel(data.quantityKg, data.quantityLiters)
+        qtyLabel(data.quantityKg, data.quantityLiters),
+        fromTo
       );
+    }
 
     case "exchange":
       return p(
@@ -426,19 +474,42 @@ export function getEntitySummary(
         qtyLabel(data.quantityKg, data.quantityLiters)
       );
 
-    case "transportation":
+    case "transportation": {
+      const buyer = resolveName(data.buyerId);
+      const basis = data.basis ? String(data.basis) : (data.customerBasis ? String(data.customerBasis) : null);
       return p(
         shortDate(data.dealDate),
         prodLabel(data.productType),
-        qtyLabel(data.quantityKg, data.quantityLiters)
+        qtyLabel(data.quantityKg, data.quantityLiters),
+        buyer,
+        basis ? `Базис: ${basis}` : null
       );
+    }
+
+    case "equipment_movement": {
+      const from = resolveName(data.fromEquipmentId);
+      const to = resolveName(data.toEquipmentId);
+      const fromTo = from && to ? `${from} → ${to}` : from || to || null;
+      const qty = data.quantity ? normalizeNum(data.quantity) : null;
+      return p(
+        shortDate(data.transactionDate),
+        prodLabel(data.productType),
+        fromTo,
+        qty ? `${qty.toLocaleString("ru-RU")} л` : null
+      );
+    }
 
     case "exchange_deals": {
       const wt = normalizeNum(data.weightTon);
       const wtStr = wt ? `${wt.toLocaleString("ru-RU")} т` : null;
+      // Используем entityMeta для резолвинга или денормализованные поля
+      const seller = resolveName(data.sellerId) || (data.sellerName ? String(data.sellerName) : null);
+      const buyer = resolveName(data.buyerId);
       return p(
         data.dealNumber ? `#${data.dealNumber}` : null,
         shortDate(data.dealDate),
+        seller,
+        buyer ? `→ ${buyer}` : null,
         wtStr
       );
     }
