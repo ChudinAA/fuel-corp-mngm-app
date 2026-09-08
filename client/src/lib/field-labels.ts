@@ -562,13 +562,90 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
   },
 };
 
+// ─── Динамический реестр меток из Zod-схем форм ──────────────────────────────
+// Заполняется через registerZodSchema() при загрузке форм-схем.
+// getFieldLabel() проверяет его ДО статического FIELD_LABELS.
+const _zodRegistry: Record<string, Record<string, string>> = {};
+
+/**
+ * Извлекает description из Zod-поля, проходя сквозь обёртки
+ * ZodOptional / ZodNullable / ZodEffects.
+ */
+function _extractZodDescription(field: any): string | undefined {
+  if (!field?._def) return undefined;
+  if (field._def.description) return field._def.description;
+  // Unwrap optional / nullable
+  if (field._def.innerType) return _extractZodDescription(field._def.innerType);
+  // Unwrap effects (superRefine, transform, refine)
+  if (field._def.schema) return _extractZodDescription(field._def.schema);
+  return undefined;
+}
+
+/**
+ * Регистрирует Zod-схему формы как источник меток для аудита.
+ *
+ * Вызывается один раз при инициализации в form-schema-registry.ts.
+ * Поля без .describe() игнорируются и для них остаётся fallback
+ * из статического FIELD_LABELS.
+ *
+ * @param entityType  Ключ сущности (напр. "opt", "movement")
+ * @param schema      Zod-схема формы (z.object или z.object + superRefine)
+ *
+ * @example
+ * // В form-schema-registry.ts:
+ * registerZodSchema("opt", optFormSchema);
+ *
+ * // В schemas.ts при добавлении нового поля достаточно написать:
+ * newField: z.string().optional().describe("Новое поле"),
+ * // — и метка автоматически появится в аудите без правки field-labels.ts
+ */
+export function registerZodSchema(entityType: string, schema: any): void {
+  // Поддержка ZodEffects (superRefine/transform) — берём вложенный ZodObject
+  const zodObject = schema?.shape ? schema : schema?._def?.schema;
+  if (!zodObject?.shape) return;
+
+  const labels: Record<string, string> = {};
+  for (const [fieldName, fieldSchema] of Object.entries(zodObject.shape)) {
+    const desc = _extractZodDescription(fieldSchema);
+    if (desc) labels[fieldName] = desc;
+  }
+
+  if (Object.keys(labels).length > 0) {
+    _zodRegistry[entityType] = { ...(_zodRegistry[entityType] ?? {}), ...labels };
+  }
+}
+
+/**
+ * Проверяет, есть ли явная метка для поля — в Zod-реестре ИЛИ в статическом FIELD_LABELS.
+ * Используется в isFieldVisible() для фильтрации неизвестных *Id-полей.
+ */
+export function hasFieldLabel(entityType: string, fieldName: string): boolean {
+  return !!(
+    _zodRegistry[entityType]?.[fieldName] ||
+    FIELD_LABELS[entityType]?.[fieldName]
+  );
+}
+
+/**
+ * Проверяет, есть ли у поля явная метка в Zod-реестре форм (не в статическом FIELD_LABELS).
+ * Используется в isFieldVisible() для разрешения ALWAYS_SKIP-полей, явно описанных
+ * разработчиком через .describe() в форм-схеме (напр. counterpartyId в prices).
+ */
+export function hasZodRegistryLabel(entityType: string, fieldName: string): boolean {
+  return !!_zodRegistry[entityType]?.[fieldName];
+}
+
 // ─── Получить метку поля ──────────────────────────────────────────────────────
 export function getFieldLabel(entityType: string, fieldName: string): string {
-  const entityLabels = FIELD_LABELS[entityType];
-  if (entityLabels && entityLabels[fieldName]) {
-    return entityLabels[fieldName];
-  }
-  // camelCase → readable fallback
+  // 1. Zod-реестр (из форм-схем через registerZodSchema)
+  const zodLabel = _zodRegistry[entityType]?.[fieldName];
+  if (zodLabel) return zodLabel;
+
+  // 2. Статический реестр (FIELD_LABELS — для вычисляемых и DB-only полей)
+  const staticLabel = FIELD_LABELS[entityType]?.[fieldName];
+  if (staticLabel) return staticLabel;
+
+  // 3. camelCase → читаемый fallback
   return fieldName
     .replace(/([A-Z])/g, " $1")
     .replace(/_/g, " ")

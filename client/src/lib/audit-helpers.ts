@@ -9,7 +9,10 @@
 
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { getFieldLabel, FIELD_LABELS } from "./field-labels";
+import { getFieldLabel, hasFieldLabel, hasZodRegistryLabel, FIELD_LABELS } from "./field-labels";
+// Инициализация реестра форм-схем — регистрирует Zod .describe() как метки полей.
+// Этот side-effect import достаточно выполнить один раз при загрузке audit-helpers.
+import "./form-schema-registry";
 import type { AuditEntry } from "@/hooks/use-audit";
 
 // ─── UUID detection ───────────────────────────────────────────────────────────
@@ -71,11 +74,19 @@ const ENTITY_SPECIFIC_SHOW: Record<string, Set<string>> = {
 export function isFieldVisible(entityType: string, fieldName: string): boolean {
   const entityOverride = ENTITY_SPECIFIC_SHOW[entityType];
   if (entityOverride?.has(fieldName)) return true;
+
+  // Если поле явно описано в Zod-схеме формы (.describe()), показываем его
+  // даже если оно есть в ALWAYS_SKIP. Это позволяет user-facing FK-полям
+  // (напр. counterpartyId в prices, fromEquipmentId в equipment_movement)
+  // быть видимыми когда разработчик явно пометил поле как значимое.
+  // Технические поля (id, createdAt и т.д.) никогда не получат .describe() в формах.
+  if (hasZodRegistryLabel(entityType, fieldName)) return true;
+
   if (ALWAYS_SKIP.has(fieldName)) return false;
-  // Неизвестные FK-ID (UUID без метки) скрываем
+
+  // Неизвестные *Id без метки в любом реестре → скрываем
   if (fieldName.endsWith("Id") && fieldName !== "inn") {
-    const labels = FIELD_LABELS[entityType];
-    if (!labels || !labels[fieldName]) return false;
+    if (!hasFieldLabel(entityType, fieldName)) return false;
   }
   return true;
 }

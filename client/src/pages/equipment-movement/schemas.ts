@@ -3,21 +3,21 @@ import { insertMovementSchema, insertEquipmentSchema } from "@shared/schema";
 
 export const equipmentMovementFormSchema = z
   .object({
-    movementDate: z.date({ required_error: "Укажите дату" }),
-    movementType: z.string().min(1, "Выберите тип перемещения"),
-    productType: z.string().min(1, "Выберите продукт"),
-    fromWarehouseId: z.string().optional().nullable(),
-    toWarehouseId: z.string().optional().nullable(),
-    fromEquipmentId: z.string().optional().nullable(),
-    toEquipmentId: z.string().optional().nullable(),
-    inputMode: z.enum(["liters", "kg"]).default("kg"),
-    quantityLiters: z.string().optional(),
-    density: z.string().optional(),
-    quantityKg: z.string().optional(),
-    costPerKg: z.string().optional(),
-    totalCost: z.string().optional(),
-    notes: z.string().optional(),
-    isDraft: z.boolean().default(false),
+    movementDate: z.date({ required_error: "Укажите дату" }).describe("Дата операции"),
+    movementType: z.string().min(1, "Выберите тип перемещения").describe("Тип операции"),
+    productType: z.string().min(1, "Выберите продукт").describe("Тип топлива"),
+    fromWarehouseId: z.string().optional().nullable().describe("Склад-источник"),
+    toWarehouseId: z.string().optional().nullable().describe("Склад-получатель"),
+    fromEquipmentId: z.string().optional().nullable().describe("Оборудование-источник"),
+    toEquipmentId: z.string().optional().nullable().describe("Оборудование-получатель"),
+    inputMode: z.enum(["liters", "kg"]).default("kg").describe("Единица ввода"),
+    quantityLiters: z.string().optional().describe("Количество (л)"),
+    density: z.string().optional().describe("Плотность"),
+    quantityKg: z.string().optional().describe("Количество (кг)"),
+    costPerKg: z.string().optional().describe("Цена за кг"),
+    totalCost: z.string().optional().describe("Итоговая стоимость"),
+    notes: z.string().optional().describe("Примечания"),
+    isDraft: z.boolean().default(false).describe("Черновик"),
   })
   .superRefine((data, ctx) => {
     if (data.inputMode === "kg") {

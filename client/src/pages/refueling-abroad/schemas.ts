@@ -13,42 +13,42 @@ export const intermediaryItemSchema = z.object({
 
 export const refuelingAbroadFormSchema = z
   .object({
-    refuelingDate: z.date().optional().nullable(),
-    productType: z.string().optional().nullable(),
-    aircraftNumber: z.string().optional().nullable(),
-    flightNumber: z.string().optional().nullable(),
-    airportCode: z.string().optional().nullable(),
+    refuelingDate: z.date().optional().nullable().describe("Дата заправки"),
+    productType: z.string().optional().nullable().describe("Тип топлива"),
+    aircraftNumber: z.string().optional().nullable().describe("Номер ВС"),
+    flightNumber: z.string().optional().nullable().describe("Номер рейса"),
+    airportCode: z.string().optional().nullable().describe("Код аэропорта"),
 
-    supplierId: z.string().optional().nullable().default(""),
-    buyerId: z.string().optional().nullable().default(""),
+    supplierId: z.string().optional().nullable().default("").describe("Поставщик"),
+    buyerId: z.string().optional().nullable().default("").describe("Покупатель"),
     basisId: z.string().optional().nullable().default(""),
     storageCardId: z.string().optional().nullable(),
 
     intermediaries: z.array(intermediaryItemSchema).default([]),
 
-    inputMode: z.enum(["liters", "kg"]).default("kg"),
-    quantityLiters: z.string().optional().nullable(),
-    density: z.string().optional().nullable(),
-    quantityKg: z.string().optional().nullable(),
+    inputMode: z.enum(["liters", "kg"]).default("kg").describe("Единица ввода"),
+    quantityLiters: z.string().optional().nullable().describe("Количество (л)"),
+    density: z.string().optional().nullable().describe("Плотность"),
+    quantityKg: z.string().optional().nullable().describe("Количество (кг)"),
 
     selectedPurchasePriceId: z.string().optional().nullable(),
     selectedSalePriceId: z.string().optional().nullable(),
     purchasePriceIndex: z.number().optional().nullable(),
     salePriceIndex: z.number().optional().nullable(),
 
-    purchasePriceUsd: z.string().optional().nullable(),
-    salePriceUsd: z.string().optional().nullable(),
+    purchasePriceUsd: z.string().optional().nullable().describe("Цена покупки (USD)"),
+    salePriceUsd: z.string().optional().nullable().describe("Цена продажи (USD)"),
 
     purchaseExchangeRateId: z.string().optional().nullable(),
-    manualPurchaseExchangeRate: z.string().optional().nullable(),
-    manualPurchaseExchangeRateDate: z.string().optional().nullable(),
+    manualPurchaseExchangeRate: z.string().optional().nullable().describe("Курс покупки (ручной)"),
+    manualPurchaseExchangeRateDate: z.string().optional().nullable().describe("Дата курса покупки"),
     saleExchangeRateId: z.string().optional().nullable(),
-    manualSaleExchangeRate: z.string().optional().nullable(),
-    manualSaleExchangeRateDate: z.string().optional().nullable(),
+    manualSaleExchangeRate: z.string().optional().nullable().describe("Курс продажи (ручной)"),
+    manualSaleExchangeRateDate: z.string().optional().nullable().describe("Дата курса продажи"),
 
-    notes: z.string().optional().nullable(),
-    isApproxVolume: z.boolean().default(false),
-    isDraft: z.boolean().default(false),
+    notes: z.string().optional().nullable().describe("Примечания"),
+    isApproxVolume: z.boolean().default(false).describe("Примерный объём"),
+    isDraft: z.boolean().default(false).describe("Черновик"),
     rtNumber: z.string().optional().nullable(),
   })
   .superRefine((data, ctx) => {
