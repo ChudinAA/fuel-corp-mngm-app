@@ -70,10 +70,16 @@ const ENTITY_SPECIFIC_SHOW: Record<string, Set<string>> = {
   exchange_advance_cards: new Set(["currentBalance"]),
   // Склады: базисы и услуги — не технические, должны быть видны
   warehouses: new Set(["baseIds", "services"]),
-  // Цены: список цен — показываем (сервер форматирует как строку)
-  prices: new Set(["priceValues"]),
+  // Цены: список цен и контрагент — показываем (сервер форматирует как строку)
+  prices: new Set(["priceValues", "counterpartyId"]),
   // Зарубеж: посредники и банки в цепочке — показываем (сервер форматирует как строку)
   aircraft_refueling_abroad: new Set(["intermediaries", "bankCommissions"]),
+  // Перевозки: базис погрузки
+  transportation: new Set(["basisId"]),
+  // Биржа: покупатель-поставщик (buyerSupplierId — FK на поставщика-покупателя)
+  exchange_deals: new Set(["buyerSupplierId"]),
+  // Перемещения ОП: оборудование (FK из equipment таблицы)
+  equipment_movement: new Set(["fromEquipmentId", "toEquipmentId"]),
 };
 
 /** Нужно ли показывать поле пользователю */
@@ -107,6 +113,7 @@ const ENUM_MAP: Record<string, Record<string, string>> = {
   },
   movementType: {
     supply: "Приход", expense: "Расход", transfer: "Перемещение", exchange: "Обмен",
+    internal: "Внутреннее",
   },
   inputMode: { kg: "по кг", liters: "по литрам", liter: "по литрам" },
   equipmentType: { common: "ОП", lik: "ЛИК", pvkj: "ПВКЖ" },
@@ -119,9 +126,15 @@ const ENUM_MAP: Record<string, Record<string, string>> = {
   otherServiceType: {
     fixed: "Фиксированная", per_kg: "За кг", per_liter: "За литр", per_ton: "За тонну",
   },
-  counterpartyType: { supplier: "Поставщик", customer: "Покупатель" },
+  counterpartyType: {
+    supplier: "Поставщик", customer: "Покупатель",
+    buyer: "Покупатель", seller: "Продавец",
+    purchase: "Закупка", sale: "Продажа",
+    buy: "Покупка", sell: "Продажа",
+  },
   counterpartyRole: {
     supplier: "Поставщик", customer: "Покупатель", carrier: "Перевозчик",
+    buyer: "Покупатель", seller: "Продавец",
   },
   currency: {
     RUB: "Рубль (₽)", USD: "Доллар ($)", EUR: "Евро (€)",
@@ -243,10 +256,15 @@ export function formatValue(
     if (value === "true") return "Да";
     if (value === "false") return "Нет";
 
+    // Нечитаемые сериализованные объекты (старые записи) — скрываем
+    if (value === "[object Object]" || /^\[object Object\]/.test(value)) return "—";
+
     // Дата (только дата, без времени)
+    // Нормализуем пробел между датой и временем → T для кроссбраузерного парсинга
     if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
       try {
-        const d = new Date(value.includes("T") ? value : value + "T00:00:00");
+        const iso = value.replace(" ", "T");
+        const d = new Date(iso.includes("T") ? iso : iso + "T00:00:00");
         if (!isNaN(d.getTime())) {
           return format(d, "dd.MM.yyyy", { locale: ru });
         }
@@ -353,6 +371,30 @@ export function computeChanges(
       .map((f) => make(f, entry.oldData?.[f], entry.newData?.[f]));
   }
 
+  // Fallback: changedFields отсутствует (сервер не вычислил diff), но есть данные —
+  // показываем все поля, где old и new реально отличаются.
+  if (entry.oldData && entry.newData) {
+    const allKeys = Array.from(
+      new Set([...Object.keys(entry.oldData), ...Object.keys(entry.newData)])
+    );
+    return allKeys
+      .filter((f) => !skip(f))
+      .filter((f) => {
+        const o = entry.oldData?.[f];
+        const n = entry.newData?.[f];
+        if (isEmpty(o) && isEmpty(n)) return false;
+        if (areApproxEqual(o, n)) return false;
+        // Строки — точное сравнение
+        if (typeof o === "string" && typeof n === "string" && o === n) return false;
+        // Числа с нормализацией
+        const oN = normalizeNum(o);
+        const nN = normalizeNum(n);
+        if (oN !== null && nN !== null && Math.abs(oN - nN) < 1e-5) return false;
+        return true;
+      })
+      .map((f) => make(f, entry.oldData?.[f], entry.newData?.[f]));
+  }
+
   return [];
 }
 
@@ -369,13 +411,15 @@ function prodLabel(pt: unknown): string {
 
 const MOVE_TYPE_LABELS: Record<string, string> = {
   supply: "Приход", expense: "Расход", transfer: "Переброска", exchange: "Обмен",
+  internal: "Внутреннее",
 };
 
 /** Форматирует дату кратко (дд.мм.гг) для заголовка строки */
 function shortDate(v: unknown): string | null {
   if (!v || typeof v !== "string") return null;
   try {
-    const d = new Date(v.includes("T") ? v : v + "T00:00:00");
+    const iso = v.replace(" ", "T");
+    const d = new Date(iso.includes("T") ? iso : iso + "T00:00:00");
     if (!isNaN(d.getTime())) return format(d, "dd.MM.yy", { locale: ru });
   } catch { /* ignore */ }
   return null;
@@ -455,12 +499,20 @@ export function getEntitySummary(
     case "movement": {
       const from = resolveName(data.fromWarehouseId);
       const to = resolveName(data.toWarehouseId);
-      const fromTo = from && to ? `${from} → ${to}` : from || to || null;
+      const supplier = resolveName(data.supplierId);
+      const typeStr = data.movementType
+        ? (MOVE_TYPE_LABELS[String(data.movementType)] || String(data.movementType))
+        : null;
+      // Для Прихода (supply) показываем «Поставщик → Склад-получатель»
+      let fromTo: string | null = null;
+      if (String(data.movementType) === "supply") {
+        fromTo = supplier && to ? `${supplier} → ${to}` : to || supplier || null;
+      } else {
+        fromTo = from && to ? `${from} → ${to}` : from || to || null;
+      }
       return p(
         shortDate(data.movementDate),
-        data.movementType
-          ? (MOVE_TYPE_LABELS[String(data.movementType)] || String(data.movementType))
-          : null,
+        typeStr,
         prodLabel(data.productType),
         qtyLabel(data.quantityKg, data.quantityLiters),
         fromTo
@@ -502,9 +554,11 @@ export function getEntitySummary(
     case "exchange_deals": {
       const wt = normalizeNum(data.weightTon);
       const wtStr = wt ? `${wt.toLocaleString("ru-RU")} т` : null;
-      // Используем entityMeta для резолвинга или денормализованные поля
+      // Продавец: FK supplierId или денормализованное имя
       const seller = resolveName(data.sellerId) || (data.sellerName ? String(data.sellerName) : null);
-      const buyer = resolveName(data.buyerId);
+      // Покупатель: buyerSupplierId (поставщик-покупатель) или buyerId (клиент-покупатель)
+      const buyer = resolveName(data.buyerSupplierId) || resolveName(data.buyerId)
+        || (data.buyerSupplierName ? String(data.buyerSupplierName) : null);
       return p(
         data.dealNumber ? `#${data.dealNumber}` : null,
         shortDate(data.dealDate),
@@ -512,6 +566,17 @@ export function getEntitySummary(
         buyer ? `→ ${buyer}` : null,
         wtStr
       );
+    }
+
+    case "prices": {
+      const counterparty = resolveName(data.counterpartyId);
+      const typeStr = data.counterpartyType
+        ? (ENUM_MAP.counterpartyType?.[String(data.counterpartyType)] || String(data.counterpartyType))
+        : null;
+      const from = data.validFrom ? shortDate(data.validFrom) : null;
+      const to = data.validTo ? shortDate(data.validTo) : null;
+      const period = from && to ? `${from}–${to}` : from || to || null;
+      return p(counterparty || typeStr, prodLabel(data.productType), period);
     }
 
     case "warehouses":

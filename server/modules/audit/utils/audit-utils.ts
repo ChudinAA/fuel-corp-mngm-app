@@ -89,7 +89,12 @@ export function normalizeAuditData(data: any): any {
 export function areValuesDifferent(oldValue: any, newValue: any): boolean {
   const normalizedOld = normalizeAuditValue(oldValue);
   const normalizedNew = normalizeAuditValue(newValue);
-  return normalizedOld !== normalizedNew;
+  if (normalizedOld === normalizedNew) return false;
+  // Treat null/undefined (→ "") as equivalent to false for boolean fields
+  // to prevent false-positive changes like "false → null" or "null → false"
+  const absentOrFalse = (v: string) => v === "" || v === "false";
+  if (absentOrFalse(normalizedOld) && absentOrFalse(normalizedNew)) return false;
+  return true;
 }
 
 /**

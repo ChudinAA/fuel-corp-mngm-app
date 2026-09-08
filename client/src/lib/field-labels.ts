@@ -377,6 +377,8 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
     price: "Цена",
     transactionDate: "Дата операции",
     notes: "Примечания",
+    fromEquipmentId: "Откуда (ед. оборудования)",
+    toEquipmentId: "Куда (ед. оборудования)",
   },
 
   // ── ПЕРЕВОЗКИ ОП ─────────────────────────────────────────────────────────────
@@ -384,6 +386,7 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
     dealDate: "Дата сделки",
     productType: "Тип топлива",
     inputMode: "Единица ввода",
+    basisId: "Базис погрузки",
     basis: "Базис",
     customerBasis: "Базис покупателя",
     quantityKg: "Количество (кг)",

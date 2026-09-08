@@ -89,6 +89,17 @@ export class AuditService {
       trailerId: async (id) => {
         try { const e = await storage.logistics.getLogisticsTrailer(id); return e?.regNumber || null; } catch { return null; }
       },
+      // Перемещения ОП: оборудование
+      fromEquipmentId: async (id) => {
+        try { const e = await storage.equipment.getEquipment(id); return e?.name || null; } catch { return null; }
+      },
+      toEquipmentId: async (id) => {
+        try { const e = await storage.equipment.getEquipment(id); return e?.name || null; } catch { return null; }
+      },
+      // Перевозки: базис погрузки (alias на baseId-resolver)
+      basisId: async (id) => {
+        try { const e = await storage.bases.getBase(id); return e?.name || null; } catch { return null; }
+      },
     };
 
     // Collect unique (field, uuid) pairs from both old and new data

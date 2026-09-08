@@ -199,7 +199,7 @@ function ChangeDetail({
         <div className="grid gap-1.5">
           {changes.map(({ field, label, newVal, isFK }) => (
             <div key={field} className="flex items-baseline gap-2 text-xs min-w-0">
-              <span className="text-muted-foreground shrink-0 w-[130px] truncate" title={label}>{label}</span>
+              <span className="text-muted-foreground shrink-0 w-[180px] truncate" title={label}>{label}</span>
               <span className={cn(
                 "font-medium text-foreground break-words min-w-0",
                 isFK && "text-muted-foreground italic"
@@ -220,7 +220,7 @@ function ChangeDetail({
         <div className="grid gap-1.5">
           {changes.map(({ field, label, oldVal, isFK }) => (
             <div key={field} className="flex items-baseline gap-2 text-xs min-w-0">
-              <span className="text-muted-foreground shrink-0 w-[130px] truncate" title={label}>{label}</span>
+              <span className="text-muted-foreground shrink-0 w-[180px] truncate" title={label}>{label}</span>
               <span className={cn(
                 "line-through text-red-600 dark:text-red-400 break-words min-w-0",
                 isFK && "not-italic text-muted-foreground"
@@ -241,7 +241,7 @@ function ChangeDetail({
         <div className="grid gap-1.5">
           {changes.map(({ field, label, newVal, isFK }) => (
             <div key={field} className="flex items-baseline gap-2 text-xs min-w-0">
-              <span className="text-muted-foreground shrink-0 w-[130px] truncate" title={label}>{label}</span>
+              <span className="text-muted-foreground shrink-0 w-[180px] truncate" title={label}>{label}</span>
               <span className={cn(
                 "text-purple-700 dark:text-purple-400 font-medium break-words min-w-0",
                 isFK && "italic"

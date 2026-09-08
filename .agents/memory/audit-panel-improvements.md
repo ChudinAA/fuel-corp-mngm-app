@@ -53,4 +53,22 @@ description: Summary of audit panel UX improvements — width, field visibility,
 - exchange-advances-page.tsx — кнопка аудита закомментирована (TODO)
 - storage-cards-page.tsx — кнопка аудита закомментирована (TODO; это "Авансы Зарубеж")
 
+**Session 2 fixes:**
+- computeChanges: fallback для UPDATE с null changedFields → полный diff oldData↔newData (раньше "Нет данных")
+- formatValue: дата "2026-09-08 14:38:12" (space вместо T) → replace(" ","T") перед парсингом
+- shortDate: аналогичный fix
+- CSS колонка полей: w-[130px] → w-[180px]
+- ENUM_MAP: movementType "internal"→"Внутреннее"; counterpartyType/Role buyer/seller/purchase/sale
+- areValuesDifferent (server): ""/"false" считаются одинаковыми (false-positive boolean changes)
+- MOVE_TYPE_LABELS: добавлен internal
+- movement preview: Приход (supply) → Поставщик→Склад-получатель
+- exchange_deals preview: buyerSupplierId fix (не buyerId)
+- ENTITY_SPECIFIC_SHOW: transportation(basisId), exchange_deals(buyerSupplierId), equipment_movement(fromEquipmentId/toEquipmentId), prices(counterpartyId)
+- resolveFkNames: добавлены fromEquipmentId, toEquipmentId (equipment storage), basisId (base storage)
+- field-labels: basisId в transportation; fromEquipmentId/toEquipmentId в equipment_movement
+- prices case в getEntitySummary (counterparty, product, period)
+- formatValue: "[object Object]" → "—"
+
+**Known limitation:** Зарубеж intermediaries/banks всё ещё создают отдельные аудит-записи при CREATE (нужна архитектурная переработка для консолидации).
+
 **Why:** Пользователь не может идентифицировать записи по голому типу и кол-ву; нужны имена контрагентов/складов и полный набор полей.
