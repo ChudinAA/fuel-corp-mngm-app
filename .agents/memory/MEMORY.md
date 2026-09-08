@@ -1,3 +1,4 @@
+- [Post-merge DB migration](post-merge-db.md) — post-merge.sh runs drizzle-kit push --force; schema column additions (e.g. entity_meta) must be in the script or cause 500 on first request.
 - [Logistics auto-assign engine](logistics-auto-assign.md) — sync now runs full auto-assignment; calendar was always empty before; re-sync deletes auto routes then regenerates.
 - [Logistics plan bug fixes & features](logistics-plan-summary.md) — summary panel field fixes, route-plan-dialog rewrite (entity selects+tariff search), scenario filter fixes, extra drivers with schedule, transitDays/priority in tariff form.
 - [Neon serverless array binding](neon-array-binding.md) — never bind a JS array as a single SQL param with raw `= ANY(${arr})`; use Drizzle's `inArray()` instead.
