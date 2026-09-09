@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
+import { AuditService } from "../../audit/services/audit-service";
 import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 import { SSEService } from "../../../services/sse-service";
 import { db } from "../../../db";
@@ -163,6 +164,15 @@ export function registerWarehousesOperationsRoutes(app: Express) {
               supplierId: supplier.id,
               updatedById: req.session.userId ? String(req.session.userId) : null,
             } as any);
+
+            // Аудит автоматически созданного поставщика
+            AuditService.log({
+              entityType: ENTITY_TYPES.SUPPLIER,
+              entityId: supplier.id,
+              operation: AUDIT_OPERATIONS.CREATE,
+              newData: supplierData,
+              context: (req as any).auditContext || null,
+            }).catch((e) => console.error("Supplier audit log failed:", e));
           } catch (suppError: any) {
             console.error("Failed to auto-create supplier for warehouse:", suppError);
           }

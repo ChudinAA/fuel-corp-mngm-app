@@ -243,7 +243,12 @@ export class AuditService {
         // Услуги склада (services): форматируем как читаемую строку
         if (key === 'services') {
           const typeLabels: Record<string, string> = {
-            fixed: 'фикс.', per_kg: 'за кг', per_liter: 'за л', per_ton: 'за т',
+            fixed: 'фикс.',
+            per_kg: 'за кг',
+            per_liter: 'за л',
+            per_ton: 'за т',
+            royalty_per_ton: 'роялти/т',
+            percent_of_amount: '% от суммы',
           };
           const formatted = (value as any[])
             .filter((s) => s?.serviceType && s?.serviceValue != null)

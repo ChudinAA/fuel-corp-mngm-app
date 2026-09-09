@@ -145,6 +145,9 @@ const ENUM_MAP: Record<string, Record<string, string>> = {
     buyer: "Покупатель", seller: "Продавец",
     purchase: "Закупка", sale: "Продажа",
     buy: "Покупка", sell: "Продажа",
+    // Типы контрагентов в ценах (COUNTERPARTY_TYPE)
+    wholesale: "Опт", refueling: "Заправки", abroad: "Зарубеж",
+    transportation: "Перевозки",
   },
   counterpartyRole: {
     supplier: "Поставщик", customer: "Покупатель", carrier: "Перевозчик",
@@ -197,15 +200,16 @@ function translateEnum(fieldName: string, value: string): string | null {
 
 // ─── Числа с точностью ───────────────────────────────────────────────────────
 /** Нормализует число до 5 знаков после запятой.
- *  ВАЖНО: строки-даты (начинаются с 4 цифр + дефис, например "2026-09-10")
- *  намеренно НЕ распознаются как числа, чтобы parseFloat("2026-09-10") = 2026
- *  не приводил к ложному "равенству" любых дат одного года. */
+ *  Распознаёт ТОЛЬКО чисто числовые строки вида "123" / "-1.5" / "0.001".
+ *  Строки с пробелом, запятой, дефисом (даты), T/Z (timestamp) — НЕ числа,
+ *  чтобы parseFloat("1.68, 2") = 1.68 или parseFloat("2026-09-10") = 2026
+ *  не вызывали ложного совпадения при сравнении. */
 function normalizeNum(v: unknown): number | null {
   if (typeof v === "number" && isFinite(v))
     return Math.round(v * 1e5) / 1e5;
   if (typeof v === "string") {
-    // Отсеиваем строки, похожие на даты или timestamp (содержат дефис или T/Z)
-    if (/\d{4}-\d{2}|T\d{2}:|^\d{4}-/.test(v)) return null;
+    // Только чистые числовые строки: опциональный минус, цифры, опциональная точка+цифры
+    if (!/^-?\d+(\.\d+)?$/.test(v)) return null;
     const n = parseFloat(v);
     if (!isNaN(n) && isFinite(n)) return Math.round(n * 1e5) / 1e5;
   }
