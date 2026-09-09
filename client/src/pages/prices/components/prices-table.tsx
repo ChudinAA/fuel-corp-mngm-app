@@ -322,7 +322,7 @@ export function PricesTable({
         </Button>
       </div>
 
-      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-300px)]">
+      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-250px)]">
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
             <TableRow>
@@ -633,28 +633,28 @@ export function PricesTable({
             )}
           </TableBody>
         </Table>
-      </div>
 
-      {hasNextPage && (
-        <div className="flex justify-center pt-4">
-          <Button
-            variant="outline"
-            onClick={() => fetchNextPage()}
-            disabled={isFetchingNextPage}
-            className="w-full max-w-xs gap-2"
-            data-testid="button-load-more-prices"
-          >
-            {isFetchingNextPage ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Загрузка...
-              </>
-            ) : (
-              "Загрузить еще"
-            )}
-          </Button>
-        </div>
-      )}
+        {hasNextPage && (
+          <div className="flex justify-center pt-4">
+            <Button
+              variant="outline"
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
+              className="w-full max-w-xs gap-2"
+              data-testid="button-load-more-prices"
+            >
+              {isFetchingNextPage ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Загрузка...
+                </>
+              ) : (
+                "Загрузить еще"
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
 
       <DeleteConfirmDialog
         open={deleteDialogOpen}

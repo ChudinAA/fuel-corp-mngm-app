@@ -222,7 +222,7 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
         
       </div>
 
-      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-300px)]">
+      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-250px)]">
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
             <TableRow>

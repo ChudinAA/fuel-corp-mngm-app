@@ -226,7 +226,7 @@ export function RefuelingAbroadTable({
         />
       </div>
 
-      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-300px)]">
+      <div className="border rounded-lg overflow-auto max-h-[calc(100vh-250px)]">
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
             <TableRow className="hover:bg-transparent">
@@ -676,28 +676,28 @@ export function RefuelingAbroadTable({
             )}
           </TableBody>
         </Table>
-      </div>
 
-      {hasNextPage && (
-        <div className="flex justify-center pt-4">
-          <Button
-            variant="outline"
-            onClick={() => fetchNextPage()}
-            disabled={isFetchingNextPage}
-            className="w-full max-w-xs gap-2"
-            data-testid="button-load-more-refueling-abroad"
-          >
-            {isFetchingNextPage ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Загрузка...
-              </>
-            ) : (
-              "Загрузить еще"
-            )}
-          </Button>
-        </div>
-      )}
+        {hasNextPage && (
+          <div className="flex justify-center pt-4">
+            <Button
+              variant="outline"
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
+              className="w-full max-w-xs gap-2"
+              data-testid="button-load-more-refueling-abroad"
+            >
+              {isFetchingNextPage ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Загрузка...
+                </>
+              ) : (
+                "Загрузить еще"
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
