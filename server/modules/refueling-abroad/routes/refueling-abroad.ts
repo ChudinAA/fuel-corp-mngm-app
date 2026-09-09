@@ -209,13 +209,31 @@ export function registerRefuelingAbroadRoutes(app: Express) {
       entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
       operation: AUDIT_OPERATIONS.UPDATE,
       getOldData: async (req) => {
-        return await refuelingAbroadStorage.getById(req.params.id);
+        const deal = await refuelingAbroadStorage.getById(req.params.id) as any;
+        if (!deal) return undefined;
+        // Исключаем вложенные объекты и агрегатные поля, которые аудируются
+        // отдельными PUT-маршрутами для цепочных сущностей.
+        const {
+          intermediaries, bankCommissions, chainExchangeRates,
+          supplier, buyer,
+          // Расчётные итоги от цепочных сущностей — меняются вместе с ними,
+          // не должны дублировать запись аудита:
+          bankCommissionUsd, bankCommissionRub,
+          intermediaryCommissionUsd, intermediaryCommissionRub,
+          intermediaryCommissionFormula, intermediaryId,
+          ...rest
+        } = deal;
+        return rest;
       },
       getNewData: (req) => {
         // Исключаем поля дочерних сущностей — они аудируются отдельными PUT-маршрутами.
-        // Если их не исключить, ложные diff-ы возникают из-за разного представления
-        // в теле запроса (строка или массив) vs нормализованных данных из БД.
-        const { intermediaries, bankCommissions, chainExchangeRates, ...rest } = req.body;
+        const {
+          intermediaries, bankCommissions, chainExchangeRates,
+          bankCommissionUsd, bankCommissionRub,
+          intermediaryCommissionUsd, intermediaryCommissionRub,
+          intermediaryCommissionFormula, intermediaryId,
+          ...rest
+        } = req.body;
         return rest;
       },
     }),
@@ -356,12 +374,35 @@ export function registerRefuelingAbroadRoutes(app: Express) {
         const validatedData = intermediariesSchema.parse(req.body);
 
         // Снапшот старых посредников для аудита (с именами через детальный запрос)
+        const FORMULA_LABELS: Record<string, string> = {
+          percent_sale: "% от суммы продажи",
+          royalty_per_ton: "Роялти с тонны",
+          fixed: "Фиксированная сумма",
+        };
         const formatIntermediary = (item: any): string => {
-          const name = item.name || item.intermediaryId || "—";
-          const parts = [`${name}`];
-          if (item.commissionFormula) parts.push(`формула: ${item.commissionFormula}`);
-          if (item.commissionUsd != null) parts.push(`${item.commissionUsd} USD`);
-          if (item.commissionRub != null) parts.push(`${item.commissionRub} руб.`);
+          // Имя — из джойнов с suppliers/customers
+          const name =
+            item.supplierIntermediary?.name ||
+            item.customerIntermediary?.name ||
+            "—";
+          const parts = [name];
+          if (item.commissionFormula) {
+            parts.push(FORMULA_LABELS[item.commissionFormula] || item.commissionFormula);
+          }
+          // manualCommissionUsd — введённая вручную ставка; commissionUsd — расчётная
+          if (item.manualCommissionUsd != null && Number(item.manualCommissionUsd) !== 0) {
+            parts.push(`ставка: ${item.manualCommissionUsd}`);
+          }
+          if (item.commissionUsd != null && Number(item.commissionUsd) !== 0) {
+            parts.push(`${item.commissionUsd} USD`);
+          }
+          if (item.commissionRub != null && Number(item.commissionRub) !== 0) {
+            parts.push(`${item.commissionRub} руб.`);
+          }
+          if (item.crossConversionCost != null && Number(item.crossConversionCost) !== 0) {
+            parts.push(`кросс-конв.: ${item.crossConversionCost} USD`);
+          }
+          if (item.notes) parts.push(item.notes);
           return parts.join(", ");
         };
 
@@ -589,11 +630,23 @@ export function registerRefuelingAbroadRoutes(app: Express) {
       try {
         const parsed = z.array(insertRefuelingAbroadBankCommissionSchema.omit({ refuelingAbroadId: true })).parse(req.body);
 
+        const COMMISSION_TYPE_LABELS: Record<string, string> = {
+          percent: "% от суммы",
+          percent_min: "% с минималкой",
+        };
         const formatBank = (item: any): string => {
-          const name = item.bankName || item.name || item.bankId || "—";
-          const parts = [`${name}`];
-          if (item.commissionUsd != null) parts.push(`${item.commissionUsd} USD`);
-          if (item.commissionRub != null) parts.push(`${item.commissionRub} руб.`);
+          const name = item.bankName || "—";
+          const parts = [name];
+          if (item.commissionType) {
+            parts.push(COMMISSION_TYPE_LABELS[item.commissionType] || item.commissionType);
+          }
+          if (item.percent != null && Number(item.percent) !== 0) {
+            parts.push(`${item.percent}%`);
+          }
+          if (item.minValue != null && Number(item.minValue) !== 0) {
+            parts.push(`мин.: ${item.minValue}`);
+          }
+          if (item.notes) parts.push(item.notes);
           return parts.join(", ");
         };
 
