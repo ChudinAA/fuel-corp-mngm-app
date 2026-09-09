@@ -13,19 +13,52 @@ import { auditLog, getAuditContext } from "../../audit/middleware/audit-middlewa
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { AuditService } from "../../audit/services/audit-service";
 
-/** Строит читаемую метку сделки для записей аудита посредников/банков/курсов */
+/** Строит полную метку сделки для записей аудита — в формате entity summary */
 async function buildDealLabel(refuelingId: string): Promise<string> {
   try {
-    const deal = await refuelingAbroadStorage.getByIdIncludingDeleted(refuelingId);
+    // getById включает supplier и buyer через relations
+    const deal = await refuelingAbroadStorage.getById(refuelingId) as any;
     if (!deal) return "";
     const parts: string[] = [];
+
+    // Дата: DD.MM.YY
     if (deal.refuelingDate) {
-      const d = String(deal.refuelingDate).slice(0, 10).split("-").reverse().join(".");
-      parts.push(d);
+      const d = String(deal.refuelingDate).slice(0, 10);
+      const [y, m, day] = d.split("-");
+      parts.push(`${day}.${m}.${y.slice(-2)}`);
     }
-    if ((deal as any).airportCode) parts.push(String((deal as any).airportCode));
-    if ((deal as any).country) parts.push(String((deal as any).country));
-    return parts.join(", ");
+
+    // Номер ВС
+    if (deal.aircraftNumber) parts.push(String(deal.aircraftNumber));
+
+    // Тип топлива
+    if (deal.productType) {
+      const prodLabels: Record<string, string> = {
+        jet_fuel: "Авиакеросин", kerosene: "Керосин", diesel: "Дизельное топливо",
+        pvkj: "ПВКЖ", pvkj_tk: "ПВКЖ ТК", gasoline: "Бензин",
+        avgas: "AVGAS", mogas: "MOGAS",
+      };
+      parts.push(prodLabels[deal.productType] || deal.productType);
+    }
+
+    // Количество
+    const qtyKg = deal.quantityKg != null ? Number(deal.quantityKg) : 0;
+    const qtyL = deal.quantityLiters != null ? Number(deal.quantityLiters) : 0;
+    if (qtyKg > 0) {
+      parts.push(`${qtyKg.toLocaleString("ru-RU")} кг`);
+    } else if (qtyL > 0) {
+      parts.push(`${qtyL.toLocaleString("ru-RU")} л`);
+    }
+
+    // Поставщик
+    const supplierName = deal.supplier?.name;
+    if (supplierName) parts.push(supplierName);
+
+    // Покупатель
+    const buyerName = deal.buyer?.name;
+    if (buyerName) parts.push(`→ ${buyerName}`);
+
+    return parts.join(" · ");
   } catch {
     return "";
   }
@@ -178,7 +211,13 @@ export function registerRefuelingAbroadRoutes(app: Express) {
       getOldData: async (req) => {
         return await refuelingAbroadStorage.getById(req.params.id);
       },
-      getNewData: (req) => req.body,
+      getNewData: (req) => {
+        // Исключаем поля дочерних сущностей — они аудируются отдельными PUT-маршрутами.
+        // Если их не исключить, ложные diff-ы возникают из-за разного представления
+        // в теле запроса (строка или массив) vs нормализованных данных из БД.
+        const { intermediaries, bankCommissions, chainExchangeRates, ...rest } = req.body;
+        return rest;
+      },
     }),
     async (req, res) => {
       try {

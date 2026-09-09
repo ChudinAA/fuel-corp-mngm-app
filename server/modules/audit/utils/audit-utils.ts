@@ -6,19 +6,18 @@ export function normalizeAuditValue(value: any): string {
     return "";
   }
 
-  // Handle dates - convert to ISO string without milliseconds
+  // Handle dates - normalize to date-only YYYY-MM-DD for consistent comparison.
+  // This avoids false positives from timestamps stored with a time part
+  // (e.g. DB stores "2026-09-08 14:05:56" while the form sends "2026-09-08").
   if (
     value instanceof Date ||
     (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value))
   ) {
-    try {
-      const date = new Date(value);
-      if (!isNaN(date.getTime())) {
-        return date.toISOString().split(".")[0].replace("T", " ");
-      }
-    } catch {
-      // If parsing fails, fall through to string conversion
+    if (value instanceof Date) {
+      return value.toISOString().slice(0, 10);
     }
+    // Take the first 10 chars (YYYY-MM-DD) regardless of time/timezone suffix
+    return (value as string).slice(0, 10);
   }
 
   // Handle numbers - round to 5 decimal places to eliminate floating-point drift

@@ -405,17 +405,10 @@ function AuditEntryRow({
                 )}
               </div>
 
-              {/* Идентификатор сущности */}
-              {entityId && (
+              {/* Идентификатор сущности (из данных или из метки сделки для дочерних записей) */}
+              {(entityId || entry.entityMeta?.__dealLabel) && (
                 <p className="text-xs text-foreground/70 font-medium mt-0.5 truncate">
-                  {entityId}
-                </p>
-              )}
-
-              {/* Метка связанной сделки (для записей посредников/банков/курсов) */}
-              {!entityId && entry.entityMeta?.__dealLabel && (
-                <p className="text-xs text-foreground/70 font-medium mt-0.5 truncate">
-                  Сделка: {entry.entityMeta.__dealLabel}
+                  {entityId || `Сделка: ${entry.entityMeta!.__dealLabel}`}
                 </p>
               )}
 
