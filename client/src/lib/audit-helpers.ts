@@ -68,8 +68,8 @@ const ALWAYS_SKIP = new Set([
 // Поля разрешены только для конкретных сущностей (переопределяют ALWAYS_SKIP)
 const ENTITY_SPECIFIC_SHOW: Record<string, Set<string>> = {
   exchange_advance_cards: new Set(["currentBalance"]),
-  // Склады: базисы и услуги — не технические, должны быть видны
-  warehouses: new Set(["baseIds", "services"]),
+  // Склады: базисы, услуги, связанный поставщик
+  warehouses: new Set(["baseIds", "services", "supplierId"]),
   // Цены: список цен и контрагент — показываем (сервер форматирует как строку)
   prices: new Set(["priceValues", "counterpartyId"]),
   // Зарубеж: посредники и банки в цепочке — показываем (сервер форматирует как строку)
@@ -82,10 +82,20 @@ const ENTITY_SPECIFIC_SHOW: Record<string, Set<string>> = {
   equipment_movement: new Set(["fromEquipmentId", "toEquipmentId"]),
 };
 
+// Поля принудительно скрыты для конкретных сущностей (переопределяют обычную видимость)
+const ENTITY_SPECIFIC_HIDE: Record<string, Set<string>> = {
+  // У цен есть dateFrom/dateTo для периода действия — статус isActive избыточен
+  prices: new Set(["isActive"]),
+};
+
 /** Нужно ли показывать поле пользователю */
 export function isFieldVisible(entityType: string, fieldName: string): boolean {
   const entityOverride = ENTITY_SPECIFIC_SHOW[entityType];
   if (entityOverride?.has(fieldName)) return true;
+
+  // Принудительно скрытые для данной сущности поля
+  const entityHide = ENTITY_SPECIFIC_HIDE[entityType];
+  if (entityHide?.has(fieldName)) return false;
 
   // Если поле явно описано в Zod-схеме формы (.describe()), показываем его
   // даже если оно есть в ALWAYS_SKIP. Это позволяет user-facing FK-полям
@@ -186,11 +196,16 @@ function translateEnum(fieldName: string, value: string): string | null {
 }
 
 // ─── Числа с точностью ───────────────────────────────────────────────────────
-/** Нормализует число до 5 знаков после запятой */
+/** Нормализует число до 5 знаков после запятой.
+ *  ВАЖНО: строки-даты (начинаются с 4 цифр + дефис, например "2026-09-10")
+ *  намеренно НЕ распознаются как числа, чтобы parseFloat("2026-09-10") = 2026
+ *  не приводил к ложному "равенству" любых дат одного года. */
 function normalizeNum(v: unknown): number | null {
   if (typeof v === "number" && isFinite(v))
     return Math.round(v * 1e5) / 1e5;
   if (typeof v === "string") {
+    // Отсеиваем строки, похожие на даты или timestamp (содержат дефис или T/Z)
+    if (/\d{4}-\d{2}|T\d{2}:|^\d{4}-/.test(v)) return null;
     const n = parseFloat(v);
     if (!isNaN(n) && isFinite(n)) return Math.round(n * 1e5) / 1e5;
   }

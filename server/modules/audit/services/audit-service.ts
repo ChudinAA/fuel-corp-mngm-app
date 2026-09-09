@@ -172,8 +172,12 @@ export class AuditService {
         entityType,
         entityId,
         operation,
-        oldData: oldData || null,
-        newData: newData || null,
+        // Храним нормализованные данные для корректного отображения:
+        // services → строка, priceValues → строка, baseIds → массив UUID,
+        // даты → исходный формат (для правильного отображения в браузере).
+        // FK-резолвинг (entityMeta) выполняется из исходных сырых данных выше.
+        oldData: normalizedOldData || null,
+        newData: normalizedNewData || null,
         changedFields: changedFields && changedFields.length > 0 ? changedFields : null,
         entityMeta: Object.keys(entityMeta).length > 0 ? entityMeta : null,
         userId: context.userId || null,

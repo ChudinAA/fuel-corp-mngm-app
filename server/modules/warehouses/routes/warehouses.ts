@@ -61,7 +61,30 @@ export function registerWarehousesOperationsRoutes(app: Express) {
     auditLog({
       entityType: ENTITY_TYPES.WAREHOUSE,
       operation: AUDIT_OPERATIONS.CREATE,
-      getNewData: (req) => req.body,
+      // Трансформируем тело запроса: bases [{baseId}] → baseIds [uuid],
+      // чтобы аудит хранил данные в том же формате, что и DB.
+      getNewData: (req) => {
+        const {
+          bases,
+          supplierLinkMode,
+          linkedSupplierId,
+          newSupplierData,
+          createSupplier,
+          ...rest
+        } = req.body;
+        const result: any = { ...rest };
+        if (bases !== undefined) {
+          result.baseIds = Array.isArray(bases)
+            ? bases.map((b: { baseId: string } | string) =>
+                typeof b === "string" ? b : b.baseId
+              ).filter(Boolean)
+            : [];
+        }
+        if (supplierLinkMode === "link" && linkedSupplierId) {
+          result.supplierId = linkedSupplierId;
+        }
+        return result;
+      },
     }),
     async (req, res) => {
       try {
@@ -191,11 +214,23 @@ export function registerWarehousesOperationsRoutes(app: Express) {
               ).filter(Boolean)
             : [];
         }
-        // Резолвим supplierId из supplierLinkMode для корректного сравнения
+        // Резолвим supplierId из supplierLinkMode для корректного сравнения:
+        // "link"     → поставщик ИЗМЕНЁН на linkedSupplierId
+        // "existing" → поставщик НЕ ИЗМЕНЁН (форма передаёт текущий linkedSupplierId)
+        // "unlink"   → поставщик ОТВЯЗАН
+        // "create"   → поставщик будет создан (UUID неизвестен до ответа; оставляем пустым)
+        // "none"     → поставщик не был и не будет (оставляем пустым, null в DB)
         if (supplierLinkMode === "link" && linkedSupplierId) {
+          result.supplierId = linkedSupplierId;
+        } else if (supplierLinkMode === "existing" && linkedSupplierId) {
+          // Поставщик не изменился — передаём ту же UUID чтобы diff не показывал ложное изменение
           result.supplierId = linkedSupplierId;
         } else if (supplierLinkMode === "unlink") {
           result.supplierId = null;
+        } else if (!supplierLinkMode || supplierLinkMode === "none" || supplierLinkMode === "create") {
+          // Поставщик не задан или создаётся сейчас (UUID неизвестен) — убираем поле
+          // из result полностью, чтобы не было ложного diff со старым значением.
+          delete result.supplierId;
         }
         return result;
       },
