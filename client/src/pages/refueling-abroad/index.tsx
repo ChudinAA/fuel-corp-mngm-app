@@ -37,6 +37,7 @@ export default function RefuelingAbroadPage() {
     <div className="space-y-4">
 
       <AddRefuelingAbroadDialog
+        key={editingRefueling?.id ?? (isCopy ? "copy-new" : "new")}
         isOpen={isDialogOpen}
         onClose={handleCloseDialog}
         editRefueling={editingRefueling}
