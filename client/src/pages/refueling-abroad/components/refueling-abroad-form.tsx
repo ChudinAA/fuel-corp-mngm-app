@@ -189,6 +189,45 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
   });
 
   useEffect(() => {
+    if (!editData) {
+      // Сброс формы при открытии «Новая заправка»
+      setSelectedPurchasePriceId("");
+      setSelectedSalePriceId("");
+      setChainItems([]);
+      initialValuesRef.current = null;
+      initialIntermediariesRef.current = "";
+      form.reset({
+        refuelingDate: new Date(),
+        productType: PRODUCT_TYPE.KEROSENE,
+        aircraftNumber: "",
+        flightNumber: "",
+        rtNumber: "",
+        airportCode: "",
+        supplierId: "",
+        buyerId: "",
+        basisId: "",
+        intermediaries: [],
+        inputMode: "kg",
+        quantityLiters: "",
+        density: "0.8",
+        quantityKg: "",
+        selectedPurchasePriceId: "",
+        selectedSalePriceId: "",
+        purchasePriceUsd: "",
+        salePriceUsd: "",
+        purchaseExchangeRateId: latestUsdRate?.id || "",
+        manualPurchaseExchangeRate: "",
+        manualPurchaseExchangeRateDate: "",
+        saleExchangeRateId: latestUsdRate?.id || "",
+        manualSaleExchangeRate: "",
+        manualSaleExchangeRateDate: "",
+        notes: "",
+        isApproxVolume: false,
+        isDraft: false,
+      }, { keepDefaultValues: false });
+      return;
+    }
+
     if (editData) {
       const purchasePriceCompositeId =
         editData.purchasePriceId && editData.purchasePriceIndex !== undefined
