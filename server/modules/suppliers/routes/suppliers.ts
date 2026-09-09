@@ -138,7 +138,7 @@ export function registerSuppliersRoutes(app: Express) {
       // Трансформируем тело запроса: вычисляем warehouseId из warehouseAction,
       // чтобы сравнение старых и новых данных было корректным.
       getNewData: async (req) => {
-        const { warehouseAction, warehouseId: targetWarehouseId, newWarehouseData, basisPrices, ...rest } = req.body;
+        const { warehouseAction, warehouseId: targetWarehouseId, newWarehouseData, ...rest } = req.body;
         const result: any = { ...rest };
         if (warehouseAction === "link" && targetWarehouseId) {
           result.warehouseId = targetWarehouseId;

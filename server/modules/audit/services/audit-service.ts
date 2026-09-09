@@ -153,6 +153,41 @@ export class AuditService {
   }
 
   /**
+   * Format basisPrices array (array of supplier basis price objects) into a human-readable string.
+   * Resolves basis names from DB so they appear in the audit record.
+   */
+  private static async formatBasisPrices(basisPrices: any[]): Promise<string | null> {
+    if (!Array.isArray(basisPrices) || basisPrices.length === 0) return null;
+    const parts: string[] = [];
+    for (const bp of basisPrices) {
+      if (!bp || typeof bp !== 'object') continue;
+      // Try to resolve basis name
+      let basisName = bp.basisId || '?';
+      if (bp.basisId) {
+        try {
+          const [row] = await db.select({ name: bases.name }).from(bases).where(eq(bases.id, bp.basisId)).limit(1);
+          if (row?.name) basisName = row.name;
+        } catch { /* ignore */ }
+      }
+      const prices: string[] = [];
+      if (bp.servicePrice != null && bp.servicePrice !== 0 && bp.servicePrice !== '0')
+        prices.push(`сервис: ${bp.servicePrice}`);
+      if (bp.pvkjPrice != null && bp.pvkjPrice !== 0 && bp.pvkjPrice !== '0')
+        prices.push(`ПВКЖ: ${bp.pvkjPrice}`);
+      if (bp.agentFee != null && bp.agentFee !== 0 && bp.agentFee !== '0')
+        prices.push(`агент: ${bp.agentFee}`);
+      if (bp.otherServiceValue != null && bp.otherServiceValue !== 0 && bp.otherServiceValue !== '0') {
+        const label = bp.otherServiceName || 'прочее';
+        prices.push(`${label}: ${bp.otherServiceValue}`);
+      }
+      if (prices.length > 0 || basisName !== '?') {
+        parts.push(`${basisName}${prices.length ? ': ' + prices.join(', ') : ''}`);
+      }
+    }
+    return parts.length > 0 ? parts.join('; ') : null;
+  }
+
+  /**
    * Log an audit entry
    */
   static async log(options: AuditOptions): Promise<void> {
@@ -160,12 +195,22 @@ export class AuditService {
       entityType,
       entityId,
       operation,
-      oldData,
-      newData,
       context,
     } = options;
+    let { oldData, newData } = options;
 
     try {
+      // Pre-format basisPrices (supplier basis prices) to a human-readable string with resolved basis names.
+      // This must happen before normalization because normalizeDataForAudit skips object arrays.
+      if (oldData?.basisPrices && Array.isArray(oldData.basisPrices) && oldData.basisPrices.length > 0) {
+        const formatted = await this.formatBasisPrices(oldData.basisPrices);
+        oldData = { ...oldData, basisPrices: formatted ?? undefined };
+      }
+      if (newData?.basisPrices && Array.isArray(newData.basisPrices) && newData.basisPrices.length > 0) {
+        const formatted = await this.formatBasisPrices(newData.basisPrices);
+        newData = { ...newData, basisPrices: formatted ?? undefined };
+      }
+
       // Normalize data to ensure consistent formatting
       const normalizedOldData = oldData ? this.normalizeDataForAudit(oldData) : null;
       const normalizedNewData = newData ? this.normalizeDataForAudit(newData) : null;

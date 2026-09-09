@@ -83,6 +83,10 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         }
         if (supplierLinkMode === "link" && linkedSupplierId) {
           result.supplierId = linkedSupplierId;
+        } else if (supplierLinkMode === "create" && (req as any)._auditCreatedSupplierId) {
+          // Поставщик создан в хендлере — UUID известен к моменту вызова getNewData
+          // (middleware вызывает getNewData внутри res.send, ПОСЛЕ того как хендлер отработал)
+          result.supplierId = (req as any)._auditCreatedSupplierId;
         }
         return result;
       },
@@ -160,6 +164,10 @@ export function registerWarehousesOperationsRoutes(app: Express) {
             };
 
             const supplier = await storage.suppliers.createSupplier(supplierData);
+            // Сохраняем UUID созданного поставщика, чтобы middleware аудита смог
+            // захватить supplierId в getNewData (вызывается внутри res.send, уже после хендлера)
+            (req as any)._auditCreatedSupplierId = supplier.id;
+
             await storage.warehouses.updateWarehouse(item.id, {
               supplierId: supplier.id,
               updatedById: req.session.userId ? String(req.session.userId) : null,

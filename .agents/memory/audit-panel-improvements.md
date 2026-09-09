@@ -75,6 +75,23 @@ description: Summary of audit panel UX improvements — width, field visibility,
 
 ---
 
+## Session 4 fixes
+
+**UUID массивы (baseIds) показывали UUID в строке детали записи, но не в превью:**
+- Root cause: `formatValue(val, field)` вызывался без третьего аргумента `entityMeta` → UUID-массивы не резолвились
+- Fix: в `ChangeDetail` (audit-panel.tsx) добавлен `const meta = entry.entityMeta;` (поднят выше exchange_advance_cards блока); все вызовы `formatValue` теперь передают `meta`; `FieldRow` получил prop `entityMeta` и передаёт его в оба `formatValue`
+
+**supplierId не виден в аудите CREATE склада (режим "create new supplier"):**
+- Root cause: `getNewData` middleware вызывается внутри переопределённого `res.send`, то есть УЖЕ после того как хендлер отработал → хендлер может выставить `(req as any)._auditCreatedSupplierId = supplier.id` до `res.json()`
+- Fix: warehouse CREATE handler ставит флаг на `req` после `createSupplier`; `getNewData` читает его для `supplierLinkMode === "create"`
+
+**Изменения basisPrices поставщика не отслеживались в аудите:**
+- Root cause 1: supplier PATCH `getNewData` деструктурировал и стрипил `basisPrices`
+- Root cause 2: `normalizeDataForAudit` пропускает объектные массивы
+- Fix: `basisPrices` убран из деструктуризации `getNewData` PATCH (включён в `...rest`); в `AuditService.log()` добавлен async pre-step — `formatBasisPrices()` резолвит имена базисов из DB и форматирует в строку `"Базис: сервис: X, агент: Y; ..."` ДО нормализации; `basisPrices` добавлен в `ENTITY_SPECIFIC_SHOW.suppliers` и в `FIELD_LABELS.suppliers` ("Базисные цены (услуги)")
+
+---
+
 ## Session 3 fixes (Склады / Контрагенты / Доставка аудит)
 
 **baseId resolver без deletedAt фильтра** (audit-service.ts):

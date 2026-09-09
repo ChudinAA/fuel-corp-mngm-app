@@ -70,8 +70,8 @@ const ENTITY_SPECIFIC_SHOW: Record<string, Set<string>> = {
   exchange_advance_cards: new Set(["currentBalance"]),
   // Склады: базисы, услуги, связанный поставщик
   warehouses: new Set(["baseIds", "services", "supplierId"]),
-  // Поставщики: базисы и привязанный склад
-  suppliers: new Set(["baseIds", "warehouseId"]),
+  // Поставщики: базисы, привязанный склад и базисные цены (услуги)
+  suppliers: new Set(["baseIds", "warehouseId", "basisPrices"]),
   // Покупатели: базисы
   customers: new Set(["baseIds"]),
   // Цены: список цен и контрагент — показываем (сервер форматирует как строку)

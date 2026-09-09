@@ -255,9 +255,10 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
     isActive: "Активен",
     isWarehouse: "Является складом",
     storageCost: "Стоимость хранения (руб./т)",
-    // Базисы и привязанный склад — показываем (разрешено в ENTITY_SPECIFIC_SHOW)
+    // Базисы, привязанный склад и базисные цены — показываем (разрешено в ENTITY_SPECIFIC_SHOW)
     baseIds: "Базисы",
     warehouseId: "Привязанный склад",
+    basisPrices: "Базисные цены (услуги)",
   },
 
   // ── ПОКУПАТЕЛИ ────────────────────────────────────────────────────────────────

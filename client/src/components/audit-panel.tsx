@@ -153,6 +153,8 @@ function ChangeDetail({
     );
   }
 
+  const meta = entry.entityMeta;
+
   // Специальный режим для авансовых карт (показываем баланс как пополнение)
   if (entityType === "exchange_advance_cards" && entry.operation === "UPDATE") {
     const balChange = changes.find((c) => c.field === "currentBalance");
@@ -185,7 +187,7 @@ function ChangeDetail({
           </div>
           {/* Остальные изменения (кроме баланса) */}
           {changes.filter(c => c.field !== "currentBalance").map(({ field, label, oldVal, newVal }) => (
-            <FieldRow key={field} label={label} oldVal={oldVal} newVal={newVal} field={field} operation={entry.operation} />
+            <FieldRow key={field} label={label} oldVal={oldVal} newVal={newVal} field={field} operation={entry.operation} entityMeta={meta} />
           ))}
         </div>
       );
@@ -204,7 +206,7 @@ function ChangeDetail({
                 "font-medium text-foreground break-words min-w-0",
                 isFK && "text-muted-foreground italic"
               )}>
-                {isFK ? "задан(о)" : formatValue(newVal, field)}
+                {isFK ? "задан(о)" : formatValue(newVal, field, meta)}
               </span>
             </div>
           ))}
@@ -225,7 +227,7 @@ function ChangeDetail({
                 "line-through text-red-600 dark:text-red-400 break-words min-w-0",
                 isFK && "not-italic text-muted-foreground"
               )}>
-                {isFK ? "было задан(о)" : formatValue(oldVal, field)}
+                {isFK ? "было задан(о)" : formatValue(oldVal, field, meta)}
               </span>
             </div>
           ))}
@@ -246,7 +248,7 @@ function ChangeDetail({
                 "text-purple-700 dark:text-purple-400 font-medium break-words min-w-0",
                 isFK && "italic"
               )}>
-                {isFK ? "восстановлен(о)" : formatValue(newVal, field)}
+                {isFK ? "восстановлен(о)" : formatValue(newVal, field, meta)}
               </span>
             </div>
           ))}
@@ -260,7 +262,7 @@ function ChangeDetail({
     <div className="space-y-2.5">
       <p className="text-[11px] text-muted-foreground font-medium mb-2 uppercase tracking-wide">Изменения</p>
       {changes.map(({ field, label, oldVal, newVal, isFK }) => (
-        <FieldRow key={field} label={label} oldVal={oldVal} newVal={newVal} field={field} operation="UPDATE" isFK={isFK} />
+        <FieldRow key={field} label={label} oldVal={oldVal} newVal={newVal} field={field} operation="UPDATE" isFK={isFK} entityMeta={meta} />
       ))}
     </div>
   );
@@ -273,6 +275,7 @@ function FieldRow({
   field,
   operation,
   isFK,
+  entityMeta,
 }: {
   label: string;
   oldVal: unknown;
@@ -280,6 +283,7 @@ function FieldRow({
   field: string;
   operation: string;
   isFK?: boolean;
+  entityMeta?: Record<string, string> | null;
 }) {
   return (
     <div className="space-y-0.5">
@@ -290,11 +294,11 @@ function FieldRow({
         ) : (
           <>
             <span className="px-2 py-0.5 rounded bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 line-through max-w-[160px] break-words">
-              {formatValue(oldVal, field)}
+              {formatValue(oldVal, field, entityMeta)}
             </span>
             <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
             <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-semibold max-w-[160px] break-words">
-              {formatValue(newVal, field)}
+              {formatValue(newVal, field, entityMeta)}
             </span>
           </>
         )}
