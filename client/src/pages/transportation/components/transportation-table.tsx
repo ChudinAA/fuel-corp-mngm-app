@@ -108,7 +108,6 @@ export function TransportationTable({
   const [deletedDealsAuditOpen, setDeletedDealsAuditOpen] = useState(false);
   const [searchInput, setSearchInput] = useState(search);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const loaderRef = useRef<HTMLDivElement | null>(null);
 
   // Debounce search
   useEffect(() => {
@@ -129,22 +128,6 @@ export function TransportationTable({
     carriers: true,
     bases: true,
   });
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      },
-      { threshold: 0.5 },
-    );
-    const el = loaderRef.current;
-    if (el) observer.observe(el);
-    return () => {
-      if (el) observer.unobserve(el);
-    };
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const getFilterOptions = (
     columnId: string,
@@ -509,11 +492,25 @@ export function TransportationTable({
         </Table>
       </div>
 
-      <div ref={loaderRef} className="flex justify-center py-2">
-        {isFetchingNextPage && (
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        )}
-      </div>
+      {hasNextPage && (
+        <div className="flex justify-center pt-4">
+          <Button
+            variant="outline"
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="w-full max-w-xs gap-2"
+          >
+            {isFetchingNextPage ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Загрузка...
+              </>
+            ) : (
+              "Загрузить ещё"
+            )}
+          </Button>
+        </div>
+      )}
 
       <DeleteConfirmDialog
         open={!!deleteId}

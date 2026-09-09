@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { EntityActionsMenu } from "@/components/entity-actions-menu";
-import { Pencil, Trash2, History, Filter, Search, Copy, Plus } from "lucide-react";
+import { Pencil, Trash2, History, Filter, Search, Copy, Plus, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { formatNumber, formatDate } from "../utils";
 import { useEquipmentMovementTable } from "../hooks/use-equipment-movement-table";
@@ -39,6 +39,9 @@ export function EquipmentMovementTable({
     setSearch,
     columnFilters,
     setColumnFilters,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   } = useEquipmentMovementTable();
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -282,6 +285,26 @@ export function EquipmentMovementTable({
             )}
           </TableBody>
         </Table>
+
+        {hasNextPage && (
+          <div className="flex justify-center pt-4">
+            <Button
+              variant="outline"
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
+              className="w-full max-w-xs gap-2"
+            >
+              {isFetchingNextPage ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Загрузка...
+                </>
+              ) : (
+                "Загрузить ещё"
+              )}
+            </Button>
+          </div>
+        )}
 
         <DeleteConfirmDialog
           open={!!deleteId}
