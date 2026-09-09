@@ -540,27 +540,27 @@ export function ExchangeDealsTable({ onEdit, onCopy, onAdd, onDelete }: Exchange
             )}
           </TableBody>
         </Table>
-      </div>
 
-      {hasNextPage && (
-        <div className="flex justify-center pt-2">
-          <Button
-            variant="outline"
-            onClick={() => fetchNextPage()}
-            disabled={isFetchingNextPage}
-            data-testid="button-load-more"
-          >
-            {isFetchingNextPage ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Загрузка...
-              </>
-            ) : (
-              "Загрузить ещё"
-            )}
-          </Button>
-        </div>
-      )}
+        {hasNextPage && (
+          <div className="flex justify-center pt-2">
+            <Button
+              variant="outline"
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
+              data-testid="button-load-more"
+            >
+              {isFetchingNextPage ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Загрузка...
+                </>
+              ) : (
+                "Загрузить ещё"
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
 
       <AuditPanel
         open={auditOpen}
