@@ -165,6 +165,10 @@ export class AuditService {
       let changedFields: string[] | null = null;
       if (operation === AUDIT_OPERATIONS.UPDATE && normalizedOldData && normalizedNewData) {
         changedFields = getChangedFields(normalizedOldData, normalizedNewData);
+        // Skip UPDATE records where nothing actually changed — avoids junk records when
+        // a PATCH is triggered by adding a chain entity (intermediary / bank / rate)
+        // but the main deal scalar fields are identical.
+        if (changedFields.length === 0) return;
       }
 
       // Resolve human-readable names for FK fields (buyerId, supplierId, etc.)
