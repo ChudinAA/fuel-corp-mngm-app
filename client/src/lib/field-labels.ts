@@ -120,9 +120,10 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
     airportCode: "Код аэропорта",
     airport: "Аэропорт",
     country: "Страна",
-    // Посредники и банки (форматируются сервером как строки)
+    // Посредники, банки и курсы в цепочке (форматируются сервером как строки)
     intermediaries: "Посредники",
     bankCommissions: "Банки в цепочке",
+    chainExchangeRates: "Курсы конвертации в цепочке",
     productType: "Тип топлива",
     inputMode: "Единица ввода",
     quantityKg: "Количество (кг)",

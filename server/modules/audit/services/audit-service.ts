@@ -19,6 +19,8 @@ export interface AuditOptions {
   oldData?: any;
   newData?: any;
   context: AuditContext;
+  /** Extra metadata to merge into entityMeta (e.g. { __dealLabel: "01.01.2026, KGCN" }) */
+  extraMeta?: Record<string, string>;
 }
 
 export class AuditService {
@@ -166,7 +168,11 @@ export class AuditService {
       }
 
       // Resolve human-readable names for FK fields (buyerId, supplierId, etc.)
-      const entityMeta = await this.resolveFkNames(oldData, newData);
+      const resolvedMeta = await this.resolveFkNames(oldData, newData);
+      // Merge extra metadata (e.g. __dealLabel) if provided
+      const entityMeta = options.extraMeta
+        ? { ...resolvedMeta, ...options.extraMeta }
+        : resolvedMeta;
 
       await db.insert(auditLog).values({
         entityType,
@@ -398,6 +404,53 @@ export class AuditService {
   }
 
 
+
+  /**
+   * Enrich the most recent CREATE audit record for an entity with additional
+   * child-entity data (e.g. intermediaries, bankCommissions, chainExchangeRates).
+   * Called when child entities are set for the first time, so the CREATE record
+   * reflects the full initial state of the deal.
+   */
+  static async enrichCreateRecord(
+    entityType: EntityType,
+    entityId: string,
+    extraData: Record<string, string>,
+  ): Promise<void> {
+    try {
+      const [createRecord] = await db
+        .select()
+        .from(auditLog)
+        .where(
+          and(
+            eq(auditLog.entityType, entityType),
+            eq(auditLog.entityId, entityId),
+            sql`${auditLog.operation} = 'CREATE'`,
+          ),
+        )
+        .orderBy(desc(auditLog.createdAt))
+        .limit(1);
+
+      if (!createRecord) return;
+
+      const existingNewData: Record<string, any> =
+        (createRecord.newData as Record<string, any>) || {};
+      // Only add fields that are not already present in the CREATE record
+      const missing: Record<string, string> = {};
+      for (const [k, v] of Object.entries(extraData)) {
+        if (!(k in existingNewData)) {
+          missing[k] = v;
+        }
+      }
+      if (Object.keys(missing).length === 0) return;
+
+      await db
+        .update(auditLog)
+        .set({ newData: { ...existingNewData, ...missing } })
+        .where(eq(auditLog.id, createRecord.id));
+    } catch (err) {
+      console.error("Error enriching CREATE audit record:", err);
+    }
+  }
 
   /**
    * Backfill entityMeta for existing audit entries that have no FK name resolution.

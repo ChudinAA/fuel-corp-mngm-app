@@ -412,6 +412,13 @@ function AuditEntryRow({
                 </p>
               )}
 
+              {/* Метка связанной сделки (для записей посредников/банков/курсов) */}
+              {!entityId && entry.entityMeta?.__dealLabel && (
+                <p className="text-xs text-foreground/70 font-medium mt-0.5 truncate">
+                  Сделка: {entry.entityMeta.__dealLabel}
+                </p>
+              )}
+
               {/* Список изменённых полей (только для UPDATE) */}
               {fieldsSummary && (
                 <p className="text-xs text-muted-foreground mt-0.5 truncate">

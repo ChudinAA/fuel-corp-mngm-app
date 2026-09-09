@@ -13,6 +13,24 @@ import { auditLog, getAuditContext } from "../../audit/middleware/audit-middlewa
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { AuditService } from "../../audit/services/audit-service";
 
+/** Строит читаемую метку сделки для записей аудита посредников/банков/курсов */
+async function buildDealLabel(refuelingId: string): Promise<string> {
+  try {
+    const deal = await refuelingAbroadStorage.getByIdIncludingDeleted(refuelingId);
+    if (!deal) return "";
+    const parts: string[] = [];
+    if (deal.refuelingDate) {
+      const d = String(deal.refuelingDate).slice(0, 10).split("-").reverse().join(".");
+      parts.push(d);
+    }
+    if ((deal as any).airportCode) parts.push(String((deal as any).airportCode));
+    if ((deal as any).country) parts.push(String((deal as any).country));
+    return parts.join(", ");
+  } catch {
+    return "";
+  }
+}
+
 export function registerRefuelingAbroadRoutes(app: Express) {
   app.get(
     "/api/refueling-abroad",
@@ -299,17 +317,19 @@ export function registerRefuelingAbroadRoutes(app: Express) {
         const validatedData = intermediariesSchema.parse(req.body);
 
         // Снапшот старых посредников для аудита (с именами через детальный запрос)
-        let oldIntermediariesStr = "";
+        const formatIntermediary = (item: any): string => {
+          const name = item.name || item.intermediaryId || "—";
+          const parts = [`${name}`];
+          if (item.commissionFormula) parts.push(`формула: ${item.commissionFormula}`);
+          if (item.commissionUsd != null) parts.push(`${item.commissionUsd} USD`);
+          if (item.commissionRub != null) parts.push(`${item.commissionRub} руб.`);
+          return parts.join(", ");
+        };
+
+        let oldIntermediariesStr = "—";
         try {
           const oldItems = await refuelingAbroadIntermediariesStorage.getByRefuelingIdWithDetails(req.params.id);
-          oldIntermediariesStr = oldItems.map((item: any) => {
-            const name = item.name || item.intermediaryId || "—";
-            const parts = [`${name}`];
-            if (item.commissionFormula) parts.push(`формула: ${item.commissionFormula}`);
-            if (item.commissionUsd != null) parts.push(`${item.commissionUsd} USD`);
-            if (item.commissionRub != null) parts.push(`${item.commissionRub} руб.`);
-            return parts.join(", ");
-          }).join("; ") || "—";
+          oldIntermediariesStr = oldItems.map(formatIntermediary).join("; ") || "—";
         } catch {}
 
         const items =
@@ -319,32 +339,43 @@ export function registerRefuelingAbroadRoutes(app: Express) {
           );
 
         // Снапшот новых посредников для аудита
-        let newIntermediariesStr = "";
+        let newIntermediariesStr = "—";
         try {
           const newItems = await refuelingAbroadIntermediariesStorage.getByRefuelingIdWithDetails(req.params.id);
-          newIntermediariesStr = newItems.map((item: any) => {
-            const name = item.name || item.intermediaryId || "—";
-            const parts = [`${name}`];
-            if (item.commissionFormula) parts.push(`формула: ${item.commissionFormula}`);
-            if (item.commissionUsd != null) parts.push(`${item.commissionUsd} USD`);
-            if (item.commissionRub != null) parts.push(`${item.commissionRub} руб.`);
-            return parts.join(", ");
-          }).join("; ") || "—";
+          newIntermediariesStr = newItems.map(formatIntermediary).join("; ") || "—";
         } catch {}
 
-        // Аудит: логируем изменение посредников как UPDATE записи
-        try {
-          // Используем обогащённый контекст (с именем пользователя), добавленный middleware
-          const context = (req as any).auditContext || getAuditContext(req);
-          await AuditService.log({
-            entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
-            entityId: req.params.id,
-            operation: AUDIT_OPERATIONS.UPDATE,
-            oldData: { intermediaries: oldIntermediariesStr },
-            newData: { intermediaries: newIntermediariesStr },
-            context,
-          });
-        } catch {}
+        // Аудит: только если данные реально изменились
+        if (oldIntermediariesStr !== newIntermediariesStr) {
+          try {
+            const context = (req as any).auditContext || getAuditContext(req);
+            // Метка сделки для панели аудита
+            const dealLabel = await buildDealLabel(req.params.id);
+            await AuditService.log({
+              entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
+              entityId: req.params.id,
+              operation: AUDIT_OPERATIONS.UPDATE,
+              oldData: { intermediaries: oldIntermediariesStr },
+              newData: { intermediaries: newIntermediariesStr },
+              context,
+              extraMeta: dealLabel ? { __dealLabel: dealLabel } : undefined,
+            });
+          } catch {}
+
+          // Если посредники устанавливаются впервые — обогащаем CREATE-запись
+          if (
+            (oldIntermediariesStr === "—") &&
+            newIntermediariesStr !== "—"
+          ) {
+            try {
+              await AuditService.enrichCreateRecord(
+                ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
+                req.params.id,
+                { intermediaries: newIntermediariesStr },
+              );
+            } catch {}
+          }
+        }
 
         res.json(items);
       } catch (error: any) {
@@ -428,7 +459,62 @@ export function registerRefuelingAbroadRoutes(app: Express) {
     async (req, res) => {
       try {
         const items = z.array(insertRefuelingAbroadExchangeRateSchema.omit({ refuelingAbroadId: true })).parse(req.body);
+
+        const formatRate = (item: any): string => {
+          const parts: string[] = [];
+          if (item.fromCurrencyCode && item.toCurrencyCode) {
+            parts.push(`${item.fromCurrencyCode}→${item.toCurrencyCode}`);
+          }
+          if (item.rate != null) parts.push(`курс: ${item.rate}`);
+          if (item.rateDate) parts.push(String(item.rateDate).slice(0, 10));
+          if (item.notes) parts.push(item.notes);
+          return parts.join(", ") || "—";
+        };
+
+        // Снапшот старых курсов для аудита
+        let oldRatesStr = "—";
+        try {
+          const oldItems = await refuelingAbroadExchangeRatesStorage.getByRefuelingId(req.params.id);
+          oldRatesStr = oldItems.map(formatRate).join("; ") || "—";
+        } catch {}
+
         const result = await refuelingAbroadExchangeRatesStorage.replaceForRefueling(req.params.id, items);
+
+        // Снапшот новых курсов для аудита
+        let newRatesStr = "—";
+        try {
+          const newItems = await refuelingAbroadExchangeRatesStorage.getByRefuelingId(req.params.id);
+          newRatesStr = newItems.map(formatRate).join("; ") || "—";
+        } catch {}
+
+        // Аудит: только если данные реально изменились
+        if (oldRatesStr !== newRatesStr) {
+          try {
+            const context = (req as any).auditContext || getAuditContext(req);
+            const dealLabel = await buildDealLabel(req.params.id);
+            await AuditService.log({
+              entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
+              entityId: req.params.id,
+              operation: AUDIT_OPERATIONS.UPDATE,
+              oldData: { chainExchangeRates: oldRatesStr },
+              newData: { chainExchangeRates: newRatesStr },
+              context,
+              extraMeta: dealLabel ? { __dealLabel: dealLabel } : undefined,
+            });
+          } catch {}
+
+          // Если курсы устанавливаются впервые — обогащаем CREATE-запись
+          if (oldRatesStr === "—" && newRatesStr !== "—") {
+            try {
+              await AuditService.enrichCreateRecord(
+                ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
+                req.params.id,
+                { chainExchangeRates: newRatesStr },
+              );
+            } catch {}
+          }
+        }
+
         res.json(result);
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -464,47 +550,57 @@ export function registerRefuelingAbroadRoutes(app: Express) {
       try {
         const parsed = z.array(insertRefuelingAbroadBankCommissionSchema.omit({ refuelingAbroadId: true })).parse(req.body);
 
+        const formatBank = (item: any): string => {
+          const name = item.bankName || item.name || item.bankId || "—";
+          const parts = [`${name}`];
+          if (item.commissionUsd != null) parts.push(`${item.commissionUsd} USD`);
+          if (item.commissionRub != null) parts.push(`${item.commissionRub} руб.`);
+          return parts.join(", ");
+        };
+
         // Снапшот старых банков для аудита
-        let oldBanksStr = "";
+        let oldBanksStr = "—";
         try {
           const oldItems = await refuelingAbroadBankCommissionsStorage.getByRefuelingId(req.params.id);
-          oldBanksStr = (oldItems as any[]).map((item: any) => {
-            const name = item.bankName || item.name || item.bankId || "—";
-            const parts = [`${name}`];
-            if (item.commissionUsd != null) parts.push(`${item.commissionUsd} USD`);
-            if (item.commissionRub != null) parts.push(`${item.commissionRub} руб.`);
-            return parts.join(", ");
-          }).join("; ") || "—";
+          oldBanksStr = (oldItems as any[]).map(formatBank).join("; ") || "—";
         } catch {}
 
         const result = await refuelingAbroadBankCommissionsStorage.replaceForRefueling(req.params.id, parsed);
 
         // Снапшот новых банков для аудита
-        let newBanksStr = "";
+        let newBanksStr = "—";
         try {
           const newItems = await refuelingAbroadBankCommissionsStorage.getByRefuelingId(req.params.id);
-          newBanksStr = (newItems as any[]).map((item: any) => {
-            const name = item.bankName || item.name || item.bankId || "—";
-            const parts = [`${name}`];
-            if (item.commissionUsd != null) parts.push(`${item.commissionUsd} USD`);
-            if (item.commissionRub != null) parts.push(`${item.commissionRub} руб.`);
-            return parts.join(", ");
-          }).join("; ") || "—";
+          newBanksStr = (newItems as any[]).map(formatBank).join("; ") || "—";
         } catch {}
 
-        // Аудит: логируем изменение банков как UPDATE записи
-        try {
-          // Используем обогащённый контекст (с именем пользователя), добавленный middleware
-          const context = (req as any).auditContext || getAuditContext(req);
-          await AuditService.log({
-            entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
-            entityId: req.params.id,
-            operation: AUDIT_OPERATIONS.UPDATE,
-            oldData: { bankCommissions: oldBanksStr },
-            newData: { bankCommissions: newBanksStr },
-            context,
-          });
-        } catch {}
+        // Аудит: только если данные реально изменились
+        if (oldBanksStr !== newBanksStr) {
+          try {
+            const context = (req as any).auditContext || getAuditContext(req);
+            const dealLabel = await buildDealLabel(req.params.id);
+            await AuditService.log({
+              entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
+              entityId: req.params.id,
+              operation: AUDIT_OPERATIONS.UPDATE,
+              oldData: { bankCommissions: oldBanksStr },
+              newData: { bankCommissions: newBanksStr },
+              context,
+              extraMeta: dealLabel ? { __dealLabel: dealLabel } : undefined,
+            });
+          } catch {}
+
+          // Если банки устанавливаются впервые — обогащаем CREATE-запись
+          if (oldBanksStr === "—" && newBanksStr !== "—") {
+            try {
+              await AuditService.enrichCreateRecord(
+                ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
+                req.params.id,
+                { bankCommissions: newBanksStr },
+              );
+            } catch {}
+          }
+        }
 
         res.json(result);
       } catch (error: any) {
