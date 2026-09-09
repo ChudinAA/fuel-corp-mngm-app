@@ -1,9 +1,11 @@
 import {
   useState,
   useEffect,
+  useMemo,
   forwardRef,
   useImperativeHandle,
   useRef,
+  createRef,
 } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -29,6 +31,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Plus, Loader2 } from "lucide-react";
 import type {
   Supplier,
@@ -50,6 +57,11 @@ import { extractPriceIdsForSubmit } from "../../shared/utils/price-utils";
 import { useDuplicateCheck } from "../../shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "../../shared/components/duplicate-alert-dialog";
 import { SpecialConditionsBanner } from "@/components/special-conditions-banner";
+import {
+  AdditionalProductSection,
+  type AdditionalProductSectionHandle,
+} from "./additional-product-section";
+import { PRODUCT_TYPES } from "../constants";
 
 export interface RefuelingFormHandle {
   getFormState: () => { supplierId: string; buyerId: string };
@@ -88,6 +100,15 @@ export const RefuelingForm = forwardRef<
   const [isOtherServiceEnabled, setIsOtherServiceEnabled] = useState<boolean>(
     editData?.isOtherServiceEnabled !== false
   );
+
+  // Дополнительные продукты (многопродуктовое создание)
+  const [additionalProducts, setAdditionalProducts] = useState<
+    Array<{ id: string; productType: string }>
+  >([]);
+  const additionalProductRefs = useRef<
+    Map<string, React.RefObject<AdditionalProductSectionHandle>>
+  >(new Map());
+  const [addProductPopoverOpen, setAddProductPopoverOpen] = useState(false);
 
   const initialValuesRef = useRef<RefuelingFormData | null>(null);
 
@@ -129,7 +150,62 @@ export const RefuelingForm = forwardRef<
       if (editData?.id) {
         await updateMutation.mutateAsync({ ...values, isDraft: true, id: editData.id });
       } else {
-        await createMutation.mutateAsync({ ...values, isDraft: true });
+        // Build common payload
+        const { purchasePriceId, purchasePriceIndex, salePriceId, salePriceIndex } =
+          extractPriceIdsForSubmit(
+            selectedPurchasePriceId,
+            selectedSalePriceId,
+            purchasePrices,
+            salePrices,
+            isWarehouseSupplier,
+          );
+        const commonPayload = buildCommonPayload(values, true);
+        const mainPayload = {
+          ...commonPayload,
+          productType: values.productType,
+          purchasePrice: purchasePrice !== null ? purchasePrice : null,
+          purchasePriceId: purchasePriceId || null,
+          purchasePriceIndex: purchasePriceIndex !== undefined ? purchasePriceIndex : null,
+          salePrice: salePrice !== null ? salePrice : null,
+          salePriceId: salePriceId || null,
+          salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
+          purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
+          saleAmount: saleAmount !== null ? saleAmount : null,
+          agentFee: agentFee !== null ? agentFee : null,
+          agentFeeRate: agentFeeRate || null,
+          isAgentFeeEnabled,
+          otherServiceFee: otherServiceFee || null,
+          otherServiceName: otherServiceName || null,
+          otherServiceType: otherServiceType || null,
+          otherServiceQuantity: otherServiceQuantity ? parseFloat(otherServiceQuantity) : null,
+          isOtherServiceEnabled,
+          profit: profit !== null ? profit : null,
+          isPriceRecharge: values.isPriceRecharge || false,
+          isPvkjRecharge: values.isPvkjRecharge || false,
+          setSalePriceZero: values.setSalePriceZero || false,
+        };
+
+        // Collect additional product payloads
+        const additionalPayloads = additionalProducts
+          .map((ap) => {
+            const ref = additionalProductRefs.current.get(ap.id);
+            const apPayload = ref?.current?.getPayload();
+            if (!apPayload) return null;
+            return { ...commonPayload, ...apPayload };
+          })
+          .filter(Boolean);
+
+        await Promise.all(
+          [mainPayload, ...additionalPayloads].map((p) =>
+            apiRequest("POST", "/api/refueling", p).then((r) => r.json()),
+          ),
+        );
+
+        // Invalidate and cleanup
+        queryClient.invalidateQueries({ predicate: (q) => {
+          const k = q.queryKey[0] as string;
+          return k?.startsWith("/api/refueling") || k?.startsWith("/api/warehouses");
+        }});
       }
     },
     isDirty: () => {
@@ -648,6 +724,104 @@ export const RefuelingForm = forwardRef<
     },
   });
 
+  // Helper: builds the common (shared) payload fields from form data
+  const buildCommonPayload = (data: RefuelingFormData, isDraft: boolean) => ({
+    supplierId: data.supplierId || null,
+    buyerId: data.buyerId || null,
+    isDraft,
+    inputMode: data.inputMode || inputMode,
+    warehouseId:
+      isWarehouseSupplier && supplierWarehouse ? supplierWarehouse.id : null,
+    basis: selectedBasis || null,
+    basisId: data.basisId || null,
+    customerBasis: customerBasis || null,
+    customerBasisId: data.customerBasisId || null,
+    refuelingDate: data.refuelingDate
+      ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss")
+      : null,
+    quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
+    quantityLiters: data.quantityLiters ? parseFloat(data.quantityLiters) : null,
+    density: data.density ? parseFloat(data.density) : null,
+    aircraftNumber: data.aircraftNumber || null,
+    orderNumber: data.orderNumber || null,
+    flightNumber: data.flightNumber || null,
+    notes: data.notes || null,
+    isApproxVolume: data.isApproxVolume || false,
+    isPlannedDeal: data.isPlannedDeal || false,
+    equipmentType,
+    equipmentId:
+      equipmentType === EQUIPMENT_TYPE.LIK ? selectedEquipmentId || null : null,
+  });
+
+  // Mutation for creating multiple products in one go
+  const createAllMutation = useMutation({
+    mutationFn: async (payloads: object[]) => {
+      const results = await Promise.all(
+        payloads.map((p) => apiRequest("POST", "/api/refueling", p).then((r) => r.json())),
+      );
+      return results;
+    },
+    onSuccess: (results: any[]) => {
+      results.forEach((data) => {
+        if (data?.id && !data?.isDraft) {
+          const lsKey =
+            equipmentType === EQUIPMENT_TYPE.LIK
+              ? "lastCreatedDeal_lik"
+              : "lastCreatedDeal_refueling";
+          localStorage.setItem(
+            lsKey,
+            JSON.stringify({ id: data.id, timestamp: Date.now() }),
+          );
+          window.dispatchEvent(
+            new CustomEvent("dealCreated", {
+              detail: {
+                type: equipmentType === EQUIPMENT_TYPE.LIK ? "lik" : "refueling",
+                id: data.id,
+              },
+            }),
+          );
+        }
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/refueling/contract-used"],
+      });
+      if (equipmentType === EQUIPMENT_TYPE.LIK) {
+        queryClient.invalidateQueries({
+          queryKey: ["/api/warehouses/equipment-map"],
+        });
+      }
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0] as string;
+          return (
+            key?.startsWith("/api/refueling") ||
+            key?.startsWith("/api/warehouses")
+          );
+        },
+      });
+      const isDraft = results.some((r) => r?.isDraft);
+      const count = results.length;
+      const pluralSuffix =
+        count === 1 ? "а" : count < 5 ? "и" : "";
+      toast({
+        title: isDraft ? "Черновики сохранены" : "Сделки созданы",
+        description: isDraft
+          ? `Сохранено ${count} черновик${count === 1 ? "" : count < 5 ? "а" : "ов"}`
+          : `Создано ${count} заправк${count === 1 ? "а" : pluralSuffix}`,
+      });
+      form.reset();
+      setSelectedPurchasePriceId("");
+      setSelectedSalePriceId("");
+      setSelectedBasis("");
+      setCustomerBasis("");
+      setAdditionalProducts([]);
+      onSuccess?.();
+    },
+    onError: (error: Error) => {
+      showError(error, "refueling");
+    },
+  });
+
   useEffect(() => {
     if (watchProductType !== PRODUCT_TYPE.SERVICE) {
       form.setValue("isPriceRecharge", false);
@@ -673,19 +847,42 @@ export const RefuelingForm = forwardRef<
     }
   }, [calculatedKg, inputMode, form]);
 
+  // Compute available product types for the "Add Product" button
+  const usedProductTypes = useMemo(() => {
+    const used = new Set<string>();
+    used.add(watchProductType);
+    additionalProducts.forEach((p) => used.add(p.productType));
+    return used;
+  }, [watchProductType, additionalProducts]);
+
+  const availableProductsToAdd = useMemo(
+    () => PRODUCT_TYPES.filter((p) => !usedProductTypes.has(p.value)),
+    [usedProductTypes],
+  );
+
+  const handleAddProduct = (productType: string) => {
+    const id = `${productType}-${Date.now()}`;
+    const newRef = createRef<AdditionalProductSectionHandle>();
+    additionalProductRefs.current.set(id, newRef);
+    setAdditionalProducts((prev) => [...prev, { id, productType }]);
+    setAddProductPopoverOpen(false);
+  };
+
+  const handleRemoveAdditionalProduct = (id: string) => {
+    additionalProductRefs.current.delete(id);
+    setAdditionalProducts((prev) => prev.filter((p) => p.id !== id));
+  };
+
   const onSubmit = async (data: RefuelingFormData, isDraftSubmit?: boolean) => {
     const productType = watchProductType;
     const isDraft = isDraftSubmit ?? data.isDraft;
 
-    // Если не черновик, выполняем полную валидацию
+    // Если не черновик, выполняем полную валидацию основного продукта
     if (!isDraft) {
-      // Проверяем наличие количества
       if (!calculatedKg || parseFloat(calculatedKg) <= 0) {
         showError("Укажите корректное количество топлива.");
         return;
       }
-
-      // Проверяем наличие ошибок в ценах
       if (
         !isWarehouseSupplier &&
         productType !== PRODUCT_TYPE.SERVICE &&
@@ -694,50 +891,120 @@ export const RefuelingForm = forwardRef<
         showError("Не указана цена покупки. Выберите цену или проверьте настройки поставщика.");
         return;
       }
-
       if (salePrice === null) {
         showError("Не указана цена продажи. Выберите цену или проверьте настройки покупателя.");
         return;
       }
-
-      // Проверяем достаточность объема на складе
       if (warehouseStatus.status === "error") {
         showError(warehouseStatus.message);
         return;
       }
-
       if (contractVolumeStatus.status === "error") {
         showError(contractVolumeStatus.message);
         return;
       }
-
-      if (
-        !isWarehouseSupplier &&
-        supplierContractVolumeStatus.status === "error"
-      ) {
+      if (!isWarehouseSupplier && supplierContractVolumeStatus.status === "error") {
         showError(supplierContractVolumeStatus.message);
         return;
       }
     } else {
-      // Для черновика проверяем обязательные поля
       if (!data.supplierId || !data.buyerId) {
         showError("Для сохранения черновика необходимо выбрать поставщика и покупателя.");
         return;
       }
     }
 
+    // Editing mode — single record, no additional products
     if (editData && editData.id) {
       updateMutation.mutate({ ...data, isDraft, id: editData.id });
-    } else {
+      return;
+    }
+
+    // Validate additional products
+    if (additionalProducts.length > 0 && !isDraft) {
+      for (const ap of additionalProducts) {
+        const apRef = additionalProductRefs.current.get(ap.id);
+        const err = apRef?.current?.validate(isDraft);
+        if (err) {
+          showError(err);
+          return;
+        }
+      }
+    }
+
+    // Build the common (shared) payload
+    const commonPayload = buildCommonPayload(data, isDraft);
+
+    // Build main product payload
+    const {
+      purchasePriceId,
+      purchasePriceIndex,
+      salePriceId,
+      salePriceIndex,
+    } = extractPriceIdsForSubmit(
+      selectedPurchasePriceId,
+      selectedSalePriceId,
+      purchasePrices,
+      salePrices,
+      isWarehouseSupplier,
+    );
+    const mainPayload = {
+      ...commonPayload,
+      productType,
+      isPriceRecharge: data.isPriceRecharge || false,
+      isPvkjRecharge: data.isPvkjRecharge || false,
+      setSalePriceZero: data.setSalePriceZero || false,
+      purchasePrice: purchasePrice !== null ? purchasePrice : null,
+      purchasePriceId: purchasePriceId || null,
+      purchasePriceIndex: purchasePriceIndex !== undefined ? purchasePriceIndex : null,
+      salePrice: salePrice !== null ? salePrice : null,
+      salePriceId: salePriceId || null,
+      salePriceIndex: salePriceIndex !== undefined ? salePriceIndex : null,
+      purchaseAmount: purchaseAmount !== null ? purchaseAmount : null,
+      saleAmount: saleAmount !== null ? saleAmount : null,
+      agentFee: agentFee !== null ? agentFee : null,
+      agentFeeRate: agentFeeRate || null,
+      isAgentFeeEnabled,
+      otherServiceFee: otherServiceFee || null,
+      otherServiceName: otherServiceName || null,
+      otherServiceType: otherServiceType || null,
+      otherServiceQuantity: otherServiceQuantity ? parseFloat(otherServiceQuantity) : null,
+      isOtherServiceEnabled,
+      profit: profit !== null ? profit : null,
+    };
+
+    // Collect additional product payloads
+    const additionalPayloads = additionalProducts
+      .map((ap) => {
+        const apRef = additionalProductRefs.current.get(ap.id);
+        const apPayload = apRef?.current?.getPayload();
+        if (!apPayload) return null;
+        return { ...commonPayload, ...apPayload };
+      })
+      .filter(Boolean) as object[];
+
+    const allPayloads = [mainPayload, ...additionalPayloads];
+
+    // For single product creation — use existing flow with duplicate check
+    if (additionalPayloads.length === 0) {
       const isNewDeal = !isEditing;
       const isPublishingDraft = editData?.isDraft && !isDraft;
-
-      if (isNewDeal || isPublishingDraft || editData.id !== undefined) {
+      if (isNewDeal || isPublishingDraft || editData?.id !== undefined) {
         checkDuplicate(() => createMutation.mutate({ ...data, isDraft }));
         return;
       }
       createMutation.mutate({ ...data, isDraft });
+      return;
     }
+
+    // Multiple products — use createAllMutation (duplicate check only on main product)
+    const isNewDeal = !isEditing;
+    const isPublishingDraft = editData?.isDraft && !isDraft;
+    if (isNewDeal || isPublishingDraft) {
+      checkDuplicate(() => createAllMutation.mutate(allPayloads));
+      return;
+    }
+    createAllMutation.mutate(allPayloads);
   };
 
   return (
@@ -867,6 +1134,82 @@ export const RefuelingForm = forwardRef<
             </div>
           </div>
 
+          {/* Additional product sections */}
+          {additionalProducts.map((ap) => {
+            let ref = additionalProductRefs.current.get(ap.id);
+            if (!ref) {
+              ref = createRef<AdditionalProductSectionHandle>();
+              additionalProductRefs.current.set(ap.id, ref);
+            }
+            return (
+              <AdditionalProductSection
+                key={ap.id}
+                ref={ref}
+                productType={ap.productType}
+                onRemove={() => handleRemoveAdditionalProduct(ap.id)}
+                supplierId={watchSupplierId}
+                buyerId={watchBuyerId}
+                refuelingDate={watchRefuelingDate}
+                basisId={watchBasisId || ""}
+                customerBasisId={watchCustomerBasisId || ""}
+                selectedBasis={selectedBasis}
+                selectedBasisId={watchBasisId || ""}
+                selectedSupplier={selectedSupplier}
+                isWarehouseSupplier={isWarehouseSupplier}
+                supplierWarehouse={supplierWarehouse}
+                equipmentType={equipmentType}
+                selectedEquipmentId={selectedEquipmentId}
+                equipmentBalance={equipmentBalance}
+                inputMode={inputMode}
+                quantityLiters={watchLiters || ""}
+                density={watchDensity || "0.8"}
+                quantityKg={watchKg || ""}
+                suppliers={suppliers ?? []}
+                allBases={allBases ?? []}
+                warehouses={warehouses}
+              />
+            );
+          })}
+
+          {/* "Add Product" button — only when not editing, not all 3 products selected */}
+          {!isEditing && availableProductsToAdd.length > 0 && (
+            <div className="flex items-center">
+              <Popover open={addProductPopoverOpen} onOpenChange={setAddProductPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    data-testid="button-add-product"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Добавить продукт
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-52 p-2" align="start">
+                  <div className="flex flex-col gap-1">
+                    <p className="text-xs text-muted-foreground px-2 pb-1">
+                      Выберите продукт
+                    </p>
+                    {availableProductsToAdd.map((pt) => (
+                      <Button
+                        key={pt.value}
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="justify-start"
+                        onClick={() => handleAddProduct(pt.value)}
+                      >
+                        {pt.label}
+                      </Button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+
           <div className="space-y-2">
             <SpecialConditionsBanner counterparty={selectedSupplier} label={selectedSupplier?.name} />
             <SpecialConditionsBanner counterparty={selectedBuyer} label={selectedBuyer?.name} />
@@ -893,6 +1236,7 @@ export const RefuelingForm = forwardRef<
                 variant="secondary"
                 disabled={
                   createMutation.isPending ||
+                  createAllMutation.isPending ||
                   updateMutation.isPending ||
                   isChecking
                 }
@@ -907,6 +1251,7 @@ export const RefuelingForm = forwardRef<
                 }}
               >
                 {createMutation.isPending ||
+                createAllMutation.isPending ||
                 updateMutation.isPending ||
                 isChecking ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -919,6 +1264,7 @@ export const RefuelingForm = forwardRef<
               type="button"
               disabled={
                 createMutation.isPending ||
+                createAllMutation.isPending ||
                 updateMutation.isPending ||
                 isChecking
               }
@@ -933,6 +1279,7 @@ export const RefuelingForm = forwardRef<
               data-testid="button-submit-refueling"
             >
               {createMutation.isPending ||
+              createAllMutation.isPending ||
               updateMutation.isPending ||
               isChecking ? (
                 <>
@@ -943,7 +1290,9 @@ export const RefuelingForm = forwardRef<
                 <>
                   {isEditing && !editData.isDraft
                     ? "Сохранить изменения"
-                    : "Создать сделку"}
+                    : additionalProducts.length > 0
+                      ? `Создать сделки (${additionalProducts.length + 1})`
+                      : "Создать сделку"}
                 </>
               )}
             </Button>
