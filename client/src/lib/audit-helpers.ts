@@ -114,6 +114,10 @@ const ENUM_MAP: Record<string, Record<string, string>> = {
   movementType: {
     supply: "Приход", expense: "Расход", transfer: "Перемещение", exchange: "Обмен",
     internal: "Внутреннее",
+    // Перемещения оборудования (ЛИК / ТЗК)
+    storage_to_tzk: "Склад → ТЗК",
+    tzk_to_storage: "ТЗК → Склад",
+    tzk_to_tzk: "ТЗК → ТЗК",
   },
   inputMode: { kg: "по кг", liters: "по литрам", liter: "по литрам" },
   equipmentType: { common: "ОП", lik: "ЛИК", pvkj: "ПВКЖ" },
@@ -542,12 +546,19 @@ export function getEntitySummary(
       const from = resolveName(data.fromEquipmentId);
       const to = resolveName(data.toEquipmentId);
       const fromTo = from && to ? `${from} → ${to}` : from || to || null;
-      const qty = data.quantity ? normalizeNum(data.quantity) : null;
+      // Используем quantityKg (кг) — основная единица для перемещений ОП
+      const kgQty = data.quantityKg ? normalizeNum(data.quantityKg) : null;
+      const lQty = data.quantityLiters ? normalizeNum(data.quantityLiters) : null;
+      const qtyStr = kgQty
+        ? `${kgQty.toLocaleString("ru-RU")} кг`
+        : lQty
+        ? `${lQty.toLocaleString("ru-RU")} л`
+        : null;
       return p(
-        shortDate(data.transactionDate),
+        shortDate(data.movementDate),
         prodLabel(data.productType),
         fromTo,
-        qty ? `${qty.toLocaleString("ru-RU")} л` : null
+        qtyStr
       );
     }
 
@@ -573,10 +584,12 @@ export function getEntitySummary(
       const typeStr = data.counterpartyType
         ? (ENUM_MAP.counterpartyType?.[String(data.counterpartyType)] || String(data.counterpartyType))
         : null;
-      const from = data.validFrom ? shortDate(data.validFrom) : null;
-      const to = data.validTo ? shortDate(data.validTo) : null;
+      // Прайс использует dateFrom/dateTo (не validFrom/validTo)
+      const from = data.dateFrom ? shortDate(data.dateFrom) : null;
+      const to = data.dateTo ? shortDate(data.dateTo) : null;
       const period = from && to ? `${from}–${to}` : from || to || null;
-      return p(counterparty || typeStr, prodLabel(data.productType), period);
+      // Показываем контрагента + тип сделки + тип топлива + период
+      return p(counterparty, typeStr, prodLabel(data.productType), period);
     }
 
     case "warehouses":
@@ -623,17 +636,6 @@ export function getEntitySummary(
         data.fromLocation ? String(data.fromLocation) : null,
         data.toLocation ? `→ ${String(data.toLocation)}` : null
       );
-
-    case "prices": {
-      const pt = prodLabel(data.productType);
-      const ct = data.counterpartyType
-        ? (ENUM_MAP.counterpartyType[String(data.counterpartyType)] || String(data.counterpartyType))
-        : null;
-      const df = shortDate(data.dateFrom);
-      const dt = shortDate(data.dateTo);
-      const range = df && dt ? `${df}–${dt}` : df || null;
-      return p(pt || null, ct, range);
-    }
 
     case "storage_cards": {
       const ct = data.cardType

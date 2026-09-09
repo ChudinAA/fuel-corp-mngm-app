@@ -292,8 +292,7 @@ export function registerPricesRoutes(app: Express) {
       entityType: ENTITY_TYPES.PRICE,
       operation: AUDIT_OPERATIONS.UPDATE,
       getOldData: async (req) => {
-        const pricesData = await storage.prices.getAllPrices();
-        return pricesData.data.find((p) => p.id === req.params.id);
+        return await storage.prices.getPrice(req.params.id);
       },
       getNewData: (req) => req.body,
     }),
@@ -363,8 +362,7 @@ export function registerPricesRoutes(app: Express) {
       entityType: ENTITY_TYPES.PRICE,
       operation: AUDIT_OPERATIONS.DELETE,
       getOldData: async (req) => {
-        const pricesData = await storage.prices.getAllPrices();
-        return pricesData.data.find((p) => p.id === req.params.id);
+        return await storage.prices.getPrice(req.params.id);
       },
     }),
     async (req, res) => {

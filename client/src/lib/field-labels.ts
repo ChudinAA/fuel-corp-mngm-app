@@ -371,14 +371,22 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
 
   // ── ПЕРЕМЕЩЕНИЕ ОБОРУДОВАНИЯ ─────────────────────────────────────────────────
   equipment_movement: {
+    movementDate: "Дата перемещения",
+    movementType: "Тип перемещения",
     productType: "Тип топлива",
-    transactionType: "Тип операции",
-    quantity: "Количество",
-    price: "Цена",
-    transactionDate: "Дата операции",
+    quantityKg: "Количество (кг)",
+    quantityLiters: "Количество (л)",
+    density: "Плотность",
+    inputMode: "Единица ввода",
+    costPerKg: "Себестоимость за кг",
+    totalCost: "Итоговая стоимость",
+    fromWarehouseId: "Склад-источник",
+    toWarehouseId: "Склад-получатель",
+    fromEquipmentId: "Откуда (СЗ)",
+    toEquipmentId: "Куда (СЗ)",
+    basis: "Базис",
+    isDraft: "Черновик",
     notes: "Примечания",
-    fromEquipmentId: "Откуда (ед. оборудования)",
-    toEquipmentId: "Куда (ед. оборудования)",
   },
 
   // ── ПЕРЕВОЗКИ ОП ─────────────────────────────────────────────────────────────

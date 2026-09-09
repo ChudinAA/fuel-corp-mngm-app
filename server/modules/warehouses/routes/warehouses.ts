@@ -171,7 +171,34 @@ export function registerWarehousesOperationsRoutes(app: Express) {
       getOldData: async (req) => {
         return await storage.warehouses.getWarehouse(req.params.id);
       },
-      getNewData: (req) => req.body,
+      // Трансформируем тело запроса в формат, совпадающий с полями DB,
+      // чтобы сравнение старых и новых данных было корректным.
+      getNewData: (req) => {
+        const {
+          bases,
+          supplierLinkMode,
+          linkedSupplierId,
+          newSupplierData,
+          createSupplier,
+          ...rest
+        } = req.body;
+        const result: any = { ...rest };
+        // Преобразуем bases [{baseId}] → baseIds [uuid] (как в DB)
+        if (bases !== undefined) {
+          result.baseIds = Array.isArray(bases)
+            ? bases.map((b: { baseId: string } | string) =>
+                typeof b === "string" ? b : b.baseId
+              ).filter(Boolean)
+            : [];
+        }
+        // Резолвим supplierId из supplierLinkMode для корректного сравнения
+        if (supplierLinkMode === "link" && linkedSupplierId) {
+          result.supplierId = linkedSupplierId;
+        } else if (supplierLinkMode === "unlink") {
+          result.supplierId = null;
+        }
+        return result;
+      },
     }),
     async (req, res) => {
       try {

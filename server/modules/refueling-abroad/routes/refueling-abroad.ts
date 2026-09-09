@@ -334,7 +334,8 @@ export function registerRefuelingAbroadRoutes(app: Express) {
 
         // Аудит: логируем изменение посредников как UPDATE записи
         try {
-          const context = getAuditContext(req);
+          // Используем обогащённый контекст (с именем пользователя), добавленный middleware
+          const context = (req as any).auditContext || getAuditContext(req);
           await AuditService.log({
             entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
             entityId: req.params.id,
@@ -493,7 +494,8 @@ export function registerRefuelingAbroadRoutes(app: Express) {
 
         // Аудит: логируем изменение банков как UPDATE записи
         try {
-          const context = getAuditContext(req);
+          // Используем обогащённый контекст (с именем пользователя), добавленный middleware
+          const context = (req as any).auditContext || getAuditContext(req);
           await AuditService.log({
             entityType: ENTITY_TYPES.AIRCRAFT_REFUELING_ABROAD,
             entityId: req.params.id,

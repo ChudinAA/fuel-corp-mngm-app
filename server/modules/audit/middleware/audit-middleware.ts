@@ -3,7 +3,6 @@ import { Request, Response, NextFunction } from "express";
 import { AuditService, AuditContext } from "../services/audit-service";
 import { EntityType, AuditOperation, AUDIT_OPERATIONS } from "../entities/audit";
 import { storage } from "../../../storage/index";
-import { normalizeAuditData } from "../utils/audit-utils";
 
 /**
  * Extract audit context from request
@@ -94,17 +93,13 @@ export function auditLog(options: AuditOptions) {
             }
 
             const rawNewData = getNewData ? getNewData(req, res) : req.body;
-            
-            // Normalize data before saving
-            const oldData = normalizeAuditData(capturedOldData);
-            const newData = normalizeAuditData(rawNewData);
 
             await AuditService.log({
               entityType,
               entityId,
               operation,
-              oldData,
-              newData,
+              oldData: capturedOldData,
+              newData: rawNewData,
               context,
             });
           } catch (error) {

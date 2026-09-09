@@ -8,3 +8,4 @@
 - [Extra drivers multi-driver](extra-drivers.md) — logistics_unit_extra_drivers table; API at /transport-units/:id/extra-drivers and /extra-drivers/:id; enriched in GET transport-units response.
 - [Refueling service fees](refueling-service-fees.md) — 7 new cols in aircraft_refueling for agentFeeRate, otherServiceFee (name/type/qty), enabled flags; profit formula and recalc logic.
 - [Audit panel improvements](audit-panel-improvements.md) — panel width 2xl; equipmentType hidden; service/agent/storage product labels; entityMeta summaries for all entities; backfill endpoint + UI button; П6 intermediaries/banks audit; warehouse baseIds/services visible; prices priceValues visible; advances audit hidden.
+- [Audit double-normalization fix](audit-double-normalization.md) — root cause: middleware called normalizeAuditData before AuditService.log which also normalizes; arrays (services, baseIds, priceValues) were destroyed; fix: pass raw data to AuditService.log.

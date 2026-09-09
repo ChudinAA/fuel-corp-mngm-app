@@ -250,9 +250,16 @@ export class AuditService {
             }).join('; ');
           if (formatted) normalized[key] = formatted;
         }
-        // Цены (priceValues): форматируем как перечень цен
+        // Цены (priceValues): форматируем как перечень цен.
+        // DB хранит как text[] (JSON-строки), тело запроса — как объекты [{price}].
         else if (key === 'priceValues') {
-          const formatted = (value as any[])
+          const parsed = (value as any[]).map((pv) => {
+            if (typeof pv === 'string') {
+              try { return JSON.parse(pv); } catch { return null; }
+            }
+            return pv;
+          });
+          const formatted = parsed
             .map((pv) => pv?.price != null ? String(pv.price) : null)
             .filter(Boolean).join(', ');
           if (formatted) normalized[key] = formatted;
@@ -391,15 +398,17 @@ export class AuditService {
   static async backfillEntityMeta(): Promise<{ processed: number; updated: number; errors: number }> {
     let processed = 0, updated = 0, errors = 0;
     const batchSize = 100;
-    let offset = 0;
+    const maxEntries = 10000;
 
-    while (true) {
+    // Note: we always query with offset=0 because after updating entries they
+    // are removed from the WHERE clause (entity_meta IS NULL → not null anymore).
+    // Using a fixed offset would skip entries as the result set shifts.
+    while (processed < maxEntries) {
       const batch = await db.select()
         .from(auditLog)
         .where(sql`${auditLog.entityMeta} IS NULL AND (${auditLog.oldData} IS NOT NULL OR ${auditLog.newData} IS NOT NULL)`)
         .orderBy(desc(auditLog.createdAt))
-        .limit(batchSize)
-        .offset(offset);
+        .limit(batchSize);
 
       if (batch.length === 0) break;
 
@@ -407,20 +416,22 @@ export class AuditService {
         processed++;
         try {
           const meta = await this.resolveFkNames(entry.oldData, entry.newData);
-          if (Object.keys(meta).length > 0) {
-            await db.update(auditLog)
-              .set({ entityMeta: meta })
-              .where(eq(auditLog.id, entry.id));
-            updated++;
-          }
+          // Always update (even with empty meta) to mark as processed and
+          // remove from the WHERE clause so next batch doesn't re-read it.
+          await db.update(auditLog)
+            .set({ entityMeta: Object.keys(meta).length > 0 ? meta : {} })
+            .where(eq(auditLog.id, entry.id));
+          if (Object.keys(meta).length > 0) updated++;
         } catch {
           errors++;
+          // On error, still mark as processed with empty meta to avoid infinite loops
+          try {
+            await db.update(auditLog)
+              .set({ entityMeta: {} })
+              .where(eq(auditLog.id, entry.id));
+          } catch { /* ignore secondary error */ }
         }
       }
-
-      offset += batchSize;
-      // Safety: stop after 10k entries per call
-      if (offset >= 10000) break;
     }
 
     return { processed, updated, errors };
