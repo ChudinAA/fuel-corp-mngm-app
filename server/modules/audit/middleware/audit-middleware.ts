@@ -47,7 +47,7 @@ export interface AuditOptions {
   operation: AuditOperation;
   getEntityId?: (req: Request) => string;
   getOldData?: (req: Request, res: Response) => Promise<any>;
-  getNewData?: (req: Request, res: Response) => any;
+  getNewData?: (req: Request, res: Response) => any | Promise<any>;
 }
 
 /**
@@ -92,7 +92,7 @@ export function auditLog(options: AuditOptions) {
               return;
             }
 
-            const rawNewData = getNewData ? getNewData(req, res) : req.body;
+            const rawNewData = getNewData ? await Promise.resolve(getNewData(req, res)) : req.body;
 
             await AuditService.log({
               entityType,

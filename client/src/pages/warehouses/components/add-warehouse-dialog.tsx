@@ -167,8 +167,16 @@ export function AddWarehouseDialog({
 
       if (data.supplierLinkMode === "existing" && data.linkedSupplierId) {
         if (data.linkedSupplierId !== currentSupplierId) {
+          // Поставщик изменился — переключаем на нового
           supplierActionPayload = {
             supplierLinkMode: "link",
+            linkedSupplierId: data.linkedSupplierId,
+          };
+        } else {
+          // Поставщик не изменился — всё равно сообщаем бэку текущее значение,
+          // чтобы аудит не показывал ложное изменение supplierId.
+          supplierActionPayload = {
+            supplierLinkMode: "existing",
             linkedSupplierId: data.linkedSupplierId,
           };
         }

@@ -70,6 +70,10 @@ const ENTITY_SPECIFIC_SHOW: Record<string, Set<string>> = {
   exchange_advance_cards: new Set(["currentBalance"]),
   // Склады: базисы, услуги, связанный поставщик
   warehouses: new Set(["baseIds", "services", "supplierId"]),
+  // Поставщики: базисы и привязанный склад
+  suppliers: new Set(["baseIds", "warehouseId"]),
+  // Покупатели: базисы
+  customers: new Set(["baseIds"]),
   // Цены: список цен и контрагент — показываем (сервер форматирует как строку)
   prices: new Set(["priceValues", "counterpartyId"]),
   // Зарубеж: посредники, банки и курсы в цепочке — показываем (сервер форматирует как строку)
@@ -86,6 +90,11 @@ const ENTITY_SPECIFIC_SHOW: Record<string, Set<string>> = {
 const ENTITY_SPECIFIC_HIDE: Record<string, Set<string>> = {
   // У цен есть dateFrom/dateTo для периода действия — статус isActive избыточен
   prices: new Set(["isActive"]),
+  // Склады: не показываем технический флаг активности и баланс (не нужны пользователю)
+  warehouses: new Set(["isActive", "currentBalance"]),
+  // Контрагенты: статус активности не нужен в аудите
+  suppliers: new Set(["isActive"]),
+  customers: new Set(["isActive"]),
 };
 
 /** Нужно ли показывать поле пользователю */
@@ -611,11 +620,45 @@ export function getEntitySummary(
       return p(counterparty, typeStr, prodLabel(data.productType), period);
     }
 
-    case "warehouses":
-      return data.name ? String(data.name) : null;
+    case "warehouses": {
+      if (!data.name) return null;
+      // Добавляем первые 4 базиса к имени склада
+      const whBaseIds = Array.isArray(data.baseIds) ? data.baseIds as string[] : [];
+      const whBaseNames = whBaseIds
+        .slice(0, 4)
+        .map((uuid) => entry.entityMeta?.[uuid])
+        .filter(Boolean) as string[];
+      return whBaseNames.length > 0
+        ? `${data.name} · ${whBaseNames.join(", ")}`
+        : String(data.name);
+    }
 
-    case "suppliers":
-    case "customers":
+    case "suppliers": {
+      if (!data.name) return null;
+      // Добавляем первые 4 базиса к имени поставщика
+      const supBaseIds = Array.isArray(data.baseIds) ? data.baseIds as string[] : [];
+      const supBaseNames = supBaseIds
+        .slice(0, 4)
+        .map((uuid) => entry.entityMeta?.[uuid])
+        .filter(Boolean) as string[];
+      return supBaseNames.length > 0
+        ? `${data.name} · ${supBaseNames.join(", ")}`
+        : String(data.name);
+    }
+
+    case "customers": {
+      if (!data.name) return null;
+      // Добавляем первые 4 базиса к имени покупателя
+      const cusBaseIds = Array.isArray(data.baseIds) ? data.baseIds as string[] : [];
+      const cusBaseNames = cusBaseIds
+        .slice(0, 4)
+        .map((uuid) => entry.entityMeta?.[uuid])
+        .filter(Boolean) as string[];
+      return cusBaseNames.length > 0
+        ? `${data.name} · ${cusBaseNames.join(", ")}`
+        : String(data.name);
+    }
+
     case "logistics_carriers":
     case "logistics_delivery_locations":
     case "railway_stations":
@@ -650,11 +693,14 @@ export function getEntitySummary(
     case "roles":
       return data.name ? String(data.name) : null;
 
-    case "delivery_cost":
+    case "delivery_cost": {
+      const carrier = resolveName(data.carrierId);
       return p(
+        carrier,
         data.fromLocation ? String(data.fromLocation) : null,
         data.toLocation ? `→ ${String(data.toLocation)}` : null
       );
+    }
 
     case "storage_cards": {
       const ct = data.cardType

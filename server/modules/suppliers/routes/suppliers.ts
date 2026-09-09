@@ -135,7 +135,30 @@ export function registerSuppliersRoutes(app: Express) {
       getOldData: async (req) => {
         return await storage.suppliers.getSupplier(req.params.id);
       },
-      getNewData: (req) => req.body,
+      // Трансформируем тело запроса: вычисляем warehouseId из warehouseAction,
+      // чтобы сравнение старых и новых данных было корректным.
+      getNewData: async (req) => {
+        const { warehouseAction, warehouseId: targetWarehouseId, newWarehouseData, basisPrices, ...rest } = req.body;
+        const result: any = { ...rest };
+        if (warehouseAction === "link" && targetWarehouseId) {
+          result.warehouseId = targetWarehouseId;
+          result.isWarehouse = true;
+        } else if (warehouseAction === "unlink") {
+          result.warehouseId = null;
+          result.isWarehouse = false;
+        } else if (warehouseAction === "create") {
+          // новый склад создаётся после, UUID неизвестен — не включаем
+          delete result.warehouseId;
+        } else {
+          // warehouseId не изменялся — подтягиваем текущее значение из БД,
+          // чтобы diff не показывал ложное изменение.
+          try {
+            const current = await storage.suppliers.getSupplier(req.params.id);
+            if (current !== undefined) result.warehouseId = current.warehouseId ?? null;
+          } catch { /* ignore, diff может показать изменение, но не заблокирует */ }
+        }
+        return result;
+      },
     }),
     async (req, res) => {
       try {

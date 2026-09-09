@@ -72,3 +72,37 @@ description: Summary of audit panel UX improvements — width, field visibility,
 **Known limitation:** Зарубеж intermediaries/banks всё ещё создают отдельные аудит-записи при CREATE (нужна архитектурная переработка для консолидации).
 
 **Why:** Пользователь не может идентифицировать записи по голому типу и кол-ву; нужны имена контрагентов/складов и полный набор полей.
+
+---
+
+## Session 3 fixes (Склады / Контрагенты / Доставка аудит)
+
+**baseId resolver без deletedAt фильтра** (audit-service.ts):
+- `baseId` и `basisId` resolvers теперь делают прямой SELECT без `isNull(deletedAt)` — чтобы резолвить UUID удалённых базисов в старых аудит-записях.
+
+**Ложное изменение supplierId у склада** (add-warehouse-dialog.tsx):
+- Когда поставщик не изменялся (`linkedSupplierId === currentSupplierId`), теперь всегда шлём `{ supplierLinkMode: "existing", linkedSupplierId }`. Бэк уже обрабатывал "existing" корректно — проблема была на фронте.
+
+**async getNewData для аудит-middleware** (audit-middleware.ts):
+- `getNewData` теперь поддерживает Promise: `await Promise.resolve(getNewData(...))`. Обратная совместимость сохранена.
+
+**Трансформация getNewData для suppliers PATCH** (suppliers.ts):
+- Добавлена async трансформация: `warehouseAction → warehouseId` в newData (аналогично тому, как склады трансформируют `supplierLinkMode → supplierId`). При отсутствии warehouseAction — читаем текущий warehouseId из БД.
+
+**ENTITY_SPECIFIC_HIDE additions** (audit-helpers.ts):
+- `warehouses`: скрыты `isActive`, `currentBalance`
+- `suppliers`, `customers`: скрыты `isActive`
+
+**ENTITY_SPECIFIC_SHOW additions** (audit-helpers.ts):
+- `suppliers`: добавлены `baseIds`, `warehouseId`
+- `customers`: добавлены `baseIds`
+
+**field-labels additions** (field-labels.ts):
+- `suppliers`: добавлены `baseIds`, `warehouseId`, `fullName`, `storageCost`
+- `customers`: добавлены `baseIds`, `fullName`
+
+**getEntitySummary updates** (audit-helpers.ts):
+- `warehouses`: превью = `"Склад · Базис1, Базис2, ..."`  (первые 4 базиса из entityMeta)
+- `suppliers`: превью = `"Поставщик · Базис1, Базис2, ..."`
+- `customers`: превью = `"Покупатель · Базис1, Базис2, ..."`
+- `delivery_cost`: превью = `"Перевозчик · Откуда → Куда"` (добавлен перевозчик)

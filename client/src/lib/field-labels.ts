@@ -245,6 +245,7 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
   // ── ПОСТАВЩИКИ ────────────────────────────────────────────────────────────────
   suppliers: {
     name: "Название",
+    fullName: "Полное название",
     inn: "ИНН",
     contractNumber: "Номер договора",
     contactPerson: "Контактное лицо",
@@ -253,11 +254,16 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
     description: "Описание",
     isActive: "Активен",
     isWarehouse: "Является складом",
+    storageCost: "Стоимость хранения (руб./т)",
+    // Базисы и привязанный склад — показываем (разрешено в ENTITY_SPECIFIC_SHOW)
+    baseIds: "Базисы",
+    warehouseId: "Привязанный склад",
   },
 
   // ── ПОКУПАТЕЛИ ────────────────────────────────────────────────────────────────
   customers: {
     name: "Название",
+    fullName: "Полное название",
     inn: "ИНН",
     contractNumber: "Номер договора",
     contactPerson: "Контактное лицо",
@@ -265,6 +271,8 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
     email: "Email",
     description: "Описание",
     isActive: "Активен",
+    // Базисы — показываем (разрешено в ENTITY_SPECIFIC_SHOW)
+    baseIds: "Базисы",
   },
 
   // ── ПОЛЬЗОВАТЕЛИ ─────────────────────────────────────────────────────────────

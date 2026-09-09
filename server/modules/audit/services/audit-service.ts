@@ -3,6 +3,7 @@ import { auditLog, InsertAuditLog, AuditOperation, EntityType, AUDIT_OPERATIONS 
 import { eq, and, desc, sql } from "drizzle-orm";
 import { getChangedFields } from "../utils/audit-utils";
 import { storage } from "../../../storage/index";
+import { bases } from "@shared/schema";
 
 export interface AuditContext {
   userId?: string;
@@ -75,9 +76,14 @@ export class AuditService {
       deliveryLocationId: async (id) => {
         try { const e = await storage.logistics.getLogisticsDeliveryLocation(id); return e?.name || null; } catch { return null; }
       },
-      // Базис склада (для массива baseIds — обрабатывается отдельно ниже)
+      // Базис склада (для массива baseIds — обрабатывается отдельно ниже).
+      // Используем прямой запрос без фильтра deletedAt, чтобы резолвить
+      // ссылки на базисы даже если они были мягко удалены после привязки.
       baseId: async (id) => {
-        try { const e = await storage.bases.getBase(id); return e?.name || null; } catch { return null; }
+        try {
+          const [row] = await db.select({ name: bases.name }).from(bases).where(eq(bases.id, id)).limit(1);
+          return row?.name || null;
+        } catch { return null; }
       },
       driverId: async (id) => {
         try {
@@ -98,9 +104,12 @@ export class AuditService {
       toEquipmentId: async (id) => {
         try { const e = await storage.equipment.getEquipment(id); return e?.name || null; } catch { return null; }
       },
-      // Перевозки: базис погрузки (alias на baseId-resolver)
+      // Перевозки: базис погрузки (alias на baseId-resolver, тоже без фильтра deletedAt)
       basisId: async (id) => {
-        try { const e = await storage.bases.getBase(id); return e?.name || null; } catch { return null; }
+        try {
+          const [row] = await db.select({ name: bases.name }).from(bases).where(eq(bases.id, id)).limit(1);
+          return row?.name || null;
+        } catch { return null; }
       },
     };
 
