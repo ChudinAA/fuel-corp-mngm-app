@@ -5,6 +5,7 @@ import { insertMovementSchema } from "@shared/schema";
 import { z } from "zod";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
+import { SSEService } from "../../../services/sse-service";
 
 export function registerMovementRoutes(app: Express) {
   app.get(
@@ -118,6 +119,7 @@ export function registerMovementRoutes(app: Express) {
         };
 
         const movementRecord = await storage.movement.createMovement(dbData);
+        SSEService.notifyEntityChanged("movement", req.headers["x-client-id"] as string | undefined);
         res.status(201).json(movementRecord);
       } catch (error) {
         if (error instanceof z.ZodError) {
@@ -195,6 +197,7 @@ export function registerMovementRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Перемещение не найдено" });
         }
+        SSEService.notifyEntityChanged("movement", req.headers["x-client-id"] as string | undefined);
         res.json(item);
       } catch (error) {
         console.error("Error updating movement:", error);
@@ -219,6 +222,7 @@ export function registerMovementRoutes(app: Express) {
       try {
         const id = req.params.id;
         await storage.movement.deleteMovement(id, req.session.userId);
+        SSEService.notifyEntityChanged("movement", req.headers["x-client-id"] as string | undefined);
         res.json({ message: "Перемещение удалено" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления перемещения" });

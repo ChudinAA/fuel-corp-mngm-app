@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { SSEService } from "../../../services/sse-service";
 import { refuelingAbroadStorage } from "../storage/refueling-abroad-storage";
 import { refuelingAbroadIntermediariesStorage } from "../storage/refueling-abroad-intermediaries-storage";
 import { refuelingAbroadExchangeRatesStorage } from "../storage/refueling-abroad-exchange-rates-storage";
@@ -188,6 +189,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
         const validatedData = insertRefuelingAbroadSchema.parse(req.body);
         const userId = req.session.userId?.toString();
         const item = await refuelingAbroadStorage.create(validatedData, userId);
+        SSEService.notifyEntityChanged("refueling-abroad", req.headers["x-client-id"] as string | undefined);
         res.status(201).json(item);
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -249,6 +251,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Запись не найдена" });
         }
+        SSEService.notifyEntityChanged("refueling-abroad", req.headers["x-client-id"] as string | undefined);
         res.json(item);
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -283,6 +286,7 @@ export function registerRefuelingAbroadRoutes(app: Express) {
         if (!success) {
           return res.status(404).json({ message: "Запись не найдена" });
         }
+        SSEService.notifyEntityChanged("refueling-abroad", req.headers["x-client-id"] as string | undefined);
         res.json({ success: true });
       } catch (error: any) {
         console.error("Error deleting refueling abroad record:", error);

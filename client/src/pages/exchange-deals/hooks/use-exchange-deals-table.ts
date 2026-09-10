@@ -35,6 +35,8 @@ export function useExchangeDealsTable() {
       const loadedCount = allPages.reduce((sum, p) => sum + p.data.length, 0);
       return loadedCount < lastPage.total ? loadedCount : undefined;
     },
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 
   const deleteMutation = useMutation({

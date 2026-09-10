@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
+import { SSEService } from "../../../services/sse-service";
 
 export function registerOptRoutes(app: Express) {
   app.get(
@@ -111,6 +112,7 @@ export function registerOptRoutes(app: Express) {
           createdById: req.session.userId,
         });
         const item = await storage.opt.createOpt(data);
+        SSEService.notifyEntityChanged("opt", req.headers["x-client-id"] as string | undefined);
         res.status(201).json(item);
       } catch (error) {
         if (error instanceof z.ZodError) {
@@ -153,6 +155,7 @@ export function registerOptRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Сделка не найдена" });
         }
+        SSEService.notifyEntityChanged("opt", req.headers["x-client-id"] as string | undefined);
         res.json(item);
       } catch (error) {
         res.status(500).json({ message: "Ошибка обновления сделки" });
@@ -176,6 +179,7 @@ export function registerOptRoutes(app: Express) {
       try {
         const id = req.params.id;
         await storage.opt.deleteOpt(id, req.session.userId);
+        SSEService.notifyEntityChanged("opt", req.headers["x-client-id"] as string | undefined);
         res.json({ message: "Сделка удалена" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления сделки" });

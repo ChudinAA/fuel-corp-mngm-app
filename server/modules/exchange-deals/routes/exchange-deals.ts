@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
+import { SSEService } from "../../../services/sse-service";
 
 export function registerExchangeDealsRoutes(app: Express) {
   app.get(
@@ -105,6 +106,7 @@ export function registerExchangeDealsRoutes(app: Express) {
           );
         }
 
+        SSEService.notifyEntityChanged("exchange-deals", req.headers["x-client-id"] as string | undefined);
         res.status(201).json(deal);
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -145,6 +147,7 @@ export function registerExchangeDealsRoutes(app: Express) {
           );
         }
 
+        SSEService.notifyEntityChanged("exchange-deals", req.headers["x-client-id"] as string | undefined);
         res.json(deal);
       } catch (error: any) {
         console.error("Error updating exchange deal:", error);
@@ -172,6 +175,7 @@ export function registerExchangeDealsRoutes(app: Express) {
           req.session.userId,
         );
         if (!success) return res.status(404).json({ message: "Сделка не найдена" });
+        SSEService.notifyEntityChanged("exchange-deals", req.headers["x-client-id"] as string | undefined);
         res.json({ success: true });
       } catch (error: any) {
         res.status(500).json({ message: "Ошибка удаления сделки биржи" });
@@ -190,6 +194,7 @@ export function registerExchangeDealsRoutes(app: Express) {
           req.session.userId,
         );
         if (!copy) return res.status(404).json({ message: "Сделка не найдена" });
+        SSEService.notifyEntityChanged("exchange-deals", req.headers["x-client-id"] as string | undefined);
         res.status(201).json(copy);
       } catch (error: any) {
         res.status(500).json({ message: "Ошибка копирования сделки" });

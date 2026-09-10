@@ -37,6 +37,8 @@ export function useRefuelingTable({ equipmentType = EQUIPMENT_TYPE.COMMON }: { e
         );
         return currentCount < lastPage.total ? currentCount : undefined;
       },
+      refetchInterval: 30_000,
+      refetchIntervalInBackground: false,
     });
 
   const refuelingDeals = useMemo(() => {

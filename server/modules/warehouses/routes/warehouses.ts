@@ -666,7 +666,8 @@ export function registerWarehousesOperationsRoutes(app: Express) {
 
     res.write('data: {"type":"connected"}\n\n');
 
-    SSEService.register(res);
+    const clientId = (req.query.clientId as string) || null;
+    SSEService.register(res, clientId);
 
     req.on("close", () => {
       res.end();

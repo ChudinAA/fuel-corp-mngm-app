@@ -115,6 +115,8 @@ export function PricesTable({
         const loadedCount = allPages.length * PAGE_SIZE;
         return loadedCount < lastPage.total ? loadedCount : undefined;
       },
+      refetchInterval: 30_000,
+      refetchIntervalInBackground: false,
     });
 
   const prices = useMemo(

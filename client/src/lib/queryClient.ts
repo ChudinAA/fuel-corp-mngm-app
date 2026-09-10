@@ -1,5 +1,6 @@
 
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { CLIENT_ID } from "./client-id";
 
 // Global redirect handler
 let globalRedirectTo401: (() => void) | null = null;
@@ -22,7 +23,10 @@ export const apiRequest = async (
 ): Promise<Response> => {
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: {
+      ...(data ? { "Content-Type": "application/json" } : {}),
+      "X-Client-Id": CLIENT_ID,
+    },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });

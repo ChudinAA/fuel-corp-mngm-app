@@ -40,6 +40,8 @@ export function useRefuelingAbroadTable() {
         const total = lastPage.total ?? (Array.isArray(lastPage) ? lastPage.length : 0);
         return currentCount < total ? currentCount : undefined;
       },
+      refetchInterval: 30_000,
+      refetchIntervalInBackground: false,
     });
 
   const refuelingDeals = useMemo(() => {

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireAuth, requirePermission, requireAnyPermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
+import { SSEService } from "../../../services/sse-service";
 
 export function registerRefuelingOperationsRoutes(app: Express) {
   app.get(
@@ -153,6 +154,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
           createdById: req.session.userId,
         });
         const item = await storage.aircraftRefueling.createRefueling(data);
+        SSEService.notifyEntityChanged("refueling", req.headers["x-client-id"] as string | undefined);
         res.status(201).json(item);
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -198,6 +200,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Заправка не найдена" });
         }
+        SSEService.notifyEntityChanged("refueling", req.headers["x-client-id"] as string | undefined);
         res.json(item);
       } catch (error) {
         console.error("Error updating refueling:", error);
@@ -222,6 +225,7 @@ export function registerRefuelingOperationsRoutes(app: Express) {
       try {
         const id = req.params.id;
         await storage.aircraftRefueling.deleteRefueling(id, req.session.userId);
+        SSEService.notifyEntityChanged("refueling", req.headers["x-client-id"] as string | undefined);
         res.json({ message: "Заправка удалена" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления заправки" });

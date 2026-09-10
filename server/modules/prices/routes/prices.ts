@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
+import { SSEService } from "../../../services/sse-service";
 
 export function registerPricesRoutes(app: Express) {
   app.get(
@@ -273,6 +274,7 @@ export function registerPricesRoutes(app: Express) {
 
         const data = insertPriceSchema.parse(processedData);
         const item = await storage.prices.createPrice(data);
+        SSEService.notifyEntityChanged("prices", req.headers["x-client-id"] as string | undefined);
         res.status(201).json(item);
       } catch (error) {
         if (error instanceof z.ZodError) {
@@ -346,6 +348,7 @@ export function registerPricesRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Цена не найдена" });
         }
+        SSEService.notifyEntityChanged("prices", req.headers["x-client-id"] as string | undefined);
         res.json(item);
       } catch (error) {
         console.error("Price update error:", error);
@@ -369,6 +372,7 @@ export function registerPricesRoutes(app: Express) {
       try {
         const id = req.params.id;
         await storage.prices.deletePrice(id, String(req.session.userId));
+        SSEService.notifyEntityChanged("prices", req.headers["x-client-id"] as string | undefined);
         res.json({ message: "Цена удалена" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления цены" });

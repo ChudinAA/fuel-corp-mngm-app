@@ -37,6 +37,8 @@ export function useEquipmentMovementTable() {
       return loadedCount < lastPage.total ? loadedCount : undefined;
     },
     initialPageParam: 0,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 
   const movements = data?.pages.flatMap((page) => page.data) || [];
