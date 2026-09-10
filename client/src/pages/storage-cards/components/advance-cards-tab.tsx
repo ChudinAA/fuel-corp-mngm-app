@@ -85,7 +85,7 @@ export function AdvanceCardsTab({ cardType }: AdvanceCardsTabProps) {
           />
         </div>
         {hasPermission("storage-cards", "create") && (
-          <Dialog open={dialogOpen} onOpenChange={(open) => !open && handleDialogClose()}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => open ? setDialogOpen(true) : handleDialogClose()}>
             <DialogTrigger asChild>
               <Button data-testid={`button-add-card-${cardType}`}>
                 <Plus className="h-4 w-4 mr-2" />
