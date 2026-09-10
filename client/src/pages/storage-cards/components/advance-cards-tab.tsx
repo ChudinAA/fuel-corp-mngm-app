@@ -99,6 +99,7 @@ export function AdvanceCardsTab({ cardType }: AdvanceCardsTabProps) {
                 </DialogTitle>
               </DialogHeader>
               <StorageCardForm
+                key={editingCard?.id ?? "new"}
                 editCard={editingCard}
                 cardType={cardType}
                 onSuccess={() => {

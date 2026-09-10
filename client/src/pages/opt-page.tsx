@@ -65,6 +65,7 @@ export default function OptPage() {
     <div className="space-y-6">
 
       <AddOptDialog
+        key={editingOpt?.id ?? (isCopy ? "copy-new" : "new")}
         isOpen={isDialogOpen}
         onClose={handleCloseDialog}
         editOpt={editingOpt}

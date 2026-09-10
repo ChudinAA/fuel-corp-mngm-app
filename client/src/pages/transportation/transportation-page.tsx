@@ -40,6 +40,7 @@ export default function TransportationPage() {
       <TransportationTable onEdit={handleEdit} onCopy={handleCopy} onCreate={handleAdd} />
 
       <TransportationDialog
+        key={editingItem?.id ?? (isCopy ? "copy-new" : "new")}
         isOpen={isDialogOpen}
         onClose={handleClose}
         editItem={editingItem}

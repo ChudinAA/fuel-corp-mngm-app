@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import * as React from "react";
-import { useMutation } from "@tanstack/react-query";
 import { format, isToday, isYesterday } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -20,7 +19,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  RotateCcw,
   ChevronDown,
   ChevronRight,
   Undo2,
@@ -558,63 +556,6 @@ function DateGroup({
   );
 }
 
-// ─── Кнопка восстановления имён (admin-only) ─────────────────────────────────
-
-function BackfillButton() {
-  const { toast } = useToast();
-  const [isRunning, setIsRunning] = React.useState(false);
-
-  const { mutate } = useMutation({
-    mutationFn: async () => {
-      const res = await fetch("/api/audit/backfill-entity-meta", {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    onMutate: () => setIsRunning(true),
-    onSuccess: (data: any) => {
-      setIsRunning(false);
-      toast({
-        title: "Имена восстановлены",
-        description: `Обработано: ${data.processed}, обновлено: ${data.updated}, ошибок: ${data.errors}`,
-      });
-    },
-    onError: (err: any) => {
-      setIsRunning(false);
-      toast({
-        title: "Ошибка",
-        description: err.message || "Не удалось выполнить восстановление",
-        variant: "destructive",
-      });
-    },
-  });
-
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="w-full gap-2 text-xs text-muted-foreground hover:text-foreground"
-      onClick={() => mutate()}
-      disabled={isRunning}
-      title="Восстановить имена контрагентов/складов в старых записях истории"
-    >
-      {isRunning ? (
-        <>
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Восстановление имён...
-        </>
-      ) : (
-        <>
-          <RotateCcw className="h-3.5 w-3.5" />
-          Восстановить имена в истории
-        </>
-      )}
-    </Button>
-  );
-}
-
 // ─── Главная панель ───────────────────────────────────────────────────────────
 
 export function AuditPanel({
@@ -766,7 +707,6 @@ export function AuditPanel({
               </>
             )}
           </Button>
-          {isAdmin && <BackfillButton />}
         </div>
       </SheetContent>
     </Sheet>
