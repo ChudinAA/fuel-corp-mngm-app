@@ -47,6 +47,16 @@ export function PriceCalculationTable({ templateFilter }: PriceCalculationTableP
 
   const { data: calculations, isLoading } = useQuery<PriceCalculation[]>({
     queryKey: ["/api/price-calculations", { isTemplate: templateFilter }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (templateFilter !== undefined) {
+        params.set("isTemplate", String(templateFilter));
+      }
+      const url = `/api/price-calculations${params.size > 0 ? `?${params}` : ""}`;
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Ошибка загрузки расчётов цен");
+      return res.json();
+    },
   });
 
   const deleteMutation = useMutation({
