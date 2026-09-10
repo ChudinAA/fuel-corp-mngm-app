@@ -11,6 +11,7 @@ import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
+import { SSEService } from "../../../services/sse-service";
 
 export function registerLogisticsRoutes(app: Express) {
   // ============ LOGISTICS CARRIERS ============
@@ -55,6 +56,7 @@ export function registerLogisticsRoutes(app: Express) {
           createdById: req.session.userId,
         });
         const item = await storage.logistics.createLogisticsCarrier(data);
+        SSEService.notifyEntityChanged("logistics-directories", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(item);
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -90,6 +92,7 @@ export function registerLogisticsRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Перевозчик не найден" });
         }
+        SSEService.notifyEntityChanged("logistics-directories", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(item);
       } catch (error) {
         res.status(500).json({ message: "Ошибка обновления перевозчика" });
@@ -112,6 +115,7 @@ export function registerLogisticsRoutes(app: Express) {
       try {
         const id = req.params.id;
         await storage.logistics.deleteLogisticsCarrier(id, req.session.userId);
+        SSEService.notifyEntityChanged("logistics-directories", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json({ message: "Перевозчик удален" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления перевозчика" });
@@ -163,6 +167,7 @@ export function registerLogisticsRoutes(app: Express) {
         const item = await storage.logistics.createLogisticsDeliveryLocation(
           data
         );
+        SSEService.notifyEntityChanged("logistics-directories", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(item);
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -201,6 +206,7 @@ export function registerLogisticsRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Место доставки не найдено" });
         }
+        SSEService.notifyEntityChanged("logistics-directories", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(item);
       } catch (error) {
         res.status(500).json({ message: "Ошибка обновления места доставки" });
@@ -223,6 +229,7 @@ export function registerLogisticsRoutes(app: Express) {
       try {
         const id = req.params.id;
         await storage.logistics.deleteLogisticsDeliveryLocation(id, req.session.userId);
+        SSEService.notifyEntityChanged("logistics-directories", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json({ message: "Место доставки удалено" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления места доставки" });
@@ -273,6 +280,7 @@ export function registerLogisticsRoutes(app: Express) {
           createdById: req.session.userId,
         });
         const item = await storage.logistics.createLogisticsVehicle(data);
+        SSEService.notifyEntityChanged("logistics-directories", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(item);
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -308,6 +316,7 @@ export function registerLogisticsRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Транспорт не найден" });
         }
+        SSEService.notifyEntityChanged("logistics-directories", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(item);
       } catch (error) {
         res.status(500).json({ message: "Ошибка обновления транспорта" });
@@ -330,6 +339,7 @@ export function registerLogisticsRoutes(app: Express) {
       try {
         const id = req.params.id;
         await storage.logistics.deleteLogisticsVehicle(id, req.session.userId);
+        SSEService.notifyEntityChanged("logistics-directories", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json({ message: "Транспорт удален" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления транспорта" });
@@ -380,6 +390,7 @@ export function registerLogisticsRoutes(app: Express) {
           createdById: req.session.userId,
         });
         const item = await storage.logistics.createLogisticsTrailer(data);
+        SSEService.notifyEntityChanged("logistics-directories", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(item);
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -415,6 +426,7 @@ export function registerLogisticsRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Прицеп не найден" });
         }
+        SSEService.notifyEntityChanged("logistics-directories", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(item);
       } catch (error) {
         res.status(500).json({ message: "Ошибка обновления прицепа" });
@@ -437,6 +449,7 @@ export function registerLogisticsRoutes(app: Express) {
       try {
         const id = req.params.id;
         await storage.logistics.deleteLogisticsTrailer(id, req.session.userId);
+        SSEService.notifyEntityChanged("logistics-directories", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json({ message: "Прицеп удален" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления прицепа" });
@@ -487,6 +500,7 @@ export function registerLogisticsRoutes(app: Express) {
           createdById: req.session.userId,
         });
         const item = await storage.logistics.createLogisticsDriver(data);
+        SSEService.notifyEntityChanged("logistics-directories", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(item);
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -522,6 +536,7 @@ export function registerLogisticsRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Водитель не найден" });
         }
+        SSEService.notifyEntityChanged("logistics-directories", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(item);
       } catch (error) {
         res.status(500).json({ message: "Ошибка обновления водителя" });
@@ -544,6 +559,7 @@ export function registerLogisticsRoutes(app: Express) {
       try {
         const id = req.params.id;
         await storage.logistics.deleteLogisticsDriver(id, req.session.userId);
+        SSEService.notifyEntityChanged("logistics-directories", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json({ message: "Водитель удален" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления водителя" });

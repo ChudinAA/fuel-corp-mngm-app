@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireAuth, requirePermission, requireAnyPermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
+import { SSEService } from "../../../services/sse-service";
 
 export function registerSuppliersRoutes(app: Express) {
   app.get(
@@ -111,6 +112,7 @@ export function registerSuppliersRoutes(app: Express) {
           });
         }
 
+        SSEService.notifyEntityChanged("suppliers", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(item);
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -245,6 +247,7 @@ export function registerSuppliersRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Поставщик не найден" });
         }
+        SSEService.notifyEntityChanged("suppliers", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(item);
       } catch (error) {
         console.error("Supplier update error:", error);
@@ -276,6 +279,7 @@ export function registerSuppliersRoutes(app: Express) {
         }
 
         await storage.suppliers.deleteSupplier(id, req.session.userId);
+        SSEService.notifyEntityChanged("suppliers", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json({ message: "Поставщик удален" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления поставщика" });

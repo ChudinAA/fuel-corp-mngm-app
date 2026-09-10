@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
+import { SSEService } from "../../../services/sse-service";
 
 export function registerBasesRoutes(app: Express) {
   app.get(
@@ -48,6 +49,7 @@ export function registerBasesRoutes(app: Express) {
           createdById: req.session.userId,
         });
         const item = await storage.bases.createBase(data);
+        SSEService.notifyEntityChanged("bases", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(item);
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -83,6 +85,7 @@ export function registerBasesRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Базис не найден" });
         }
+        SSEService.notifyEntityChanged("bases", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(item);
       } catch (error) {
         res.status(500).json({ message: "Ошибка обновления базиса" });
@@ -105,6 +108,7 @@ export function registerBasesRoutes(app: Express) {
       try {
         const id = req.params.id;
         await storage.bases.deleteBase(id, req.session.userId);
+        SSEService.notifyEntityChanged("bases", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json({ message: "Базис удален" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления базиса" });

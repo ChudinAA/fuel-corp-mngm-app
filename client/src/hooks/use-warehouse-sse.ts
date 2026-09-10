@@ -74,6 +74,23 @@ const ENTITY_QUERY_KEYS: Record<string, string[][]> = {
     ["/api/warehouses-equipment"],
     ["/api/warehouses/equipment-map"],
   ],
+  // Reference directories
+  customers: [
+    ["/api/customers"],
+  ],
+  suppliers: [
+    ["/api/suppliers"],
+  ],
+  bases: [
+    ["/api/bases"],
+  ],
+  "logistics-directories": [
+    ["/api/logistics/carriers"],
+    ["/api/logistics/vehicles"],
+    ["/api/logistics/drivers"],
+    ["/api/logistics/trailers"],
+    ["/api/logistics/delivery-locations"],
+  ],
 };
 
 export function useWarehouseSSE(isAuthenticated: boolean) {

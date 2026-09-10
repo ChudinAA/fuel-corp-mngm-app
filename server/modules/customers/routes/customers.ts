@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireAuth, requirePermission, requireAnyPermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
+import { SSEService } from "../../../services/sse-service";
 
 export function registerCustomersRoutes(app: Express) {
   app.get(
@@ -56,6 +57,7 @@ export function registerCustomersRoutes(app: Express) {
           ...data,
           baseIds: normalizedBaseIds,
         });
+        SSEService.notifyEntityChanged("customers", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(item);
       } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -100,6 +102,7 @@ export function registerCustomersRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Покупатель не найден" });
         }
+        SSEService.notifyEntityChanged("customers", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(item);
       } catch (error) {
         res.status(500).json({ message: "Ошибка обновления покупателя" });
@@ -122,6 +125,7 @@ export function registerCustomersRoutes(app: Express) {
       try {
         const id = req.params.id;
         await storage.customers.deleteCustomer(id, req.session.userId);
+        SSEService.notifyEntityChanged("customers", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json({ message: "Покупатель удален" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления покупателя" });
