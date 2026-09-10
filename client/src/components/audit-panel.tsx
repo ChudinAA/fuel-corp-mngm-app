@@ -19,6 +19,7 @@ import {
   Plus,
   Pencil,
   Trash2,
+  RotateCcw,
   ChevronDown,
   ChevronRight,
   Undo2,
