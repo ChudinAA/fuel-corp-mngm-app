@@ -107,7 +107,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
           createdById: req.session.userId,
         });
         const record = await (storage as any).equipmentMovement.createMovement(data);
-        SSEService.notifyEntityChanged("equipment-movement", req.headers["x-client-id"] as string | undefined);
+        SSEService.notifyEntityChanged("equipment-movement", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(record);
       } catch (error) {
         if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors[0].message });
@@ -167,7 +167,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
 
         const item = await (storage as any).equipmentMovement.updateMovement(req.params.id, data);
         if (!item) return res.status(404).json({ message: "Запись не найдена" });
-        SSEService.notifyEntityChanged("equipment-movement", req.headers["x-client-id"] as string | undefined);
+        SSEService.notifyEntityChanged("equipment-movement", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(item);
       } catch (error) {
         if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors[0].message });
@@ -187,7 +187,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
     }),
     async (req, res) => {
       await (storage as any).equipmentMovement.deleteMovement(req.params.id, req.session.userId!);
-      SSEService.notifyEntityChanged("equipment-movement", req.headers["x-client-id"] as string | undefined);
+      SSEService.notifyEntityChanged("equipment-movement", SSEService.extractClientId(req.headers["x-client-id"]));
       res.json({ message: "Удалено" });
     }
   );

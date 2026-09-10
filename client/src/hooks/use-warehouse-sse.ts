@@ -11,17 +11,69 @@ interface EntityChangedData {
   entity: string;
 }
 
-/** Maps entity name to the query keys that should be invalidated */
+/**
+ * Maps SSE entity name → all queryKeys that client A invalidates on mutation.
+ * Must stay in sync with onSuccess handlers in each entity's hook/page.
+ *
+ * Rules:
+ * - /api/warehouses balance changes are handled separately by warehouse_recalculated
+ *   (fired by the background recalculation worker), so we don't repeat them here.
+ * - /api/warehouses/equipment-map IS included for equipment-movement and refueling
+ *   because we want immediate invalidation, not waiting for the worker (up to 5s).
+ * - Note: invalidateQueries({ queryKey: ["/api/opt"] }) uses prefix matching and
+ *   will match ["/api/opt", filters] etc. — but NOT ["/api/opt/contract-used"]
+ *   because that is a different first array element. Hence both are listed.
+ */
 const ENTITY_QUERY_KEYS: Record<string, string[][]> = {
-  opt:                [["/api/opt"]],
-  refueling:          [["/api/refueling"]],
-  "refueling-abroad": [["/api/refueling-abroad"]],
-  movement:           [["/api/movement"]],
-  transportation:     [["/api/transportation"]],
-  "exchange-deals":   [["/api/exchange-deals"]],
-  "equipment-movement": [["/api/equipment-movement"]],
-  prices:             [["/api/prices"], ["/api/prices/list"]],
-  warehouses:         [["/api/warehouses"]],
+  opt: [
+    ["/api/opt"],
+    ["/api/opt/contract-used"],
+  ],
+  refueling: [
+    ["/api/refueling"],
+    ["/api/refueling/contract-used"],
+    ["/api/warehouses/equipment-map"],
+  ],
+  "refueling-abroad": [
+    ["/api/refueling-abroad"],
+    ["/api/refueling-abroad/contract-used"],
+    ["/api/storage-cards/advances"],
+    ["/api/settings/beneficiary"],
+  ],
+  movement: [
+    ["/api/movement"],
+    ["/api/opt/contract-used"],
+  ],
+  transportation: [
+    ["/api/transportation"],
+  ],
+  "exchange-deals": [
+    ["/api/exchange-deals"],
+    ["/api/exchange-advances"],
+    ["/api/exchange-advances/by-seller"],
+    ["/api/movement"],
+  ],
+  "equipment-movement": [
+    ["/api/equipment-movement"],
+    ["/api/warehouses/equipment-map"],
+    ["/api/warehouses/lik"],
+    ["/api/warehouses-equipment"],
+  ],
+  prices: [
+    ["/api/prices"],
+    ["/api/prices/list"],
+    ["/api/prices/find-active"],
+    ["/api/storage-cards/advances"],
+    ["/api/prices/last-contract-info"],
+  ],
+  // Warehouse/equipment CRUD (not recalculation — that comes via warehouse_recalculated)
+  "warehouses-crud": [
+    ["/api/warehouses"],
+  ],
+  "warehouses-equipment-crud": [
+    ["/api/warehouses-equipment"],
+    ["/api/warehouses/equipment-map"],
+  ],
 };
 
 export function useWarehouseSSE(isAuthenticated: boolean) {
@@ -47,7 +99,7 @@ export function useWarehouseSSE(isAuthenticated: boolean) {
       console.log("[SSE] Connected");
     };
 
-    // Warehouse recalculation (existing)
+    // Warehouse recalculation — fired by background worker after balance recompute
     eventSource.addEventListener("warehouse_recalculated", (event) => {
       try {
         const data: SSEEventData = JSON.parse(event.data);
@@ -67,7 +119,7 @@ export function useWarehouseSSE(isAuthenticated: boolean) {
       }
     });
 
-    // Generic entity change (new)
+    // Generic entity change — fired immediately after any mutation
     eventSource.addEventListener("entity_changed", (event) => {
       try {
         const data: EntityChangedData = JSON.parse(event.data);
@@ -82,13 +134,14 @@ export function useWarehouseSSE(isAuthenticated: boolean) {
       }
     });
 
+    // Auth error — close permanently (session gone)
     eventSource.addEventListener("auth_error", () => {
       console.warn("[SSE] Auth error, closing connection");
       eventSource.close();
       eventSourceRef.current = null;
     });
 
-    // Do NOT close on error — browser auto-reconnects EventSource on network issues
+    // Network/server error — do NOT close; browser auto-reconnects EventSource
     eventSource.onerror = (err) => {
       console.warn("[SSE] Connection error (will auto-reconnect):", err);
     };

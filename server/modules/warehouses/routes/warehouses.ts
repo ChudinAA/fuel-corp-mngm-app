@@ -186,6 +186,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           }
         }
 
+        SSEService.notifyEntityChanged("warehouses-crud", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(item);
       } catch (error: any) {
         console.error("Warehouse creation error:", error);
@@ -342,6 +343,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Склад не найден" });
         }
+        SSEService.notifyEntityChanged("warehouses-crud", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(item);
       } catch (error) {
         console.error("Warehouse update error:", error);
@@ -390,6 +392,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
           id,
           req.session.userId ? String(req.session.userId) : undefined,
         );
+        SSEService.notifyEntityChanged("warehouses-crud", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json({ message: "Склад удален" });
       } catch (error: any) {
         console.error("Warehouse deletion error:", error);
@@ -425,6 +428,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
 
         const updated = await storage.warehouses.getWarehouse(warehouseId);
         if (!updated) return res.status(404).json({ message: "Склад не найден" });
+        SSEService.notifyEntityChanged("warehouses-crud", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(updated);
       } catch (error: any) {
         console.error("Pin warehouse error:", error);
@@ -464,6 +468,7 @@ export function registerWarehousesOperationsRoutes(app: Express) {
 
         const updated = await storage.warehouses.getWarehouse(warehouseId);
         if (!updated) return res.status(404).json({ message: "Склад не найден" });
+        SSEService.notifyEntityChanged("warehouses-crud", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(updated);
       } catch (error: any) {
         console.error("Set limit error:", error);

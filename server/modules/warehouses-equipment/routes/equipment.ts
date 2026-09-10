@@ -4,6 +4,7 @@ import { insertEquipmentSchema } from "../entities/equipment";
 import { requireAuth, requirePermission } from "../../../middleware/middleware";
 import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
+import { SSEService } from "../../../services/sse-service";
 
 export function registerEquipmentRoutes(app: Router) {
   const router = Router();
@@ -49,6 +50,7 @@ export function registerEquipmentRoutes(app: Router) {
           createdById: req.session.userId as string,
         });
 
+        SSEService.notifyEntityChanged("warehouses-equipment-crud", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(data);
       } catch (error: any) {
         res.status(409).json({ message: error.message || "Ошибка при создании СЗ" });
@@ -73,6 +75,7 @@ export function registerEquipmentRoutes(app: Router) {
           updatedById: req.session.userId as string,
         });
         if (!data) return res.status(404).json({ message: "Not found" });
+        SSEService.notifyEntityChanged("warehouses-equipment-crud", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(data);
       } catch (error: any) {
         res.status(500).json({ message: error.message || "Ошибка при обновлении СЗ" });
@@ -92,6 +95,7 @@ export function registerEquipmentRoutes(app: Router) {
     async (req, res) => {
       try {
         await equipmentStorage.deleteEquipment(req.params.id, req.session.userId as string);
+        SSEService.notifyEntityChanged("warehouses-equipment-crud", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(204).end();
       } catch (error: any) {
         res.status(500).json({ message: error.message || "Ошибка при удалении СЗ" });

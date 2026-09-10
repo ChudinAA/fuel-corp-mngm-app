@@ -274,7 +274,7 @@ export function registerPricesRoutes(app: Express) {
 
         const data = insertPriceSchema.parse(processedData);
         const item = await storage.prices.createPrice(data);
-        SSEService.notifyEntityChanged("prices", req.headers["x-client-id"] as string | undefined);
+        SSEService.notifyEntityChanged("prices", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(item);
       } catch (error) {
         if (error instanceof z.ZodError) {
@@ -348,7 +348,7 @@ export function registerPricesRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Цена не найдена" });
         }
-        SSEService.notifyEntityChanged("prices", req.headers["x-client-id"] as string | undefined);
+        SSEService.notifyEntityChanged("prices", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(item);
       } catch (error) {
         console.error("Price update error:", error);
@@ -372,7 +372,7 @@ export function registerPricesRoutes(app: Express) {
       try {
         const id = req.params.id;
         await storage.prices.deletePrice(id, String(req.session.userId));
-        SSEService.notifyEntityChanged("prices", req.headers["x-client-id"] as string | undefined);
+        SSEService.notifyEntityChanged("prices", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json({ message: "Цена удалена" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления цены" });

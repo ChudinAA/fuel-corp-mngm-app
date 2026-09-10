@@ -8,6 +8,18 @@ interface SSEClient {
 export class SSEService {
   private static clients: Set<SSEClient> = new Set();
 
+  /**
+   * Normalises the X-Client-Id header value coming from Express.
+   * Express may return string | string[] | undefined; we always want a single
+   * string (or undefined when absent).
+   */
+  static extractClientId(
+    header: string | string[] | undefined,
+  ): string | undefined {
+    if (Array.isArray(header)) return header[0];
+    return header;
+  }
+
   static register(res: Response, clientId: string | null = null) {
     const client: SSEClient = { res, clientId };
     this.clients.add(client);
@@ -23,6 +35,7 @@ export class SSEService {
       try {
         client.res.write(payload);
       } catch {
+        // Connection dropped — remove stale client
         this.clients.delete(client);
       }
     });

@@ -85,7 +85,7 @@ export function registerTransportationRoutes(app: Express) {
           createdById: req.session.userId,
         });
         const item = await (storage as any).transportation.createTransportation(data);
-        SSEService.notifyEntityChanged("transportation", req.headers["x-client-id"] as string | undefined);
+        SSEService.notifyEntityChanged("transportation", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(item);
       } catch (error) {
         if (error instanceof z.ZodError) {
@@ -128,7 +128,7 @@ export function registerTransportationRoutes(app: Express) {
         if (!item) {
           return res.status(404).json({ message: "Сделка не найдена" });
         }
-        SSEService.notifyEntityChanged("transportation", req.headers["x-client-id"] as string | undefined);
+        SSEService.notifyEntityChanged("transportation", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json(item);
       } catch (error) {
         res.status(500).json({ message: "Ошибка обновления сделки" });
@@ -155,7 +155,7 @@ export function registerTransportationRoutes(app: Express) {
           id,
           req.session.userId,
         );
-        SSEService.notifyEntityChanged("transportation", req.headers["x-client-id"] as string | undefined);
+        SSEService.notifyEntityChanged("transportation", SSEService.extractClientId(req.headers["x-client-id"]));
         res.json({ message: "Сделка удалена" });
       } catch (error) {
         res.status(500).json({ message: "Ошибка удаления сделки" });
