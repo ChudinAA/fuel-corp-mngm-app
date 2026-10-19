@@ -10,7 +10,7 @@ packages = ["vite"]
 deploymentTarget = "gce"
 build = ["npm", "run", "build"]
 run = ["npm", "run", "start"]
-publicDir = "dist/public"
+ignorePorts = false
 
 [[ports]]
 localPort = 5000
