@@ -1,7 +1,7 @@
 
 import { db } from "../../../db";
 import { auditLog, AUDIT_OPERATIONS, EntityType } from "../entities/audit";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, isNull } from "drizzle-orm";
 import { AuditService, AuditContext } from "./audit-service";
 import { storage } from "../../../storage/index";
 import { warehouseTransactions, warehouses } from "@shared/schema";
@@ -233,6 +233,66 @@ export class RollbackService {
         return {
           success: false,
           message: "Нет данных для восстановления",
+        };
+      }
+
+      if (entityType === "aircraft_refueling") {
+        const restoredDeals =
+          await storage.aircraftRefueling.restoreRefuelingOrder(entityId, context.userId);
+        const restoredDealIds = restoredDeals.map((deal) => deal.id);
+        const productSummary = restoredDeals
+          .map((deal) => {
+            const product =
+              deal.productType === "kerosene"
+                ? "Керосин"
+                : deal.productType === "pvkj"
+                  ? "ПВКЖ"
+                  : deal.productType === "service"
+                    ? "Услуга"
+                    : deal.productType;
+            const quantity = Number(deal.quantityKg || 0);
+            return `${product}${quantity ? ` — ${quantity} кг` : ""}`;
+          })
+          .join(", ");
+        const restoredAt = new Date().toISOString();
+
+        // A single click restores the whole order, so every matching deletion
+        // entry must become unavailable for rollback as well.
+        await db
+          .update(auditLog)
+          .set({
+            rolledBackAt: restoredAt,
+            rolledBackById: context.userId,
+          })
+          .where(
+            and(
+              eq(auditLog.entityType, entityType),
+              eq(auditLog.operation, AUDIT_OPERATIONS.DELETE),
+              isNull(auditLog.rolledBackAt),
+              inArray(auditLog.entityId, restoredDealIds),
+            ),
+          );
+
+        await AuditService.log({
+          entityType,
+          entityId,
+          operation: AUDIT_OPERATIONS.RESTORE,
+          oldData: null,
+          newData: restoredDeals[0],
+          context: {
+            ...context,
+            userName: `${context.userName} (откат удаления заказа)`,
+          },
+          extraMeta: { orderProducts: productSummary },
+        });
+
+        return {
+          success: true,
+          message: `Восстановлен весь заказ заправки: ${restoredDeals.length} позиций (${productSummary}).`,
+          restoredData: {
+            ...restoredDeals[0],
+            restoredOrderDeals: restoredDeals,
+          },
         };
       }
 

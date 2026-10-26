@@ -119,6 +119,7 @@ function isRollbackEntry(entry: AuditEntry): boolean {
 }
 
 function rollbackLabel(userName: string): string {
+  if (userName.includes("откат удаления заказа")) return "Восстановление заказа";
   if (userName.includes("откат создания")) return "Откат создания";
   if (userName.includes("откат изменения")) return "Откат изменения";
   if (userName.includes("откат удаления")) return "Откат удаления";
@@ -414,6 +415,13 @@ function AuditEntryRow({
                   {entityId || `Сделка: ${entry.entityMeta!.__dealLabel}`}
                 </p>
               )}
+              {entry.operation === "RESTORE" &&
+                entry.userName?.includes("откат удаления заказа") &&
+                entry.entityMeta?.orderProducts && (
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    Восстановлен весь заказ: {entry.entityMeta.orderProducts}
+                  </p>
+                )}
 
               {/* Список изменённых полей (только для UPDATE) */}
               {fieldsSummary && (

@@ -7,6 +7,7 @@ import {
   customers,
   warehouses,
   warehouseTransactions,
+  equipmentTransactions,
   type AircraftRefueling,
   type InsertAircraftRefueling,
   equipments,
@@ -910,6 +911,93 @@ export class AircraftRefuelingStorage {
     });
 
     return true;
+  }
+
+  /**
+   * Restore every deal and stock movement belonging to a deleted order in one
+   * transaction. The order ID and deal IDs are retained across soft deletion.
+   */
+  async restoreRefuelingOrder(
+    anchorId: string,
+    userId?: string,
+  ): Promise<AircraftRefueling[]> {
+    return db.transaction(async (tx) => {
+      const [anchor] = await tx
+        .select()
+        .from(aircraftRefueling)
+        .where(eq(aircraftRefueling.id, anchorId));
+      if (!anchor) throw new Error("Удалённый заказ заправки не найден");
+
+      const orderCondition = anchor.refuelingOrderId
+        ? eq(aircraftRefueling.refuelingOrderId, anchor.refuelingOrderId)
+        : eq(aircraftRefueling.id, anchor.id);
+      const deals = await tx
+        .select()
+        .from(aircraftRefueling)
+        .where(orderCondition)
+        .orderBy(asc(aircraftRefueling.id))
+        .for("update");
+      if (deals.length === 0) {
+        throw new Error("Состав удалённого заказа не найден");
+      }
+      if (deals.some((deal) => !deal.deletedAt)) {
+        throw new Error("Заказ уже восстановлен или восстановлен не полностью");
+      }
+
+      // Restore existing stock records rather than creating replacements, so
+      // the original deal and movement identifiers remain stable.
+      for (const deal of deals) {
+        const isLiquid =
+          deal.productType === PRODUCT_TYPE.KEROSENE ||
+          deal.productType === PRODUCT_TYPE.PVKJ;
+        if (deal.isDraft || !isLiquid) continue;
+
+        if (deal.equipmentTransactionId) {
+          const [transaction] = await tx
+            .select({ deletedAt: equipmentTransactions.deletedAt })
+            .from(equipmentTransactions)
+            .where(eq(equipmentTransactions.id, deal.equipmentTransactionId));
+          if (!transaction) {
+            throw new Error(`Топливное движение ${deal.equipmentTransactionId} не найдено`);
+          }
+          if (transaction?.deletedAt) {
+            await EquipmentTransactionService.restoreTransactionAndRecalculateEquipment(
+              tx,
+              deal.equipmentTransactionId,
+              userId,
+            );
+          }
+        } else if (deal.transactionId) {
+          const [transaction] = await tx
+            .select({ deletedAt: warehouseTransactions.deletedAt })
+            .from(warehouseTransactions)
+            .where(eq(warehouseTransactions.id, deal.transactionId));
+          if (!transaction) {
+            throw new Error(`Складское движение ${deal.transactionId} не найдено`);
+          }
+          if (transaction?.deletedAt) {
+            await WarehouseTransactionService.restoreTransactionAndRecalculateWarehouse(
+              tx,
+              deal.transactionId,
+              userId,
+            );
+          }
+        } else if (deal.equipmentId || deal.warehouseId) {
+          throw new Error(`У сделки ${deal.id} не найдено связанное топливное движение`);
+        }
+      }
+
+      await tx
+        .update(aircraftRefueling)
+        .set({ deletedAt: null, deletedById: null })
+        .where(inArray(aircraftRefueling.id, deals.map((deal) => deal.id)));
+
+      return deals.map((deal) => ({
+        ...deal,
+        deletedAt: null,
+        deletedById: null,
+      }));
+    });
   }
 
   async getAllAircraftRefuelings(): Promise<any[]> {
