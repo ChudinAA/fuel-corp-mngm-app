@@ -36,7 +36,7 @@ export function NomenclatureField({
             <SelectContent>
               {options.map((item) => (
                 <SelectItem key={item.id} value={item.id}>
-                  {item.name} ({item.unitShortName}){item.isDefault ? " · по умолчанию" : ""}
+                  {item.name} ({item.unitShortName}){item.isDefault ? " ✓" : ""}
                 </SelectItem>
               ))}
             </SelectContent>

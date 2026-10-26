@@ -28,6 +28,7 @@ import { formatNumber, formatPrice, formatCurrency } from "../utils";
 import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 import { PRODUCT_TYPES } from "../constants";
+import { ContractHint, getSelectedPriceContract } from "@/pages/shared/components/contract-hint";
 
 const OTHER_SERVICE_TYPE_LABELS: Record<string, string> = {
   royalty_per_ton: "Роялти",
@@ -482,7 +483,7 @@ export const AdditionalProductSection = forwardRef<
                                 key={`${price.id}-${idx}`}
                                 value={`${price.id}-${idx}`}
                               >
-                                {formatPrice(parsed.price || "0")} ₽/кг{price.contractNumber ? ` · Договор ${price.contractNumber}` : ""}
+                                {formatPrice(parsed.price || "0")} ₽/кг
                               </SelectItem>
                             );
                           } catch {
@@ -503,6 +504,10 @@ export const AdditionalProductSection = forwardRef<
                     </Button>
                   )}
                 </div>
+                <ContractHint
+                  contractNumber={getSelectedPriceContract(purchasePrices, selectedPurchasePriceId)?.contractNumber}
+                  contractName={(getSelectedPriceContract(purchasePrices, selectedPurchasePriceId) as any)?.contractName}
+                />
               </div>
             ) : (basisServicePrice &&
                 productType === PRODUCT_TYPE.SERVICE) ||
@@ -586,7 +591,7 @@ export const AdditionalProductSection = forwardRef<
                                 key={`${price.id}-${idx}`}
                                 value={`${price.id}-${idx}`}
                               >
-                                {formatPrice(parsed.price || "0")} ₽/кг{price.contractNumber ? ` · Договор ${price.contractNumber}` : ""}
+                                {formatPrice(parsed.price || "0")} ₽/кг
                               </SelectItem>
                             );
                           } catch {
@@ -607,6 +612,10 @@ export const AdditionalProductSection = forwardRef<
                     </Button>
                   )}
                 </div>
+                <ContractHint
+                  contractNumber={getSelectedPriceContract(salePrices, selectedSalePriceId)?.contractNumber}
+                  contractName={(getSelectedPriceContract(salePrices, selectedSalePriceId) as any)?.contractName}
+                />
               </div>
             ) : (isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) ||
               (isPvkjRecharge && productType === PRODUCT_TYPE.PVKJ) ? (

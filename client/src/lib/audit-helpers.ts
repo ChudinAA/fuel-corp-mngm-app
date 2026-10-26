@@ -79,6 +79,7 @@ const ENTITY_SPECIFIC_SHOW: Record<string, Set<string>> = {
   prices: new Set(["priceValues", "counterpartyId", "contractId", "nomenclatureId"]),
   counterparty_contracts: new Set(["supplierId", "buyerId", "carrierId", "parentContractId"]),
   nomenclature: new Set(["nomenclatureTypeId", "unitId"]),
+  delivery_cost: new Set(["contractId"]),
   units_of_measure: new Set(["referenceNomenclatureId", "referenceUnitId"]),
   // Зарубеж: посредники, банки и курсы в цепочке — показываем (сервер форматирует как строку)
   aircraft_refueling_abroad: new Set(["intermediaries", "bankCommissions", "chainExchangeRates"]),
@@ -87,11 +88,12 @@ const ENTITY_SPECIFIC_SHOW: Record<string, Set<string>> = {
   // Биржа: покупатель-поставщик (buyerSupplierId — FK на поставщика-покупателя)
   exchange_deals: new Set(["buyerSupplierId"]),
   // Перемещения ОП: оборудование (FK из equipment таблицы)
-  equipment_movement: new Set(["fromEquipmentId", "toEquipmentId"]),
+  equipment_movement: new Set(["fromEquipmentId", "toEquipmentId", "nomenclatureId"]),
 };
 
 // Поля принудительно скрыты для конкретных сущностей (переопределяют обычную видимость)
 const ENTITY_SPECIFIC_HIDE: Record<string, Set<string>> = {
+  nomenclature_types: new Set(["code"]),
   // У цен есть dateFrom/dateTo для периода действия — статус isActive избыточен
   prices: new Set(["isActive"]),
   // Склады: не показываем технический флаг активности и баланс (не нужны пользователю)

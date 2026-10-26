@@ -7,6 +7,16 @@ import { auditLog } from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
 import { SSEService } from "../../../services/sse-service";
 
+async function validateNomenclature(data: { productType: string; nomenclatureId?: string | null }, required: boolean) {
+  if (!data.nomenclatureId) {
+    return required ? "Выберите номенклатуру" : null;
+  }
+  const item = await storage.catalogs.getNomenclatureItem(data.nomenclatureId);
+  return !item || item.productType !== data.productType
+    ? "Номенклатура не соответствует выбранному продукту"
+    : null;
+}
+
 export function registerEquipmentMovementRoutes(app: Express) {
   app.get(
     "/api/equipment-movement",
@@ -78,6 +88,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
           "fromEquipmentId",
           "toEquipmentId",
           "basisId",
+          "nomenclatureId",
         ];
         uuidFields.forEach((field) => {
           if (body[field] === "") body[field] = null;
@@ -106,6 +117,8 @@ export function registerEquipmentMovementRoutes(app: Express) {
           density: body.density != null ? String(body.density) : null,
           createdById: req.session.userId,
         });
+        const nomenclatureError = await validateNomenclature(data, !data.isDraft);
+        if (nomenclatureError) return res.status(400).json({ message: nomenclatureError });
         const record = await (storage as any).equipmentMovement.createMovement(data);
         SSEService.notifyEntityChanged("equipment-movement", SSEService.extractClientId(req.headers["x-client-id"]));
         res.status(201).json(record);
@@ -136,6 +149,7 @@ export function registerEquipmentMovementRoutes(app: Express) {
           "fromEquipmentId",
           "toEquipmentId",
           "basisId",
+          "nomenclatureId",
         ];
         uuidFields.forEach((field) => {
           if (body[field] === "") body[field] = null;
@@ -164,6 +178,13 @@ export function registerEquipmentMovementRoutes(app: Express) {
           density: body.density != null ? String(body.density) : null,
           updatedById: req.session.userId,
         });
+        const current = await (storage as any).equipmentMovement.getMovement(req.params.id);
+        if (!current) return res.status(404).json({ message: "Запись не найдена" });
+        const nomenclatureError = await validateNomenclature({
+          productType: data.productType,
+          nomenclatureId: data.nomenclatureId === undefined ? current.nomenclatureId : data.nomenclatureId,
+        }, !!current.nomenclatureId);
+        if (nomenclatureError) return res.status(400).json({ message: nomenclatureError });
 
         const item = await (storage as any).equipmentMovement.updateMovement(req.params.id, data);
         if (!item) return res.status(404).json({ message: "Запись не найдена" });

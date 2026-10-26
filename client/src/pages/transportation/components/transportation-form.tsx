@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Combobox } from "@/components/ui/combobox";
+import { DeliveryContractHint } from "@/pages/shared/components/delivery-contract-hint";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 import {
   Form,
@@ -49,6 +50,7 @@ import { PRODUCT_TYPE } from "@shared/constants";
 import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
 import { useDuplicateCheck } from "@/pages/shared/hooks/use-duplicate-check";
 import { DuplicateAlertDialog } from "@/pages/shared/components/duplicate-alert-dialog";
+import { ContractHint, getSelectedPriceContract } from "@/pages/shared/components/contract-hint";
 import { getReadableZodError } from "@/lib/form-errors";
 import { useTransportationFilters } from "../hooks/use-transportation-filters";
 import { useTransportationCalculations } from "../hooks/use-transportation-calculations";
@@ -207,6 +209,7 @@ export const TransportationForm = forwardRef<
     finalKg,
     salePrice,
     deliveryCost,
+    matchedDeliveryCost,
     deliveryTariff,
     saleAmount,
     profit: calculatedProfit,
@@ -488,7 +491,7 @@ export const TransportationForm = forwardRef<
       .map((pv: any, idx: number) => {
         const parsed = typeof pv === "string" ? JSON.parse(pv) : pv;
         const val = parseFloat(parsed?.price || "0");
-        return { value: `${p.id}-${idx}`, label: `${formatPrice(val)} ₽/кг${p.contractNumber ? ` · Договор ${p.contractNumber}` : ""}` };
+        return { value: `${p.id}-${idx}`, label: `${formatPrice(val)} ₽/кг` };
       })
       .flat();
   };
@@ -852,6 +855,7 @@ export const TransportationForm = forwardRef<
                           </Button>
                         )}
                       </div>
+                      <DeliveryContractHint tariff={matchedDeliveryCost} />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -968,6 +972,10 @@ export const TransportationForm = forwardRef<
                       </Button>
                     )}
                   </div>
+                  <ContractHint
+                    contractNumber={getSelectedPriceContract(salePrices, selectedSalePriceId)?.contractNumber}
+                    contractName={(getSelectedPriceContract(salePrices, selectedSalePriceId) as any)?.contractName}
+                  />
                 </div>
 
                 <CalculatedField

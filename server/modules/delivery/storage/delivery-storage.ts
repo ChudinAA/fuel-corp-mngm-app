@@ -1,15 +1,23 @@
 
-import { eq, sql, and, isNull } from "drizzle-orm";
+import { eq, sql, and, isNull, getTableColumns } from "drizzle-orm";
 import { db } from "server/db";
 import { deliveryCost } from "@shared/schema";
 import type { InsertDeliveryCost, DeliveryCost } from "@shared/schema";
 import { IDeliveryStorage } from "./types";
+import { counterpartyContracts } from "../../catalogs/entities/contracts";
 
 export class DeliveryStorage implements IDeliveryStorage {
   async getAllDeliveryCosts(): Promise<DeliveryCost[]> {
     const costs = await db
-      .select()
+      .select({
+        ...getTableColumns(deliveryCost),
+        contractNumber: counterpartyContracts.contractNumber,
+        contractName: counterpartyContracts.contractName,
+        contractDate: counterpartyContracts.contractDate,
+        parentContractId: counterpartyContracts.parentContractId,
+      })
       .from(deliveryCost)
+      .leftJoin(counterpartyContracts, eq(deliveryCost.contractId, counterpartyContracts.id))
       .where(isNull(deliveryCost.deletedAt));
     return costs;
   }
@@ -49,6 +57,7 @@ export class DeliveryStorage implements IDeliveryStorage {
       .insert(deliveryCost)
       .values({
         carrierId: data.carrierId,
+        contractId: data.contractId || null,
         fromEntityType: data.fromEntityType,
         fromEntityId: data.fromEntityId,
         fromLocation: data.fromLocation,
@@ -73,6 +82,7 @@ export class DeliveryStorage implements IDeliveryStorage {
   ): Promise<DeliveryCost | undefined> {
     const updateFields: Record<string, any> = {};
     if (data.carrierId !== undefined) updateFields.carrierId = data.carrierId;
+    if (data.contractId !== undefined) updateFields.contractId = data.contractId || null;
     if (data.fromEntityType !== undefined) updateFields.fromEntityType = data.fromEntityType;
     if (data.fromEntityId !== undefined) updateFields.fromEntityId = data.fromEntityId;
     if (data.fromLocation !== undefined) updateFields.fromLocation = data.fromLocation;

@@ -229,6 +229,7 @@ export function MovementDialog({
     warehouseServicesCost,
     destinationWarehouseServices,
     deliveryCost,
+    matchedDeliveryCost,
     totalCost,
     rawTotalCost,
     costPerKg,
@@ -487,6 +488,7 @@ export function MovementDialog({
                   watchFromWarehouseId={watchFromWarehouseId || ""}
                   suppliers={suppliers}
                   warehouses={warehouses}
+                  allBases={allBases}
                 />
               </div>
 
@@ -495,9 +497,8 @@ export function MovementDialog({
                 watchMovementType={watchMovementType || MOVEMENT_TYPE.SUPPLY}
                 watchFromWarehouseId={watchFromWarehouseId || ""}
                 warehouses={warehouses}
-                suppliers={suppliers}
-                allBases={allBases}
                 availableCarriers={availableCarriers}
+                matchedDeliveryCost={sameBasis ? null : matchedDeliveryCost}
                 warehouseBalance={warehouseBalance}
                 supplierContractVolumeStatus={supplierContractVolumeStatus}
                 sameBasis={sameBasis}

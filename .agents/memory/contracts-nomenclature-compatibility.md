@@ -21,7 +21,7 @@ Do not automatically assign the default nomenclature item to historical prices o
 
 **Why:** the user explicitly corrected the original conflation of these business concepts.
 
-**How to apply:** keep integration IDs and nomenclature kinds off normal user interfaces. Do not derive business behavior from integration kind codes.
+**How to apply:** hide integration IDs and technical codes. The user subsequently requested a visible, editable nomenclature-kind directory and kind selection (defaults «Товар»/«Услуга»); these are descriptive metadata only. Do not derive business behavior from integration kind codes.
 
 ## Directory interaction requirements
 
@@ -30,3 +30,11 @@ For contracts and nomenclature, use the application's state-preserving minimizab
 **Why:** the user requested consistency with established application mechanics and compact product-related grouping.
 
 **How to apply:** preserve unsaved input while minimizing; allow direct autosaving of the default toggle by product type, with permission checks and visible error handling.
+
+## Contract context in transaction forms
+
+Price dropdowns display only amounts and units; show the selected price's contract compactly below the field. Show a delivery tariff's contract below the carrier, using the exact tariff selected by route calculation rather than a carrier-only lookup.
+
+**Why:** the user requested uncluttered price choices and aligned controls; a carrier can have multiple contracts and route tariffs.
+
+**How to apply:** reserve helper-line height even without contract text so selecting a contract does not shift neighboring fields. Preserve existing tariffs and historical movements with missing catalog links rather than guessing their identity.

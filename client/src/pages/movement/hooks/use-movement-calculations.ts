@@ -215,18 +215,18 @@ export function useMovementCalculations({
   }, [watchToWarehouseId, kgNum, warehouses, purchaseAmount]);
 
   // Get delivery cost
-  const deliveryCost = useMemo((): number => {
-    if (!watchToWarehouseId || !watchCarrierId || kgNum <= 0) return 0;
+  const matchedDeliveryCost = useMemo(() => {
+    if (!watchToWarehouseId || !watchCarrierId) return null;
 
     const toWarehouse = warehouses.find((w) => w.id === watchToWarehouseId);
-    if (!toWarehouse) return 0;
+    if (!toWarehouse) return null;
 
     let fromEntityType = "";
     let fromEntityId = "";
 
     if (watchMovementType === MOVEMENT_TYPE.SUPPLY && watchSupplierId) {
       const supplier = suppliers.find((s) => s.id === watchSupplierId);
-      if (!supplier) return 0;
+      if (!supplier) return null;
 
       if (supplier.isWarehouse) {
         fromEntityType = DELIVERY_ENTITY_TYPE.WAREHOUSE;
@@ -251,7 +251,7 @@ export function useMovementCalculations({
       fromEntityId = watchFromWarehouseId;
     }
 
-    if (!fromEntityId) return 0;
+    if (!fromEntityId) return null;
 
     // Primary lookup: use fromEntityType/fromEntityId as determined above
     const deliveryCostRecord = deliveryCosts.find(
@@ -264,7 +264,7 @@ export function useMovementCalculations({
     );
 
     if (deliveryCostRecord && deliveryCostRecord.costPerKg) {
-      return parseFloat(deliveryCostRecord.costPerKg) * kgNum;
+      return deliveryCostRecord;
     }
 
     // Fallback for internal movement: if a basis (watchBasisId) is specified,
@@ -283,15 +283,14 @@ export function useMovementCalculations({
           dc.toEntityId === toWarehouse.id,
       );
       if (basisRecord && basisRecord.costPerKg) {
-        return parseFloat(basisRecord.costPerKg) * kgNum;
+        return basisRecord;
       }
     }
 
-    return 0;
+    return null;
   }, [
     watchToWarehouseId,
     watchCarrierId,
-    kgNum,
     watchMovementType,
     watchSupplierId,
     watchBasisId,
@@ -300,6 +299,8 @@ export function useMovementCalculations({
     suppliers,
     deliveryCosts,
   ]);
+  const deliveryCost = matchedDeliveryCost && kgNum > 0
+    ? parseFloat(matchedDeliveryCost.costPerKg) * kgNum : 0;
 
   const { priceId, priceIndex } = parsePriceCompositeId(watchSelectedPurchasePriceId);
   const purchasePriceId = priceId;
@@ -420,6 +421,7 @@ export function useMovementCalculations({
     warehouseServicesCost,
     destinationWarehouseServices,
     deliveryCost,
+    matchedDeliveryCost,
     totalCost,
     rawTotalCost,
     costPerKg,

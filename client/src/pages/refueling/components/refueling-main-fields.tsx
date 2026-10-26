@@ -171,7 +171,7 @@ export function RefuelingMainFields({
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-[1fr_1fr_2fr]">
         <FormField
           control={form.control}
           name="refuelingDate"
@@ -220,7 +220,7 @@ export function RefuelingMainFields({
               <Select value={field.value || ""} onValueChange={field.onChange}>
                 <FormControl><SelectTrigger><SelectValue placeholder="Выберите номенклатуру" /></SelectTrigger></FormControl>
                 <SelectContent>{nomenclatureOptions.map((item) => <SelectItem key={item.id} value={item.id}>
-                  {item.name} ({item.unitShortName}){item.isDefault ? " · по умолчанию" : ""}
+                  {item.name} ({item.unitShortName}){item.isDefault ? " ✓" : ""}
                 </SelectItem>)}</SelectContent>
               </Select>
               <FormMessage />
@@ -228,6 +228,8 @@ export function RefuelingMainFields({
           )} />
         )}
 
+      </div>
+      <div className="grid gap-3 md:grid-cols-3">
         <FormField
           control={form.control}
           name="aircraftNumber"

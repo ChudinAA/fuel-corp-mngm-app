@@ -293,7 +293,7 @@ export function PriceFormFields({
                 <FormControl><SelectTrigger data-testid="select-price-nomenclature"><SelectValue placeholder="Выберите номенклатуру" /></SelectTrigger></FormControl>
                 <SelectContent>
                   {nomenclatureForProduct.map((item) => <SelectItem key={item.id} value={item.id}>
-                    {item.name} ({item.unitShortName}){item.isDefault ? " · по умолчанию" : ""}
+                    {item.name} ({item.unitShortName}){item.isDefault ? " ✓" : ""}
                   </SelectItem>)}
                 </SelectContent>
               </Select>

@@ -23,6 +23,7 @@ import {
 import type { UseFormReturn } from "react-hook-form";
 import type { MovementFormData } from "../schemas";
 import type { VatAdjustment } from "../hooks/use-movement-calculations";
+import { ContractHint } from "@/pages/shared/components/contract-hint";
 
 interface WarehouseService {
   serviceName?: string | null;
@@ -83,6 +84,10 @@ export function MovementCostSummary({
   const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
 
   const hasServices = warehouseServicesCost > 0;
+  const selectedPrice = availablePrices.find((price) =>
+    selectedPurchasePriceId === price.priceId ||
+    selectedPurchasePriceId.startsWith(`${price.priceId}-`)
+  );
   const colCount = hasServices ? 6 : 5;
   const gridClass = hasServices
     ? "grid gap-2 items-start md:grid-cols-2 lg:grid-cols-6"
@@ -123,11 +128,12 @@ export function MovementCostSummary({
                           key={`${p.priceId}-${p.index}`}
                           value={`${p.priceId}-${p.index}`}
                         >
-                          {formatNumber(p.price)} ₽/кг{p.contractNumber ? ` · Договор ${p.contractNumber}` : ""}
+                          {formatNumber(p.price)} ₽/кг
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <ContractHint contractNumber={selectedPrice?.contractNumber} contractName={selectedPrice?.contractName} />
                 </FormItem>
               )}
             />

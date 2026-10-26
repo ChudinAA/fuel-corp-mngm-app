@@ -75,6 +75,7 @@ import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
 import { CalculatedField } from "@/pages/refueling/calculated-field";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 import { SpecialConditionsBanner } from "@/components/special-conditions-banner";
+import { ContractHint, getSelectedPriceContract } from "@/pages/shared/components/contract-hint";
 
 export interface RefuelingAbroadFormHandle {
   getFormState: () => { supplierId: string; buyerId: string };
@@ -880,6 +881,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
             <div className="min-w-0 md:col-span-2">
               <NomenclatureField form={form} productType={watchedValues.productType || PRODUCT_TYPE.KEROSENE} preserveLegacySelection={!!editData?.id && !editData?.nomenclatureId} />
             </div>
+            <div className="col-span-2 grid grid-cols-2 gap-4 md:col-span-6 md:grid-cols-4">
             <FormField
               control={form.control}
               name="airportCode"
@@ -969,6 +971,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                 </FormItem>
               )}
             />
+            </div>
           </CardContent>
         </Card>
 
@@ -1284,7 +1287,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                                         key={`${price.id}-${idx}`}
                                         value={`${price.id}-${idx}`}
                                       >
-                                        {formatPrice(priceVal)} ${watchedValues.inputMode === "liters" ? "/л" : "/кг"}{price.contractNumber ? ` · Договор ${price.contractNumber}` : ""}
+                                        {formatPrice(priceVal)} ${watchedValues.inputMode === "liters" ? "/л" : "/кг"}
                                       </SelectItem>
                                     );
                                   } catch {
@@ -1307,6 +1310,10 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                           )}
                         </div>
                         <FormMessage />
+                      <ContractHint
+                        contractNumber={getSelectedPriceContract(purchasePrices, effectiveValue)?.contractNumber}
+                        contractName={(getSelectedPriceContract(purchasePrices, effectiveValue) as any)?.contractName}
+                      />
                       </FormItem>
                     );
                   }}
@@ -1384,7 +1391,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                                         key={`${price.id}-${idx}`}
                                         value={`${price.id}-${idx}`}
                                       >
-                                        {formatPrice(priceVal)} ${watchedValues.inputMode === "liters" ? "/л" : "/кг"}{price.contractNumber ? ` · Договор ${price.contractNumber}` : ""}
+                                        {formatPrice(priceVal)} ${watchedValues.inputMode === "liters" ? "/л" : "/кг"}
                                       </SelectItem>
                                     );
                                   } catch {
@@ -1407,6 +1414,10 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                           )}
                         </div>
                         <FormMessage />
+                      <ContractHint
+                        contractNumber={getSelectedPriceContract(salePrices, effectiveValue)?.contractNumber}
+                        contractName={(getSelectedPriceContract(salePrices, effectiveValue) as any)?.contractName}
+                      />
                       </FormItem>
                     );
                   }}

@@ -20,6 +20,7 @@ import {
   equipmentTransactions,
 } from "../../warehouses-equipment/entities/equipment";
 import { bases } from "../../bases/entities/bases";
+import { nomenclature } from "../../catalogs/entities/nomenclature";
 
 export const equipmentMovement = pgTable(
   "equipment_movement",
@@ -28,6 +29,7 @@ export const equipmentMovement = pgTable(
     movementDate: timestamp("movement_date", { mode: "string" }).notNull(),
     movementType: text("movement_type").notNull(),
     productType: text("product_type").notNull(),
+    nomenclatureId: uuid("nomenclature_id").references(() => nomenclature.id),
     fromWarehouseId: uuid("from_warehouse_id").references(() => warehouses.id),
     toWarehouseId: uuid("to_warehouse_id").references(() => warehouses.id),
     fromEquipmentId: uuid("from_equipment_id").references(() => equipments.id),
@@ -64,6 +66,7 @@ export const equipmentMovement = pgTable(
   (table) => ({
     movementDateIdx: index("eq_movement_date_idx").on(table.movementDate),
     movementTypeIdx: index("eq_movement_type_idx").on(table.movementType),
+    nomenclatureIdx: index("equipment_movement_nomenclature_idx").on(table.nomenclatureId),
     fromWarehouseIdx: index("eq_movement_from_wh_idx").on(
       table.fromWarehouseId,
     ),

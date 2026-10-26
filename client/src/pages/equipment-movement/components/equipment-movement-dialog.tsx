@@ -62,6 +62,7 @@ import {
 import { useLikBalance } from "../hooks/use-lik-balance";
 import { useLikCalculations } from "../hooks/use-lik-calculations";
 import { Equipment } from "@shared/schema";
+import { NomenclatureField } from "../../shared/components/nomenclature-field";
 
 export function EquipmentMovementDialog({
   warehouses,
@@ -83,6 +84,7 @@ export function EquipmentMovementDialog({
       movementDate: new Date(),
       movementType: EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK,
       productType: PRODUCT_TYPE.KEROSENE,
+      nomenclatureId: "",
       fromWarehouseId: "",
       toWarehouseId: "",
       fromEquipmentId: "",
@@ -124,6 +126,7 @@ export function EquipmentMovementDialog({
           (editMovement as any).movementType ||
           EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK,
         productType: editMovement.productType || PRODUCT_TYPE.KEROSENE,
+        nomenclatureId: editMovement.nomenclatureId || "",
         fromWarehouseId: editMovement.fromWarehouseId || "",
         toWarehouseId: editMovement.toWarehouseId || "",
         fromEquipmentId: editMovement.fromEquipmentId || "",
@@ -144,6 +147,7 @@ export function EquipmentMovementDialog({
         movementDate: new Date(),
         movementType: EQUIPMENT_MOVEMENT_TYPE.STORAGE_TO_TZK,
         productType: PRODUCT_TYPE.KEROSENE,
+        nomenclatureId: "",
         fromWarehouseId: "",
         toWarehouseId: "",
         fromEquipmentId: "",
@@ -204,6 +208,7 @@ export function EquipmentMovementDialog({
     }) => {
       const payload = {
         ...data,
+        nomenclatureId: data.nomenclatureId || null,
         movementDate: format(data.movementDate, "yyyy-MM-dd'T'HH:mm:ss"),
         quantityKg: calculatedKg?.toString() || "0",
         quantityLiters: data.quantityLiters ? data.quantityLiters : null,
@@ -318,6 +323,11 @@ export function EquipmentMovementDialog({
             <form
               onSubmit={form.handleSubmit(
                 (data) => {
+                  if (!data.nomenclatureId && (!isEditing || editMovement?.nomenclatureId)) {
+                    form.setError("nomenclatureId", { message: "Выберите номенклатуру" });
+                    showError("Выберите номенклатуру.");
+                    return;
+                  }
                   // Бизнес-валидация для полного создания сделки
                   const hasFrom = !!(data.fromWarehouseId || data.fromEquipmentId);
                   const hasTo = !!(data.toWarehouseId || data.toEquipmentId);
@@ -337,7 +347,7 @@ export function EquipmentMovementDialog({
               )}
               className="space-y-6"
             >
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="movementDate"
@@ -397,6 +407,8 @@ export function EquipmentMovementDialog({
                     </FormItem>
                   )}
                 />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="productType"
@@ -424,6 +436,11 @@ export function EquipmentMovementDialog({
                       <FormMessage />
                     </FormItem>
                   )}
+                />
+                <NomenclatureField
+                  form={form}
+                  productType={watchProductType}
+                  preserveLegacySelection={isEditing && !editMovement?.nomenclatureId}
                 />
               </div>
 

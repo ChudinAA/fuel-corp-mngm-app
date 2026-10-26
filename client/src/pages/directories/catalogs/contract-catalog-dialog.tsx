@@ -27,6 +27,7 @@ type ContractForm = {
 interface ContractCatalogDialogProps {
   open: boolean;
   editItem: Contract | null;
+  initialParent?: Contract | null;
   contracts: Contract[];
   suppliers: Party[];
   buyers: Party[];
@@ -42,7 +43,7 @@ const parseError = async (response: Response, fallback: string) => {
   try { const body = await response.json(); return body.message || fallback; } catch { return fallback; }
 };
 
-export function ContractCatalogDialog({ open, editItem, contracts, suppliers, buyers, carriers, onOpenChange }: ContractCatalogDialogProps) {
+export function ContractCatalogDialog({ open, editItem, initialParent, contracts, suppliers, buyers, carriers, onOpenChange }: ContractCatalogDialogProps) {
   const { toast } = useToast();
   const [form, setForm] = useState<ContractForm>(blankForm);
   const parties = form.partyType === "supplier" ? suppliers : form.partyType === "buyer" ? buyers : carriers;
@@ -60,8 +61,13 @@ export function ContractCatalogDialog({ open, editItem, contracts, suppliers, bu
       partyType: editItem.counterpartyType,
       partyId: editItem.supplierId || editItem.buyerId || editItem.carrierId || "",
       parentContractId: editItem.parentContractId || "",
+    } : initialParent ? {
+      ...blankForm(),
+      partyType: initialParent.counterpartyType,
+      partyId: initialParent.supplierId || initialParent.buyerId || initialParent.carrierId || "",
+      parentContractId: initialParent.id,
     } : blankForm());
-  }, [open, editItem?.id]);
+  }, [open, editItem?.id, initialParent?.id]);
 
   const save = useMutation({
     mutationFn: async () => {

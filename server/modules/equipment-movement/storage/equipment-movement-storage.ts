@@ -83,6 +83,7 @@ export class EquipmentMovementStorage {
         movementDate: equipmentMovement.movementDate,
         movementType: equipmentMovement.movementType,
         productType: equipmentMovement.productType,
+        nomenclatureId: equipmentMovement.nomenclatureId,
         fromWarehouseId: equipmentMovement.fromWarehouseId,
         toWarehouseId: equipmentMovement.toWarehouseId,
         fromEquipmentId: equipmentMovement.fromEquipmentId,

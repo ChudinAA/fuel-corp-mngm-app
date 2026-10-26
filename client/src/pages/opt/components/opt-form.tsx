@@ -210,6 +210,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       purchasePrice,
       salePrice,
       deliveryCost,
+      matchedDeliveryCost,
       purchaseAmount,
       saleAmount,
       profit,
@@ -795,6 +796,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
               deliveryCost={deliveryCost}
               deliveryError={deliveryError}
               autoTariffType={autoDetectedTariff?.tariffType}
+              matchedDeliveryCost={matchedDeliveryCost}
               noDeliveryRequired={noDeliveryRequired}
               onNoDeliveryRequiredChange={(val) => {
                 setNoDeliveryRequired(val);

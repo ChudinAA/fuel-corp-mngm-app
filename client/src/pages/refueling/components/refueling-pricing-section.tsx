@@ -24,6 +24,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ContractHint, getSelectedPriceContract } from "@/pages/shared/components/contract-hint";
 
 const OTHER_SERVICE_TYPE_LABELS: Record<string, string> = {
   royalty_per_ton: "Роялти",
@@ -286,6 +287,7 @@ export function RefuelingPricingSection({
                   : undefined;
               const effectiveValue =
                 selectedPurchasePriceId || field.value || firstPriceId;
+              const selectedContract = getSelectedPriceContract(purchasePrices, effectiveValue);
 
               return (
                 <FormItem>
@@ -322,7 +324,7 @@ export function RefuelingPricingSection({
                                   key={`${price.id}-${idx}`}
                                   value={`${price.id}-${idx}`}
                                 >
-                                  {formatPrice(priceVal)} ₽/кг{price.contractNumber ? ` · Договор ${price.contractNumber}` : ""}
+                                  {formatPrice(priceVal)} ₽/кг
                                 </SelectItem>
                               );
                             } catch {
@@ -345,6 +347,7 @@ export function RefuelingPricingSection({
                     )}
                   </div>
                   <FormMessage />
+                  <ContractHint contractNumber={selectedContract?.contractNumber} contractName={(selectedContract as any)?.contractName} />
                 </FormItem>
               );
             }}
@@ -414,6 +417,7 @@ export function RefuelingPricingSection({
                 salePrices.length > 0 ? `${salePrices[0].id}-0` : undefined;
               const effectiveValue =
                 selectedSalePriceId || field.value || firstPriceId;
+              const selectedContract = getSelectedPriceContract(salePrices, effectiveValue);
 
               if (!selectedSalePriceId && !field.value && firstPriceId) {
                 setSelectedSalePriceId(firstPriceId);
@@ -455,7 +459,7 @@ export function RefuelingPricingSection({
                                   key={`${price.id}-${idx}`}
                                   value={`${price.id}-${idx}`}
                                 >
-                                  {formatPrice(priceVal)} ₽/кг{price.contractNumber ? ` · Договор ${price.contractNumber}` : ""}
+                                  {formatPrice(priceVal)} ₽/кг
                                 </SelectItem>
                               );
                             } catch {
@@ -478,6 +482,7 @@ export function RefuelingPricingSection({
                     )}
                   </div>
                   <FormMessage />
+                  <ContractHint contractNumber={selectedContract?.contractNumber} contractName={(selectedContract as any)?.contractName} />
                 </FormItem>
               );
             }}

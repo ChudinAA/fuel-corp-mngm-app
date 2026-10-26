@@ -25,6 +25,7 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 import { useAuth } from "@/hooks/use-auth";
+import { ContractHint, getSelectedPriceContract } from "@/pages/shared/components/contract-hint";
 
 interface OptPricingSectionProps {
   form: UseFormReturn<OptFormData>;
@@ -147,6 +148,7 @@ export function OptPricingSection({
                   : undefined;
               const effectiveValue =
                 selectedPurchasePriceId || field.value || firstPriceId;
+              const selectedContract = getSelectedPriceContract(purchasePrices, effectiveValue);
 
               if (!selectedPurchasePriceId && !field.value && firstPriceId) {
                 setSelectedPurchasePriceId(firstPriceId);
@@ -188,7 +190,7 @@ export function OptPricingSection({
                                   key={`${price.id}-${idx}`}
                                   value={`${price.id}-${idx}`}
                                 >
-                                  {formatPrice(priceVal)} ₽/кг{price.contractNumber ? ` · Договор ${price.contractNumber}` : ""}
+                                  {formatPrice(priceVal)} ₽/кг
                                 </SelectItem>
                               );
                             } catch {
@@ -211,6 +213,7 @@ export function OptPricingSection({
                     )}
                   </div>
                   <FormMessage />
+                  <ContractHint contractNumber={selectedContract?.contractNumber} contractName={(selectedContract as any)?.contractName} />
                 </FormItem>
               );
             }}
@@ -267,6 +270,7 @@ export function OptPricingSection({
                 salePrices.length > 0 ? `${salePrices[0].id}-0` : undefined;
               const effectiveValue =
                 selectedSalePriceId || field.value || firstPriceId;
+              const selectedContract = getSelectedPriceContract(salePrices, effectiveValue);
 
               if (!selectedSalePriceId && !field.value && firstPriceId) {
                 setSelectedSalePriceId(firstPriceId);
@@ -308,7 +312,7 @@ export function OptPricingSection({
                                   key={`${price.id}-${idx}`}
                                   value={`${price.id}-${idx}`}
                                 >
-                                  {formatPrice(priceVal)} ₽/кг{price.contractNumber ? ` · Договор ${price.contractNumber}` : ""}
+                                  {formatPrice(priceVal)} ₽/кг
                                 </SelectItem>
                               );
                             } catch {
@@ -331,6 +335,7 @@ export function OptPricingSection({
                     )}
                   </div>
                   <FormMessage />
+                  <ContractHint contractNumber={selectedContract?.contractNumber} contractName={(selectedContract as any)?.contractName} />
                 </FormItem>
               );
             }}

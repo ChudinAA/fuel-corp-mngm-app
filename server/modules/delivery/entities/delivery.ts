@@ -17,12 +17,14 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
 import { logisticsCarriers } from "../../logistics/entities/logistics";
+import { counterpartyContracts } from "../../catalogs/entities/contracts";
 
 export const deliveryCost = pgTable("delivery_cost", {
   id: uuid("id").defaultRandom().primaryKey(),
   carrierId: uuid("carrier_id")
     .notNull()
     .references(() => logisticsCarriers.id),
+  contractId: uuid("contract_id").references(() => counterpartyContracts.id),
   fromEntityType: text("from_entity_type").notNull(), // "base", "warehouse", "delivery_location"
   fromEntityId: uuid("from_entity_id").notNull(),
   fromLocation: text("from_location").notNull(),
@@ -42,6 +44,7 @@ export const deliveryCost = pgTable("delivery_cost", {
   deletedById: uuid("deleted_by_id").references(() => users.id),
 }, (table) => ({
   carrierIdx: index("delivery_cost_carrier_idx").on(table.carrierId),
+  contractIdx: index("delivery_cost_contract_idx").on(table.contractId),
   fromEntityIdx: index("delivery_cost_from_entity_idx").on(table.fromEntityType, table.fromEntityId),
   toEntityIdx: index("delivery_cost_to_entity_idx").on(table.toEntityType, table.toEntityId),
   isActiveIdx: index("delivery_cost_is_active_idx").on(table.isActive),
@@ -50,6 +53,10 @@ export const deliveryCost = pgTable("delivery_cost", {
 // ============ RELATIONS ============
 
 export const deliveryCostRelations = relations(deliveryCost, ({ one }) => ({
+  contract: one(counterpartyContracts, {
+    fields: [deliveryCost.contractId],
+    references: [counterpartyContracts.id],
+  }),
   carrier: one(logisticsCarriers, {
     fields: [deliveryCost.carrierId],
     references: [logisticsCarriers.id],

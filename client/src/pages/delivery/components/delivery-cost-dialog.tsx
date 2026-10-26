@@ -87,6 +87,7 @@ export function AddDeliveryCostDialog({
     setOpen(false);
     form.reset({
       carrierId: "",
+      contractId: "",
       fromEntityType: "",
       fromEntityId: "",
       fromLocation: "",
@@ -105,6 +106,7 @@ export function AddDeliveryCostDialog({
     resolver: zodResolver(deliveryCostFormSchema),
     defaultValues: {
       carrierId: editDeliveryCost?.carrierId || "",
+      contractId: editDeliveryCost?.contractId || "",
       fromEntityType: editDeliveryCost?.fromEntityType || "",
       fromEntityId: editDeliveryCost?.fromEntityId || "",
       fromLocation: editDeliveryCost?.fromLocation || "",
@@ -136,6 +138,15 @@ export function AddDeliveryCostDialog({
 
   const watchFromEntityType = form.watch("fromEntityType");
   const watchToEntityType = form.watch("toEntityType");
+  const watchCarrierId = form.watch("carrierId");
+  const { data: contracts = [], isError: contractsError } = useQuery<any[]>({
+    queryKey: ["/api/contracts", { carrierId: watchCarrierId }],
+    enabled: !!watchCarrierId && (open || !!editDeliveryCost),
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/contracts?carrierId=${encodeURIComponent(watchCarrierId)}`);
+      return response.json();
+    },
+  });
 
   const fromEntities = React.useMemo(() => {
     const entities = getEntitiesByType(
@@ -173,7 +184,7 @@ export function AddDeliveryCostDialog({
 
   const createMutation = useMutation({
     mutationFn: async (data: DeliveryCostFormData) => {
-      const res = await apiRequest("POST", "/api/delivery-costs", data);
+      const res = await apiRequest("POST", "/api/delivery-costs", { ...data, contractId: data.contractId || null });
       return res.json();
     },
     onSuccess: (data) => {
@@ -197,7 +208,7 @@ export function AddDeliveryCostDialog({
       const res = await apiRequest(
         "PATCH",
         `/api/delivery-costs/${editDeliveryCost?.id}`,
-        data,
+        { ...data, contractId: data.contractId || null },
       );
       return res.json();
     },
@@ -220,6 +231,7 @@ export function AddDeliveryCostDialog({
     if (editDeliveryCost) {
       form.reset({
         carrierId: editDeliveryCost.carrierId || "",
+        contractId: editDeliveryCost.contractId || "",
         fromEntityType: editDeliveryCost.fromEntityType || "",
         fromEntityId: editDeliveryCost.fromEntityId || "",
         fromLocation: editDeliveryCost.fromLocation || "",
@@ -342,13 +354,45 @@ export function AddDeliveryCostDialog({
                       <Combobox
                         options={carriers?.map((c) => ({ value: c.id, label: c.name })) || []}
                         value={field.value}
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          form.setValue("contractId", "", { shouldDirty: true });
+                        }}
                         placeholder="Выберите перевозчика"
                         className="w-full"
                         dataTestId="select-delivery-carrier"
                       />
                     </div>
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="contractId"
+              render={({ field }) => (
+                <FormItem className="min-w-0">
+                  <FormLabel>Договор</FormLabel>
+                  <Select
+                    value={field.value || "__none"}
+                    onValueChange={(value) => field.onChange(value === "__none" ? "" : value)}
+                    disabled={!watchCarrierId || contractsError}
+                  >
+                    <FormControl>
+                      <SelectTrigger data-testid="select-delivery-contract"><SelectValue placeholder="Выберите договор" /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="__none">Без договора</SelectItem>
+                      {contracts.map((contract) => (
+                        <SelectItem key={contract.id} value={contract.id}>
+                          {contract.parentContractId ? "Приложение" : "Договор"} № {contract.contractNumber} — {contract.contractName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {contractsError && <p className="text-xs text-destructive">Не удалось загрузить договоры перевозчика</p>}
                   <FormMessage />
                 </FormItem>
               )}

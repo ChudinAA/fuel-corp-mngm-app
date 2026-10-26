@@ -98,11 +98,11 @@ export function useOptCalculations({
   // 2. Точка поставки → delivery_location (если выбрана)
   // 3. Базис поставщика → базис покупателя (base → base)
   // 4. Склад поставщика → базис покупателя (warehouse → base)
-  const deliveryCost = useMemo((): number | null => {
+  const matchedDeliveryCost = useMemo(() => {
     if (noDeliveryRequired) {
-      return 0;
+      return null;
     }
-    if (!carrierId || !deliveryCosts || !finalKg || finalKg <= 0) {
+    if (!carrierId || !deliveryCosts) {
       return null;
     }
 
@@ -136,7 +136,7 @@ export function useOptCalculations({
       });
 
       if (cost?.costPerKg) {
-        return parseFloat(cost.costPerKg) * finalKg;
+        return cost;
       }
     }
 
@@ -152,7 +152,7 @@ export function useOptCalculations({
       );
 
       if (cost?.costPerKg) {
-        return parseFloat(cost.costPerKg) * finalKg;
+        return cost;
       }
     }
 
@@ -168,7 +168,7 @@ export function useOptCalculations({
       );
 
       if (cost?.costPerKg) {
-        return parseFloat(cost.costPerKg) * finalKg;
+        return cost;
       }
     }
 
@@ -178,11 +178,12 @@ export function useOptCalculations({
     deliveryLocationId,
     carrierId,
     deliveryCosts,
-    finalKg,
     basisId,
     customerBasisId,
     supplierWarehouse,
   ]);
+  const deliveryCost = noDeliveryRequired ? 0 :
+    matchedDeliveryCost && finalKg > 0 ? parseFloat(matchedDeliveryCost.costPerKg) * finalKg : null;
 
   const purchaseAmount =
     purchasePrice !== null && finalKg > 0 ? purchasePrice * finalKg : null;
@@ -245,6 +246,7 @@ export function useOptCalculations({
     purchasePrice,
     salePrice,
     deliveryCost,
+    matchedDeliveryCost,
     purchaseAmount,
     saleAmount,
     profit,

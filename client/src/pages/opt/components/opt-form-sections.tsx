@@ -1,4 +1,5 @@
 import { Combobox } from "@/components/ui/combobox";
+import { DeliveryContractHint } from "@/pages/shared/components/delivery-contract-hint";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -169,6 +170,7 @@ interface LogisticsSectionProps {
   deliveryLocations?: LogisticsDeliveryLocation[];
   bases?: Base[];
   deliveryCost: number | null;
+  matchedDeliveryCost?: import("@shared/schema").DeliveryCost | null;
   deliveryError?: string | null;
   autoTariffType?: "base_to_base" | "warehouse_to_base" | "via_location";
   noDeliveryRequired: boolean;
@@ -181,6 +183,7 @@ export function LogisticsSection({
   deliveryLocations,
   bases,
   deliveryCost,
+  matchedDeliveryCost,
   deliveryError,
   autoTariffType,
   noDeliveryRequired,
@@ -360,6 +363,7 @@ export function LogisticsSection({
                     </Button>
                   )}
                 </div>
+                <DeliveryContractHint tariff={noDeliveryRequired ? null : matchedDeliveryCost} />
                 <FormMessage />
               </FormItem>
             )}

@@ -393,6 +393,7 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
 
   // ── ТАРИФЫ ДОСТАВКИ ──────────────────────────────────────────────────────────
   delivery_cost: {
+    contractId: "Договор перевозчика",
     carrierId: "Перевозчик",
     fromLocation: "Откуда",
     toLocation: "Куда",
@@ -411,6 +412,7 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
 
   // ── ПЕРЕМЕЩЕНИЕ ОБОРУДОВАНИЯ ─────────────────────────────────────────────────
   equipment_movement: {
+    nomenclatureId: "Номенклатура",
     movementDate: "Дата перемещения",
     movementType: "Тип перемещения",
     productType: "Тип топлива",

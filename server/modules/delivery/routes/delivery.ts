@@ -62,6 +62,12 @@ export function registerDeliveryRoutes(app: Express) {
           priority: req.body.priority != null && req.body.priority !== "" ? Number(req.body.priority) : undefined,
         };
         const data = insertDeliveryCostSchema.parse(coerced);
+        if (data.contractId) {
+          const contract = await storage.catalogs.getContract(data.contractId);
+          if (!contract || contract.carrierId !== data.carrierId) {
+            return res.status(400).json({ message: "Выберите договор выбранного перевозчика" });
+          }
+        }
         const created = await storage.delivery.createDeliveryCost(
           data,
           req.session.userId
@@ -102,6 +108,15 @@ export function registerDeliveryRoutes(app: Express) {
           priority: req.body.priority != null && req.body.priority !== "" ? Number(req.body.priority) : undefined,
         };
         const rawData = insertDeliveryCostSchema.partial().parse(coercedPatch);
+        const current = await storage.delivery.getDeliveryCost(id);
+        if (!current) return res.status(404).json({ message: "Тариф доставки не найден" });
+        const effectiveContractId = rawData.contractId === undefined ? current.contractId : rawData.contractId;
+        if (effectiveContractId) {
+          const contract = await storage.catalogs.getContract(effectiveContractId);
+          if (!contract || contract.carrierId !== (rawData.carrierId ?? current.carrierId)) {
+            return res.status(400).json({ message: "Выберите договор выбранного перевозчика" });
+          }
+        }
         const data = {
           ...rawData,
           costPerKg: rawData.costPerKg === "" ? null : rawData.costPerKg,

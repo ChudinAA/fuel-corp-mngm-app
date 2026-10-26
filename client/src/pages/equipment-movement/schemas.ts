@@ -6,6 +6,7 @@ export const equipmentMovementFormSchema = z
     movementDate: z.date({ required_error: "Укажите дату" }).describe("Дата операции"),
     movementType: z.string().min(1, "Выберите тип перемещения").describe("Тип операции"),
     productType: z.string().min(1, "Выберите продукт").describe("Тип топлива"),
+    nomenclatureId: z.string().optional().nullable().describe("Номенклатура"),
     fromWarehouseId: z.string().optional().nullable().describe("Склад-источник"),
     toWarehouseId: z.string().optional().nullable().describe("Склад-получатель"),
     fromEquipmentId: z.string().optional().nullable().describe("Оборудование-источник"),

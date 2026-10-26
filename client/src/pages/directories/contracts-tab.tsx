@@ -13,7 +13,7 @@ import { ContractCatalogDialog } from "./catalogs/contract-catalog-dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { FileText, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { FilePlus2, FileText, Pencil, Plus, Search, Trash2 } from "lucide-react";
 
 type Contract = {
   id: string;
@@ -37,6 +37,7 @@ export function ContractsTab() {
   const [partyType, setPartyType] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Contract | null>(null);
+  const [appendixParent, setAppendixParent] = useState<Contract | null>(null);
   const [deleting, setDeleting] = useState<Contract | null>(null);
   const { data: contracts = [], isLoading, isError, refetch } = useQuery<Contract[]>({ queryKey: ["/api/contracts"] });
   const { data: suppliers = [] } = useQuery<Party[]>({ queryKey: ["/api/suppliers"] });
@@ -57,15 +58,33 @@ export function ContractsTab() {
     onError: (error: Error) => toast({ title: "Ошибка", description: error.message, variant: "destructive" }),
   });
 
-  const filtered = useMemo(() => contracts.filter((item) => {
+  const matching = useMemo(() => contracts.filter((item) => {
     const haystack = `${item.contractName} ${item.contractNumber} ${item.counterpartyName} ${partyNames.get(item.supplierId || item.buyerId || item.carrierId || "") || ""}`.toLocaleLowerCase("ru");
     return haystack.includes(search.trim().toLocaleLowerCase("ru"))
       && (recordType === "all" || (recordType === "appendix" ? !!item.parentContractId : !item.parentContractId))
       && (partyType === "all" || item.counterpartyType === partyType);
   }), [contracts, search, recordType, partyType, partyNames]);
+  const visibleRows = useMemo(() => {
+    const matches = new Map(matching.map((item) => [item.id, item]));
+    const byId = new Map(contracts.map((item) => [item.id, item]));
+    const groups = new Map<string, { parent: Contract; children: Contract[] }>();
+    matching.forEach((item) => {
+      const parent = item.parentContractId ? byId.get(item.parentContractId) : item;
+      if (!parent) return;
+      const group = groups.get(parent.id) || { parent, children: [] };
+      if (item.id !== parent.id) group.children.push(item);
+      groups.set(parent.id, group);
+    });
+    return Array.from(groups.values()).flatMap(({ parent, children }) => {
+      const parentMatches = matches.has(parent.id);
+      const rows = parentMatches ? [parent, ...contracts.filter((item) => item.parentContractId === parent.id && matches.has(item.id))] : [parent, ...children];
+      return rows.map((item) => ({ item, contextOnly: !matches.has(item.id) }));
+    });
+  }, [contracts, matching]);
 
   const openCreate = () => { setEditing(null); setDialogOpen(true); };
   const openEdit = (item: Contract) => { setEditing(item); setDialogOpen(true); };
+  const openAppendix = (parent: Contract) => { setEditing(null); setAppendixParent(parent); setDialogOpen(true); };
 
   return (
     <section className="space-y-4">
@@ -93,18 +112,34 @@ export function ContractsTab() {
       </div>
 
       <div className="overflow-hidden rounded-lg border">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 bg-muted/50 px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_120px_100px_40px]">
-          <span>Договор / номер</span><span className="hidden sm:block">Контрагент</span><span className="hidden sm:block">Дата</span><span className="hidden sm:block">Вид</span><span />
+        <div className="flex items-center justify-between bg-muted/50 px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <span>Договоры и приложения</span><span>{matching.length} {matching.length === 1 ? "запись" : "записей"}</span>
         </div>
         {isLoading ? <div className="space-y-2 p-4">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}</div> :
           isError ? <div className="flex items-center justify-between gap-3 p-5 text-sm text-destructive"><span>Не удалось загрузить договоры</span><Button size="sm" variant="outline" onClick={() => refetch()}>Повторить</Button></div> :
-            filtered.length === 0 ? <div className="p-10 text-center"><FileText className="mx-auto mb-2 h-7 w-7 text-muted-foreground/60" /><p className="font-medium">{contracts.length ? "Ничего не найдено" : "Договоров пока нет"}</p><p className="mt-1 text-sm text-muted-foreground">{contracts.length ? "Измените поисковый запрос или фильтры." : "Создайте договор или приложение контрагента."}</p></div> :
-              filtered.map((item) => (
-                <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t px-4 py-3 transition-colors hover:bg-muted/30 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_120px_100px_40px]">
-                  <div className="min-w-0"><p className="truncate font-medium">{item.contractName}</p><p className="text-sm text-muted-foreground">№ {item.contractNumber} <span className="sm:hidden">· {item.counterpartyName}</span></p></div>
-                  <span className="hidden truncate text-sm sm:block">{item.counterpartyName}</span>
+            visibleRows.length === 0 ? <div className="p-10 text-center"><FileText className="mx-auto mb-2 h-7 w-7 text-muted-foreground/60" /><p className="font-medium">{contracts.length ? "Ничего не найдено" : "Договоров пока нет"}</p><p className="mt-1 text-sm text-muted-foreground">{contracts.length ? "Измените поисковый запрос или фильтры." : "Создайте договор или приложение контрагента."}</p></div> :
+              visibleRows.map(({ item, contextOnly }) => (
+                <div key={item.id} className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t px-3 py-3 transition-colors hover:bg-muted/30 sm:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_110px_76px_40px] sm:gap-3 sm:px-4 ${item.parentContractId ? "bg-muted/15" : ""} ${contextOnly ? "opacity-70" : ""}`}>
+                  <div className={`min-w-0 ${item.parentContractId ? "pl-5 sm:pl-8" : ""}`}>
+                    <div className="flex min-w-0 items-center gap-2">
+                      {item.parentContractId && <span className="shrink-0 text-muted-foreground" aria-hidden="true">↳</span>}
+                      <p className="truncate font-medium">{item.contractName}</p>
+                      {item.parentContractId && <Badge variant="secondary" className="hidden shrink-0 sm:inline-flex">Приложение</Badge>}
+                    </div>
+                    <p className="truncate text-sm text-muted-foreground">№ {item.contractNumber} <span className="sm:hidden">· {item.contractDate?.slice(0, 10) || "—"}</span></p>
+                    <span className="mt-1 flex min-w-0 items-center gap-1.5 sm:hidden">
+                      <Badge variant="outline" className={`shrink-0 text-[10px] ${item.counterpartyType === "supplier" ? "border-amber-600/30 bg-amber-500/10 text-amber-800 dark:text-amber-300" : item.counterpartyType === "buyer" ? "border-teal-600/30 bg-teal-500/10 text-teal-800 dark:text-teal-300" : "border-sky-600/30 bg-sky-500/10 text-sky-800 dark:text-sky-300"}`}>{item.counterpartyType === "supplier" ? "Поставщик" : item.counterpartyType === "buyer" ? "Покупатель" : "Перевозчик"}</Badge>
+                      <span className="truncate text-xs text-muted-foreground">{partyNames.get(item.supplierId || item.buyerId || item.carrierId || "") || item.counterpartyName}</span>
+                    </span>
+                  </div>
+                  <span className="hidden min-w-0 items-center gap-2 truncate text-sm sm:flex">
+                    <Badge variant="outline" className={item.counterpartyType === "supplier" ? "shrink-0 border-amber-600/30 bg-amber-500/10 text-amber-800 dark:text-amber-300" : item.counterpartyType === "buyer" ? "shrink-0 border-teal-600/30 bg-teal-500/10 text-teal-800 dark:text-teal-300" : "shrink-0 border-sky-600/30 bg-sky-500/10 text-sky-800 dark:text-sky-300"}>{item.counterpartyType === "supplier" ? "Поставщик" : item.counterpartyType === "buyer" ? "Покупатель" : "Перевозчик"}</Badge>
+                    <span className="truncate">{partyNames.get(item.supplierId || item.buyerId || item.carrierId || "") || item.counterpartyName}</span>
+                  </span>
                   <span className="hidden text-sm text-muted-foreground sm:block">{item.contractDate?.slice(0, 10) || "—"}</span>
-                  <span className="hidden sm:block"><Badge variant={item.parentContractId ? "secondary" : "outline"}>{item.parentContractId ? "Приложение" : "Договор"}</Badge></span>
+                  <span className="hidden text-xs text-muted-foreground sm:block">{item.parentContractId ? "" : `${contracts.filter((c) => c.parentContractId === item.id).length} прил.`}</span>
+                  <div className="flex items-center justify-end gap-1">
+                    {!item.parentContractId && hasPermission("directories", "create") && <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label={`Добавить приложение к ${item.contractName}`} title="Добавить приложение" onClick={() => openAppendix(item)}><FilePlus2 className="h-4 w-4" /></Button>}
                   <EntityActionsMenu
                     triggerClassName="h-8 w-8"
                     audit={{ entityType: "counterparty_contracts", entityId: item.id, entityName: item.contractName }}
@@ -113,17 +148,19 @@ export function ContractsTab() {
                       { id: "delete", label: "Удалить", icon: Trash2, onClick: () => setDeleting(item), variant: "destructive", permission: { module: "directories", action: "delete" } },
                     ]}
                   />
+                  </div>
                 </div>
               ))}
       </div>
       <ContractCatalogDialog
         open={dialogOpen}
         editItem={editing}
+        initialParent={appendixParent}
         contracts={contracts}
         suppliers={suppliers}
         buyers={buyers}
         carriers={carriers}
-        onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditing(null); }}
+        onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditing(null); setAppendixParent(null); } }}
       />
       <DeleteConfirmDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)} onConfirm={() => deleting && remove.mutate(deleting.id)} title="Удалить договор?" description="Удалённую запись можно восстановить через историю аудита." />
     </section>

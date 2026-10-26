@@ -4,6 +4,7 @@ import { DELIVERY_ENTITY_TYPE } from "@shared/constants";
 
 export const deliveryCostFormSchema = z.object({
   carrierId: z.string().min(1, "Выберите перевозчика"),
+  contractId: z.string().optional(),
   fromEntityType: z.string().min(1, "Выберите тип отправления"),
   fromEntityId: z.string().min(1, "Выберите пункт отправления"),
   fromLocation: z.string().min(1, "Укажите откуда"),

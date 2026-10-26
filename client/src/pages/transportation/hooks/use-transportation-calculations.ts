@@ -57,9 +57,9 @@ export function useTransportationCalculations({
 
   const salePrice = extractedSalePrice;
 
-  const deliveryCostFromTariff = useMemo((): number | null => {
+  const matchedDeliveryCost = useMemo(() => {
     if (isAviaService) return null;
-    if (!deliveryLocationId || !carrierId || !deliveryCosts || !finalKg || finalKg <= 0) {
+    if (!deliveryLocationId || !carrierId || !deliveryCosts) {
       return null;
     }
 
@@ -76,12 +76,13 @@ export function useTransportationCalculations({
     });
 
     if (cost?.costPerKg) {
-      return parseFloat(cost.costPerKg) * finalKg;
+      return cost;
     }
     return null;
-  }, [isAviaService, deliveryLocationId, carrierId, deliveryCosts, finalKg, basisId]);
+  }, [isAviaService, deliveryLocationId, carrierId, deliveryCosts, basisId]);
 
-  const deliveryCost = isAviaService ? null : deliveryCostFromTariff;
+  const deliveryCost = matchedDeliveryCost && finalKg > 0
+    ? parseFloat(matchedDeliveryCost.costPerKg) * finalKg : null;
 
   const deliveryTariff = useMemo(() => {
     if (!deliveryCost || finalKg <= 0) return null;
@@ -110,6 +111,7 @@ export function useTransportationCalculations({
     finalKg,
     salePrice,
     deliveryCost,
+    matchedDeliveryCost,
     deliveryTariff,
     saleAmount,
     profit,
