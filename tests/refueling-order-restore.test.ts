@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, pool } from "../server/db";
 import { PRODUCT_TYPE } from "../shared/constants";
@@ -21,6 +21,10 @@ import {
 } from "../server/modules/audit/entities/audit";
 import { RollbackService } from "../server/modules/audit/services/rollback-service";
 
+after(async () => {
+  await pool.end();
+});
+
 test("rolling back a deleted multi-product refueling order restores original rows and stock once", async (t) => {
   const schemaResult = await db.execute(sql`
     SELECT
@@ -38,7 +42,6 @@ test("rolling back a deleted multi-product refueling order restores original row
   `);
   if (!schemaResult.rows[0]?.has_refueling_order_schema) {
     t.skip("The configured database has not been migrated to the refueling-order schema.");
-    await pool.end();
     return;
   }
 
@@ -299,6 +302,226 @@ test("rolling back a deleted multi-product refueling order restores original row
     if (customerId) {
       await db.delete(customers).where(sql`${customers.id} = ${customerId}`);
     }
-    await pool.end();
+  }
+});
+
+test("rolling back a deleted order fails without restoring any item when a movement is missing", async (t) => {
+  const schemaResult = await db.execute(sql`
+    SELECT
+      to_regclass('aircraft_refueling') IS NOT NULL
+        AND to_regclass('warehouse_transactions') IS NOT NULL
+        AND to_regclass('equipment_transactions') IS NOT NULL
+        AND to_regclass('audit_log') IS NOT NULL
+        AND EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = current_schema()
+            AND table_name = 'aircraft_refueling'
+            AND column_name = 'refueling_order_id'
+        ) AS has_refueling_order_schema
+  `);
+  if (!schemaResult.rows[0]?.has_refueling_order_schema) {
+    t.skip("The configured database has not been migrated to the refueling-order schema.");
+    return;
+  }
+
+  let supplierId: string | undefined;
+  let customerId: string | undefined;
+  let warehouseId: string | undefined;
+  let equipmentId: string | undefined;
+  const storage = new AircraftRefuelingStorage();
+  const context = { userName: "restore-order-missing-movement-test" };
+
+  try {
+    const [supplier] = await db
+      .insert(suppliers)
+      .values({ name: `restore-missing-movement-supplier-${crypto.randomUUID()}` })
+      .returning();
+    supplierId = supplier.id;
+
+    const [customer] = await db
+      .insert(customers)
+      .values({
+        name: `restore-missing-movement-customer-${crypto.randomUUID()}`,
+        module: "refueling",
+      })
+      .returning();
+    customerId = customer.id;
+
+    const [warehouse] = await db
+      .insert(warehouses)
+      .values({
+        name: `restore-missing-movement-warehouse-${crypto.randomUUID()}`,
+        currentBalance: "100",
+        averageCost: "10",
+      })
+      .returning();
+    warehouseId = warehouse.id;
+
+    const [equipment] = await db
+      .insert(equipments)
+      .values({
+        name: `restore-missing-movement-equipment-${crypto.randomUUID()}`,
+        pvkjBalance: "60",
+        pvkjAverageCost: "12",
+      })
+      .returning();
+    equipmentId = equipment.id;
+
+    for (const missingMovementType of ["warehouse", "equipment"] as const) {
+      const createdDeals = await storage.createRefuelings([
+        {
+          refuelingDate: new Date().toISOString(),
+          productType: PRODUCT_TYPE.KEROSENE,
+          supplierId,
+          buyerId: customerId,
+          warehouseId,
+          quantityKg: 12,
+          purchasePrice: 10,
+          purchaseAmount: 120,
+          salePrice: 15,
+          saleAmount: 180,
+          isDraft: false,
+        } as any,
+        {
+          refuelingDate: new Date().toISOString(),
+          productType: PRODUCT_TYPE.PVKJ,
+          supplierId,
+          buyerId: customerId,
+          equipmentId,
+          quantityKg: 7,
+          purchasePrice: 12,
+          purchaseAmount: 84,
+          salePrice: 18,
+          saleAmount: 126,
+          isDraft: false,
+        } as any,
+      ]);
+      const dealIds = createdDeals.map((deal) => deal.id);
+      const warehouseTransactionIds = createdDeals
+        .map((deal) => deal.transactionId)
+        .filter((id): id is string => Boolean(id));
+      const equipmentTransactionIds = createdDeals
+        .map((deal) => deal.equipmentTransactionId)
+        .filter((id): id is string => Boolean(id));
+      let auditEntryIds: string[] = [];
+
+      try {
+        const deletedDeals = await storage.deleteRefuelingOrder(createdDeals[0].id);
+        const auditEntries = await db
+          .insert(auditLog)
+          .values(
+            deletedDeals.map((deal) => ({
+              entityType: "aircraft_refueling",
+              entityId: deal.id,
+              operation: AUDIT_OPERATIONS.DELETE,
+              oldData: deal,
+            })),
+          )
+          .returning();
+        auditEntryIds = auditEntries.map((entry) => entry.id);
+
+        const missingDeal = createdDeals.find((deal) =>
+          missingMovementType === "equipment"
+            ? Boolean(deal.equipmentTransactionId)
+            : Boolean(deal.transactionId),
+        );
+        assert.ok(missingDeal, `the order should have a ${missingMovementType} movement`);
+        if (missingMovementType === "equipment") {
+          await db
+            .update(aircraftRefueling)
+            .set({ equipmentTransactionId: null })
+            .where(eq(aircraftRefueling.id, missingDeal.id));
+          await db
+            .delete(equipmentTransactions)
+            .where(eq(equipmentTransactions.id, missingDeal.equipmentTransactionId!));
+        } else {
+          await db
+            .update(aircraftRefueling)
+            .set({ transactionId: null })
+            .where(eq(aircraftRefueling.id, missingDeal.id));
+          await db
+            .delete(warehouseTransactions)
+            .where(eq(warehouseTransactions.id, missingDeal.transactionId!));
+        }
+
+        const rollback = await RollbackService.rollback({
+          auditLogId: auditEntries.find((entry) => entry.entityId === missingDeal.id)!.id,
+          context,
+        });
+        assert.equal(rollback.success, false, "the whole order restoration should fail");
+
+        const remainingDeals = await db
+          .select()
+          .from(aircraftRefueling)
+          .where(inArray(aircraftRefueling.id, dealIds));
+        assert.equal(remainingDeals.length, 2);
+        assert.ok(remainingDeals.every((deal) => deal.deletedAt), "no product row should be restored");
+
+        const [unchangedWarehouse, unchangedEquipment] = await Promise.all([
+          db.query.warehouses.findFirst({
+            where: eq(warehouses.id, warehouseId!),
+          }),
+          db.query.equipments.findFirst({
+            where: eq(equipments.id, equipmentId!),
+          }),
+        ]);
+        assert.equal(Number(unchangedWarehouse?.currentBalance), 100);
+        assert.equal(Number(unchangedEquipment?.pvkjBalance), 60);
+
+        const [remainingWarehouseTransactions, remainingEquipmentTransactions, unchangedAudits] =
+          await Promise.all([
+            db
+              .select()
+              .from(warehouseTransactions)
+              .where(inArray(warehouseTransactions.id, warehouseTransactionIds)),
+            db
+              .select()
+              .from(equipmentTransactions)
+              .where(inArray(equipmentTransactions.id, equipmentTransactionIds)),
+            db
+              .select()
+              .from(auditLog)
+              .where(inArray(auditLog.id, auditEntryIds)),
+          ]);
+        assert.ok(
+          remainingWarehouseTransactions.every((transaction) => transaction.deletedAt),
+          "remaining warehouse movements should stay deleted",
+        );
+        assert.ok(
+          remainingEquipmentTransactions.every((transaction) => transaction.deletedAt),
+          "remaining equipment movements should stay deleted",
+        );
+        assert.ok(unchangedAudits.every((entry) => !entry.rolledBackAt));
+      } finally {
+        if (auditEntryIds.length) {
+          await db.delete(auditLog).where(inArray(auditLog.id, auditEntryIds));
+        }
+        await db.delete(aircraftRefueling).where(inArray(aircraftRefueling.id, dealIds));
+        if (warehouseTransactionIds.length) {
+          await db
+            .delete(warehouseTransactions)
+            .where(inArray(warehouseTransactions.id, warehouseTransactionIds));
+        }
+        if (equipmentTransactionIds.length) {
+          await db
+            .delete(equipmentTransactions)
+            .where(inArray(equipmentTransactions.id, equipmentTransactionIds));
+        }
+      }
+    }
+  } finally {
+    if (warehouseId) {
+      await db.delete(warehouses).where(eq(warehouses.id, warehouseId));
+    }
+    if (equipmentId) {
+      await db.delete(equipments).where(eq(equipments.id, equipmentId));
+    }
+    if (supplierId) {
+      await db.delete(suppliers).where(eq(suppliers.id, supplierId));
+    }
+    if (customerId) {
+      await db.delete(customers).where(eq(customers.id, customerId));
+    }
   }
 });

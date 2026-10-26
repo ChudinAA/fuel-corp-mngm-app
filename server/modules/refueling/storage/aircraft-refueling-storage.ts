@@ -944,8 +944,12 @@ export class AircraftRefuelingStorage {
         throw new Error("Заказ уже восстановлен или восстановлен не полностью");
       }
 
-      // Restore existing stock records rather than creating replacements, so
-      // the original deal and movement identifiers remain stable.
+      // Validate every linked movement before changing any stock balance, so
+      // a missing movement on a later deal is found before any recalculation.
+      const movements: Array<
+        | { kind: "equipment"; id: string; deletedAt: string | null }
+        | { kind: "warehouse"; id: string; deletedAt: string | null }
+      > = [];
       for (const deal of deals) {
         const isLiquid =
           deal.productType === PRODUCT_TYPE.KEROSENE ||
@@ -960,13 +964,11 @@ export class AircraftRefuelingStorage {
           if (!transaction) {
             throw new Error(`Топливное движение ${deal.equipmentTransactionId} не найдено`);
           }
-          if (transaction?.deletedAt) {
-            await EquipmentTransactionService.restoreTransactionAndRecalculateEquipment(
-              tx,
-              deal.equipmentTransactionId,
-              userId,
-            );
-          }
+          movements.push({
+            kind: "equipment",
+            id: deal.equipmentTransactionId,
+            deletedAt: transaction.deletedAt,
+          });
         } else if (deal.transactionId) {
           const [transaction] = await tx
             .select({ deletedAt: warehouseTransactions.deletedAt })
@@ -975,15 +977,33 @@ export class AircraftRefuelingStorage {
           if (!transaction) {
             throw new Error(`Складское движение ${deal.transactionId} не найдено`);
           }
-          if (transaction?.deletedAt) {
+          movements.push({
+            kind: "warehouse",
+            id: deal.transactionId,
+            deletedAt: transaction.deletedAt,
+          });
+        } else if (deal.equipmentId || deal.warehouseId) {
+          throw new Error(`У сделки ${deal.id} не найдено связанное топливное движение`);
+        }
+      }
+
+      // Restore existing stock records rather than creating replacements, so
+      // the original deal and movement identifiers remain stable.
+      for (const movement of movements) {
+        if (movement.deletedAt) {
+          if (movement.kind === "equipment") {
+            await EquipmentTransactionService.restoreTransactionAndRecalculateEquipment(
+              tx,
+              movement.id,
+              userId,
+            );
+          } else {
             await WarehouseTransactionService.restoreTransactionAndRecalculateWarehouse(
               tx,
-              deal.transactionId,
+              movement.id,
               userId,
             );
           }
-        } else if (deal.equipmentId || deal.warehouseId) {
-          throw new Error(`У сделки ${deal.id} не найдено связанное топливное движение`);
         }
       }
 
