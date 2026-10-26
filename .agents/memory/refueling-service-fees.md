@@ -22,7 +22,7 @@ profit = saleAmount - purchaseAmount
          - (isOtherServiceEnabled ? otherServiceFee : 0)
 ```
 
-When `isPriceRecharge || isPvkjRecharge` is active → both fees forced to 0 and checkboxes disabled.
+Recharge flags control the sale price only. Agent and other-service fees remain independently selectable and, when enabled, are included in profit calculations.
 
 ## State management (client)
 

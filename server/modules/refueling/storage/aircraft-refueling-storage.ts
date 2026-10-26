@@ -259,6 +259,73 @@ export class AircraftRefuelingStorage {
     });
   }
 
+  /**
+   * Create all product rows for one refueling order in a single DB transaction.
+   * Warehouse/equipment movements roll back together if any row fails.
+   */
+  async createRefuelings(
+    items: InsertAircraftRefueling[],
+  ): Promise<AircraftRefueling[]> {
+    return db.transaction(async (tx) => {
+      const createdItems: AircraftRefueling[] = [];
+      for (const data of items) {
+        const [created] = await tx
+          .insert(aircraftRefueling)
+          .values(data as any)
+          .returning();
+
+        if (
+          !created.isDraft &&
+          (created.warehouseId || created.equipmentId) &&
+          (created.productType === PRODUCT_TYPE.KEROSENE ||
+            created.productType === PRODUCT_TYPE.PVKJ)
+        ) {
+          if (created.equipmentId) {
+            const transaction =
+              await EquipmentTransactionService.createTransactionAndUpdateEquipment(
+                tx,
+                created.equipmentId,
+                TRANSACTION_TYPE.SALE,
+                created.productType,
+                SOURCE_TYPE.REFUELING,
+                created.id,
+                Number.parseFloat(created.quantityKg),
+                Number.parseFloat(created.purchaseAmount || "0"),
+                data.createdById || undefined,
+                created.refuelingDate,
+              );
+            await tx
+              .update(aircraftRefueling)
+              .set({ equipmentTransactionId: transaction.id })
+              .where(eq(aircraftRefueling.id, created.id));
+            created.equipmentTransactionId = transaction.id;
+          } else if (created.warehouseId) {
+            const { transaction } =
+              await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+                tx,
+                created.warehouseId,
+                TRANSACTION_TYPE.SALE,
+                created.productType,
+                SOURCE_TYPE.REFUELING,
+                created.id,
+                Number.parseFloat(created.quantityKg),
+                Number.parseFloat(created.purchaseAmount || "0"),
+                data.createdById || undefined,
+                created.refuelingDate,
+              );
+            await tx
+              .update(aircraftRefueling)
+              .set({ transactionId: transaction.id })
+              .where(eq(aircraftRefueling.id, created.id));
+            created.transactionId = transaction.id;
+          }
+        }
+        createdItems.push(created);
+      }
+      return createdItems;
+    });
+  }
+
   async updateRefueling(
     id: string,
     data: Partial<InsertAircraftRefueling>,

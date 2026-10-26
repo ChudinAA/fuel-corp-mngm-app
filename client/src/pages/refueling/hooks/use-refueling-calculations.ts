@@ -234,18 +234,13 @@ export function useRefuelingCalculations({
     return 0;
   }, [otherServiceBasisData, otherServiceQuantity, finalKg, saleAmount]);
 
-  const isRechargeActive = (isPriceRecharge && productType === PRODUCT_TYPE.SERVICE) ||
-    (isPvkjRecharge && productType === PRODUCT_TYPE.PVKJ);
-
   // Эффективные суммы с учётом чекбоксов включения
-  const effectiveAgentFee = isRechargeActive ? 0 : (isAgentFeeEnabled ? agentFee : 0);
-  const effectiveOtherServiceFee = isRechargeActive ? 0 : (isOtherServiceEnabled ? otherServiceFee : 0);
+  const effectiveAgentFee = isAgentFeeEnabled ? agentFee : 0;
+  const effectiveOtherServiceFee = isOtherServiceEnabled ? otherServiceFee : 0;
 
   const profit =
     purchaseAmount !== null && saleAmount !== null
-      ? isRechargeActive
-        ? 0
-        : saleAmount - purchaseAmount - effectiveAgentFee - effectiveOtherServiceFee
+      ? saleAmount - purchaseAmount - effectiveAgentFee - effectiveOtherServiceFee
       : null;
 
   const getWarehouseStatus = (): {

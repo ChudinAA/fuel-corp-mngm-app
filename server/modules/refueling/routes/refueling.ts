@@ -3,8 +3,13 @@ import { storage } from "../../../storage/index";
 import { insertAircraftRefuelingSchema } from "@shared/schema";
 import { z } from "zod";
 import { requireAuth, requirePermission, requireAnyPermission } from "../../../middleware/middleware";
-import { auditLog, auditView } from "../../audit/middleware/audit-middleware";
+import {
+  auditLog,
+  auditView,
+  getAuditContext,
+} from "../../audit/middleware/audit-middleware";
 import { ENTITY_TYPES, AUDIT_OPERATIONS } from "../../audit/entities/audit";
+import { AuditService } from "../../audit/services/audit-service";
 import { SSEService } from "../../../services/sse-service";
 
 export function registerRefuelingOperationsRoutes(app: Express) {
@@ -164,6 +169,72 @@ export function registerRefuelingOperationsRoutes(app: Express) {
         res.status(500).json({ message: "Ошибка создания заправки" });
       }
     }
+  );
+
+  app.post(
+    "/api/refueling/bulk",
+    requireAuth,
+    requireAnyPermission(["refueling", "lik-refueling"], "create"),
+    async (req, res) => {
+      try {
+        const requestSchema = z.object({
+          deals: z.array(insertAircraftRefuelingSchema).min(1).max(3),
+        });
+        const { deals } = requestSchema.parse(req.body);
+        const userId = String(req.session.userId);
+
+        for (const deal of deals) {
+          if (deal.equipmentType === "lik" && deal.warehouseId) {
+            const allowedWarehouseIds =
+              await storage.warehouses.getUserAllowedLikWarehouseIds(userId);
+            if (
+              allowedWarehouseIds !== null &&
+              !allowedWarehouseIds.includes(deal.warehouseId)
+            ) {
+              return res
+                .status(403)
+                .json({ message: "Нет доступа к указанному складу" });
+            }
+          }
+        }
+
+        const validatedDeals = deals.map((deal) =>
+          insertAircraftRefuelingSchema.parse({
+            ...deal,
+            createdById: userId,
+          }),
+        );
+        const created = await storage.aircraftRefueling.createRefuelings(
+          validatedDeals,
+        );
+
+        const context = (req as any).auditContext || getAuditContext(req);
+        await Promise.all(
+          created.map((item) =>
+            AuditService.log({
+              entityType: ENTITY_TYPES.AIRCRAFT_REFUELING,
+              entityId: item.id,
+              operation: AUDIT_OPERATIONS.CREATE,
+              newData: item,
+              context,
+            }).catch((auditError) => {
+              console.error("Error logging refueling order item audit:", auditError);
+            }),
+          ),
+        );
+        SSEService.notifyEntityChanged(
+          "refueling",
+          SSEService.extractClientId(req.headers["x-client-id"]),
+        );
+        res.status(201).json(created);
+      } catch (error: any) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: error.errors[0].message });
+        }
+        console.error("Error creating refueling order:", error?.message || error);
+        res.status(500).json({ message: "Ошибка создания заказа заправки" });
+      }
+    },
   );
 
   app.patch(

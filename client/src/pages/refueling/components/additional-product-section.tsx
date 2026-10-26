@@ -29,6 +29,10 @@ import { extractPriceIdsForSubmit } from "@/pages/shared/utils/price-utils";
 import { AddPriceDialog } from "@/pages/prices/components/add-price-dialog";
 import { PRODUCT_TYPES } from "../constants";
 import { ContractHint, getSelectedPriceContract } from "@/pages/shared/components/contract-hint";
+import {
+  ProductVolumeSection,
+  type RefuelingVolume,
+} from "./product-volume-section";
 
 const OTHER_SERVICE_TYPE_LABELS: Record<string, string> = {
   royalty_per_ton: "Роялти",
@@ -39,6 +43,10 @@ const OTHER_SERVICE_TYPE_LABELS: Record<string, string> = {
 export interface AdditionalProductPayload {
   productType: string;
   nomenclatureId: string | null;
+  inputMode: "liters" | "kg";
+  quantityLiters: number | null;
+  density: number | null;
+  quantityKg: number;
   isPriceRecharge: boolean;
   isPvkjRecharge: boolean;
   setSalePriceZero: boolean;
@@ -83,10 +91,8 @@ interface AdditionalProductSectionProps {
   equipmentType: string;
   selectedEquipmentId: string;
   equipmentBalance: number;
-  inputMode: "liters" | "kg";
-  quantityLiters: string;
-  density: string;
-  quantityKg: string;
+  volume: RefuelingVolume;
+  onVolumeChange: (volume: RefuelingVolume) => void;
   // Filter data
   suppliers: Supplier[];
   allBases: Base[];
@@ -114,10 +120,8 @@ export const AdditionalProductSection = forwardRef<
       equipmentType,
       selectedEquipmentId,
       equipmentBalance,
-      inputMode,
-      quantityLiters,
-      density,
-      quantityKg,
+      volume,
+      onVolumeChange,
       suppliers,
       allBases,
       warehouses,
@@ -187,15 +191,6 @@ export const AdditionalProductSection = forwardRef<
       if (productType !== PRODUCT_TYPE.PVKJ) setIsPvkjRecharge(false);
     }, [productType]);
 
-    // Disable services during recharge
-    const isRechargeActive = isPriceRecharge || isPvkjRecharge;
-    useEffect(() => {
-      if (isRechargeActive) {
-        setIsAgentFeeEnabled(false);
-        setIsOtherServiceEnabled(false);
-      }
-    }, [isRechargeActive]);
-
     // Calculations for this product
     const {
       calculatedKg,
@@ -215,10 +210,10 @@ export const AdditionalProductSection = forwardRef<
       contractVolumeStatus,
       supplierContractVolumeStatus,
     } = useRefuelingCalculations({
-      inputMode,
-      quantityLiters,
-      density,
-      quantityKg,
+      inputMode: volume.inputMode,
+      quantityLiters: volume.quantityLiters,
+      density: volume.density,
+      quantityKg: volume.quantityKg,
       isWarehouseSupplier,
       supplierWarehouse,
       selectedBasis,
@@ -291,6 +286,21 @@ export const AdditionalProductSection = forwardRef<
         return {
           productType,
           nomenclatureId: nomenclatureId || null,
+          inputMode:
+            productType === PRODUCT_TYPE.PVKJ
+              ? volume.inputMode
+              : "kg",
+          quantityLiters:
+            productType === PRODUCT_TYPE.PVKJ && volume.inputMode === "liters" && volume.quantityLiters
+            ? Number.parseFloat(volume.quantityLiters)
+            : null,
+          density:
+            productType === PRODUCT_TYPE.PVKJ &&
+            volume.inputMode === "liters" &&
+            volume.density
+              ? Number.parseFloat(volume.density)
+              : null,
+          quantityKg: calculatedKg ? Number.parseFloat(calculatedKg) : 0,
           isPriceRecharge,
           isPvkjRecharge,
           setSalePriceZero,
@@ -368,6 +378,12 @@ export const AdditionalProductSection = forwardRef<
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <ProductVolumeSection
+            productLabel={productLabel}
+            value={volume}
+            onChange={onVolumeChange}
+            kgOnly={productType !== PRODUCT_TYPE.PVKJ}
+          />
           <div className="space-y-2">
             <label className="text-sm font-medium">Номенклатура</label>
             <Select value={nomenclatureId} onValueChange={setNomenclatureId}>
@@ -656,16 +672,11 @@ export const AdditionalProductSection = forwardRef<
 
           {/* Agent fee */}
           {agentFeeRate > 0 && (
-            <div
-              className={`rounded-md border p-3 ${isRechargeActive ? "opacity-60" : ""}`}
-            >
+            <div className="rounded-md border p-3">
               <div className="flex items-center gap-3">
                 <Checkbox
-                  checked={!isRechargeActive && isAgentFeeEnabled}
-                  onCheckedChange={(v) => {
-                    if (!isRechargeActive) setIsAgentFeeEnabled(!!v);
-                  }}
-                  disabled={isRechargeActive}
+                  checked={isAgentFeeEnabled}
+                  onCheckedChange={(v) => setIsAgentFeeEnabled(!!v)}
                 />
                 <div className="flex-1 min-w-0">
                   <span className="text-sm">
@@ -673,33 +684,23 @@ export const AdditionalProductSection = forwardRef<
                   </span>
                   {agentFee > 0 && (
                     <span
-                      className={`ml-2 text-sm ${!isRechargeActive && isAgentFeeEnabled ? "text-muted-foreground" : "text-muted-foreground line-through"}`}
+                      className={`ml-2 text-sm ${isAgentFeeEnabled ? "text-muted-foreground" : "text-muted-foreground line-through"}`}
                     >
                       = {formatCurrency(agentFee)} ₽
                     </span>
                   )}
                 </div>
               </div>
-              {isRechargeActive && (
-                <p className="text-xs text-muted-foreground mt-1 pl-7">
-                  Отключено при перевыставлении
-                </p>
-              )}
             </div>
           )}
 
           {/* Other services */}
           {hasOtherService && (
-            <div
-              className={`rounded-md border p-3 ${isRechargeActive ? "opacity-60" : ""}`}
-            >
+            <div className="rounded-md border p-3">
               <div className="flex items-center gap-3">
                 <Checkbox
-                  checked={!isRechargeActive && isOtherServiceEnabled}
-                  onCheckedChange={(v) => {
-                    if (!isRechargeActive) setIsOtherServiceEnabled(!!v);
-                  }}
-                  disabled={isRechargeActive}
+                  checked={isOtherServiceEnabled}
+                  onCheckedChange={(v) => setIsOtherServiceEnabled(!!v)}
                 />
                 <div className="flex-1 min-w-0">
                   <span className="text-sm font-medium">
@@ -707,18 +708,13 @@ export const AdditionalProductSection = forwardRef<
                   </span>
                   {otherServiceFee > 0 && (
                     <span
-                      className={`ml-2 text-sm ${!isRechargeActive && isOtherServiceEnabled ? "text-muted-foreground" : "text-muted-foreground line-through"}`}
+                      className={`ml-2 text-sm ${isOtherServiceEnabled ? "text-muted-foreground" : "text-muted-foreground line-through"}`}
                     >
                       = {formatCurrency(otherServiceFee)} ₽
                     </span>
                   )}
                 </div>
               </div>
-              {isRechargeActive && (
-                <p className="text-xs text-muted-foreground mt-1 pl-7">
-                  Отключено при перевыставлении
-                </p>
-              )}
             </div>
           )}
 

@@ -75,8 +75,6 @@ interface RefuelingPricingSectionProps {
   onAgentFeeEnabledChange?: (v: boolean) => void;
   /** Обработчик смены флага включения прочей услуги */
   onOtherServiceEnabledChange?: (v: boolean) => void;
-  /** Флаг: активен ли режим "Перевыставить" (блокирует чекбоксы) */
-  isRechargeActive?: boolean;
 }
 
 export function RefuelingPricingSection({
@@ -110,7 +108,6 @@ export function RefuelingPricingSection({
   isOtherServiceEnabled = true,
   onAgentFeeEnabledChange,
   onOtherServiceEnabledChange,
-  isRechargeActive = false,
 }: RefuelingPricingSectionProps) {
   const { hasPermission } = useAuth();
 
@@ -521,14 +518,11 @@ export function RefuelingPricingSection({
 
       {/* Агентское вознаграждение */}
       {agentFeeRate > 0 && (
-        <div className={`rounded-md border p-3 ${isRechargeActive ? "opacity-60" : ""}`}>
+        <div className="rounded-md border p-3">
           <div className="flex items-center gap-3">
             <Checkbox
-              checked={!isRechargeActive && isAgentFeeEnabled}
-              onCheckedChange={(v) => {
-                if (!isRechargeActive) onAgentFeeEnabledChange?.(!!v);
-              }}
-              disabled={isRechargeActive}
+              checked={isAgentFeeEnabled}
+              onCheckedChange={(v) => onAgentFeeEnabledChange?.(!!v)}
               data-testid="checkbox-agent-fee-enabled"
             />
             <div className="flex-1 min-w-0">
@@ -536,28 +530,22 @@ export function RefuelingPricingSection({
                 Агентское вознаграждение: {formatPrice(agentFeeRate)} ₽/кг
               </span>
               {agentFee > 0 && (
-                <span className={`ml-2 text-sm ${(!isRechargeActive && isAgentFeeEnabled) ? "text-muted-foreground" : "text-muted-foreground line-through"}`}>
+                <span className={`ml-2 text-sm ${isAgentFeeEnabled ? "text-muted-foreground" : "text-muted-foreground line-through"}`}>
                   = {formatCurrency(agentFee)} ₽
                 </span>
               )}
             </div>
           </div>
-          {isRechargeActive && (
-            <p className="text-xs text-muted-foreground mt-1 pl-7">Отключено при перевыставлении</p>
-          )}
         </div>
       )}
 
       {/* Прочие услуги */}
       {hasOtherService && (
-        <div className={`rounded-md border p-3 ${isRechargeActive ? "opacity-60" : ""}`}>
+        <div className="rounded-md border p-3">
           <div className="flex items-center gap-3">
             <Checkbox
-              checked={!isRechargeActive && isOtherServiceEnabled}
-              onCheckedChange={(v) => {
-                if (!isRechargeActive) onOtherServiceEnabledChange?.(!!v);
-              }}
-              disabled={isRechargeActive}
+              checked={isOtherServiceEnabled}
+              onCheckedChange={(v) => onOtherServiceEnabledChange?.(!!v)}
               data-testid="checkbox-other-service-enabled"
             />
             <div className="flex-1 min-w-0">
@@ -565,15 +553,12 @@ export function RefuelingPricingSection({
                 {otherServiceDescription || "Прочие услуги"}
               </span>
               {otherServiceFee > 0 && (
-                <span className={`ml-2 text-sm ${(!isRechargeActive && isOtherServiceEnabled) ? "text-muted-foreground" : "text-muted-foreground line-through"}`}>
+                <span className={`ml-2 text-sm ${isOtherServiceEnabled ? "text-muted-foreground" : "text-muted-foreground line-through"}`}>
                   = {formatCurrency(otherServiceFee)} ₽
                 </span>
               )}
             </div>
           </div>
-          {isRechargeActive && (
-            <p className="text-xs text-muted-foreground mt-1 pl-7">Отключено при перевыставлении</p>
-          )}
         </div>
       )}
 

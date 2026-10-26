@@ -62,6 +62,10 @@ import {
   type AdditionalProductSectionHandle,
 } from "./additional-product-section";
 import { PRODUCT_TYPES } from "../constants";
+import {
+  ProductVolumeSection,
+  type RefuelingVolume,
+} from "./product-volume-section";
 
 export interface RefuelingFormHandle {
   getFormState: () => { supplierId: string; buyerId: string };
@@ -105,6 +109,9 @@ export const RefuelingForm = forwardRef<
   const [additionalProducts, setAdditionalProducts] = useState<
     Array<{ id: string; productType: string }>
   >([]);
+  const [additionalVolumes, setAdditionalVolumes] = useState<
+    Record<string, RefuelingVolume>
+  >({});
   const additionalProductRefs = useRef<
     Map<string, React.RefObject<AdditionalProductSectionHandle>>
   >(new Map());
@@ -196,11 +203,9 @@ export const RefuelingForm = forwardRef<
           })
           .filter(Boolean);
 
-        await Promise.all(
-          [mainPayload, ...additionalPayloads].map((p) =>
-            apiRequest("POST", "/api/refueling", p).then((r) => r.json()),
-          ),
-        );
+        await apiRequest("POST", "/api/refueling/bulk", {
+          deals: [mainPayload, ...additionalPayloads],
+        });
 
         // Invalidate and cleanup
         queryClient.invalidateQueries({ predicate: (q) => {
@@ -242,6 +247,7 @@ export const RefuelingForm = forwardRef<
   const watchLiters = form.watch("quantityLiters");
   const watchDensity = form.watch("density");
   const watchKg = form.watch("quantityKg");
+  const watchInputMode = form.watch("inputMode");
   const watchProductType = form.watch("productType");
   const watchNomenclatureId = form.watch("nomenclatureId");
   const watchIsPriceRecharge = form.watch("isPriceRecharge");
@@ -761,10 +767,10 @@ export const RefuelingForm = forwardRef<
   // Mutation for creating multiple products in one go
   const createAllMutation = useMutation({
     mutationFn: async (payloads: object[]) => {
-      const results = await Promise.all(
-        payloads.map((p) => apiRequest("POST", "/api/refueling", p).then((r) => r.json())),
-      );
-      return results;
+      const response = await apiRequest("POST", "/api/refueling/bulk", {
+        deals: payloads,
+      });
+      return response.json();
     },
     onSuccess: (results: any[]) => {
       results.forEach((data) => {
@@ -820,6 +826,7 @@ export const RefuelingForm = forwardRef<
       setSelectedBasis("");
       setCustomerBasis("");
       setAdditionalProducts([]);
+      setAdditionalVolumes({});
       onSuccess?.();
     },
     onError: (error: Error) => {
@@ -835,16 +842,6 @@ export const RefuelingForm = forwardRef<
       form.setValue("isPvkjRecharge", false);
     }
   }, [watchProductType, form]);
-
-  // Когда "Перевыставить" активно — принудительно снимаем чекбоксы услуг
-  // При деактивации не трогаем — пользователь сам управляет чекбоксами
-  useEffect(() => {
-    const isRechargeActive = watchIsPriceRecharge || watchIsPvkjRecharge;
-    if (isRechargeActive) {
-      setIsAgentFeeEnabled(false);
-      setIsOtherServiceEnabled(false);
-    }
-  }, [watchIsPriceRecharge, watchIsPvkjRecharge]);
 
   useEffect(() => {
     if (inputMode === "liters" && calculatedKg && parseFloat(calculatedKg) > 0) {
@@ -870,13 +867,109 @@ export const RefuelingForm = forwardRef<
     const newRef = createRef<AdditionalProductSectionHandle>();
     additionalProductRefs.current.set(id, newRef);
     setAdditionalProducts((prev) => [...prev, { id, productType }]);
+    const currentKg =
+      watchInputMode === "kg"
+        ? Number.parseFloat(watchKg || "0")
+        : Number.parseFloat(watchLiters || "0") *
+          Number.parseFloat(watchDensity || "0.8");
+    const initialVolume: RefuelingVolume = {
+      inputMode: watchInputMode || inputMode,
+      quantityLiters: watchLiters || "",
+      density: watchDensity || "0.8",
+      quantityKg: Number.isFinite(currentKg) ? String(currentKg) : "",
+    };
+    if (
+      watchProductType === PRODUCT_TYPE.KEROSENE ||
+      watchProductType === PRODUCT_TYPE.SERVICE
+    ) {
+      initialVolume.inputMode = "kg";
+      form.setValue("inputMode", "kg", { shouldDirty: true });
+      form.setValue("quantityLiters", "", { shouldDirty: true });
+      form.setValue("density", "", { shouldDirty: true });
+      setInputMode("kg");
+      form.setValue("quantityKg", initialVolume.quantityKg, {
+        shouldDirty: true,
+      });
+    }
+    setAdditionalVolumes((prev) => ({ ...prev, [id]: initialVolume }));
     setAddProductPopoverOpen(false);
   };
 
   const handleRemoveAdditionalProduct = (id: string) => {
     additionalProductRefs.current.delete(id);
     setAdditionalProducts((prev) => prev.filter((p) => p.id !== id));
+    setAdditionalVolumes((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
+
+  const sourceVolumes = [
+    watchProductType === PRODUCT_TYPE.KEROSENE ||
+    watchProductType === PRODUCT_TYPE.PVKJ
+      ? {
+          productType: watchProductType,
+          kg:
+            watchInputMode === "kg"
+              ? Number.parseFloat(watchKg || "0")
+              : Number.parseFloat(watchLiters || "0") *
+                Number.parseFloat(watchDensity || "0.8"),
+        }
+      : null,
+    ...additionalProducts
+      .filter(
+        (product) =>
+          product.productType === PRODUCT_TYPE.KEROSENE ||
+          product.productType === PRODUCT_TYPE.PVKJ,
+      )
+      .map((product) => {
+        const volume = additionalVolumes[product.id];
+        const kg =
+          volume?.inputMode === "kg"
+            ? Number.parseFloat(volume.quantityKg || "0")
+            : Number.parseFloat(volume?.quantityLiters || "0") *
+              Number.parseFloat(volume?.density || "0.8");
+        return { productType: product.productType, kg };
+      }),
+  ].filter((volume): volume is { productType: string; kg: number } =>
+    Boolean(volume),
+  );
+  const serviceQuantityKg = sourceVolumes.reduce(
+    (sum, volume) => sum + (Number.isFinite(volume.kg) ? volume.kg : 0),
+    0,
+  );
+  const sourceVolumeSignature = sourceVolumes
+    .map(({ productType, kg }) => `${productType}:${kg}`)
+    .join("|");
+  const hasServiceProduct =
+    watchProductType === PRODUCT_TYPE.SERVICE ||
+    additionalProducts.some((product) => product.productType === PRODUCT_TYPE.SERVICE);
+
+  useEffect(() => {
+    if (!hasServiceProduct || serviceQuantityKg <= 0) return;
+    const syncedVolume = (current?: RefuelingVolume): RefuelingVolume => ({
+      inputMode: "kg",
+      quantityLiters: current?.quantityLiters || "",
+      density: current?.density || "0.8",
+      quantityKg: String(serviceQuantityKg),
+    });
+    if (watchProductType === PRODUCT_TYPE.SERVICE) {
+      const nextVolume = syncedVolume();
+      form.setValue("inputMode", "kg", { shouldDirty: false });
+      form.setValue("quantityKg", nextVolume.quantityKg, { shouldDirty: false });
+      setInputMode("kg");
+    }
+    const service = additionalProducts.find(
+      (product) => product.productType === PRODUCT_TYPE.SERVICE,
+    );
+    if (service) {
+      setAdditionalVolumes((previous) => ({
+        ...previous,
+        [service.id]: syncedVolume(previous[service.id]),
+      }));
+    }
+  }, [sourceVolumeSignature, serviceQuantityKg, hasServiceProduct, watchProductType, additionalProducts, form]);
 
   const onSubmit = async (data: RefuelingFormData, isDraftSubmit?: boolean) => {
     const productType = watchProductType;
@@ -1044,11 +1137,48 @@ export const RefuelingForm = forwardRef<
             warehouses={warehouses}
           />
 
-          <VolumeInputSection
-            form={form}
-            setInputMode={setInputMode}
-            calculatedKg={calculatedKg}
-          />
+          {additionalProducts.length > 0 ? (
+            <ProductVolumeSection
+              productLabel={
+                PRODUCT_TYPES.find((product) => product.value === watchProductType)
+                  ?.label || watchProductType
+              }
+              value={{
+                inputMode: watchInputMode || inputMode,
+                quantityLiters: watchLiters || "",
+                density: watchDensity || "0.8",
+                quantityKg: watchKg || calculatedKg || "",
+              }}
+              onChange={(volume) => {
+                form.setValue("inputMode", volume.inputMode, { shouldDirty: true });
+                form.setValue("quantityLiters", volume.quantityLiters, {
+                  shouldDirty: true,
+                });
+                form.setValue("density", volume.density, { shouldDirty: true });
+                form.setValue("quantityKg", volume.quantityKg, {
+                  shouldDirty: true,
+                });
+                if (
+                  watchProductType === PRODUCT_TYPE.KEROSENE ||
+                  watchProductType === PRODUCT_TYPE.SERVICE
+                ) {
+                  form.setValue("quantityLiters", "");
+                  form.setValue("density", "");
+                }
+                setInputMode(volume.inputMode);
+              }}
+              kgOnly={
+                watchProductType === PRODUCT_TYPE.KEROSENE ||
+                watchProductType === PRODUCT_TYPE.SERVICE
+              }
+            />
+          ) : (
+            <VolumeInputSection
+              form={form}
+              setInputMode={setInputMode}
+              calculatedKg={calculatedKg}
+            />
+          )}
 
           <RefuelingPricingSection
             form={form}
@@ -1081,7 +1211,6 @@ export const RefuelingForm = forwardRef<
             isOtherServiceEnabled={isOtherServiceEnabled}
             onAgentFeeEnabledChange={setIsAgentFeeEnabled}
             onOtherServiceEnabledChange={setIsOtherServiceEnabled}
-            isRechargeActive={!!(watchIsPriceRecharge || watchIsPvkjRecharge)}
           />
 
           <div className="grid gap-4 md:grid-cols-2 items-end">
@@ -1096,6 +1225,7 @@ export const RefuelingForm = forwardRef<
                       placeholder="Дополнительная информация..."
                       data-testid="input-notes"
                       {...field}
+                      value={field.value ?? ""}
                     />
                   </FormControl>
                   <FormMessage />
@@ -1169,10 +1299,18 @@ export const RefuelingForm = forwardRef<
                 equipmentType={equipmentType}
                 selectedEquipmentId={selectedEquipmentId}
                 equipmentBalance={equipmentBalance}
-                inputMode={inputMode}
-                quantityLiters={watchLiters || ""}
-                density={watchDensity || "0.8"}
-                quantityKg={watchKg || ""}
+                volume={additionalVolumes[ap.id] || {
+                  inputMode: watchInputMode || inputMode,
+                  quantityLiters: watchLiters || "",
+                  density: watchDensity || "0.8",
+                  quantityKg: watchKg || calculatedKg || "",
+                }}
+                onVolumeChange={(volume) =>
+                  setAdditionalVolumes((previous) => ({
+                    ...previous,
+                    [ap.id]: volume,
+                  }))
+                }
                 suppliers={suppliers ?? []}
                 allBases={allBases ?? []}
                 warehouses={warehouses}
