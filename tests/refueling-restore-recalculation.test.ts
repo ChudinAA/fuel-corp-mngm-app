@@ -3,6 +3,9 @@ import { test } from "node:test";
 import { eq, sql } from "drizzle-orm";
 import { db, pool } from "../server/db";
 import { PRODUCT_TYPE, SOURCE_TYPE, TRANSACTION_TYPE } from "../shared/constants";
+import { aircraftRefueling } from "../server/modules/refueling/entities/refueling";
+import { suppliers } from "../server/modules/suppliers/entities/suppliers";
+import { customers } from "../server/modules/customers/entities/customers";
 import { movement } from "../server/modules/movement/entities/movement";
 import {
   equipmentMovement,
@@ -43,7 +46,14 @@ test("restoring an older refueling movement recalculates both fuel products in s
             WHERE table_schema = current_schema()
               AND table_name = 'warehouses'
               AND column_name = 'equipment_type'
-          ) AS is_fuel_equipment_schema
+        )
+        AND EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = current_schema()
+            AND table_name = 'aircraft_refueling'
+            AND column_name = 'refueling_order_id'
+        ) AS is_fuel_equipment_schema
     `);
     if (!schemaResult.rows[0]?.is_fuel_equipment_schema) {
       t.skip("The configured database has not been migrated to the fuel-equipment schema.");
@@ -51,6 +61,18 @@ test("restoring an older refueling movement recalculates both fuel products in s
     }
 
     await db.transaction(async (tx) => {
+      const [supplier] = await tx
+        .insert(suppliers)
+        .values({ name: `restore-test-supplier-${crypto.randomUUID()}` })
+        .returning();
+      const [customer] = await tx
+        .insert(customers)
+        .values({
+          name: `restore-test-customer-${crypto.randomUUID()}`,
+          module: "refueling",
+        })
+        .returning();
+
       for (const productType of [PRODUCT_TYPE.KEROSENE, PRODUCT_TYPE.PVKJ]) {
         const isPvkj = productType === PRODUCT_TYPE.PVKJ;
 
@@ -174,18 +196,44 @@ test("restoring an older refueling movement recalculates both fuel products in s
           undefined,
           testDates.laterReceipt,
         );
-        await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
-          tx,
-          warehouse.id,
-          TRANSACTION_TYPE.SALE,
-          productType,
-          "",
-          crypto.randomUUID(),
-          10,
-          0,
-          undefined,
-          testDates.laterSale,
-        );
+        const [warehouseRefueling] = await tx
+          .insert(aircraftRefueling)
+          .values({
+            refuelingDate: testDates.laterSale,
+            productType,
+            supplierId: supplier.id,
+            buyerId: customer.id,
+            warehouseId: warehouse.id,
+            quantityKg: "10",
+            purchasePrice: "10",
+            purchaseAmount: "100",
+            salePrice: "20",
+            saleAmount: "200",
+            agentFee: "5",
+            isAgentFeeEnabled: true,
+            otherServiceFee: "3",
+            isOtherServiceEnabled: true,
+            profit: "92",
+            isDraft: false,
+          })
+          .returning({ id: aircraftRefueling.id });
+        const { transaction: warehouseRefuelingTransaction } =
+          await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+            tx,
+            warehouse.id,
+            TRANSACTION_TYPE.SALE,
+            productType,
+            SOURCE_TYPE.REFUELING,
+            warehouseRefueling.id,
+            10,
+            0,
+            undefined,
+            testDates.laterSale,
+          );
+        await tx
+          .update(aircraftRefueling)
+          .set({ transactionId: warehouseRefuelingTransaction.id })
+          .where(eq(aircraftRefueling.id, warehouseRefueling.id));
 
         const [equipmentMovementRow] = await tx
           .insert(equipmentMovement)
@@ -211,18 +259,44 @@ test("restoring an older refueling movement recalculates both fuel products in s
           undefined,
           testDates.laterReceipt,
         );
-        await EquipmentTransactionService.createTransactionAndUpdateEquipment(
-          tx,
-          equipment.id,
-          TRANSACTION_TYPE.SALE,
-          productType,
-          "",
-          crypto.randomUUID(),
-          10,
-          0,
-          undefined,
-          testDates.laterSale,
-        );
+        const [equipmentRefueling] = await tx
+          .insert(aircraftRefueling)
+          .values({
+            refuelingDate: testDates.laterSale,
+            productType,
+            supplierId: supplier.id,
+            buyerId: customer.id,
+            equipmentId: equipment.id,
+            quantityKg: "10",
+            purchasePrice: "10",
+            purchaseAmount: "100",
+            salePrice: "20",
+            saleAmount: "200",
+            agentFee: "5",
+            isAgentFeeEnabled: true,
+            otherServiceFee: "3",
+            isOtherServiceEnabled: true,
+            profit: "92",
+            isDraft: false,
+          })
+          .returning({ id: aircraftRefueling.id });
+        const equipmentRefuelingTransaction =
+          await EquipmentTransactionService.createTransactionAndUpdateEquipment(
+            tx,
+            equipment.id,
+            TRANSACTION_TYPE.SALE,
+            productType,
+            SOURCE_TYPE.REFUELING,
+            equipmentRefueling.id,
+            10,
+            0,
+            undefined,
+            testDates.laterSale,
+          );
+        await tx
+          .update(aircraftRefueling)
+          .set({ equipmentTransactionId: equipmentRefuelingTransaction.id })
+          .where(eq(aircraftRefueling.id, equipmentRefueling.id));
 
         const [equipmentTransferWarehouse] = await tx
           .insert(warehouses)
@@ -571,8 +645,44 @@ test("restoring an older refueling movement recalculates both fuel products in s
           .select()
           .from(equipmentTransactions)
           .where(eq(equipmentTransactions.id, oldEquipmentSale.id));
+        const [refreshedWarehouseRefueling] = await tx
+          .select({
+            purchasePrice: aircraftRefueling.purchasePrice,
+            purchaseAmount: aircraftRefueling.purchaseAmount,
+            profit: aircraftRefueling.profit,
+          })
+          .from(aircraftRefueling)
+          .where(eq(aircraftRefueling.id, warehouseRefueling.id));
+        const [refreshedEquipmentRefueling] = await tx
+          .select({
+            purchasePrice: aircraftRefueling.purchasePrice,
+            purchaseAmount: aircraftRefueling.purchaseAmount,
+            profit: aircraftRefueling.profit,
+          })
+          .from(aircraftRefueling)
+          .where(eq(aircraftRefueling.id, equipmentRefueling.id));
         assert.equal(restoredWarehouseTx?.deletedAt, null);
         assert.equal(restoredEquipmentTx[0]?.deletedAt, null);
+        for (const [label, refueling] of [
+          ["warehouse", refreshedWarehouseRefueling],
+          ["equipment", refreshedEquipmentRefueling],
+        ] as const) {
+          assert.equal(
+            Number(refueling?.purchasePrice),
+            11.666667,
+            `${label} refueling purchase price after recalculation`,
+          );
+          assert.equal(
+            Number(refueling?.purchaseAmount),
+            116.67,
+            `${label} refueling purchase amount after recalculation`,
+          );
+          assert.equal(
+            Number(refueling?.profit),
+            75.33,
+            `${label} refueling profit after recalculation`,
+          );
+        }
         assert.ok(openingWarehouseTx && openingEquipmentTx);
       }
 
