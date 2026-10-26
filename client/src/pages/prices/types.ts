@@ -13,6 +13,8 @@ export interface PriceFormData {
   counterpartyRole: CounterpartyRole;
   counterpartyId: string;
   productType: ProductType;
+  nomenclatureId?: string | null;
+  contractId: string;
   basis: string;
   basisId?: string;
   limitType?: "volume" | "amount";

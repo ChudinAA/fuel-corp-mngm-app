@@ -322,7 +322,7 @@ export function RefuelingPricingSection({
                                   key={`${price.id}-${idx}`}
                                   value={`${price.id}-${idx}`}
                                 >
-                                  {formatPrice(priceVal)} ₽/кг
+                                  {formatPrice(priceVal)} ₽/кг{price.contractNumber ? ` · Договор ${price.contractNumber}` : ""}
                                 </SelectItem>
                               );
                             } catch {
@@ -455,7 +455,7 @@ export function RefuelingPricingSection({
                                   key={`${price.id}-${idx}`}
                                   value={`${price.id}-${idx}`}
                                 >
-                                  {formatPrice(priceVal)} ₽/кг
+                                  {formatPrice(priceVal)} ₽/кг{price.contractNumber ? ` · Договор ${price.contractNumber}` : ""}
                                 </SelectItem>
                               );
                             } catch {

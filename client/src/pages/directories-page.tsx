@@ -1,11 +1,13 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Building2, Car, Container, User, DollarSign, Plane } from "lucide-react";
+import { MapPin, Building2, Car, Container, User, DollarSign, Plane, FileText, Package } from "lucide-react";
 import { BasesTab } from "./directories/bases-tab";
 import { GenericLogisticsTab } from "./directories/generic-logistics-tab";
 import { ExchangeRatesTab } from "./directories/exchange-rates-tab";
 import { AviationTab } from "./directories/aviation-tab";
+import { ContractsTab } from "./directories/contracts-tab";
+import { NomenclatureTab } from "./directories/nomenclature-tab";
 
 export default function DirectoriesPage() {
   const [activeTab, setActiveTab] = useState<string>("bases");
@@ -49,6 +51,14 @@ export default function DirectoriesPage() {
           <TabsTrigger value="aviation" className="flex items-center gap-2">
             <Plane className="h-4 w-4" />
             Авиация
+          </TabsTrigger>
+          <TabsTrigger value="contracts" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Договоры
+          </TabsTrigger>
+          <TabsTrigger value="nomenclature" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Номенклатура
           </TabsTrigger>
         </TabsList>
 
@@ -102,6 +112,12 @@ export default function DirectoriesPage() {
 
         <TabsContent value="aviation">
           <AviationTab />
+        </TabsContent>
+        <TabsContent value="contracts">
+          <ContractsTab />
+        </TabsContent>
+        <TabsContent value="nomenclature">
+          <NomenclatureTab />
         </TabsContent>
       </Tabs>
     </div>

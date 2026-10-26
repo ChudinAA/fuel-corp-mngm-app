@@ -21,6 +21,7 @@ interface UseMovementCalculationsProps {
   form?: UseFormReturn<MovementFormData>;
   watchMovementType: string;
   watchProductType: string;
+  nomenclatureId?: string;
   watchSupplierId: string;
   watchBasisId?: string;
   watchFromWarehouseId: string;
@@ -49,6 +50,7 @@ export function useMovementCalculations({
   form,
   watchMovementType,
   watchProductType,
+  nomenclatureId,
   watchSupplierId,
   watchBasisId,
   watchFromWarehouseId,
@@ -90,6 +92,7 @@ export function useMovementCalculations({
     counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
     basisId: watchBasisId,
     productType: watchProductType,
+    nomenclatureId,
     date: watchMovementDate,
     enabled: !!watchSupplierId && !!watchBasisId && !!watchMovementDate,
   });

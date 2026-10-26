@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
+import { nomenclature } from "../../catalogs/entities/nomenclature";
 import { bases, suppliers, customers } from "@shared/schema";
 import {
   logisticsCarriers,
@@ -34,6 +35,7 @@ export const transportation = pgTable(
     basisId: uuid("basis_id").references(() => bases.id),
     customerBasisId: uuid("customer_basis_id").references(() => bases.id),
     productType: text("product_type").default(PRODUCT_TYPE.KEROSENE),
+    nomenclatureId: uuid("nomenclature_id").references(() => nomenclature.id),
     quantityLiters: decimal("quantity_liters", { precision: 15, scale: 2 }),
     density: decimal("density", { precision: 6, scale: 4 }),
     quantityKg: decimal("quantity_kg", { precision: 15, scale: 2 }).notNull(),
@@ -129,6 +131,7 @@ export const insertTransportationSchema = z
     customerBasisId: z.string().nullable().optional(),
     dealDate: z.string().nullable().optional(),
     productType: z.string().nullable().optional(),
+    nomenclatureId: z.string().uuid().nullable().optional(),
     quantityLiters: z.number().nullable().optional(),
     density: z.number().nullable().optional(),
     quantityKg: z.number().nullable().optional(),
@@ -166,6 +169,9 @@ export const insertTransportationSchema = z
           message: "Тип продукта обязателен",
           path: ["productType"],
         });
+      }
+      if (["kerosene", "pvkj", "service"].includes(data.productType || "") && !data.nomenclatureId) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Номенклатура обязательна", path: ["nomenclatureId"] });
       }
       if (!data.dealDate) {
         ctx.addIssue({

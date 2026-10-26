@@ -3,7 +3,13 @@ import { auditLog, InsertAuditLog, AuditOperation, EntityType, AUDIT_OPERATIONS 
 import { eq, and, desc, sql } from "drizzle-orm";
 import { getChangedFields } from "../utils/audit-utils";
 import { storage } from "../../../storage/index";
-import { bases } from "@shared/schema";
+import {
+  bases,
+  counterpartyContracts,
+  nomenclature,
+  nomenclatureTypes,
+  unitsOfMeasure,
+} from "@shared/schema";
 
 export interface AuditContext {
   userId?: string;
@@ -60,6 +66,38 @@ export class AuditService {
           if (customer?.name) return customer.name;
         } catch {}
         try { const e = await storage.suppliers.getSupplier(id); return e?.name || null; } catch { return null; }
+      },
+      contractId: async (id) => {
+        try {
+          const [row] = await db.select({ number: counterpartyContracts.contractNumber, name: counterpartyContracts.contractName })
+            .from(counterpartyContracts).where(eq(counterpartyContracts.id, id)).limit(1);
+          return row ? `${row.number} · ${row.name}` : null;
+        } catch { return null; }
+      },
+      parentContractId: async (id) => {
+        try {
+          const [row] = await db.select({ number: counterpartyContracts.contractNumber, name: counterpartyContracts.contractName })
+            .from(counterpartyContracts).where(eq(counterpartyContracts.id, id)).limit(1);
+          return row ? `${row.number} · ${row.name}` : null;
+        } catch { return null; }
+      },
+      nomenclatureId: async (id) => {
+        try {
+          const [row] = await db.select({ name: nomenclature.name }).from(nomenclature).where(eq(nomenclature.id, id)).limit(1);
+          return row?.name || null;
+        } catch { return null; }
+      },
+      nomenclatureTypeId: async (id) => {
+        try {
+          const [row] = await db.select({ name: nomenclatureTypes.name }).from(nomenclatureTypes).where(eq(nomenclatureTypes.id, id)).limit(1);
+          return row?.name || null;
+        } catch { return null; }
+      },
+      unitId: async (id) => {
+        try {
+          const [row] = await db.select({ name: unitsOfMeasure.shortName }).from(unitsOfMeasure).where(eq(unitsOfMeasure.id, id)).limit(1);
+          return row?.name || null;
+        } catch { return null; }
       },
       carrierId: async (id) => {
         try { const e = await storage.logistics.getLogisticsCarrier(id); return e?.name || null; } catch { return null; }

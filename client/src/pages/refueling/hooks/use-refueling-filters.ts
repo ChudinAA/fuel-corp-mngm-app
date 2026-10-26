@@ -10,6 +10,7 @@ interface UseRefuelingFiltersProps {
   basisId?: string;
   customerBasisId?: string;
   productType: string;
+  nomenclatureId?: string;
   baseType: string;
   counterpartyType: string;
   suppliers: Supplier[];
@@ -26,6 +27,7 @@ export function useRefuelingFilters({
   basisId,
   customerBasisId,
   productType,
+  nomenclatureId,
   baseType,
   counterpartyType,
   suppliers,
@@ -82,6 +84,7 @@ export function useRefuelingFilters({
     counterpartyType: counterpartyType,
     basisId: basisId,
     productType: productType,
+    nomenclatureId,
     date: refuelingDate,
     enabled: !!supplierId && !!basisId && !!refuelingDate,
     priceUnit: priceUnit,
@@ -93,6 +96,7 @@ export function useRefuelingFilters({
     counterpartyType: counterpartyType,
     basisId: customerBasisId,
     productType: productType,
+    nomenclatureId,
     date: refuelingDate,
     enabled: !!buyerId && !!customerBasisId && !!refuelingDate,
     priceUnit: priceUnit,

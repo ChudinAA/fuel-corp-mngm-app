@@ -22,6 +22,7 @@ interface UseTransportationFiltersProps {
   customerBasisId: string;
   carrierId: string;
   productType: string;
+  nomenclatureId?: string;
   allBases: Base[] | undefined;
   carriers: LogisticsCarrier[] | undefined;
   deliveryLocations: LogisticsDeliveryLocation[] | undefined;
@@ -36,6 +37,7 @@ export function useTransportationFilters({
   customerBasisId,
   carrierId,
   productType,
+  nomenclatureId,
   allBases,
   carriers,
   deliveryLocations,
@@ -58,6 +60,7 @@ export function useTransportationFilters({
     basisId: customerBasisId,
     loadingBasisId: basisId,
     productType: productType || PRODUCT_TYPE.KEROSENE,
+    nomenclatureId,
     date: dealDate ?? null,
     enabled: !!supplierId && !!basisId && !!customerBasisId && !!dealDate && isAviaService,
   });
@@ -69,6 +72,7 @@ export function useTransportationFilters({
     basisId: customerBasisId,
     loadingBasisId: basisId,
     productType: productType || PRODUCT_TYPE.KEROSENE,
+    nomenclatureId,
     date: dealDate ?? null,
     enabled: !!buyerId && !!customerBasisId && !!dealDate,
   });

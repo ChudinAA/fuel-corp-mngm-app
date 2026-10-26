@@ -29,6 +29,7 @@ import { Plus, Loader2 } from "lucide-react";
 import { movementFormSchema, type MovementFormData } from "../schemas";
 import type { MovementDialogProps } from "../types";
 import { VolumeInputSection } from "../../opt/components/opt-form-sections";
+import { NomenclatureField } from "../../shared/components/nomenclature-field";
 import { MovementFormHeader } from "./movement-form-header";
 import { MovementSourceSection } from "./movement-source-section";
 import { MovementDestinationSection } from "./movement-destination-section";
@@ -85,6 +86,7 @@ export function MovementDialog({
       movementDate: new Date(),
       movementType: MOVEMENT_TYPE.SUPPLY,
       productType: PRODUCT_TYPE.KEROSENE,
+      nomenclatureId: "",
       supplierId: "",
       basis: "",
       basisId: "",
@@ -125,6 +127,7 @@ export function MovementDialog({
         movementDate: new Date(editMovement.movementDate),
         movementType: editMovement.movementType,
         productType: editMovement.productType,
+        nomenclatureId: editMovement.nomenclatureId || "",
         supplierId: editMovement.supplierId || "",
         basis: editMovement.basis || "",
         basisId: editMovement.basisId || "",
@@ -177,6 +180,7 @@ export function MovementDialog({
         movementDate: new Date(),
         movementType: MOVEMENT_TYPE.SUPPLY,
         productType: PRODUCT_TYPE.KEROSENE,
+        nomenclatureId: "",
         supplierId: "",
         basis: "",
         basisId: "",
@@ -200,6 +204,7 @@ export function MovementDialog({
   // Watch form values
   const watchMovementType = form.watch("movementType");
   const watchProductType = form.watch("productType");
+  const watchNomenclatureId = form.watch("nomenclatureId");
   const watchSupplierId = form.watch("supplierId");
   const watchBasis = form.watch("basis");
   const watchBasisId = form.watch("basisId");
@@ -233,6 +238,7 @@ export function MovementDialog({
     form,
     watchMovementType: watchMovementType || MOVEMENT_TYPE.SUPPLY,
     watchProductType: watchProductType || PRODUCT_TYPE.KEROSENE,
+    nomenclatureId: watchNomenclatureId || undefined,
     watchSupplierId: watchSupplierId || "",
     watchBasisId: watchBasisId || "",
     watchFromWarehouseId: watchFromWarehouseId || "",
@@ -343,6 +349,7 @@ export function MovementDialog({
           : null,
         movementType: data.movementType,
         productType: data.productType,
+        nomenclatureId: data.nomenclatureId || null,
         supplierId: data.supplierId || null,
         basis: data.basis || null,
         basisId: data.basisId || null,
@@ -471,6 +478,7 @@ export function MovementDialog({
               )}
               className="space-y-6"
             >
+              <NomenclatureField form={form} productType={watchProductType || PRODUCT_TYPE.KEROSENE} />
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 items-end">
                 <MovementFormHeader form={form} />
                 <MovementSourceSection

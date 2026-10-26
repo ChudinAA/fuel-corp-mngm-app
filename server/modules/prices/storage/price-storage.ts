@@ -21,6 +21,7 @@ export class PriceStorage {
     basisId?: string;
     loadingBasisId?: string;
     productType?: string;
+    nomenclatureId?: string;
     date: string;
     priceUnit?: string;
   }): Promise<Price[]> {
@@ -42,6 +43,9 @@ export class PriceStorage {
     }
     if (filters.productType) {
       conditions.push(eq(prices.productType, filters.productType));
+    }
+    if (filters.nomenclatureId) {
+      conditions.push(eq(prices.nomenclatureId, filters.nomenclatureId));
     }
     if (filters.priceUnit) {
       conditions.push(eq(prices.priceUnit, filters.priceUnit));

@@ -9,6 +9,7 @@ interface PriceLookupParams {
   basisId?: string | null;
   loadingBasisId?: string | null;
   productType?: string;
+  nomenclatureId?: string;
   date: Date | null;
   enabled?: boolean;
   priceUnit?: "kg" | "liter";
@@ -21,6 +22,7 @@ export function usePriceLookup({
   basisId,
   loadingBasisId,
   productType,
+  nomenclatureId,
   date,
   enabled = true,
   priceUnit,
@@ -36,6 +38,7 @@ export function usePriceLookup({
       basisId,
       loadingBasisId,
       productType,
+      nomenclatureId,
       dateStr,
       priceUnit,
     ],
@@ -48,6 +51,7 @@ export function usePriceLookup({
       if (basisId) params.append("basisId", basisId);
       if (loadingBasisId) params.append("loadingBasisId", loadingBasisId);
       if (productType) params.append("productType", productType);
+      if (nomenclatureId) params.append("nomenclatureId", nomenclatureId);
       if (priceUnit) params.append("priceUnit", priceUnit);
 
       const res = await fetch(`/api/prices/find-active?${params.toString()}`);

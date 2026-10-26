@@ -19,12 +19,15 @@ import { users } from "../../users/entities/users";
 import { opt } from "../../opt/entities/opt";
 import { aircraftRefueling } from "../../refueling/entities/refueling";
 import { bases, currencies, exchangeRates } from "@shared/schema";
+import { nomenclature } from "../../catalogs/entities/nomenclature";
+import { counterpartyContracts } from "../../catalogs/entities/contracts";
 
 export const prices = pgTable(
   "prices",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     productType: text("product_type").notNull(),
+    nomenclatureId: uuid("nomenclature_id").references(() => nomenclature.id),
     counterpartyId: uuid("counterparty_id").notNull(),
     counterpartyType: text("counterparty_type").notNull(),
     counterpartyRole: text("counterparty_role").notNull(),
@@ -38,6 +41,7 @@ export const prices = pgTable(
     dateFrom: date("date_from").notNull(),
     dateTo: date("date_to").notNull(),
     contractNumber: text("contract_number"),
+    contractId: uuid("contract_id").references(() => counterpartyContracts.id),
     contractAppendix: text("contract_appendix"),
     notes: text("notes"),
     soldVolume: decimal("sold_volume", { precision: 15, scale: 2 }).default(
@@ -78,6 +82,8 @@ export const prices = pgTable(
       table.productType,
     ),
     currencyIdx: index("prices_currency_idx").on(table.currency),
+    nomenclatureIdx: index("prices_nomenclature_idx").on(table.nomenclatureId),
+    contractIdx: index("prices_contract_idx").on(table.contractId),
   }),
 );
 
@@ -116,6 +122,8 @@ export const pricesRelations = relations(prices, ({ many, one }) => ({
 
 export const insertPriceSchema = createInsertSchema(prices).omit({ id: true }).extend({
   priceUnit: z.enum(["kg", "liter"]).default("kg"),
+  nomenclatureId: z.string().uuid().nullable().optional(),
+  contractId: z.string().uuid().nullable().optional(),
 });
 
 // ============ TYPES ============

@@ -122,6 +122,7 @@ export function registerPricesRoutes(app: Express) {
           basisId,
           loadingBasisId,
           productType,
+          nomenclatureId,
           date,
           priceUnit,
         } = req.query;
@@ -144,6 +145,7 @@ export function registerPricesRoutes(app: Express) {
           basisId: basisId as string,
           loadingBasisId: loadingBasisId as string,
           productType: productType as string,
+          nomenclatureId: nomenclatureId as string | undefined,
           date: date as string,
           priceUnit: priceUnit as string | undefined,
         });
@@ -232,6 +234,25 @@ export function registerPricesRoutes(app: Express) {
       try {
         const body = req.body;
 
+        const requiresNomenclature = ["kerosene", "pvkj", "service"].includes(String(body.productType));
+        if (!body.contractId) {
+          return res.status(400).json({ message: "Выберите договор из справочника" });
+        }
+        if (requiresNomenclature && !body.nomenclatureId) {
+          return res.status(400).json({ message: "Выберите номенклатуру" });
+        }
+        const selectedContract = await storage.catalogs.getContract(String(body.contractId));
+        if (!selectedContract) {
+          return res.status(400).json({ message: "Выбранный договор не найден или удалён" });
+        }
+        const contractMatchesCounterparty =
+          body.counterpartyRole === "supplier"
+            ? selectedContract.supplierId === body.counterpartyId
+            : selectedContract.buyerId === body.counterpartyId;
+        if (!contractMatchesCounterparty) {
+          return res.status(400).json({ message: "Договор не относится к выбранному контрагенту" });
+        }
+
         console.log("[PRICE CREATE DEBUG] body.limitType:", body.limitType, "body.volume:", body.volume, "body.maxDealAmount:", body.maxDealAmount);
         const limitType = body.limitType || "volume";
         const contractLimitEnabled = body.contractLimitEnabled !== false;
@@ -262,6 +283,7 @@ export function registerPricesRoutes(app: Express) {
 
         const processedData = {
           ...body,
+          contractNumber: selectedContract.contractNumber,
           priceValues: body.priceValues?.map((pv: { price: string }) =>
             JSON.stringify({ price: parseFloat(pv.price) }),
           ),
@@ -331,10 +353,33 @@ export function registerPricesRoutes(app: Express) {
           }
         }
 
+        let selectedContractForUpdate: Awaited<ReturnType<typeof storage.catalogs.getContract>> | undefined;
+        if (body.contractId) {
+          selectedContractForUpdate = await storage.catalogs.getContract(String(body.contractId)) || undefined;
+          const current = await storage.prices.getPrice(id);
+          const role = body.counterpartyRole || current?.counterpartyRole;
+          const partyId = body.counterpartyId || current?.counterpartyId;
+          const matches = role === "supplier"
+            ? selectedContractForUpdate?.supplierId === partyId
+            : selectedContractForUpdate?.buyerId === partyId;
+          if (!selectedContractForUpdate || !matches) {
+            return res.status(400).json({ message: "Договор не относится к выбранному контрагенту" });
+          }
+        }
+
+        const effectiveProductType = String(body.productType || (await storage.prices.getPrice(id))?.productType || "");
+        if (body.nomenclatureId && ["kerosene", "pvkj", "service"].includes(effectiveProductType)) {
+          const availableNomenclature = await storage.catalogs.getNomenclature(effectiveProductType);
+          if (!availableNomenclature.some((item) => item.id === body.nomenclatureId)) {
+            return res.status(400).json({ message: "Номенклатура не соответствует выбранному типу продукта" });
+          }
+        }
+
         // Process priceValues if they exist
         const patchLimitType = body.limitType || "volume";
         const processedData = {
           ...body,
+          ...(selectedContractForUpdate ? { contractNumber: selectedContractForUpdate.contractNumber } : {}),
           priceValues: body.priceValues?.map((pv: { price: string }) =>
             JSON.stringify({ price: parseFloat(pv.price) }),
           ),

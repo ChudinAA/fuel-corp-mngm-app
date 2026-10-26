@@ -31,6 +31,8 @@ export const priceFormSchema = z.object({
       PRODUCT_TYPE.STORAGE,
     ])
     .describe("Тип топлива"),
+  nomenclatureId: z.string().optional().nullable().describe("Номенклатура"),
+  contractId: z.string().optional().describe("Договор"),
   basis: z.string().min(1, "Выберите базис").describe("Базис"),
   basisId: z.string().optional(),
   limitType: z.enum(["volume", "amount"]).default("volume").describe("Тип лимита"),

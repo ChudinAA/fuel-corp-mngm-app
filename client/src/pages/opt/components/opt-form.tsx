@@ -89,6 +89,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
         isPlannedDeal: false,
         isDraft: editData?.isDraft || false,
         productType: editData?.productType || PRODUCT_TYPE.KEROSENE,
+        nomenclatureId: (editData as any)?.nomenclatureId || "",
         selectedPurchasePriceId: "",
         selectedSalePriceId: "",
         basis: "",
@@ -164,6 +165,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
     const watchCarrierId = form.watch("carrierId");
     const watchDeliveryLocationId = form.watch("deliveryLocationId");
     const watchProductType = form.watch("productType");
+    const watchNomenclatureId = form.watch("nomenclatureId");
     const watchBasisId = form.watch("basisId");
     const watchCustomerBasisId = form.watch("customerBasisId");
 
@@ -192,6 +194,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
       carrierId: watchCarrierId,
       deliveryLocationId: watchDeliveryLocationId,
       productType: watchProductType || PRODUCT_TYPE.KEROSENE,
+      nomenclatureId: watchNomenclatureId || undefined,
       suppliers,
       allBases,
       carriers,
@@ -399,6 +402,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           buyerId: buyer?.id || "",
           warehouseId: editData.warehouseId || "",
           productType: editData.productType || PRODUCT_TYPE.KEROSENE,
+          nomenclatureId: (editData as any).nomenclatureId || "",
           quantityLiters: editData.quantityLiters?.toString() || "",
           density: editData.density?.toString() || "",
           quantityKg: editData.quantityKg?.toString() || "",
@@ -482,6 +486,9 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           density: data.density ? parseFloat(data.density) : null,
           purchasePrice: purchasePrice !== null ? purchasePrice : null,
           purchasePriceId: purchasePriceId || null,
+          contractNumber:
+            purchasePrices.find((price) => price.id === purchasePriceId)?.contractNumber ||
+            salePrices.find((price) => price.id === salePriceId)?.contractNumber || null,
           purchasePriceIndex:
             purchasePriceIndex !== undefined ? purchasePriceIndex : null,
           salePrice: salePrice !== null ? salePrice : null,
@@ -591,6 +598,9 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
           density: data.density ? parseFloat(data.density) : null,
           purchasePrice: purchasePrice !== null ? purchasePrice : null,
           purchasePriceId: purchasePriceId || null,
+          contractNumber:
+            purchasePrices.find((price) => price.id === purchasePriceId)?.contractNumber ||
+            salePrices.find((price) => price.id === salePriceId)?.contractNumber || null,
           purchasePriceIndex:
             purchasePriceIndex !== undefined ? purchasePriceIndex : null,
           salePrice: salePrice !== null ? salePrice : null,

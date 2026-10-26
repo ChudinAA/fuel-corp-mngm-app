@@ -69,6 +69,8 @@ export function AddPriceDialog({
       counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
       counterpartyId: "",
       productType: PRODUCT_TYPE.KEROSENE,
+      nomenclatureId: "",
+      contractId: "",
       basis: "",
       basisId: undefined,
       loadingBasisId: undefined,
@@ -116,6 +118,8 @@ export function AddPriceDialog({
         counterpartyRole: editPrice.counterpartyRole,
         counterpartyId: editPrice.counterpartyId,
         productType: editPrice.productType,
+        nomenclatureId: (editPrice as any).nomenclatureId || "",
+        contractId: (editPrice as any).contractId || "",
         basis: editPrice.basis || "",
         basisId: editPrice.basisId || undefined,
         loadingBasisId: editPrice.loadingBasisId || undefined,
@@ -142,6 +146,10 @@ export function AddPriceDialog({
         counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
         counterpartyId: "",
         productType: PRODUCT_TYPE.KEROSENE,
+        nomenclatureId: "",
+        contractId: "",
+        nomenclatureId: "",
+        contractId: "",
         basis: "",
         basisId: undefined,
         loadingBasisId: undefined,
@@ -233,6 +241,7 @@ export function AddPriceDialog({
     if (editPrice) return;
     const key = `${watchCounterpartyId}|${watchCounterpartyType}|${watchCounterpartyRole}`;
     if (prevCounterpartyKeyRef.current && prevCounterpartyKeyRef.current !== key) {
+      form.setValue("contractId", "");
       form.setValue("contractNumber", "");
       form.setValue("contractAppendix", "");
     }
@@ -415,8 +424,14 @@ export function AddPriceDialog({
 
   const createMutation = useMutation({
     mutationFn: async (data: PriceFormData) => {
+      if (!editPrice && !data.contractId) throw new Error("Выберите договор из справочника");
+      if (!editPrice && ["kerosene", "pvkj", "service"].includes(data.productType) && !data.nomenclatureId) {
+        throw new Error("Выберите номенклатуру");
+      }
       const payload = {
         productType: data.productType,
+        nomenclatureId: data.nomenclatureId || null,
+        contractId: data.contractId || null,
         counterpartyId: data.counterpartyId,
         counterpartyType: data.counterpartyType,
         counterpartyRole: data.counterpartyRole,
@@ -473,6 +488,8 @@ export function AddPriceDialog({
         counterpartyRole: COUNTERPARTY_ROLE.SUPPLIER,
         counterpartyId: "",
         productType: PRODUCT_TYPE.KEROSENE,
+        nomenclatureId: "",
+        contractId: "",
         basis: "",
         basisId: undefined,
         loadingBasisId: undefined,

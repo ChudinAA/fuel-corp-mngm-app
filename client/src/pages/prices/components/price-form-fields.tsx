@@ -36,7 +36,7 @@ import {
   COUNTERPARTY_ROLE,
 } from "@shared/constants";
 import { AddBaseDialog } from "@/pages/directories/bases-dialog";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 
@@ -65,9 +65,28 @@ export function PriceFormFields({
   const [addBaseOpen, setAddBaseOpen] = useState(false);
 
   const counterpartyType = useWatch({ control, name: "counterpartyType" });
+  const counterpartyRole = useWatch({ control, name: "counterpartyRole" });
+  const counterpartyId = useWatch({ control, name: "counterpartyId" });
+  const productType = useWatch({ control, name: "productType" });
   const limitType = useWatch({ control, name: "limitType" });
   const contractLimitEnabled = useWatch({ control, name: "contractLimitEnabled" });
   const isLimitEnabled = contractLimitEnabled !== false;
+  const { data: contractList = [] } = useQuery<any[]>({ queryKey: ["/api/contracts"] });
+  const { data: nomenclatureList = [] } = useQuery<any[]>({ queryKey: ["/api/nomenclature"] });
+  const contractsForParty = contractList.filter((item) =>
+    counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER
+      ? item.supplierId === counterpartyId
+      : item.buyerId === counterpartyId,
+  );
+  const nomenclatureForProduct = nomenclatureList.filter((item) => item.typeCode === productType);
+  const selectedNomenclatureId = useWatch({ control, name: "nomenclatureId" });
+
+  useEffect(() => {
+    if (!nomenclatureForProduct.some((item) => item.id === selectedNomenclatureId)) {
+      const preferred = nomenclatureForProduct.find((item) => item.isDefault);
+      setValue("nomenclatureId", preferred?.id || "", { shouldValidate: true });
+    }
+  }, [productType, nomenclatureList, selectedNomenclatureId, setValue]);
 
   return (
     <>
@@ -607,42 +626,43 @@ export function PriceFormFields({
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <FormField
-          control={control}
-          name="contractNumber"
-          render={({ field }) => (
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <FormField control={control} name="contractId" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Договор</FormLabel>
+            <Select value={field.value || ""} onValueChange={(id) => {
+              field.onChange(id);
+              const selected = contractsForParty.find((item) => item.id === id);
+              setValue("contractNumber", selected?.contractNumber || "");
+              setValue("contractAppendix", selected?.parentContractId ? selected.contractNumber : "");
+            }}>
+              <FormControl><SelectTrigger><SelectValue placeholder="Выберите договор" /></SelectTrigger></FormControl>
+              <SelectContent>
+                {contractsForParty.map((item) => <SelectItem key={item.id} value={item.id}>
+                  {item.contractNumber} — {item.contractName}{item.parentContractId ? " (приложение)" : ""}
+                </SelectItem>)}
+              </SelectContent>
+            </Select>
+            {contractsForParty.length === 0 && <p className="text-xs text-muted-foreground">Для выбранного контрагента договоры не заведены в справочнике.</p>}
+            <FormMessage />
+          </FormItem>
+        )} />
+        {["kerosene", "pvkj", "service"].includes(productType) && (
+          <FormField control={control} name="nomenclatureId" render={({ field }) => (
             <FormItem>
-              <FormLabel>Номер договора</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="№ договора"
-                  data-testid="input-contract-number"
-                  {...field}
-                />
-              </FormControl>
+              <FormLabel>Номенклатура</FormLabel>
+              <Select value={field.value || ""} onValueChange={field.onChange}>
+                <FormControl><SelectTrigger><SelectValue placeholder="Выберите номенклатуру" /></SelectTrigger></FormControl>
+                <SelectContent>
+                  {nomenclatureForProduct.map((item) => <SelectItem key={item.id} value={item.id}>
+                    {item.name} ({item.unitShortName}){item.isDefault ? " · по умолчанию" : ""}
+                  </SelectItem>)}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
-          )}
-        />
-
-        <FormField
-          control={control}
-          name="contractAppendix"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>№ приложения</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="№ приложения"
-                  data-testid="input-contract-appendix"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          )} />
+        )}
       </div>
 
       <FormField

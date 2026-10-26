@@ -25,6 +25,7 @@ interface UseOptFiltersProps {
   carrierId: string;
   deliveryLocationId: string;
   productType: string;
+  nomenclatureId?: string;
   suppliers: Supplier[] | undefined;
   allBases: Base[] | undefined;
   carriers: LogisticsCarrier[] | undefined;
@@ -42,6 +43,7 @@ export function useOptFilters({
   carrierId,
   deliveryLocationId,
   productType,
+  nomenclatureId,
   suppliers,
   allBases,
   carriers,
@@ -75,6 +77,7 @@ export function useOptFilters({
     counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
     basisId: basisId,
     productType: productType || PRODUCT_TYPE.KEROSENE,
+    nomenclatureId,
     date: dealDate,
     enabled: !!supplierId && !!basisId && !!dealDate,
   });
@@ -85,6 +88,7 @@ export function useOptFilters({
     counterpartyType: COUNTERPARTY_TYPE.WHOLESALE,
     basisId: customerBasisId,
     productType: productType || PRODUCT_TYPE.KEROSENE,
+    nomenclatureId,
     date: dealDate,
     enabled: !!buyerId && !!customerBasisId && !!dealDate,
   });

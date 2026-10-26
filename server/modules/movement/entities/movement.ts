@@ -16,6 +16,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
+import { nomenclature } from "../../catalogs/entities/nomenclature";
 import { bases, prices, suppliers } from "@shared/schema";
 import {
   warehouses,
@@ -30,6 +31,7 @@ export const movement = pgTable(
     movementDate: timestamp("movement_date", { mode: "string" }).notNull(),
     movementType: text("movement_type").notNull(),
     productType: text("product_type").notNull(),
+    nomenclatureId: uuid("nomenclature_id").references(() => nomenclature.id),
     supplierId: uuid("supplier_id").references(() => suppliers.id),
     fromWarehouseId: uuid("from_warehouse_id").references(() => warehouses.id),
     toWarehouseId: uuid("to_warehouse_id")
@@ -136,6 +138,7 @@ export const insertMovementSchema = z
     movementDate: z.string().nullable().optional(), // timestamp as string
     movementType: z.string().nullable().optional(),
     productType: z.string().nullable().optional(),
+    nomenclatureId: z.string().uuid().nullable().optional(),
     supplierId: z.string().nullable().optional(),
     fromWarehouseId: z.string().nullable().optional(),
     toWarehouseId: z.string().nullable().optional(),
@@ -177,6 +180,9 @@ export const insertMovementSchema = z
           message: "Тип продукта обязателен",
           path: ["productType"],
         });
+      }
+      if (["kerosene", "pvkj", "service"].includes(data.productType || "") && !data.nomenclatureId) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Номенклатура обязательна", path: ["nomenclatureId"] });
       }
       if (!data.movementDate) {
         ctx.addIssue({

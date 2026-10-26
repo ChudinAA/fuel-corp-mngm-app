@@ -9,6 +9,7 @@ export const transportationFormSchema = z
     basisId: z.string().nullable().optional(),
     customerBasisId: z.string().nullable().optional(),
     productType: z.string().nullable().optional().default(PRODUCT_TYPE.KEROSENE).describe("Тип топлива"),
+    nomenclatureId: z.string().nullable().optional().describe("Номенклатура"),
     quantityLiters: z.number().nullable().optional().describe("Количество (л)"),
     density: z.number().nullable().optional().describe("Плотность"),
     quantityKg: z.number().nullable().optional().describe("Количество (кг)"),

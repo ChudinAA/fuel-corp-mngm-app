@@ -69,6 +69,7 @@ import { CalculatedField } from "@/pages/opt/components/calculated-field";
 import { formatCurrency, formatNumber, formatPrice } from "@/pages/opt/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import { NomenclatureField } from "@/pages/shared/components/nomenclature-field";
 
 export interface TransportationFormHandle {
   getFormState: () => { supplierId: string; buyerId: string };
@@ -109,6 +110,7 @@ export const TransportationForm = forwardRef<
       basisId: null,
       customerBasisId: null,
       productType: PRODUCT_TYPE.KEROSENE,
+      nomenclatureId: "",
       quantityLiters: null,
       density: null,
       quantityKg: null,
@@ -170,6 +172,7 @@ export const TransportationForm = forwardRef<
   const watchCustomerBasisId = form.watch("customerBasisId") || "";
   const watchCarrierId = form.watch("carrierId") || "";
   const watchProductType = form.watch("productType") || PRODUCT_TYPE.KEROSENE;
+  const watchNomenclatureId = form.watch("nomenclatureId") || "";
   const watchQuantityLiters = form.watch("quantityLiters");
   const watchDensity = form.watch("density");
   const watchQuantityKg = form.watch("quantityKg");
@@ -192,6 +195,7 @@ export const TransportationForm = forwardRef<
     customerBasisId: watchCustomerBasisId,
     carrierId: watchCarrierId,
     productType: watchProductType,
+    nomenclatureId: watchNomenclatureId || undefined,
     allBases,
     carriers,
     deliveryLocations,
@@ -332,6 +336,7 @@ export const TransportationForm = forwardRef<
         basisId: editData.basisId || null,
         customerBasisId: editData.customerBasisId || null,
         productType: editData.productType || PRODUCT_TYPE.KEROSENE,
+        nomenclatureId: editData.nomenclatureId || "",
         quantityLiters: editData.quantityLiters
           ? parseFloat(editData.quantityLiters)
           : null,
@@ -373,7 +378,9 @@ export const TransportationForm = forwardRef<
         : null,
       basisId: data.basisId || null,
       customerBasisId: data.customerBasisId || null,
-      productType: PRODUCT_TYPE.KEROSENE,
+      productType: data.productType || PRODUCT_TYPE.KEROSENE,
+      nomenclatureId: data.nomenclatureId || null,
+      contractNumber: salePrices.find((price) => price.id === salePriceId)?.contractNumber || null,
       quantityKg: calculatedKg ? parseFloat(calculatedKg) : null,
       quantityLiters: data.quantityLiters || null,
       density: data.density || null,
@@ -391,6 +398,7 @@ export const TransportationForm = forwardRef<
       deliveryCost: deliveryCost !== null ? deliveryCost : null,
       deliveryTariff: deliveryTariff !== null ? deliveryTariff : null,
       profit: profit !== null ? profit : null,
+      contractNumber: salePrices.find((price) => price.id === salePriceId)?.contractNumber || null,
       notes: data.notes || null,
       isDraft,
     };
@@ -489,7 +497,7 @@ export const TransportationForm = forwardRef<
   return (
     <>
       <Form {...form}>
-        <form
+          <form
           onSubmit={form.handleSubmit(
             (data) => onSubmit(data, false),
             (errors) => {
@@ -501,8 +509,9 @@ export const TransportationForm = forwardRef<
               );
             },
           )}
-          className="space-y-6"
+            className="space-y-6"
         >
+            <NomenclatureField form={form} productType={watchProductType} />
           {/* Main fields */}
           <Card>
             <CardHeader className="pb-4">

@@ -3,6 +3,7 @@ import { z } from "zod";
 export const refuelingFormSchema = z.object({
   refuelingDate: z.date({ required_error: "Укажите дату заправки" }).describe("Дата заправки"),
   productType: z.string().min(1, "Выберите продукт").describe("Тип топлива"),
+  nomenclatureId: z.string().optional().nullable().describe("Номенклатура"),
   aircraftNumber: z.string().optional().nullable().describe("Номер ВС"),
   orderNumber: z.string().optional().nullable().describe("Номер заказа"),
   flightNumber: z.string().optional().nullable().describe("Номер рейса"),

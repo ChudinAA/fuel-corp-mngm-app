@@ -35,6 +35,7 @@ import { ExchangeDealsStorage } from "../modules/exchange-deals/storage/exchange
 import { ExchangeAdvancesStorage } from "../modules/exchange-advances/storage/exchange-advances-storage";
 import { PlanningStorage } from "../modules/planning/storage/planning-storage";
 import { LogisticsPlanStorage } from "../modules/logistics-plan/storage/logistics-plan-storage";
+import { CatalogStorage } from "../modules/catalogs/storage/catalog-storage";
 
 export * from "./types";
 
@@ -76,6 +77,7 @@ export class Storage {
   public exchangeAdvances: ExchangeAdvancesStorage;
   public planning: PlanningStorage;
   public logisticsPlan: LogisticsPlanStorage;
+  public catalogs: CatalogStorage;
 
   constructor() {
     this.users = new UserStorage();
@@ -114,6 +116,7 @@ export class Storage {
     this.exchangeAdvances = new ExchangeAdvancesStorage();
     this.planning = new PlanningStorage();
     this.logisticsPlan = new LogisticsPlanStorage();
+    this.catalogs = new CatalogStorage();
   }
 }
 

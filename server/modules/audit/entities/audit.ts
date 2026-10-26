@@ -96,6 +96,10 @@ export const ENTITY_TYPES = {
   FREE_VOLUME_ALLOCATION: 'free_volume_allocations',
   LOGISTICS_TRANSPORT_UNIT: 'logistics_transport_units',
   LOGISTICS_PLAN_ROUTE: 'logistics_plan_routes',
+  CONTRACT: 'counterparty_contracts',
+  NOMENCLATURE: 'nomenclature',
+  NOMENCLATURE_TYPE: 'nomenclature_types',
+  UNIT_OF_MEASURE: 'units_of_measure',
 } as const;
 
 export type EntityType = typeof ENTITY_TYPES[keyof typeof ENTITY_TYPES];

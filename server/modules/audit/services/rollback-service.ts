@@ -534,6 +534,10 @@ export class RollbackService {
       railway_tariffs: (id, oldData, userId) => (storage as any).railway.restoreTariff(id, oldData),
       exchange_deals: (id, oldData, userId) => (storage as any).exchangeDeals.restoreDeal(id, oldData),
       exchange_advance_cards: (id, oldData, userId) => (storage as any).exchangeAdvances.updateCard(id, { ...oldData, deletedAt: null }, userId),
+      counterparty_contracts: (id, oldData, userId) => storage.catalogs.restoreContract(id, oldData, userId),
+      nomenclature: (id, oldData, userId) => storage.catalogs.restoreNomenclature(id, oldData, userId),
+      nomenclature_types: (id, oldData, userId) => storage.catalogs.restoreType(id, oldData, userId),
+      units_of_measure: (id, oldData, userId) => storage.catalogs.restoreUnit(id, oldData, userId),
     };
 
     const restorer = storageMap[entityType];

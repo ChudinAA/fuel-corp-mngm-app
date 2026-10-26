@@ -117,6 +117,7 @@ export const RefuelingForm = forwardRef<
     defaultValues: {
       refuelingDate: editData ? new Date(editData.refuelingDate) : new Date(),
       productType: editData?.productType || PRODUCT_TYPE.KEROSENE,
+      nomenclatureId: (editData as any)?.nomenclatureId || "",
       aircraftNumber: editData?.aircraftNumber || "",
       orderNumber: editData?.orderNumber || "",
       supplierId: "",
@@ -242,6 +243,7 @@ export const RefuelingForm = forwardRef<
   const watchDensity = form.watch("density");
   const watchKg = form.watch("quantityKg");
   const watchProductType = form.watch("productType");
+  const watchNomenclatureId = form.watch("nomenclatureId");
   const watchIsPriceRecharge = form.watch("isPriceRecharge");
   const watchIsPvkjRecharge = form.watch("isPvkjRecharge");
 
@@ -264,6 +266,7 @@ export const RefuelingForm = forwardRef<
       basisId: watchBasisId || undefined,
       customerBasisId: watchCustomerBasisId || undefined,
       productType: watchProductType,
+      nomenclatureId: watchNomenclatureId || undefined,
       baseType: BASE_TYPE.REFUELING,
       counterpartyType: COUNTERPARTY_TYPE.REFUELING,
       suppliers: suppliers ?? [],
@@ -454,6 +457,7 @@ export const RefuelingForm = forwardRef<
       const resetValues = {
         refuelingDate: new Date(editData.refuelingDate),
         productType: editData.productType,
+        nomenclatureId: (editData as any).nomenclatureId || "",
         aircraftNumber: editData.aircraftNumber || "",
         orderNumber: editData.orderNumber || "",
         flightNumber: editData.flightNumber || "",
@@ -956,6 +960,9 @@ export const RefuelingForm = forwardRef<
       setSalePriceZero: data.setSalePriceZero || false,
       purchasePrice: purchasePrice !== null ? purchasePrice : null,
       purchasePriceId: purchasePriceId || null,
+      contractNumber:
+        purchasePrices.find((price) => price.id === purchasePriceId)?.contractNumber ||
+        salePrices.find((price) => price.id === salePriceId)?.contractNumber || null,
       purchasePriceIndex: purchasePriceIndex !== undefined ? purchasePriceIndex : null,
       salePrice: salePrice !== null ? salePrice : null,
       salePriceId: salePriceId || null,

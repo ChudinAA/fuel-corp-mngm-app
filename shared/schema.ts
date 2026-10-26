@@ -40,3 +40,5 @@ export * from "server/modules/railway/entities/railway";
 export * from "server/modules/exchange-deals/entities/exchange-deals";
 export * from "server/modules/exchange-advances/entities/exchange-advances";
 export * from "server/modules/logistics-plan/entities/logistics-plan";
+export * from "server/modules/catalogs/entities/contracts";
+export * from "server/modules/catalogs/entities/nomenclature";

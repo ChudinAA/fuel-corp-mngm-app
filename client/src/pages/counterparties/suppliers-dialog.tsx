@@ -53,7 +53,6 @@ const supplierFormSchema = z.object({
   fullName: z.string().optional(),
   iata: z.string().optional(),
   inn: z.string().optional(),
-  supplyNomenclature: z.string().optional(),
   description: z.string().optional(),
   baseIds: z
     .array(z.string().min(1, "Выберите базис"))
@@ -127,7 +126,6 @@ export function AddSupplierDialog({
       fullName: "",
       iata: "",
       inn: "",
-      supplyNomenclature: "",
       description: "",
       baseIds: [""],
       warehouseLinkMode: "none",
@@ -226,7 +224,6 @@ export function AddSupplierDialog({
         fullName: data.fullName || null,
         iata: data.iata || null,
         inn: data.inn || null,
-        supplyNomenclature: data.supplyNomenclature || null,
         description: data.description,
         baseIds: filteredBaseIds.length > 0 ? filteredBaseIds : null,
         basisPrices: basisPricesArray,
@@ -267,7 +264,6 @@ export function AddSupplierDialog({
         fullName: "",
         iata: "",
         inn: "",
-        supplyNomenclature: "",
         description: "",
         baseIds: [""],
         warehouseLinkMode: "none",
@@ -310,7 +306,6 @@ export function AddSupplierDialog({
         fullName: editItem.fullName || "",
         iata: editItem.iata || "",
         inn: (editItem as any).inn || "",
-        supplyNomenclature: editItem.supplyNomenclature || "",
         description: editItem.description || "",
         baseIds: baseIdsArray,
         warehouseLinkMode: existingWarehouseId ? "existing" : "none",
@@ -361,7 +356,6 @@ export function AddSupplierDialog({
         fullName: "",
         iata: "",
         inn: "",
-        supplyNomenclature: "",
         description: "",
         baseIds: [""],
         warehouseLinkMode: "none",
@@ -489,24 +483,6 @@ export function AddSupplierDialog({
                       data-testid="input-supplier-inn"
                       {...field}
                       value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="supplyNomenclature"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Номенклатура поставки</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Номенклатура поставки"
-                      data-testid="input-supplier-nomenclature"
-                      {...field}
                     />
                   </FormControl>
                   <FormMessage />

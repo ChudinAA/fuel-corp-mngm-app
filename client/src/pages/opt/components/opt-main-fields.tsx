@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Combobox } from "@/components/ui/combobox";
 import {
   FormField,
@@ -55,6 +56,17 @@ export function OptMainFields({
   const { hasPermission } = useAuth();
   const [addCustomerOpen, setAddCustomerOpen] = useState(false);
   const [addSupplierOpen, setAddSupplierOpen] = useState(false);
+  const productType = form.watch("productType");
+  const nomenclatureId = form.watch("nomenclatureId");
+  const { data: nomenclatureList = [] } = useQuery<any[]>({ queryKey: ["/api/nomenclature"] });
+  const nomenclatureOptions = nomenclatureList.filter((item) => item.typeCode === productType);
+
+  useEffect(() => {
+    if (!nomenclatureOptions.some((item) => item.id === nomenclatureId)) {
+      const preferred = nomenclatureOptions.find((item) => item.isDefault);
+      form.setValue("nomenclatureId", preferred?.id || "", { shouldValidate: true });
+    }
+  }, [productType, nomenclatureList, nomenclatureId]);
 
   const handleCustomerCreated = (id: string) => {
     form.setValue("buyerId", id);
@@ -109,6 +121,20 @@ export function OptMainFields({
           )}
         />
       </div>
+      {["kerosene", "pvkj", "service"].includes(productType || "") && (
+        <FormField control={form.control} name="nomenclatureId" render={({ field }) => (
+          <FormItem className="max-w-xl">
+            <FormLabel>Номенклатура</FormLabel>
+            <Select value={field.value || ""} onValueChange={field.onChange}>
+              <FormControl><SelectTrigger><SelectValue placeholder="Выберите номенклатуру" /></SelectTrigger></FormControl>
+              <SelectContent>{nomenclatureOptions.map((item) => <SelectItem key={item.id} value={item.id}>
+                {item.name} ({item.unitShortName}){item.isDefault ? " · по умолчанию" : ""}
+              </SelectItem>)}</SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )} />
+      )}
       <div className="grid gap-2 md:grid-cols-4">
         <FormField
           control={form.control}

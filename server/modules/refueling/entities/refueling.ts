@@ -28,6 +28,7 @@ import {
   warehouseTransactions,
 } from "../../warehouses/entities/warehouses";
 import { prices } from "../../prices/entities/prices";
+import { nomenclature } from "../../catalogs/entities/nomenclature";
 
 export const aircraftRefueling = pgTable(
   "aircraft_refueling",
@@ -35,6 +36,7 @@ export const aircraftRefueling = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     refuelingDate: timestamp("refueling_date", { mode: "string" }).notNull(),
     productType: text("product_type").notNull(),
+    nomenclatureId: uuid("nomenclature_id").references(() => nomenclature.id),
     aircraftNumber: text("aircraft_number"),
     orderNumber: text("order_number"),
     flightNumber: text("flight_number"),
@@ -186,6 +188,7 @@ export const insertAircraftRefuelingSchema = createInsertSchema(
   .extend({
     refuelingDate: z.string().nullable().optional(),
     productType: z.string().nullable().optional(),
+    nomenclatureId: z.string().uuid().nullable().optional(),
     supplierId: z.string().nullable().optional(),
     buyerId: z.string().nullable().optional(),
     quantityLiters: z.number().nullable().optional(),
@@ -232,6 +235,13 @@ export const insertAircraftRefuelingSchema = createInsertSchema(
           code: z.ZodIssueCode.custom,
           message: "Тип продукта обязателен",
           path: ["productType"],
+        });
+      }
+      if (["kerosene", "pvkj", "service"].includes(data.productType || "") && !data.nomenclatureId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Номенклатура обязательна",
+          path: ["nomenclatureId"],
         });
       }
       if (!data.supplierId) {

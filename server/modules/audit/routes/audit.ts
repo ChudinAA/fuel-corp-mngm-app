@@ -159,6 +159,10 @@ const ENTITY_TYPE_TO_MODULE: Record<string, string> = {
   railway_stations: "directories",
   railway_tariffs: "directories",
   exchange_deals: "exchange-deals",
+  counterparty_contracts: "directories",
+  nomenclature: "directories",
+  nomenclature_types: "directories",
+  units_of_measure: "directories",
   exchange_advance_cards: "exchange-advances",
   storage_cards: "storage-cards",
 };
