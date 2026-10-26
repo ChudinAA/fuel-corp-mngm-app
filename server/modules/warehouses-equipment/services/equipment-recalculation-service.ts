@@ -8,6 +8,7 @@ import {
 } from "@shared/schema";
 import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { WarehouseRecalculationService } from "server/modules/warehouses/services/warehouse-recalculation-service";
+import { calculateStockMovement } from "server/modules/warehouses/services/stock-transaction-calculations";
 
 export class EquipmentRecalculationService {
   static async recalculateEquipmentFromDate(
@@ -104,29 +105,30 @@ export class EquipmentRecalculationService {
       let newSum: number;
       let newPrice: number;
 
+      let incomingCost = 0;
       if (isReceipt) {
-        newBalance = currentBalance + quantity;
-
-        const incomingCost = await this.getIncomingCostForEquipment(
+        incomingCost = await this.getIncomingCostForEquipment(
           tx,
           transaction.sourceType,
           transaction.sourceId,
           quantity,
           currentAverageCost,
         );
+      }
 
-        const totalCurrentCost = currentBalance * currentAverageCost;
-        newAverageCost =
-          newBalance > 0 ? (totalCurrentCost + incomingCost) / newBalance : 0;
+      {
+        const result = calculateStockMovement(
+          { balance: currentBalance, averageCost: currentAverageCost },
+          transaction,
+          incomingCost,
+        );
+        newBalance = result.balance;
+        newAverageCost = result.averageCost;
+        newSum = result.sum;
+        newPrice = result.price;
+      }
 
-        newSum = incomingCost;
-        newPrice = quantity > 0 ? incomingCost / quantity : 0;
-      } else {
-        newBalance = Math.max(0, currentBalance - quantity);
-        newAverageCost = currentAverageCost;
-        newSum = quantity * currentAverageCost;
-        newPrice = currentAverageCost;
-
+      if (!isReceipt) {
         if (
           transaction.sourceType ||
           transaction.transactionType === TRANSACTION_TYPE.SALE

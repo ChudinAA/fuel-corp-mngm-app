@@ -3,6 +3,7 @@ import { warehouses, warehouseTransactions } from "@shared/schema";
 import { PRODUCT_TYPE, TRANSACTION_TYPE } from "@shared/constants";
 import { RecalculationQueueService } from "./recalculation-queue-service";
 import { format } from "date-fns";
+import { restoreStockMovement } from "./stock-transaction-calculations";
 
 export class WarehouseTransactionService {
   private static async getLatestTransactionDate(
@@ -504,14 +505,11 @@ export class WarehouseTransactionService {
       currentCost = parseFloat(warehouse.averageCost || "0");
     }
 
-    const newBalance = Math.max(0, currentBalance + quantity);
-    let newAverageCost = currentCost;
-
-    if (transaction.averageCostBefore !== transaction.averageCostAfter) {
-      const totalCostBeforeRemoval = currentBalance * currentCost;
-      const newTotalCost = Math.max(0, totalCostBeforeRemoval + totalCost);
-      newAverageCost = newBalance > 0 ? newTotalCost / newBalance : 0;
-    }
+    const { balance: newBalance, averageCost: newAverageCost } =
+      restoreStockMovement(
+        { balance: currentBalance, averageCost: currentCost },
+        transaction,
+      );
 
     if (isPvkj) {
       await tx

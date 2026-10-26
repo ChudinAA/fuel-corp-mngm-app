@@ -3,6 +3,7 @@ import { equipments, equipmentTransactions } from "../entities/equipment";
 import { TRANSACTION_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import { EquipmentRecalculationQueueService } from "./equipment-recalculation-queue-service";
 import { format } from "date-fns";
+import { restoreStockMovement } from "server/modules/warehouses/services/stock-transaction-calculations";
 
 export class EquipmentTransactionService {
   private static async getLatestTransactionDate(
@@ -454,11 +455,6 @@ export class EquipmentTransactionService {
     if (!equipment) throw new Error("Оборудование не найдено");
 
     const isPvkj = transaction.productType === PRODUCT_TYPE.PVKJ;
-    const quantity = parseFloat(transaction.quantity);
-    const isReceipt =
-      transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
-      transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN;
-
     const currentBalance = parseFloat(
       (isPvkj ? equipment.pvkjBalance : equipment.currentBalance) || "0",
     );
@@ -466,15 +462,13 @@ export class EquipmentTransactionService {
       (isPvkj ? equipment.pvkjAverageCost : equipment.averageCost) || "0",
     );
 
-    const newBalance = Math.max(0, currentBalance + quantity);
-    let newAvgCost = currentCost;
-
-    if (isReceipt && transaction.averageCostBefore !== transaction.averageCostAfter) {
-      const totalCostBefore = currentBalance * currentCost;
-      const txSum = parseFloat(transaction.sum || "0");
-      const newTotalCost = Math.max(0, totalCostBefore + txSum);
-      newAvgCost = newBalance > 0 ? newTotalCost / newBalance : 0;
-    }
+    const { balance: newBalance, averageCost: newAvgCost } =
+      restoreStockMovement(
+        { balance: currentBalance, averageCost: currentCost },
+        transaction,
+        transaction.transactionType === TRANSACTION_TYPE.RECEIPT ||
+          transaction.transactionType === TRANSACTION_TYPE.TRANSFER_IN,
+      );
 
     const updateData: any = {
       updatedAt: sql`NOW()`,

@@ -10,6 +10,7 @@ import {
 } from "@shared/schema";
 import { PRODUCT_TYPE, TRANSACTION_TYPE, SOURCE_TYPE } from "@shared/constants";
 import { EquipmentRecalculationService } from "server/modules/warehouses-equipment/services/equipment-recalculation-service";
+import { calculateStockMovement } from "./stock-transaction-calculations";
 
 export class WarehouseRecalculationService {
   static async recalculateAllAffectedTransactions(
@@ -197,52 +198,28 @@ export class WarehouseRecalculationService {
             updatedById,
           })
           .where(eq(warehouseTransactions.id, transaction.id));
-      } else if (isReceipt) {
-        newBalance = currentBalance + quantity;
-
-        const incomingCost = await this.getTransactionIncomingCost(
-          tx,
-          transaction.sourceType,
-          transaction.sourceId,
-          quantity,
-          currentAverageCost,
-        );
-
-        console.log("      Incoming cost:", incomingCost);
-
-        const totalCurrentCost = currentBalance * currentAverageCost;
-        newAverageCost =
-          newBalance > 0 ? (totalCurrentCost + incomingCost) / newBalance : 0;
-
-        newSum = incomingCost;
-        newPrice = quantity > 0 ? incomingCost / quantity : 0;
-
-        console.log("      После пересчета:", {
-          balance: newBalance,
-          averageCost: newAverageCost,
-          sum: newSum,
-          price: newPrice,
-        });
-
-        await tx
-          .update(warehouseTransactions)
-          .set({
-            balanceBefore: currentBalance.toString(),
-            balanceAfter: newBalance.toString(),
-            averageCostBefore: currentAverageCost.toFixed(6),
-            averageCostAfter: newAverageCost.toFixed(6),
-            sum: newSum.toFixed(2),
-            price: newPrice.toFixed(4),
-            updatedAt: sql`NOW()`,
-            updatedById,
-          })
-          .where(eq(warehouseTransactions.id, transaction.id));
       } else {
-        newBalance = Math.max(0, currentBalance - quantity);
-        newAverageCost = currentAverageCost;
+        let incomingCost = 0;
+        if (isReceipt) {
+          incomingCost = await this.getTransactionIncomingCost(
+            tx,
+            transaction.sourceType,
+            transaction.sourceId,
+            quantity,
+            currentAverageCost,
+          );
+          console.log("      Incoming cost:", incomingCost);
+        }
 
-        newSum = quantity * currentAverageCost;
-        newPrice = currentAverageCost;
+        const result = calculateStockMovement(
+          { balance: currentBalance, averageCost: currentAverageCost },
+          transaction,
+          incomingCost,
+        );
+        newBalance = result.balance;
+        newAverageCost = result.averageCost;
+        newSum = result.sum;
+        newPrice = result.price;
 
         console.log("      После пересчета:", {
           balance: newBalance,

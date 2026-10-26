@@ -8,6 +8,7 @@
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
+    "test:restore-stock": "DATABASE_URL=\"${DATABASE_URL:-$NEON_DATABASE_URL}\" tsx --test tests/stock-restore-calculations.test.ts tests/refueling-restore-recalculation.test.ts",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
