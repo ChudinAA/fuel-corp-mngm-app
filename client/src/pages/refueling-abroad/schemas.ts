@@ -15,6 +15,7 @@ export const refuelingAbroadFormSchema = z
   .object({
     refuelingDate: z.date().optional().nullable().describe("Дата заправки"),
     productType: z.string().optional().nullable().describe("Тип топлива"),
+    nomenclatureId: z.string().optional().nullable().describe("Номенклатура"),
     aircraftNumber: z.string().optional().nullable().describe("Номер ВС"),
     flightNumber: z.string().optional().nullable().describe("Номер рейса"),
     airportCode: z.string().optional().nullable().describe("Код аэропорта"),

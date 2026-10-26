@@ -92,6 +92,7 @@ export function registerPricesRoutes(app: Express) {
         excludeId,
         basisId,
         loadingBasisId,
+        nomenclatureId,
       } = req.query;
       const result = await storage.prices.checkPriceDateOverlaps(
         String(counterpartyId),
@@ -104,6 +105,7 @@ export function registerPricesRoutes(app: Express) {
         excludeId ? String(excludeId) : undefined,
         basisId ? String(basisId) : undefined,
         loadingBasisId ? String(loadingBasisId) : undefined,
+        nomenclatureId ? String(nomenclatureId) : undefined,
       );
       res.json(result);
     },
@@ -241,6 +243,12 @@ export function registerPricesRoutes(app: Express) {
         if (requiresNomenclature && !body.nomenclatureId) {
           return res.status(400).json({ message: "Выберите номенклатуру" });
         }
+        if (requiresNomenclature) {
+          const available = await storage.catalogs.getNomenclature(String(body.productType));
+          if (!available.some((item) => item.id === body.nomenclatureId)) {
+            return res.status(400).json({ message: "Номенклатура не соответствует выбранному типу продукта" });
+          }
+        }
         const selectedContract = await storage.catalogs.getContract(String(body.contractId));
         if (!selectedContract) {
           return res.status(400).json({ message: "Выбранный договор не найден или удалён" });
@@ -275,6 +283,7 @@ export function registerPricesRoutes(app: Express) {
           undefined,
           body.basisId ? String(body.basisId) : undefined,
           body.loadingBasisId ? String(body.loadingBasisId) : undefined,
+          body.nomenclatureId ? String(body.nomenclatureId) : undefined,
         );
 
         if (overlapResult.status === "error") {
@@ -340,6 +349,7 @@ export function registerPricesRoutes(app: Express) {
               String(id),
               String(body.basisId || currentPrice.basisId),
               body.loadingBasisId ? String(body.loadingBasisId) : (currentPrice.loadingBasisId ? String(currentPrice.loadingBasisId) : undefined),
+              body.nomenclatureId || currentPrice.nomenclatureId || undefined,
             );
 
             if (overlapResult.status === "error") {

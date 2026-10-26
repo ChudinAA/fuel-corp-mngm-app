@@ -78,6 +78,7 @@ const ENTITY_SPECIFIC_SHOW: Record<string, Set<string>> = {
   prices: new Set(["priceValues", "counterpartyId", "contractId", "nomenclatureId"]),
   counterparty_contracts: new Set(["supplierId", "buyerId", "carrierId", "parentContractId"]),
   nomenclature: new Set(["nomenclatureTypeId", "unitId"]),
+  units_of_measure: new Set(["referenceNomenclatureId"]),
   // Зарубеж: посредники, банки и курсы в цепочке — показываем (сервер форматирует как строку)
   aircraft_refueling_abroad: new Set(["intermediaries", "bankCommissions", "chainExchangeRates"]),
   // Перевозки: базис погрузки

@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 
 interface OptMainFieldsProps {
+  preserveLegacySelection?: boolean;
   form: UseFormReturn<OptFormData>;
   wholesaleSuppliers: Supplier[];
   customers: Customer[] | undefined;
@@ -42,6 +43,7 @@ interface OptMainFieldsProps {
 }
 
 export function OptMainFields({
+  preserveLegacySelection = false,
   form,
   wholesaleSuppliers,
   customers,
@@ -62,6 +64,7 @@ export function OptMainFields({
   const nomenclatureOptions = nomenclatureList.filter((item) => item.typeCode === productType);
 
   useEffect(() => {
+    if (preserveLegacySelection && !nomenclatureId) return;
     if (!nomenclatureOptions.some((item) => item.id === nomenclatureId)) {
       const preferred = nomenclatureOptions.find((item) => item.isDefault);
       form.setValue("nomenclatureId", preferred?.id || "", { shouldValidate: true });

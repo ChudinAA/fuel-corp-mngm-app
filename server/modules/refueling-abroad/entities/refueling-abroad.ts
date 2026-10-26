@@ -15,6 +15,7 @@ import { users } from "../../users/entities/users";
 import { suppliers } from "../../suppliers/entities/suppliers";
 import { customers } from "../../customers/entities/customers";
 import { prices } from "../../prices/entities/prices";
+import { nomenclature } from "../../catalogs/entities/nomenclature";
 import {
   storageCards,
   storageCardTransactions,
@@ -29,6 +30,7 @@ export const refuelingAbroad = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     refuelingDate: timestamp("refueling_date", { mode: "string" }),
     productType: text("product_type"),
+    nomenclatureId: uuid("nomenclature_id").references(() => nomenclature.id),
     aircraftNumber: text("aircraft_number"),
     orderNumber: text("order_number"),
     flightNumber: text("flight_number"),
@@ -214,6 +216,7 @@ export const insertRefuelingAbroadSchema = createInsertSchema(refuelingAbroad)
   .extend({
     refuelingDate: z.string().nullable().optional(),
     productType: z.string().nullable().optional(),
+    nomenclatureId: z.string().uuid().nullable().optional(),
     supplierId: z.string().nullable().optional(),
     buyerId: z.string().nullable().optional(),
     basisId: z.string().nullable().optional(),

@@ -398,7 +398,6 @@ export const TransportationForm = forwardRef<
       deliveryCost: deliveryCost !== null ? deliveryCost : null,
       deliveryTariff: deliveryTariff !== null ? deliveryTariff : null,
       profit: profit !== null ? profit : null,
-      contractNumber: salePrices.find((price) => price.id === salePriceId)?.contractNumber || null,
       notes: data.notes || null,
       isDraft,
     };
@@ -489,7 +488,7 @@ export const TransportationForm = forwardRef<
       .map((pv: any, idx: number) => {
         const parsed = typeof pv === "string" ? JSON.parse(pv) : pv;
         const val = parseFloat(parsed?.price || "0");
-        return { value: `${p.id}-${idx}`, label: `${formatPrice(val)} ₽/кг` };
+        return { value: `${p.id}-${idx}`, label: `${formatPrice(val)} ₽/кг${p.contractNumber ? ` · Договор ${p.contractNumber}` : ""}` };
       })
       .flat();
   };
@@ -511,7 +510,7 @@ export const TransportationForm = forwardRef<
           )}
             className="space-y-6"
         >
-            <NomenclatureField form={form} productType={watchProductType} />
+            <NomenclatureField form={form} productType={watchProductType} preserveLegacySelection={isEditing && !editData?.nomenclatureId} />
           {/* Main fields */}
           <Card>
             <CardHeader className="pb-4">

@@ -170,9 +170,6 @@ export const insertTransportationSchema = z
           path: ["productType"],
         });
       }
-      if (["kerosene", "pvkj", "service"].includes(data.productType || "") && !data.nomenclatureId) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Номенклатура обязательна", path: ["nomenclatureId"] });
-      }
       if (!data.dealDate) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

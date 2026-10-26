@@ -418,6 +418,7 @@ export function OptPricingSection({
           basisId: watchBasisId || undefined,
           basis: watchBasis || "",
           productType: (watchProductType as any) || PRODUCT_TYPE.KEROSENE,
+          nomenclatureId: form.getValues("nomenclatureId") || undefined,
         }}
       />
 
@@ -433,6 +434,7 @@ export function OptPricingSection({
           basisId: watchCustomerBasisId || undefined,
           basis: watchCustomerBasis || "",
           productType: (watchProductType as any) || PRODUCT_TYPE.KEROSENE,
+          nomenclatureId: form.getValues("nomenclatureId") || undefined,
         }}
       />
     </>

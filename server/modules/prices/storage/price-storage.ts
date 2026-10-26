@@ -46,6 +46,8 @@ export class PriceStorage {
     }
     if (filters.nomenclatureId) {
       conditions.push(eq(prices.nomenclatureId, filters.nomenclatureId));
+    } else {
+      conditions.push(isNull(prices.nomenclatureId));
     }
     if (filters.priceUnit) {
       conditions.push(eq(prices.priceUnit, filters.priceUnit));
@@ -333,6 +335,7 @@ export class PriceStorage {
     excludeId?: string,
     basisId?: string,
     loadingBasisId?: string,
+    nomenclatureId?: string,
   ): Promise<{
     status: string;
     message: string;
@@ -360,6 +363,11 @@ export class PriceStorage {
 
     if (excludeId) {
       conditions.push(sql`${prices.id} != ${excludeId}`);
+    }
+    if (nomenclatureId) {
+      conditions.push(eq(prices.nomenclatureId, nomenclatureId));
+    } else {
+      conditions.push(isNull(prices.nomenclatureId));
     }
 
     const overlappingPrices = await db

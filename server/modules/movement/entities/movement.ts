@@ -181,9 +181,6 @@ export const insertMovementSchema = z
           path: ["productType"],
         });
       }
-      if (["kerosene", "pvkj", "service"].includes(data.productType || "") && !data.nomenclatureId) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Номенклатура обязательна", path: ["nomenclatureId"] });
-      }
       if (!data.movementDate) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

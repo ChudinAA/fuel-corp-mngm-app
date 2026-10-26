@@ -155,6 +155,7 @@ export function MovementDialog({
         purchasePriceIndex: editMovement.purchasePriceIndex || 0,
         carrierId: editMovement.carrierId || "",
         notes: editMovement.notes || "",
+        isDraft: editMovement.isDraft || false,
       };
 
       initialValuesRef.current = resetValues;
@@ -299,10 +300,10 @@ export function MovementDialog({
   }, [sameBasis]);
 
   const { validateForm } = useMovementValidation({
-    watchMovementType,
-    watchProductType,
-    watchFromWarehouseId,
-    watchCarrierId,
+    watchMovementType: watchMovementType || MOVEMENT_TYPE.SUPPLY,
+    watchProductType: watchProductType || PRODUCT_TYPE.KEROSENE,
+    watchFromWarehouseId: watchFromWarehouseId || "",
+    watchCarrierId: watchCarrierId || "",
     calculatedKg,
     kgNum,
     purchasePrice,
@@ -478,7 +479,7 @@ export function MovementDialog({
               )}
               className="space-y-6"
             >
-              <NomenclatureField form={form} productType={watchProductType || PRODUCT_TYPE.KEROSENE} />
+              <NomenclatureField form={form} productType={watchProductType || PRODUCT_TYPE.KEROSENE} preserveLegacySelection={isEditing && !editMovement?.nomenclatureId} />
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 items-end">
                 <MovementFormHeader form={form} />
                 <MovementSourceSection

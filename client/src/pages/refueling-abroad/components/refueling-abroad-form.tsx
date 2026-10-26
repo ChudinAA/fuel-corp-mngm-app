@@ -19,6 +19,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { NomenclatureField } from "@/pages/shared/components/nomenclature-field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
@@ -208,6 +209,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
           ? new Date(editData.refuelingDate)
           : new Date(),
         productType: editData.productType || PRODUCT_TYPE.KEROSENE,
+        nomenclatureId: editData.nomenclatureId || "",
         aircraftNumber: editData.aircraftNumber || "",
         flightNumber: editData.flightNumber || "",
         rtNumber: editData.rtNumber || "",
@@ -336,6 +338,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         ? new Date(editData.refuelingDate)
         : new Date(),
       productType: editData?.productType || PRODUCT_TYPE.KEROSENE,
+      nomenclatureId: editData?.nomenclatureId || "",
       aircraftNumber: editData?.aircraftNumber || "",
       flightNumber: editData?.flightNumber || "",
       rtNumber: editData?.rtNumber || "",
@@ -517,6 +520,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
       basisId: watchedValues.basisId,
       customerBasisId: watchedValues.basisId,
       productType: watchedValues.productType ?? PRODUCT_TYPE.KEROSENE,
+      nomenclatureId: watchedValues.nomenclatureId || undefined,
       baseType: BASE_TYPE.ABROAD,
       counterpartyType: COUNTERPARTY_TYPE.REFUELING_ABROAD,
       suppliers: foreignSuppliers,
@@ -621,6 +625,10 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
           ? format(data.refuelingDate, "yyyy-MM-dd'T'HH:mm:ss")
           : null,
         productType: data.productType || null,
+        nomenclatureId: data.nomenclatureId || null,
+        contractNumber:
+          purchasePrices.find((price) => price.id === purchasePriceId)?.contractNumber ||
+          salePrices.find((price) => price.id === salePriceId)?.contractNumber || null,
         aircraftNumber: data.aircraftNumber || null,
         flightNumber: data.flightNumber || null,
         rtNumber: data.rtNumber || null,
@@ -815,6 +823,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         onSubmit={(e) => e.preventDefault()}
         className="space-y-4"
       >
+        <NomenclatureField form={form} productType={watchedValues.productType || PRODUCT_TYPE.KEROSENE} preserveLegacySelection={!!editData?.id && !editData?.nomenclatureId} />
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -1273,7 +1282,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                                         key={`${price.id}-${idx}`}
                                         value={`${price.id}-${idx}`}
                                       >
-                                        {formatPrice(priceVal)} ${watchedValues.inputMode === "liters" ? "/л" : "/кг"}
+                                        {formatPrice(priceVal)} ${watchedValues.inputMode === "liters" ? "/л" : "/кг"}{price.contractNumber ? ` · Договор ${price.contractNumber}` : ""}
                                       </SelectItem>
                                     );
                                   } catch {
@@ -1373,7 +1382,7 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
                                         key={`${price.id}-${idx}`}
                                         value={`${price.id}-${idx}`}
                                       >
-                                        {formatPrice(priceVal)} ${watchedValues.inputMode === "liters" ? "/л" : "/кг"}
+                                        {formatPrice(priceVal)} ${watchedValues.inputMode === "liters" ? "/л" : "/кг"}{price.contractNumber ? ` · Договор ${price.contractNumber}` : ""}
                                       </SelectItem>
                                     );
                                   } catch {

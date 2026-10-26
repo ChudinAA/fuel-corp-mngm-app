@@ -148,8 +148,6 @@ export function AddPriceDialog({
         productType: PRODUCT_TYPE.KEROSENE,
         nomenclatureId: "",
         contractId: "",
-        nomenclatureId: "",
-        contractId: "",
         basis: "",
         basisId: undefined,
         loadingBasisId: undefined,
@@ -218,6 +216,7 @@ export function AddPriceDialog({
   const watchBasisId = form.watch("basisId");
   const watchLoadingBasisId = form.watch("loadingBasisId");
   const watchProductType = form.watch("productType");
+  const watchNomenclatureId = form.watch("nomenclatureId");
 
   // Сбрасывать проверку дат при изменении критических полей
   useEffect(() => {
@@ -229,6 +228,7 @@ export function AddPriceDialog({
     watchBasis,
     watchLoadingBasisId,
     watchProductType,
+    watchNomenclatureId,
     watchDateFrom,
     watchDateTo,
   ]);
@@ -401,6 +401,7 @@ export function AddPriceDialog({
       basisId: watchBasisId,
       loadingBasisId: watchLoadingBasisId,
       productType: watchProductType,
+      nomenclatureId: watchNomenclatureId,
       dateFrom: watchDateFrom,
       dateTo: watchDateTo,
       excludeId: editPrice?.id,
@@ -709,6 +710,7 @@ export function AddPriceDialog({
                 className="space-y-4"
               >
                 <PriceFormFields
+                  preserveLegacySelection={!!editPrice && !editPrice.nomenclatureId}
                   control={form.control}
                   setValue={form.setValue}
                   contractors={contractors}
@@ -866,6 +868,7 @@ export function AddPriceDialog({
             className="space-y-4"
           >
             <PriceFormFields
+              preserveLegacySelection={!!editPrice && !editPrice.nomenclatureId}
               control={form.control}
               setValue={form.setValue}
               contractors={contractors}

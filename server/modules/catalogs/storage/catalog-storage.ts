@@ -186,11 +186,22 @@ export class CatalogStorage {
     return row;
   }
   async updateType(id: string, data: any) {
+    const current = await this.getNomenclatureType(id);
+    if (current && ["kerosene", "pvkj", "service"].includes(current.code) && data.code && data.code !== current.code) {
+      throw new Error("Код системного вида номенклатуры менять нельзя");
+    }
     const [row] = await db.update(nomenclatureTypes).set({ ...data, updatedAt: new Date().toISOString() })
       .where(and(eq(nomenclatureTypes.id, id), isNull(nomenclatureTypes.deletedAt))).returning();
     return row;
   }
   async deleteType(id: string, userId: string) {
+    const current = await this.getNomenclatureType(id);
+    if (current && ["kerosene", "pvkj", "service"].includes(current.code)) {
+      throw new Error("Системный вид номенклатуры используется для выбора продукта и не может быть удалён");
+    }
+    const [used] = await db.select({ id: nomenclature.id }).from(nomenclature)
+      .where(and(eq(nomenclature.nomenclatureTypeId, id), isNull(nomenclature.deletedAt))).limit(1);
+    if (used) throw new Error("Сначала удалите или перенесите номенклатуру этого вида");
     const [row] = await db.update(nomenclatureTypes).set({ deletedAt: new Date().toISOString(), deletedById: userId })
       .where(and(eq(nomenclatureTypes.id, id), isNull(nomenclatureTypes.deletedAt))).returning();
     return row;
@@ -211,6 +222,9 @@ export class CatalogStorage {
     return row;
   }
   async deleteUnit(id: string, userId: string) {
+    const [used] = await db.select({ id: nomenclature.id }).from(nomenclature)
+      .where(and(eq(nomenclature.unitId, id), isNull(nomenclature.deletedAt))).limit(1);
+    if (used) throw new Error("Единица измерения используется в номенклатуре");
     const [row] = await db.update(unitsOfMeasure).set({ deletedAt: new Date().toISOString(), deletedById: userId })
       .where(and(eq(unitsOfMeasure.id, id), isNull(unitsOfMeasure.deletedAt))).returning();
     return row;

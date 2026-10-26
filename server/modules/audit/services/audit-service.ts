@@ -87,6 +87,12 @@ export class AuditService {
           return row?.name || null;
         } catch { return null; }
       },
+      referenceNomenclatureId: async (id) => {
+        try {
+          const [row] = await db.select({ name: nomenclature.name }).from(nomenclature).where(eq(nomenclature.id, id)).limit(1);
+          return row?.name || null;
+        } catch { return null; }
+      },
       nomenclatureTypeId: async (id) => {
         try {
           const [row] = await db.select({ name: nomenclatureTypes.name }).from(nomenclatureTypes).where(eq(nomenclatureTypes.id, id)).limit(1);

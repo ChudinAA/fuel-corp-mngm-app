@@ -267,6 +267,7 @@ export const FIELD_LABELS: Record<string, Record<string, string>> = {
     shortName: "Наименование краткое",
     fullName: "Наименование полное",
     conversionFactor: "Кратность",
+    referenceNomenclatureId: "Кратность к номенклатуре",
   },
 
   // ── ПОСТАВЩИКИ ────────────────────────────────────────────────────────────────

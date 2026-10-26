@@ -626,6 +626,7 @@ export function RefuelingPricingSection({
           basisId: watchBasisId || undefined,
           basis: watchBasis || "",
           productType: (productType as any) || PRODUCT_TYPE.KEROSENE,
+          nomenclatureId: form.getValues("nomenclatureId") || undefined,
         }}
       />
 
@@ -641,6 +642,7 @@ export function RefuelingPricingSection({
           basisId: watchBasisId || undefined,
           basis: watchBasis || "",
           productType: (productType as any) || PRODUCT_TYPE.KEROSENE,
+          nomenclatureId: form.getValues("nomenclatureId") || undefined,
         }}
       />
     </>

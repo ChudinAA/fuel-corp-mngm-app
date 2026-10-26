@@ -1,4 +1,5 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { X, Plus } from "lucide-react";
 import type { Supplier, Base, Warehouse, Price } from "@shared/schema";
@@ -36,6 +37,7 @@ const OTHER_SERVICE_TYPE_LABELS: Record<string, string> = {
 
 export interface AdditionalProductPayload {
   productType: string;
+  nomenclatureId: string | null;
   isPriceRecharge: boolean;
   isPvkjRecharge: boolean;
   setSalePriceZero: boolean;
@@ -134,6 +136,14 @@ export const AdditionalProductSection = forwardRef<
 
     const [addPurchasePriceOpen, setAddPurchasePriceOpen] = useState(false);
     const [addSalePriceOpen, setAddSalePriceOpen] = useState(false);
+    const [nomenclatureId, setNomenclatureId] = useState("");
+    const { data: nomenclatureList = [] } = useQuery<any[]>({ queryKey: ["/api/nomenclature"] });
+    const nomenclatureOptions = nomenclatureList.filter((item) => item.typeCode === productType);
+    useEffect(() => {
+      if (!nomenclatureOptions.some((item) => item.id === nomenclatureId)) {
+        setNomenclatureId(nomenclatureOptions.find((item) => item.isDefault)?.id || "");
+      }
+    }, [productType, nomenclatureList, nomenclatureId]);
 
     // Get prices filtered for this product type
     const { purchasePrices, salePrices } = useRefuelingFilters({
@@ -143,6 +153,7 @@ export const AdditionalProductSection = forwardRef<
       basisId: basisId || undefined,
       customerBasisId: customerBasisId || undefined,
       productType,
+      nomenclatureId: nomenclatureId || undefined,
       baseType: BASE_TYPE.REFUELING,
       counterpartyType: COUNTERPARTY_TYPE.REFUELING,
       suppliers,
@@ -278,6 +289,7 @@ export const AdditionalProductSection = forwardRef<
           );
         return {
           productType,
+          nomenclatureId: nomenclatureId || null,
           isPriceRecharge,
           isPvkjRecharge,
           setSalePriceZero,
@@ -305,6 +317,7 @@ export const AdditionalProductSection = forwardRef<
       },
       validate: (isDraft: boolean): string | null => {
         if (isDraft) return null;
+        if (!nomenclatureId) return `Продукт "${productLabel}": выберите номенклатуру.`;
         const qty = calculatedKg ? parseFloat(calculatedKg) : 0;
         if (qty <= 0) {
           return `Продукт "${productLabel}": укажите объём топлива.`;
@@ -354,6 +367,15 @@ export const AdditionalProductSection = forwardRef<
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Номенклатура</label>
+            <Select value={nomenclatureId} onValueChange={setNomenclatureId}>
+              <SelectTrigger><SelectValue placeholder="Выберите номенклатуру" /></SelectTrigger>
+              <SelectContent>{nomenclatureOptions.map((item) => <SelectItem key={item.id} value={item.id}>
+                {item.name} ({item.unitShortName})
+              </SelectItem>)}</SelectContent>
+            </Select>
+          </div>
           {/* PVKJ recharge banner */}
           {productType === PRODUCT_TYPE.PVKJ && (
             <div className="mb-2 flex items-center gap-4 rounded-md border p-3 bg-accent/5">
@@ -460,7 +482,7 @@ export const AdditionalProductSection = forwardRef<
                                 key={`${price.id}-${idx}`}
                                 value={`${price.id}-${idx}`}
                               >
-                                {formatPrice(parsed.price || "0")} ₽/кг
+                                {formatPrice(parsed.price || "0")} ₽/кг{price.contractNumber ? ` · Договор ${price.contractNumber}` : ""}
                               </SelectItem>
                             );
                           } catch {
@@ -564,7 +586,7 @@ export const AdditionalProductSection = forwardRef<
                                 key={`${price.id}-${idx}`}
                                 value={`${price.id}-${idx}`}
                               >
-                                {formatPrice(parsed.price || "0")} ₽/кг
+                                {formatPrice(parsed.price || "0")} ₽/кг{price.contractNumber ? ` · Договор ${price.contractNumber}` : ""}
                               </SelectItem>
                             );
                           } catch {
@@ -743,6 +765,7 @@ export const AdditionalProductSection = forwardRef<
             basisId: basisId || undefined,
             basis: selectedBasis || "",
             productType: productType as any,
+            nomenclatureId,
           }}
         />
         <AddPriceDialog
@@ -757,6 +780,7 @@ export const AdditionalProductSection = forwardRef<
             basisId: basisId || undefined,
             basis: selectedBasis || "",
             productType: productType as any,
+            nomenclatureId,
           }}
         />
       </Card>

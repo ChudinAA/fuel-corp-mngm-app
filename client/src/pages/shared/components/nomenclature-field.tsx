@@ -7,20 +7,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export function NomenclatureField({
   form,
   productType,
+  preserveLegacySelection = false,
 }: {
   form: UseFormReturn<any>;
   productType: string;
+  preserveLegacySelection?: boolean;
 }) {
   const { data: items = [] } = useQuery<any[]>({ queryKey: ["/api/nomenclature"] });
   const options = items.filter((item) => item.typeCode === productType);
   const value = form.watch("nomenclatureId");
 
   useEffect(() => {
+    if (preserveLegacySelection && !value) return;
     if (!options.some((item) => item.id === value)) {
       const preferred = options.find((item) => item.isDefault);
       form.setValue("nomenclatureId", preferred?.id || "", { shouldValidate: true });
     }
-  }, [productType, items, value]);
+  }, [productType, items, value, preserveLegacySelection]);
 
   if (!["kerosene", "pvkj", "service"].includes(productType)) return null;
   return (

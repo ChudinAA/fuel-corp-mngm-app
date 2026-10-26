@@ -730,6 +730,7 @@ export const RefuelingForm = forwardRef<
 
   // Helper: builds the common (shared) payload fields from form data
   const buildCommonPayload = (data: RefuelingFormData, isDraft: boolean) => ({
+    nomenclatureId: data.nomenclatureId || null,
     supplierId: data.supplierId || null,
     buyerId: data.buyerId || null,
     isDraft,
@@ -1022,6 +1023,7 @@ export const RefuelingForm = forwardRef<
           className="space-y-6"
         >
           <RefuelingMainFields
+            preserveLegacySelection={isEditing && !editData?.nomenclatureId}
             form={form}
             refuelingSuppliers={refuelingSuppliers}
             customers={customers}

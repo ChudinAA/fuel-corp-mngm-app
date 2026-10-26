@@ -41,6 +41,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 
 interface PriceFormFieldsProps {
+  preserveLegacySelection?: boolean;
   control: Control<PriceFormData>;
   setValue: UseFormSetValue<PriceFormData>;
   contractors: Array<Supplier | Customer>;
@@ -52,6 +53,7 @@ interface PriceFormFieldsProps {
 }
 
 export function PriceFormFields({
+  preserveLegacySelection = false,
   control,
   setValue,
   contractors,
@@ -82,6 +84,7 @@ export function PriceFormFields({
   const selectedNomenclatureId = useWatch({ control, name: "nomenclatureId" });
 
   useEffect(() => {
+    if (preserveLegacySelection && !selectedNomenclatureId) return;
     if (!nomenclatureForProduct.some((item) => item.id === selectedNomenclatureId)) {
       const preferred = nomenclatureForProduct.find((item) => item.isDefault);
       setValue("nomenclatureId", preferred?.id || "", { shouldValidate: true });

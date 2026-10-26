@@ -10,6 +10,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { users } from "../../users/entities/users";
 
@@ -42,6 +43,7 @@ export const unitsOfMeasure = pgTable(
     shortName: text("short_name").notNull(),
     fullName: text("full_name").notNull(),
     conversionFactor: decimal("conversion_factor", { precision: 18, scale: 6 }),
+    referenceNomenclatureId: uuid("reference_nomenclature_id").references((): AnyPgColumn => nomenclature.id),
     ...auditColumns(),
   },
   (table) => ({
@@ -75,8 +77,13 @@ export const nomenclatureTypesRelations = relations(nomenclatureTypes, ({ many }
   items: many(nomenclature),
 }));
 
-export const unitsOfMeasureRelations = relations(unitsOfMeasure, ({ many }) => ({
+export const unitsOfMeasureRelations = relations(unitsOfMeasure, ({ one, many }) => ({
   items: many(nomenclature),
+  referenceNomenclature: one(nomenclature, {
+    fields: [unitsOfMeasure.referenceNomenclatureId],
+    references: [nomenclature.id],
+    relationName: "unitReferenceNomenclature",
+  }),
 }));
 
 export const nomenclatureRelations = relations(nomenclature, ({ one }) => ({
@@ -109,7 +116,8 @@ export const insertUnitOfMeasureSchema = createInsertSchema(unitsOfMeasure)
   .extend({
     shortName: z.string().min(1),
     fullName: z.string().min(1),
-    conversionFactor: z.string().nullable().optional(),
+    conversionFactor: z.string().refine((value) => Number.isFinite(Number(value)) && Number(value) > 0, "Кратность должна быть положительным числом").nullable().optional(),
+    referenceNomenclatureId: z.string().uuid().nullable().optional(),
   });
 
 export const insertNomenclatureSchema = createInsertSchema(nomenclature)

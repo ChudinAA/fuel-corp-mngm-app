@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS nomenclature (
   deleted_by_id uuid REFERENCES users(id)
 );
 CREATE INDEX IF NOT EXISTS nomenclature_type_idx ON nomenclature(nomenclature_type_id);
+ALTER TABLE units_of_measure ADD COLUMN IF NOT EXISTS reference_nomenclature_id uuid REFERENCES nomenclature(id);
 CREATE INDEX IF NOT EXISTS nomenclature_unit_idx ON nomenclature(unit_id);
 CREATE UNIQUE INDEX IF NOT EXISTS nomenclature_one_default_per_type_idx
   ON nomenclature(nomenclature_type_id)
@@ -82,6 +83,7 @@ ALTER TABLE opt ADD COLUMN IF NOT EXISTS nomenclature_id uuid REFERENCES nomencl
 ALTER TABLE aircraft_refueling ADD COLUMN IF NOT EXISTS nomenclature_id uuid REFERENCES nomenclature(id);
 ALTER TABLE movement ADD COLUMN IF NOT EXISTS nomenclature_id uuid REFERENCES nomenclature(id);
 ALTER TABLE transportation ADD COLUMN IF NOT EXISTS nomenclature_id uuid REFERENCES nomenclature(id);
+ALTER TABLE refueling_abroad ADD COLUMN IF NOT EXISTS nomenclature_id uuid REFERENCES nomenclature(id);
 CREATE INDEX IF NOT EXISTS prices_contract_idx ON prices(contract_id);
 CREATE INDEX IF NOT EXISTS prices_nomenclature_idx ON prices(nomenclature_id);
 

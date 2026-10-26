@@ -102,7 +102,7 @@ export function useMovementCalculations({
   }, [purchaseLookup.data]);
 
   // Extract actual price value using shared hook
-  const { purchasePrice, purchasePriceId, purchasePriceIndex } =
+  const { purchasePrice } =
     usePriceExtraction({
       purchasePrices: availablePurchasePrices,
       salePrices: [],
@@ -301,7 +301,9 @@ export function useMovementCalculations({
     deliveryCosts,
   ]);
 
-  const { priceId } = parsePriceCompositeId(watchSelectedPurchasePriceId);
+  const { priceId, priceIndex } = parsePriceCompositeId(watchSelectedPurchasePriceId);
+  const purchasePriceId = priceId;
+  const purchasePriceIndex = priceIndex;
 
   const supplierContractVolumeStatus = useContractVolume({
     priceId: priceId || null,
@@ -391,6 +393,7 @@ export function useMovementCalculations({
         return values.map((v: any, idx: number) => ({
           ...v,
           priceId: p.id,
+          contractNumber: p.contractNumber,
           index: idx,
         }));
       } catch {

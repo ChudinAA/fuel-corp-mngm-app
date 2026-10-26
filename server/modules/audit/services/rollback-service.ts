@@ -360,6 +360,10 @@ export class RollbackService {
    */
   private static async getEntity(entityType: EntityType, entityId: string): Promise<any> {
     const storageMap: Record<string, () => Promise<any>> = {
+      counterparty_contracts: () => storage.catalogs.getContract(entityId),
+      nomenclature: () => storage.catalogs.getNomenclatureItem(entityId),
+      nomenclature_types: () => storage.catalogs.getNomenclatureType(entityId),
+      units_of_measure: () => storage.catalogs.getUnit(entityId),
       opt: () => storage.opt.getOpt(entityId),
       aircraft_refueling: () => storage.aircraftRefueling.getRefueling(entityId),
       aircraft_refueling_abroad: () => storage.aircraftRefueling.getRefueling(entityId),
@@ -408,6 +412,10 @@ export class RollbackService {
     userId?: string
   ): Promise<void> {
     const storageMap: Record<string, (id: string, data: any, userId?: string) => Promise<any>> = {
+      counterparty_contracts: (id, data, userId) => storage.catalogs.updateContract(id, { ...data, updatedById: userId }),
+      nomenclature: (id, data, userId) => storage.catalogs.updateNomenclature(id, { ...data, updatedById: userId }),
+      nomenclature_types: (id, data, userId) => storage.catalogs.updateType(id, { ...data, updatedById: userId }),
+      units_of_measure: (id, data, userId) => storage.catalogs.updateUnit(id, { ...data, updatedById: userId }),
       opt: (id, data, userId) => storage.opt.updateOpt(id, { ...data, updatedById: userId }),
       aircraft_refueling: (id, data, userId) => storage.aircraftRefueling.updateRefueling(id, { ...data, updatedById: userId }),
       aircraft_refueling_abroad: (id, data, userId) => storage.aircraftRefueling.updateRefueling(id, { ...data, updatedById: userId }),
@@ -456,6 +464,10 @@ export class RollbackService {
     userId?: string
   ): Promise<void> {
     const storageMap: Record<string, (id: string, userId?: string) => Promise<any>> = {
+      counterparty_contracts: (id, userId) => storage.catalogs.deleteContract(id, userId!),
+      nomenclature: (id, userId) => storage.catalogs.deleteNomenclature(id, userId!),
+      nomenclature_types: (id, userId) => storage.catalogs.deleteType(id, userId!),
+      units_of_measure: (id, userId) => storage.catalogs.deleteUnit(id, userId!),
       opt: (id, userId) => storage.opt.deleteOpt(id, userId),
       aircraft_refueling: (id, userId) => storage.aircraftRefueling.deleteRefueling(id, userId),
       aircraft_refueling_abroad: (id, userId) => storage.aircraftRefueling.deleteRefueling(id, userId),

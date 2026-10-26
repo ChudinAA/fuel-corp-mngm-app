@@ -470,6 +470,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
               ? supplierWarehouse.id
               : null,
           productType: data.productType || PRODUCT_TYPE.KEROSENE,
+          nomenclatureId: data.nomenclatureId || null,
           basis: data.basis || null,
           basisId: data.basisId || null,
           customerBasis: data.customerBasis || null,
@@ -582,6 +583,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
               ? supplierWarehouse.id
               : null,
           productType: data.productType || PRODUCT_TYPE.KEROSENE,
+          nomenclatureId: data.nomenclatureId || null,
           basis: data.basis || null,
           basisId: data.basisId || null,
           customerBasis: data.customerBasis || null,
@@ -766,6 +768,7 @@ export const OptForm = forwardRef<OptFormHandle, OptFormProps>(
             className="space-y-6"
           >
             <OptMainFields
+              preserveLegacySelection={isEditing && !editData?.nomenclatureId}
               form={form}
               wholesaleSuppliers={wholesaleSuppliers}
               customers={customers}

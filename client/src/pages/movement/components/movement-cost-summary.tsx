@@ -114,11 +114,7 @@ export function MovementCostSummary({
                   >
                     <FormControl>
                       <SelectTrigger data-testid="select-purchase-price">
-                        <SelectValue placeholder="Выберите цену">
-                          {purchasePrice !== null
-                            ? `${formatNumber(purchasePrice)} ₽/кг`
-                            : "Выберите цену"}
-                        </SelectValue>
+                        <SelectValue placeholder="Выберите цену" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -127,7 +123,7 @@ export function MovementCostSummary({
                           key={`${p.priceId}-${p.index}`}
                           value={`${p.priceId}-${p.index}`}
                         >
-                          {formatNumber(p.price)} ₽/кг
+                          {formatNumber(p.price)} ₽/кг{p.contractNumber ? ` · Договор ${p.contractNumber}` : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>

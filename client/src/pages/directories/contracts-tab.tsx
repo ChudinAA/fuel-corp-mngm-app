@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +41,7 @@ const emptyForm = {
 
 export function ContractsTab() {
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
   const [form, setForm] = useState(emptyForm);
   const [audit, setAudit] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState<Contract | null>(null);
@@ -105,7 +107,7 @@ export function ContractsTab() {
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />Договоры контрагентов</CardTitle></CardHeader>
         <CardContent>
-          <form className="grid grid-cols-1 gap-3 md:grid-cols-4" onSubmit={(event) => { event.preventDefault(); save.mutate(); }}>
+          {(hasPermission("directories", "create") || (form.id && hasPermission("directories", "edit"))) && <form className="grid grid-cols-1 gap-3 md:grid-cols-4" onSubmit={(event) => { event.preventDefault(); save.mutate(); }}>
             <Input placeholder="Наименование договора" value={form.contractName} onChange={(e) => setForm({ ...form, contractName: e.target.value })} required />
             <Input placeholder="Номер договора" value={form.contractNumber} onChange={(e) => setForm({ ...form, contractNumber: e.target.value })} required />
             <Input aria-label="Дата заключения" type="date" value={form.contractDate} onChange={(e) => setForm({ ...form, contractDate: e.target.value })} required />
@@ -125,7 +127,7 @@ export function ContractsTab() {
               <Button type="submit" disabled={save.isPending}><Plus className="mr-1 h-4 w-4" />{form.id ? "Сохранить" : "Добавить"}</Button>
               {form.id && <Button type="button" variant="outline" onClick={() => setForm(emptyForm)}><X className="mr-1 h-4 w-4" />Отмена</Button>}
             </div>
-          </form>
+          </form>}
           <div className="mt-5 overflow-x-auto">
             <Table>
               <TableHeader><TableRow><TableHead>Контрагент</TableHead><TableHead>Договор</TableHead><TableHead>Номер</TableHead><TableHead>Дата</TableHead><TableHead>Тип записи</TableHead><TableHead className="w-32">Действия</TableHead></TableRow></TableHeader>
@@ -141,8 +143,8 @@ export function ContractsTab() {
                       <TableCell>
                         <div className="flex gap-1">
                           <Button size="icon" variant="ghost" title="История" onClick={() => setAudit({ id: item.id, name: item.contractName })}><History className="h-4 w-4" /></Button>
-                          <Button size="icon" variant="ghost" title="Изменить" onClick={() => edit(item)}><Pencil className="h-4 w-4" /></Button>
-                          <Button size="icon" variant="ghost" title="Удалить" onClick={() => setDeleting(item)}><Trash2 className="h-4 w-4" /></Button>
+                          {hasPermission("directories", "edit") && <Button size="icon" variant="ghost" title="Изменить" onClick={() => edit(item)}><Pencil className="h-4 w-4" /></Button>}
+                          {hasPermission("directories", "delete") && <Button size="icon" variant="ghost" title="Удалить" onClick={() => setDeleting(item)}><Trash2 className="h-4 w-4" /></Button>}
                         </div>
                       </TableCell>
                     </TableRow>

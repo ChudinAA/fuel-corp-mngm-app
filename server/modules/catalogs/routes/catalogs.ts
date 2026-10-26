@@ -39,7 +39,7 @@ export function registerCatalogRoutes(app: Express) {
       const data = insertCounterpartyContractSchema.parse({ ...req.body, createdById: req.session.userId });
       if (data.parentContractId) {
         const parent = await storage.catalogs.getContract(data.parentContractId);
-        if (!parent || parent.parentContractId || parent.supplierId !== data.supplierId || parent.buyerId !== data.buyerId || parent.carrierId !== data.carrierId) {
+        if (!parent || parent.parentContractId || parent.supplierId !== (data.supplierId ?? null) || parent.buyerId !== (data.buyerId ?? null) || parent.carrierId !== (data.carrierId ?? null)) {
           return res.status(400).json({ message: "Приложение должно быть связано с основным договором того же контрагента" });
         }
       }
@@ -159,8 +159,12 @@ function registerSimpleCatalog(app: Express, config: {
     operation: AUDIT_OPERATIONS.DELETE,
     getOldData: (req) => config.get(req.params.id),
   }), async (req, res) => {
-    const item = await config.delete(req.params.id, String(req.session.userId));
-    if (!item) return res.status(404).json({ message: "Запись не найдена" });
-    res.json(item);
+    try {
+      const item = await config.delete(req.params.id, String(req.session.userId));
+      if (!item) return res.status(404).json({ message: "Запись не найдена" });
+      res.json(item);
+    } catch (error) {
+      res.status(409).json({ message: error instanceof Error ? error.message : "Не удалось удалить запись" });
+    }
   });
 }

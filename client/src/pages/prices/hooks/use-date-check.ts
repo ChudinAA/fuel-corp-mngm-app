@@ -23,6 +23,7 @@ export function useDateCheck() {
       dateFrom: Date | string;
       dateTo: Date | string;
       productType: string;
+      nomenclatureId?: string | null;
       excludeId?: string;
     }) => {
       const queryParams = new URLSearchParams({
@@ -31,6 +32,7 @@ export function useDateCheck() {
         counterpartyRole: params.counterpartyRole,
         basis: params.basis,
         productType: params.productType,
+        ...(params.nomenclatureId && { nomenclatureId: params.nomenclatureId }),
         dateFrom: typeof params.dateFrom === "string" ? params.dateFrom : format(params.dateFrom, "yyyy-MM-dd"),
         dateTo: typeof params.dateTo === "string" ? params.dateTo : format(params.dateTo, "yyyy-MM-dd"),
         ...(params.excludeId && { excludeId: params.excludeId }),
