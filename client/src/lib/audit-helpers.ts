@@ -26,6 +26,7 @@ const ALWAYS_SKIP = new Set([
   // PK и аудит-метаданные
   "id", "createdAt", "updatedAt", "deletedAt",
   "createdById", "updatedById", "deletedById",
+  "id1c", "id_1c", "nomenclatureTypeId", "referenceNomenclatureId",
   // Внутренние FK (UUID без человеческого названия)
   "transactionId", "sourceTransactionId", "exchangeId",
   "purchasePriceId", "salePriceId", "equipmentId", "equipmentTransactionId",
@@ -78,7 +79,7 @@ const ENTITY_SPECIFIC_SHOW: Record<string, Set<string>> = {
   prices: new Set(["priceValues", "counterpartyId", "contractId", "nomenclatureId"]),
   counterparty_contracts: new Set(["supplierId", "buyerId", "carrierId", "parentContractId"]),
   nomenclature: new Set(["nomenclatureTypeId", "unitId"]),
-  units_of_measure: new Set(["referenceNomenclatureId"]),
+  units_of_measure: new Set(["referenceNomenclatureId", "referenceUnitId"]),
   // Зарубеж: посредники, банки и курсы в цепочке — показываем (сервер форматирует как строку)
   aircraft_refueling_abroad: new Set(["intermediaries", "bankCommissions", "chainExchangeRates"]),
   // Перевозки: базис погрузки

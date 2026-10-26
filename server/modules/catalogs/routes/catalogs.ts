@@ -56,13 +56,13 @@ export function registerCatalogRoutes(app: Express) {
   }), async (req, res) => {
     try {
       const data = counterpartyContractBaseSchema.partial().parse({ ...req.body, updatedById: req.session.userId });
-      if (data.parentContractId) {
-        const parent = await storage.catalogs.getContract(data.parentContractId);
-        const current = await storage.catalogs.getContract(req.params.id);
-        const supplierId = data.supplierId ?? current?.supplierId;
-        const buyerId = data.buyerId ?? current?.buyerId;
-        const carrierId = data.carrierId ?? current?.carrierId;
-        if (!parent || parent.parentContractId || parent.supplierId !== supplierId || parent.buyerId !== buyerId || parent.carrierId !== carrierId) {
+      const current = await storage.catalogs.getContract(req.params.id);
+      if (!current) return res.status(404).json({ message: "Договор не найден" });
+      const effective = { ...current, ...data };
+      insertCounterpartyContractSchema.parse(effective);
+      if (effective.parentContractId) {
+        const parent = await storage.catalogs.getContract(effective.parentContractId);
+        if (!parent || parent.id === req.params.id || parent.parentContractId || parent.supplierId !== (effective.supplierId ?? null) || parent.buyerId !== (effective.buyerId ?? null) || parent.carrierId !== (effective.carrierId ?? null)) {
           return res.status(400).json({ message: "Приложение должно быть связано с основным договором того же контрагента" });
         }
       }

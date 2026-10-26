@@ -5,17 +5,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import { AuditPanel } from "@/components/audit-panel";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
-import { FileText, History, Pencil, Plus, Trash2, X } from "lucide-react";
+import { EntityActionsMenu } from "@/components/entity-actions-menu";
+import { ContractCatalogDialog } from "./catalogs/contract-catalog-dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { FileText, Pencil, Plus, Search, Trash2 } from "lucide-react";
 
 type Contract = {
   id: string;
-  id1c: string | null;
   contractName: string;
   contractNumber: string;
   contractDate: string;
@@ -28,60 +29,25 @@ type Contract = {
 };
 type Party = { id: string; name: string };
 
-const emptyForm = {
-  id: "",
-  id1c: "",
-  contractName: "",
-  contractNumber: "",
-  contractDate: new Date().toISOString().slice(0, 10),
-  partyType: "supplier" as Contract["counterpartyType"],
-  partyId: "",
-  parentContractId: "",
-};
-
 export function ContractsTab() {
   const { toast } = useToast();
   const { hasPermission } = useAuth();
-  const [form, setForm] = useState(emptyForm);
-  const [audit, setAudit] = useState<{ id: string; name: string } | null>(null);
+  const [search, setSearch] = useState("");
+  const [recordType, setRecordType] = useState("all");
+  const [partyType, setPartyType] = useState("all");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<Contract | null>(null);
   const [deleting, setDeleting] = useState<Contract | null>(null);
-  const { data: contracts = [], isLoading } = useQuery<Contract[]>({ queryKey: ["/api/contracts"] });
+  const { data: contracts = [], isLoading, isError, refetch } = useQuery<Contract[]>({ queryKey: ["/api/contracts"] });
   const { data: suppliers = [] } = useQuery<Party[]>({ queryKey: ["/api/suppliers"] });
   const { data: buyers = [] } = useQuery<Party[]>({ queryKey: ["/api/customers"] });
   const { data: carriers = [] } = useQuery<Party[]>({ queryKey: ["/api/logistics/carriers"] });
-  const partyOptions = form.partyType === "supplier" ? suppliers : form.partyType === "buyer" ? buyers : carriers;
-  const contractOptions = useMemo(() => contracts.filter((item) => !item.parentContractId && item.id !== form.id), [contracts, form.id]);
+  const partyNames = useMemo(() => new Map([...suppliers, ...buyers, ...carriers].map((party) => [party.id, party.name])), [suppliers, buyers, carriers]);
 
-  const save = useMutation({
-    mutationFn: async () => {
-      if (!form.partyId) throw new Error("Выберите контрагента");
-      const payload = {
-        id1c: form.id1c || null,
-        contractName: form.contractName,
-        contractNumber: form.contractNumber,
-        contractDate: form.contractDate,
-        supplierId: form.partyType === "supplier" ? form.partyId : null,
-        buyerId: form.partyType === "buyer" ? form.partyId : null,
-        carrierId: form.partyType === "carrier" ? form.partyId : null,
-        parentContractId: form.parentContractId || null,
-      };
-      const response = form.id
-        ? await apiRequest("PATCH", `/api/contracts/${form.id}`, payload)
-        : await apiRequest("POST", "/api/contracts", payload);
-      if (!response.ok) throw new Error((await response.json()).message || "Не удалось сохранить договор");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
-      toast({ title: form.id ? "Договор обновлён" : "Договор добавлен" });
-      setForm(emptyForm);
-    },
-    onError: (error: Error) => toast({ title: "Ошибка", description: error.message, variant: "destructive" }),
-  });
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const response = await apiRequest("DELETE", `/api/contracts/${id}`);
-      if (!response.ok) throw new Error((await response.json()).message || "Не удалось удалить запись");
+      if (!response.ok) throw new Error((await response.json()).message || "Не удалось удалить договор");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
@@ -91,72 +57,75 @@ export function ContractsTab() {
     onError: (error: Error) => toast({ title: "Ошибка", description: error.message, variant: "destructive" }),
   });
 
-  const edit = (item: Contract) => setForm({
-    id: item.id,
-    id1c: item.id1c || "",
-    contractName: item.contractName,
-    contractNumber: item.contractNumber,
-    contractDate: item.contractDate?.slice(0, 10) || "",
-    partyType: item.counterpartyType,
-    partyId: item.supplierId || item.buyerId || item.carrierId || "",
-    parentContractId: item.parentContractId || "",
-  });
+  const filtered = useMemo(() => contracts.filter((item) => {
+    const haystack = `${item.contractName} ${item.contractNumber} ${item.counterpartyName} ${partyNames.get(item.supplierId || item.buyerId || item.carrierId || "") || ""}`.toLocaleLowerCase("ru");
+    return haystack.includes(search.trim().toLocaleLowerCase("ru"))
+      && (recordType === "all" || (recordType === "appendix" ? !!item.parentContractId : !item.parentContractId))
+      && (partyType === "all" || item.counterpartyType === partyType);
+  }), [contracts, search, recordType, partyType, partyNames]);
+
+  const openCreate = () => { setEditing(null); setDialogOpen(true); };
+  const openEdit = (item: Contract) => { setEditing(item); setDialogOpen(true); };
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />Договоры контрагентов</CardTitle></CardHeader>
-        <CardContent>
-          {(hasPermission("directories", "create") || (form.id && hasPermission("directories", "edit"))) && <form className="grid grid-cols-1 gap-3 md:grid-cols-4" onSubmit={(event) => { event.preventDefault(); save.mutate(); }}>
-            <Input placeholder="Наименование договора" value={form.contractName} onChange={(e) => setForm({ ...form, contractName: e.target.value })} required />
-            <Input placeholder="Номер договора" value={form.contractNumber} onChange={(e) => setForm({ ...form, contractNumber: e.target.value })} required />
-            <Input aria-label="Дата заключения" type="date" value={form.contractDate} onChange={(e) => setForm({ ...form, contractDate: e.target.value })} required />
-            <Input placeholder="id_1C (необязательно)" value={form.id1c} onChange={(e) => setForm({ ...form, id1c: e.target.value })} />
-            <select className="h-10 rounded-md border bg-background px-3 text-sm" value={form.partyType} onChange={(e) => setForm({ ...form, partyType: e.target.value as Contract["counterpartyType"], partyId: "" })}>
-              <option value="supplier">Поставщик</option><option value="buyer">Покупатель</option><option value="carrier">Перевозчик</option>
-            </select>
-            <select className="h-10 rounded-md border bg-background px-3 text-sm" value={form.partyId} onChange={(e) => setForm({ ...form, partyId: e.target.value })} required>
-              <option value="">Выберите контрагента</option>
-              {partyOptions.map((party) => <option key={party.id} value={party.id}>{party.name}</option>)}
-            </select>
-            <select className="h-10 rounded-md border bg-background px-3 text-sm" value={form.parentContractId} onChange={(e) => setForm({ ...form, parentContractId: e.target.value })}>
-              <option value="">Основной договор</option>
-              {contractOptions.map((item) => <option key={item.id} value={item.id}>{item.contractNumber} · {item.contractName}</option>)}
-            </select>
-            <div className="flex gap-2">
-              <Button type="submit" disabled={save.isPending}><Plus className="mr-1 h-4 w-4" />{form.id ? "Сохранить" : "Добавить"}</Button>
-              {form.id && <Button type="button" variant="outline" onClick={() => setForm(emptyForm)}><X className="mr-1 h-4 w-4" />Отмена</Button>}
-            </div>
-          </form>}
-          <div className="mt-5 overflow-x-auto">
-            <Table>
-              <TableHeader><TableRow><TableHead>Контрагент</TableHead><TableHead>Договор</TableHead><TableHead>Номер</TableHead><TableHead>Дата</TableHead><TableHead>Тип записи</TableHead><TableHead className="w-32">Действия</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {isLoading ? <TableRow><TableCell colSpan={6}>Загрузка…</TableCell></TableRow> :
-                  contracts.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{item.counterpartyName}</TableCell>
-                      <TableCell>{item.contractName}</TableCell>
-                      <TableCell>{item.contractNumber}</TableCell>
-                      <TableCell>{item.contractDate?.slice(0, 10)}</TableCell>
-                      <TableCell>{item.parentContractId ? "Приложение" : "Договор"}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button size="icon" variant="ghost" title="История" onClick={() => setAudit({ id: item.id, name: item.contractName })}><History className="h-4 w-4" /></Button>
-                          {hasPermission("directories", "edit") && <Button size="icon" variant="ghost" title="Изменить" onClick={() => edit(item)}><Pencil className="h-4 w-4" /></Button>}
-                          {hasPermission("directories", "delete") && <Button size="icon" variant="ghost" title="Удалить" onClick={() => setDeleting(item)}><Trash2 className="h-4 w-4" /></Button>}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                {!isLoading && contracts.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Договоры ещё не добавлены</TableCell></TableRow>}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-      <AuditPanel open={!!audit} onOpenChange={(open) => !open && setAudit(null)} entityType="counterparty_contracts" entityId={audit?.id} entityName={audit?.name} />
-      <DeleteConfirmDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)} onConfirm={() => deleting && remove.mutate(deleting.id)} title="Удалить договор?" description="Запись можно восстановить через историю аудита." />
-    </div>
+    <section className="space-y-4">
+      <header className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="rounded-md bg-primary/10 p-2 text-primary"><FileText className="h-5 w-5" /></span>
+          <div><h2 className="text-lg font-semibold">Договоры</h2><p className="text-sm text-muted-foreground">Договоры и приложения контрагентов</p></div>
+        </div>
+        {hasPermission("directories", "create") && <Button size="sm" onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Новый договор</Button>}
+      </header>
+
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="relative min-w-0 flex-1 sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Поиск по договору или контрагенту" className="pl-9" aria-label="Поиск договоров" />
+        </div>
+        <Select value={recordType} onValueChange={setRecordType}>
+          <SelectTrigger className="sm:w-44"><SelectValue placeholder="Тип записи" /></SelectTrigger>
+          <SelectContent><SelectItem value="all">Договоры и приложения</SelectItem><SelectItem value="contract">Основные договоры</SelectItem><SelectItem value="appendix">Приложения</SelectItem></SelectContent>
+        </Select>
+        <Select value={partyType} onValueChange={setPartyType}>
+          <SelectTrigger className="sm:w-40"><SelectValue placeholder="Контрагент" /></SelectTrigger>
+          <SelectContent><SelectItem value="all">Все контрагенты</SelectItem><SelectItem value="supplier">Поставщики</SelectItem><SelectItem value="buyer">Покупатели</SelectItem><SelectItem value="carrier">Перевозчики</SelectItem></SelectContent>
+        </Select>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 bg-muted/50 px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_120px_100px_40px]">
+          <span>Договор / номер</span><span className="hidden sm:block">Контрагент</span><span className="hidden sm:block">Дата</span><span className="hidden sm:block">Вид</span><span />
+        </div>
+        {isLoading ? <div className="space-y-2 p-4">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}</div> :
+          isError ? <div className="flex items-center justify-between gap-3 p-5 text-sm text-destructive"><span>Не удалось загрузить договоры</span><Button size="sm" variant="outline" onClick={() => refetch()}>Повторить</Button></div> :
+            filtered.length === 0 ? <div className="p-10 text-center"><FileText className="mx-auto mb-2 h-7 w-7 text-muted-foreground/60" /><p className="font-medium">{contracts.length ? "Ничего не найдено" : "Договоров пока нет"}</p><p className="mt-1 text-sm text-muted-foreground">{contracts.length ? "Измените поисковый запрос или фильтры." : "Создайте договор или приложение контрагента."}</p></div> :
+              filtered.map((item) => (
+                <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t px-4 py-3 transition-colors hover:bg-muted/30 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_120px_100px_40px]">
+                  <div className="min-w-0"><p className="truncate font-medium">{item.contractName}</p><p className="text-sm text-muted-foreground">№ {item.contractNumber} <span className="sm:hidden">· {item.counterpartyName}</span></p></div>
+                  <span className="hidden truncate text-sm sm:block">{item.counterpartyName}</span>
+                  <span className="hidden text-sm text-muted-foreground sm:block">{item.contractDate?.slice(0, 10) || "—"}</span>
+                  <span className="hidden sm:block"><Badge variant={item.parentContractId ? "secondary" : "outline"}>{item.parentContractId ? "Приложение" : "Договор"}</Badge></span>
+                  <EntityActionsMenu
+                    triggerClassName="h-8 w-8"
+                    audit={{ entityType: "counterparty_contracts", entityId: item.id, entityName: item.contractName }}
+                    actions={[
+                      { id: "edit", label: "Изменить", icon: Pencil, onClick: () => openEdit(item), permission: { module: "directories", action: "edit" } },
+                      { id: "delete", label: "Удалить", icon: Trash2, onClick: () => setDeleting(item), variant: "destructive", permission: { module: "directories", action: "delete" } },
+                    ]}
+                  />
+                </div>
+              ))}
+      </div>
+      <ContractCatalogDialog
+        open={dialogOpen}
+        editItem={editing}
+        contracts={contracts}
+        suppliers={suppliers}
+        buyers={buyers}
+        carriers={carriers}
+        onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditing(null); }}
+      />
+      <DeleteConfirmDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)} onConfirm={() => deleting && remove.mutate(deleting.id)} title="Удалить договор?" description="Удалённую запись можно восстановить через историю аудита." />
+    </section>
   );
 }

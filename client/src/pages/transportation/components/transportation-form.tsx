@@ -510,14 +510,13 @@ export const TransportationForm = forwardRef<
           )}
             className="space-y-6"
         >
-            <NomenclatureField form={form} productType={watchProductType} preserveLegacySelection={isEditing && !editData?.nomenclatureId} />
           {/* Main fields */}
           <Card>
             <CardHeader className="pb-4">
               <CardTitle className="text-lg">Основные данные</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                 <FormField
                   control={form.control}
                   name="dealDate"
@@ -575,8 +574,21 @@ export const TransportationForm = forwardRef<
                   )}
                 />
 
-                {/* Пустая ячейка для выравнивания сетки */}
-                <div />
+                <FormField control={form.control} name="productType" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Тип продукта</FormLabel>
+                    <Select value={field.value || PRODUCT_TYPE.KEROSENE} onValueChange={field.onChange}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value={PRODUCT_TYPE.KEROSENE}>Керосин</SelectItem>
+                        <SelectItem value={PRODUCT_TYPE.PVKJ}>ПВКЖ</SelectItem>
+                        <SelectItem value={PRODUCT_TYPE.SERVICE}>Услуга</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <NomenclatureField form={form} productType={watchProductType} preserveLegacySelection={isEditing && !editData?.nomenclatureId} />
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">

@@ -1,39 +1,36 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AuditPanel } from "@/components/audit-panel";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
-import { Package, Pencil, Plus, Trash2, History, X } from "lucide-react";
+import { EntityActionsMenu } from "@/components/entity-actions-menu";
+import { NomenclatureItemDialog } from "./catalogs/nomenclature-item-dialog";
+import { UnitCatalogDialog } from "./catalogs/unit-catalog-dialog";
+import { Package, Pencil, Plus, Search, Ruler, Trash2 } from "lucide-react";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
-type TypeRow = { id: string; id1c: string | null; code: string; name: string };
-type UnitRow = { id: string; id1c: string | null; shortName: string; fullName: string; conversionFactor: string | null; referenceNomenclatureId: string | null };
+type ProductType = "kerosene" | "pvkj" | "service";
+type UnitRow = { id: string; shortName: string; fullName: string; conversionFactor: string | null; referenceUnitId: string | null };
 type ItemRow = {
   id: string;
-  id1c: string | null;
-  nomenclatureTypeId: string;
-  typeCode: string;
-  typeName: string;
+  productType: ProductType | null;
+  typeCode?: ProductType | null;
   name: string;
   unitId: string;
   unitShortName: string;
   unitFullName: string;
   isDefault: boolean;
 };
-type AuditTarget = { entityType: string; id: string; name: string };
-type DeleteTarget = { path: string; id: string; title: string } | null;
-
-const blankType = { id: "", id1c: "", code: "", name: "" };
-const blankUnit = { id: "", id1c: "", shortName: "", fullName: "", conversionFactor: "", referenceNomenclatureId: "" };
-const blankItem = { id: "", id1c: "", nomenclatureTypeId: "", name: "", unitId: "", isDefault: false };
+type Deleting = { id: string; name: string; kind: "item" | "unit" } | null;
+const productLabels: Record<ProductType, string> = { kerosene: "Керосин", pvkj: "ПВКЖ", service: "Услуга" };
 
 export function NomenclatureTab() {
   const { toast } = useToast();
@@ -41,143 +38,134 @@ export function NomenclatureTab() {
   const canCreate = hasPermission("directories", "create");
   const canEdit = hasPermission("directories", "edit");
   const canDelete = hasPermission("directories", "delete");
-  const [typeForm, setTypeForm] = useState(blankType);
-  const [unitForm, setUnitForm] = useState(blankUnit);
-  const [itemForm, setItemForm] = useState(blankItem);
-  const [audit, setAudit] = useState<AuditTarget | null>(null);
-  const [deleting, setDeleting] = useState<DeleteTarget>(null);
+  const [search, setSearch] = useState("");
+  const [productFilter, setProductFilter] = useState("all");
+  const [itemDialogOpen, setItemDialogOpen] = useState(false);
+  const [unitDialogOpen, setUnitDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<ItemRow | null>(null);
+  const [editingUnit, setEditingUnit] = useState<UnitRow | null>(null);
+  const [deleting, setDeleting] = useState<Deleting>(null);
+  const { data: items = [], isLoading: itemsLoading, isError: itemsError, refetch: refetchItems } = useQuery<ItemRow[]>({ queryKey: ["/api/nomenclature"] });
+  const { data: units = [], isLoading: unitsLoading, isError: unitsError, refetch: refetchUnits } = useQuery<UnitRow[]>({ queryKey: ["/api/units-of-measure"] });
 
-  const { data: types = [] } = useQuery<TypeRow[]>({ queryKey: ["/api/nomenclature-types"] });
-  const { data: units = [] } = useQuery<UnitRow[]>({ queryKey: ["/api/units-of-measure"] });
-  const { data: items = [], isLoading } = useQuery<ItemRow[]>({ queryKey: ["/api/nomenclature"] });
-
-  const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: ["/api/nomenclature"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/nomenclature-types"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/units-of-measure"] });
-  };
-  const save = useMutation({
-    mutationFn: async ({ path, id, payload }: { path: string; id: string; payload: any }) => {
-      const response = id
-        ? await apiRequest("PATCH", `${path}/${id}`, payload)
-        : await apiRequest("POST", path, payload);
-      if (!response.ok) throw new Error((await response.json()).message || "Не удалось сохранить");
+  const refreshItems = () => queryClient.invalidateQueries({ queryKey: ["/api/nomenclature"] });
+  const defaultMutation = useMutation({
+    mutationFn: async ({ item, isDefault }: { item: ItemRow; isDefault: boolean }) => {
+      const response = await apiRequest("PATCH", `/api/nomenclature/${item.id}`, { isDefault });
+      if (!response.ok) {
+        let message = "Не удалось изменить значение по умолчанию";
+        try { message = (await response.json()).message || message; } catch { /* use fallback */ }
+        throw new Error(message);
+      }
+      return { item, isDefault };
     },
-    onSuccess: () => { refresh(); toast({ title: "Изменения сохранены" }); },
-    onError: (error: Error) => toast({ title: "Ошибка", description: error.message, variant: "destructive" }),
+    onMutate: async ({ item, isDefault }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/nomenclature"] });
+      const previous = queryClient.getQueryData<ItemRow[]>(["/api/nomenclature"]);
+      queryClient.setQueryData<ItemRow[]>(["/api/nomenclature"], (current) => current?.map((row) => row.productType === item.productType && row.id === item.id ? { ...row, isDefault } : row));
+      return { previous };
+    },
+    onError: (error: Error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(["/api/nomenclature"], context.previous);
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    },
+    onSuccess: () => toast({ title: "Значение обновлено" }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["/api/nomenclature"] }),
   });
   const remove = useMutation({
-    mutationFn: async ({ path, id }: { path: string; id: string }) => {
-      const response = await apiRequest("DELETE", `${path}/${id}`);
-      if (!response.ok) throw new Error((await response.json()).message || "Не удалось удалить запись");
+    mutationFn: async (target: NonNullable<Deleting>) => {
+      const path = target.kind === "item" ? "/api/nomenclature" : "/api/units-of-measure";
+      const response = await apiRequest("DELETE", `${path}/${target.id}`);
+      if (!response.ok) {
+        let message = "Не удалось удалить запись";
+        try { message = (await response.json()).message || message; } catch { /* use fallback */ }
+        throw new Error(message);
+      }
     },
-    onSuccess: () => { refresh(); setDeleting(null); toast({ title: "Запись удалена" }); },
+    onSuccess: () => {
+      refreshItems();
+      queryClient.invalidateQueries({ queryKey: ["/api/units-of-measure"] });
+      toast({ title: "Запись удалена" });
+      setDeleting(null);
+    },
     onError: (error: Error) => toast({ title: "Ошибка", description: error.message, variant: "destructive" }),
   });
 
-  const saveType = (event: React.FormEvent) => {
-    event.preventDefault();
-    save.mutate({ path: "/api/nomenclature-types", id: typeForm.id, payload: { code: typeForm.code, name: typeForm.name, id1c: typeForm.id1c || null } });
-    setTypeForm(blankType);
-  };
-  const saveUnit = (event: React.FormEvent) => {
-    event.preventDefault();
-    save.mutate({ path: "/api/units-of-measure", id: unitForm.id, payload: { shortName: unitForm.shortName, fullName: unitForm.fullName, conversionFactor: unitForm.conversionFactor || null, referenceNomenclatureId: unitForm.referenceNomenclatureId || null, id1c: unitForm.id1c || null } });
-    setUnitForm(blankUnit);
-  };
-  const saveItem = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!itemForm.nomenclatureTypeId || !itemForm.unitId) return;
-    save.mutate({ path: "/api/nomenclature", id: itemForm.id, payload: { name: itemForm.name, nomenclatureTypeId: itemForm.nomenclatureTypeId, unitId: itemForm.unitId, isDefault: itemForm.isDefault, id1c: itemForm.id1c || null } });
-    setItemForm(blankItem);
-  };
-
-  const rowActions = (target: AuditTarget, path: string, name: string) => (
-    <div className="flex gap-1">
-      <Button size="icon" variant="ghost" title="История" onClick={() => setAudit(target)}><History className="h-4 w-4" /></Button>
-      {canEdit && <Button size="icon" variant="ghost" title="Изменить" onClick={() => {
-        if (path === "/api/nomenclature-types") {
-          const row = types.find((item) => item.id === target.id);
-          if (row) setTypeForm({ ...row, id1c: row.id1c || "" });
-        } else if (path === "/api/units-of-measure") {
-          const row = units.find((item) => item.id === target.id);
-          if (row) setUnitForm({ ...row, id1c: row.id1c || "", conversionFactor: row.conversionFactor || "", referenceNomenclatureId: row.referenceNomenclatureId || "" });
-        } else {
-          const row = items.find((item) => item.id === target.id);
-          if (row) setItemForm({ id: row.id, id1c: row.id1c || "", name: row.name, nomenclatureTypeId: row.nomenclatureTypeId, unitId: row.unitId, isDefault: row.isDefault });
-        }
-      }}><Pencil className="h-4 w-4" /></Button>}
-      {canDelete && <Button size="icon" variant="ghost" title="Удалить" onClick={() => setDeleting({ path, id: target.id, title: name })}><Trash2 className="h-4 w-4" /></Button>}
-    </div>
-  );
+  const filteredItems = useMemo(() => items.filter((item) => {
+    const productType = item.productType ?? item.typeCode;
+    const productName = productType ? productLabels[productType] : "Не задан";
+    return `${item.name} ${item.unitShortName} ${item.unitFullName} ${productName}`.toLocaleLowerCase("ru").includes(search.trim().toLocaleLowerCase("ru"))
+      && (productFilter === "all" || productType === productFilter);
+  }), [items, search, productFilter]);
+  const editItem = (item: ItemRow) => { setEditingItem(item); setItemDialogOpen(true); };
+  const editUnit = (unit: UnitRow) => { setEditingUnit(unit); setUnitDialogOpen(true); };
+  const closeItemDialog = (open: boolean) => { setItemDialogOpen(open); if (!open) setEditingItem(null); };
+  const closeUnitDialog = (open: boolean) => { setUnitDialogOpen(open); if (!open) setEditingUnit(null); };
 
   return (
-    <div className="space-y-5">
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" />Номенклатура</CardTitle></CardHeader>
-        <CardContent>
-          {(canCreate || (canEdit && itemForm.id)) && <form className="mb-4 grid grid-cols-1 gap-2 md:grid-cols-5" onSubmit={saveItem}>
-            <Input placeholder="Наименование" value={itemForm.name} onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })} required />
-            <Input placeholder="id_1C" value={itemForm.id1c} onChange={(e) => setItemForm({ ...itemForm, id1c: e.target.value })} />
-            <select className="h-10 rounded-md border bg-background px-3 text-sm" value={itemForm.nomenclatureTypeId} onChange={(e) => setItemForm({ ...itemForm, nomenclatureTypeId: e.target.value })} required>
-              <option value="">Вид номенклатуры</option>{types.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
-            </select>
-            <select className="h-10 rounded-md border bg-background px-3 text-sm" value={itemForm.unitId} onChange={(e) => setItemForm({ ...itemForm, unitId: e.target.value })} required>
-              <option value="">Единица измерения</option>{units.map((unit) => <option key={unit.id} value={unit.id}>{unit.shortName} — {unit.fullName}</option>)}
-            </select>
-            <div className="flex items-center gap-2">
-              <Checkbox id="default-nomenclature" checked={itemForm.isDefault} onCheckedChange={(checked) => setItemForm({ ...itemForm, isDefault: checked === true })} />
-              <label htmlFor="default-nomenclature" className="text-sm">По умолчанию</label>
-              <Button type="submit" disabled={save.isPending}><Plus className="mr-1 h-4 w-4" />{itemForm.id ? "Сохранить" : "Добавить"}</Button>
-              {itemForm.id && <Button type="button" variant="outline" size="icon" onClick={() => setItemForm(blankItem)}><X className="h-4 w-4" /></Button>}
-            </div>
-          </form>}
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader><TableRow><TableHead>Вид</TableHead><TableHead>Наименование</TableHead><TableHead>Ед. изм.</TableHead><TableHead>По умолчанию</TableHead><TableHead>id_1C</TableHead><TableHead>Действия</TableHead></TableRow></TableHeader>
-              <TableBody>{isLoading ? <TableRow><TableCell colSpan={6}>Загрузка…</TableCell></TableRow> : items.map((item) => (
-                <TableRow key={item.id}><TableCell>{item.typeName}</TableCell><TableCell>{item.name}</TableCell><TableCell>{item.unitShortName}</TableCell><TableCell>{item.isDefault ? "Да" : "—"}</TableCell><TableCell>{item.id1c || "—"}</TableCell><TableCell>{rowActions({ entityType: "nomenclature", id: item.id, name: item.name }, "/api/nomenclature", item.name)}</TableCell></TableRow>
-              ))}{!isLoading && items.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Пока нет записей</TableCell></TableRow>}</TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+    <section className="space-y-7">
+      <header className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <span className="rounded-md bg-primary/10 p-2 text-primary"><Package className="h-5 w-5" /></span>
+          <div><h2 className="text-lg font-semibold">Номенклатура</h2><p className="text-sm text-muted-foreground">Товары, услуги и единицы измерения</p></div>
+        </div>
+        {canCreate && <Button size="sm" onClick={() => { setEditingItem(null); setItemDialogOpen(true); }}><Plus className="mr-2 h-4 w-4" />Добавить позицию</Button>}
+      </header>
 
-      <div className="grid gap-5 xl:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle>Виды номенклатуры</CardTitle></CardHeader>
-          <CardContent>
-            {(canCreate || (canEdit && typeForm.id)) && <form className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3" onSubmit={saveType}>
-              <Input placeholder="Код (kerosene, pvkj, service)" value={typeForm.code} onChange={(e) => setTypeForm({ ...typeForm, code: e.target.value })} required />
-              <Input placeholder="Название" value={typeForm.name} onChange={(e) => setTypeForm({ ...typeForm, name: e.target.value })} required />
-              <div className="flex gap-2"><Input placeholder="id_1C" value={typeForm.id1c} onChange={(e) => setTypeForm({ ...typeForm, id1c: e.target.value })} /><Button type="submit"><Plus className="h-4 w-4" /></Button>{typeForm.id && <Button type="button" variant="outline" size="icon" onClick={() => setTypeForm(blankType)}><X className="h-4 w-4" /></Button>}</div>
-            </form>}
-            <Table><TableHeader><TableRow><TableHead>Код</TableHead><TableHead>Вид</TableHead><TableHead>Действия</TableHead></TableRow></TableHeader><TableBody>
-              {types.map((type) => <TableRow key={type.id}><TableCell>{type.code}</TableCell><TableCell>{type.name}</TableCell><TableCell>{rowActions({ entityType: "nomenclature_types", id: type.id, name: type.name }, "/api/nomenclature-types", type.name)}</TableCell></TableRow>)}
-            </TableBody></Table>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>Единицы измерения</CardTitle></CardHeader>
-          <CardContent>
-            {(canCreate || (canEdit && unitForm.id)) && <form className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2" onSubmit={saveUnit}>
-              <Input placeholder="Краткое наименование" value={unitForm.shortName} onChange={(e) => setUnitForm({ ...unitForm, shortName: e.target.value })} required />
-              <Input placeholder="Полное наименование" value={unitForm.fullName} onChange={(e) => setUnitForm({ ...unitForm, fullName: e.target.value })} required />
-              <Input placeholder="Кратность" type="number" step="0.000001" value={unitForm.conversionFactor} onChange={(e) => setUnitForm({ ...unitForm, conversionFactor: e.target.value })} />
-              <select aria-label="Кратность к номенклатуре" className="h-10 rounded-md border bg-background px-3 text-sm" value={unitForm.referenceNomenclatureId} onChange={(e) => setUnitForm({ ...unitForm, referenceNomenclatureId: e.target.value })}>
-                <option value="">Кратность к номенклатуре (необязательно)</option>
-                {items.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-              </select>
-              <div className="flex gap-2"><Input placeholder="id_1C" value={unitForm.id1c} onChange={(e) => setUnitForm({ ...unitForm, id1c: e.target.value })} /><Button type="submit"><Plus className="h-4 w-4" /></Button>{unitForm.id && <Button type="button" variant="outline" size="icon" onClick={() => setUnitForm(blankUnit)}><X className="h-4 w-4" /></Button>}</div>
-            </form>}
-            <Table><TableHeader><TableRow><TableHead>Кратко</TableHead><TableHead>Полное название</TableHead><TableHead>Кратность</TableHead><TableHead>Действия</TableHead></TableRow></TableHeader><TableBody>
-              {units.map((unit) => <TableRow key={unit.id}><TableCell>{unit.shortName}</TableCell><TableCell>{unit.fullName}</TableCell><TableCell>{unit.conversionFactor || "—"}{unit.referenceNomenclatureId ? ` → ${items.find((item) => item.id === unit.referenceNomenclatureId)?.name || "номенклатура"}` : ""}</TableCell><TableCell>{rowActions({ entityType: "units_of_measure", id: unit.id, name: unit.shortName }, "/api/units-of-measure", unit.shortName)}</TableCell></TableRow>)}
-            </TableBody></Table>
-          </CardContent>
-        </Card>
+      <div className="space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="relative min-w-0 flex-1 sm:max-w-sm"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" placeholder="Поиск в номенклатуре" aria-label="Поиск номенклатуры" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
+          <Select value={productFilter} onValueChange={setProductFilter}><SelectTrigger className="sm:w-48"><SelectValue placeholder="Тип продукта" /></SelectTrigger><SelectContent><SelectItem value="all">Все типы продуктов</SelectItem><SelectItem value="kerosene">Керосин</SelectItem><SelectItem value="pvkj">ПВКЖ</SelectItem><SelectItem value="service">Услуга</SelectItem></SelectContent></Select>
+        </div>
+        <div className="overflow-hidden rounded-lg border">
+          <div className="grid grid-cols-[minmax(0,1fr)_64px_40px] gap-2 bg-muted/50 px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:grid-cols-[160px_minmax(0,1fr)_minmax(120px,.7fr)_64px_40px]"><span className="sm:hidden">Позиция</span><span className="hidden sm:block">Тип продукта</span><span className="hidden sm:block">Наименование</span><span className="hidden sm:block">Ед. изм.</span><span className="text-center">По умолчанию</span><span /></div>
+          {itemsLoading ? <div className="space-y-2 p-4">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}</div> :
+            itemsError ? <div className="flex items-center justify-between gap-3 p-5 text-sm text-destructive"><span>Не удалось загрузить номенклатуру</span><Button size="sm" variant="outline" onClick={() => refetchItems()}>Повторить</Button></div> :
+              filteredItems.length === 0 ? <div className="p-9 text-center"><Package className="mx-auto mb-2 h-7 w-7 text-muted-foreground/60" /><p className="font-medium">{items.length ? "Ничего не найдено" : "Позиции ещё не добавлены"}</p><p className="mt-1 text-sm text-muted-foreground">{items.length ? "Попробуйте изменить поиск или фильтр." : "Добавьте продукт или услугу, чтобы начать работу."}</p></div> :
+                filteredItems.map((item) => {
+                  const productType = item.productType ?? item.typeCode;
+                  const defaultPending = defaultMutation.isPending && defaultMutation.variables?.item.id === item.id;
+                  return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_64px_40px] items-center gap-2 border-t px-4 py-3 transition-colors hover:bg-muted/30 sm:grid-cols-[160px_minmax(0,1fr)_minmax(120px,.7fr)_64px_40px]">
+                    <Badge variant="outline" className="hidden w-fit max-w-full truncate sm:block">{productType ? productLabels[productType] : "Не задан"}</Badge>
+                    <div className="min-w-0 sm:col-span-1"><div className="flex min-w-0 items-center gap-2"><Badge variant="outline" className="max-w-full truncate sm:hidden">{productType ? productLabels[productType] : "Не задан"}</Badge><p className="truncate font-medium">{item.name}</p></div><p className="text-xs text-muted-foreground sm:hidden">{item.unitShortName}</p></div>
+                    <span className="flex justify-center sm:hidden"><Switch aria-label={`По умолчанию: ${item.name}`} checked={!!item.isDefault} disabled={!canEdit || defaultPending || !productType} onCheckedChange={(checked) => defaultMutation.mutate({ item, isDefault: checked })} /></span>
+                    <div className="hidden min-w-0 sm:block"><p className="truncate text-sm">{item.unitShortName || "—"}</p><p className="truncate text-xs text-muted-foreground">{item.unitFullName}</p></div>
+                    <span className="hidden sm:flex sm:justify-center"><Switch aria-label={`По умолчанию: ${item.name}`} checked={!!item.isDefault} disabled={!canEdit || defaultPending || !productType} onCheckedChange={(checked) => defaultMutation.mutate({ item, isDefault: checked })} /></span>
+                    <EntityActionsMenu triggerClassName="h-8 w-8" audit={{ entityType: "nomenclature", entityId: item.id, entityName: item.name }} actions={[
+                      { id: "edit", label: "Изменить", icon: Pencil, onClick: () => editItem(item), permission: { module: "directories", action: "edit" } },
+                      { id: "delete", label: "Удалить", icon: Trash2, onClick: () => setDeleting({ id: item.id, name: item.name, kind: "item" }), variant: "destructive", permission: { module: "directories", action: "delete" } },
+                    ]} />
+                  </div>;
+                })}
+        </div>
       </div>
-      <AuditPanel open={!!audit} onOpenChange={(open) => !open && setAudit(null)} entityType={audit?.entityType || ""} entityId={audit?.id} entityName={audit?.name} />
-      <DeleteConfirmDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)} onConfirm={() => deleting && remove.mutate({ path: deleting.path, id: deleting.id })} title={`Удалить «${deleting?.title || ""}»?`} description="Удалённую запись можно восстановить через историю аудита." />
-    </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2"><Ruler className="h-4 w-4 text-muted-foreground" /><div><h3 className="font-semibold">Единицы измерения</h3><p className="text-xs text-muted-foreground">Коэффициент пересчёта задаёт эквивалент единицы</p></div></div>
+          {canCreate && <Button size="sm" variant="outline" onClick={() => { setEditingUnit(null); setUnitDialogOpen(true); }}><Plus className="mr-1.5 h-4 w-4" />Единица</Button>}
+        </div>
+        <div className="overflow-hidden rounded-lg border">
+          {unitsLoading ? <div className="space-y-2 p-4">{[1, 2].map((i) => <Skeleton key={i} className="h-11 w-full" />)}</div> :
+            unitsError ? <div className="flex items-center justify-between gap-3 p-5 text-sm text-destructive"><span>Не удалось загрузить единицы измерения</span><Button size="sm" variant="outline" onClick={() => refetchUnits()}>Повторить</Button></div> :
+              units.length === 0 ? <div className="p-6 text-center text-sm text-muted-foreground">Единицы измерения ещё не добавлены.</div> :
+                units.map((unit) => {
+                  const reference = units.find((candidate) => candidate.id === unit.referenceUnitId);
+                  const factor = unit.conversionFactor ? Number(unit.conversionFactor) : null;
+                  return <div key={unit.id} className="grid grid-cols-[minmax(0,1fr)_auto_40px] items-center gap-3 border-t first:border-t-0 px-4 py-3">
+                    <div className="min-w-0"><p className="font-medium">{unit.shortName} <span className="font-normal text-muted-foreground">· {unit.fullName}</span></p><p className="truncate text-xs text-muted-foreground">{factor && reference ? `1 ${unit.shortName} = ${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 6 }).format(factor)} ${reference.shortName}` : "Без пересчёта"}</p></div>
+                    <span className="hidden text-xs text-muted-foreground sm:block">{factor && reference ? "Коэффициент задан" : "—"}</span>
+                    <EntityActionsMenu triggerClassName="h-8 w-8" audit={{ entityType: "units_of_measure", entityId: unit.id, entityName: unit.shortName }} actions={[
+                      { id: "edit", label: "Изменить", icon: Pencil, onClick: () => editUnit(unit), permission: { module: "directories", action: "edit" } },
+                      { id: "delete", label: "Удалить", icon: Trash2, onClick: () => setDeleting({ id: unit.id, name: unit.shortName, kind: "unit" }), variant: "destructive", permission: { module: "directories", action: "delete" } },
+                    ]} />
+                  </div>;
+                })}
+        </div>
+      </div>
+      <NomenclatureItemDialog open={itemDialogOpen} editItem={editingItem} units={units} onOpenChange={closeItemDialog} />
+      <UnitCatalogDialog open={unitDialogOpen} editItem={editingUnit} units={units} onOpenChange={closeUnitDialog} />
+      <DeleteConfirmDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)} onConfirm={() => deleting && remove.mutate(deleting)} title={`Удалить «${deleting?.name || ""}»?`} description="Удалённую запись можно восстановить через историю аудита." />
+    </section>
   );
 }

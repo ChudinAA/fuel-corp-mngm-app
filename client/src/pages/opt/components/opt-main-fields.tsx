@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getNomenclatureSelection } from "@/pages/shared/utils/nomenclature-selection";
 import { useQuery } from "@tanstack/react-query";
 import { Combobox } from "@/components/ui/combobox";
 import {
@@ -60,16 +61,13 @@ export function OptMainFields({
   const [addSupplierOpen, setAddSupplierOpen] = useState(false);
   const productType = form.watch("productType");
   const nomenclatureId = form.watch("nomenclatureId");
-  const { data: nomenclatureList = [] } = useQuery<any[]>({ queryKey: ["/api/nomenclature"] });
-  const nomenclatureOptions = nomenclatureList.filter((item) => item.typeCode === productType);
+  const { data: nomenclatureList = [], isSuccess: nomenclatureLoaded } = useQuery<any[]>({ queryKey: ["/api/nomenclature"] });
+  const nomenclatureOptions = nomenclatureList.filter((item) => item.productType === productType);
 
   useEffect(() => {
-    if (preserveLegacySelection && !nomenclatureId) return;
-    if (!nomenclatureOptions.some((item) => item.id === nomenclatureId)) {
-      const preferred = nomenclatureOptions.find((item) => item.isDefault);
-      form.setValue("nomenclatureId", preferred?.id || "", { shouldValidate: true });
-    }
-  }, [productType, nomenclatureList, nomenclatureId]);
+    const next = getNomenclatureSelection(nomenclatureList, productType || "", nomenclatureId, nomenclatureLoaded, preserveLegacySelection);
+    if (next !== undefined) form.setValue("nomenclatureId", next, { shouldValidate: true });
+  }, [productType, nomenclatureList, nomenclatureId, preserveLegacySelection, nomenclatureLoaded]);
 
   const handleCustomerCreated = (id: string) => {
     form.setValue("buyerId", id);
@@ -81,7 +79,7 @@ export function OptMainFields({
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-[1fr_1fr_2fr]">
         <FormField
           control={form.control}
           name="dealDate"
@@ -123,10 +121,9 @@ export function OptMainFields({
             </FormItem>
           )}
         />
-      </div>
       {["kerosene", "pvkj", "service"].includes(productType || "") && (
         <FormField control={form.control} name="nomenclatureId" render={({ field }) => (
-          <FormItem className="max-w-xl">
+          <FormItem className="min-w-0">
             <FormLabel>Номенклатура</FormLabel>
             <Select value={field.value || ""} onValueChange={field.onChange}>
               <FormControl><SelectTrigger><SelectValue placeholder="Выберите номенклатуру" /></SelectTrigger></FormControl>
@@ -138,6 +135,7 @@ export function OptMainFields({
           </FormItem>
         )} />
       )}
+      </div>
       <div className="grid gap-2 md:grid-cols-4">
         <FormField
           control={form.control}

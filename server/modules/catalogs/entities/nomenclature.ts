@@ -44,6 +44,7 @@ export const unitsOfMeasure = pgTable(
     fullName: text("full_name").notNull(),
     conversionFactor: decimal("conversion_factor", { precision: 18, scale: 6 }),
     referenceNomenclatureId: uuid("reference_nomenclature_id").references((): AnyPgColumn => nomenclature.id),
+    referenceUnitId: uuid("reference_unit_id").references((): AnyPgColumn => unitsOfMeasure.id),
     ...auditColumns(),
   },
   (table) => ({
@@ -57,8 +58,8 @@ export const nomenclature = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     id1c: text("id_1c"),
     nomenclatureTypeId: uuid("nomenclature_type_id")
-      .notNull()
       .references(() => nomenclatureTypes.id),
+    productType: text("product_type"),
     name: text("name").notNull(),
     unitId: uuid("unit_id").notNull().references(() => unitsOfMeasure.id),
     isDefault: boolean("is_default").notNull().default(false),
@@ -67,9 +68,9 @@ export const nomenclature = pgTable(
   (table) => ({
     typeIdx: index("nomenclature_type_idx").on(table.nomenclatureTypeId),
     unitIdx: index("nomenclature_unit_idx").on(table.unitId),
-    oneDefaultPerTypeIdx: uniqueIndex("nomenclature_one_default_per_type_idx")
-      .on(table.nomenclatureTypeId)
-      .where(sql`${table.isDefault} = true AND ${table.deletedAt} IS NULL`),
+    oneDefaultPerProductIdx: uniqueIndex("nomenclature_one_default_per_product_idx")
+      .on(table.productType)
+      .where(sql`${table.isDefault} = true AND ${table.deletedAt} IS NULL AND ${table.productType} IS NOT NULL`),
   }),
 );
 
@@ -83,6 +84,11 @@ export const unitsOfMeasureRelations = relations(unitsOfMeasure, ({ one, many })
     fields: [unitsOfMeasure.referenceNomenclatureId],
     references: [nomenclature.id],
     relationName: "unitReferenceNomenclature",
+  }),
+  referenceUnit: one(unitsOfMeasure, {
+    fields: [unitsOfMeasure.referenceUnitId],
+    references: [unitsOfMeasure.id],
+    relationName: "unitConversion",
   }),
 }));
 
@@ -112,18 +118,19 @@ export const insertNomenclatureTypeSchema = createInsertSchema(nomenclatureTypes
   .extend({ code: z.string().min(1), name: z.string().min(1) });
 
 export const insertUnitOfMeasureSchema = createInsertSchema(unitsOfMeasure)
-  .omit(insertAuditOmit)
+  .omit({ ...insertAuditOmit, referenceNomenclatureId: true })
   .extend({
     shortName: z.string().min(1),
     fullName: z.string().min(1),
     conversionFactor: z.string().refine((value) => Number.isFinite(Number(value)) && Number(value) > 0, "Кратность должна быть положительным числом").nullable().optional(),
-    referenceNomenclatureId: z.string().uuid().nullable().optional(),
+    referenceUnitId: z.string().uuid().nullable().optional(),
   });
 
 export const insertNomenclatureSchema = createInsertSchema(nomenclature)
   .omit(insertAuditOmit)
   .extend({
-    nomenclatureTypeId: z.string().uuid(),
+    nomenclatureTypeId: z.string().uuid().nullable().optional(),
+    productType: z.enum(["kerosene", "pvkj", "service"]),
     unitId: z.string().uuid(),
     name: z.string().min(1),
     isDefault: z.boolean().optional(),

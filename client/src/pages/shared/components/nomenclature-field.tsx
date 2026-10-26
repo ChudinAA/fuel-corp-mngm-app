@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { getNomenclatureSelection } from "../utils/nomenclature-selection";
 import { useQuery } from "@tanstack/react-query";
 import type { UseFormReturn } from "react-hook-form";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -13,17 +14,14 @@ export function NomenclatureField({
   productType: string;
   preserveLegacySelection?: boolean;
 }) {
-  const { data: items = [] } = useQuery<any[]>({ queryKey: ["/api/nomenclature"] });
-  const options = items.filter((item) => item.typeCode === productType);
+  const { data: items = [], isSuccess } = useQuery<any[]>({ queryKey: ["/api/nomenclature"] });
+  const options = items.filter((item) => item.productType === productType);
   const value = form.watch("nomenclatureId");
 
   useEffect(() => {
-    if (preserveLegacySelection && !value) return;
-    if (!options.some((item) => item.id === value)) {
-      const preferred = options.find((item) => item.isDefault);
-      form.setValue("nomenclatureId", preferred?.id || "", { shouldValidate: true });
-    }
-  }, [productType, items, value, preserveLegacySelection]);
+    const next = getNomenclatureSelection(items, productType, value, isSuccess, preserveLegacySelection);
+    if (next !== undefined) form.setValue("nomenclatureId", next, { shouldValidate: true });
+  }, [productType, items, value, preserveLegacySelection, isSuccess]);
 
   if (!["kerosene", "pvkj", "service"].includes(productType)) return null;
   return (

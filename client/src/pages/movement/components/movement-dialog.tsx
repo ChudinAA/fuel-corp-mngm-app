@@ -29,7 +29,6 @@ import { Plus, Loader2 } from "lucide-react";
 import { movementFormSchema, type MovementFormData } from "../schemas";
 import type { MovementDialogProps } from "../types";
 import { VolumeInputSection } from "../../opt/components/opt-form-sections";
-import { NomenclatureField } from "../../shared/components/nomenclature-field";
 import { MovementFormHeader } from "./movement-form-header";
 import { MovementSourceSection } from "./movement-source-section";
 import { MovementDestinationSection } from "./movement-destination-section";
@@ -479,9 +478,8 @@ export function MovementDialog({
               )}
               className="space-y-6"
             >
-              <NomenclatureField form={form} productType={watchProductType || PRODUCT_TYPE.KEROSENE} preserveLegacySelection={isEditing && !editMovement?.nomenclatureId} />
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 items-end">
-                <MovementFormHeader form={form} />
+                <MovementFormHeader form={form} preserveLegacySelection={isEditing && !editMovement?.nomenclatureId} />
                 <MovementSourceSection
                   form={form}
                   watchMovementType={watchMovementType || MOVEMENT_TYPE.SUPPLY}

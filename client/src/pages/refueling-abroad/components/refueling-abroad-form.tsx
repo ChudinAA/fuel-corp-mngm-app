@@ -823,7 +823,6 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
         onSubmit={(e) => e.preventDefault()}
         className="space-y-4"
       >
-        <NomenclatureField form={form} productType={watchedValues.productType || PRODUCT_TYPE.KEROSENE} preserveLegacySelection={!!editData?.id && !editData?.nomenclatureId} />
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -878,6 +877,9 @@ export const RefuelingAbroadForm = forwardRef<RefuelingAbroadFormHandle, Refueli
               )}
             />
 
+            <div className="min-w-0 md:col-span-2">
+              <NomenclatureField form={form} productType={watchedValues.productType || PRODUCT_TYPE.KEROSENE} preserveLegacySelection={!!editData?.id && !editData?.nomenclatureId} />
+            </div>
             <FormField
               control={form.control}
               name="airportCode"

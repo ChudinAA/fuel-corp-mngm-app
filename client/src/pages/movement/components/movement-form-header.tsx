@@ -16,12 +16,14 @@ import {
 import { MOVEMENT_TYPE, PRODUCT_TYPE } from "@shared/constants";
 import type { UseFormReturn } from "react-hook-form";
 import type { MovementFormData } from "../schemas";
+import { NomenclatureField } from "../../shared/components/nomenclature-field";
 
 interface MovementFormHeaderProps {
   form: UseFormReturn<MovementFormData>;
+  preserveLegacySelection?: boolean;
 }
 
-export function MovementFormHeader({ form }: MovementFormHeaderProps) {
+export function MovementFormHeader({ form, preserveLegacySelection }: MovementFormHeaderProps) {
   return (
     <>
       <FormField
@@ -94,6 +96,7 @@ export function MovementFormHeader({ form }: MovementFormHeaderProps) {
           </FormItem>
         )}
       />
+      <NomenclatureField form={form} productType={form.watch("productType") || PRODUCT_TYPE.KEROSENE} preserveLegacySelection={preserveLegacySelection} />
     </>
   );
 }

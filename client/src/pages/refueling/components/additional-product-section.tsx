@@ -138,7 +138,7 @@ export const AdditionalProductSection = forwardRef<
     const [addSalePriceOpen, setAddSalePriceOpen] = useState(false);
     const [nomenclatureId, setNomenclatureId] = useState("");
     const { data: nomenclatureList = [] } = useQuery<any[]>({ queryKey: ["/api/nomenclature"] });
-    const nomenclatureOptions = nomenclatureList.filter((item) => item.typeCode === productType);
+    const nomenclatureOptions = nomenclatureList.filter((item) => item.productType === productType);
     useEffect(() => {
       if (!nomenclatureOptions.some((item) => item.id === nomenclatureId)) {
         setNomenclatureId(nomenclatureOptions.find((item) => item.isDefault)?.id || "");

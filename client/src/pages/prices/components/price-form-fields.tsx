@@ -37,6 +37,7 @@ import {
 } from "@shared/constants";
 import { AddBaseDialog } from "@/pages/directories/bases-dialog";
 import { useEffect, useState } from "react";
+import { getNomenclatureSelection } from "@/pages/shared/utils/nomenclature-selection";
 import { useAuth } from "@/hooks/use-auth";
 import { BaseTypeBadge } from "@/components/base-type-badge";
 
@@ -74,22 +75,19 @@ export function PriceFormFields({
   const contractLimitEnabled = useWatch({ control, name: "contractLimitEnabled" });
   const isLimitEnabled = contractLimitEnabled !== false;
   const { data: contractList = [] } = useQuery<any[]>({ queryKey: ["/api/contracts"] });
-  const { data: nomenclatureList = [] } = useQuery<any[]>({ queryKey: ["/api/nomenclature"] });
+  const { data: nomenclatureList = [], isSuccess: nomenclatureLoaded } = useQuery<any[]>({ queryKey: ["/api/nomenclature"] });
   const contractsForParty = contractList.filter((item) =>
     counterpartyRole === COUNTERPARTY_ROLE.SUPPLIER
       ? item.supplierId === counterpartyId
       : item.buyerId === counterpartyId,
   );
-  const nomenclatureForProduct = nomenclatureList.filter((item) => item.typeCode === productType);
+  const nomenclatureForProduct = nomenclatureList.filter((item) => item.productType === productType);
   const selectedNomenclatureId = useWatch({ control, name: "nomenclatureId" });
 
   useEffect(() => {
-    if (preserveLegacySelection && !selectedNomenclatureId) return;
-    if (!nomenclatureForProduct.some((item) => item.id === selectedNomenclatureId)) {
-      const preferred = nomenclatureForProduct.find((item) => item.isDefault);
-      setValue("nomenclatureId", preferred?.id || "", { shouldValidate: true });
-    }
-  }, [productType, nomenclatureList, selectedNomenclatureId, setValue]);
+    const next = getNomenclatureSelection(nomenclatureList, productType, selectedNomenclatureId, nomenclatureLoaded, preserveLegacySelection);
+    if (next !== undefined) setValue("nomenclatureId", next, { shouldValidate: true });
+  }, [productType, nomenclatureList, selectedNomenclatureId, setValue, preserveLegacySelection, nomenclatureLoaded]);
 
   return (
     <>
@@ -235,7 +233,7 @@ export function PriceFormFields({
           control={control}
           name="counterpartyId"
           render={({ field }) => (
-            <FormItem className="col-span-1 min-w-0">
+            <FormItem className="col-span-2 min-w-0">
               <FormLabel>Контрагент</FormLabel>
               <FormControl>
                 <div className="w-full">
@@ -287,6 +285,22 @@ export function PriceFormFields({
             </FormItem>
           )}
         />
+        {["kerosene", "pvkj", "service"].includes(productType) && (
+          <FormField control={control} name="nomenclatureId" render={({ field }) => (
+            <FormItem className="min-w-0">
+              <FormLabel>Номенклатура</FormLabel>
+              <Select value={field.value || ""} onValueChange={field.onChange}>
+                <FormControl><SelectTrigger data-testid="select-price-nomenclature"><SelectValue placeholder="Выберите номенклатуру" /></SelectTrigger></FormControl>
+                <SelectContent>
+                  {nomenclatureForProduct.map((item) => <SelectItem key={item.id} value={item.id}>
+                    {item.name} ({item.unitShortName}){item.isDefault ? " · по умолчанию" : ""}
+                  </SelectItem>)}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )} />
+        )}
       </div>
 
       {counterpartyType === COUNTERPARTY_TYPE.TRANSPORTATION && (
@@ -650,22 +664,6 @@ export function PriceFormFields({
             <FormMessage />
           </FormItem>
         )} />
-        {["kerosene", "pvkj", "service"].includes(productType) && (
-          <FormField control={control} name="nomenclatureId" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Номенклатура</FormLabel>
-              <Select value={field.value || ""} onValueChange={field.onChange}>
-                <FormControl><SelectTrigger><SelectValue placeholder="Выберите номенклатуру" /></SelectTrigger></FormControl>
-                <SelectContent>
-                  {nomenclatureForProduct.map((item) => <SelectItem key={item.id} value={item.id}>
-                    {item.name} ({item.unitShortName}){item.isDefault ? " · по умолчанию" : ""}
-                  </SelectItem>)}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )} />
-        )}
       </div>
 
       <FormField

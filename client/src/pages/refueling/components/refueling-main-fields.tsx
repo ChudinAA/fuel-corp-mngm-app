@@ -23,6 +23,7 @@ import type { RefuelingFormData } from "../schemas";
 import { PRODUCT_TYPES } from "../constants";
 import { BASE_TYPE, CUSTOMER_MODULE, EQUIPMENT_TYPE } from "@shared/constants";
 import { useState, useEffect, useRef } from "react";
+import { getNomenclatureSelection } from "@/pages/shared/utils/nomenclature-selection";
 import { useQuery } from "@tanstack/react-query";
 import { AddSupplierDialog } from "@/pages/counterparties/suppliers-dialog";
 import { AddCustomerDialog } from "@/pages/counterparties/customers-dialog";
@@ -94,16 +95,13 @@ export function RefuelingMainFields({
   const watchedBuyerId = form.watch("buyerId");
   const productType = form.watch("productType");
   const nomenclatureId = form.watch("nomenclatureId");
-  const { data: nomenclatureList = [] } = useQuery<any[]>({ queryKey: ["/api/nomenclature"] });
-  const nomenclatureOptions = nomenclatureList.filter((item) => item.typeCode === productType);
+  const { data: nomenclatureList = [], isSuccess: nomenclatureLoaded } = useQuery<any[]>({ queryKey: ["/api/nomenclature"] });
+  const nomenclatureOptions = nomenclatureList.filter((item) => item.productType === productType);
 
   useEffect(() => {
-    if (preserveLegacySelection && !nomenclatureId) return;
-    if (!nomenclatureOptions.some((item) => item.id === nomenclatureId)) {
-      const preferred = nomenclatureOptions.find((item) => item.isDefault);
-      form.setValue("nomenclatureId", preferred?.id || "", { shouldValidate: true });
-    }
-  }, [productType, nomenclatureList, nomenclatureId]);
+    const next = getNomenclatureSelection(nomenclatureList, productType || "", nomenclatureId, nomenclatureLoaded, preserveLegacySelection);
+    if (next !== undefined) form.setValue("nomenclatureId", next, { shouldValidate: true });
+  }, [productType, nomenclatureList, nomenclatureId, preserveLegacySelection, nomenclatureLoaded]);
 
   const { data: flightNumbersList = [] } = useQuery<{ id: string; number: string }[]>({
     queryKey: ["/api/flight-numbers", watchBasisId],
@@ -261,6 +259,7 @@ export function RefuelingMainFields({
                   placeholder="RT-001234"
                   data-testid="input-order-number"
                   {...field}
+                  value={field.value ?? ""}
                 />
               </FormControl>
               <FormMessage />
@@ -279,6 +278,7 @@ export function RefuelingMainFields({
                   placeholder="Направление рейса"
                   data-testid="input-flight-number"
                   {...field}
+                  value={field.value ?? ""}
                 />
               </FormControl>
               <FormMessage />

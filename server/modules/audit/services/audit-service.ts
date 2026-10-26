@@ -105,6 +105,12 @@ export class AuditService {
           return row?.name || null;
         } catch { return null; }
       },
+      referenceUnitId: async (id) => {
+        try {
+          const [row] = await db.select({ name: unitsOfMeasure.shortName }).from(unitsOfMeasure).where(eq(unitsOfMeasure.id, id)).limit(1);
+          return row?.name || null;
+        } catch { return null; }
+      },
       carrierId: async (id) => {
         try { const e = await storage.logistics.getLogisticsCarrier(id); return e?.name || null; } catch { return null; }
       },

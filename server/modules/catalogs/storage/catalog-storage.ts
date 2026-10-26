@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, inArray } from "drizzle-orm";
+import { and, asc, eq, isNull, inArray, sql } from "drizzle-orm";
 import { db } from "server/db";
 import {
   counterpartyContracts,
@@ -109,15 +109,15 @@ export class CatalogStorage {
   }
 
   async getNomenclature(typeCode?: string) {
-    const conditions: any[] = [isNull(nomenclature.deletedAt), isNull(nomenclatureTypes.deletedAt), isNull(unitsOfMeasure.deletedAt)];
-    if (typeCode) conditions.push(eq(nomenclatureTypes.code, typeCode));
+    const conditions: any[] = [isNull(nomenclature.deletedAt), isNull(unitsOfMeasure.deletedAt)];
+    if (typeCode) conditions.push(eq(nomenclature.productType, typeCode));
     const rows = await db
-      .select({ item: nomenclature, typeCode: nomenclatureTypes.code, typeName: nomenclatureTypes.name, unitShortName: unitsOfMeasure.shortName, unitFullName: unitsOfMeasure.fullName })
+      .select({ item: nomenclature, typeCode: nomenclature.productType, typeName: nomenclatureTypes.name, unitShortName: unitsOfMeasure.shortName, unitFullName: unitsOfMeasure.fullName })
       .from(nomenclature)
-      .innerJoin(nomenclatureTypes, eq(nomenclature.nomenclatureTypeId, nomenclatureTypes.id))
+      .leftJoin(nomenclatureTypes, eq(nomenclature.nomenclatureTypeId, nomenclatureTypes.id))
       .innerJoin(unitsOfMeasure, eq(nomenclature.unitId, unitsOfMeasure.id))
       .where(and(...conditions))
-      .orderBy(asc(nomenclatureTypes.name), asc(nomenclature.name));
+      .orderBy(asc(nomenclature.productType), asc(nomenclature.name));
     return rows.map(({ item, ...details }) => ({ ...item, ...details }));
   }
 
@@ -128,24 +128,34 @@ export class CatalogStorage {
   }
 
   async createNomenclature(data: any) {
-    if (data.isDefault) {
-      await db.update(nomenclature).set({ isDefault: false })
-        .where(and(eq(nomenclature.nomenclatureTypeId, data.nomenclatureTypeId), isNull(nomenclature.deletedAt)));
-    }
-    const [row] = await db.insert(nomenclature).values(data).returning();
-    return row;
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('catalog-nomenclature-defaults'))`);
+      if (data.isDefault) {
+        await tx.update(nomenclature).set({ isDefault: false })
+          .where(and(eq(nomenclature.productType, data.productType), isNull(nomenclature.deletedAt)));
+      }
+      const [row] = await tx.insert(nomenclature).values(data).returning();
+      return row;
+    });
   }
 
   async updateNomenclature(id: string, data: any) {
-    if (data.isDefault) {
-      await db.update(nomenclature).set({ isDefault: false })
-        .where(and(eq(nomenclature.nomenclatureTypeId, data.nomenclatureTypeId), isNull(nomenclature.deletedAt)));
-    }
-    const [row] = await db.update(nomenclature)
-      .set({ ...data, updatedAt: new Date().toISOString() })
-      .where(and(eq(nomenclature.id, id), isNull(nomenclature.deletedAt)))
-      .returning();
-    return row;
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('catalog-nomenclature-defaults'))`);
+      const [current] = await tx.select().from(nomenclature)
+        .where(and(eq(nomenclature.id, id), isNull(nomenclature.deletedAt))).limit(1);
+      if (!current) return undefined;
+      const productType = data.productType ?? current.productType;
+      if (!["kerosene", "pvkj", "service"].includes(productType || "")) throw new Error("Выберите тип продукта");
+      if (data.isDefault ?? current.isDefault) {
+        await tx.update(nomenclature).set({ isDefault: false })
+          .where(and(eq(nomenclature.productType, productType!), isNull(nomenclature.deletedAt)));
+      }
+      const [row] = await tx.update(nomenclature)
+        .set({ ...data, isDefault: data.isDefault ?? current.isDefault, updatedAt: new Date().toISOString() })
+        .where(eq(nomenclature.id, id)).returning();
+      return row;
+    });
   }
 
   async deleteNomenclature(id: string, userId: string) {
@@ -156,7 +166,7 @@ export class CatalogStorage {
       .where(eq(nomenclature.id, id)).returning();
     if (old.isDefault) {
       const [next] = await db.select().from(nomenclature)
-        .where(and(eq(nomenclature.nomenclatureTypeId, old.nomenclatureTypeId), isNull(nomenclature.deletedAt)))
+        .where(and(eq(nomenclature.productType, old.productType!), isNull(nomenclature.deletedAt)))
         .orderBy(asc(nomenclature.createdAt)).limit(1);
       if (next) await db.update(nomenclature).set({ isDefault: true }).where(eq(nomenclature.id, next.id));
     }
@@ -168,7 +178,7 @@ export class CatalogStorage {
     if (!current) return undefined;
     if (oldData?.isDefault) {
       await db.update(nomenclature).set({ isDefault: false })
-        .where(and(eq(nomenclature.nomenclatureTypeId, oldData.nomenclatureTypeId || current.nomenclatureTypeId), isNull(nomenclature.deletedAt)));
+        .where(and(eq(nomenclature.productType, current.productType!), isNull(nomenclature.deletedAt)));
     }
     const [row] = await db.update(nomenclature)
       .set({ deletedAt: null, deletedById: null, updatedAt: new Date().toISOString(), updatedById: userId, isDefault: !!oldData?.isDefault })
@@ -186,19 +196,11 @@ export class CatalogStorage {
     return row;
   }
   async updateType(id: string, data: any) {
-    const current = await this.getNomenclatureType(id);
-    if (current && ["kerosene", "pvkj", "service"].includes(current.code) && data.code && data.code !== current.code) {
-      throw new Error("Код системного вида номенклатуры менять нельзя");
-    }
     const [row] = await db.update(nomenclatureTypes).set({ ...data, updatedAt: new Date().toISOString() })
       .where(and(eq(nomenclatureTypes.id, id), isNull(nomenclatureTypes.deletedAt))).returning();
     return row;
   }
   async deleteType(id: string, userId: string) {
-    const current = await this.getNomenclatureType(id);
-    if (current && ["kerosene", "pvkj", "service"].includes(current.code)) {
-      throw new Error("Системный вид номенклатуры используется для выбора продукта и не может быть удалён");
-    }
     const [used] = await db.select({ id: nomenclature.id }).from(nomenclature)
       .where(and(eq(nomenclature.nomenclatureTypeId, id), isNull(nomenclature.deletedAt))).limit(1);
     if (used) throw new Error("Сначала удалите или перенесите номенклатуру этого вида");
@@ -213,15 +215,22 @@ export class CatalogStorage {
   }
 
   async createUnit(data: any) {
+    await this.validateUnitConversion(data);
     const [row] = await db.insert(unitsOfMeasure).values(data).returning();
     return row;
   }
   async updateUnit(id: string, data: any) {
+    const current = await this.getUnit(id);
+    if (!current) return undefined;
+    await this.validateUnitConversion({ ...current, ...data }, id);
     const [row] = await db.update(unitsOfMeasure).set({ ...data, updatedAt: new Date().toISOString() })
       .where(and(eq(unitsOfMeasure.id, id), isNull(unitsOfMeasure.deletedAt))).returning();
     return row;
   }
   async deleteUnit(id: string, userId: string) {
+    const [reference] = await db.select({ id: unitsOfMeasure.id }).from(unitsOfMeasure)
+      .where(and(eq(unitsOfMeasure.referenceUnitId, id), isNull(unitsOfMeasure.deletedAt))).limit(1);
+    if (reference) throw new Error("Единица используется для пересчёта других единиц измерения");
     const [used] = await db.select({ id: nomenclature.id }).from(nomenclature)
       .where(and(eq(nomenclature.unitId, id), isNull(nomenclature.deletedAt))).limit(1);
     if (used) throw new Error("Единица измерения используется в номенклатуре");
@@ -233,5 +242,20 @@ export class CatalogStorage {
     const [row] = await db.update(unitsOfMeasure).set({ deletedAt: null, deletedById: null, updatedAt: new Date().toISOString(), updatedById: userId })
       .where(eq(unitsOfMeasure.id, id)).returning();
     return row;
+  }
+
+  private async validateUnitConversion(data: any, id?: string) {
+    if (!!data.referenceUnitId !== !!data.conversionFactor) {
+      throw new Error("Для пересчёта укажите единицу измерения и положительную кратность либо очистите оба поля");
+    }
+    const visited = new Set<string>(id ? [id] : []);
+    let referenceId = data.referenceUnitId;
+    while (referenceId) {
+      if (visited.has(referenceId)) throw new Error("Единица не может ссылаться на себя или образовывать цикл пересчёта");
+      visited.add(referenceId);
+      const unit = await this.getUnit(referenceId);
+      if (!unit) throw new Error("Единица для пересчёта не найдена");
+      referenceId = unit.referenceUnitId;
+    }
   }
 }
