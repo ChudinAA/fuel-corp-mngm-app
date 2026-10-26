@@ -30,6 +30,7 @@ const testDates = {
   laterSale: "2026-01-04T10:00:00.000Z",
   warehouseTransfer: "2026-01-05T10:00:00.000Z",
   equipmentTransfer: "2026-01-06T10:00:00.000Z",
+  downstreamSale: "2026-01-07T10:00:00.000Z",
 };
 
 const refuelingFeeScenarios = [
@@ -511,6 +512,88 @@ test("restoring an older refueling movement recalculates both fuel products in s
           testDates.equipmentTransfer,
         );
 
+        // These refuelings happen after the full transfer chain and must be
+        // repriced when restoring the earlier sale changes the source cost.
+        const [downstreamWarehouseRefueling] = await tx
+          .insert(aircraftRefueling)
+          .values({
+            refuelingDate: testDates.downstreamSale,
+            productType,
+            supplierId: supplier.id,
+            buyerId: customer.id,
+            warehouseId: receivingWarehouse.id,
+            quantityKg: "10",
+            purchasePrice: "10",
+            purchaseAmount: "100",
+            salePrice: "20",
+            saleAmount: "200",
+            agentFee: "5",
+            isAgentFeeEnabled: true,
+            otherServiceFee: "3",
+            isOtherServiceEnabled: true,
+            profit: "92",
+            isDraft: false,
+          })
+          .returning({ id: aircraftRefueling.id });
+        const { transaction: downstreamWarehouseRefuelingTransaction } =
+          await WarehouseTransactionService.createTransactionAndUpdateWarehouse(
+            tx,
+            receivingWarehouse.id,
+            TRANSACTION_TYPE.SALE,
+            productType,
+            SOURCE_TYPE.REFUELING,
+            downstreamWarehouseRefueling.id,
+            10,
+            0,
+            undefined,
+            testDates.downstreamSale,
+          );
+        await tx
+          .update(aircraftRefueling)
+          .set({ transactionId: downstreamWarehouseRefuelingTransaction.id })
+          .where(eq(aircraftRefueling.id, downstreamWarehouseRefueling.id));
+
+        const [downstreamEquipmentRefueling] = await tx
+          .insert(aircraftRefueling)
+          .values({
+            refuelingDate: testDates.downstreamSale,
+            productType,
+            supplierId: supplier.id,
+            buyerId: customer.id,
+            equipmentId: receivingEquipment.id,
+            quantityKg: "10",
+            purchasePrice: "10",
+            purchaseAmount: "100",
+            salePrice: "20",
+            saleAmount: "200",
+            agentFee: "5",
+            isAgentFeeEnabled: true,
+            otherServiceFee: "3",
+            isOtherServiceEnabled: true,
+            profit: "92",
+            isDraft: false,
+          })
+          .returning({ id: aircraftRefueling.id });
+        const downstreamEquipmentRefuelingTransaction =
+          await EquipmentTransactionService.createTransactionAndUpdateEquipment(
+            tx,
+            receivingEquipment.id,
+            TRANSACTION_TYPE.SALE,
+            productType,
+            SOURCE_TYPE.REFUELING,
+            downstreamEquipmentRefueling.id,
+            10,
+            0,
+            undefined,
+            testDates.downstreamSale,
+          );
+        await tx
+          .update(aircraftRefueling)
+          .set({
+            equipmentTransactionId: downstreamEquipmentRefuelingTransaction.id,
+          })
+          .where(eq(aircraftRefueling.id, downstreamEquipmentRefueling.id));
+
         // Restore the original refueling stock movements after the newer activity.
         await WarehouseTransactionService.restoreTransactionAndRecalculateWarehouse(
           tx,
@@ -663,6 +746,52 @@ test("restoring an older refueling movement recalculates both fuel products in s
         assert.ok(
           Math.abs(Number(updatedEquipmentToWarehouseTransfer?.totalCost) - 233.33) < 0.01,
           `warehouse transfer cost should follow restored equipment average cost: ${updatedEquipmentToWarehouseTransfer?.totalCost}`,
+        );
+
+        const [updatedDownstreamWarehouseRefueling] = await tx
+          .select({
+            purchasePrice: aircraftRefueling.purchasePrice,
+            purchaseAmount: aircraftRefueling.purchaseAmount,
+            profit: aircraftRefueling.profit,
+          })
+          .from(aircraftRefueling)
+          .where(eq(aircraftRefueling.id, downstreamWarehouseRefueling.id));
+        assert.ok(
+          Math.abs(Number(updatedDownstreamWarehouseRefueling?.purchasePrice) - 10.444333) < 0.00001,
+          `downstream warehouse refueling purchase price (${productType}): ${updatedDownstreamWarehouseRefueling?.purchasePrice}`,
+        );
+        assert.equal(
+          Number(updatedDownstreamWarehouseRefueling?.purchaseAmount),
+          104.44,
+          `downstream warehouse refueling purchase amount (${productType})`,
+        );
+        assert.equal(
+          Number(updatedDownstreamWarehouseRefueling?.profit),
+          87.56,
+          `downstream warehouse refueling profit (${productType})`,
+        );
+
+        const [updatedDownstreamEquipmentRefueling] = await tx
+          .select({
+            purchasePrice: aircraftRefueling.purchasePrice,
+            purchaseAmount: aircraftRefueling.purchaseAmount,
+            profit: aircraftRefueling.profit,
+          })
+          .from(aircraftRefueling)
+          .where(eq(aircraftRefueling.id, downstreamEquipmentRefueling.id));
+        assert.ok(
+          Math.abs(Number(updatedDownstreamEquipmentRefueling?.purchasePrice) - 10.962667) < 0.00001,
+          `downstream equipment refueling purchase price (${productType}): ${updatedDownstreamEquipmentRefueling?.purchasePrice}`,
+        );
+        assert.equal(
+          Number(updatedDownstreamEquipmentRefueling?.purchaseAmount),
+          109.63,
+          `downstream equipment refueling purchase amount (${productType})`,
+        );
+        assert.equal(
+          Number(updatedDownstreamEquipmentRefueling?.profit),
+          82.37,
+          `downstream equipment refueling profit (${productType})`,
         );
 
         const restoredWarehouseTx = await tx.query.warehouseTransactions.findFirst({
